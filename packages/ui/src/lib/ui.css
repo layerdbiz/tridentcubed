@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @source './';
+@source '../../../node_modules/layerchart/dist';
 @plugin "@iconify/tailwind4";
 
 /* Custom States */

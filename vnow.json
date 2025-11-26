@@ -1,20 +1,16 @@
 {
   "$schema": "./.vnow/vnow.schema.json",
-  "docs": true,
+  "docs": false,
   "gitignore": false,
+  "ignore": [
+    ".changeset/**",
+    "CHANGELOG.md",
+    "CHANGELOG_COMMITS.md"
+  ],
   "settings": [
     "vscode"
   ],
   "source": [
-    "svecosystem/runed",
-    "sveltejs/vite-plugin-svelte",
-    "sveltejs/svelte/documentation/docs",
-    "sveltejs/kit/documentation/docs",
-    "storybookjs/storybook/docs",
-    "vercel/turborepo/docs/site/content/docs",
-    "pnpm/pnpm.io/docs",
-    "tailwindlabs/tailwindcss.com/src/docs",
-    "oneezy/ui",
-    "vasturiano/globe.gl"
+    "oneezy/ui"
   ]
 }

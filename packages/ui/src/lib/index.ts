@@ -41,6 +41,7 @@ export { default as Navbar } from "./components/molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./components/molecules/preview/preview.svelte";
 export { default as Slider, type SliderProps } from "./components/molecules/slider/slider.svelte";
 export { default as Toggle, type ToggleProps } from "./components/molecules/toggle/toggle.svelte";
+export { default as Tree } from "./components/molecules/chart/tree/tree.svelte";
 
 // organisms
 export { default as Footer } from "./components/organisms/footer/footer.svelte";

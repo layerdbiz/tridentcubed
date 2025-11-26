@@ -55,6 +55,22 @@
 </script>
 
 <svelte:head>
+	<!-- Google tag (gtag.js) -->
+	<script
+		async
+		src="https://www.googletagmanager.com/gtag/js?id=G-RZC3M03LR7"
+	></script>
+	<script>
+		window.dataLayer = window.dataLayer || [];
+		function gtag() {
+			dataLayer.push(arguments);
+		}
+		gtag('js', new Date());
+
+		gtag('config', 'G-RZC3M03LR7');
+	</script>
+
+	<!-- SEO -->
 	<title>Trident Cubed | Marine Surveying & Engineering Services</title>
 	<meta
 		name="description"
@@ -105,14 +121,19 @@
 		content="Trident Cubed | Marine Surveying & Engineering Services"
 	/>
 	<!-- Preload critical background image -->
-	<link rel="preload" as="image" href="/photos/houston-night.webp" fetchpriority="high" />
+	<link
+		rel="preload"
+		as="image"
+		href="/photos/houston-night.webp"
+		fetchpriority="high"
+	/>
 </svelte:head>
 
 <!-- <Metadata /> -->
 <!-- Hidden image to keep background cached in memory -->
-<img 
-	src="/photos/houston-night.webp" 
-	alt="" 
+<img
+	src="/photos/houston-night.webp"
+	alt=""
 	aria-hidden="true"
 	loading="eager"
 	fetchpriority="high"

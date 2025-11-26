@@ -1,4 +1,4 @@
-import { prerender } from "$app/server";
+import { query } from "$app/server";
 import * as v from "valibot";
 
 // Sheetari API URL for slides
@@ -32,8 +32,8 @@ export interface ChapterNavigation {
 /**
  * Fetch all slides data
  */
-export const getSlidesData = prerender(async () => {
-	console.log("🔥 Fetching slides data during prerender...");
+export const getSlidesData = query(async () => {
+	console.log("🔥 Fetching slides data...");
 
 	try {
 		const response = await fetch(SLIDES_URL);
@@ -66,21 +66,19 @@ export const getSlidesData = prerender(async () => {
 				slug: slide.slug || "",
 			}));
 
-		console.log("✅ Slides prerendered:", validSlides.length, "slides");
+		console.log("✅ Slides fetched:", validSlides.length, "slides");
 		return validSlides;
 	} catch (error) {
 		console.error("❌ Error fetching slides:", error);
 		return [];
 	}
-}, {
-	inputs: () => [undefined],
 });
 
 /**
  * Get navigation structure organized by chapters
  */
-export const getChapterNavigationData = prerender(async () => {
-	console.log("🔥 Building chapter navigation during prerender...");
+export const getChapterNavigationData = query(async () => {
+	console.log("🔥 Building chapter navigation...");
 
 	try {
 		const slides = await getSlidesData();
@@ -114,23 +112,15 @@ export const getChapterNavigationData = prerender(async () => {
 		console.error("❌ Error building navigation:", error);
 		return [];
 	}
-}, {
-	inputs: () => [undefined],
 });
 
 /**
  * Get a single slide by slug
  */
-export const getSlideBySlugData = prerender(
+export const getSlideBySlugData = query(
 	v.string(),
 	async (slug: string) => {
 		const slides = await getSlidesData();
 		return slides.find((slide) => slide.slug === slug) || null;
-	},
-	{
-		inputs: async () => {
-			const slides = await getSlidesData();
-			return slides.map((slide) => slide.slug);
-		},
 	},
 );

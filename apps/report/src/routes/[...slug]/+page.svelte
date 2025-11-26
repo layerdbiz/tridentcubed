@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { getSlidesData, type SlideData } from '$lib/slides/slides.remote';
-	import { Text } from '@layerd/ui';
+	import type { SlideData } from '$lib/slides/slides.remote';
+	import { Text, Image, Logo, Tree } from '@layerd/ui';
+
+	let { data } = $props();
 
 	// Get slug from URL parameter (catch-all route returns it as a string)
 	const slug = $derived(page.params.slug);
 
-	// Fetch all slides (prerender function uses .current)
-	const allSlides = getSlidesData().current ?? [];
+	// Get all slides from load function
+	const allSlides = data.slides ?? [];
 
 	// Debug logging
 	$effect(() => {
@@ -87,27 +89,35 @@
 	tabindex="0"
 >
 	{#if currentSlide}
-		<div class="flex min-h-screen flex-col items-center justify-center p-10">
-			<!-- Slide view based on "view" field -->
+		<div class="flex min-h-screen flex-col items-center justify-center">
+			<!-- COVER
+			:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
 			{#if currentSlide.view === 'bg'}
-				<!-- Background image view -->
-				<div
-					class="relative flex h-screen w-full flex-col items-center justify-center text-white"
-					style="background-image: url({currentSlide.src}); background-size: cover; background-position: center;"
-				>
-					<div class="absolute inset-0 bg-black/40"></div>
-					<div class="relative z-10 text-center">
+				<!-- bottom black radial 
+				------------------------------------------>
+				<Image
+					bg="fixed"
+					overlay="bg-gradient-to-br from-primary-700 via-black to-primary-700 from-0% via-50%"
+				/>
+				<!-- globe
+				------------------------------------------>
+				<img
+					src="/photos/globe.png"
+					alt="Going Global"
+					class="pointer-events-none fixed scale-150 md:scale-100 lg:scale-100"
+				/>
+				<div class="relative z-10 flex flex-col items-center justify-center gap-6 text-center">
+					<Logo class="size-48" />
+					<Text
+						h1={currentSlide.title}
+						class="text-5xl uppercase text-white md:text-7xl lg:text-8xl"
+					/>
+					{#if currentSlide.subtitle}
 						<Text
-							h1={currentSlide.title}
-							class="text-9xl uppercase text-white"
+							h2={currentSlide.subtitle}
+							class="md:text-md text-xs font-normal uppercase tracking-widest text-white lg:text-2xl"
 						/>
-						{#if currentSlide.subtitle}
-							<Text
-								h2={currentSlide.subtitle}
-								class="text-9xl uppercase text-white"
-							/>
-						{/if}
-					</div>
+					{/if}
 				</div>
 			{:else if currentSlide.view === 'overview'}
 				<!-- Overview/outline view -->
@@ -137,24 +147,9 @@
 							class="w-full rounded-lg shadow-lg"
 						/>
 					{/if}
+					<Tree />
 				</div>
 			{/if}
-
-			<!-- Navigation indicators (subtle) -->
-			<div class="absolute bottom-8 left-1/2 flex -translate-x-1/2 gap-2">
-				{#each allSlides as slide, i}
-					<button
-						class="h-2 w-2 rounded-full transition-all {i === currentIndex
-							? 'bg-primary-600 w-8'
-							: 'bg-neutral-300 hover:bg-neutral-400'}"
-						onclick={(e) => {
-							e.stopPropagation();
-							navigateToSlide(slide);
-						}}
-						aria-label="Go to slide {i + 1}"
-					></button>
-				{/each}
-			</div>
 
 			<!-- Progress indicator -->
 			<div class="absolute bottom-4 right-4 text-sm text-neutral-500">
