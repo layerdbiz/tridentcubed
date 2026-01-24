@@ -24,6 +24,7 @@ export { default as Radio } from "./components/atoms/forms/radio/radio.svelte";
 export { default as Section } from "./components/atoms/section/section.svelte";
 export * from "./components/atoms/section/section.data.ts";
 export { default as Switch } from "./components/atoms/forms/switch/switch.svelte";
+export { default as Table, type TableColumn, type TableProps } from "./components/atoms/table/table.svelte";
 export { default as Text, type TextProps } from "./components/atoms/text/text.svelte";
 export * from "./components/atoms/text/text.data.ts";
 export { default as Theme } from "./components/atoms/theme/theme.svelte";
@@ -34,7 +35,9 @@ export { default as Title } from "./components/atoms/title/title.svelte";
 // molecules
 export { default as Card, type CardProps } from "./components/molecules/card/card.svelte";
 export * from "./components/molecules/card/card.data.ts";
+export { default as Controls } from "./components/molecules/chart/controls.svelte";
 export { default as Copyright, type CopyrightProps } from "./components/molecules/copyright/copyright.svelte";
+export { default as Line } from "./components/molecules/chart/line/line.svelte";
 export { default as Logo, type LogoProps } from "./components/molecules/logo/logo.svelte";
 export * from "./components/molecules/logo/logo.data.ts";
 export { default as Navbar } from "./components/molecules/navbar/navbar.svelte";
@@ -49,11 +52,14 @@ export { default as Globe } from "./components/organisms/globe/globe.svelte";
 export * from "./components/organisms/globe/globe.svelte.ts";
 export { default as Header } from "./components/organisms/header/header.svelte";
 
+// pages
+export { default as About } from "./components/pages/about/about.svelte";
+export { default as Contact } from "./components/pages/contact/contact.svelte";
+export { default as Email, type EmailSignatureData, type EmailProps } from "./components/pages/email/email.svelte";
+export { default as Home } from "./components/pages/home/home.svelte";
+
 // templates
-export { default as About } from "./components/templates/about/about.svelte";
-export { default as Contact } from "./components/templates/contact/contact.svelte";
-export { default as Email, type EmailSignatureData, type EmailProps } from "./components/templates/email/email.svelte";
-export { default as Home } from "./components/templates/home/home.svelte";
+export { default as Template, type TemplateProps } from "./components/templates/template.svelte";
 
 /* UTILS */
 export * from "./utils/classes.svelte.ts";

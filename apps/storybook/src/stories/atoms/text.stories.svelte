@@ -317,6 +317,12 @@
 />
 
 <Story
+	name="Type 15"
+	args={{ type: 'code', label: 'Text' }}
+	tags={['!dev']}
+/>
+
+<Story
 	name="Type 16"
 	args={{ type: 'codeblock', label: 'Text' }}
 	tags={['!dev']}
@@ -324,7 +330,13 @@
 
 <Story
 	name="Typewriter Simple"
-	args={{ h1: 'We are Port Captains, Surveyors and Transport Engineers', typewriter: true }}
+	args={{
+		h1: 'We are Port Captains, Surveyors and Transport Engineers',
+		typewriter: {
+			messages: ['Port Captains', 'Surveyors', 'Transport Engineers'],
+			start: 'We are '
+		}
+	}}
 />
 
 <Story
@@ -333,7 +345,6 @@
 		h1: 'We are Port Captains, Surveyors and Transport Engineers',
 		typewriter: {
 			start: 'We are ',
-			default: 'Port Captains',
 			speed: 3,
 			delay: 2000,
 			messages: ['Port Captains', 'Surveyors', 'Transport Engineers'],
@@ -354,10 +365,4 @@
 			loop: true
 		}
 	}}
-/>
-
-<Story
-	name="Type 16"
-	args={{ type: 'codeblock', label: 'Text' }}
-	tags={['!dev']}
 />

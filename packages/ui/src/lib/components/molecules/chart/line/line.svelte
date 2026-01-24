@@ -1,11 +1,11 @@
 <script>
 	import { LineChart } from 'layerchart';
-	import { data } from '../data/data';
+	import { lineData } from '../data/data.js';
 </script>
 
 <div style:height="400px">
 	<LineChart
-		{data}
+		{lineData}
 		x="date"
 		y="value"
 	/>

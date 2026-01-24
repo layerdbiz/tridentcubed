@@ -1,13 +1,13 @@
-import { Meta, ColorPalette, ColorItem } from '@storybook/blocks';
+import { Meta, ColorPalette, ColorItem } from '@storybook/addon-docs/blocks';
 
 <Meta title="Colors" />
 
 > **💡 Theme Controls**: Use Storybook's built-in theme switcher in the toolbar to see colors change between light/dark modes and different themes.
 
-
 # Color System
 
 This design system uses an advanced OKLCH-based color theming system that automatically generates:
+
 - **19 perceptually uniform color scales** (50-950) from any base color
 - **Hundreds of intelligent light/dark pairings** that switch automatically
 - **Zero-config theme switching** via `color-scheme` property
@@ -15,6 +15,7 @@ This design system uses an advanced OKLCH-based color theming system that automa
 ## How It Works
 
 Set a single base color:
+
 ```css
 --theme-color-primary: red;
 ```

@@ -8,6 +8,7 @@ export default mergeConfig(config, {
 			"react-dom",
 			"react/jsx-runtime",
 			"@mdx-js/react",
+			"@storybook/blocks",
 		],
 		exclude: [
 			"@storybook/svelte",
@@ -21,6 +22,7 @@ export default mergeConfig(config, {
 	server: {
 		fs: {
 			allow: ["../.."],
+			strict: false,
 		},
 	},
 });

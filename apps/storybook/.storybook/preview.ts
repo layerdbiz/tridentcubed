@@ -135,7 +135,7 @@ const preview: Preview = {
     },
     // Disable the backgrounds addon toolbar button since we use our own theme system
     backgrounds: {
-      disable: true,
+      disabled: true,
     },
     // Also disable other conflicting toolbar items
     toolbar: {

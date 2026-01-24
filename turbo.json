@@ -15,6 +15,13 @@
       "cache": false,
       "persistent": true
     },
+    "report#dev": {
+      "dependsOn": [
+        "@layerd/ui#barrel"
+      ],
+      "cache": false,
+      "persistent": true
+    },
     "build": {
       "dependsOn": [
         "barrel",
