@@ -193,7 +193,7 @@ export interface GlobeProps {
 
 /**
  * Creates default globe configuration with responsive values
- * Uses mq.md to determine if we're on a small screen
+ * Uses mq.sm to determine if we're on a small screen (< 768px)
  */
 export function createDefaultConfig(
 	width: number = typeof window !== "undefined" ? window.innerWidth : 1920,
@@ -203,14 +203,14 @@ export function createDefaultConfig(
 	const globeWidth = width;
 	const globeHeight = height;
 	const globeLeft = 0;
-	const globeTop = mq.md ? height * 0.9 : height * 1.72;
+	const globeTop = mq.sm ? height * 0.9 : height * 1.72;
 
 	// Camera settings
-	const povAltitude = mq.md ? 0.8 : 0.2;
-	const povLatitude = mq.md ? 36 : 21;
+	const povAltitude = mq.sm ? 0.8 : 0.2;
+	const povLatitude = mq.sm ? 36 : 21;
 
 	// Atmosphere settings
-	const atmosphereAltitude = mq.md ? 0 : 0.15;
+	const atmosphereAltitude = mq.sm ? 0 : 0.15;
 
 	// Polygon settings
 	const polygonAltitude = 0.005;

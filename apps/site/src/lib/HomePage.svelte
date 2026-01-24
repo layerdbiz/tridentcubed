@@ -253,7 +253,7 @@
 			{/snippet}
 
 			<Button
-				size={mq.lg ? 'lg' : 'xl'}
+				size={!mq.lg ? 'lg' : 'xl'}
 				primary
 				variant="icon text"
 				icon={shipIcon}
@@ -262,8 +262,8 @@
 				href="#About"
 			/>
 			<Button
-				size={mq.lg ? 'lg' : 'xl'}
-				variant={mq.lg ? 'icon text' : 'text icon'}
+				size={!mq.lg ? 'lg' : 'xl'}
+				variant={!mq.lg ? 'icon text' : 'text icon'}
 				icon="icon-[mdi--chevron-right]"
 				label="Contact Sales"
 				class="light mx-auto !w-52 lg:min-w-72"
@@ -284,26 +284,26 @@
 			width: typeof window !== 'undefined' ? window.innerWidth : 1920,
 			height: typeof window !== 'undefined' ? window.innerHeight : 1080,
 			left: 0,
-			top: mq.md
+			top: mq.sm
 				? typeof window !== 'undefined'
 					? window.innerHeight * 0.95
 					: 972
 				: typeof window !== 'undefined'
 					? window.innerHeight * 2.2
 					: 1856,
-			altitude: mq.md ? altitudes.small.globe : altitudes.large.globe,
-			latitude: mq.md ? 36 : 21
+			altitude: mq.sm ? altitudes.small.globe : altitudes.large.globe,
+			latitude: mq.sm ? 36 : 21
 		}}
 		atmosphere={{
 			show: false,
 			color: '#155dfc',
-			altitude: mq.md ? altitudes.small.atmosphere : altitudes.large.atmosphere
+			altitude: mq.sm ? altitudes.small.atmosphere : altitudes.large.atmosphere
 		}}
 		hexPolygon={{
 			enabled: true,
-			resolution: mq.md ? 3 : 4, // 0-15, lower = bigger hexagons, higher = smaller/more detailed
+			resolution: mq.sm ? 3 : 4, // 0-15, lower = bigger hexagons, higher = smaller/more detailed
 			margin: 0.15, // 0-1, gap between hexagons (0.15 = 15% gap)
-			altitude: mq.md ? altitudes.small.hexPolygon : altitudes.large.hexPolygon, // Height of hexagon base layer in globe radius units
+			altitude: mq.sm ? altitudes.small.hexPolygon : altitudes.large.hexPolygon, // Height of hexagon base layer in globe radius units
 			color: '#1a1a2e', // Dark blue-gray base color for countries
 			transitionDuration: 0 // Animation duration in ms (0 = instant)
 		}}
@@ -312,62 +312,62 @@
 			capColor: 'rgba(26,26,46,1)', // Top surface color (transparent)
 			sideColor: 'rgba(21, 93, 252, 0.6)', // Side glow color (blue with 60% opacity)
 			strokeColor: 'rgba(0,0,0,0)', // Border color (transparent)
-			altitude: mq.md ? altitudes.small.polygon : altitudes.large.polygon, // Height of polygon glow layer (higher than hexagons)
+			altitude: mq.sm ? altitudes.small.polygon : altitudes.large.polygon, // Height of polygon glow layer (higher than hexagons)
 			transitionDuration: 0 // Animation duration in ms (0 = instant)
 		}}
 		points={{
 			layers: [
 				// blue dot (bg)
 				{
-					base: mq.md ? altitudes.small.points.blueDot.base : altitudes.large.points.blueDot.base,
-					altitude: mq.md
+					base: mq.sm ? altitudes.small.points.blueDot.base : altitudes.large.points.blueDot.base,
+					altitude: mq.sm
 						? altitudes.small.points.blueDot.altitude
 						: altitudes.large.points.blueDot.altitude,
 					color: '#155dfc',
-					radius: mq.md ? 1.2 : 0.3,
+					radius: mq.sm ? 1.2 : 0.3,
 					zOffset: 0
 				},
 				// white dot (fg)
 				{
-					base: mq.md ? altitudes.small.points.whiteDot.base : altitudes.large.points.whiteDot.base,
-					altitude: mq.md
+					base: mq.sm ? altitudes.small.points.whiteDot.base : altitudes.large.points.whiteDot.base,
+					altitude: mq.sm
 						? altitudes.small.points.whiteDot.altitude
 						: altitudes.large.points.whiteDot.altitude,
 					color: '#ffffff',
-					radius: mq.md ? 0.5 : 0.15,
+					radius: mq.sm ? 0.5 : 0.15,
 					zOffset: 0.001 // Slightly forward to ensure it's on top
 				}
 			]
 		}}
 		html={{
-			altitude: mq.md ? altitudes.small.html : altitudes.large.html
+			altitude: mq.sm ? altitudes.small.html : altitudes.large.html
 		}}
 		labels={{
-			size: mq.md ? 0.75 : 0.15,
-			dotRadius: mq.md ? 0.3 : 0.1,
+			size: mq.sm ? 0.75 : 0.15,
+			dotRadius: mq.sm ? 0.3 : 0.1,
 			textColor: '#ffffff',
 			dotColor: '#ffffff',
-			altitude: mq.md ? altitudes.small.labels : altitudes.large.labels
+			altitude: mq.sm ? altitudes.small.labels : altitudes.large.labels
 		}}
 		arcs={{
 			color: '#ffffff',
-			stroke: mq.md ? 0.2 : 0.04,
+			stroke: mq.sm ? 0.2 : 0.04,
 			duration: 2000,
 			dashRelativeLength: 0.4,
 			dashLength: 0.6,
 			dashGap: 2,
 			dashInitialGap: 1,
 			altitude: null,
-			altitudeAutoscale: mq.md ? altitudes.small.arcs.autoscale : altitudes.large.arcs.autoscale,
-			startAltitude: mq.md ? altitudes.small.arcs.start : altitudes.large.arcs.start,
-			endAltitude: mq.md ? altitudes.small.arcs.end : altitudes.large.arcs.end
+			altitudeAutoscale: mq.sm ? altitudes.small.arcs.autoscale : altitudes.large.arcs.autoscale,
+			startAltitude: mq.sm ? altitudes.small.arcs.start : altitudes.large.arcs.start,
+			endAltitude: mq.sm ? altitudes.small.arcs.end : altitudes.large.arcs.end
 		}}
 		rings={{
 			color: '#ffffff',
 			rings: 4,
-			radius: mq.md ? 5 : 2,
-			speed: mq.md ? 4 : 2,
-			altitude: mq.md ? altitudes.small.rings : altitudes.large.rings,
+			radius: mq.sm ? 5 : 2,
+			speed: mq.sm ? 4 : 2,
+			altitude: mq.sm ? altitudes.small.rings : altitudes.large.rings,
 			duration: 700
 		}}
 		animation={{
@@ -442,7 +442,7 @@
 	/>
 
 	<!-- partners -->
-	{#if !mq.lg}
+	{#if mq.lg}
 		<!-- Desktop: 8 cols x 2 rows grid -->
 		<div
 			class="mask-x-lg lg:mask-[unset] flex items-center justify-center gap-12 px-10 pb-20 invert"

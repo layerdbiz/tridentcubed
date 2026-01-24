@@ -158,8 +158,8 @@
 			{#if link.type === 'dropdown'}
 				<Toggle
 					align="bottom"
-					type={mq.md ? 'panel' : 'menu'}
-					trigger={mq.md ? 'click' : 'hover'}
+					type={mq.sm ? 'panel' : 'menu'}
+					trigger={mq.sm ? 'click' : 'hover'}
 					class="link flex items-center"
 					triggerClass=""
 					contentClass="!pt-4"
