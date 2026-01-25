@@ -65,6 +65,11 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 	let polygonData: any = $state(null); // Store polygon data, null = not loaded yet
 	let globeInitialized = $state(false);
 
+	// WebGL error prevention - track initialization attempts to prevent infinite retry loops
+	let initializationAttempts = $state(0);
+	const MAX_INITIALIZATION_ATTEMPTS = 3;
+	let webGLFailed = $state(false); // Permanently disable globe if WebGL fails repeatedly
+
 	// Derived state - globe is ready to display when initialized
 	const isGlobeReady = $derived(globeInitialized);
 
@@ -1018,6 +1023,16 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 			currentMqXl !== lastMqXl;
 
 		if (breakpointChanged) {
+			// Don't recreate if WebGL has permanently failed
+			if (webGLFailed) {
+				// Just update tracking variables without recreating
+				lastMqSm = currentMqSm;
+				lastMqMd = currentMqMd;
+				lastMqLg = currentMqLg;
+				lastMqXl = currentMqXl;
+				return;
+			}
+
 			// Defer recreation to avoid blocking
 			queueMicrotask(() => {
 				if (!globeInstance) return;
@@ -1059,6 +1074,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 				displayPreviousLocation = null;
 
 				// Reset initialization flag to allow re-initialization
+				// Note: Do NOT reset initializationAttempts here - we want to track total attempts
 				initializationStarted = false;
 
 				// Initialization effect will automatically recreate with new props
@@ -1090,11 +1106,40 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 	// Track if initialization has been started to prevent re-initialization
 	let initializationStarted = $state(false);
 
+	/**
+	 * Check if WebGL is available and working
+	 * Returns true if WebGL context can be created, false otherwise
+	 */
+	function isWebGLAvailable(): boolean {
+		try {
+			const canvas = document.createElement('canvas');
+			const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+			if (!gl) {
+				console.warn('⚠️ WebGL is not available');
+				return false;
+			}
+			// Check if context is lost
+			if (gl instanceof WebGLRenderingContext || gl instanceof WebGL2RenderingContext) {
+				if (gl.isContextLost()) {
+					console.warn('⚠️ WebGL context is lost');
+					return false;
+				}
+			}
+			return true;
+		} catch (e) {
+			console.warn('⚠️ WebGL check failed:', e);
+			return false;
+		}
+	}
+
 	// Initialize globe once when container and locations are ready
 	// Polygons are optional - globe will render without them
 	$effect(() => {
 		// Globe must be loaded before we can initialize
 		if (!Globe) return;
+
+		// If WebGL has permanently failed, don't try again
+		if (webGLFailed) return;
 
 		// Get data from config to check what's expected
 		const cfg = untrack(() => mergedConfig);
@@ -1115,8 +1160,38 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 			return;
 		}
 
+		// Check retry limit before attempting initialization
+		if (initializationAttempts >= MAX_INITIALIZATION_ATTEMPTS) {
+			console.error(`❌ Globe initialization failed after ${MAX_INITIALIZATION_ATTEMPTS} attempts. Giving up.`);
+			webGLFailed = true;
+			// Show fallback UI
+			if (globeContainer) {
+				globeContainer.innerHTML = `
+					<div class="flex items-center justify-center h-full text-white text-center p-4">
+						<div>
+							<h3 class="text-lg font-semibold mb-2">Unable to load 3D Globe</h3>
+							<p class="text-sm opacity-75">Your browser or device may not support WebGL, or GPU resources are unavailable.</p>
+						</div>
+					</div>
+				`;
+			}
+			return;
+		}
+
+		// Check WebGL availability before attempting to create context
+		if (!isWebGLAvailable()) {
+			console.warn('⚠️ WebGL not available, skipping globe initialization');
+			initializationAttempts++;
+			// Don't retry immediately - wait a bit in case it's a temporary issue
+			setTimeout(() => {
+				initializationStarted = false;
+			}, 2000);
+			return;
+		}
+
 		// Mark initialization as started to prevent re-runs
 		initializationStarted = true;
+		initializationAttempts++;
 
 		// Use requestIdleCallback to defer heavy work, fallback to setTimeout
 		const scheduleInit = (callback: () => void) => {
@@ -1131,6 +1206,13 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 			// Double-check container exists
 			if (!globeContainer) {
 				console.error('Globe container is undefined');
+				initializationStarted = false;
+				return;
+			}
+
+			// Double-check WebGL is still available (could have changed)
+			if (!isWebGLAvailable()) {
+				console.warn('⚠️ WebGL became unavailable before initialization');
 				initializationStarted = false;
 				return;
 			}
@@ -1483,6 +1565,9 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 				globe.controls().enableZoom = false;
 				globeInstance = globe;
 
+				// Reset attempt counter on successful initialization
+				initializationAttempts = 0;
+
 				// Force a render to make sure the globe is visible
 				setTimeout(() => {
 					if (globe) {
@@ -1491,16 +1576,36 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 				}, 100);
 			} catch (error) {
 				console.error('❌ GLOBE ERROR: Failed to initialize Globe.gl:', error);
-				// Display user-friendly error message
-				if (globeContainer) {
-					globeContainer.innerHTML = `
-					<div class="flex items-center justify-center h-full text-white text-center p-4">
-						<h3>Unable to load Globe</h3>
-					</div>
-				`;
+				
+				// Check if this is a WebGL context error
+				const errorMessage = error instanceof Error ? error.message : String(error);
+				const isWebGLError = errorMessage.toLowerCase().includes('webgl') || 
+				                     errorMessage.toLowerCase().includes('context');
+				
+				// If we've hit the retry limit or it's definitely a WebGL issue, give up
+				if (initializationAttempts >= MAX_INITIALIZATION_ATTEMPTS || isWebGLError) {
+					webGLFailed = true;
+					console.error(`❌ Globe permanently disabled after ${initializationAttempts} attempts`);
+					
+					// Display user-friendly error message
+					if (globeContainer) {
+						globeContainer.innerHTML = `
+						<div class="flex items-center justify-center h-full text-white text-center p-4">
+							<div>
+								<h3 class="text-lg font-semibold mb-2">Unable to load 3D Globe</h3>
+								<p class="text-sm opacity-75">WebGL is not available or has been blocked by your browser.</p>
+							</div>
+						</div>
+					`;
+					}
+				} else {
+					// Allow retry with exponential backoff
+					const retryDelay = Math.min(1000 * Math.pow(2, initializationAttempts), 10000);
+					console.warn(`⚠️ Globe initialization failed, retrying in ${retryDelay}ms (attempt ${initializationAttempts}/${MAX_INITIALIZATION_ATTEMPTS})`);
+					setTimeout(() => {
+						initializationStarted = false;
+					}, retryDelay);
 				}
-				// Reset flag on error so user can retry
-				initializationStarted = false;
 			}
 		}); // End of scheduleInit callback
 	});
