@@ -60,17 +60,35 @@
 		}
 	})();
 
+	// Parse range synchronously - used for both initial and reactive
+	function parseRangeValue() {
+		return parseRange(range);
+	}
+
+	// Claim cell synchronously during initialization if no range provided
+	const initialParsed = parseRangeValue();
+	const initialClaimed = ctx && !initialParsed ? ctx.claimAutoCell() : null;
+
+	// Compute initial placement synchronously for track registration
+	const initialPlacement = initialParsed 
+		? initialParsed 
+		: initialClaimed 
+			? { startRow: initialClaimed.row, endRow: initialClaimed.row, startCol: initialClaimed.col, endCol: initialClaimed.col }
+			: null;
+
+	// Register track overrides SYNCHRONOUSLY during initialization
+	// This is critical to prevent FOUC - tracks must be set before first render
+	// Using IIFE to capture initial prop values intentionally
+	(() => {
+		if (ctx && initialPlacement) {
+			if (row) ctx.setRowTrack(initialPlacement.startRow, row);
+			if (col) ctx.setColTrack(initialPlacement.startCol, col);
+		}
+	})();
+
+	// Reactive versions for after mount
 	const parsed = $derived.by(() => parseRange(range));
-
-	// claim once when range is missing
-	let claimed = $state<{ row: number; col: number } | null>(null);
-
-	$effect(() => {
-		if (!ctx) return;
-		if (parsed) return; // explicit range wins
-		if (claimed) return; // already claimed
-		claimed = ctx.claimAutoCell();
-	});
+	let claimed = $state<{ row: number; col: number } | null>(initialClaimed);
 
 	const placement = $derived.by(() => {
 		if (parsed) return parsed;
@@ -78,12 +96,39 @@
 		return null;
 	});
 
+	// Track previous placement and props for reactive updates
+	let prevPlacement = initialPlacement;
+	let prevRow = (() => row)();
+	let prevCol = (() => col)();
+	
+	// Handle reactive updates when placement or row/col props change
 	$effect(() => {
 		if (!ctx) return;
 		if (!placement) return;
 
-		if (row) ctx.setRowTrack(placement.startRow, row);
-		if (col) ctx.setColTrack(placement.startCol, col);
+		const placementChanged = 
+			prevPlacement?.startRow !== placement.startRow || 
+			prevPlacement?.startCol !== placement.startCol;
+		
+		// If placement changed, clear old tracks and set new ones
+		if (placementChanged && prevPlacement) {
+			// Clear old track overrides
+			if (prevRow) ctx.clearRowTrack(prevPlacement.startRow);
+			if (prevCol) ctx.clearColTrack(prevPlacement.startCol);
+		}
+
+		// Set new track overrides (on placement change or prop change)
+		if (placementChanged || row !== prevRow) {
+			if (row) ctx.setRowTrack(placement.startRow, row);
+		}
+		if (placementChanged || col !== prevCol) {
+			if (col) ctx.setColTrack(placement.startCol, col);
+		}
+
+		// Update prev refs
+		prevPlacement = placement;
+		prevRow = row;
+		prevCol = col;
 	});
 
 	const style = $derived.by(() => {

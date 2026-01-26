@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { setGridCtx } from "@layerd/ui";
 	import { Item } from "@layerd/ui";
+	import { tick, untrack } from "svelte";
 	import type { Snippet } from "svelte";
 
 	export interface GridProps {
@@ -24,6 +25,20 @@
 		debug = false,
 		children
 	}: GridProps = $props();
+
+	// FOUC prevention: hide grid until children have registered their tracks
+	// This is necessary because children (Items) register row/col sizes AFTER
+	// the parent Grid has already rendered its template
+	let ready = $state(false);
+	
+	// Use untrack to avoid creating a dependency, and tick to wait for children
+	$effect(() => {
+		untrack(() => {
+			tick().then(() => {
+				ready = true;
+			});
+		});
+	});
 
 	function colToNum(label: string) {
 		let n = 0;
@@ -100,45 +115,54 @@
 
 	const isAuto = $derived(items.trim().length === 0);
 
-	// stable dims
-	let dims = $state({ rows: 1, cols: 1 });
+	// Helper to compute initial dims from props
+	function getInitialDims() {
+		const spec = items.trim();
+		return spec ? parseItemsSpec(spec) : { rows: 1, cols: 1 };
+	}
 
-	// IMPORTANT: only reset to 1x1 *when entering* auto-mode
-	let wasAuto = $state(false);
+	// Initialize dims synchronously to prevent FOUC
+	let dims = $state(getInitialDims());
 
+	// Track previous items for change detection (use closure to capture initial value)
+	let prevItemsRef = (() => items.trim())();
+
+	// React to items changes after initial render
 	$effect(() => {
-		const nowAuto = items.trim().length === 0;
+		const currentItems = items.trim();
+		
+		// Skip if items hasn't changed
+		if (currentItems === prevItemsRef) return;
+		prevItemsRef = currentItems;
 
-		// switched auto <-> explicit?
-		if (nowAuto !== wasAuto) {
-			wasAuto = nowAuto;
-
-			if (nowAuto) {
-				// entering auto: start clean
-				dims = { rows: 1, cols: 1 };
-			} else {
-				// entering explicit: parse immediately
-				dims = parseItemsSpec(items);
+		if (currentItems) {
+			const next = parseItemsSpec(currentItems);
+			if (next.rows !== dims.rows || next.cols !== dims.cols) {
+				dims = next;
 			}
-			return;
+		} else {
+			dims = { rows: 1, cols: 1 };
 		}
-
-		// staying in explicit mode: track changes to items string
-		if (!nowAuto) {
-			const next = parseItemsSpec(items);
-			if (next.rows !== dims.rows || next.cols !== dims.cols) dims = next;
-		}
-
-		// staying in auto mode: DO NOT force dims back to 1x1
 	});
 
-	// track overrides
-	let rowTracks = $state<(string | undefined)[]>([]);
-	let colTracks = $state<(string | undefined)[]>([]);
+	// Helper to create track arrays
+	function createTracks(count: number) {
+		return Array.from({ length: count }, () => undefined as string | undefined);
+	}
 
+	// Initialize tracks synchronously based on initial dims
+	const initialDims = getInitialDims();
+	let rowTracks = $state<(string | undefined)[]>(createTracks(initialDims.rows));
+	let colTracks = $state<(string | undefined)[]>(createTracks(initialDims.cols));
+
+	// Update tracks when dims change
 	$effect(() => {
-		rowTracks = Array.from({ length: dims.rows }, () => undefined);
-		colTracks = Array.from({ length: dims.cols }, () => undefined);
+		if (rowTracks.length !== dims.rows) {
+			rowTracks = createTracks(dims.rows);
+		}
+		if (colTracks.length !== dims.cols) {
+			colTracks = createTracks(dims.cols);
+		}
 	});
 
 	function setRowTrack(index: number, value: string) {
@@ -151,12 +175,19 @@
 		colTracks[index - 1] = value;
 	}
 
-	// NEW: auto-placement cursor for Items w/out `range`
-	let autoCursor = $state(0);
+	function clearRowTrack(index: number) {
+		if (index < 1 || index > dims.rows) return;
+		rowTracks[index - 1] = undefined;
+	}
 
-	$effect(() => {
-		autoCursor = 0;
-	});
+	function clearColTrack(index: number) {
+		if (index < 1 || index > dims.cols) return;
+		colTracks[index - 1] = undefined;
+	}
+
+	// Auto-placement cursor for Items without `range`
+	// No need for $effect - cursor resets naturally when component remounts
+	let autoCursor = $state(0);
 
 	function ensureAutoDimsForIndex(idx: number) {
 		// row-major on current column count
@@ -179,8 +210,16 @@
 		return { row, col };
 	}
 
-	// Set context at component initialization, not in an effect
-	setGridCtx({ dims, setRowTrack, setColTrack, claimAutoCell });
+	// Set context at component initialization
+	// Pass dims as a getter so context consumers get reactive updates
+	setGridCtx({ 
+		get dims() { return dims; }, 
+		setRowTrack, 
+		setColTrack,
+		clearRowTrack,
+		clearColTrack,
+		claimAutoCell 
+	});
 
 	const gridTemplateRows = $derived.by(() => {
 		const currentDims = dims;
@@ -219,7 +258,11 @@
 </script>
 
 <div class="min-h-[100svh] w-full">
-	<div class={"min-h-[100svh] w-full place-items-stretch " + userClass} style={gridStyle}>
+	<div 
+		class={"min-h-[100svh] w-full place-items-stretch " + userClass} 
+		class:invisible={!ready}
+		style={gridStyle}
+	>
 		{#if debug}
 			{#each fauxRanges as r (r)}
 				<Item range={r} class="bg-black/10 text-black/50 font-black grid place-items-center">

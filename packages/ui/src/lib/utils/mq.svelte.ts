@@ -1,5 +1,7 @@
 import { MediaQuery } from "svelte/reactivity";
 
+// Standard browser check - works in any environment (SvelteKit, Vite, etc.)
+// Svelte core doesn't provide a built-in browser detection
 const isBrowser = typeof window !== "undefined";
 
 export const BREAKPOINTS = {
@@ -10,10 +12,14 @@ export const BREAKPOINTS = {
 	xxl: 1536,
 } as const;
 
+// Cache MediaQuery instances - plain Map is correct here since:
+// 1. We don't need reactive iteration over the cache
+// 2. The MediaQuery instances themselves are reactive
+// 3. SvelteMap would cause state_unsafe_mutation when .set() is called in getters
 const _cache = new Map<string, MediaQuery>();
 
-function _mq(query: string) {
-	if (!isBrowser) return { current: false } as const;
+function _mq(query: string): { readonly current: boolean } {
+	if (!isBrowser) return { current: false };
 	let existing = _cache.get(query);
 	if (!existing) {
 		existing = new MediaQuery(query);
@@ -22,50 +28,62 @@ function _mq(query: string) {
 	return existing;
 }
 
+// Media query strings for each breakpoint
+const QUERIES = {
+	sm: `(max-width: ${BREAKPOINTS.md - 1}px)`,
+	md: `(min-width: ${BREAKPOINTS.md}px) and (max-width: ${
+		BREAKPOINTS.lg - 1
+	}px)`,
+	lg: `(min-width: ${BREAKPOINTS.lg}px) and (max-width: ${
+		BREAKPOINTS.xl - 1
+	}px)`,
+	xl: `(min-width: ${BREAKPOINTS.xl}px) and (max-width: ${
+		BREAKPOINTS.xxl - 1
+	}px)`,
+	xxl: `(min-width: ${BREAKPOINTS.xxl}px)`,
+} as const;
+
 export const mq = {
-	// sm: 0–767px (mobile - combines base + Tailwind sm: range)
+	// sm: 0–767px (mobile)
 	get sm() {
-		return _mq(`(max-width: ${BREAKPOINTS.md - 1}px)`).current;
+		if (!isBrowser) return false;
+		return _mq(QUERIES.sm).current;
 	},
-	// md: 768–1023px (md: prefix wins)
+	// md: 768–1023px
 	get md() {
-		return _mq(
-			`(min-width: ${BREAKPOINTS.md}px) and (max-width: ${
-				BREAKPOINTS.lg - 1
-			}px)`,
-		).current;
+		if (!isBrowser) return false;
+		return _mq(QUERIES.md).current;
 	},
-	// lg: 1024–1279px (lg: prefix wins)
+	// lg: 1024–1279px
 	get lg() {
-		return _mq(
-			`(min-width: ${BREAKPOINTS.lg}px) and (max-width: ${
-				BREAKPOINTS.xl - 1
-			}px)`,
-		).current;
+		if (!isBrowser) return false;
+		return _mq(QUERIES.lg).current;
 	},
-	// xl: 1280–1535px (xl: prefix wins)
+	// xl: 1280–1535px
 	get xl() {
-		return _mq(
-			`(min-width: ${BREAKPOINTS.xl}px) and (max-width: ${
-				BREAKPOINTS.xxl - 1
-			}px)`,
-		).current;
+		if (!isBrowser) return false;
+		return _mq(QUERIES.xl).current;
 	},
-	// xxl: 1536px+ (2xl: prefix wins)
+	// xxl: 1536px+
 	get xxl() {
-		return _mq(`(min-width: ${BREAKPOINTS.xxl}px)`).current;
+		if (!isBrowser) return false;
+		return _mq(QUERIES.xxl).current;
 	},
 
 	get portrait() {
+		if (!isBrowser) return false;
 		return _mq("(orientation: portrait)").current;
 	},
 	get vertical() {
+		if (!isBrowser) return false;
 		return _mq("(orientation: portrait)").current;
 	},
 	get landscape() {
+		if (!isBrowser) return true;
 		return _mq("(orientation: landscape)").current;
 	},
 	get horizontal() {
+		if (!isBrowser) return true;
 		return _mq("(orientation: landscape)").current;
 	},
 };
