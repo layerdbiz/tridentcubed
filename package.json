@@ -8,6 +8,7 @@
     "preview:all": "turbo preview",
     "site": "turbo watch dev --filter=site",
     "report": "turbo watch dev --filter=report",
+    "play": "turbo watch dev --filter=play",
     "sb": "turbo watch dev --filter=storybook",
     "barrels": "turbo barrel",
     "stories": "turbo storybook#story",

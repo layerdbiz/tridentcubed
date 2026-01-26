@@ -7,6 +7,7 @@ export const BREAKPOINTS = {
 	md: 768,
 	lg: 1024,
 	xl: 1280,
+	xxl: 1536,
 } as const;
 
 const _cache = new Map<string, MediaQuery>();
@@ -22,20 +23,37 @@ function _mq(query: string) {
 }
 
 export const mq = {
-	// "small device" bucket (0–767)
+	// sm: 0–767px (mobile - combines base + Tailwind sm: range)
 	get sm() {
 		return _mq(`(max-width: ${BREAKPOINTS.md - 1}px)`).current;
 	},
-	// "everything else" bucket (768+)
+	// md: 768–1023px (md: prefix wins)
 	get md() {
-		return _mq(`(min-width: ${BREAKPOINTS.md}px)`).current;
+		return _mq(
+			`(min-width: ${BREAKPOINTS.md}px) and (max-width: ${
+				BREAKPOINTS.lg - 1
+			}px)`,
+		).current;
 	},
-
+	// lg: 1024–1279px (lg: prefix wins)
 	get lg() {
-		return _mq(`(min-width: ${BREAKPOINTS.lg}px)`).current;
+		return _mq(
+			`(min-width: ${BREAKPOINTS.lg}px) and (max-width: ${
+				BREAKPOINTS.xl - 1
+			}px)`,
+		).current;
 	},
+	// xl: 1280–1535px (xl: prefix wins)
 	get xl() {
-		return _mq(`(min-width: ${BREAKPOINTS.xl}px)`).current;
+		return _mq(
+			`(min-width: ${BREAKPOINTS.xl}px) and (max-width: ${
+				BREAKPOINTS.xxl - 1
+			}px)`,
+		).current;
+	},
+	// xxl: 1536px+ (2xl: prefix wins)
+	get xxl() {
+		return _mq(`(min-width: ${BREAKPOINTS.xxl}px)`).current;
 	},
 
 	get portrait() {
@@ -75,7 +93,15 @@ export function useBetween(
 	);
 }
 
-export function screens<T>(base: T, sm?: T, md?: T, lg?: T, xl?: T): T {
+export function screens<T>(
+	base: T,
+	sm?: T,
+	md?: T,
+	lg?: T,
+	xl?: T,
+	xxl?: T,
+): T {
+	if (mq.xxl && xxl !== undefined) return xxl;
 	if (mq.xl && xl !== undefined) return xl;
 	if (mq.lg && lg !== undefined) return lg;
 	if (mq.md && md !== undefined) return md;

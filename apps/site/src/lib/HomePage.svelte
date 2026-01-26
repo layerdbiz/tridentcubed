@@ -253,20 +253,20 @@
 			{/snippet}
 
 			<Button
-				size={!mq.lg ? 'lg' : 'xl'}
+				size={mq.sm ? 'lg' : 'xl'}
 				primary
 				variant="icon text"
 				icon={shipIcon}
 				label="Learn More"
-				class="mx-auto !w-52 lg:min-w-72"
+				class="mx-auto !w-52 md:min-w-72"
 				href="#About"
 			/>
 			<Button
-				size={!mq.lg ? 'lg' : 'xl'}
-				variant={!mq.lg ? 'icon text' : 'text icon'}
+				size={mq.sm ? 'lg' : 'xl'}
+				variant={mq.sm || mq.md ? 'icon text' : 'text icon'}
 				icon="icon-[mdi--chevron-right]"
 				label="Contact Sales"
-				class="light mx-auto !w-52 lg:min-w-72"
+				class="light mx-auto !w-52 md:min-w-72"
 				href="#Contact"
 			/>
 		</div>
@@ -442,21 +442,7 @@
 	/>
 
 	<!-- partners -->
-	{#if mq.lg}
-		<!-- Desktop: 8 cols x 2 rows grid -->
-		<div
-			class="mask-x-lg lg:mask-[unset] flex items-center justify-center gap-12 px-10 pb-20 invert"
-		>
-			{#each partnersData as partner (partner.id)}
-				<img
-					src={partner.img}
-					alt={partner.name}
-					class="max-h-28 w-auto place-self-center object-contain"
-				/>
-			{/each}
-		</div>
-	{:else}
-		<!-- Mobile: Slider with autoscroll -->
+	{#if mq.sm}
 		<Slider
 			class="mask-x-lg bleed overflow-hidden"
 			show={3}
@@ -473,6 +459,19 @@
 				/>
 			{/each}
 		</Slider>
+	{:else}
+		<!-- Desktop: 8 cols x 2 rows grid -->
+		<div
+			class="mask-x-lg lg:mask-[unset] flex items-center justify-center gap-12 px-10 pb-20 invert"
+		>
+			{#each partnersData as partner (partner.id)}
+				<img
+					src={partner.img}
+					alt={partner.name}
+					class="max-h-28 w-auto place-self-center object-contain"
+				/>
+			{/each}
+		</div>
 	{/if}
 
 	<!-- testimonials -->

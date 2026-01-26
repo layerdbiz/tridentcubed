@@ -37,6 +37,9 @@ export { default as Card, type CardProps } from "./components/molecules/card/car
 export * from "./components/molecules/card/card.data.ts";
 export { default as Controls } from "./components/molecules/chart/controls.svelte";
 export { default as Copyright, type CopyrightProps } from "./components/molecules/copyright/copyright.svelte";
+export { default as Grid, type GridProps } from "./components/molecules/grid/grid.svelte";
+export * from "./components/molecules/grid/grid.svelte.ts";
+export { default as Item, type ItemProps } from "./components/molecules/grid/item.svelte";
 export { default as Line } from "./components/molecules/chart/line/line.svelte";
 export { default as Logo, type LogoProps } from "./components/molecules/logo/logo.svelte";
 export * from "./components/molecules/logo/logo.data.ts";
