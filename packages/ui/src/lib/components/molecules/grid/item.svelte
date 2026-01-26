@@ -1,56 +1,18 @@
 <!-- Item.svelte -->
+<!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import { getGridCtx } from "@layerd/ui";
+	import { getGridCtx, parseRange } from "@layerd/ui";
 
 	export interface ItemProps {
 		class?: string;
-		range?: string; // "A1" | "A1:C3"
+		range?: string; // "A1" | "A1:C3" | "1x2" | "1:3x1:3"
 		row?: string;
 		col?: string;
 		children?: Snippet;
 	}
 
 	let { class: userClass = "", range, row, col, children }: ItemProps = $props();
-
-	function colToNum(label: string) {
-		let n = 0;
-		for (const ch of (label ?? "").trim().toUpperCase()) {
-			const code = ch.charCodeAt(0);
-			if (code < 65 || code > 90) continue;
-			n = n * 26 + (code - 64);
-		}
-		return Math.max(1, n);
-	}
-
-	function parseRange(spec?: string) {
-		const s = (spec ?? "").trim().toUpperCase();
-		if (!s) return null;
-
-		const mCell = s.match(/^([A-Z]+)(\d+)$/);
-		if (mCell) {
-			const startCol = colToNum(mCell[1]);
-			const startRow = Math.max(1, Number(mCell[2]) || 1);
-			return { startRow, endRow: startRow, startCol, endCol: startCol };
-		}
-
-		const mRange = s.match(/^([A-Z]+)(\d+)\s*:\s*([A-Z]+)(\d+)$/);
-		if (mRange) {
-			const r1 = Math.max(1, Number(mRange[2]) || 1);
-			const r2 = Math.max(1, Number(mRange[4]) || 1);
-			const c1 = colToNum(mRange[1]);
-			const c2 = colToNum(mRange[3]);
-
-			const startRow = Math.min(r1, r2);
-			const endRow = Math.max(r1, r2);
-			const startCol = Math.min(c1, c2);
-			const endCol = Math.max(c1, c2);
-
-			return { startRow, endRow, startCol, endCol };
-		}
-
-		return null;
-	}
 
 	const ctx = (() => {
 		try {
@@ -60,13 +22,15 @@
 		}
 	})();
 
-	// Parse range synchronously - used for both initial and reactive
-	function parseRangeValue() {
-		return parseRange(range);
-	}
+	// INTENTIONAL: Capture initial prop values for synchronous track registration
+	// This prevents FOUC by setting grid tracks before first render
+	// The "state_referenced_locally" warning is expected and correct here
+	const _initialRange = range;
+	const _initialRow = row;
+	const _initialCol = col;
 
 	// Claim cell synchronously during initialization if no range provided
-	const initialParsed = parseRangeValue();
+	const initialParsed = parseRange(_initialRange);
 	const initialClaimed = ctx && !initialParsed ? ctx.claimAutoCell() : null;
 
 	// Compute initial placement synchronously for track registration
@@ -78,13 +42,10 @@
 
 	// Register track overrides SYNCHRONOUSLY during initialization
 	// This is critical to prevent FOUC - tracks must be set before first render
-	// Using IIFE to capture initial prop values intentionally
-	(() => {
-		if (ctx && initialPlacement) {
-			if (row) ctx.setRowTrack(initialPlacement.startRow, row);
-			if (col) ctx.setColTrack(initialPlacement.startCol, col);
-		}
-	})();
+	if (ctx && initialPlacement) {
+		if (_initialRow) ctx.setRowTrack(initialPlacement.startRow, _initialRow);
+		if (_initialCol) ctx.setColTrack(initialPlacement.startCol, _initialCol);
+	}
 
 	// Reactive versions for after mount
 	const parsed = $derived.by(() => parseRange(range));
@@ -98,8 +59,8 @@
 
 	// Track previous placement and props for reactive updates
 	let prevPlacement = initialPlacement;
-	let prevRow = (() => row)();
-	let prevCol = (() => col)();
+	let prevRow = _initialRow;
+	let prevCol = _initialCol;
 	
 	// Handle reactive updates when placement or row/col props change
 	$effect(() => {

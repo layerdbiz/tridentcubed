@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { setGridCtx } from "@layerd/ui";
-	import { Item } from "@layerd/ui";
+	import { Item, setGridCtx, parseDims, numToCol } from "@layerd/ui";
 	import { tick, untrack } from "svelte";
 	import type { Snippet } from "svelte";
 
@@ -40,56 +39,6 @@
 		});
 	});
 
-	function colToNum(label: string) {
-		let n = 0;
-		for (const ch of label.trim().toUpperCase()) {
-			const code = ch.charCodeAt(0);
-			if (code < 65 || code > 90) continue;
-			n = n * 26 + (code - 64);
-		}
-		return Math.max(1, n);
-	}
-
-	function numToCol(n: number) {
-		let x = n;
-		let out = "";
-		while (x > 0) {
-			x -= 1;
-			out = String.fromCharCode(65 + (x % 26)) + out;
-			x = Math.floor(x / 26);
-		}
-		return out || "A";
-	}
-
-	function parseItemsSpec(spec: string) {
-	const s = spec.trim().toUpperCase();
-
-	// NEW: "10" => 10 rows, 1 col
-	const mSingle = s.match(/^(\d+)$/);
-	if (mSingle) {
-		const r = Math.max(1, Number(mSingle[1]) || 1);
-		return { rows: r, cols: 1 };
-	}
-
-	const mGrid = s.match(/^(\d+)\s*[X×]\s*(\d+)$/);
-	if (mGrid) {
-		const r = Math.max(1, Number(mGrid[1]) || 1);
-		const c = Math.max(1, Number(mGrid[2]) || 1);
-		return { rows: r, cols: c };
-	}
-
-	const mRange = s.match(/^([A-Z]+)(\d+)\s*:\s*([A-Z]+)(\d+)$/);
-	if (mRange) {
-		const r1 = Math.max(1, Number(mRange[2]) || 1);
-		const r2 = Math.max(1, Number(mRange[4]) || 1);
-		const c1 = colToNum(mRange[1]);
-		const c2 = colToNum(mRange[3]);
-		return { rows: Math.max(r1, r2), cols: Math.max(c1, c2) };
-	}
-
-	return { rows: 1, cols: 1 };
-}
-
 	function materializeTrackParts(count: number, definition?: string) {
 		const def = definition?.trim();
 		if (!def) return Array.from({ length: count }, () => "minmax(0, 1fr)");
@@ -117,8 +66,7 @@
 
 	// Helper to compute initial dims from props
 	function getInitialDims() {
-		const spec = items.trim();
-		return spec ? parseItemsSpec(spec) : { rows: 1, cols: 1 };
+		return parseDims(items);
 	}
 
 	// Initialize dims synchronously to prevent FOUC
@@ -135,13 +83,9 @@
 		if (currentItems === prevItemsRef) return;
 		prevItemsRef = currentItems;
 
-		if (currentItems) {
-			const next = parseItemsSpec(currentItems);
-			if (next.rows !== dims.rows || next.cols !== dims.cols) {
-				dims = next;
-			}
-		} else {
-			dims = { rows: 1, cols: 1 };
+		const next = parseDims(currentItems);
+		if (next.rows !== dims.rows || next.cols !== dims.cols) {
+			dims = next;
 		}
 	});
 
