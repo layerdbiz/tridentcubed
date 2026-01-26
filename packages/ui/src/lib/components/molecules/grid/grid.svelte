@@ -1,6 +1,6 @@
 <script lang="ts">
+	import { setGridCtx } from "@layerd/ui";
 	import { Item } from "@layerd/ui";
-	import { setGridCtx } from "./grid.svelte.ts";
 	import type { Snippet } from "svelte";
 
 	export interface GridProps {
@@ -179,9 +179,8 @@
 		return { row, col };
 	}
 
-	$effect(() => {
-		setGridCtx({ dims, setRowTrack, setColTrack, claimAutoCell });
-	});
+	// Set context at component initialization, not in an effect
+	setGridCtx({ dims, setRowTrack, setColTrack, claimAutoCell });
 
 	const gridTemplateRows = $derived.by(() => {
 		const currentDims = dims;

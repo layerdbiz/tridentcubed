@@ -1,7 +1,7 @@
 <!-- Item.svelte -->
 <script lang="ts">
 	import type { Snippet } from "svelte";
-	import { getGridCtx } from "./grid.svelte.ts";
+	import { getGridCtx } from "@layerd/ui";
 
 	export interface ItemProps {
 		class?: string;
