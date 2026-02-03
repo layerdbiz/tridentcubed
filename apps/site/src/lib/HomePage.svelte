@@ -901,7 +901,7 @@
 </Section>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	:global {
 		.services-container {

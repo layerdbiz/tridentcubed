@@ -205,7 +205,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	/* iOS Safari fallback - use stable height to prevent jumps */
 	@supports (-webkit-touch-callout: none) {

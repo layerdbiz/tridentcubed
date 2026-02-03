@@ -16,7 +16,8 @@ export const getSectionsData = prerender(async () => {
 		);
 
 		if (!response.ok) {
-			throw new Error(`Failed to fetch sections data: ${response.status}`);
+			console.warn(`Failed to fetch sections data: ${response.status}`);
+			return [];
 		}
 
 		const data = await response.json();
@@ -39,6 +40,7 @@ export const getSectionsData = prerender(async () => {
 		return validSections;
 	} catch (error) {
 		// Return empty array as fallback to prevent crashes
+		console.warn(`Sections fetch error during prerender: ${error}`);
 		return [];
 	}
 }, {

@@ -406,7 +406,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	fieldset {
 		/* Error state styles - Base error styling that applies always */

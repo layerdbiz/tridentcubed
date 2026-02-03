@@ -437,7 +437,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	.text {
 		@apply block;

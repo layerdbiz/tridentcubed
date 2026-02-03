@@ -17,7 +17,8 @@ export const getServicesData = prerender(async () => {
 		);
 
 		if (!response.ok) {
-			throw new Error(`Failed to fetch services data: ${response.status}`);
+			console.warn(`Failed to fetch services data: ${response.status}`);
+			return [];
 		}
 
 		const data = await response.json();
@@ -41,6 +42,7 @@ export const getServicesData = prerender(async () => {
 		return validServices;
 	} catch (error) {
 		// Return empty array as fallback to prevent crashes
+		console.warn(`Services fetch error during prerender: ${error}`);
 		return [];
 	}
 }, {

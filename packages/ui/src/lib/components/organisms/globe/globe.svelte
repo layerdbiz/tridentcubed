@@ -1751,7 +1751,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 </div>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	/* Content fade-in animation */
 	.fade-in {

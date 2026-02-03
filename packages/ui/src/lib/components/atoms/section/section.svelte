@@ -138,7 +138,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	.section {
 		@apply grid transition duration-700 ease-in-out;

@@ -18,7 +18,8 @@ export const getTestimonialsData = prerender(async () => {
 		);
 
 		if (!response.ok) {
-			throw new Error(`Failed to fetch testimonials data: ${response.status}`);
+			console.warn(`Failed to fetch testimonials data: ${response.status}`);
+			return [];
 		}
 
 		const data = await response.json();
@@ -45,6 +46,7 @@ export const getTestimonialsData = prerender(async () => {
 		return validTestimonials;
 	} catch (error) {
 		// Return empty array as fallback to prevent crashes
+		console.warn(`Testimonials fetch error during prerender: ${error}`);
 		return [];
 	}
 }, {

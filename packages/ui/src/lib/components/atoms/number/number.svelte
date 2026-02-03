@@ -24,7 +24,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	.number {
 		@apply inline-block;

@@ -571,7 +571,7 @@
 {/if}
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	.btn {
 		--btn-gap: 0.625em;

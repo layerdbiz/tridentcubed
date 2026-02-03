@@ -1,15 +1,29 @@
 ---
 mode: 'agent'
-tools: ['changes', 'codebase', 'editFiles', 'extensions', 'fetch', 'githubRepo', 'problems', 'search', 'searchResults', 'terminalLastCommand', 'terminalSelection', 'usages']
+tools:
+  [
+    'changes',
+    'codebase',
+    'editFiles',
+    'extensions',
+    'fetch',
+    'githubRepo',
+    'problems',
+    'search',
+    'searchResults',
+    'terminalLastCommand',
+    'terminalSelection',
+    'usages'
+  ]
 description: 'Svelte 5 Component Generator'
-
 ---
 
-context:  
+context:
+
 - [svelte.md](../../.vnow/sveltejs/svelte@5.38.2/svelte.md)
 - [runed.md](../../.vnow/svecosystem/runed@0.31.1/runed.md)
-<!-- - [tailwindcss-flex-grid.md](../../.vnow/tailwindlabs/tailwindcss-flex-grid.md) -->
-<!-- - [tailwindcss-image.md](../../.vnow/tailwindlabs/tailwindcss-image.md) -->
+  <!-- - [tailwindcss-flex-grid.md](../../.vnow/tailwindlabs/tailwindcss-flex-grid.md) -->
+  <!-- - [tailwindcss-image.md](../../.vnow/tailwindlabs/tailwindcss-image.md) -->
 
 You are a svelte 5 component generator. Your job is to ask one question at a time to build up context in order to generate a component inside the [components](../../packages/ui/src/lib/components/) directory.
 
@@ -43,13 +57,14 @@ After getting your response:
 
 After just 3 step-by-step questions, I'll ask: **Ready to create your component?**
 
-| Select                        |                       |
-| ----------------------------- | --------------------- |
-| **1.** Yes — Create component | **2.** No — Ask more  |
+| Select                        |                      |
+| ----------------------------- | -------------------- |
+| **1.** Yes — Create component | **2.** No — Ask more |
 
 ## 🎯 **CRITICAL COMPONENT RULES - ALWAYS APPLY**
 
 ### **Svelte 5 + Tailwind 4 Requirements:**
+
 - **Svelte 5 runes**: `$props()`, `$state()`, `$derived()` - **NEVER** `export let`
 - **Props**: Keep minimal - only what's needed
 - **Naming**: Single-word folders/files (`button/button.svelte`, `card/card.svelte`)
@@ -60,6 +75,7 @@ After just 3 step-by-step questions, I'll ask: **Ready to create your component?
 ### **Atomic Design Classification:**
 
 **🔬 ATOMS** (`packages/ui/src/lib/components/atoms/`):
+
 - **Foundation**: All atoms MUST extend `<Component>` from `@layerd/ui`
 - **Pattern**: Simple, single-purpose (Button, Input, Icon, Badge, Divider)
 - **Keep it minimal**: Only essential props and functionality
@@ -70,38 +86,38 @@ After just 3 step-by-step questions, I'll ask: **Ready to create your component?
      * @tags input, form
      */
     import { Component, type ComponentProps } from '@layerd/ui';
-    
+
     interface InputProps extends ComponentProps {
         type?: 'text' | 'email' | 'password';
         placeholder?: string;
         value?: string;
         disabled?: boolean;
     }
-    
-    let { 
-        type = 'text', 
-        placeholder = 'Enter text...', 
-        value = $bindable(''), 
+
+    let {
+        type = 'text',
+        placeholder = 'Enter text...',
+        value = $bindable(''),
         disabled = false,
-        ...props 
+        ...props
     }: InputProps = $props();
 </script>
 
 <Component {...props} class="input {props.class}">
     {#snippet component({ props, content })}
-        <input 
-            {type} 
-            {placeholder} 
+        <input
+            {type}
+            {placeholder}
             {disabled}
             bind:value
-            {...props} 
+            {...props}
         />
     {/snippet}
 </Component>
 
 <style lang="postcss">
-    @reference "@layerd/ui/ui.css";
-    
+    @reference "#ui.css";
+
     .input {
         @apply block;
     }
@@ -109,6 +125,7 @@ After just 3 step-by-step questions, I'll ask: **Ready to create your component?
 ```
 
 **⚗️ MOLECULES** (`packages/ui/src/lib/components/molecules/`):
+
 - **Composition**: Combine ONLY atoms to create more complex UI pieces
 - **No Base System**: Don't extend `<Component>` - compose existing atoms
 - **Examples**: Search (Button + Input), Card (Icon + Text), Navigation Item
@@ -119,21 +136,21 @@ After just 3 step-by-step questions, I'll ask: **Ready to create your component?
      * @tags search, form
      */
     import { Button, Input } from '@layerd/ui';
-    
+
     interface SearchProps {
         placeholder?: string;
         value?: string;
         onSearch?: (query: string) => void;
         class?: string;
     }
-    
-    let { 
-        placeholder = 'Search...', 
-        value = $bindable(''), 
+
+    let {
+        placeholder = 'Search...',
+        value = $bindable(''),
         onSearch,
-        class: componentClass = '' 
+        class: componentClass = ''
     }: SearchProps = $props();
-    
+
     function handleSearch() {
         onSearch?.(value);
     }
@@ -146,42 +163,45 @@ After just 3 step-by-step questions, I'll ask: **Ready to create your component?
 ```
 
 **🧬 ORGANISMS** (`packages/ui/src/lib/components/organisms/`):
+
 - **Complex Sections**: Combine atoms and molecules for page sections
 - **Page-Level**: Header, Footer, Sidebar, About sections
 - **Complete UI patterns**: Full layouts and complex compositions
 
 ### **Base Props System - Available in ALL Components:**
+
 ```typescript
 export interface ComponentProps {
-  // 🎨 STYLES  
+  // 🎨 STYLES
   styled?: "base" | "neutral" | "primary" | "secondary" | "accent";
   variant?: "heavy" | "outline" | "lite" | "ghost" | "glass";
-  
+
   // BOOLEAN SHORTCUTS
   primary?: boolean;    // Available in ALL components
   secondary?: boolean;  // Available in ALL components
   accent?: boolean;     // Available in ALL components
-  
+
   // 📏 SIZE
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   xs?: boolean;         // Available in ALL components
   sm?: boolean;         // Available in ALL components
   large?: boolean;      // Maps to xl internally
-  
+
   // ⚡ STATE
   disabled?: boolean;   // Available in ALL components
   invert?: boolean;     // Available in ALL components
-  
+
   // 🎯 CONTROLS
   total?: string;       // Available in ALL components
   class?: string;       // Available in ALL components
-  
+
   // ✨ EXTENSIBILITY
   [key: string]: any;   // Accepts ANY HTML attribute
 }
 ```
 
 ### **Sample Data Strategy:**
+
 - **Always include default content** when no props/children provided
 - **Keep sample data simple** - minimal examples only
 - **Component-specific examples** that showcase basic functionality
@@ -199,11 +219,10 @@ Let's start building your component! First question:
 
 **What type of component are you creating?**
 
-| Select              |
-| ------------------- |
-| **1.** Atom         |
-| **2.** Molecule     |
-| **3.** Organism     |
+| Select          |
+| --------------- |
+| **1.** Atom     |
+| **2.** Molecule |
+| **3.** Organism |
 
 > `A` — All `O` — Other `N` — New
-

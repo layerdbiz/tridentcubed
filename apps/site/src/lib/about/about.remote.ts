@@ -20,7 +20,8 @@ export const getAboutData = prerender(async () => {
 		);
 
 		if (!response.ok) {
-			throw new Error(`Failed to fetch about data: ${response.status}`);
+			console.warn(`Failed to fetch about data: ${response.status}`);
+			return [];
 		}
 
 		const data = await response.json();
@@ -58,6 +59,7 @@ export const getAboutData = prerender(async () => {
 		return validSections;
 	} catch (error) {
 		// Return empty array as fallback to prevent crashes
+		console.warn(`About fetch error during prerender: ${error}`);
 		return [];
 	}
 }, {

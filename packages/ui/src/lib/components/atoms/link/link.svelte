@@ -146,7 +146,7 @@
 {/if}
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	.link:not(.logo) {
 		@apply relative flex items-center ease-in-out;

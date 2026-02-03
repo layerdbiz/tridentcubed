@@ -120,7 +120,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	.nav {
 		@apply contents lg:col-start-2 lg:row-start-1 lg:grid lg:translate-x-5 lg:grid-cols-[1fr_auto] lg:items-center;

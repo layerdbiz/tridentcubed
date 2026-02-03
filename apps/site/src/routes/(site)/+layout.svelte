@@ -327,7 +327,7 @@
 </Footer>
 
 <style lang="postcss">
-	@reference '@layerd/ui/ui.css';
+	@reference '#ui.css';
 
 	:global {
 		.nav .link:not(.logo),

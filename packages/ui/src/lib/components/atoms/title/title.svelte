@@ -86,7 +86,7 @@
 </div>
 
 <style lang="postcss">
-	@reference '@layerd/ui/ui.css';
+	@reference "#ui.css";
 	/* 
 	h1 {
 		background: linear-gradient(

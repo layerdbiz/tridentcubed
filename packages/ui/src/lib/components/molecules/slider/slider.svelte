@@ -400,7 +400,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	:global(.embla__slide) {
 		/* Ensure slides maintain proper flex behavior */

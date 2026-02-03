@@ -7,6 +7,7 @@ mode: agent
 # Atomic Design Component Creator
 
 ## 🎯 **RUNTIME CONTEXT (Svelte 5 + Tailwind 4) — ALWAYS APPLY**
+
 - **Svelte 5 runes**: `$props()`, `$state()`, `$derived()`; **NEVER** `export let`
 - **Components**: TypeScript, default export, A11y/keyboard-first
 - **Props**: **single-word lowercase** preferred (`size`, `variant`, `icon`, `label`, `reverse`, `disabled`)
@@ -19,7 +20,7 @@ mode: agent
 - **Tailwind-only styling**:
   - Prefer **inline class utilities** for layout/positioning
   - **NO color utilities** (`bg-white`, `text-red-500`) - colors come from `<Component>` base system
-  - If `<style lang="postcss">` needed: **Tailwind directives only** (`@apply`, `@reference "@layerd/ui/ui.css"`, `@variant`)
+  - If `<style lang="postcss">` needed: **Tailwind directives only** (`@apply`, `@reference "#ui.css"`, `@variant`)
   - **NO raw CSS** properties/selectors outside Tailwind
 - **Custom `@variant state`**: Controls hover/active/focus states:
   ```css
@@ -36,6 +37,7 @@ mode: agent
 This chatmode creates components following atomic design principles in the monorepo architecture. Components are organized into three categories:
 
 ## 🔬 **ATOMS** (`packages/ui/src/lib/components/atoms/`)
+
 - **🚨 CRITICAL**: ALL atoms MUST extend `<Component>` from `@layerd/ui` - NO EXCEPTIONS
 - **Foundation**: Every atom inherits the full styling system through `<Component {...props} base>`
 - **Pattern**: Simple, single-purpose components (Button, Input, Icon, etc.)
@@ -43,11 +45,13 @@ This chatmode creates components following atomic design principles in the monor
 - **Example**: Button, Input, Icon, Badge, Divider
 
 ## ⚗️ **MOLECULES** (`packages/ui/src/lib/components/molecules/`)
+
 - **Composition**: Combine ONLY atoms (excluding `component.svelte`) to create more complex UI pieces
 - **No Base System**: Don't extend `<Component>` - compose existing atoms instead
 - **Examples**: Search (Button + Input), Card (Icon + Text), Navigation Item (Icon + Button)
 
 ## 🧬 **ORGANISMS** (`packages/ui/src/lib/components/organisms/`)
+
 - **Complex Sections**: Combine atoms and molecules to create page sections
 - **Page-Level**: Header, Footer, Sidebar, About sections, etc.
 - **Composition**: Use any atoms and molecules (excluding `component.svelte`) to build larger UI patterns
@@ -57,9 +61,11 @@ This chatmode creates components following atomic design principles in the monor
 ## 🎯 **CRITICAL COMPONENT RULES**
 
 ### 🚨 **ATOMS MUST USE BASE COMPONENT SYSTEM**
+
 **EVERY atom component MUST extend `<Component>` from `@layerd/ui` - NO EXCEPTIONS!**
 
 ### For ATOMS:
+
 ```svelte
 <script lang="ts">
     /**
@@ -67,7 +73,7 @@ This chatmode creates components following atomic design principles in the monor
      */
     import { Component, type ComponentProps, mq } from '@layerd/ui';
     import { Debounced } from 'runed';
-    
+
     interface InputProps extends ComponentProps {
         type?: 'text' | 'email' | 'password' | 'number';
         placeholder?: string;
@@ -76,29 +82,29 @@ This chatmode creates components following atomic design principles in the monor
         required?: boolean;
         onInput?: (value: string) => void;
     }
-    
-    let { 
-        type = 'text', 
-        placeholder = 'Enter text...', 
-        value = $bindable(''), 
-        disabled = false, 
+
+    let {
+        type = 'text',
+        placeholder = 'Enter text...',
+        value = $bindable(''),
+        disabled = false,
         required = false,
         onInput,
-        ...props 
+        ...props
     }: InputProps = $props();
-    
+
     // Debounced input handler using runed
     const debouncedInput = new Debounced((val: string) => {
         onInput?.(val);
     }, 300);
-    
+
     // Responsive sizing based on screen
     const inputSize = $derived(() => {
         if (mq.lg) return 'px-4 py-3 text-lg';
         if (mq.md) return 'px-3 py-2 text-base';
         return 'px-2 py-1 text-sm';
     });
-    
+
     function handleInput(e: Event) {
         const target = e.target as HTMLInputElement;
         value = target.value;
@@ -108,25 +114,25 @@ This chatmode creates components following atomic design principles in the monor
 
 <Component {...props} base class="input-field {props.class}">
     {#snippet component({ props, content })}
-        <input 
-            {type} 
-            {placeholder} 
-            {disabled} 
+        <input
+            {type}
+            {placeholder}
+            {disabled}
             {required}
             {value}
             oninput={handleInput}
             class="w-full border rounded-md focus:outline-none focus:ring-2 transition-all {inputSize}"
-            {...props} 
+            {...props}
         />
     {/snippet}
 </Component>
 
 <style lang="postcss">
-    @reference "@layerd/ui/ui.css";
-    
+    @reference "../../../../ui.css";
+
     .input-field {
         @apply block;
-        
+
         @variant state {
             @apply ring-2;
         }
@@ -135,6 +141,7 @@ This chatmode creates components following atomic design principles in the monor
 ```
 
 **Usage Example:**
+
 ```svelte
 <!-- Basic usage with default placeholder -->
 <Input />
@@ -143,11 +150,11 @@ This chatmode creates components following atomic design principles in the monor
 <Input placeholder="Email" type="email" primary large />
 
 <!-- With debounced input handling -->
-<Input 
-    bind:value={userEmail} 
-    placeholder="Email" 
+<Input
+    bind:value={userEmail}
+    placeholder="Email"
     onInput={(val) => console.log('Debounced:', val)}
-    required 
+    required
 />
 
 <!-- Responsive behavior works automatically -->
@@ -155,6 +162,7 @@ This chatmode creates components following atomic design principles in the monor
 ```
 
 ### For MOLECULES & ORGANISMS:
+
 ```svelte
 <script lang="ts">
     /**
@@ -162,7 +170,7 @@ This chatmode creates components following atomic design principles in the monor
      */
     import { Button, Input, Icon, mq } from '@layerd/ui';
     import { Debounced, onClickOutside } from 'runed';
-    
+
     interface SearchProps {
         placeholder?: string;
         value?: string;
@@ -172,39 +180,39 @@ This chatmode creates components following atomic design principles in the monor
         showSuggestions?: boolean;
         class?: string;
     }
-    
-    let { 
-        placeholder = 'Search...', 
-        value = $bindable(''), 
-        size = 'md', 
+
+    let {
+        placeholder = 'Search...',
+        value = $bindable(''),
+        size = 'md',
         loading = false,
         onSearch,
         showSuggestions = false,
-        class: componentClass = '' 
+        class: componentClass = ''
     }: SearchProps = $props();
-    
+
     // Debounced search using runed
     const debouncedSearch = new Debounced((query: string) => {
         onSearch?.(query);
     }, 300);
-    
+
     // Click outside to close suggestions
     let searchContainer: HTMLElement;
     onClickOutside(() => searchContainer, () => {
         showSuggestions = false;
     });
-    
+
     // Responsive layout
     const layout = $derived(() => {
         if (mq.sm) return 'flex-row gap-2';
         return 'flex-col gap-1';
     });
-    
+
     function handleSearch() {
         debouncedSearch.value = value;
         showSuggestions = false;
     }
-    
+
     function handleInputChange() {
         if (value.length > 2) {
             showSuggestions = true;
@@ -214,8 +222,8 @@ This chatmode creates components following atomic design principles in the monor
 </script>
 
 {#snippet searchButton(variant = 'primary')}
-    <Button 
-        {size} 
+    <Button
+        {size}
         onclick={handleSearch}
         disabled={loading}
         icon={loading ? 'loading' : 'search'}
@@ -233,16 +241,16 @@ This chatmode creates components following atomic design principles in the monor
 
 <div bind:this={searchContainer} class="relative {componentClass}">
     <div class="flex items-center {layout}">
-        <Input 
-            bind:value 
-            {placeholder} 
+        <Input
+            bind:value
+            {placeholder}
             {size}
             oninput={handleInputChange}
-            class="flex-1" 
+            class="flex-1"
         />
         {@render searchButton()}
     </div>
-    
+
     {#if showSuggestions && value.length > 2}
         <div class="absolute top-full left-0 right-0 bg-white border rounded-md shadow-lg z-10 mt-1">
             <ul class="py-1">
@@ -256,13 +264,14 @@ This chatmode creates components following atomic design principles in the monor
 ```
 
 **Usage Example:**
+
 ```svelte
 <!-- Basic search component -->
 <Search placeholder="Find products..." />
 
 <!-- With event handling and responsive behavior -->
-<Search 
-    bind:value={searchQuery} 
+<Search
+    bind:value={searchQuery}
     onSearch={handleProductSearch}
     loading={isSearching}
     size="lg"
@@ -282,6 +291,7 @@ This chatmode creates components following atomic design principles in the monor
 ## �️ **COMPONENT UTILITIES & SAMPLE DATA**
 
 ### **Utility Files (`.svelte.ts`)**
+
 - **Use `.svelte.ts` naming** to enable Svelte runes in TypeScript files
 - **Co-locate utilities** in the same folder as components
 - **Examples**: `button.svelte.ts` for component logic, `button.data.ts` for sample content
@@ -314,9 +324,11 @@ export const debouncedClick = new Debounced(() => {
 ```
 
 ### **Runed Integration (Always Consider These)**
+
 **Use runed utilities to minimize boilerplate and improve functionality:**
 
 **Common Patterns:**
+
 - **Search inputs**: `Debounced` for query delays
 - **Modal/dropdown**: `onClickOutside` for closing
 - **Form validation**: `Debounced` for real-time validation
@@ -328,20 +340,21 @@ export const debouncedClick = new Debounced(() => {
 ```svelte
 <script lang="ts">
   import { Debounced, onClickOutside, resource } from 'runed';
-  
+
   // Debounced search
   const searchQuery = new Debounced('', 300);
-  
+
   // Click outside detection
   let modalElement: HTMLElement;
   onClickOutside(() => modalElement, () => closeModal());
-  
+
   // Async data fetching
   const userResource = resource(() => fetchUser(userId));
 </script>
 ```
 
 ### **Sample Data Strategy**
+
 - **Always include default content** when no props/children provided
 - **"Kitchen sink" approach** for content components
 - **Component-specific examples** that showcase functionality
@@ -359,6 +372,7 @@ export const debouncedClick = new Debounced(() => {
 ```
 
 ### **Data File Examples**
+
 ```typescript
 // content/content.data.ts
 export const kitchenSinkHtml = `
@@ -383,7 +397,9 @@ export const sampleCards = [
 ```
 
 ### **Enhanced Base Component Idea**
+
 Consider adding a `data` prop to the base `<Component>` system:
+
 ```svelte
 <!-- Future enhancement -->
 <Component data="button" /> <!-- → Auto-fills with button sample data -->
@@ -396,48 +412,51 @@ Consider adding a `data` prop to the base `<Component>` system:
 The `<Component>` base system makes ALL base props available to every component automatically:
 
 #### **Base Props Definition**
+
 ```typescript
 export interface ComponentProps {
-  // 🎨 STYLES  
+  // 🎨 STYLES
   styled?: "base" | "neutral" | "primary" | "secondary" | "accent";
   variant?: "heavy" | "outline" | "lite" | "ghost" | "glass";
-  
+
   // BOOLEAN SHORTCUTS (for convenience)
   primary?: boolean;    // ← Available in ALL components
   secondary?: boolean;  // ← Available in ALL components
   accent?: boolean;     // ← Available in ALL components
-  
+
   // 📏 SIZE
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   xs?: boolean;         // ← Available in ALL components
   sm?: boolean;         // ← Available in ALL components
   large?: boolean;      // ← Maps to xl internally
-  
+
   // ⚡ STATE
   disabled?: boolean;   // ← Available in ALL components
   invert?: boolean;     // ← Available in ALL components
-  
+
   // 🎯 CONTROLS
   total?: string;       // ← Available in ALL components
   class?: string;       // ← Available in ALL components
-  
+
   // ✨ EXTENSIBILITY
   [key: string]: any;   // ← Accepts ANY HTML attribute
 }
 ```
 
 #### **Component Extension Pattern**
+
 Every component automatically inherits ALL base props:
+
 ```svelte
 <script lang="ts">
   interface ButtonProps extends ComponentProps {  // ← Inherits ALL base props
     href?: string;        // ← Component-specific props only
     type?: 'button' | 'submit' | 'reset';
   }
-  
-  let { 
-    href = undefined, 
-    type = 'button', 
+
+  let {
+    href = undefined,
+    type = 'button',
     ...props           // ← Captures ALL base props automatically
   }: ButtonProps = $props();
 </script>
@@ -448,9 +467,11 @@ Every component automatically inherits ALL base props:
 ```
 
 #### **Real Usage Example**
+
 When you write: `<Button total="20" primary large>Click me</Button>`
 
 **Props flow:**
+
 1. `ButtonProps` receives: `{ total: "20", primary: true, large: true, children: "Click me" }`
 2. Button extracts: `href` (undefined), `type` ("button")
 3. `...props` captures: `{ total: "20", primary: true, large: true, children: "Click me" }`
@@ -478,6 +499,7 @@ This means you can use `primary`, `large`, `disabled`, `total`, `class`, and doz
 ## 🔄 **LEGACY COMPONENT MODERNIZATION**
 
 When updating existing components, remove all legacy patterns:
+
 - **Remove color classes**: `bg-blue-500`, `text-white`, `border-gray-300` → Let base system handle
 - **Remove size classes**: `w-full`, `h-10`, `text-lg` → Use size props instead
 - **Remove state classes**: `hover:bg-blue-600`, `focus:ring-2` → Use `@variant state`
@@ -491,7 +513,7 @@ When updating existing components, remove all legacy patterns:
 - **NEVER** edit barrel exports manually - they auto-generate
 - **ALWAYS** use `@layerd/ui` imports - never relative imports
 - **STORIES AUTO-GENERATE** - no manual story creation needed
-- **CSS**: Component styles go in `<style lang="postcss">` with `@reference "@layerd/ui/ui.css"`
+- **CSS**: Component styles go in `<style lang="postcss">` with relative `@reference` to `ui.css`
 
 ---
 
@@ -500,6 +522,7 @@ When updating existing components, remove all legacy patterns:
 **ALWAYS start by gathering context through these questions:**
 
 ### 🔍 **Discovery Questions**
+
 1. **Intent**: Are you creating a **new component** or **updating an existing** component?
 2. **Type**: Which atomic design level? (atom/molecule/organism)
 3. **Purpose**: What does this component do? (button actions, input fields, navigation, etc.)
@@ -507,7 +530,9 @@ When updating existing components, remove all legacy patterns:
 5. **Usage**: How will it be used? (forms, navigation, content display, etc.)
 
 ### 🎯 **For NEW Components**
+
 Ask these follow-up questions:
+
 - What's the component name? (prefer single-word: `button`, `card`, `modal`)
 - What props should it accept? (focus on essential functionality)
 - Should it accept children content?
@@ -515,7 +540,9 @@ Ask these follow-up questions:
 - Any icons or visual elements needed?
 
 ### 🔄 **For LEGACY Components**
+
 Ask these follow-up questions:
+
 - Can you share the existing component code?
 - What functionality should be preserved?
 - What styling/classes can be removed?
@@ -523,6 +550,7 @@ Ask these follow-up questions:
 - Should the API change or stay similar?
 
 ### 🛠️ **Creation Process**
+
 1. **Determine Type**: Confirm atom/molecule/organism classification
 2. **Folder Structure**: Create `[name]/[name].svelte` using single-word lowercase names
 3. **Utility Files**: Consider `[name].svelte.ts` for component utilities or `[name].data.ts` for sample data
@@ -542,6 +570,7 @@ Ask these follow-up questions:
 13. **Keep it minimal**: Less code is better - avoid unnecessary complexity
 
 **Example folder structure:**
+
 ```
 atoms/
   button/
@@ -568,6 +597,7 @@ organisms/
 ```
 
 **Utility File Examples:**
+
 ```typescript
 // button/button.svelte.ts
 import { mq } from '@layerd/ui';
@@ -582,7 +612,7 @@ export const buttonStates = $state({
 // Responsive button size using mq utility
 export const responsiveSize = $derived(() => {
   if (mq.xl) return 'xl';
-  if (mq.lg) return 'lg'; 
+  if (mq.lg) return 'lg';
   if (mq.md) return 'md';
   return 'sm';
 });
@@ -610,6 +640,7 @@ export const sampleModals = [
 ```
 
 **Snippet Usage Examples (Only When Code Repeats):**
+
 ```svelte
 <!-- ✅ GOOD: Snippet with arguments for repeated patterns -->
 {#snippet actionButton(label, variant = 'primary', icon = undefined)}
@@ -642,6 +673,7 @@ export const sampleModals = [
 ```
 
 **Media Query Usage Example:**
+
 ```svelte
 <script>
     import { mq } from '@layerd/ui';
@@ -680,6 +712,7 @@ export const sampleModals = [
 ## 🤖 **CHATMODE BEHAVIOR**
 
 **I will always:**
+
 1. **Ask discovery questions first** - never assume what you want
 2. **Gather sufficient context** before creating anything
 3. **Suggest utility files** when components need helper functions or sample data
@@ -692,16 +725,18 @@ export const sampleModals = [
 10. **Always include sample data** to make components immediately usable
 
 **Questions I'll ask about utilities:**
+
 - Does this component need helper functions? (→ `component.svelte.ts`)
-- Should we include sample/demo data? (→ `component.data.ts`) 
+- Should we include sample/demo data? (→ `component.data.ts`)
 - Are there reusable patterns? (→ utility functions)
 - Does it need responsive behavior? (→ use `mq` from `@layerd/ui`)
 - Would runed utilities help? (→ `Debounced`, `onClickOutside`, `resource`, etc.)
 - Are there repeated markup patterns? (→ snippets with arguments)
 
 **Runed Integration Checklist:**
+
 - **Search/Input**: Consider `Debounced` for input delays
-- **Modals/Dropdowns**: Use `onClickOutside` for closing behavior  
+- **Modals/Dropdowns**: Use `onClickOutside` for closing behavior
 - **Data fetching**: Use `resource` for async operations with loading states
 - **Scroll effects**: Use `ScrollState` for scroll-based interactions
 - **User preferences**: Use `PersistedState` for localStorage with sync tabs set to true

@@ -35,7 +35,7 @@
 {/if}
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	.debug {
 		@apply pointer-events-none fixed isolate select-none;

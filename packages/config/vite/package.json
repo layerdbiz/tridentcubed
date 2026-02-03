@@ -11,10 +11,10 @@
   ],
   "dependencies": {
     "@iconify-json/mdi": "^1.2.3",
-    "@sveltejs/kit": "^2.49.3",
-    "@sveltejs/vite-plugin-svelte": "^6.2.3",
+    "@sveltejs/kit": "^2.50.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/vite": "4.1.18",
-    "unplugin-icons": "^22.5.0",
+    "unplugin-icons": "^23.0.1",
     "vite-plugin-devtools-json": "^1.0.0"
   },
   "devDependencies": {

@@ -14,7 +14,8 @@ export const getPartnersData = prerender(async () => {
 		);
 
 		if (!response.ok) {
-			throw new Error(`Failed to fetch partners: ${response.status}`);
+			console.warn(`Failed to fetch partners: ${response.status}`);
+			return [];
 		}
 
 		const data = await response.json();
@@ -39,6 +40,7 @@ export const getPartnersData = prerender(async () => {
 		return validPartners;
 	} catch (error) {
 		// Return empty array as fallback
+		console.warn(`Partners fetch error during prerender: ${error}`);
 		return [];
 	}
 }, {

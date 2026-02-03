@@ -216,7 +216,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	:global {
 		.card-service.active .card-service-class--img-gray {

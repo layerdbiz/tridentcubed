@@ -246,7 +246,7 @@
 </Component>
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	.preview {
 		@apply border-neutral-200-600 rounded-lg border bg-white p-8;

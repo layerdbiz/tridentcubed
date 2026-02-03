@@ -688,7 +688,7 @@
 />
 
 <style lang="postcss">
-	@reference "@layerd/ui/ui.css";
+	@reference "#ui.css";
 
 	/* Base toggle content styles - all animations start hidden and inactive */
 	.toggle-content {

@@ -13,6 +13,7 @@ const config = {
 		}),
 		alias: {
 			"@layerd/ui": resolve("./src/lib"),
+			"@layerd/ui/ui.css": resolve("./src/lib/ui.css"),
 		},
 	},
 	vitePlugin: {
