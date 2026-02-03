@@ -9,10 +9,22 @@
 		range?: string; // "A1" | "A1:C3" | "1x2" | "1:3x1:3"
 		row?: string;
 		col?: string;
+		items?: string;   // place-items (enables grid)
+		content?: string; // place-content (enables grid)
+		self?: string;    // place-self (disables grid, natural sizing)
 		children?: Snippet;
 	}
 
-	let { class: userClass = "", range, row, col, children }: ItemProps = $props();
+	let { 
+		class: userClass = "", 
+		range, 
+		row, 
+		col, 
+		items,
+		content,
+		self,
+		children 
+	}: ItemProps = $props();
 
 	const ctx = (() => {
 		try {
@@ -92,16 +104,37 @@
 		prevCol = col;
 	});
 
+	// Determine if we need grid layout (items or content used, but self takes precedence)
+	const useGrid = $derived(!self && (!!items || !!content));
+
 	const style = $derived.by(() => {
-		if (!placement) return `min-width:0px;min-height:0px;`;
-		// grid-area uses end+1
-		return (
-			`grid-area:${placement.startRow} / ${placement.startCol} / ${placement.endRow + 1} / ${placement.endCol + 1};` +
-			`min-width:0px;min-height:0px;`
-		);
+		const parts: string[] = [];
+		
+		// Display mode: grid if items/content used (unless self is used)
+		if (useGrid) {
+			parts.push('display:grid');
+		}
+		
+		// Grid placement
+		if (placement) {
+			parts.push(`grid-area:${placement.startRow} / ${placement.startCol} / ${placement.endRow + 1} / ${placement.endCol + 1}`);
+		}
+		
+		// Place properties (raw CSS values)
+		if (items) parts.push(`place-items:${items}`);
+		if (content) parts.push(`place-content:${content}`);
+		if (self) parts.push(`place-self:${self}`);
+		
+		// Prevent overflow
+		parts.push('min-width:0px', 'min-height:0px');
+		
+		return parts.join(';') + ';';
 	});
+
+	// Sizing: h-full w-full unless self is used (natural sizing for self-positioning)
+	const sizeClass = $derived(self ? '' : 'h-full w-full');
 </script>
 
-<div class={`h-full w-full min-h-0 min-w-0 ${userClass}`} style={style}>
+<div class={`min-h-0 min-w-0 ${sizeClass} ${userClass}`} style={style}>
 	{@render children?.()}
 </div>

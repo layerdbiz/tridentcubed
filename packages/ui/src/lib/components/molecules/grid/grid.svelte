@@ -188,33 +188,27 @@
 	const fauxRanges = $derived.by(() => buildFauxRanges(dims.rows, dims.cols));
 
 	const gridStyle = $derived.by(
-		() =>
-			`display:grid;` +
-			`min-height:100svh;` +
-			`width:100%;` +
-			`padding:${pad};` +
-			`gap:${gap};` +
-			`grid-template-rows:${gridTemplateRows};` +
-			`grid-template-columns:${gridTemplateCols};` +
-			`grid-auto-rows:minmax(0, 1fr);` +
-			`grid-auto-columns:minmax(0, 1fr);`
+		() => `
+			display:grid;
+			padding:${pad};
+			gap:${gap};
+			grid-template-rows:${gridTemplateRows};
+			grid-template-columns:${gridTemplateCols};`
 	);
 </script>
 
-<div class="min-h-[100svh] w-full">
-	<div 
-		class={"min-h-[100svh] w-full place-items-stretch " + userClass} 
-		class:invisible={!ready}
-		style={gridStyle}
-	>
-		{#if debug}
-			{#each fauxRanges as r (r)}
-				<Item range={r} class="bg-black/10 text-black/50 font-black grid place-items-center">
-					{r}
-				</Item>
-			{/each}
-		{/if}
+<div 
+	class={"" + userClass} 
+	class:invisible={!ready}
+	style={gridStyle}
+>
+	{#if debug}
+		{#each fauxRanges as r (r)}
+			<Item range={r} class="bg-black/10 text-black/50 font-black">
+				{r}
+			</Item>
+		{/each}
+	{/if}
 
-		{@render children?.()}
-	</div>
+	{@render children?.()}
 </div>
