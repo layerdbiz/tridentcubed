@@ -1,6 +1,6 @@
 {
   "$schema": "./.vnow/vnow.schema.json",
-  "docs": false,
+  "docs": true,
   "gitignore": false,
   "ignore": [
     ".changeset/**",
@@ -11,6 +11,7 @@
     "vscode"
   ],
   "source": [
-    "oneezy/ui"
+    "oneezy/ui",
+    "sveltejs/kit/documentation/docs"
   ]
 }
