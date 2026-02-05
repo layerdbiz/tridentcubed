@@ -99,6 +99,19 @@
 	</nav>
 
 	<div class="container py-10">
-		{@render children()}
+		<svelte:boundary>
+			{@render children()}
+			{#snippet pending()}
+				<div class="flex min-h-[50vh] items-center justify-center">
+					<p class="text-neutral-500">Loading...</p>
+				</div>
+			{/snippet}
+			{#snippet failed(error, retry)}
+				<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+					<p class="text-red-600">Error: {error instanceof Error ? error.message : 'Something went wrong'}</p>
+					<button onclick={retry} class="rounded bg-primary-600 px-4 py-2 text-white hover:bg-primary-700">Retry</button>
+				</div>
+			{/snippet}
+		</svelte:boundary>
 	</div>
 </main>

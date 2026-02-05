@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import {
 		Button,
 		Link,
@@ -52,24 +53,32 @@
 	const testimonialsData = await getTestimonialsData();
 	const aboutData = await getAboutData();
 
-	// ✅ Fetch globe data at page load (server-side) for instant rendering
-	const globeLocations = await getGlobeLocations();
-	const globePolygons = await getGlobePolygons();
-	const globePorts = await getGlobePorts();
-	const globeStatsData = await getGlobeStatsData();
+	// ✅ Globe data uses query functions which only run in the browser (not during prerender)
+	// During prerender, these return null. In browser, they fetch dynamically.
+	const globeLocationsQuery = browser ? getGlobeLocations() : null;
+	const globePolygonsQuery = browser ? getGlobePolygons() : null;
+	const globePortsQuery = browser ? getGlobePorts() : null;
+	const globeStatsQuery = browser ? getGlobeStatsData() : null;
+
+	// Derived values that safely handle loading state and null during prerender
+	let globeLocations = $derived(globeLocationsQuery?.current ?? []);
+	let globePolygons = $derived(globePolygonsQuery?.current ?? { features: [] });
+	let globePorts = $derived(globePortsQuery?.current ?? []);
+	let globeStatsData = $derived(globeStatsQuery?.current ?? { continents: 0, locations: 0, ports: 0 });
+	let globeLoading = $derived(!browser || globeLocationsQuery?.loading || globePolygonsQuery?.loading || globeStatsQuery?.loading);
 
 	// Helper function for cleaner section access (now synchronous since data is already loaded)
 	function getSection(name: string) {
 		return sectionsData.find((s) => s.section === name);
 	}
 
-	// Stats - dynamically populated from globe data
-	const stats = [
+	// Stats - dynamically populated from globe data (using $derived because globeStatsData is now reactive)
+	let stats = $derived([
 		{ value: 100, label: 'Years' }, // Static value - company years
 		{ value: globeStatsData.continents, label: 'Continents' }, // Dynamic from locations
 		{ value: globeStatsData.locations, label: 'Locations' }, // Dynamic from locations
 		{ value: globeStatsData.ports, label: 'Ports' } // Dynamic from ports
-	];
+	]);
 
 	// Form clearing logic
 	let formElement: HTMLFormElement;
@@ -272,73 +281,75 @@
 		</div>
 	</section>
 
-	<!-- globe -->
-	<Globe
-		startLocationId="4"
-		data={{
-			locations: globeLocations,
-			polygons: globePolygons
-			// ports: globePorts
-		}}
-		globe={{
-			width: typeof window !== 'undefined' ? window.innerWidth : 1920,
-			height: typeof window !== 'undefined' ? window.innerHeight : 1080,
-			left: 0,
-			top: mq.sm
-				? typeof window !== 'undefined'
-					? window.innerHeight * 0.95
-					: 972
-				: typeof window !== 'undefined'
-					? window.innerHeight * 2.2
-					: 1856,
-			altitude: mq.sm ? altitudes.small.globe : altitudes.large.globe,
-			latitude: mq.sm ? 36 : 21
-		}}
-		atmosphere={{
-			show: false,
-			color: '#155dfc',
-			altitude: mq.sm ? altitudes.small.atmosphere : altitudes.large.atmosphere
-		}}
-		hexPolygon={{
-			enabled: true,
-			resolution: mq.sm ? 3 : 4, // 0-15, lower = bigger hexagons, higher = smaller/more detailed
-			margin: 0.15, // 0-1, gap between hexagons (0.15 = 15% gap)
-			altitude: mq.sm ? altitudes.small.hexPolygon : altitudes.large.hexPolygon, // Height of hexagon base layer in globe radius units
-			color: '#1a1a2e', // Dark blue-gray base color for countries
-			transitionDuration: 0 // Animation duration in ms (0 = instant)
-		}}
-		polygon={{
-			enabled: false,
-			capColor: 'rgba(26,26,46,1)', // Top surface color (transparent)
-			sideColor: 'rgba(21, 93, 252, 0.6)', // Side glow color (blue with 60% opacity)
-			strokeColor: 'rgba(0,0,0,0)', // Border color (transparent)
-			altitude: mq.sm ? altitudes.small.polygon : altitudes.large.polygon, // Height of polygon glow layer (higher than hexagons)
-			transitionDuration: 0 // Animation duration in ms (0 = instant)
-		}}
-		points={{
-			layers: [
-				// blue dot (bg)
-				{
-					base: mq.sm ? altitudes.small.points.blueDot.base : altitudes.large.points.blueDot.base,
-					altitude: mq.sm
-						? altitudes.small.points.blueDot.altitude
-						: altitudes.large.points.blueDot.altitude,
-					color: '#155dfc',
-					radius: mq.sm ? 1.2 : 0.3,
-					zOffset: 0
-				},
-				// white dot (fg)
-				{
-					base: mq.sm ? altitudes.small.points.whiteDot.base : altitudes.large.points.whiteDot.base,
-					altitude: mq.sm
-						? altitudes.small.points.whiteDot.altitude
-						: altitudes.large.points.whiteDot.altitude,
-					color: '#ffffff',
-					radius: mq.sm ? 0.5 : 0.15,
-					zOffset: 0.001 // Slightly forward to ensure it's on top
-				}
-			]
-		}}
+	<!-- globe - only render in browser since THREE.js requires window -->
+	{#if browser}
+		<svelte:boundary>
+			<Globe
+				startLocationId="4"
+			data={{
+				locations: globeLocations,
+				polygons: globePolygons
+				// ports: globePorts
+			}}
+			globe={{
+				width: typeof window !== 'undefined' ? window.innerWidth : 1920,
+				height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+				left: 0,
+				top: mq.sm
+					? typeof window !== 'undefined'
+						? window.innerHeight * 0.95
+						: 972
+					: typeof window !== 'undefined'
+						? window.innerHeight * 2.2
+						: 1856,
+				altitude: mq.sm ? altitudes.small.globe : altitudes.large.globe,
+				latitude: mq.sm ? 36 : 21
+			}}
+			atmosphere={{
+				show: false,
+				color: '#155dfc',
+				altitude: mq.sm ? altitudes.small.atmosphere : altitudes.large.atmosphere
+			}}
+			hexPolygon={{
+				enabled: true,
+				resolution: mq.sm ? 3 : 4, // 0-15, lower = bigger hexagons, higher = smaller/more detailed
+				margin: 0.15, // 0-1, gap between hexagons (0.15 = 15% gap)
+				altitude: mq.sm ? altitudes.small.hexPolygon : altitudes.large.hexPolygon, // Height of hexagon base layer in globe radius units
+				color: '#1a1a2e', // Dark blue-gray base color for countries
+				transitionDuration: 0 // Animation duration in ms (0 = instant)
+			}}
+			polygon={{
+				enabled: false,
+				capColor: 'rgba(26,26,46,1)', // Top surface color (transparent)
+				sideColor: 'rgba(21, 93, 252, 0.6)', // Side glow color (blue with 60% opacity)
+				strokeColor: 'rgba(0,0,0,0)', // Border color (transparent)
+				altitude: mq.sm ? altitudes.small.polygon : altitudes.large.polygon, // Height of polygon glow layer (higher than hexagons)
+				transitionDuration: 0 // Animation duration in ms (0 = instant)
+			}}
+			points={{
+				layers: [
+					// blue dot (bg)
+					{
+						base: mq.sm ? altitudes.small.points.blueDot.base : altitudes.large.points.blueDot.base,
+						altitude: mq.sm
+							? altitudes.small.points.blueDot.altitude
+							: altitudes.large.points.blueDot.altitude,
+						color: '#155dfc',
+						radius: mq.sm ? 1.2 : 0.3,
+						zOffset: 0
+					},
+					// white dot (fg)
+					{
+						base: mq.sm ? altitudes.small.points.whiteDot.base : altitudes.large.points.whiteDot.base,
+						altitude: mq.sm
+							? altitudes.small.points.whiteDot.altitude
+							: altitudes.large.points.whiteDot.altitude,
+						color: '#ffffff',
+						radius: mq.sm ? 0.5 : 0.15,
+						zOffset: 0.001 // Slightly forward to ensure it's on top
+					}
+				]
+			}}
 		html={{
 			altitude: mq.sm ? altitudes.small.html : altitudes.large.html
 		}}
@@ -378,9 +389,14 @@
 			interval: 5000, // 5 seconds between rotations
 			pauseOnInteraction: true, // Pause when user interacts
 			startDelay: 3000, // Initial delay before starting autoplay
-			resumeDelay: 30000 // Resume autoplay after 30 seconds of inactivity
-		}}
-	/>
+				resumeDelay: 30000 // Resume autoplay after 30 seconds of inactivity
+			}}
+			/>
+			{#snippet pending()}
+				<!-- Globe loading placeholder - invisible, globe loads in background -->
+			{/snippet}
+		</svelte:boundary>
+	{/if}
 
 	<!-- photo vignette 
 	------------------------------------------>

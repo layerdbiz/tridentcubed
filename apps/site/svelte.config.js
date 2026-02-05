@@ -52,6 +52,8 @@ const config = {
 				// For other HTTP errors, fail the build
 				throw new Error(message);
 			},
+			// Handle routes that weren't crawled (like catch-all 404 routes)
+			handleUnseenRoutes: "ignore",
 		},
 	},
 	compilerOptions: {

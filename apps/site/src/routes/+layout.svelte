@@ -3,19 +3,14 @@
 	let { children } = $props();
 </script>
 
-<svelte:boundary>
-	{@render children()}
-
-	{#snippet pending()}
-		<div class="flex min-h-svh items-center justify-center">
-			<div class="animate-pulse text-neutral-400"></div>
-		</div>
-	{/snippet}
-
-	{#snippet failed(error, reset)}
-		<div class="flex min-h-svh flex-col items-center justify-center gap-4">
-			<p class="text-red-500">Something went wrong</p>
-			<button onclick={reset} class="rounded bg-primary-500 px-4 py-2 text-white">Try again</button>
-		</div>
-	{/snippet}
-</svelte:boundary>
+<!-- 
+	NOTE: We removed <svelte:boundary> from the root layout because it was blocking 
+	prerendered content from appearing in HTML source (bad for SEO).
+	
+	Any await in child components would trigger the boundary's pending state during SSR,
+	causing the entire page to show "loading" instead of prerendered content.
+	
+	Individual pages/components should add their own <svelte:boundary> around specific
+	dynamic sections that need loading states (e.g., around the Globe component).
+-->
+{@render children()}

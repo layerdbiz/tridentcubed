@@ -7,7 +7,6 @@
 		Header,
 		Footer,
 		Copyright,
-		Section,
 		Container,
 		Nav,
 		Button,
@@ -207,73 +206,19 @@
 	</Nav>
 </Header>
 
+<!--
+	IMPORTANT: We removed <svelte:boundary> from around children() because it was blocking
+	SSR/prerendering. From Svelte docs: "If a <svelte:boundary> with a pending snippet is 
+	encountered during SSR, that snippet will be rendered while the rest of the content is ignored."
+	
+	This means any await expressions in HomePage.svelte (the prerender functions) would NOT 
+	resolve during build - only the pending snippet would render, causing no SEO content.
+	
+	Without the boundary, all await expressions resolve during prerender, and the full content
+	is included in the HTML source for SEO. Error handling can be done in individual components.
+-->
 <main class="container flex flex-col">
-	<svelte:boundary>
-		{@render children()}
-
-		{#snippet pending()}
-			<Section
-				id="Home"
-				class="z-2 flex min-h-svh flex-col items-center"
-			>
-				<!-- photo vignette 
-				------------------------------------------>
-				<Image
-					src="/photos/houston-night.webp"
-					bg="fixed"
-					overlay="bg-radial -from-black to-black to-85%"
-				/>
-				<!-- bottom black radial 
-				------------------------------------------>
-				<Image
-					bg
-					class="mask-t-from-0% mask-t-to-50% origin-bottom overflow-hidden"
-					overlay="bg-radial from-transparent to-black from-0% to-100% scale-x-125"
-				/>
-				<Image
-					bg
-					overlay="bg-black/30"
-				/>
-				<!-- GRADIENT WRAPPER
-				------------------------------------------>
-				<div
-					class="-z-1 scale-y-60 pointer-events-none absolute inset-0 top-auto isolate size-full origin-bottom blur-xl"
-				>
-					<!-- top blue radial -->
-					<Image
-						bg
-						class="mask-t-from-0% mask-t-to-70% absolute top-0 size-full overflow-hidden"
-						overlay="bg-radial from-transparent to-primary from-20% to-100% "
-					/>
-
-					<!-- bottom blue radial -->
-					<Image
-						bg
-						class="mask-b-from-0% mask-b-to-70% top-full size-full overflow-hidden"
-						overlay="bg-radial from-transparent to-primary from-20% to-100% "
-					/>
-				</div>
-			</Section>
-		{/snippet}
-
-		{#snippet failed(error, retry)}
-			<div class="flex min-h-svh items-center justify-center">
-				<div class="flex flex-col items-center gap-4 text-center">
-					<p class="text-rose-600">
-						Error loading content: {error instanceof Error
-							? error.message
-							: 'An unexpected error occurred'}
-					</p>
-					<button
-						onclick={retry}
-						class="bg-primary hover:bg-primary/80 rounded px-4 py-2 text-white"
-					>
-						Retry
-					</button>
-				</div>
-			</div>
-		{/snippet}
-	</svelte:boundary>
+	{@render children()}
 </main>
 
 <Footer class="dark relative overflow-clip py-10">

@@ -1,3 +1,4 @@
 export const ssr = true;
-// Disable prerendering to get dynamic URLs in meta tags
-// export const prerender = true;
+// Enable prerendering so that prerender remote functions resolve at build time
+// and their content appears in the HTML source (critical for SEO)
+export const prerender = true;
