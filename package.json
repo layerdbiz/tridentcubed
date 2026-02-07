@@ -7,6 +7,8 @@
     "preview": "turbo preview --filter=site",
     "preview:all": "turbo preview",
     "site": "turbo watch dev --filter=site",
+    "site:build": "turbo build --filter=site",
+    "site:preview": "turbo preview --filter=site",
     "report": "turbo watch dev --filter=report",
     "play": "turbo watch dev --filter=play",
     "sb": "turbo watch dev --filter=storybook",
@@ -23,12 +25,12 @@
   "devDependencies": {
     "@csstools/postcss-light-dark-function": "^3.0.0",
     "@iconify-json/carbon": "^1.2.18",
-    "@iconify-json/devicon": "^1.2.57",
+    "@iconify-json/devicon": "^1.2.58",
     "@iconify-json/mdi": "^1.2.3",
     "@iconify-json/svg-spinners": "^1.2.4",
     "@tailwindcss/postcss": "4.1.18",
     "postcss": "^8.5.6",
-    "turbo": "2.8.2",
+    "turbo": "2.8.3",
     "unplugin-icons": "^23.0.1"
   },
   "packageManager": "pnpm@9.15.4",

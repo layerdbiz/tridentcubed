@@ -206,17 +206,6 @@
 	</Nav>
 </Header>
 
-<!--
-	IMPORTANT: We removed <svelte:boundary> from around children() because it was blocking
-	SSR/prerendering. From Svelte docs: "If a <svelte:boundary> with a pending snippet is 
-	encountered during SSR, that snippet will be rendered while the rest of the content is ignored."
-	
-	This means any await expressions in HomePage.svelte (the prerender functions) would NOT 
-	resolve during build - only the pending snippet would render, causing no SEO content.
-	
-	Without the boundary, all await expressions resolve during prerender, and the full content
-	is included in the HTML source for SEO. Error handling can be done in individual components.
--->
 <main class="container flex flex-col">
 	{@render children()}
 </main>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 	import {
 		Button,
 		Link,
@@ -66,6 +67,19 @@
 	let globePorts = $derived(globePortsQuery?.current ?? []);
 	let globeStatsData = $derived(globeStatsQuery?.current ?? { continents: 0, locations: 0, ports: 0 });
 	let globeLoading = $derived(!browser || globeLocationsQuery?.loading || globePolygonsQuery?.loading || globeStatsQuery?.loading);
+
+	// Hero content fade-in: starts hidden, fades in after hydration + stats data loads
+	let heroReady = $state(false);
+
+	// Once the component is mounted (hydrated) and globe stats have loaded, reveal the hero
+	$effect(() => {
+		if (!globeLoading && browser) {
+			// Data is loaded — trigger the hero fade-in on next frame
+			requestAnimationFrame(() => {
+				heroReady = true;
+			});
+		}
+	});
 
 	// Helper function for cleaner section access (now synchronous since data is already loaded)
 	function getSection(name: string) {
@@ -205,7 +219,9 @@
 	<!-- hero content
 	------------------------------------------>
 	<section
-		class="fade-in z-1 pointer-events-none relative flex select-none flex-col items-center justify-start gap-4 pt-16 lg:pt-10"
+		class="z-1 pointer-events-none relative flex select-none flex-col items-center justify-start gap-4 pt-16 lg:pt-10"
+		class:hero-visible={heroReady}
+		class:hero-hidden={!heroReady}
 	>
 		<!-- title -->
 		<div class="text-base-50 flex flex-col gap-2 text-center">
@@ -231,6 +247,8 @@
 			<div
 				id="stats"
 				class="order-3 flex items-center justify-center gap-6 py-2 text-center lg:gap-8 lg:py-4"
+				class:opacity-0={globeLoading}
+				style="transition: opacity 0.5s ease-in-out;"
 			>
 				{#each stats as stat}
 					<section class="flex flex-col gap-1 md:gap-2">
@@ -281,11 +299,9 @@
 		</div>
 	</section>
 
-	<!-- globe - only render in browser since THREE.js requires window -->
-	{#if browser}
-		<svelte:boundary>
-			<Globe
-				startLocationId="4"
+	<!-- globe -->
+	<Globe
+			startLocationId="4"
 			data={{
 				locations: globeLocations,
 				polygons: globePolygons
@@ -312,23 +328,22 @@
 			}}
 			hexPolygon={{
 				enabled: true,
-				resolution: mq.sm ? 3 : 4, // 0-15, lower = bigger hexagons, higher = smaller/more detailed
-				margin: 0.15, // 0-1, gap between hexagons (0.15 = 15% gap)
-				altitude: mq.sm ? altitudes.small.hexPolygon : altitudes.large.hexPolygon, // Height of hexagon base layer in globe radius units
-				color: '#1a1a2e', // Dark blue-gray base color for countries
-				transitionDuration: 0 // Animation duration in ms (0 = instant)
+				resolution: mq.sm ? 3 : 4,
+				margin: 0.15,
+				altitude: mq.sm ? altitudes.small.hexPolygon : altitudes.large.hexPolygon,
+				color: '#1a1a2e',
+				transitionDuration: 0
 			}}
 			polygon={{
 				enabled: false,
-				capColor: 'rgba(26,26,46,1)', // Top surface color (transparent)
-				sideColor: 'rgba(21, 93, 252, 0.6)', // Side glow color (blue with 60% opacity)
-				strokeColor: 'rgba(0,0,0,0)', // Border color (transparent)
-				altitude: mq.sm ? altitudes.small.polygon : altitudes.large.polygon, // Height of polygon glow layer (higher than hexagons)
-				transitionDuration: 0 // Animation duration in ms (0 = instant)
+				capColor: 'rgba(26,26,46,1)',
+				sideColor: 'rgba(21, 93, 252, 0.6)',
+				strokeColor: 'rgba(0,0,0,0)',
+				altitude: mq.sm ? altitudes.small.polygon : altitudes.large.polygon,
+				transitionDuration: 0
 			}}
 			points={{
 				layers: [
-					// blue dot (bg)
 					{
 						base: mq.sm ? altitudes.small.points.blueDot.base : altitudes.large.points.blueDot.base,
 						altitude: mq.sm
@@ -338,7 +353,6 @@
 						radius: mq.sm ? 1.2 : 0.3,
 						zOffset: 0
 					},
-					// white dot (fg)
 					{
 						base: mq.sm ? altitudes.small.points.whiteDot.base : altitudes.large.points.whiteDot.base,
 						altitude: mq.sm
@@ -346,57 +360,52 @@
 							: altitudes.large.points.whiteDot.altitude,
 						color: '#ffffff',
 						radius: mq.sm ? 0.5 : 0.15,
-						zOffset: 0.001 // Slightly forward to ensure it's on top
+						zOffset: 0.001
 					}
 				]
 			}}
-		html={{
-			altitude: mq.sm ? altitudes.small.html : altitudes.large.html
-		}}
-		labels={{
-			size: mq.sm ? 0.75 : 0.15,
-			dotRadius: mq.sm ? 0.3 : 0.1,
-			textColor: '#ffffff',
-			dotColor: '#ffffff',
-			altitude: mq.sm ? altitudes.small.labels : altitudes.large.labels
-		}}
-		arcs={{
-			color: '#ffffff',
-			stroke: mq.sm ? 0.2 : 0.04,
-			duration: 2000,
-			dashRelativeLength: 0.4,
-			dashLength: 0.6,
-			dashGap: 2,
-			dashInitialGap: 1,
-			altitude: null,
-			altitudeAutoscale: mq.sm ? altitudes.small.arcs.autoscale : altitudes.large.arcs.autoscale,
-			startAltitude: mq.sm ? altitudes.small.arcs.start : altitudes.large.arcs.start,
-			endAltitude: mq.sm ? altitudes.small.arcs.end : altitudes.large.arcs.end
-		}}
-		rings={{
-			color: '#ffffff',
-			rings: 4,
-			radius: mq.sm ? 5 : 2,
-			speed: mq.sm ? 4 : 2,
-			altitude: mq.sm ? altitudes.small.rings : altitudes.large.rings,
-			duration: 700
-		}}
-		animation={{
-			duration: 1000
-		}}
-		autoplay={{
-			enabled: activeSection === 'Home', // Only autoplay when Home section is active
-			interval: 5000, // 5 seconds between rotations
-			pauseOnInteraction: true, // Pause when user interacts
-			startDelay: 3000, // Initial delay before starting autoplay
-				resumeDelay: 30000 // Resume autoplay after 30 seconds of inactivity
+			html={{
+				altitude: mq.sm ? altitudes.small.html : altitudes.large.html
 			}}
-			/>
-			{#snippet pending()}
-				<!-- Globe loading placeholder - invisible, globe loads in background -->
-			{/snippet}
-		</svelte:boundary>
-	{/if}
+			labels={{
+				size: mq.sm ? 0.75 : 0.15,
+				dotRadius: mq.sm ? 0.3 : 0.1,
+				textColor: '#ffffff',
+				dotColor: '#ffffff',
+				altitude: mq.sm ? altitudes.small.labels : altitudes.large.labels
+			}}
+			arcs={{
+				color: '#ffffff',
+				stroke: mq.sm ? 0.2 : 0.04,
+				duration: 2000,
+				dashRelativeLength: 0.4,
+				dashLength: 0.6,
+				dashGap: 2,
+				dashInitialGap: 1,
+				altitude: null,
+				altitudeAutoscale: mq.sm ? altitudes.small.arcs.autoscale : altitudes.large.arcs.autoscale,
+				startAltitude: mq.sm ? altitudes.small.arcs.start : altitudes.large.arcs.start,
+				endAltitude: mq.sm ? altitudes.small.arcs.end : altitudes.large.arcs.end
+			}}
+			rings={{
+				color: '#ffffff',
+				rings: 4,
+				radius: mq.sm ? 5 : 2,
+				speed: mq.sm ? 4 : 2,
+				altitude: mq.sm ? altitudes.small.rings : altitudes.large.rings,
+				duration: 700
+			}}
+			animation={{
+				duration: 1000
+			}}
+			autoplay={{
+				enabled: activeSection === 'Home',
+				interval: 5000,
+				pauseOnInteraction: true,
+				startDelay: 3000,
+				resumeDelay: 30000
+			}}
+	/>
 
 	<!-- photo vignette 
 	------------------------------------------>
@@ -947,14 +956,21 @@
 			@apply pointer-events-auto cursor-pointer opacity-100;
 		}
 
-		/* Content fade-in animation */
-		.fade-in {
+		/* Hero content starts hidden, fades in when heroReady triggers hero-visible */
+		.hero-hidden {
 			opacity: 0;
 			transform: translateY(10px);
-			animation: fadeInUp 0.8s ease-in-out forwards;
 		}
 
-		@keyframes fadeInUp {
+		.hero-visible {
+			animation: heroFadeIn 0.8s ease-in-out forwards;
+		}
+
+		@keyframes heroFadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(10px);
+			}
 			to {
 				opacity: 1;
 				transform: translateY(0);

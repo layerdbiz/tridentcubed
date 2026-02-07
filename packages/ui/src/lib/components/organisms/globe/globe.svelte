@@ -1683,6 +1683,16 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 
 	// Load Globe.gl dynamically and setup keyboard navigation
 	onMount(async () => {
+		// Polyfill GPUShaderStage for browsers without WebGPU support.
+		// globe.gl bundles three-render-objects which imports 'three/webgpu'.
+		// That module evaluates `self.GPUShaderStage.VERTEX` at the top level,
+		// crashing with "Cannot read properties of undefined (reading 'VERTEX')"
+		// on any browser that doesn't expose the WebGPU API (e.g. mobile Safari,
+		// older Chrome, or any device accessed over a non-localhost network).
+		if (typeof globalThis.GPUShaderStage === 'undefined') {
+			(globalThis as any).GPUShaderStage = { VERTEX: 1, FRAGMENT: 2, COMPUTE: 4 };
+		}
+
 		// Dynamically import globe.gl (browser-only library)
 		// This prevents SSR errors since onMount only runs client-side
 		try {
@@ -1691,6 +1701,8 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 			console.log('✅ Globe.gl loaded successfully');
 		} catch (error) {
 			console.error('❌ Failed to load Globe.gl:', error);
+			// Mark as permanently failed so the page doesn't hang waiting for globe
+			webGLFailed = true;
 			return;
 		}
 
@@ -1701,7 +1713,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 	// Cleanup on component unmount
 	onDestroy(() => {
 		// Remove event listener
-		window.removeEventListener('keydown', handleKeyboard);
+		if (typeof window !== 'undefined') window.removeEventListener('keydown', handleKeyboard);
 
 		// Stop auto-play
 		stopAutoPlay();
