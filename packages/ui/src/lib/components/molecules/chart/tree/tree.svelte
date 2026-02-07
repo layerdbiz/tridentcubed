@@ -41,14 +41,17 @@
 	});
 
 	// Check if data is flat (array with id/parent) or hierarchical (object with children)
-	const isFlat = Array.isArray(data);
+	const isFlat = $derived(Array.isArray(data));
 
 	// Initialize with all nodes expanded
-	let expandedNodeNames = $state(
-		isFlat
-			? data.map((d: any) => d.id || d.name) // All flat data nodes
-			: getAllNodeNames(data.flare) // All nested data nodes
-	);
+	let expandedNodeNames = $state<string[]>([]);
+
+	// Sync expanded nodes when data changes
+	$effect(() => {
+		expandedNodeNames = Array.isArray(data)
+			? data.map((d: any) => d.id || d.name)
+			: getAllNodeNames(data.flare);
+	});
 
 	// Helper function to get all node names from nested structure
 	function getAllNodeNames(node: any): string[] {

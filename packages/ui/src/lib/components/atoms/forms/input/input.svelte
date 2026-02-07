@@ -90,7 +90,8 @@
 	}: InputProps = $props();
 
 	// Generate unique id if not provided
-	const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+	const fallbackId = `input-${Math.random().toString(36).substr(2, 9)}`;
+	const inputId = $derived(id || fallbackId);
 
 	// Auto-generate name from label if not provided
 	const inputName = $derived(name || label.toLowerCase().replace(/\s+/g, ''));

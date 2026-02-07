@@ -193,7 +193,12 @@
 	// Element references and state
 	let toggleElement = $state<HTMLElement>();
 	let contentElement = $state<HTMLElement>();
-	let isToggleOpen = $state(open);
+	let isToggleOpen = $state(false);
+
+	// Sync when open prop changes from parent
+	$effect(() => {
+		isToggleOpen = open;
+	});
 
 	// Use useEventListener for comprehensive click handling and nested toggle management
 	useEventListener(

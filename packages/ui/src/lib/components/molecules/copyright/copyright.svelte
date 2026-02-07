@@ -54,8 +54,8 @@
 		partnership: 'Partnership'
 	};
 
-	const formattedType = type ? businessTypes[type as BusinessType] || type : null;
-	const companyName = formattedType ? `${name}, ${formattedType}` : name;
+	const formattedType = $derived(type ? businessTypes[type as BusinessType] || type : null);
+	const companyName = $derived(formattedType ? `${name}, ${formattedType}` : name);
 </script>
 
 <!-- ⬜ default ⬛ prop 🟪 snippet 🟦 children -->

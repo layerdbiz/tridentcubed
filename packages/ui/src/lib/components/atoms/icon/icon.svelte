@@ -179,7 +179,7 @@
 
 	// For 'all' mode: use provided icons or fallback
 	// For 'remote' mode: only use provided icons (no fallback to prevent FOUC)
-	const iconsToDisplay = remote ? icons : icons.length > 0 ? icons : fallbackIcons;
+	const iconsToDisplay = $derived(remote ? icons : icons.length > 0 ? icons : fallbackIcons);
 </script>
 
 {#if all}

@@ -26,7 +26,12 @@
 	}: PreviewProps = $props();
 
 	// Internal state for current view
-	let currentView = $state<'preview' | 'code'>(defaultView);
+	let currentView = $state<'preview' | 'code'>('preview');
+
+	// Sync when defaultView prop changes from parent
+	$effect(() => {
+		currentView = defaultView;
+	});
 
 	// Copy status state
 	let copyStatus = $state<'idle' | 'copied'>('idle');

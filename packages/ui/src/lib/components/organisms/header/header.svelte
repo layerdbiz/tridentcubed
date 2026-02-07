@@ -27,7 +27,7 @@
 	}: HeaderProps = $props();
 
 	// Position classes for header element
-	const positionClasses = $state(
+	const positionClasses = $derived(
 		[fixed ? 'fixed left-0 right-0 top-0 z-50' : '', sticky ? 'sticky top-0 z-50' : '']
 			.filter(Boolean)
 			.join(' ')
