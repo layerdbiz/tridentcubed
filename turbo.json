@@ -22,6 +22,13 @@
       "cache": false,
       "persistent": true
     },
+    "app#dev": {
+      "dependsOn": [
+        "@layerd/ui#barrel"
+      ],
+      "cache": false,
+      "persistent": true
+    },
     "play#dev": {
       "dependsOn": [
         "@layerd/ui#barrel"

@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "@layerd/ui/ui.css";
+
+
+@theme {
+	/* default */
+	--theme-color: var(--color-slate-500);
+	--theme-color-primary: var(--color-blue-500);
+	--theme-color-secondary: var(--color-slate-500);
+	--theme-color-accent: var(--color-emerald-500);
+
+	/* fonts */
+	--theme-font: var(--font-asta);
+
+	/* scale (default) */
+	--theme-scale: 1.125;
+
+	/* scale */
+	--theme-scale-xs: 0.875; /* 14px basee */
+	--theme-scale-sm: 1; /* 16px base */
+	--theme-scale-md: 1.125; /* 18px base */
+	--theme-scale-lg: 1.25; /* 20px base */
+	--theme-scale-xl: 1.5; /* 24px base */
+
+	/* radius */
+	--theme-radius: 9999px;
+	--theme-radius-box: 1.5rem;
+	--theme-radius-button: 10em;
+
+	/* container padding values */
+	--spacing-container-mobile: 1rem; /* px-4 = 1rem */
+	--spacing-container-desktop: 2rem; /* px-8 = 2rem */
+}

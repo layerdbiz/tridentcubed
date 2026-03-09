@@ -6,6 +6,8 @@
 		"declarationMap": true
 	},
 	"references": [
+		{ "path": "./apps/app" },
+		{ "path": "./apps/play" },
 		{ "path": "./apps/site" },
 		{ "path": "./apps/storybook" },
 		{ "path": "./packages/config/ts" },
