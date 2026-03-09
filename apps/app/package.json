@@ -32,10 +32,11 @@
 		"vite-plugin-devtools-json": "^1.0.0"
 	},
 	"dependencies": {
+		"@sparticuz/chromium-min": "143.0.4",
 		"@iconify-json/devicon": "^1.2.58",
 		"@iconify-json/svg-spinners": "^1.2.4",
 		"@layerd/ui": "workspace:*",
-		"puppeteer": "^24.38.0",
+		"puppeteer-core": "24.38.0",
 		"valibot": "^1.2.0"
 	}
 }
