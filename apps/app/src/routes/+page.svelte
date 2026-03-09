@@ -78,6 +78,26 @@
 		percent: number;
 	}
 
+	interface TouchReorderOptions {
+		itemId: string;
+		scopeId?: string;
+		activate: () => void;
+		hover: (targetId: string) => void;
+		clearHover: () => void;
+		commit: (targetId: string) => void;
+		finish: () => void;
+		resolveTarget: (clientX: number, clientY: number, scopeId?: string) => string | undefined;
+	}
+
+	interface ActiveTouchReorder {
+		options: TouchReorderOptions;
+		startX: number;
+		startY: number;
+		active: boolean;
+		currentTargetId: string;
+		timerId: ReturnType<typeof setTimeout> | null;
+	}
+
 	type SectionStatus = 'todo' | 'in-progress' | 'complete';
 	type PhotoOrientation = 'portrait' | 'landscape' | 'square';
 
@@ -112,6 +132,8 @@
 	const previewMobilePadding = 32;
 	const previewMobileGap = 16;
 	const previewMobileVisiblePages = 1.5;
+	const touchReorderHoldDelay = 220;
+	const touchReorderMoveTolerance = 10;
 	const detailFields: Array<{
 		key: keyof DetailsFields;
 		label: string;
@@ -252,12 +274,19 @@
 	let dragId = $state('');
 	let dropId = $state('');
 	let photoDropId = $state('');
+	let photoDragSectionId = $state('');
+	let photoDragId = $state('');
+	let photoReorderTargetId = $state('');
 	let innerWidth = $state(0);
 	let hydrated = $state(false);
 	let previewViewport = $state<HTMLDivElement | null>(null);
 	let previewPages = $state<HTMLDivElement | null>(null);
 	let pinch = $state<{ startDist: number; startZoom: number; midY: number } | null>(null);
 	let isExporting = $state(false);
+	let activeTouchReorder: ActiveTouchReorder | null = null;
+	let touchReorderListenersAttached = false;
+	let suppressSectionToggleId = '';
+	let suppressSectionToggleUntil = 0;
 
 	const isDesktop = $derived(innerWidth >= 768);
 	const overallMetrics = $derived(getOverallMetrics(sections));
@@ -697,6 +726,10 @@
 
 	function removePhoto(section: PhotosSection, photoId: string) {
 		section.photos = section.photos.filter((photo) => photo.id !== photoId);
+
+		if (photoDragSectionId === section.id && photoDragId === photoId) {
+			clearPhotoReorderState();
+		}
 	}
 
 	function formatDayDate(dateISO: string) {
@@ -759,6 +792,26 @@
 		dropId = '';
 	}
 
+	function clearPhotoReorderState() {
+		photoDragSectionId = '';
+		photoDragId = '';
+		photoReorderTargetId = '';
+	}
+
+	function suppressSectionToggle(sectionId: string) {
+		suppressSectionToggleId = sectionId;
+		suppressSectionToggleUntil = Date.now() + 400;
+	}
+
+	function handleSectionTriggerClick(sectionId: string) {
+		if (suppressSectionToggleId === sectionId && Date.now() < suppressSectionToggleUntil) {
+			suppressSectionToggleId = '';
+			return;
+		}
+
+		toggleSection(sectionId);
+	}
+
 	function reorderSections(fromId: string, targetId: string) {
 		if (!fromId || fromId === targetId) return;
 
@@ -778,6 +831,7 @@
 		const section = sections.find((item) => item.id === sectionId);
 		if (!section || !isSectionMovable(section)) return;
 		dragId = sectionId;
+		suppressSectionToggle(sectionId);
 	}
 
 	function handleSectionDragOver(sectionId: string, event: DragEvent) {
@@ -796,6 +850,253 @@
 		event.preventDefault();
 		reorderSections(dragId, sectionId);
 		clearDragState();
+	}
+
+	function reorderPhotos(sectionId: string, fromPhotoId: string, targetPhotoId: string) {
+		if (!fromPhotoId || fromPhotoId === targetPhotoId) return;
+
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section || section.type !== 'photos') return;
+
+		const fromIndex = section.photos.findIndex((photo) => photo.id === fromPhotoId);
+		const targetIndex = section.photos.findIndex((photo) => photo.id === targetPhotoId);
+		if (fromIndex < 0 || targetIndex < 0) return;
+
+		const [moved] = section.photos.splice(fromIndex, 1);
+		section.photos.splice(targetIndex, 0, moved);
+	}
+
+	function handlePhotoDragStart(sectionId: string, photoId: string) {
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section || section.type !== 'photos' || section.photos.length < 2) return;
+
+		photoDragSectionId = sectionId;
+		photoDragId = photoId;
+	}
+
+	function handlePhotoDragOver(sectionId: string, photoId: string, event: DragEvent) {
+		if (!photoDragId || photoDragSectionId !== sectionId || photoDragId === photoId) return;
+
+		event.preventDefault();
+		photoReorderTargetId = photoId;
+	}
+
+	function handlePhotoDragLeave(sectionId: string, photoId: string) {
+		if (photoDragSectionId === sectionId && photoReorderTargetId === photoId) {
+			photoReorderTargetId = '';
+		}
+	}
+
+	function handlePhotoDrop(sectionId: string, photoId: string, event: DragEvent) {
+		if (!photoDragId || photoDragSectionId !== sectionId) return;
+
+		event.preventDefault();
+		reorderPhotos(sectionId, photoDragId, photoId);
+		clearPhotoReorderState();
+	}
+
+	function resolveTouchTarget(selector: string, clientX: number, clientY: number) {
+		if (!browser) return null;
+
+		const target = document.elementFromPoint(clientX, clientY);
+		if (!(target instanceof HTMLElement)) return null;
+
+		return target.closest<HTMLElement>(selector);
+	}
+
+	function resolveSectionTouchTarget(clientX: number, clientY: number) {
+		const target = resolveTouchTarget('[data-touch-reorder-kind="section"]', clientX, clientY);
+		const sectionId = target?.dataset.touchReorderId;
+		if (!sectionId) return undefined;
+
+		const section = sections.find((item) => item.id === sectionId);
+		return section && isSectionMovable(section) ? sectionId : undefined;
+	}
+
+	function resolvePhotoTouchTarget(clientX: number, clientY: number, sectionId?: string) {
+		if (!sectionId) return undefined;
+
+		const target = resolveTouchTarget('[data-touch-reorder-kind="photo"]', clientX, clientY);
+		if (!target || target.dataset.touchReorderScope !== sectionId) return undefined;
+
+		return target.dataset.touchReorderId || undefined;
+	}
+
+	function attachTouchReorderListeners() {
+		if (!browser || touchReorderListenersAttached) return;
+
+		window.addEventListener('touchmove', handleTouchReorderMove, { passive: false });
+		window.addEventListener('touchend', finishTouchReorder, { passive: false });
+		window.addEventListener('touchcancel', cancelTouchReorder, { passive: false });
+		touchReorderListenersAttached = true;
+	}
+
+	function detachTouchReorderListeners() {
+		if (!browser || !touchReorderListenersAttached) return;
+
+		window.removeEventListener('touchmove', handleTouchReorderMove);
+		window.removeEventListener('touchend', finishTouchReorder);
+		window.removeEventListener('touchcancel', cancelTouchReorder);
+		touchReorderListenersAttached = false;
+	}
+
+	function cancelTouchReorder() {
+		if (!activeTouchReorder) {
+			detachTouchReorderListeners();
+			return;
+		}
+
+		if (activeTouchReorder.timerId) {
+			clearTimeout(activeTouchReorder.timerId);
+		}
+
+		if (activeTouchReorder.active) {
+			activeTouchReorder.options.clearHover();
+			activeTouchReorder.options.finish();
+		}
+
+		activeTouchReorder = null;
+		detachTouchReorderListeners();
+	}
+
+	function startTouchReorder(event: TouchEvent, options: TouchReorderOptions) {
+		if (!browser || event.touches.length !== 1) return;
+
+		cancelTouchReorder();
+
+		const touch = event.touches[0];
+		const next: ActiveTouchReorder = {
+			options,
+			startX: touch.clientX,
+			startY: touch.clientY,
+			active: false,
+			currentTargetId: '',
+			timerId: null
+		};
+
+		next.timerId = setTimeout(() => {
+			if (activeTouchReorder !== next) return;
+
+			next.timerId = null;
+			next.active = true;
+			options.activate();
+		}, touchReorderHoldDelay);
+
+		activeTouchReorder = next;
+		attachTouchReorderListeners();
+	}
+
+	function handleTouchReorderMove(event: TouchEvent) {
+		if (!activeTouchReorder || event.touches.length !== 1) return;
+
+		const touch = event.touches[0];
+		const deltaX = touch.clientX - activeTouchReorder.startX;
+		const deltaY = touch.clientY - activeTouchReorder.startY;
+
+		if (!activeTouchReorder.active) {
+			if (Math.hypot(deltaX, deltaY) > touchReorderMoveTolerance) {
+				cancelTouchReorder();
+			}
+			return;
+		}
+
+		if (event.cancelable) event.preventDefault();
+
+		const targetId =
+			activeTouchReorder.options.resolveTarget(
+				touch.clientX,
+				touch.clientY,
+				activeTouchReorder.options.scopeId
+			) || '';
+
+		if (!targetId || targetId === activeTouchReorder.options.itemId) {
+			activeTouchReorder.currentTargetId = '';
+			activeTouchReorder.options.clearHover();
+			return;
+		}
+
+		activeTouchReorder.currentTargetId = targetId;
+		activeTouchReorder.options.hover(targetId);
+	}
+
+	function finishTouchReorder(event?: TouchEvent) {
+		if (!activeTouchReorder) return;
+
+		const session = activeTouchReorder;
+		activeTouchReorder = null;
+
+		if (session.timerId) {
+			clearTimeout(session.timerId);
+			detachTouchReorderListeners();
+			return;
+		}
+
+		if (!session.active) return;
+
+		if (event?.cancelable) event.preventDefault();
+
+		const targetId = session.currentTargetId;
+		session.options.clearHover();
+
+		if (targetId && targetId !== session.options.itemId) {
+			session.options.commit(targetId);
+		}
+
+		session.options.finish();
+		detachTouchReorderListeners();
+	}
+
+	function handleSectionTouchStart(event: TouchEvent, sectionId: string) {
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section || !isSectionMovable(section)) return;
+
+		startTouchReorder(event, {
+			itemId: sectionId,
+			activate: () => {
+				dragId = sectionId;
+				suppressSectionToggle(sectionId);
+			},
+			hover: (targetId) => {
+				dropId = targetId;
+			},
+			clearHover: () => {
+				dropId = '';
+			},
+			commit: (targetId) => {
+				reorderSections(sectionId, targetId);
+			},
+			finish: () => {
+				clearDragState();
+			},
+			resolveTarget: (clientX, clientY) => resolveSectionTouchTarget(clientX, clientY)
+		});
+	}
+
+	function handlePhotoTouchStart(event: TouchEvent, sectionId: string, photoId: string) {
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section || section.type !== 'photos' || section.photos.length < 2) return;
+
+		startTouchReorder(event, {
+			itemId: photoId,
+			scopeId: sectionId,
+			activate: () => {
+				photoDragSectionId = sectionId;
+				photoDragId = photoId;
+			},
+			hover: (targetId) => {
+				photoReorderTargetId = targetId;
+			},
+			clearHover: () => {
+				photoReorderTargetId = '';
+			},
+			commit: (targetId) => {
+				reorderPhotos(sectionId, photoId, targetId);
+			},
+			finish: () => {
+				clearPhotoReorderState();
+			},
+			resolveTarget: (clientX, clientY, scopeId) => resolvePhotoTouchTarget(clientX, clientY, scopeId)
+		});
 	}
 
 	function downloadBlob(blob: Blob, filename: string) {
@@ -1004,7 +1305,9 @@
 		if (!okay) return;
 		localStorage.removeItem(storageKey);
 		applyState(createDefaultState());
+		cancelTouchReorder();
 		clearDragState();
+		clearPhotoReorderState();
 		photoDropId = '';
 	}
 
@@ -1039,7 +1342,7 @@
 
 		<!-- MOBILE TABS 
 		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
-		<div class="mb-4 flex shrink-0 items-center gap-2 p-4 md:hidden">
+		<div class="flex shrink-0 items-center gap-2 p-4 md:hidden">
 			<button
 				type="button"
 				class={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${activeTab === 'create' ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}
@@ -1069,7 +1372,7 @@
 					<!-- create header -->
 					<div class="shrink-0 border-b border-slate-200 px-4 py-3">
 						<div class="flex flex-col gap-4">
-							<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+							<div class="grid gap-4 grid-cols-[minmax(0,1fr)_auto] items-start">
 								<div class="min-w-0">
 									<h2 class={panelTitleClass}>Create</h2>
 									<p class={panelSubtitleClass}>Build the report structure, content, and photos section by section.</p>
@@ -1130,7 +1433,7 @@
 								<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onclick={resetReport}>Reset</button>
 							</div>
 					<!-- create content -->
-					<div class="min-h-0 flex-1 space-y-3 overflow-auto p-4">
+					<div class="min-h-0 flex-1 space-y-3 overflow-auto p-4 pt-0">
 						{#each sections as section (section.id)}
 							{@const metrics = getSectionMetrics(section)}
 							{@const sectionStatusLabel = getSectionStatusLabel(metrics)}
@@ -1163,8 +1466,11 @@
 								<!-- panel trigger -->
 								<button
 									type="button"
-									class={`block w-full cursor-pointer p-4 text-left ${isSectionMovable(section) ? 'active:cursor-grabbing' : ''}`}
-									onclick={() => toggleSection(section.id)}
+									class={`block w-full cursor-pointer p-4 text-left ${isSectionMovable(section) ? 'touch-reorder-handle select-none active:cursor-grabbing' : ''}`}
+									data-touch-reorder-id={section.id}
+									data-touch-reorder-kind="section"
+									onclick={() => handleSectionTriggerClick(section.id)}
+									ontouchstart={(event) => handleSectionTouchStart(event, section.id)}
 								>
 									<div class="flex items-start gap-3">
 										<div class={`flex h-10 w-10 shrink-0 items-center justify-center text-3xl ${isSectionMovable(section) ? 'cursor-grab' : ''}`}>{section.icon}</div>
@@ -1298,9 +1604,28 @@
 
 													<div class="grid grid-cols-2 gap-3">
 														{#each section.photos as photo (photo.id)}
-															<div class="rounded-2xl border border-slate-200 bg-white p-2">
-																<div class="relative aspect-4/3 overflow-hidden rounded-xl bg-slate-100">
-																	<img alt={photo.caption || photo.name} class="h-full w-full object-cover" src={photo.src} />
+															<div
+																class:drop-target={photoDragSectionId === section.id && photoDragId && photoReorderTargetId === photo.id}
+																class="rounded-2xl border border-slate-200 bg-white p-2"
+																data-dragging={photoDragSectionId === section.id && photoDragId === photo.id ? 'true' : 'false'}
+																role="presentation"
+																ondragover={(event) => handlePhotoDragOver(section.id, photo.id, event)}
+																ondragleave={() => handlePhotoDragLeave(section.id, photo.id)}
+																ondrop={(event) => handlePhotoDrop(section.id, photo.id, event)}
+															>
+																<div
+																	class={`touch-reorder-handle relative aspect-4/3 overflow-hidden rounded-xl bg-slate-100 ${section.photos.length > 1 ? 'cursor-grab active:cursor-grabbing select-none' : ''}`}
+																	data-touch-reorder-id={photo.id}
+																	data-touch-reorder-kind="photo"
+																	data-touch-reorder-scope={section.id}
+																	role={section.photos.length > 1 ? 'button' : 'presentation'}
+																	aria-label={section.photos.length > 1 ? `Reorder ${photo.caption || photo.name || 'photo'}` : undefined}
+																	draggable={section.photos.length > 1}
+																	ondragstart={() => handlePhotoDragStart(section.id, photo.id)}
+																	ondragend={clearPhotoReorderState}
+																	ontouchstart={(event) => handlePhotoTouchStart(event, section.id, photo.id)}
+																>
+																	<img alt={photo.caption || photo.name} class="h-full w-full object-cover" draggable="false" src={photo.src} />
 																	<button type="button" aria-label="Remove photo" class="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-700 shadow" onclick={() => removePhoto(section, photo.id)}>✕</button>
 																</div>
 
@@ -1475,6 +1800,16 @@
 <style>
 	[data-dragging='true'] {
 		opacity: 0.55;
+	}
+
+	.touch-reorder-handle {
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+
+	.touch-reorder-handle img {
+		-webkit-user-drag: none;
 	}
 
 	.drop-target {
