@@ -1076,15 +1076,15 @@
 								</div>
 
 								<div class="justify-self-start lg:justify-self-end">
-									<div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+									<div class="">
 										<div class="flex items-center gap-5">
-											<div class="min-w-0">
+											<div class="min-w-0 hidden">
 												<p class={metricLabelClass}>Overall Progress</p>
 												<p class={metricMetaClass}>{overallMetrics.done} of {overallMetrics.total} complete</p>
 												<p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-green-600">Complete</p>
 											</div>
 
-											<div class="relative h-26 w-26 shrink-0">
+											<div class="relative h-18 w-18 shrink-0">
 												<svg viewBox="0 0 96 96" class="h-full w-full overflow-visible -rotate-90" aria-hidden="true">
 													<circle
 														cx="48"
@@ -1092,7 +1092,7 @@
 														r={overallProgressRingRadius}
 														fill="none"
 														stroke="#d9e1ec"
-														stroke-width="8"
+														stroke-width="12"
 													/>
 													<circle
 														cx="48"
@@ -1101,21 +1101,24 @@
 														fill="none"
 														stroke="#22c55e"
 														stroke-linecap="round"
-														stroke-width="8"
+														stroke-width="12"
 														stroke-dasharray={overallProgressRingCircumference}
 														stroke-dashoffset={getProgressRingOffset(overallMetrics.percent)}
 													/>
 												</svg>
 												<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-													<span class="text-lg font-bold text-slate-800">{overallMetrics.percent}%</span>
+													<span class="text-sm font-bold text-slate-800">{overallMetrics.percent}%</span>
 												</div>
 											</div>
 										</div>
 									</div>
 								</div>
 							</div>
+						</div>
+					</div>
 
-							<div class="flex flex-wrap gap-2 lg:justify-end">
+
+							<div class="flex flex-wrap gap-2 p-4">
 								<button
 									type="button"
 									class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
@@ -1126,9 +1129,6 @@
 
 								<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onclick={resetReport}>Reset</button>
 							</div>
-						</div>
-					</div>
-
 					<!-- create content -->
 					<div class="min-h-0 flex-1 space-y-3 overflow-auto p-4">
 						{#each sections as section (section.id)}
@@ -1325,43 +1325,48 @@
 			<!-- PREVIEW 
 			-------------------------------------------------->
 			<section class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
-				<div class="flex h-full min-h-0 flex-col">
-					<div class="relative z-10 shrink-0 px-4 pb-3 md:px-2">
-						<div class="flex w-full flex-wrap items-center gap-2 md:justify-end">
-							<div class="mr-auto flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
+				<div class="relative flex h-full min-h-0 flex-col">
+
+					<!-- TOOLBAR 
+					-------------------------------------------------->
+					<div id="preview-toolbar" class="pointer-events-none fixed bottom-4 right-4 z-20 md:bottom-6 md:right-6">
+						<div class="pointer-events-auto flex items-center justify-end gap-2">
+							<button
+								type="button"
+								class="flex h-12 items-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+								disabled={isExporting}
+								onclick={() => handleExport('PDF')}
+							>
+								{isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'}
+							</button>
+
+							<!-- Zoomer -->
+							<div id="zoomer" class="flex h-12 items-center overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
+								<!-- zoom in -->
 								<button
 									type="button"
-									class="rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+									class="flex h-full w-12 items-center justify-center border-r border-slate-200 text-2xl font-semibold text-slate-700 transition hover:bg-slate-50"
 									onclick={() => stepPreviewZoom('out')}
 								>
 									-
 								</button>
+								<!-- zoom percentage -->
 								<button
 									type="button"
-									class="rounded-lg px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 hover:bg-slate-100"
+									class="flex h-full w-16 items-center justify-center px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
 									onclick={resetPreviewZoom}
 								>
 									{Math.round((previewZoom || 1) * 100)}%
 								</button>
+								<!-- zoom out -->
 								<button
 									type="button"
-									class="rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+									class="flex h-full w-12 items-center justify-center border-l border-slate-200 text-2xl font-semibold text-slate-700 transition hover:bg-slate-50"
 									onclick={() => stepPreviewZoom('in')}
 								>
 									+
 								</button>
 							</div>
-
-								{#each exportFormats as format (format)}
-									<button
-										type="button"
-										class={`rounded-xl border px-3 py-2 text-xs font-semibold ${format === 'PDF' ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}
-										disabled={format !== 'PDF' || isExporting}
-										onclick={() => handleExport(format)}
-									>
-										{format === 'PDF' && isExporting ? 'Exporting…' : format}
-									</button>
-								{/each}
 						</div>
 					</div>
 
@@ -1371,7 +1376,7 @@
 							bind:this={previewViewport}
 							role="region"
 							aria-label="Preview pages"
-							class="h-full w-full overflow-y-auto overflow-x-hidden bg-transparent px-3 pb-6 pt-2 md:px-1"
+							class="h-full w-full overflow-y-auto overflow-x-hidden bg-transparent"
 							style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`}
 							onwheel={handlePreviewWheel}
 							ontouchstart={handlePreviewTouchStart}
