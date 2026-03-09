@@ -1,10 +1,21 @@
 <script lang="ts">
-	import { Button } from '@layerd/ui';
 	import { browser } from '$app/environment';
 	import { onMount, tick } from 'svelte';
 
 	type Tab = 'create' | 'preview';
-	type SectionType = 'details' | 'time-log' | 'photos';
+	type SectionType = 'cover' | 'time-log' | 'photos';
+	type SectionPlacement = 'start' | 'middle' | 'end';
+	type ExportFormat = (typeof exportFormats)[number];
+
+	interface SectionBase {
+		id: string;
+		title: string;
+		icon: string;
+		open: boolean;
+		locked: boolean;
+		placement: SectionPlacement;
+		photos: PhotoItem[];
+	}
 
 	interface PhotoItem {
 		id: string;
@@ -23,14 +34,9 @@
 		documentId: string;
 	}
 
-	interface DetailsSection {
-		id: string;
-		type: 'details';
-		title: string;
-		icon: string;
-		open: boolean;
+	interface CoverSection extends SectionBase {
+		type: 'cover';
 		fields: DetailsFields;
-		photos: PhotoItem[];
 	}
 
 	interface TimeEntry {
@@ -45,27 +51,17 @@
 		entries: TimeEntry[];
 	}
 
-	interface TimeLogSection {
-		id: string;
+	interface TimeLogSection extends SectionBase {
 		type: 'time-log';
-		title: string;
-		icon: string;
-		open: boolean;
 		days: TimeDay[];
-		photos: PhotoItem[];
 	}
 
-	interface PhotosSection {
-		id: string;
+	interface PhotosSection extends SectionBase {
 		type: 'photos';
-		title: string;
-		icon: string;
-		open: boolean;
 		description: string;
-		photos: PhotoItem[];
 	}
 
-	type Section = DetailsSection | TimeLogSection | PhotosSection;
+	type Section = CoverSection | TimeLogSection | PhotosSection;
 
 	interface PersistedState {
 		activeTab: Tab;
@@ -80,8 +76,31 @@
 		percent: number;
 	}
 
+	type SectionStatus = 'todo' | 'in-progress' | 'complete';
+
+	interface SectionTemplate<T extends Section = Section> {
+		id: string;
+		type: T['type'];
+		title: string;
+		icon: string;
+		placement: Exclude<SectionPlacement, 'middle'>;
+		create: () => T;
+	}
+
 	const storageKey = 'survey-report-mvp-v3';
 	const exportFormats = ['PDF', 'DOCX', 'HTML', 'MD'] as const;
+	const panelTitleClass = 'text-xl font-bold tracking-tight text-slate-900';
+	const panelSubtitleClass = 'text-sm text-slate-500';
+	const metricLabelClass = 'text-sm font-semibold text-slate-700';
+	const metricMetaClass = 'text-xs text-slate-500';
+	const metricMetaStrongClass = 'text-xs font-semibold uppercase tracking-[0.16em] text-slate-400';
+	const metricValueClass = 'text-sm font-bold text-slate-700';
+	const metricValueCaptionClass = 'text-[11px] uppercase tracking-[0.16em] text-slate-400';
+	const metricStatusCaptionClass = 'text-[11px] uppercase tracking-[0.16em]';
+	const progressTrackClass = 'h-2.5 overflow-hidden rounded-full bg-slate-200';
+	const progressFillClass = 'h-full rounded-full bg-green-500 transition-all duration-300';
+	const previewPageWidth = 8.5 * 96;
+	const previewPageHeight = 11 * 96;
 	const detailFields: Array<{
 		key: keyof DetailsFields;
 		label: string;
@@ -106,60 +125,111 @@
 
 	const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 	const toPercent = (value: number, total: number) => (total ? Math.round((value / total) * 100) : 0);
-
+	const slugify = (value: string) =>
+		value
+			.toLowerCase()
+			.trim()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '') || 'survey-report';
 	const createTimeEntry = (): TimeEntry => ({ id: nextId('entry'), time: '', text: '' });
 	const createTimeDay = (): TimeDay => ({ id: nextId('day'), dateISO: '', entries: [createTimeEntry()] });
+
+	const createCoverSection = (): CoverSection => ({
+		id: 'section-cover-page',
+		type: 'cover',
+		title: 'Cover Page',
+		icon: '📄',
+		open: false,
+		locked: true,
+		placement: 'start',
+		fields: {
+			reportTitle: 'Survey Report',
+			facilityName: '',
+			startDate: '',
+			endDate: '',
+			clientName: '',
+			preparedBy: "Justin O'Neill",
+			documentId: 'DOC-001'
+		},
+		photos: []
+	});
+	const createTimeLogSection = (): TimeLogSection => ({
+		id: 'section-time-log',
+		type: 'time-log',
+		title: 'Time Log',
+		icon: '⏱️',
+		open: false,
+		locked: true,
+		placement: 'start',
+		days: [createTimeDay()],
+		photos: []
+	});
+	const createOutroSection = (): PhotosSection => ({
+		id: 'section-outro',
+		type: 'photos',
+		title: 'Outro',
+		icon: '🏁',
+		open: false,
+		locked: true,
+		placement: 'end',
+		description: '',
+		photos: []
+	});
 	const createPhotoSection = (title: string, icon: string, open = false): PhotosSection => ({
 		id: nextId('section'),
 		type: 'photos',
 		title,
 		icon,
 		open,
+		locked: false,
+		placement: 'middle',
 		description: '',
 		photos: []
 	});
+	const createInitialMiddleSections = () => [
+		createPhotoSection('Section 1', '🧩'),
+		createPhotoSection('Section 2', '🧩'),
+		createPhotoSection('Section 3', '🧩')
+	];
+	const fixedSectionTemplates: SectionTemplate[] = [
+		{
+			id: 'section-cover-page',
+			type: 'cover',
+			title: 'Cover Page',
+			icon: '📄',
+			placement: 'start',
+			create: createCoverSection
+		},
+		{
+			id: 'section-time-log',
+			type: 'time-log',
+			title: 'Time Log',
+			icon: '⏱️',
+			placement: 'start',
+			create: createTimeLogSection
+		},
+		{
+			id: 'section-outro',
+			type: 'photos',
+			title: 'Outro',
+			icon: '🏁',
+			placement: 'end',
+			create: createOutroSection
+		}
+	];
+	const fixedSectionIds = new Set(fixedSectionTemplates.map((section) => section.id));
+	const fixedSectionTemplateById = new Map(fixedSectionTemplates.map((section) => [section.id, section]));
 
 	const createDefaultState = (): PersistedState => ({
 		activeTab: 'create',
 		previewZoom: 1,
 		hasUserZoomed: false,
-		sections: [
-			{
-				id: 'section-report-details',
-				type: 'details',
-				title: 'Project Report',
-				icon: '📄',
-				open: true,
-				fields: {
-					reportTitle: 'Survey Report',
-					facilityName: '',
-					startDate: '',
-					endDate: '',
-					clientName: '',
-					preparedBy: "Justin O'Neill",
-					documentId: 'DOC-001'
-				},
-				photos: []
-			},
-			{
-				id: 'section-time-log',
-				type: 'time-log',
-				title: 'Time Log',
-				icon: '⏱️',
-				open: false,
-				days: [createTimeDay()],
-				photos: []
-			},
-			{
-				id: 'section-cargo-photos',
-				type: 'photos',
-				title: 'Cargo Operations Photos',
-				icon: '📷',
-				open: false,
-				description: '',
-				photos: []
-			}
-		]
+		sections: orderSections([
+			fixedSectionTemplates[0].create(),
+			fixedSectionTemplates[1].create(),
+			...createInitialMiddleSections(),
+			fixedSectionTemplates[2].create()
+		])
 	});
 
 	const baseState = createDefaultState();
@@ -174,11 +244,24 @@
 	let innerWidth = $state(0);
 	let hydrated = $state(false);
 	let previewViewport = $state<HTMLDivElement | null>(null);
+	let previewPages = $state<HTMLDivElement | null>(null);
 	let pinch = $state<{ startDist: number; startZoom: number; midY: number } | null>(null);
+	let isExporting = $state(false);
 
 	const isDesktop = $derived(innerWidth >= 768);
 	const overallMetrics = $derived(getOverallMetrics(sections));
-	const reportSection = $derived(sections.find((section) => section.type === 'details') as DetailsSection | undefined);
+	const reportSection = $derived(sections.find((section) => section.type === 'cover') as CoverSection | undefined);
+	const exportFileName = $derived(`${slugify(reportSection?.fields.reportTitle || 'survey-report')}.pdf`);
+	const previewContentSections = $derived(sections.filter((section) => section.type !== 'cover'));
+	const tableOfContentsEntries = $derived([
+		{ id: 'toc-cover', title: reportSection?.title || 'Cover Page', page: 1 },
+		{ id: 'toc-index', title: 'Table of Contents', page: 2 },
+		...previewContentSections.map((section, index) => ({
+			id: `toc-${section.id}`,
+			title: section.title,
+			page: index + 3
+		}))
+	]);
 	const coverMeta = $derived([
 		{ label: 'Facility', value: reportSection?.fields.facilityName || '—' },
 		{
@@ -192,6 +275,25 @@
 		{ label: 'Prepared By', value: reportSection?.fields.preparedBy || '—' },
 		{ label: 'Document ID', value: reportSection?.fields.documentId || '—' }
 	]);
+	const customSectionCount = $derived(sections.filter((section) => section.placement === 'middle').length);
+
+	function isSectionMovable(section: Section) {
+		return !section.locked && section.placement === 'middle';
+	}
+
+	function orderSections(items: Section[]) {
+		const middleSections = items.filter((section) => !fixedSectionIds.has(section.id));
+
+		return fixedSectionTemplates
+			.filter((section) => section.placement === 'start')
+			.map((section) => items.find((item) => item.id === section.id) ?? section.create())
+			.concat(middleSections)
+			.concat(
+				fixedSectionTemplates
+					.filter((section) => section.placement === 'end')
+					.map((section) => items.find((item) => item.id === section.id) ?? section.create())
+			);
+	}
 
 	function applyState(next: PersistedState) {
 		activeTab = next.activeTab;
@@ -234,7 +336,10 @@
 	}
 
 	function normalizeTimeDay(value: unknown): TimeDay {
-		const entries = Array.isArray((value as TimeDay)?.entries) ? (value as TimeDay).entries.map(normalizeTimeEntry) : [createTimeEntry()];
+		const entries = Array.isArray((value as TimeDay)?.entries)
+			? (value as TimeDay).entries.map(normalizeTimeEntry)
+			: [createTimeEntry()];
+
 		return {
 			id: typeof (value as TimeDay)?.id === 'string' ? (value as TimeDay).id : nextId('day'),
 			dateISO: String((value as TimeDay)?.dateISO || ''),
@@ -252,16 +357,25 @@
 	}
 
 	function normalizeSection(value: unknown, index: number): Section {
-		const section = value as Partial<Section> & { fields?: Partial<DetailsFields>; days?: TimeDay[]; photos?: PhotoItem[] };
+		const section = value as Partial<Section> & {
+			fields?: Partial<DetailsFields>;
+			days?: TimeDay[];
+			photos?: PhotoItem[];
+			locked?: boolean;
+			placement?: SectionPlacement;
+		};
+		const template = typeof section.id === 'string' ? fixedSectionTemplateById.get(section.id) : undefined;
 		const photos = Array.isArray(section.photos) ? section.photos.map(normalizePhotoItem).filter((photo) => photo.src) : [];
 
-		if (section.type === 'details') {
+		if (section.type === 'cover') {
 			return {
-				id: typeof section.id === 'string' ? section.id : 'section-report-details',
-				type: 'details',
-				title: typeof section.title === 'string' ? section.title : 'Project Report',
-				icon: typeof section.icon === 'string' ? section.icon : '📄',
+				id: typeof section.id === 'string' ? section.id : 'section-cover-page',
+				type: 'cover',
+				title: typeof section.title === 'string' ? section.title : template?.title || 'Cover Page',
+				icon: typeof section.icon === 'string' ? section.icon : template?.icon || '📄',
 				open: Boolean(section.open),
+				locked: template ? true : Boolean(section.locked),
+				placement: template?.placement || section.placement || 'middle',
 				fields: {
 					reportTitle: String(section.fields?.reportTitle || 'Survey Report'),
 					facilityName: String(section.fields?.facilityName || ''),
@@ -277,12 +391,15 @@
 
 		if (section.type === 'time-log') {
 			const days = Array.isArray(section.days) ? section.days.map(normalizeTimeDay) : [createTimeDay()];
+
 			return {
 				id: typeof section.id === 'string' ? section.id : 'section-time-log',
 				type: 'time-log',
-				title: typeof section.title === 'string' ? section.title : 'Time Log',
-				icon: typeof section.icon === 'string' ? section.icon : '⏱️',
+				title: typeof section.title === 'string' ? section.title : template?.title || 'Time Log',
+				icon: typeof section.icon === 'string' ? section.icon : template?.icon || '⏱️',
 				open: Boolean(section.open),
+				locked: template ? true : Boolean(section.locked),
+				placement: template?.placement || section.placement || 'middle',
 				days: days.length ? days : [createTimeDay()],
 				photos
 			};
@@ -291,9 +408,11 @@
 		return {
 			id: typeof section.id === 'string' ? section.id : nextId('section'),
 			type: 'photos',
-			title: typeof section.title === 'string' ? section.title : `New Section ${index + 1}`,
-			icon: typeof section.icon === 'string' ? section.icon : '🧩',
+			title: typeof section.title === 'string' ? section.title : template?.title || `New Section ${index + 1}`,
+			icon: typeof section.icon === 'string' ? section.icon : template?.icon || '🧩',
 			open: Boolean(section.open),
+			locked: template ? true : Boolean(section.locked),
+			placement: template?.placement || section.placement || 'middle',
 			description: String((section as PhotosSection)?.description || ''),
 			photos
 		};
@@ -308,16 +427,21 @@
 
 			const parsed = JSON.parse(saved) as Partial<PersistedState>;
 			const next = createDefaultState();
-			const normalizedSections = Array.isArray(parsed.sections) ? parsed.sections.map(normalizeSection) : next.sections;
+			const parsedSections = Array.isArray(parsed.sections)
+				? parsed.sections.filter(
+					(section) =>
+						(section as { id?: string; type?: string }).id !== 'section-table-of-contents' &&
+						(section as { id?: string; type?: string }).type !== 'toc'
+				)
+				: next.sections;
+			const normalizedSections = orderSections(parsedSections.map(normalizeSection));
 			const hasOpenSection = normalizedSections.some((section) => section.open);
 
 			return {
 				activeTab: parsed.activeTab === 'preview' ? 'preview' : 'create',
 				previewZoom: typeof parsed.previewZoom === 'number' ? parsed.previewZoom : 1,
 				hasUserZoomed: typeof parsed.hasUserZoomed === 'boolean' ? parsed.hasUserZoomed : false,
-				sections: hasOpenSection
-					? normalizedSections
-					: normalizedSections.map((section, sectionIndex) => ({ ...section, open: sectionIndex === 0 }))
+				sections: hasOpenSection ? normalizedSections : normalizedSections.map((section) => ({ ...section, open: false }))
 			};
 		} catch {
 			return createDefaultState();
@@ -325,7 +449,7 @@
 	}
 
 	function getSectionMetrics(section: Section): SectionMetrics {
-		if (section.type === 'details') {
+		if (section.type === 'cover') {
 			const done = detailFields.reduce((count, field) => count + (String(section.fields[field.key] || '').trim() ? 1 : 0), 0);
 			const total = detailFields.length;
 			return { done, total, percent: toPercent(done, total) };
@@ -350,8 +474,11 @@
 			return { done, total: safeTotal, percent: toPercent(done, safeTotal) };
 		}
 
-		const done = Number(Boolean(section.description.trim())) + Number(section.photos.length > 0);
-		const total = 2;
+		const done =
+			Number(Boolean(section.title.trim())) +
+			Number(Boolean(section.description.trim())) +
+			Number(section.photos.length > 0);
+		const total = 3;
 		return { done, total, percent: toPercent(done, total) };
 	}
 
@@ -368,6 +495,36 @@
 		return { done, total, percent: clamp(toPercent(done, total), 0, 100) };
 	}
 
+	function getSectionStatus(metrics: SectionMetrics): SectionStatus {
+		if (metrics.percent <= 0) return 'todo';
+		if (metrics.percent >= 100) return 'complete';
+		return 'in-progress';
+	}
+
+	function getSectionStatusLabel(metrics: SectionMetrics) {
+		const status = getSectionStatus(metrics);
+
+		if (status === 'todo') return 'TO DO';
+		if (status === 'complete') return 'COMPLETE';
+		return 'IN PROGRESS';
+	}
+
+	function getSectionStatusTextClass(metrics: SectionMetrics) {
+		const status = getSectionStatus(metrics);
+
+		if (status === 'todo') return 'text-slate-400';
+		if (status === 'complete') return 'text-green-600';
+		return 'text-blue-600';
+	}
+
+	function getSectionProgressFillClass(metrics: SectionMetrics) {
+		const status = getSectionStatus(metrics);
+
+		if (status === 'todo') return 'bg-slate-300';
+		if (status === 'complete') return 'bg-green-500';
+		return 'bg-blue-500';
+	}
+
 	function toggleSection(sectionId: string) {
 		const current = sections.find((section) => section.id === sectionId);
 		if (!current) return;
@@ -379,9 +536,46 @@
 	}
 
 	function addSection() {
-		const nextNumber = sections.length + 1;
+		const nextNumber = getNextCustomSectionNumber();
+		const insertIndex = sections.findIndex((section) => section.placement === 'end');
 		for (const section of sections) section.open = false;
-		sections.push(createPhotoSection(`New Section ${nextNumber}`, '🧩', true));
+
+		const nextSection = createPhotoSection(`Section ${nextNumber}`, '🧩', false);
+		if (insertIndex === -1) {
+			sections.push(nextSection);
+			return;
+		}
+
+		sections.splice(insertIndex, 0, nextSection);
+	}
+
+	function getNextCustomSectionNumber() {
+		const currentMax = sections.reduce((max, section) => {
+			if (section.placement !== 'middle') return max;
+
+			const match = section.title.match(/^Section\s+(\d+)$/i);
+			return match ? Math.max(max, Number(match[1])) : max;
+		}, 0);
+
+		return currentMax + 1;
+	}
+
+	function removeSection(sectionId: string) {
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section || section.locked || section.placement !== 'middle' || !browser) return;
+
+		const okay = window.confirm(`Delete ${section.title}? This cannot be undone.`);
+		if (!okay) return;
+
+		sections = sections.filter((item) => item.id !== sectionId);
+
+		if (dragId === sectionId || dropId === sectionId) clearDragState();
+		if (photoDropId === sectionId) photoDropId = '';
+	}
+
+	function handleRemoveSectionClick(event: MouseEvent, sectionId: string) {
+		event.stopPropagation();
+		removeSection(sectionId);
 	}
 
 	function ensureAtLeastOneDay(section: TimeLogSection) {
@@ -446,10 +640,6 @@
 		section.photos = section.photos.filter((photo) => photo.id !== photoId);
 	}
 
-	function getSortedEntries(day: TimeDay) {
-		return [...day.entries].sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
-	}
-
 	function formatDayDate(dateISO: string) {
 		if (!dateISO) return '';
 
@@ -469,6 +659,10 @@
 		return `${weekday}, ${numeric}`;
 	}
 
+	function getSortedEntries(day: TimeDay) {
+		return [...day.entries].sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+	}
+
 	function clearDragState() {
 		dragId = '';
 		dropId = '';
@@ -481,17 +675,25 @@
 		const targetIndex = sections.findIndex((section) => section.id === targetId);
 		if (fromIndex < 0 || targetIndex < 0) return;
 
+		const fromSection = sections[fromIndex];
+		const targetSection = sections[targetIndex];
+		if (!isSectionMovable(fromSection) || !isSectionMovable(targetSection)) return;
+
 		const [moved] = sections.splice(fromIndex, 1);
 		sections.splice(targetIndex, 0, moved);
 	}
 
 	function handleSectionDragStart(sectionId: string) {
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section || !isSectionMovable(section)) return;
 		dragId = sectionId;
 	}
 
 	function handleSectionDragOver(sectionId: string, event: DragEvent) {
+		const targetSection = sections.find((item) => item.id === sectionId);
+		if (!dragId || !targetSection || !isSectionMovable(targetSection) || dragId === sectionId) return;
 		event.preventDefault();
-		if (dragId && dragId !== sectionId) dropId = sectionId;
+		dropId = sectionId;
 	}
 
 	function handleSectionDragLeave(sectionId: string) {
@@ -499,9 +701,50 @@
 	}
 
 	function handleSectionDrop(sectionId: string, event: DragEvent) {
+		if (!dragId) return;
 		event.preventDefault();
 		reorderSections(dragId, sectionId);
 		clearDragState();
+	}
+
+	function downloadBlob(blob: Blob, filename: string) {
+		const url = URL.createObjectURL(blob);
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = filename;
+		anchor.click();
+		URL.revokeObjectURL(url);
+	}
+
+	async function handleExport(format: ExportFormat) {
+		if (format !== 'PDF' || !browser || !previewPages || isExporting) return;
+
+		isExporting = true;
+
+		try {
+			const markup = previewPages.innerHTML;
+			if (!markup) return;
+
+			const response = await fetch('/api/export/pdf', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json'
+				},
+				body: JSON.stringify({
+					markup,
+					filename: exportFileName
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`PDF export failed with status ${response.status}`);
+			}
+
+			const blob = await response.blob();
+			downloadBlob(blob, exportFileName);
+		} finally {
+			isExporting = false;
+		}
 	}
 
 	function handlePhotoZoneDragOver(sectionId: string, event: DragEvent) {
@@ -541,10 +784,9 @@
 
 	function applyFitZoomIfNeeded() {
 		if (!previewViewport || hasUserZoomed) return;
-		const baseWidth = 820;
 		const paddingAllowance = 28;
 		const available = Math.max(320, previewViewport.clientWidth - paddingAllowance);
-		previewZoom = clamp(available / baseWidth, 0.2, 1);
+		previewZoom = clamp(available / previewPageWidth, 0.2, 1);
 	}
 
 	async function zoomPreviewAtCursor(cursorY: number, nextZoom: number) {
@@ -636,60 +878,12 @@
 
 <svelte:window bind:innerWidth={innerWidth} onpaste={handlePaste} />
 
-<div class="h-svh overflow-hidden bg-slate-100 text-slate-900">
-	<div class="mx-auto flex h-full max-w-7xl flex-col p-4 md:p-6">
-		<header class="mb-4 shrink-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-			<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-				<div>
-					<p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Survey Report Generator MVP</p>
-					<h1 class="text-xl font-bold text-slate-800 md:text-2xl">Create Report</h1>
-				</div>
+<div class="page-shell h-svh overflow-hidden text-slate-900">
+	<div class="mx-auto flex h-full max-w-7xl flex-col">
 
-				<div class="flex items-center gap-3">
-					<div class="relative h-12 w-12 shrink-0">
-						<svg class="h-12 w-12 -rotate-90" viewBox="0 0 36 36" aria-hidden="true">
-							<path
-								d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 1 1 0-31"
-								fill="none"
-								stroke="#e2e8f0"
-								stroke-width="3"
-							/>
-							<path
-								d="M18 2.5a15.5 15.5 0 1 1 0 31a15.5 15.5 0 1 1 0-31"
-								fill="none"
-								stroke="#16a34a"
-								stroke-width="3"
-								stroke-linecap="round"
-								stroke-dasharray={`${overallMetrics.percent} 100`}
-							/>
-						</svg>
-
-						<div class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-slate-700">
-							<span>{overallMetrics.percent}%</span>
-						</div>
-					</div>
-
-					<div class="min-w-0">
-						<p class="text-sm font-semibold text-slate-700">Overall Progress</p>
-						<p class="text-xs text-slate-500">{overallMetrics.done} of {overallMetrics.total} complete</p>
-					</div>
-					<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onclick={resetReport}>Reset</button>
-				</div>
-			</div>
-
-			<div class="mt-4">
-				<div class="mb-1 flex items-center justify-between text-xs font-semibold text-slate-600">
-					<span>Completion</span>
-					<span>{overallMetrics.percent}%</span>
-				</div>
-
-				<div class="h-2 overflow-hidden rounded-full bg-slate-200">
-					<div class="h-full rounded-full bg-green-600 transition-all duration-300" style={`width: ${overallMetrics.percent}%`}></div>
-				</div>
-			</div>
-		</header>
-
-		<div class="mb-4 flex shrink-0 items-center gap-2 md:hidden">
+		<!-- MOBILE TABS 
+		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
+		<div class="mb-4 flex shrink-0 items-center gap-2 p-4 md:hidden">
 			<button
 				type="button"
 				class={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${activeTab === 'create' ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}
@@ -707,67 +901,126 @@
 			</button>
 		</div>
 
-		<div class="grid min-h-0 flex-1 gap-4 md:grid-cols-12">
-			<section class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 md:col-span-5">
+		<!-- MAIN 
+		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
+		<main class="grid min-h-0 flex-1 gap-4 md:grid-cols-12 md:px-6 md:pb-6">
+			
+			<!-- CREATE 
+			-------------------------------------------------->
+			<section class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 px-4 pb-4 md:col-span-5 md:px-0 md:pb-0 md:pt-6">
 				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+
+					<!-- create header -->
 					<div class="shrink-0 border-b border-slate-200 px-4 py-3">
-						<div class="flex items-center justify-between gap-3">
-							<div>
-								<h2 class="text-base font-bold text-slate-800">Input Panels</h2>
-								<p class="text-xs text-slate-500">Drag sections to reorder. Autosaves locally.</p>
+						<div class="flex flex-col gap-4">
+							<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+								<div class="min-w-0">
+									<h2 class={panelTitleClass}>Create</h2>
+									<p class={panelSubtitleClass}>Build the report structure, content, and photos section by section.</p>
+								</div>
+
+								<div class="flex flex-wrap gap-2 lg:justify-end">
+									<button
+										type="button"
+										class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
+										onclick={addSection}
+									>
+										Add Section
+									</button>
+
+									<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onclick={resetReport}>Reset</button>
+								</div>
 							</div>
 
-							<button
-								type="button"
-								class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
-								onclick={addSection}
-							>
-								Add Section
-							</button>
+							<div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+								<div class="mb-2 flex items-start justify-between gap-3">
+									<div>
+										<p class={metricLabelClass}>Overall Progress</p>
+										<p class={metricMetaClass}>{overallMetrics.done} of {overallMetrics.total} complete</p>
+									</div>
+
+									<div class="text-right">
+										<p class={metricValueClass}>{overallMetrics.percent}%</p>
+										<p class={metricMetaStrongClass}>complete</p>
+									</div>
+								</div>
+
+								<div class={progressTrackClass}>
+									<div class={progressFillClass} style={`width: ${overallMetrics.percent}%`}></div>
+								</div>
+							</div>
 						</div>
 					</div>
 
+					<!-- create content -->
 					<div class="min-h-0 flex-1 space-y-3 overflow-auto p-4">
 						{#each sections as section (section.id)}
 							{@const metrics = getSectionMetrics(section)}
+							{@const sectionStatusLabel = getSectionStatusLabel(metrics)}
+							{@const sectionStatusTextClass = getSectionStatusTextClass(metrics)}
+							{@const sectionProgressFillClass = getSectionProgressFillClass(metrics)}
+
+							<!-- panels -->
 							<article
-								class:drop-target={dragId && dragId !== section.id && dropId === section.id}
-								class="rounded-2xl border border-slate-200 bg-white"
+								class:drop-target={dragId && dragId !== section.id && dropId === section.id && isSectionMovable(section)}
+								class="relative rounded-2xl border border-slate-200 bg-white"
 								data-dragging={dragId === section.id ? 'true' : 'false'}
-								draggable={true}
+								draggable={isSectionMovable(section)}
 								ondragstart={() => handleSectionDragStart(section.id)}
 								ondragend={clearDragState}
 								ondragover={(event) => handleSectionDragOver(section.id, event)}
 								ondragleave={() => handleSectionDragLeave(section.id)}
 								ondrop={(event) => handleSectionDrop(section.id, event)}
 							>
-								<button type="button" class="block w-full cursor-pointer p-4 text-left" onclick={() => toggleSection(section.id)}>
+								{#if isSectionMovable(section)}
+									<button
+										type="button"
+										class="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-bold text-slate-500 shadow-sm transition hover:border-red-200 hover:text-red-600"
+										aria-label={`Delete ${section.title}`}
+										onclick={(event) => handleRemoveSectionClick(event, section.id)}
+									>
+										✕
+									</button>
+								{/if}
+
+								<!-- panel trigger -->
+								<button
+									type="button"
+									class={`block w-full cursor-pointer p-4 text-left ${isSectionMovable(section) ? 'active:cursor-grabbing' : ''}`}
+									onclick={() => toggleSection(section.id)}
+								>
 									<div class="flex items-start gap-3">
-										<div class="mt-1 cursor-grab text-slate-400">⋮⋮</div>
-										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-lg">{section.icon}</div>
+										<div class={`flex h-10 w-10 shrink-0 items-center justify-center text-3xl ${isSectionMovable(section) ? 'cursor-grab' : ''}`}>{section.icon}</div>
 										<div class="min-w-0 flex-1">
 											<div class="mb-2 flex items-start justify-between gap-3">
 												<div>
-													<h3 class="text-sm font-bold text-slate-800">{section.title}</h3>
+													<div class="flex flex-wrap items-center gap-2">
+														<h3 class="text-sm font-bold text-slate-800">{section.title}</h3>
+														{#if section.locked}
+															<span class="text-xs text-slate-400">🔒</span>
+														{/if}
+													</div>
 													<p class="text-xs text-slate-500">{metrics.done} of {metrics.total} complete</p>
 												</div>
 
 												<div class="text-right">
-													<p class="text-sm font-bold text-slate-700">{metrics.percent}%</p>
-													<p class="text-[11px] text-slate-400">complete</p>
+														<p class="text-sm font-bold text-slate-700">{metrics.percent}%</p>
+													<p class={`${metricStatusCaptionClass} ${sectionStatusTextClass}`}>{sectionStatusLabel}</p>
 												</div>
 											</div>
 
-											<div class="h-2 overflow-hidden rounded-full bg-slate-200">
-												<div class="h-full rounded-full bg-green-600 transition-all duration-300" style={`width: ${metrics.percent}%`}></div>
+											<div class={progressTrackClass}>
+												<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
 											</div>
 										</div>
 									</div>
 								</button>
 
+								<!-- panel content -->
 								{#if section.open}
 									<div class="border-t border-slate-200 p-4">
-										{#if section.type === 'details'}
+										{#if section.type === 'cover'}
+											<!-- details form -->
 											<div class="grid gap-3">
 												{#each detailFields as field (field.key)}
 													<label class="block">
@@ -828,7 +1081,15 @@
 												<button type="button" class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700" onclick={() => addDay(section)}>Add Day</button>
 											</div>
 										{:else}
+									<!-- photos -->
 											<div class="space-y-3">
+												{#if !section.locked}
+													<label class="block">
+														<span class="mb-1 block text-xs font-semibold text-slate-600">Section Title</span>
+														<input bind:value={section.title} class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500" placeholder="Section title" type="text" />
+													</label>
+												{/if}
+
 												<label class="block">
 													<span class="mb-1 block text-xs font-semibold text-slate-600">Section Summary</span>
 													<textarea bind:value={section.description} class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500" placeholder="Add a short description for this section..." rows="3"></textarea>
@@ -884,24 +1145,27 @@
 				</div>
 			</section>
 
-			<section class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 md:col-span-7 md:block">
-				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
-					<div class="shrink-0 border-b border-slate-200 px-4 py-3">
-						<div class="flex items-center justify-between gap-3">
-							<div>
-								<h2 class="text-base font-bold text-slate-800">Live Preview</h2>
-								<p class="text-xs text-slate-500">Scroll to navigate. Ctrl/Cmd + Wheel or pinch to zoom.</p>
-							</div>
-
-							<div class="flex flex-wrap gap-2">
+			<!-- PREVIEW 
+			-------------------------------------------------->
+			<section class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 md:col-span-7 md:block md:pt-6">
+				<div class="flex h-full min-h-0 flex-col">
+					<div class="preview-toolbar shrink-0 px-4 pb-3 md:px-2">
+						<div class="flex w-full flex-wrap gap-2 md:justify-end">
 								{#each exportFormats as format (format)}
-									<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700">{format}</button>
+									<button
+										type="button"
+										class={`rounded-xl border px-3 py-2 text-xs font-semibold ${format === 'PDF' ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}
+										disabled={format !== 'PDF' || isExporting}
+										onclick={() => handleExport(format)}
+									>
+										{format === 'PDF' && isExporting ? 'Exporting…' : format}
+									</button>
 								{/each}
-							</div>
 						</div>
 					</div>
 
-					<div class="min-h-0 flex-1 overflow-hidden p-0">
+					<!-- preview content -->
+					<div class="min-h-0 flex-1 overflow-hidden">
 						<div
 							bind:this={previewViewport}
 							role="region"
@@ -914,7 +1178,7 @@
 						>
 							<div class="preview-stage">
 								<div class="preview-scale" style={`--preview-zoom: ${previewZoom || 1}`}>
-									<div class="preview-pages">
+									<div bind:this={previewPages} class="preview-pages">
 										<div class="preview-page">
 											<div class="preview-page-inner">
 												<h1 class="text-2xl font-bold text-slate-900">{reportSection?.fields.reportTitle || 'Survey Report'}</h1>
@@ -934,24 +1198,21 @@
 											<div class="preview-page-inner">
 												<h2 class="mb-3 text-lg font-bold text-slate-900">Table of Contents</h2>
 												<div class="space-y-2 text-sm">
-													{#each sections as section, index (section.id)}
+													{#each tableOfContentsEntries as item (item.id)}
 														<div class="grid grid-cols-[1fr_auto] gap-3 border-b border-dashed border-slate-200 pb-1">
-															<span class="font-medium text-slate-700">{section.title}</span>
-															<span class="text-slate-500">{index + 3}</span>
+															<span class="font-medium text-slate-700">{item.title}</span>
+															<span class="text-slate-500">{item.page}</span>
 														</div>
 													{/each}
 												</div>
 											</div>
 										</div>
 
-										{#each sections as section (section.id)}
+										{#each previewContentSections as section (section.id)}
 											<div class="preview-page">
 												<div class="preview-page-inner">
-													<h2 class="mb-3 text-lg font-bold text-slate-900">{section.title}</h2>
-
-													{#if section.type === 'details'}
-														<p class="text-sm text-slate-600">Core report details captured above.</p>
-													{:else if section.type === 'time-log'}
+													{#if section.type === 'time-log'}
+														<h2 class="mb-3 text-lg font-bold text-slate-900">{section.title}</h2>
 														{#each section.days as day (day.id)}
 															<p class="mb-2 text-sm font-semibold text-slate-700">{formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
 															<ul class="mb-4 space-y-2 text-sm">
@@ -964,6 +1225,7 @@
 															</ul>
 														{/each}
 													{:else}
+														<h2 class="mb-3 text-lg font-bold text-slate-900">{section.title}</h2>
 														{#if section.description}
 															<p class="mb-3 text-sm text-slate-600">{section.description}</p>
 														{/if}
@@ -991,7 +1253,7 @@
 					</div>
 				</div>
 			</section>
-		</div>
+		</main>
 	</div>
 </div>
 
@@ -1009,19 +1271,31 @@
 		aspect-ratio: 4 / 3;
 	}
 
+	.page-shell {
+		background-color: #eef2f7;
+		background-image: radial-gradient(circle at 1px 1px, rgba(100, 116, 139, 0.24) 1.05px, transparent 0);
+		background-size: 16px 16px;
+	}
+
 	.preview-viewport {
 		height: 100%;
 		width: 100%;
 		overflow-y: auto;
 		overflow-x: hidden;
-		background: #f1f5f9;
-		padding: 16px 10px;
+		background: transparent;
+		padding: 8px 4px 24px;
 		touch-action: pan-y pinch-zoom;
+	}
+
+	.preview-toolbar {
+		position: relative;
+		z-index: 1;
 	}
 
 	.preview-stage {
 		position: relative;
 		width: 100%;
+		padding: 8px 0 64px;
 	}
 
 	.preview-scale {
@@ -1040,12 +1314,14 @@
 	}
 
 	.preview-page {
-		width: 820px;
+		width: 8.5in;
+		min-height: 11in;
+		box-sizing: border-box;
 		aspect-ratio: 8.5 / 11;
 		background: #fff;
-		border: 1px solid #e2e8f0;
+		border: 1px solid #dbe3ef;
 		border-radius: 16px;
-		box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+		box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
 		overflow: hidden;
 	}
 
@@ -1061,7 +1337,6 @@
 
 	@media (max-width: 767px) {
 		.preview-page {
-			width: 760px;
 			border-radius: 14px;
 		}
 

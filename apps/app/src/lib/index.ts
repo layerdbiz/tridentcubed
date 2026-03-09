@@ -2,4 +2,3 @@
 
 // export * from "./icons/icons.remote.js";
 // export * from "./team/team.remote.js";
-export { default as Disclosure } from "./Disclosure.svelte";
