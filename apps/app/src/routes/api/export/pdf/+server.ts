@@ -1,12 +1,13 @@
-import puppeteer from "puppeteer";
 import { json } from "@sveltejs/kit";
-
-import {
-	createExportSession,
-	deleteExportSession,
-} from "$lib/server/export-session-store";
+import puppeteer from "puppeteer";
 
 import type { RequestHandler } from "./$types";
+
+const exportSessionStorageKeyPrefix = "report-export:";
+
+function storeExportSession(storageKey: string, sessionValue: string) {
+	sessionStorage.setItem(storageKey, sessionValue);
+}
 
 const pdfOptions = {
 	format: "Letter",
@@ -36,11 +37,12 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
-	let token = "";
 
 	try {
-		const session = createExportSession({ markup, filename });
-		token = session.token;
+		const token = crypto.randomUUID();
+		const storageKey = `${exportSessionStorageKeyPrefix}${token}`;
+		const sessionValue = JSON.stringify({ markup, filename });
+		const originUrl = new URL("/", request.url).href;
 		const printUrl = new URL(`/export/print/${token}`, request.url).href;
 
 		browser = await puppeteer.launch({
@@ -51,13 +53,33 @@ export const POST: RequestHandler = async ({ request }) => {
 		const page = await browser.newPage();
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
 		await page.emulateMediaType("screen");
-		const response = await page.goto(printUrl, { waitUntil: "networkidle0" });
+		const originResponse = await page.goto(originUrl, {
+			waitUntil: "networkidle0",
+		});
 
-		if (!response || !response.ok()) {
+		if (!originResponse || !originResponse.ok()) {
 			throw new Error(
-				`Print route failed with status ${response?.status() ?? "unknown"}`,
+				`App shell failed with status ${originResponse?.status() ?? "unknown"}`,
 			);
 		}
+
+		await page.evaluate(storeExportSession, storageKey, sessionValue);
+
+		const printResponse = await page.goto(printUrl, {
+			waitUntil: "networkidle0",
+		});
+
+		if (!printResponse || !printResponse.ok()) {
+			throw new Error(
+				`Print route failed with status ${
+					printResponse?.status() ?? "unknown"
+				}`,
+			);
+		}
+
+		await page.waitForFunction(
+			() => document.querySelectorAll(".preview-page").length > 0,
+		);
 
 		await page.evaluate(async () => {
 			await document.fonts.ready;
@@ -90,7 +112,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		console.error("PDF export failed", error);
 		return json({ message: "PDF export failed." }, { status: 500 });
 	} finally {
-		if (token) deleteExportSession(token);
 		if (browser) await browser.close();
 	}
 };

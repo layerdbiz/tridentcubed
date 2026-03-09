@@ -1,16 +1,49 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 	import type { PageProps } from './$types';
 
+	interface ExportSessionPayload {
+		markup: string;
+		filename: string;
+	}
+
+	const exportSessionStorageKeyPrefix = 'report-export:';
+
 	let { data }: PageProps = $props();
+	let markup = $state('');
+	let filename = $state('survey-report.pdf');
+
+	onMount(() => {
+		if (!browser) return;
+
+		const storageKey = `${exportSessionStorageKeyPrefix}${data.token}`;
+		const raw = sessionStorage.getItem(storageKey);
+		if (!raw) return;
+
+		try {
+			const session = JSON.parse(raw) as Partial<ExportSessionPayload>;
+			markup = typeof session.markup === 'string' ? session.markup : '';
+			filename =
+				typeof session.filename === 'string' && session.filename.trim()
+					? session.filename.trim()
+					: 'survey-report.pdf';
+		} catch {
+			markup = '';
+			filename = 'survey-report.pdf';
+		} finally {
+			sessionStorage.removeItem(storageKey);
+		}
+	});
 </script>
 
 <svelte:head>
-	<title>{data.filename}</title>
+	<title>{filename}</title>
 </svelte:head>
 
 <div class="print-root">
 	<div class="preview-pages">
-		{@html data.markup}
+		{@html markup}
 	</div>
 </div>
 
