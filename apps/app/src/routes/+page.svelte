@@ -22,6 +22,8 @@
 		name: string;
 		caption: string;
 		src: string;
+		width: number;
+		height: number;
 	}
 
 	interface DetailsFields {
@@ -77,6 +79,7 @@
 	}
 
 	type SectionStatus = 'todo' | 'in-progress' | 'complete';
+	type PhotoOrientation = 'portrait' | 'landscape' | 'square';
 
 	interface SectionTemplate<T extends Section = Section> {
 		id: string;
@@ -99,8 +102,16 @@
 	const metricStatusCaptionClass = 'text-[11px] uppercase tracking-[0.16em]';
 	const progressTrackClass = 'h-2.5 overflow-hidden rounded-full bg-slate-200';
 	const progressFillClass = 'h-full rounded-full bg-green-500 transition-all duration-300';
+	const overallProgressRingRadius = 38;
+	const overallProgressRingCircumference = 2 * Math.PI * overallProgressRingRadius;
 	const previewPageWidth = 8.5 * 96;
 	const previewPageHeight = 11 * 96;
+	const previewZoomMin = 0.1;
+	const previewZoomMax = 1;
+	const previewDesktopPadding = 28;
+	const previewMobilePadding = 32;
+	const previewMobileGap = 16;
+	const previewMobileVisiblePages = 1.5;
 	const detailFields: Array<{
 		key: keyof DetailsFields;
 		label: string;
@@ -352,7 +363,9 @@
 			id: typeof (value as PhotoItem)?.id === 'string' ? (value as PhotoItem).id : nextId('photo'),
 			name: String((value as PhotoItem)?.name || 'Photo'),
 			caption: String((value as PhotoItem)?.caption || (value as PhotoItem)?.name || 'Photo'),
-			src: String((value as PhotoItem)?.src || '')
+			src: String((value as PhotoItem)?.src || ''),
+			width: Math.max(0, Number((value as PhotoItem)?.width || 0)),
+			height: Math.max(0, Number((value as PhotoItem)?.height || 0))
 		};
 	}
 
@@ -525,6 +538,11 @@
 		return 'bg-blue-500';
 	}
 
+	function getProgressRingOffset(percent: number) {
+		const normalized = clamp(percent, 0, 100);
+		return overallProgressRingCircumference * (1 - normalized / 100);
+	}
+
 	function toggleSection(sectionId: string) {
 		const current = sections.find((section) => section.id === sectionId);
 		if (!current) return;
@@ -613,6 +631,53 @@
 		});
 	}
 
+	function loadImageDimensions(src: string) {
+		return new Promise<{ width: number; height: number }>((resolve) => {
+			if (!browser || !src) {
+				resolve({ width: 0, height: 0 });
+				return;
+			}
+
+			const image = new Image();
+			image.onload = () => resolve({ width: image.naturalWidth || 0, height: image.naturalHeight || 0 });
+			image.onerror = () => resolve({ width: 0, height: 0 });
+			image.src = src;
+		});
+	}
+
+	async function createPhotoItem(file: File): Promise<PhotoItem> {
+		const src = await fileToDataUrl(file);
+		const { width, height } = await loadImageDimensions(src);
+
+		return {
+			id: nextId('photo'),
+			name: file.name || 'Photo',
+			caption: file.name ? file.name.replace(/\.[^.]+$/, '') : 'Photo',
+			src,
+			width,
+			height
+		};
+	}
+
+	async function hydratePhotoDimensions(items: Section[]) {
+		let changed = false;
+
+		for (const section of items) {
+			for (const photo of section.photos) {
+				if (photo.width > 0 && photo.height > 0) continue;
+
+				const { width, height } = await loadImageDimensions(photo.src);
+				if (!width || !height) continue;
+
+				photo.width = width;
+				photo.height = height;
+				changed = true;
+			}
+		}
+
+		return changed;
+	}
+
 	async function addPhotosToSection(sectionId: string, fileList: FileList | File[] | null | undefined) {
 		const section = sections.find((item) => item.id === sectionId);
 		if (!section || section.type !== 'photos' || !fileList?.length) return;
@@ -620,13 +685,7 @@
 		for (const file of Array.from(fileList)) {
 			if (!file.type.startsWith('image/')) continue;
 
-			const src = await fileToDataUrl(file);
-			section.photos.push({
-				id: nextId('photo'),
-				name: file.name || 'Photo',
-				caption: file.name ? file.name.replace(/\.[^.]+$/, '') : 'Photo',
-				src
-			});
+			section.photos.push(await createPhotoItem(file));
 		}
 	}
 
@@ -661,6 +720,38 @@
 
 	function getSortedEntries(day: TimeDay) {
 		return [...day.entries].sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+	}
+
+	function getPhotoOrientation(photo: PhotoItem): PhotoOrientation {
+		if (!photo.width || !photo.height) return 'square';
+		if (photo.width / photo.height >= 1.1) return 'landscape';
+		if (photo.height / photo.width >= 1.1) return 'portrait';
+		return 'square';
+	}
+
+	function getPreviewPhotoGridClass(section: PhotosSection) {
+		if (section.photos.length <= 1) return 'grid gap-3';
+		return 'grid grid-cols-2 gap-3';
+	}
+
+	function getPreviewPhotoCardClass(section: PhotosSection, photo: PhotoItem) {
+		void section;
+		void photo;
+		return 'flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white';
+	}
+
+	function getPreviewPhotoFrameHeight(section: PhotosSection, photo: PhotoItem) {
+		const orientation = getPhotoOrientation(photo);
+
+		if (section.photos.length === 1) {
+			return orientation === 'portrait' ? '5.6in' : '4.7in';
+		}
+
+		if (section.photos.length === 2) {
+			return orientation === 'portrait' ? '3.55in' : '2.45in';
+		}
+
+		return orientation === 'portrait' ? '2.7in' : '1.9in';
 	}
 
 	function clearDragState() {
@@ -722,7 +813,9 @@
 		isExporting = true;
 
 		try {
-			const markup = previewPages.innerHTML;
+			const markup = Array.from(previewPages.querySelectorAll('.preview-page'))
+				.map((page) => page.outerHTML)
+				.join('');
 			if (!markup) return;
 
 			const response = await fetch('/api/export/pdf', {
@@ -783,10 +876,69 @@
 	}
 
 	function applyFitZoomIfNeeded() {
-		if (!previewViewport || hasUserZoomed) return;
-		const paddingAllowance = 28;
-		const available = Math.max(320, previewViewport.clientWidth - paddingAllowance);
-		previewZoom = clamp(available / previewPageWidth, 0.2, 1);
+		if (!previewViewport) return;
+		const bounds = getPreviewZoomBounds();
+
+		if (hasUserZoomed) {
+			previewZoom = clamp(previewZoom || bounds.initial, bounds.min, bounds.max);
+			return;
+		}
+
+		previewZoom = bounds.initial;
+	}
+
+	function getPreviewZoomBounds() {
+		if (!previewViewport) {
+			return {
+				min: previewZoomMin,
+				max: previewZoomMax,
+				initial: previewZoomMax
+			};
+		}
+
+		const availableWidth = Math.max(
+			200,
+			previewViewport.clientWidth - (isDesktop ? previewDesktopPadding : previewMobilePadding)
+		);
+		const fitWidthZoom = clamp(availableWidth / previewPageWidth, previewZoomMin, previewZoomMax);
+
+		if (isDesktop) {
+			return {
+				min: previewZoomMin,
+				max: fitWidthZoom,
+				initial: fitWidthZoom
+			};
+		}
+
+		const availableHeight = Math.max(200, previewViewport.clientHeight - 32);
+		const fitVisiblePagesZoom = clamp(
+			(availableHeight - previewMobileGap * 0.5) / (previewPageHeight * previewMobileVisiblePages),
+			previewZoomMin,
+			fitWidthZoom
+		);
+
+		return {
+			min: previewZoomMin,
+			max: fitWidthZoom,
+			initial: Math.min(fitWidthZoom, fitVisiblePagesZoom)
+		};
+	}
+
+	async function stepPreviewZoom(direction: 'in' | 'out') {
+		if (!previewViewport) return;
+
+		const bounds = getPreviewZoomBounds();
+		const step = isDesktop ? 0.08 : 0.05;
+		const delta = direction === 'in' ? step : -step;
+		const nextZoom = clamp((previewZoom || bounds.initial) + delta, bounds.min, bounds.max);
+
+		hasUserZoomed = true;
+		await zoomPreviewAtCursor(previewViewport.clientHeight / 2, nextZoom);
+	}
+
+	function resetPreviewZoom() {
+		hasUserZoomed = false;
+		applyFitZoomIfNeeded();
 	}
 
 	async function zoomPreviewAtCursor(cursorY: number, nextZoom: number) {
@@ -799,16 +951,17 @@
 	}
 
 	async function handlePreviewWheel(event: WheelEvent) {
-		if (!(event.ctrlKey || event.metaKey) || !previewViewport) return;
+		if (!isDesktop || !(event.ctrlKey || event.metaKey) || !previewViewport) return;
 
 		event.preventDefault();
 		hasUserZoomed = true;
 
+		const bounds = getPreviewZoomBounds();
 		const rect = previewViewport.getBoundingClientRect();
 		const cursorY = clamp(event.clientY - rect.top, 0, rect.height);
 		const delta = Math.sign(event.deltaY);
 		const step = 0.08;
-		const nextZoom = clamp((previewZoom || 1) + (delta > 0 ? -step : step), 0.2, 2);
+		const nextZoom = clamp((previewZoom || bounds.initial) + (delta > 0 ? -step : step), bounds.min, bounds.max);
 		await zoomPreviewAtCursor(cursorY, nextZoom);
 	}
 
@@ -831,12 +984,13 @@
 
 		event.preventDefault();
 
+		const bounds = getPreviewZoomBounds();
 		const [first, second] = Array.from(event.touches);
 		const dx = first.clientX - second.clientX;
 		const dy = first.clientY - second.clientY;
 		const distance = Math.hypot(dx, dy);
 		const ratio = distance / pinch.startDist;
-		const nextZoom = clamp(pinch.startZoom * ratio, 0.2, 2);
+		const nextZoom = clamp(pinch.startZoom * ratio, bounds.min, bounds.max);
 		await zoomPreviewAtCursor(pinch.midY, nextZoom);
 	}
 
@@ -858,6 +1012,8 @@
 		const next = loadState();
 		syncIdCounterFromSections(next.sections);
 		applyState(next);
+		const didHydratePhotoDimensions = await hydratePhotoDimensions(next.sections);
+		if (didHydratePhotoDimensions) sections = [...sections];
 		hydrated = true;
 		await tick();
 		applyFitZoomIfNeeded();
@@ -879,7 +1035,7 @@
 <svelte:window bind:innerWidth={innerWidth} onpaste={handlePaste} />
 
 <div class="page-shell h-svh overflow-hidden text-slate-900">
-	<div class="mx-auto flex h-full max-w-7xl flex-col">
+	<div class="flex h-full min-w-0 flex-col">
 
 		<!-- MOBILE TABS 
 		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
@@ -903,11 +1059,11 @@
 
 		<!-- MAIN 
 		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
-		<main class="grid min-h-0 flex-1 gap-4 md:grid-cols-12 md:px-6 md:pb-6">
+		<main class="grid min-h-0 flex-1 gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:px-6 md:pb-6 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
 			
 			<!-- CREATE 
 			-------------------------------------------------->
-			<section class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 px-4 pb-4 md:col-span-5 md:px-0 md:pb-0 md:pt-6">
+			<section class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
 				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
 
 					<!-- create header -->
@@ -919,35 +1075,56 @@
 									<p class={panelSubtitleClass}>Build the report structure, content, and photos section by section.</p>
 								</div>
 
-								<div class="flex flex-wrap gap-2 lg:justify-end">
-									<button
-										type="button"
-										class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
-										onclick={addSection}
-									>
-										Add Section
-									</button>
+								<div class="justify-self-start lg:justify-self-end">
+									<div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+										<div class="flex items-center gap-5">
+											<div class="min-w-0">
+												<p class={metricLabelClass}>Overall Progress</p>
+												<p class={metricMetaClass}>{overallMetrics.done} of {overallMetrics.total} complete</p>
+												<p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-green-600">Complete</p>
+											</div>
 
-									<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onclick={resetReport}>Reset</button>
+											<div class="relative h-26 w-26 shrink-0">
+												<svg viewBox="0 0 96 96" class="h-full w-full overflow-visible -rotate-90" aria-hidden="true">
+													<circle
+														cx="48"
+														cy="48"
+														r={overallProgressRingRadius}
+														fill="none"
+														stroke="#d9e1ec"
+														stroke-width="8"
+													/>
+													<circle
+														cx="48"
+														cy="48"
+														r={overallProgressRingRadius}
+														fill="none"
+														stroke="#22c55e"
+														stroke-linecap="round"
+														stroke-width="8"
+														stroke-dasharray={overallProgressRingCircumference}
+														stroke-dashoffset={getProgressRingOffset(overallMetrics.percent)}
+													/>
+												</svg>
+												<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+													<span class="text-lg font-bold text-slate-800">{overallMetrics.percent}%</span>
+												</div>
+											</div>
+										</div>
+									</div>
 								</div>
 							</div>
 
-							<div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-								<div class="mb-2 flex items-start justify-between gap-3">
-									<div>
-										<p class={metricLabelClass}>Overall Progress</p>
-										<p class={metricMetaClass}>{overallMetrics.done} of {overallMetrics.total} complete</p>
-									</div>
+							<div class="flex flex-wrap gap-2 lg:justify-end">
+								<button
+									type="button"
+									class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
+									onclick={addSection}
+								>
+									Add Section
+								</button>
 
-									<div class="text-right">
-										<p class={metricValueClass}>{overallMetrics.percent}%</p>
-										<p class={metricMetaStrongClass}>complete</p>
-									</div>
-								</div>
-
-								<div class={progressTrackClass}>
-									<div class={progressFillClass} style={`width: ${overallMetrics.percent}%`}></div>
-								</div>
+								<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onclick={resetReport}>Reset</button>
 							</div>
 						</div>
 					</div>
@@ -1122,7 +1299,7 @@
 													<div class="grid grid-cols-2 gap-3">
 														{#each section.photos as photo (photo.id)}
 															<div class="rounded-2xl border border-slate-200 bg-white p-2">
-																<div class="photo-tile relative overflow-hidden rounded-xl bg-slate-100">
+																<div class="relative aspect-4/3 overflow-hidden rounded-xl bg-slate-100">
 																	<img alt={photo.caption || photo.name} class="h-full w-full object-cover" src={photo.src} />
 																	<button type="button" aria-label="Remove photo" class="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-700 shadow" onclick={() => removePhoto(section, photo.id)}>✕</button>
 																</div>
@@ -1147,10 +1324,34 @@
 
 			<!-- PREVIEW 
 			-------------------------------------------------->
-			<section class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 md:col-span-7 md:block md:pt-6">
+			<section class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
 				<div class="flex h-full min-h-0 flex-col">
-					<div class="preview-toolbar shrink-0 px-4 pb-3 md:px-2">
-						<div class="flex w-full flex-wrap gap-2 md:justify-end">
+					<div class="relative z-10 shrink-0 px-4 pb-3 md:px-2">
+						<div class="flex w-full flex-wrap items-center gap-2 md:justify-end">
+							<div class="mr-auto flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-1.5 shadow-sm">
+								<button
+									type="button"
+									class="rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+									onclick={() => stepPreviewZoom('out')}
+								>
+									-
+								</button>
+								<button
+									type="button"
+									class="rounded-lg px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 hover:bg-slate-100"
+									onclick={resetPreviewZoom}
+								>
+									{Math.round((previewZoom || 1) * 100)}%
+								</button>
+								<button
+									type="button"
+									class="rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+									onclick={() => stepPreviewZoom('in')}
+								>
+									+
+								</button>
+							</div>
+
 								{#each exportFormats as format (format)}
 									<button
 										type="button"
@@ -1165,84 +1366,93 @@
 					</div>
 
 					<!-- preview content -->
-					<div class="min-h-0 flex-1 overflow-hidden">
+					<div class="min-h-0 flex-1">
 						<div
 							bind:this={previewViewport}
 							role="region"
 							aria-label="Preview pages"
-							class="preview-viewport"
+							class="h-full w-full overflow-y-auto overflow-x-hidden bg-transparent px-3 pb-6 pt-2 md:px-1"
+							style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`}
 							onwheel={handlePreviewWheel}
 							ontouchstart={handlePreviewTouchStart}
 							ontouchmove={handlePreviewTouchMove}
 							ontouchend={handlePreviewTouchEnd}
 						>
-							<div class="preview-stage">
-								<div class="preview-scale" style={`--preview-zoom: ${previewZoom || 1}`}>
-									<div bind:this={previewPages} class="preview-pages">
-										<div class="preview-page">
-											<div class="preview-page-inner">
-												<h1 class="text-2xl font-bold text-slate-900">{reportSection?.fields.reportTitle || 'Survey Report'}</h1>
+							<div class="relative w-full px-1 pb-10 pt-0 md:px-0 md:pb-16 md:pt-2">
+								<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${previewPageWidth}px; --preview-page-height: ${previewPageHeight}px`}>
+									<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">
+										<div class="preview-sheet">
+											<div class="preview-page">
+												<div class="preview-page-inner">
+													<h1 class="text-6xl font-bold text-slate-900">{reportSection?.fields.reportTitle || 'Survey Report'}</h1>
 
-												<div class="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-													{#each coverMeta as item (item.label)}
-														<div class="grid grid-cols-[100px_1fr] gap-3">
-															<span class="font-semibold text-slate-600">{item.label}:</span>
-															<span class="text-slate-800">{item.value}</span>
-														</div>
-													{/each}
+													<div class="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+														{#each coverMeta as item (item.label)}
+															<div class="grid grid-cols-[100px_1fr] gap-3">
+																<span class="font-semibold text-slate-600">{item.label}:</span>
+																<span class="text-slate-800">{item.value}</span>
+															</div>
+														{/each}
+													</div>
 												</div>
 											</div>
 										</div>
 
-										<div class="preview-page">
-											<div class="preview-page-inner">
-												<h2 class="mb-3 text-lg font-bold text-slate-900">Table of Contents</h2>
-												<div class="space-y-2 text-sm">
-													{#each tableOfContentsEntries as item (item.id)}
-														<div class="grid grid-cols-[1fr_auto] gap-3 border-b border-dashed border-slate-200 pb-1">
-															<span class="font-medium text-slate-700">{item.title}</span>
-															<span class="text-slate-500">{item.page}</span>
-														</div>
-													{/each}
+										<div class="preview-sheet">
+											<div class="preview-page">
+												<div class="preview-page-inner">
+													<h2 class="mb-3 text-4xl font-bold text-slate-900">Table of Contents</h2>
+													<div class="space-y-2 text-sm">
+														{#each tableOfContentsEntries as item (item.id)}
+															<div class="grid grid-cols-[1fr_auto] gap-3 border-b border-dashed border-slate-200 pb-1">
+																<span class="font-medium text-slate-700">{item.title}</span>
+																<span class="text-slate-500">{item.page}</span>
+															</div>
+														{/each}
+													</div>
 												</div>
 											</div>
 										</div>
 
 										{#each previewContentSections as section (section.id)}
-											<div class="preview-page">
-												<div class="preview-page-inner">
-													{#if section.type === 'time-log'}
-														<h2 class="mb-3 text-lg font-bold text-slate-900">{section.title}</h2>
-														{#each section.days as day (day.id)}
-															<p class="mb-2 text-sm font-semibold text-slate-700">{formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
-															<ul class="mb-4 space-y-2 text-sm">
-																{#each getSortedEntries(day) as entry (entry.id)}
-																	<li class="flex gap-3">
-																		<span class="w-14 shrink-0 font-bold text-slate-800">{entry.time || '----'}</span>
-																		<span class="text-slate-700">{entry.text || 'No activity entered'}</span>
-																	</li>
-																{/each}
-															</ul>
-														{/each}
-													{:else}
-														<h2 class="mb-3 text-lg font-bold text-slate-900">{section.title}</h2>
-														{#if section.description}
-															<p class="mb-3 text-sm text-slate-600">{section.description}</p>
-														{/if}
-
-														<div class="grid gap-3 sm:grid-cols-2">
-															{#if section.photos.length}
-																{#each section.photos as photo (photo.id)}
-																	<figure class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-																		<img alt={photo.caption || photo.name} class="h-48 w-full object-cover" src={photo.src} />
-																		<figcaption class="p-3 text-xs text-slate-600">{photo.caption || photo.name || 'Photo'}</figcaption>
-																	</figure>
-																{/each}
-															{:else}
-																<div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">No photos added yet.</div>
+											<div class="preview-sheet">
+												<div class="preview-page">
+													<div class="preview-page-inner">
+														{#if section.type === 'time-log'}
+															<h2 class="mb-3 text-4xl font-bold text-slate-900">{section.title}</h2>
+															{#each section.days as day (day.id)}
+																<p class="mb-2 text-sm font-semibold text-slate-700">{formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
+																<ul class="mb-4 space-y-2 text-sm">
+																	{#each getSortedEntries(day) as entry (entry.id)}
+																		<li class="flex gap-3">
+																			<span class="w-14 shrink-0 font-bold text-slate-800">{entry.time || '----'}</span>
+																			<span class="text-slate-700">{entry.text || 'No activity entered'}</span>
+																		</li>
+																	{/each}
+																</ul>
+															{/each}
+														{:else}
+															<h2 class="mb-3 text-4xl font-bold text-slate-900">{section.title}</h2>
+															{#if section.description}
+																<p class="mb-3 text-sm text-slate-600">{section.description}</p>
 															{/if}
-														</div>
-													{/if}
+
+															<div class={getPreviewPhotoGridClass(section)}>
+																{#if section.photos.length}
+																	{#each section.photos as photo (photo.id)}
+																		<figure class={getPreviewPhotoCardClass(section, photo)}>
+																			<div class="grid place-items-center bg-slate-50 p-3" style={`height: ${getPreviewPhotoFrameHeight(section, photo)}`}> 
+																				<img alt={photo.caption || photo.name} class="h-full w-full object-contain" src={photo.src} />
+																			</div>
+																			<figcaption class="p-3 text-xs text-slate-600">{photo.caption || photo.name || 'Photo'}</figcaption>
+																		</figure>
+																	{/each}
+																{:else}
+																	<div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">No photos added yet.</div>
+																{/if}
+															</div>
+														{/if}
+													</div>
 												</div>
 											</div>
 										{/each}
@@ -1267,67 +1477,39 @@
 		outline-offset: 4px;
 	}
 
-	.photo-tile {
-		aspect-ratio: 4 / 3;
-	}
-
 	.page-shell {
 		background-color: #eef2f7;
 		background-image: radial-gradient(circle at 1px 1px, rgba(100, 116, 139, 0.24) 1.05px, transparent 0);
 		background-size: 16px 16px;
 	}
 
-	.preview-viewport {
-		height: 100%;
-		width: 100%;
-		overflow-y: auto;
-		overflow-x: hidden;
-		background: transparent;
-		padding: 8px 4px 24px;
-		touch-action: pan-y pinch-zoom;
-	}
-
-	.preview-toolbar {
+	.preview-sheet {
 		position: relative;
-		z-index: 1;
-	}
-
-	.preview-stage {
-		position: relative;
-		width: 100%;
-		padding: 8px 0 64px;
-	}
-
-	.preview-scale {
-		position: relative;
-		left: 50%;
-		transform-origin: top center;
-		transform: translateX(-50%) scale(var(--preview-zoom, 1));
-		will-change: transform;
-	}
-
-	.preview-pages {
-		display: flex;
-		flex-direction: column;
-		gap: 16px;
-		align-items: center;
+		width: calc(var(--preview-page-width) * var(--preview-zoom, 1));
+		height: calc(var(--preview-page-height) * var(--preview-zoom, 1));
+		flex-shrink: 0;
 	}
 
 	.preview-page {
+		position: absolute;
+		top: 0;
+		left: 0;
 		width: 8.5in;
-		min-height: 11in;
+		height: 11in;
 		box-sizing: border-box;
 		aspect-ratio: 8.5 / 11;
 		background: #fff;
-		border: 1px solid #dbe3ef;
+		border: 2px solid #d2d8e2;
 		border-radius: 16px;
-		box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
 		overflow: hidden;
+		transform-origin: top left;
+		transform: scale(var(--preview-zoom, 1));
+		will-change: transform;
 	}
 
 	.preview-page-inner {
 		height: 100%;
-		padding: 28px;
+		padding: 0.5in;
 		overflow: hidden;
 	}
 
@@ -1338,10 +1520,7 @@
 	@media (max-width: 767px) {
 		.preview-page {
 			border-radius: 14px;
-		}
-
-		.preview-page-inner {
-			padding: 18px;
+			box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
 		}
 	}
 </style>
