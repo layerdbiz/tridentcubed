@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { Button } from '@layerd/ui';
-	import { Disclosure } from '$lib';
 	import { browser } from '$app/environment';
 	import { onMount, tick } from 'svelte';
 
 	type Tab = 'create' | 'preview';
+	type SectionType = 'details' | 'time-log' | 'photos';
+
 	interface PhotoItem {
 		id: string;
 		name: string;
@@ -367,7 +368,11 @@
 		return { done, total, percent: clamp(toPercent(done, total), 0, 100) };
 	}
 
-	function setSectionOpen(sectionId: string, nextOpen: boolean) {
+	function toggleSection(sectionId: string) {
+		const current = sections.find((section) => section.id === sectionId);
+		if (!current) return;
+
+		const nextOpen = !current.open;
 		for (const section of sections) {
 			section.open = section.id === sectionId ? nextOpen : false;
 		}
@@ -668,7 +673,7 @@
 						<p class="text-sm font-semibold text-slate-700">Overall Progress</p>
 						<p class="text-xs text-slate-500">{overallMetrics.done} of {overallMetrics.total} complete</p>
 					</div>
-					<Button appearance="outline" label="Reset" size="xs" class="border border-slate-300" onclick={resetReport} />
+					<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onclick={resetReport}>Reset</button>
 				</div>
 			</div>
 
@@ -685,8 +690,21 @@
 		</header>
 
 		<div class="mb-4 flex shrink-0 items-center gap-2 md:hidden">
-			<Button label="Create" onclick={() => (activeTab = 'create')} />
-			<Button label="Preview" onclick={() => (activeTab = 'preview')} />
+			<button
+				type="button"
+				class={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${activeTab === 'create' ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}
+				onclick={() => (activeTab = 'create')}
+			>
+				Create
+			</button>
+
+			<button
+				type="button"
+				class={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${activeTab === 'preview' ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}
+				onclick={() => (activeTab = 'preview')}
+			>
+				Preview
+			</button>
 		</div>
 
 		<div class="grid min-h-0 flex-1 gap-4 md:grid-cols-12">
@@ -695,35 +713,60 @@
 					<div class="shrink-0 border-b border-slate-200 px-4 py-3">
 						<div class="flex items-center justify-between gap-3">
 							<div>
-								<h2 class="font-bold text-slate-800">Input Panels</h2>
+								<h2 class="text-base font-bold text-slate-800">Input Panels</h2>
 								<p class="text-xs text-slate-500">Drag sections to reorder. Autosaves locally.</p>
 							</div>
 
-							<Button label="Add Section" primary onclick={addSection} />
+							<button
+								type="button"
+								class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
+								onclick={addSection}
+							>
+								Add Section
+							</button>
 						</div>
 					</div>
 
 					<div class="min-h-0 flex-1 space-y-3 overflow-auto p-4">
 						{#each sections as section (section.id)}
 							{@const metrics = getSectionMetrics(section)}
-							<Disclosure
-								icon={section.icon}
-								title={section.title}
-								open={section.open}
-								done={metrics.done}
-								total={metrics.total}
-								percent={metrics.percent}
+							<article
+								class:drop-target={dragId && dragId !== section.id && dropId === section.id}
+								class="rounded-2xl border border-slate-200 bg-white"
+								data-dragging={dragId === section.id ? 'true' : 'false'}
 								draggable={true}
-								dragging={dragId === section.id}
-								dropTarget={Boolean(dragId && dragId !== section.id && dropId === section.id)}
-								onToggle={(isOpen) => setSectionOpen(section.id, isOpen)}
 								ondragstart={() => handleSectionDragStart(section.id)}
 								ondragend={clearDragState}
 								ondragover={(event) => handleSectionDragOver(section.id, event)}
 								ondragleave={() => handleSectionDragLeave(section.id)}
 								ondrop={(event) => handleSectionDrop(section.id, event)}
 							>
-								<div>
+								<button type="button" class="block w-full cursor-pointer p-4 text-left" onclick={() => toggleSection(section.id)}>
+									<div class="flex items-start gap-3">
+										<div class="mt-1 cursor-grab text-slate-400">⋮⋮</div>
+										<div class="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-lg">{section.icon}</div>
+										<div class="min-w-0 flex-1">
+											<div class="mb-2 flex items-start justify-between gap-3">
+												<div>
+													<h3 class="text-sm font-bold text-slate-800">{section.title}</h3>
+													<p class="text-xs text-slate-500">{metrics.done} of {metrics.total} complete</p>
+												</div>
+
+												<div class="text-right">
+													<p class="text-sm font-bold text-slate-700">{metrics.percent}%</p>
+													<p class="text-[11px] text-slate-400">complete</p>
+												</div>
+											</div>
+
+											<div class="h-2 overflow-hidden rounded-full bg-slate-200">
+												<div class="h-full rounded-full bg-green-600 transition-all duration-300" style={`width: ${metrics.percent}%`}></div>
+											</div>
+										</div>
+									</div>
+								</button>
+
+								{#if section.open}
+									<div class="border-t border-slate-200 p-4">
 										{#if section.type === 'details'}
 											<div class="grid gap-3">
 												{#each detailFields as field (field.key)}
@@ -753,8 +796,8 @@
 															</label>
 
 															<div class="flex flex-wrap gap-2">
-																<Button label="Add" size="xs" class="!w-18" onclick={() => addEntry(day)} />
-																<Button label="Delete" size="xs" class="!w-18" appearance="outline" onclick={() => removeDay(section, day.id)} />
+																<button type="button" class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700" onclick={() => addEntry(day)}>Add Log Entry</button>
+																<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm" onclick={() => removeDay(section, day.id)}>Delete Day</button>
 															</div>
 														</div>
 
@@ -774,7 +817,7 @@
 																	</label>
 
 																	<div class="flex items-end">
-																		<Button label="Delete" size="xs" class="!w-18" appearance="outline" onclick={() => removeEntry(day, entry.id)} />
+																		<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm" onclick={() => removeEntry(day, entry.id)}>Delete</button>
 																	</div>
 																</div>
 															{/each}
@@ -782,7 +825,7 @@
 													</div>
 												{/each}
 
-												<Button label="Add Day" primary onclick={() => addDay(section)} />
+												<button type="button" class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700" onclick={() => addDay(section)}>Add Day</button>
 											</div>
 										{:else}
 											<div class="space-y-3">
@@ -820,7 +863,7 @@
 															<div class="rounded-2xl border border-slate-200 bg-white p-2">
 																<div class="photo-tile relative overflow-hidden rounded-xl bg-slate-100">
 																	<img alt={photo.caption || photo.name} class="h-full w-full object-cover" src={photo.src} />
-																	<Button label="✕" appearance="outline" class="absolute right-2 top-2 bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-700 shadow" aria-label="Remove photo" onclick={() => removePhoto(section, photo.id)} />
+																	<button type="button" aria-label="Remove photo" class="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-700 shadow" onclick={() => removePhoto(section, photo.id)}>✕</button>
 																</div>
 
 																<label class="mt-2 block">
@@ -834,7 +877,8 @@
 											</div>
 										{/if}
 									</div>
-								</Disclosure>
+								{/if}
+							</article>
 						{/each}
 					</div>
 				</div>
@@ -851,7 +895,7 @@
 
 							<div class="flex flex-wrap gap-2">
 								{#each exportFormats as format (format)}
-									<Button size="xs" label={format} />
+									<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700">{format}</button>
 								{/each}
 							</div>
 						</div>
@@ -952,6 +996,15 @@
 </div>
 
 <style>
+	[data-dragging='true'] {
+		opacity: 0.55;
+	}
+
+	.drop-target {
+		outline: 2px dashed #2563eb;
+		outline-offset: 4px;
+	}
+
 	.photo-tile {
 		aspect-ratio: 4 / 3;
 	}
