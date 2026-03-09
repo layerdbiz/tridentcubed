@@ -103,23 +103,23 @@
 		@apply rounded-box bg-base-50-950/80 shadow-base-950-50/10 shadow-2xs;
 	}
 	&:is(.card:hover, .card:active) {
-		@apply text-base-950-950/100 border-white/50;
+		@apply text-base-950-950 border-white/50;
 	}
 }
 .theme-glass-invert {
-	@apply text-base-50-50/90 isolate bg-black/70 bg-gradient-to-b from-black to-transparent shadow backdrop-blur-2xl;
+	@apply text-base-50-50/90 isolate bg-black/70 bg-linear-to-b from-black to-transparent shadow backdrop-blur-2xl;
 
 	&:is(.card) {
 		@apply rounded-box;
 	}
 	&:is(.card:hover, .card:active) {
-		@apply text-base-50-50/100 border-black/80 bg-black/50;
+		@apply text-base-50-50 border-black/80 bg-black/50;
 	}
 }
 
 /* gradient */
 .theme-gradient {
-	@apply from-primary-500 to-secondary-500 bg-gradient-to-br;
+	@apply from-primary-500 to-secondary-500 bg-linear-to-br;
 }
 
 /* Section Layout Variants */
