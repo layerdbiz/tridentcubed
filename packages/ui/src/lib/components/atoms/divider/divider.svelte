@@ -6,7 +6,7 @@
 
 	type ShapeType = 'waves' | 'curve' | 'tilt' | 'triangle' | 'arrow' | string;
 
-	export interface DividerProps extends ComponentProps {
+	export interface DividerProps extends Omit<ComponentProps, 'color'> {
 		bleed?: boolean;
 		height?: string;
 		width?: string;
@@ -23,6 +23,7 @@
 		svg?: string;
 		children?: any;
 		// Override color props to use simple text colors instead of theme presets
+		color?: string;
 		primary?: boolean;
 		secondary?: boolean;
 		accent?: boolean;
@@ -56,6 +57,7 @@
 		// content
 		children = undefined,
 		// Extract color props to override base behavior
+		color = undefined,
 		primary = false,
 		secondary = false,
 		accent = false,
@@ -93,6 +95,7 @@
 
 	// Convert color props to simple text color classes (override base theme behavior)
 	let colorClass = $derived(() => {
+		if (color) return color;
 		if (primary) return 'text-primary-500-500';
 		if (secondary) return 'text-secondary-500-500';
 		if (accent) return 'text-accent-500-500';
@@ -118,7 +121,7 @@
 
 	// Remove color props from being passed to Component to prevent theme application on outer container
 	let componentProps = $derived(() => {
-		const { primary: _, secondary: __, accent: ___, base: ____, neutral: _____, ...rest } = props;
+		const { primary: _, secondary: __, accent: ___, base: ____, neutral: _____, color: ______, ...rest } = props;
 		return rest;
 	});
 
@@ -210,8 +213,8 @@
 {#snippet svgDivider(dividerClass = '', svgClasses = '', isFlipped = false, { ...props })}
 	<div class="{dividerClass} {props.class}">
 		<svg
-			class="h-[var(--divider-height)] w-full fill-current {svg ||
-				'text-base-50-950'} {svgClasses} {isFlipped ? 'rotate-180' : ''}"
+			class="h-(--divider-height) w-full fill-current {svg ||
+				colorClass() || 'text-base-50-950'} {svgClasses} {isFlipped ? 'rotate-180' : ''}"
 			viewBox="0 0 1200 120"
 			preserveAspectRatio="none"
 			xmlns="http://www.w3.org/2000/svg"

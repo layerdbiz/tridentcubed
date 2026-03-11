@@ -1,13 +1,15 @@
 @import "tailwindcss";
 @import "@layerd/ui/ui.css";
 
-
-@theme {
+/* Cyberpunk Theme */
+[data-theme] {
+	
 	/* default */
 	--theme-color: var(--color-slate-500);
-	--theme-color-primary: var(--color-blue-500);
+	--theme-color-primary: var(--color-blue-600);
 	--theme-color-secondary: var(--color-slate-500);
-	--theme-color-accent: var(--color-emerald-500);
+	--theme-color-accent: var(--color-green-500);
+	--theme-color-neutral: var(--color-slate-500);
 
 	/* fonts */
 	--theme-font: var(--font-asta);

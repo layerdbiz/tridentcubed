@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { Grid, Logo, Button, Input, Link, Content, Text, Divider, mq } from '@layerd/ui';
 	import { browser } from '$app/environment';
 	import { onMount, tick } from 'svelte';
 
@@ -112,15 +113,7 @@
 
 	const storageKey = 'survey-report-mvp-v3';
 	const exportFormats = ['PDF', 'DOCX', 'HTML', 'MD'] as const;
-	const panelTitleClass = 'text-xl font-bold tracking-tight text-slate-900';
-	const panelSubtitleClass = 'text-sm text-slate-500';
-	const metricLabelClass = 'text-sm font-semibold text-slate-700';
-	const metricMetaClass = 'text-xs text-slate-500';
-	const metricMetaStrongClass = 'text-xs font-semibold uppercase tracking-[0.16em] text-slate-400';
-	const metricValueClass = 'text-sm font-bold text-slate-700';
-	const metricValueCaptionClass = 'text-[11px] uppercase tracking-[0.16em] text-slate-400';
 	const metricStatusCaptionClass = 'text-[11px] uppercase tracking-[0.16em]';
-	const progressTrackClass = 'h-2.5 overflow-hidden rounded-full bg-slate-200';
 	const progressFillClass = 'h-full rounded-full bg-green-500 transition-all duration-300';
 	const overallProgressRingRadius = 38;
 	const overallProgressRingCircumference = 2 * Math.PI * overallProgressRingRadius;
@@ -277,7 +270,6 @@
 	let photoDragSectionId = $state('');
 	let photoDragId = $state('');
 	let photoReorderTargetId = $state('');
-	let innerWidth = $state(0);
 	let hydrated = $state(false);
 	let previewViewport = $state<HTMLDivElement | null>(null);
 	let previewPages = $state<HTMLDivElement | null>(null);
@@ -288,7 +280,7 @@
 	let suppressSectionToggleId = '';
 	let suppressSectionToggleUntil = 0;
 
-	const isDesktop = $derived(innerWidth >= 768);
+	const isDesktop = $derived(!mq.sm);
 	const overallMetrics = $derived(getOverallMetrics(sections));
 	const reportSection = $derived(sections.find((section) => section.type === 'cover') as CoverSection | undefined);
 	const exportFileName = $derived(`${slugify(reportSection?.fields.reportTitle || 'survey-report')}.pdf`);
@@ -556,15 +548,15 @@
 
 		if (status === 'todo') return 'text-slate-400';
 		if (status === 'complete') return 'text-green-600';
-		return 'text-blue-600';
+		return 'text-primary-500';
 	}
 
 	function getSectionProgressFillClass(metrics: SectionMetrics) {
 		const status = getSectionStatus(metrics);
 
-		if (status === 'todo') return 'bg-slate-300';
-		if (status === 'complete') return 'bg-green-500';
-		return 'bg-blue-500';
+		if (status === 'todo') return 'bg-secondary-300';
+		if (status === 'complete') return 'bg-accent-500';
+		return 'bg-primary';
 	}
 
 	function getProgressRingOffset(percent: number) {
@@ -644,6 +636,25 @@
 
 	function addEntry(day: TimeDay) {
 		day.entries.push(createTimeEntry());
+	}
+
+	function maybeAddEntry(day: TimeDay, entryId: string) {
+		const entryIndex = day.entries.findIndex((entry) => entry.id === entryId);
+		if (entryIndex === -1 || entryIndex !== day.entries.length - 1) return;
+
+		const entry = day.entries[entryIndex];
+		const timeValue = String(entry.time ?? '').trim();
+		const textValue = String(entry.text ?? '').trim();
+		if (!timeValue || !textValue) return;
+
+		addEntry(day);
+	}
+
+	function handleActivityKeyup(day: TimeDay, entryId: string, event?: KeyboardEvent) {
+		if (event?.key !== 'Enter') return;
+
+		event.preventDefault();
+		maybeAddEntry(day, entryId);
 	}
 
 	function removeEntry(day: TimeDay, entryId: string) {
@@ -1330,12 +1341,12 @@
 
 	$effect(() => {
 		if (!hydrated || !previewViewport || hasUserZoomed) return;
-		innerWidth;
+		mq.sm;
 		applyFitZoomIfNeeded();
 	});
 </script>
 
-<svelte:window bind:innerWidth={innerWidth} onpaste={handlePaste} />
+<svelte:window onpaste={handlePaste} />
 
 <div class="page-shell h-svh overflow-hidden text-slate-900">
 	<div class="flex h-full min-w-0 flex-col">
@@ -1343,21 +1354,26 @@
 		<!-- MOBILE TABS 
 		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
 		<div class="flex shrink-0 items-center gap-2 p-4 md:hidden">
-			<button
-				type="button"
-				class={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${activeTab === 'create' ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}
-				onclick={() => (activeTab = 'create')}
-			>
-				Create
-			</button>
 
-			<button
-				type="button"
-				class={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold shadow-sm ${activeTab === 'preview' ? 'bg-blue-600 text-white' : 'border border-slate-300 bg-white text-slate-700'}`}
+			<Button
+				{...(activeTab === 'create' 
+					? { heavy: true, primary: true } 
+					: { outline: true, base: true }
+				)}
+				class="w-full flex-1"
+				onclick={() => (activeTab = 'create')}
+				label="Create"
+			/>
+
+			<Button
+				{...(activeTab === 'preview' 
+					? { heavy: true, primary: true } 
+					: { outline: true, base: true }
+				)}
+				class="w-full flex-1"
 				onclick={() => (activeTab = 'preview')}
-			>
-				Preview
-			</button>
+				label="Preview"
+			/>
 		</div>
 
 		<!-- MAIN 
@@ -1366,7 +1382,7 @@
 			
 			<!-- CREATE 
 			-------------------------------------------------->
-			<section class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
+			<section id="create" class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
 				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
 
 					<!-- create header -->
@@ -1374,45 +1390,35 @@
 						<div class="flex flex-col gap-4">
 							<div class="grid gap-4 grid-cols-[minmax(0,1fr)_auto] items-start">
 								<div class="min-w-0">
-									<h2 class={panelTitleClass}>Create</h2>
-									<p class={panelSubtitleClass}>Build the report structure, content, and photos section by section.</p>
+									<Text h2="Create" />
+									<Text xs class="text-neutral" p="Build the report structure, content, and photos section by section."  />
 								</div>
 
-								<div class="justify-self-start lg:justify-self-end">
-									<div class="">
-										<div class="flex items-center gap-5">
-											<div class="min-w-0 hidden">
-												<p class={metricLabelClass}>Overall Progress</p>
-												<p class={metricMetaClass}>{overallMetrics.done} of {overallMetrics.total} complete</p>
-												<p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-green-600">Complete</p>
-											</div>
-
-											<div class="relative h-18 w-18 shrink-0">
-												<svg viewBox="0 0 96 96" class="h-full w-full overflow-visible -rotate-90" aria-hidden="true">
-													<circle
-														cx="48"
-														cy="48"
-														r={overallProgressRingRadius}
-														fill="none"
-														stroke="#d9e1ec"
-														stroke-width="12"
-													/>
-													<circle
-														cx="48"
-														cy="48"
-														r={overallProgressRingRadius}
-														fill="none"
-														stroke="#22c55e"
-														stroke-linecap="round"
-														stroke-width="12"
-														stroke-dasharray={overallProgressRingCircumference}
-														stroke-dashoffset={getProgressRingOffset(overallMetrics.percent)}
-													/>
-												</svg>
-												<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-													<span class="text-sm font-bold text-slate-800">{overallMetrics.percent}%</span>
-												</div>
-											</div>
+								<div class="flex items-center gap-5">
+									<div class="relative h-18 w-18 shrink-0">
+										<svg viewBox="0 0 96 96" class="h-full w-full overflow-visible -rotate-90" aria-hidden="true">
+											<circle
+												cx="48"
+												cy="48"
+												r={overallProgressRingRadius}
+												fill="none"
+												stroke="#d9e1ec"
+												stroke-width="12"
+											/>
+											<circle
+												cx="48"
+												cy="48"
+												r={overallProgressRingRadius}
+												fill="none"
+												stroke="#22c55e"
+												stroke-linecap="round"
+												stroke-width="12"
+												stroke-dasharray={overallProgressRingCircumference}
+												stroke-dashoffset={getProgressRingOffset(overallMetrics.percent)}
+											/>
+										</svg>
+										<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+											<span class="text-sm font-bold text-slate-800">{overallMetrics.percent}%</span>
 										</div>
 									</div>
 								</div>
@@ -1420,20 +1426,21 @@
 						</div>
 					</div>
 
-
-							<div class="flex flex-wrap gap-2 p-4">
-								<button
-									type="button"
-									class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700"
-									onclick={addSection}
-								>
-									Add Section
-								</button>
-
-								<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700" onclick={resetReport}>Reset</button>
-							</div>
+					<div class="flex flex-wrap gap-2 p-4">
+						<Button
+							primary xs
+							onclick={addSection}
+							label="Add Section"
+						/>
+						<Button
+							outline xs
+							onclick={resetReport}
+							label="Reset"
+						/>
+					</div>
+					
 					<!-- create content -->
-					<div class="min-h-0 flex-1 space-y-3 overflow-auto p-4 pt-0">
+					<div class="min-h-0 flex-1 space-y-3 overflow-auto p-4 pt-4">
 						{#each sections as section (section.id)}
 							{@const metrics = getSectionMetrics(section)}
 							{@const sectionStatusLabel = getSectionStatusLabel(metrics)}
@@ -1453,14 +1460,16 @@
 								ondrop={(event) => handleSectionDrop(section.id, event)}
 							>
 								{#if isSectionMovable(section)}
-									<button
-										type="button"
-										class="absolute -right-2 -top-2 z-10 flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-bold text-slate-500 shadow-sm transition hover:border-red-200 hover:text-red-600"
+									<Button
+										variant="icon" icon="close"
+										class="text-[8px]! absolute! -right-2 -top-2 z-10"
 										aria-label={`Delete ${section.title}`}
-										onclick={(event) => handleRemoveSectionClick(event, section.id)}
-									>
-										✕
-									</button>
+										onclick={(event: MouseEvent) => handleRemoveSectionClick(event, section.id)}
+									/>
+									{:else}
+									<Button variant="icon" icon="lock" disabled 
+										class="text-[8px]! absolute! -right-2 -top-2 z-10 text-secondary-400 bg-secondary-200 opacity-100"
+									/>
 								{/if}
 
 								<!-- panel trigger -->
@@ -1479,9 +1488,6 @@
 												<div>
 													<div class="flex flex-wrap items-center gap-2">
 														<h3 class="text-sm font-bold text-slate-800">{section.title}</h3>
-														{#if section.locked}
-															<span class="text-xs text-slate-400">🔒</span>
-														{/if}
 													</div>
 													<p class="text-xs text-slate-500">{metrics.done} of {metrics.total} complete</p>
 												</div>
@@ -1492,7 +1498,7 @@
 												</div>
 											</div>
 
-											<div class={progressTrackClass}>
+											<div class="h-2.5 overflow-hidden rounded-full bg-slate-200">
 												<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
 											</div>
 										</div>
@@ -1502,95 +1508,116 @@
 								<!-- panel content -->
 								{#if section.open}
 									<div class="border-t border-slate-200 p-4">
+
+										<!-- 1. COVER PAGE 
+										------------------------------>
 										{#if section.type === 'cover'}
-											<!-- details form -->
 											<div class="grid gap-3">
 												{#each detailFields as field (field.key)}
 													<label class="block">
 														<span class="mb-1 block text-xs font-semibold text-slate-600">{field.label}</span>
 														<input
 															bind:value={section.fields[field.key]}
-															class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500"
+															class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-primary-500"
 															placeholder={field.placeholder || ''}
 															type={field.type || 'text'}
 														/>
 													</label>
 												{/each}
 											</div>
+
+										<!-- 3. TIME LOG 
+										------------------------------>
 										{:else if section.type === 'time-log'}
+											<!-- days -->
 											<div class="space-y-4">
+
 												{#each section.days as day (day.id)}
-													<div class="rounded-2xl border border-slate-200 bg-white p-3">
-														<div class="mb-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-															<label class="block">
-																<span class="mb-1 block text-xs font-semibold text-slate-600">Day / Date</span>
-																<input
-																	bind:value={day.dateISO}
-																	class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500"
-																	type="date"
+													<Grid items="1x2" cols="1fr auto" gap="8px">
+														<Input type="date" label="Date" bind:value={day.dateISO} />
+														<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)}   />
+													</Grid>
+													
+													<p class="mb-3 text-xs font-semibold text-slate-600">{formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
+
+													<!-- times -->
+													{#each day.entries as entry (entry.id)}
+														<Grid items="1x3" cols="160px 1fr auto" gap="8px">
+																<Input
+																	bind:value={entry.time}
+																	label="Time"
+																	variant="label"
+																	inputmode="numeric"
+																	type="time"
+																	min="00:00" 
+																	max="23:59"
+																	step="600"
+																	onblur={() => maybeAddEntry(day, entry.id)}
 																/>
-															</label>
+																<Input
+																	bind:value={entry.text}
+																	label="Activity"
+																	variant="label"
+																	type="text"
+																	onblur={() => maybeAddEntry(day, entry.id)}
+																	onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)}
+																/>
+															<Button ghost secondary variant="icon" icon="close" onclick={() => removeEntry(day, entry.id)}  />
+														</Grid>
+													{/each}
 
-															<div class="flex flex-wrap gap-2">
-																<button type="button" class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700" onclick={() => addEntry(day)}>Add Log Entry</button>
-																<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm" onclick={() => removeDay(section, day.id)}>Delete Day</button>
-															</div>
-														</div>
-
-														<p class="mb-3 text-xs font-semibold text-slate-600">{formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
-
-														<div class="space-y-2">
-															{#each day.entries as entry (entry.id)}
-																<div class="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-[140px_1fr_auto]">
-																	<label class="block">
-																		<span class="mb-1 block text-xs font-semibold text-slate-600">Time</span>
-																		<input bind:value={entry.time} class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500" inputmode="numeric" placeholder="0700" type="text" />
-																	</label>
-
-																	<label class="block">
-																		<span class="mb-1 block text-xs font-semibold text-slate-600">Activity</span>
-																		<input bind:value={entry.text} class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500" placeholder="Arrive on site" type="text" />
-																	</label>
-
-																	<div class="flex items-end">
-																		<button type="button" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm" onclick={() => removeEntry(day, entry.id)}>Delete</button>
-																	</div>
-																</div>
-															{/each}
-														</div>
-													</div>
+													<Button
+														primary xs
+														label="Add Time"
+														onclick={() => addEntry(day)}
+													/>
 												{/each}
 
-												<button type="button" class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700" onclick={() => addDay(section)}>Add Day</button>
+												<Button
+													primary xs
+													label="Add Day"
+													onclick={() => addDay(section)}
+												/>
 											</div>
 										{:else}
-									<!-- photos -->
+											<!-- photos -->
 											<div class="space-y-3">
 												{#if !section.locked}
-													<label class="block">
-														<span class="mb-1 block text-xs font-semibold text-slate-600">Section Title</span>
-														<input bind:value={section.title} class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500" placeholder="Section title" type="text" />
-													</label>
+													<Input
+														bind:value={section.title}
+														label="Title"
+														variant="label"
+														type="text"
+													/>
 												{/if}
 
-												<label class="block">
-													<span class="mb-1 block text-xs font-semibold text-slate-600">Section Summary</span>
-													<textarea bind:value={section.description} class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500" placeholder="Add a short description for this section..." rows="3"></textarea>
-												</label>
+													<Input
+														bind:value={section.description}
+														textarea
+														label="Description"
+														variant="label"
+														type="text"
+													/>
 
 												<div class="space-y-3">
+												
+													<!-- PHOTO UPLOAD 
+													------------------------------>
 													<div class="flex flex-wrap gap-2">
-														<label class="rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-blue-700">
+														<!-- file -->
+														<label class="rounded-xl bg-primary-500 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-600">
 															<span>Upload</span>
 															<input accept="image/*" class="hidden" multiple type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
 														</label>
 
+														<!-- camera -->
 														<label class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm">
 															<span>Camera</span>
 															<input accept="image/*" capture="environment" class="hidden" type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
 														</label>
 													</div>
 
+													<!-- drag/drop images -->
 													<div
 														role="presentation"
 														class:drop-target={photoDropId === section.id}
@@ -1606,7 +1633,7 @@
 														{#each section.photos as photo (photo.id)}
 															<div
 																class:drop-target={photoDragSectionId === section.id && photoDragId && photoReorderTargetId === photo.id}
-																class="rounded-2xl border border-slate-200 bg-white p-2"
+																class="rounded-2xl bg-white p-2"
 																data-dragging={photoDragSectionId === section.id && photoDragId === photo.id ? 'true' : 'false'}
 																role="presentation"
 																ondragover={(event) => handlePhotoDragOver(section.id, photo.id, event)}
@@ -1614,7 +1641,7 @@
 																ondrop={(event) => handlePhotoDrop(section.id, photo.id, event)}
 															>
 																<div
-																	class={`touch-reorder-handle relative aspect-4/3 overflow-hidden rounded-xl bg-slate-100 ${section.photos.length > 1 ? 'cursor-grab active:cursor-grabbing select-none' : ''}`}
+																	class={`touch-reorder-handle relative rounded-xl aspect-square bg-slate-100 ${section.photos.length > 1 ? 'cursor-grab active:cursor-grabbing select-none' : ''}`}
 																	data-touch-reorder-id={photo.id}
 																	data-touch-reorder-kind="photo"
 																	data-touch-reorder-scope={section.id}
@@ -1625,14 +1652,20 @@
 																	ondragend={clearPhotoReorderState}
 																	ontouchstart={(event) => handlePhotoTouchStart(event, section.id, photo.id)}
 																>
-																	<img alt={photo.caption || photo.name} class="h-full w-full object-cover" draggable="false" src={photo.src} />
-																	<button type="button" aria-label="Remove photo" class="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-slate-700 shadow" onclick={() => removePhoto(section, photo.id)}>✕</button>
+																	<img alt={photo.caption || photo.name} class="h-full w-full object-cover rounded-lg" draggable="false" src={photo.src} />
+																	
+																	<Button
+																		variant="icon" icon="close"
+																		class="text-[8px]! absolute! -right-1.5 -top-1.5 z-100"
+																		aria-label="Remove Photo"
+																		onclick={() => removePhoto(section, photo.id)}
+																	/>
+																	<Input
+																		bind:value={photo.caption}
+																		label="Caption"
+																		type="text"
+																	/>
 																</div>
-
-																<label class="mt-2 block">
-																	<span class="mb-1 block text-xs font-semibold text-slate-600">Caption</span>
-																	<input bind:value={photo.caption} class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-blue-500" type="text" />
-																</label>
 															</div>
 														{/each}
 													</div>
@@ -1649,53 +1682,51 @@
 
 			<!-- PREVIEW 
 			-------------------------------------------------->
-			<section class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
+			<section id="preview" class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
 				<div class="relative flex h-full min-h-0 flex-col">
 
-					<!-- TOOLBAR 
+					<!-- CONTROLS 
 					-------------------------------------------------->
-					<div id="preview-toolbar" class="pointer-events-none fixed bottom-4 right-4 z-20 md:bottom-6 md:right-6">
-						<div class="pointer-events-auto flex items-center justify-end gap-2">
-							<button
-								type="button"
-								class="flex h-12 items-center rounded-2xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-								disabled={isExporting}
-								onclick={() => handleExport('PDF')}
-							>
-								{isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'}
-							</button>
+					<div id="previewControls" class="flex justify-end gap-2 fixed bottom-8 right-8 z-20">
+						<!-- Download -->
+						<Button
+							primary 
+							class="bg-primary"
+							variant="icon text"
+							icon="download"
+							onclick={() => handleExport('PDF')}
+							label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting}
+						/>
 
-							<!-- Zoomer -->
-							<div id="zoomer" class="flex h-12 items-center overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm">
-								<!-- zoom in -->
-								<button
-									type="button"
-									class="flex h-full w-12 items-center justify-center border-r border-slate-200 text-2xl font-semibold text-slate-700 transition hover:bg-slate-50"
-									onclick={() => stepPreviewZoom('out')}
-								>
-									-
-								</button>
-								<!-- zoom percentage -->
-								<button
-									type="button"
-									class="flex h-full w-16 items-center justify-center px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50"
-									onclick={resetPreviewZoom}
-								>
-									{Math.round((previewZoom || 1) * 100)}%
-								</button>
-								<!-- zoom out -->
-								<button
-									type="button"
-									class="flex h-full w-12 items-center justify-center border-l border-slate-200 text-2xl font-semibold text-slate-700 transition hover:bg-slate-50"
-									onclick={() => stepPreviewZoom('in')}
-								>
-									+
-								</button>
-							</div>
+						<!-- Zoomer -->
+						<div id="zoomer" class="flex h-12 rounded-full border border-slate-300 bg-white shadow-sm">
+							<!-- zoom in -->
+							<Button
+								ghost xl
+								label="-"
+								onclick={() => stepPreviewZoom('out')}
+								class="px-4!"
+							/>
+							<!-- zoom percentage -->
+							<Button
+								ghost lg
+								class="w-18! px-0! font-black! border-x border-slate-200 rounded-none!"
+								onclick={resetPreviewZoom}
+							>
+								{Math.round((previewZoom || 1) * 100)}%
+							</Button>
+							<!-- zoom out -->
+							<Button
+								ghost xl
+								label="+"
+								onclick={() => stepPreviewZoom('in')}
+								class="px-4!"
+							/>
 						</div>
 					</div>
 
-					<!-- preview content -->
+					<!-- PAGES 
+					-------------------------------------------------->
 					<div class="min-h-0 flex-1">
 						<div
 							bind:this={previewViewport}
@@ -1711,27 +1742,40 @@
 							<div class="relative w-full px-1 pb-10 pt-0 md:px-0 md:pb-16 md:pt-2">
 								<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${previewPageWidth}px; --preview-page-height: ${previewPageHeight}px`}>
 									<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">
+
+										<!-- 1. COVER PAGE 
+										------------------------------>
 										<div class="preview-sheet">
 											<div class="preview-page">
-												<div class="preview-page-inner">
-													<h1 class="text-6xl font-bold text-slate-900">{reportSection?.fields.reportTitle || 'Survey Report'}</h1>
+												<div class="preview-page-inner flex flex-col items-center justify-center gap-6 relative">
+												
+													<!-- Top Cover Page-->
+													<div id="topCoverPage" class="flex flex-col items-center justify-center gap-6 mb-50">
+														<Logo mode="light" class="size-42" />
+														<Text h1={reportSection?.fields.reportTitle || 'Survey Report'} class="text-6xl uppercase font-black" />
+														<Text h2={reportSection?.fields.reportSubtitle || 'Discharge Survey of 2x Trafos from the MV BBC Kimberly'} class="font-semibold text-pretty text-3xl text-secondary-500 text-center" />
+													</div>
 
-													<div class="mt-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+													<!-- Bottom Cover Page -->
+													<div id="bottomCoverPage" class="grid justify-center bg-secondary-200/60 w-full z-1! absolute bottom-0 left-0 right-0 pb-20">
+														<Divider class="absolute bottom-full" color="text-secondary-200/60" bleed={false} />
 														{#each coverMeta as item (item.label)}
-															<div class="grid grid-cols-[100px_1fr] gap-3">
-																<span class="font-semibold text-slate-600">{item.label}:</span>
-																<span class="text-slate-800">{item.value}</span>
-															</div>
+														<div class="grid grid-cols-[100px_100px] gap-3">
+															<span class="font-semibold text-slate-600">{item.label}:</span>
+															<span class="text-slate-800">{item.value}</span>
+														</div>
 														{/each}
 													</div>
 												</div>
 											</div>
 										</div>
 
+										<!-- 2. TOC 
+										------------------------------>
 										<div class="preview-sheet">
 											<div class="preview-page">
 												<div class="preview-page-inner">
-													<h2 class="mb-3 text-4xl font-bold text-slate-900">Table of Contents</h2>
+													<Text h2="Table of Contents" class="text-4xl mb-4"/>
 													<div class="space-y-2 text-sm">
 														{#each tableOfContentsEntries as item (item.id)}
 															<div class="grid grid-cols-[1fr_auto] gap-3 border-b border-dashed border-slate-200 pb-1">
@@ -1745,11 +1789,14 @@
 										</div>
 
 										{#each previewContentSections as section (section.id)}
-											<div class="preview-sheet">
-												<div class="preview-page">
-													<div class="preview-page-inner">
-														{#if section.type === 'time-log'}
-															<h2 class="mb-3 text-4xl font-bold text-slate-900">{section.title}</h2>
+											
+											<!-- 3. TIME LOG
+											------------------------------>
+											{#if section.type === 'time-log'}
+												<div class="preview-sheet">
+													<div class="preview-page">
+														<div class="preview-page-inner">
+															<Text h2={section.title} class="text-4xl mb-4"/>
 															{#each section.days as day (day.id)}
 																<p class="mb-2 text-sm font-semibold text-slate-700">{formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
 																<ul class="mb-4 space-y-2 text-sm">
@@ -1761,10 +1808,19 @@
 																	{/each}
 																</ul>
 															{/each}
-														{:else}
-															<h2 class="mb-3 text-4xl font-bold text-slate-900">{section.title}</h2>
+														</div>
+													</div>
+												</div>
+												
+											<!-- 3. PHOTOS
+											------------------------------>
+											{:else}
+												<div class="preview-sheet">
+													<div class="preview-page">
+														<div class="preview-page-inner">
+															<Text h2={section.title} class="text-4xl mb-4"/>
 															{#if section.description}
-																<p class="mb-3 text-sm text-slate-600">{section.description}</p>
+																<Text p={section.description} class="text-secondary"/>
 															{/if}
 
 															<div class={getPreviewPhotoGridClass(section)}>
@@ -1781,19 +1837,25 @@
 																	<div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">No photos added yet.</div>
 																{/if}
 															</div>
-														{/if}
+														</div>
 													</div>
 												</div>
-											</div>
+											{/if}
 										{/each}
+
 									</div>
 								</div>
 							</div>
+
 						</div>
 					</div>
+
+
 				</div>
 			</section>
 		</main>
+
+
 	</div>
 </div>
 
@@ -1831,9 +1893,6 @@
 	}
 
 	.preview-page {
-		position: absolute;
-		top: 0;
-		left: 0;
 		width: 8.5in;
 		height: 11in;
 		box-sizing: border-box;
@@ -1849,8 +1908,7 @@
 
 	.preview-page-inner {
 		height: 100%;
-		padding: 0.5in;
-		overflow: hidden;
+		padding: 0.75in;
 	}
 
 	.preview-page-inner * {

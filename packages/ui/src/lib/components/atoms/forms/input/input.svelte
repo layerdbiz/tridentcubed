@@ -10,7 +10,7 @@
 
 	export interface InputProps extends ComponentProps {
 		// Input properties
-		type?: 'text' | 'email' | 'password' | 'tel' | 'url' | 'search' | 'number';
+		type?: 'text' | 'email' | 'password' | 'tel' | 'url' | 'search' | 'number' | 'date' | 'datetime-local' | 'month' | 'week' | string;
 		value?: string;
 		placeholder?: string;
 		label?: string;
@@ -20,6 +20,10 @@
 		disabled?: boolean;
 		readonly?: boolean;
 		pattern?: string;
+		min?: string;
+		max?: string;
+		step?: string;
+		inputmode?: 'none' | 'text' | 'tel' | 'url' | 'email' | 'numeric' | 'decimal' | 'search';
 		minlength?: number;
 		maxlength?: number;
 		textarea?: boolean;
@@ -45,6 +49,7 @@
 		// Event handlers
 		onblur?: (event?: Event) => void;
 		oninput?: (event?: Event) => void;
+		onkeyup?: (event?: KeyboardEvent) => void;
 
 		// Icon properties - HYBRID APPROACH (handled by Icon component)
 		/**
@@ -75,6 +80,10 @@
 		disabled = false,
 		readonly = false,
 		pattern = undefined,
+		min = undefined,
+		max = undefined,
+		step = undefined,
+		inputmode = undefined,
 		minlength = undefined,
 		maxlength = undefined,
 		textarea = false,
@@ -83,6 +92,7 @@
 		isValid = true,
 		onblur = undefined,
 		oninput = undefined,
+		onkeyup = undefined,
 		icon = undefined,
 		variant = 'label',
 		children = undefined,
@@ -95,6 +105,22 @@
 
 	// Auto-generate name from label if not provided
 	const inputName = $derived(name || label.toLowerCase().replace(/\s+/g, ''));
+	const legendClass = $derived(
+		[
+			'px-1.25',
+			'text-base-300-600',
+			'pointer-events-none',
+			'mx-3',
+			'origin-top-left',
+			variant === 'label' ? 'translate-x-0' : 'translate-x-8',
+			'translate-y-[125%]',
+			'font-medium',
+			'leading-5',
+			'transition-all',
+			'duration-200',
+			'will-change-[color,transform,font-size]'
+		].join(' ')
+	);
 
 	// Error state management
 	let isShaking = $state(false);
@@ -143,7 +169,7 @@
 	}
 
 	// Also handle keyup specifically to ensure immediate clearing
-	function handleKeyup(event: Event) {
+	function handleKeyup(event: KeyboardEvent) {
 		// For textareas with patterns, manually validate since HTML5 pattern doesn't work on textarea
 		if (textarea && pattern) {
 			const target = event.target as HTMLTextAreaElement;
@@ -162,6 +188,8 @@
 		if (hasError && isValid) {
 			hasError = false;
 		}
+
+		onkeyup?.(event);
 	}
 
 	// Handle blur events for pattern validation
@@ -292,12 +320,12 @@
 				px-4
 				py-2
 				outline-none
-				autofill:[-webkit-box-shadow:0_0_0_30px_theme(colors.base.50)_inset_!important]
-				autofill:[-webkit-text-fill-color:theme(colors.base.900)_!important]
+				autofill:[-webkit-box-shadow:0_0_0_30px_var(--color-base-50)_inset_!important]
+				autofill:[-webkit-text-fill-color:var(--color-base-900)_!important]
 				autofill:[transition:background-color_5000s_ease-in-out_0s_!important]
 
-				dark:autofill:[-webkit-box-shadow:0_0_0_30px_theme(colors.base.900)_inset_!important]
-				dark:autofill:[-webkit-text-fill-color:theme(colors.base.50)_!important]
+				dark:autofill:[-webkit-box-shadow:0_0_0_30px_var(--color-base-900)_inset_!important]
+				dark:autofill:[-webkit-text-fill-color:var(--color-base-50)_!important]
 				{className}
 			"
 		></textarea>
@@ -312,6 +340,10 @@
 			{disabled}
 			{readonly}
 			{pattern}
+			{min}
+			{max}
+			{step}
+			{inputmode}
 			{minlength}
 			{maxlength}
 			autocomplete="off"
@@ -332,12 +364,12 @@
 				px-4
 				py-2
 				outline-none
-				autofill:[-webkit-box-shadow:0_0_0_30px_theme(colors.base.50)_inset_!important]
-				autofill:[-webkit-text-fill-color:theme(colors.base.900)_!important]
+				autofill:[-webkit-box-shadow:0_0_0_30px_var(--color-base-50)_inset_!important]
+				autofill:[-webkit-text-fill-color:var(--color-base-900)_!important]
 				autofill:[transition:background-color_5000s_ease-in-out_0s_!important]
 				
-				dark:autofill:[-webkit-box-shadow:0_0_0_30px_theme(colors.base.900)_inset_!important]
-				dark:autofill:[-webkit-text-fill-color:theme(colors.base.50)_!important]
+				dark:autofill:[-webkit-box-shadow:0_0_0_30px_var(--color-base-900)_inset_!important]
+				dark:autofill:[-webkit-text-fill-color:var(--color-base-50)_!important]
 				{className}
 			"
 		/>
@@ -360,28 +392,13 @@
 					text-base-300-700
 					bg-base-200-700
 					shadow-base-100-700
-					group relative min-w-72
+					group relative min-w-24
 					rounded-xl
 					border-2
 					shadow-[inset_0_0_0_999rem]
 			"
 		>
-			<legend
-				class="
-					px-1.25
-					text-base-300-600
-					pointer-events-none
-					mx-3
-					origin-top-left
-					translate-x-8
-					translate-y-[125%]
-					font-medium
-					leading-[1.25rem]
-					transition-all
-					duration-200
-					will-change-[color,transform,font-size]
-				"
-			>
+			<legend class={legendClass}>
 				{label}
 			</legend>
 			{#if variant === 'icon'}

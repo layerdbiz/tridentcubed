@@ -581,7 +581,7 @@
 		--btn-icon: 2cap;
 
 		@apply rounded-button relative isolate inline-flex w-auto cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap text-center font-medium leading-none transition-colors ease-in-out;
-		@apply gap-[var(--btn-gap)] px-[var(--btn-px)] py-[var(--btn-py)];
+		@apply gap-(--btn-gap) px-(--btn-px) py-(--btn-py);
 
 		@variant before {
 			@apply -z-1 bg-dark-light absolute inset-0 opacity-0 transition content-[''];
@@ -609,7 +609,7 @@
 
 		&:where(.btn-variant-icon) {
 			/* Icon-only buttons: square padding, no gap */
-			@apply min-w-[unset] gap-0 p-[var(--btn-p)];
+			@apply min-w-[unset] gap-0 p-(--btn-p);
 		}
 
 		&:where(.btn-variant-icon-text) {
@@ -698,7 +698,7 @@
 
 	/* bigger icon, still cap-aligned so centering stays true */
 	:global(.btn .btn-icon) {
-		@apply block size-[var(--btn-icon)] shrink-0 leading-none;
+		@apply block size-(--btn-icon) shrink-0 leading-none;
 
 		/* Ensure SVG children inherit the size */
 		& > :global(svg) {
@@ -708,7 +708,7 @@
 
 	/* Special styling for end icons in dual-icon variants */
 	:global(.btn .btn-icon-end) {
-		@apply block size-[var(--btn-icon)] shrink-0 leading-none;
+		@apply block size-(--btn-icon) shrink-0 leading-none;
 
 		/* Ensure SVG children inherit the size */
 		& > :global(svg) {
@@ -718,11 +718,11 @@
 
 	/* label-only: match the icon’s visual box using a zero-width spacer */
 	.btn:not(:has(.btn-icon)) {
-		@apply gap-0 after:inline-block after:h-[var(--btn-icon)] after:w-0 after:align-middle after:content-[''];
+		@apply gap-0 after:inline-block after:h-(--btn-icon) after:w-0 after:align-middle after:content-[''];
 	}
 
 	/* (optional, unchanged) icon-only buttons stay square via equal padding */
 	.btn:not(:has(.btn-label)) {
-		@apply min-w-[unset] gap-0 p-[var(--btn-p)];
+		@apply min-w-[unset] gap-0 p-(--btn-p);
 	}
 </style>
