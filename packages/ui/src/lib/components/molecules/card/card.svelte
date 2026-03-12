@@ -111,7 +111,7 @@
 	<div
 		class="image relative flex aspect-square flex-col items-center justify-end rounded-lg pb-2 md:pb-6 lg:pb-4"
 	>
-		<figure class="-z-1 reflect absolute -bottom-[1px]">
+		<figure class="-z-1 reflect absolute -bottom-px">
 			<img
 				class="w-full"
 				src={imageSrc}
@@ -131,7 +131,7 @@
 		<Link
 			href={icon}
 			external
-			class="group flex flex-col items-center justify-end !px-0 pb-2 md:pb-6 lg:pb-4"
+			class="group flex flex-col items-center justify-end px-0! pb-2 md:pb-6 lg:pb-4"
 		>
 			{#if icon}
 				<Icon

@@ -33,6 +33,10 @@ export * from "./components/atoms/theme/theme.svelte.ts";
 export { default as Title } from "./components/atoms/title/title.svelte";
 
 // molecules
+export { default as Accordion, type AccordionProps } from "./components/molecules/accordion/accordion.svelte";
+export * from "./components/molecules/accordion/accordion.ts";
+export { default as AccordionContent, type AccordionContentProps } from "./components/molecules/accordion/accordion-content.svelte";
+export { default as AccordionTitle, type AccordionTitleProps } from "./components/molecules/accordion/accordion-title.svelte";
 export { default as Card, type CardProps } from "./components/molecules/card/card.svelte";
 export * from "./components/molecules/card/card.data.ts";
 export { default as Controls } from "./components/molecules/chart/controls.svelte";

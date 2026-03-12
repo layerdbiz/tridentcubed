@@ -12,6 +12,7 @@
   ],
   "source": [
     "oneezy/ui",
-    "sveltejs/kit/documentation/docs"
+    "sveltejs/kit/documentation/docs",
+    "https://github.com/jakobrosenberg/unsortable"
   ]
 }

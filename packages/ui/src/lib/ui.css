@@ -72,12 +72,12 @@
 
 @layer utilities {
 	.container {
-		@apply mx-auto max-w-7xl pl-[var(--spacing-container-mobile)] pr-[var(--spacing-container-mobile)] md:pl-[var(--spacing-container-desktop)] md:pr-[var(--spacing-container-desktop)];
+		@apply mx-auto max-w-7xl pl-(--spacing-container-mobile) pr-(--spacing-container-mobile) md:pl-(--spacing-container-desktop) md:pr-(--spacing-container-desktop);
 	}
 
 	/* Full viewport bleed */
 	.bleed {
-		@apply relative end-[calc(50%-50svw)] start-[calc(50%-50svw)] w-[100svw] max-w-[unset];
+		@apply relative end-[calc(50%-50svw)] start-[calc(50%-50svw)] w-svw max-w-[unset];
 	}
 
 	/* Container-aware bleed - always bleeds to container edges */

@@ -32,11 +32,13 @@
 		"vite-plugin-devtools-json": "^1.0.0"
 	},
 	"dependencies": {
-		"@sparticuz/chromium-min": "143.0.4",
+		"@dnd-kit/dom": "0.1.21",
 		"@iconify-json/devicon": "^1.2.58",
 		"@iconify-json/svg-spinners": "^1.2.4",
 		"@layerd/ui": "workspace:*",
+		"@sparticuz/chromium-min": "143.0.4",
 		"puppeteer-core": "24.38.0",
+		"unsortable": "^0.1.9",
 		"valibot": "^1.2.0"
 	}
 }

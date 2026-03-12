@@ -873,7 +873,7 @@
 	/* Nested menus inside menu content should position to the right */
 	:global(.toggle-content--menu .toggle .toggle-content--menu) {
 		@apply left-full top-0 ml-1 pt-0;
-		@apply -translate-x-0 -translate-y-0;
+		@apply translate-x-0 translate-y-0;
 	}
 
 	/* Panel toggle triggers should be full width with block labels */
@@ -893,7 +893,7 @@
 
 	/* Panel-specific button styling - allow text wrapping and top alignment */
 	:global(.toggle--panel .btn) {
-		@apply items-start whitespace-normal !rounded-none !py-4 leading-normal;
+		@apply items-start whitespace-normal rounded-none! py-4! leading-normal;
 	}
 
 	:global(.toggle--panel .btn .btn-label),

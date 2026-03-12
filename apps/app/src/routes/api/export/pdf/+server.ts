@@ -4,9 +4,8 @@ import chromium from "@sparticuz/chromium-min";
 import { json } from "@sveltejs/kit";
 import puppeteer from "puppeteer-core";
 
+import { createExportSession } from "$lib/server/export-session-store";
 import type { RequestHandler } from "./$types";
-
-const exportSessionStorageKeyPrefix = "report-export:";
 const chromiumVersion = "143.0.4";
 const chromiumPackArch = process.arch === "arm64" ? "arm64" : "x64";
 const chromiumPackUrl =
@@ -83,10 +82,6 @@ async function launchBrowser() {
 	});
 }
 
-function storeExportSession(storageKey: string, sessionValue: string) {
-	sessionStorage.setItem(storageKey, sessionValue);
-}
-
 const pdfOptions = {
 	format: "Letter",
 	margin: {
@@ -117,29 +112,15 @@ export const POST: RequestHandler = async ({ request }) => {
 	let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
 	try {
-		const token = crypto.randomUUID();
-		const storageKey = `${exportSessionStorageKeyPrefix}${token}`;
-		const sessionValue = JSON.stringify({ markup, filename });
-		const originUrl = new URL("/", request.url).href;
-		const printUrl = new URL(`/export/print/${token}`, request.url).href;
+		const session = createExportSession({ markup, filename });
+		const printUrl =
+			new URL(`/export/print/${session.token}`, request.url).href;
 
 		browser = await launchBrowser();
 
 		const page = await browser.newPage();
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
 		await page.emulateMediaType("screen");
-		const originResponse = await page.goto(originUrl, {
-			waitUntil: "networkidle0",
-		});
-
-		if (!originResponse || !originResponse.ok()) {
-			throw new Error(
-				`App shell failed with status ${originResponse?.status() ?? "unknown"}`,
-			);
-		}
-
-		await page.evaluate(storeExportSession, storageKey, sessionValue);
-
 		const printResponse = await page.goto(printUrl, {
 			waitUntil: "networkidle0",
 		});
@@ -153,7 +134,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		await page.waitForFunction(
-			() => document.querySelectorAll(".preview-page").length > 0,
+			() => document.querySelectorAll("[data-export-page]").length > 0,
 		);
 
 		await page.evaluate(async () => {
