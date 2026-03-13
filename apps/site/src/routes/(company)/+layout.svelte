@@ -36,7 +36,7 @@
 	}
 </script>
 
-<main class="grid min-h-svh w-full grid-cols-[280px_minmax(600px,_1fr)_100px] gap-10">
+<main class="grid min-h-svh w-full grid-cols-[280px_minmax(600px,1fr)_100px] gap-10">
 	<nav class="bg-neutral-200/40 p-4">
 		<Logo
 			mode="black"
