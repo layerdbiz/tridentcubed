@@ -74,6 +74,7 @@ export { default as Component } from "./utils/component/component.svelte";
 export * from "./utils/component/component.svelte.ts";
 export { default as Debug } from "./utils/debug/debug.svelte";
 export * from "./utils/debug/debug.svelte.ts";
+export * from "./utils/draggable.svelte.ts";
 export * from "./utils/mq.svelte.ts";
 export * from "./utils/observe.svelte.ts";
 export * from "./utils/scroll.svelte.ts";

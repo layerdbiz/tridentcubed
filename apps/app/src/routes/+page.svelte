@@ -1,6 +1,19 @@
 <script lang="ts">
-	import { Grid, Logo, Button, Input, Link, Content, Text, Divider, mq } from '@layerd/ui';
-	import type { DroppableParams, Unsortable as UnsortableType } from '$lib/vendor/unsortable';
+	import {
+		Grid,
+		Logo,
+		Button,
+		Input,
+		Content,
+		Text,
+		Divider,
+		mq,
+		Accordion,
+		AccordionTitle,
+		AccordionContent,
+		Draggable
+	} from '@layerd/ui';
+	import type { DroppableParams } from '@layerd/ui';
 	import { browser } from '$app/environment';
 	import { flip } from 'svelte/animate';
 	import { onMount, tick } from 'svelte';
@@ -38,7 +51,6 @@
 	import { syncIdCounterFromSections } from '$lib/utils/id';
 	import { loadState } from '$lib/normalize';
 	import PreviewPage from '$lib/components/PreviewPage.svelte';
-	import {Accordion, AccordionTitle, AccordionContent} from '@layerd/ui';
 
 	const sectionSortType = 'report-section';
 	const photoSortTypePrefix = 'report-photo:';
@@ -59,7 +71,8 @@
 	let isExporting = $state(false);
 	let suppressSectionToggleId = '';
 	let suppressSectionToggleUntil = 0;
-	let unsortable = $state<UnsortableType | null>(null);
+
+	const draggable = new Draggable({});
 
 	const isDesktop = $derived(!mq.sm);
 	const overallMetrics = $derived(getOverallMetrics(sections));
@@ -93,47 +106,7 @@
 		return `${photoSortTypePrefix}${sectionId}`;
 	}
 
-	function destroyAction(cleanup: { destroy?: () => void } | (() => void) | void) {
-		if (typeof cleanup === 'function') {
-			cleanup();
-			return;
-		}
-
-		cleanup?.destroy?.();
-	}
-
-	function createManagedAction<T>(
-		register: (instance: UnsortableType, node: HTMLElement, params: T) => { destroy?: () => void } | (() => void) | void
-	) {
-		return (node: HTMLElement, initialParams: T | undefined) => {
-			let params = initialParams;
-			let cleanup: { destroy?: () => void } | (() => void) | void;
-
-			const apply = () => {
-				destroyAction(cleanup);
-				cleanup = undefined;
-
-				if (params === undefined || !unsortable) return;
-				cleanup = register(unsortable, node, params);
-			};
-
-			apply();
-
-			return {
-				update(nextParams: T | undefined) {
-					params = nextParams;
-					apply();
-				},
-				destroy() {
-					destroyAction(cleanup);
-				}
-			};
-		};
-	}
-
-	const addDroppable = createManagedAction((instance, node, options: DroppableParams) => instance.addDroppable(node, options));
-
-	const addHandle = createManagedAction((instance, node, _enabled: true) => instance.addHandle(node));
+	const { addDroppable, addHandle } = draggable;
 
 	function setSections(nextSections: unknown[]) {
 		sections = nextSections as Section[];
@@ -143,38 +116,35 @@
 		section.photos = nextPhotos as PhotosSection['photos'];
 	}
 
-	const addSortableSection = createManagedAction((instance, node, section: Section) => {
+	function addSortableSection(node: HTMLElement, section: Section) {
 		if (!isSectionMovable(section)) return;
 
-		return instance.addDraggable(node, {
+		return draggable.addDraggable(node, {
 			item: () => section,
 			type: sectionSortType,
 			accept: [sectionSortType]
 		});
-	});
+	}
 
-	const addSortableSectionHandle = createManagedAction((instance, node, section: Section) => {
+	function addSortableSectionHandle(node: HTMLElement, section: Section) {
 		if (!isSectionMovable(section)) return;
 
-		return instance.addHandle(node);
-	});
+		return addHandle(node);
+	}
 
-	const addSortablePhoto = createManagedAction((instance, node, args: { section: PhotosSection; photo: PhotosSection['photos'][number] }) => {
+	function addSortablePhoto(node: HTMLElement, args: { section: PhotosSection; photo: PhotosSection['photos'][number] }) {
 		const sortType = getPhotoSortType(args.section.id);
 
-		return instance.addDraggable(node, {
+		return draggable.addDraggable(node, {
 			item: () => args.photo,
 			type: sortType,
 			accept: [sortType]
 		});
-	});
+	}
 
-	function handleUnsortableDragStart(event: Event) {
-		const dragEvent = event as Event & {
-			operation?: { source?: { data?: { item?: () => { id?: string }; type?: unknown } } };
-		};
-		const item = dragEvent.operation?.source?.data?.item?.();
-		const type = dragEvent.operation?.source?.data?.type;
+	function handleDraggableDragStart(event: any) {
+		const item = event.operation?.source?.data?.item?.();
+		const type = event.operation?.source?.data?.type;
 
 		if (!item?.id) return;
 
@@ -201,13 +171,12 @@
 		sections = next.sections;
 	}
 
-	function toggleSection(sectionId: string) {
-		const current = sections.find((section) => section.id === sectionId);
-		if (!current) return;
+	function handleAccordionToggle(sectionId: string, event: Event) {
+		const details = event.currentTarget as HTMLDetailsElement | null;
+		if (!details) return;
 
-		const nextOpen = !current.open;
 		for (const section of sections) {
-			section.open = section.id === sectionId ? nextOpen : false;
+			section.open = section.id === sectionId ? details.open : false;
 		}
 	}
 
@@ -236,11 +205,6 @@
 
 		if (draggedSectionId === sectionId) draggedSectionId = '';
 		if (photoDropId === sectionId) photoDropId = '';
-	}
-
-	function handleRemoveSectionClick(event: MouseEvent, sectionId: string) {
-		event.stopPropagation();
-		removeSection(sectionId);
 	}
 
 	function addDay(section: TimeLogSection) {
@@ -312,13 +276,25 @@
 		suppressSectionToggleUntil = Date.now() + 400;
 	}
 
-	function handleSectionTriggerClick(sectionId: string) {
+	function handleSectionTitleClick(sectionId: string, event: MouseEvent) {
 		if (suppressSectionToggleId === sectionId && Date.now() < suppressSectionToggleUntil) {
 			suppressSectionToggleId = '';
+			event.preventDefault();
 			return;
 		}
 
-		toggleSection(sectionId);
+		suppressSectionToggleId = '';
+	}
+
+	function handleSectionActionClick(event: MouseEvent, sectionId: string) {
+		event.preventDefault();
+		event.stopPropagation();
+		removeSection(sectionId);
+	}
+
+	function handleSectionActionDisabledClick(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
 	}
 
 	function downloadBlob(blob: Blob, filename: string) {
@@ -533,10 +509,8 @@
 
 	onMount(() => {
 		void (async () => {
-			const { Unsortable } = await import('$lib/vendor/unsortable');
-			unsortable = new Unsortable();
-			unsortable.manager.monitor.addEventListener('dragstart', handleUnsortableDragStart);
-			unsortable.manager.monitor.addEventListener('dragend', clearDraggedItems);
+			draggable.manager.monitor.addEventListener('dragstart', handleDraggableDragStart);
+			draggable.manager.monitor.addEventListener('dragend', clearDraggedItems);
 
 			const next = loadState();
 			syncIdCounterFromSections(next.sections);
@@ -549,10 +523,9 @@
 		})();
 
 		return () => {
-			unsortable?.manager.monitor.removeEventListener('dragstart', handleUnsortableDragStart);
-			unsortable?.manager.monitor.removeEventListener('dragend', clearDraggedItems);
-			unsortable?.destroy();
-			unsortable = null;
+			draggable.manager.monitor.removeEventListener('dragstart', handleDraggableDragStart);
+			draggable.manager.monitor.removeEventListener('dragend', clearDraggedItems);
+			draggable.destroy();
 		};
 	});
 
@@ -664,16 +637,12 @@
 					</div>
 					
 					<!-- create content -->
-					<div
+					<div id="createContentPanels"
 						class="min-h-0 flex-1 space-y-3 overflow-auto p-4 pt-4"
-						use:addDroppable={
-							unsortable
-								? {
-									items: { get: () => sections, set: (items: unknown[]) => setSections(items) },
-									accept: [sectionSortType]
-								}
-								: undefined
-						}
+						use:addDroppable={{
+							items: { get: () => sections, set: (items: unknown[]) => setSections(items) },
+							accept: [sectionSortType]
+						}}
 					>
 						{#each sections as section (section.id)}
 							{@const metrics = getSectionMetrics(section)}
@@ -681,37 +650,28 @@
 							{@const sectionStatusTextClass = getSectionStatusTextClass(metrics)}
 							{@const sectionProgressFillClass = getSectionProgressFillClass(metrics)}
 
-							<!-- panels -->
-							<article
-								animate:flip={{ duration: 180 }}
-								class="relative rounded-2xl border border-slate-200 bg-white"
-								data-dragging={draggedSectionId === section.id ? 'true' : 'false'}
-								use:addSortableSection={unsortable ? section : undefined}
+<!-- panels -->
+<div
+	animate:flip={{ duration: 180 }}
+	class="relative"
+	data-dragging={draggedSectionId === section.id ? 'true' : 'false'}
+					use:addSortableSection={section}
+>
+								<Accordion
+									class="rounded-2xl border border-slate-200 bg-white"
+									name="report-sections"
+									open={section.open}
+									ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}
 							>
-								{#if isSectionMovable(section)}
-									<Button
-										variant="icon" icon="close"
-										class="text-[8px]! absolute! -right-2 -top-2 z-10"
-										aria-label={`Delete ${section.title}`}
-										onclick={(event: MouseEvent) => handleRemoveSectionClick(event, section.id)}
-									/>
-									{:else}
-									<Button variant="icon" icon="lock" disabled 
-										class="text-[8px]! absolute! -right-2 -top-2 z-10 text-secondary-400 bg-secondary-200 opacity-100"
-									/>
-								{/if}
-
-								<!-- panel trigger -->
-								<button
-									type="button"
+								<AccordionTitle
 									class="block w-full cursor-pointer p-4 text-left"
-									onclick={() => handleSectionTriggerClick(section.id)}
+									onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
 								>
 									<div class="flex items-start gap-3">
 										{#if isSectionMovable(section)}
 											<div
 												class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-2xl text-slate-700 cursor-grab active:cursor-grabbing"
-												use:addSortableSectionHandle={unsortable ? section : undefined}
+												use:addSortableSectionHandle={section}
 												aria-label={`Reorder ${section.title}`}
 											>
 												{section.icon}
@@ -738,12 +698,29 @@
 													<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
 											</div>
 										</div>
+
+										{#if isSectionMovable(section)}
+											<Button
+												variant="icon"
+												icon="close"
+												class="mt-0.5 shrink-0 text-[8px]!"
+												aria-label={`Delete ${section.title}`}
+												onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)}
+											/>
+										{:else}
+											<Button
+												variant="icon"
+												icon="lock"
+												class="mt-0.5 shrink-0 text-[8px]! text-secondary-400 bg-secondary-200 opacity-100"
+												aria-label={`${section.title} is locked`}
+												onclick={handleSectionActionDisabledClick}
+											/>
+										{/if}
 									</div>
-								</button>
+								</AccordionTitle>
 
 								<!-- panel content -->
-								{#if section.open}
-									<div class="border-t border-slate-200 p-4">
+								<AccordionContent class="border-t border-slate-200 p-4">
 
 										<!-- 1. COVER PAGE 
 										------------------------------>
@@ -867,17 +844,13 @@
 
 													<div
 														class="grid grid-cols-2 gap-3"
-														use:addDroppable={
-															unsortable
-																? {
-																	items: {
-																		get: () => section.photos,
-																		set: (items: unknown[]) => setSectionPhotos(section, items)
-																	},
-																	accept: [getPhotoSortType(section.id)]
-																}
-																: undefined
-														}
+														use:addDroppable={{
+															items: {
+																get: () => section.photos,
+																set: (items: unknown[]) => setSectionPhotos(section, items)
+															},
+															accept: [getPhotoSortType(section.id)]
+														}}
 													>
 														{#each section.photos as photo (photo.id)}
 															<div
@@ -885,7 +858,7 @@
 																class="rounded-2xl bg-white p-2"
 																data-dragging={draggedPhotoId === photo.id ? 'true' : 'false'}
 																role="presentation"
-																use:addSortablePhoto={unsortable ? { section, photo } : undefined}
+																use:addSortablePhoto={{ section, photo }}
 															>
 																<div
 																	class="relative rounded-xl aspect-square bg-slate-100"
@@ -894,7 +867,7 @@
 
 																	<div
 																		class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-slate-700 shadow-sm cursor-grab active:cursor-grabbing"
-																		use:addHandle={unsortable ? true : undefined}
+																		use:addHandle
 																		aria-label={`Reorder ${photo.caption || photo.name || 'photo'}`}
 																	>
 																		::
@@ -918,9 +891,9 @@
 												</div>
 											</div>
 										{/if}
-									</div>
-								{/if}
-							</article>
+								</AccordionContent>
+							</Accordion>
+							</div>
 						{/each}
 					</div>
 				</div>

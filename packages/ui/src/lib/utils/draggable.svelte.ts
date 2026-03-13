@@ -1,4 +1,8 @@
-import { DragDropManager, Draggable, Droppable } from "@dnd-kit/dom";
+import {
+	DragDropManager,
+	Draggable as DndDraggable,
+	Droppable,
+} from "@dnd-kit/dom";
 
 type ItemAccessor<T> = T | (() => T);
 type ArrayAccessors<T> =
@@ -13,6 +17,10 @@ type ManagedCleanup = {
 	destroy: () => void;
 };
 
+type DndOptions = Record<string, unknown> & {
+	data?: Record<string, unknown>;
+};
+
 function move<T>(items: T[], from: number, to: number) {
 	items.splice(to, 0, items.splice(from, 1)[0]);
 	return items;
@@ -22,9 +30,7 @@ function hasValue(value: unknown, target: unknown): boolean {
 	if (value === target) return true;
 	if (Array.isArray(value)) return value.some((item) => hasValue(item, target));
 	if (value && typeof value === "object") {
-		return Object.values(value).some((item) =>
-			hasValue(item, target)
-		);
+		return Object.values(value).some((item) => hasValue(item, target));
 	}
 	return false;
 }
@@ -67,18 +73,18 @@ type DraggableOptions<T> = {
 	item: ItemAccessor<T>;
 	type?: string;
 	accept?: string[];
-	draggableOptions?: Record<string, unknown>;
-	droppableOptions?: Record<string, unknown>;
+	draggableOptions?: DndOptions;
+	droppableOptions?: DndOptions;
 };
 
 export type DroppableParams<T = unknown> = {
 	items: ArrayAccessors<T>;
 	setItems?: (items: T[]) => void;
 	accept?: string[];
-	droppableOptions?: Record<string, unknown>;
+	droppableOptions?: DndOptions;
 };
 
-type UnsortableOptions = {
+type DraggableInstanceOptions = {
 	autoAttach?: boolean;
 	managerOptions?: Record<string, unknown>;
 	manager?: DragDropManager;
@@ -86,7 +92,7 @@ type UnsortableOptions = {
 
 const defaultOptions = {
 	autoAttach: true,
-} satisfies UnsortableOptions;
+} satisfies DraggableInstanceOptions;
 
 let lastDroppable: { disabled?: boolean } | null = null;
 let lastDroppableOriginalState: boolean | undefined;
@@ -97,14 +103,14 @@ const containerMap = new WeakMap<
 >();
 const itemMap = new WeakMap<
 	HTMLElement,
-	{ draggable: { handle?: HTMLElement } }
+	{ draggable: DndDraggable<any> }
 >();
 
-export class Unsortable {
+export class Draggable {
 	manager: DragDropManager;
-	options: UnsortableOptions;
+	options: DraggableInstanceOptions;
 
-	constructor(options: UnsortableOptions = {}) {
+	constructor(options: DraggableInstanceOptions = {}) {
 		this.options = { ...defaultOptions, ...options };
 		this.manager = options.manager ||
 			new DragDropManager(options.managerOptions);
@@ -121,24 +127,24 @@ export class Unsortable {
 	attach() {
 		this.manager.monitor.addEventListener(
 			"dragover",
-			this._onDragOver as EventListener,
+			this._onDragOver as any,
 		);
 		this.manager.monitor.addEventListener(
 			"dragover",
-			this._disableOwnDroppable as EventListener,
+			this._disableOwnDroppable as any,
 		);
 		this.manager.monitor.addEventListener(
 			"beforedragstart",
-			this._disableOwnDroppable as EventListener,
+			this._disableOwnDroppable as any,
 		);
 		this.manager.monitor.addEventListener(
 			"dragend",
-			this._restoreLastDroppable as EventListener,
+			this._restoreLastDroppable as any,
 		);
 	}
 
-	_disableOwnDroppable(event: Event) {
-		const dragEvent = event as Event & {
+	_disableOwnDroppable(event: any) {
+		const dragEvent = event as {
 			operation?: {
 				source?: { data?: { droppable?: { disabled?: boolean } } };
 			};
@@ -166,8 +172,8 @@ export class Unsortable {
 		this.manager.destroy();
 	}
 
-	_onDragOver(event: Event) {
-		const dragEvent = event as Event & {
+	_onDragOver(event: any) {
+		const dragEvent = event as {
 			operation?: {
 				source: { element: HTMLElement };
 				target?: { data?: { isContainer?: boolean } };
@@ -184,8 +190,8 @@ export class Unsortable {
 		return this.handleSort(event);
 	}
 
-	handleMove(event: Event) {
-		const dragEvent = event as Event & {
+	handleMove(event: any) {
+		const dragEvent = event as {
 			operation: {
 				source: { element: HTMLElement; data: { item: () => unknown } };
 				target: {
@@ -212,8 +218,8 @@ export class Unsortable {
 		dragEvent.operation.target.data.items.set([...targetItems, sourceItem]);
 	}
 
-	handleSort(event: Event) {
-		const dragEvent = event as Event & {
+	handleSort(event: any) {
+		const dragEvent = event as {
 			operation: {
 				source: { element: HTMLElement; data: { item: () => unknown } };
 				target: { element: HTMLElement; data: { item: () => unknown } };
@@ -257,9 +263,10 @@ export class Unsortable {
 		element: HTMLElement,
 		options: DraggableOptions<T>,
 	): ManagedCleanup {
+		const item = toItemAccessor(options.item);
 		const normalizedOptions = {
 			...options,
-			item: toItemAccessor(options.item),
+			item,
 		};
 
 		const droppable = new Droppable(
@@ -267,7 +274,7 @@ export class Unsortable {
 				accept: normalizedOptions.accept ||
 					(normalizedOptions.type ? [normalizedOptions.type] : undefined),
 				...normalizedOptions.droppableOptions,
-				id: normalizedOptions.item(),
+				id: item() as any,
 				element,
 				data: {
 					...normalizedOptions,
@@ -278,10 +285,10 @@ export class Unsortable {
 			this.manager,
 		);
 
-		const draggable = new Draggable(
+		const draggable = new DndDraggable(
 			{
 				type: normalizedOptions.type,
-				id: normalizedOptions.item(),
+				id: item() as any,
 				element,
 				...normalizedOptions.draggableOptions,
 				data: {
@@ -320,7 +327,7 @@ export class Unsortable {
 		const droppable = new Droppable(
 			{
 				...normalizedOptions.droppableOptions,
-				id: normalizedOptions.items.get(),
+				id: normalizedOptions.items.get() as any,
 				element,
 				accept: normalizedOptions.accept,
 				data: {
