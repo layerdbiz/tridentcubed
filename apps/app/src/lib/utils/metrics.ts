@@ -67,16 +67,16 @@ export function getSectionStatusLabel(metrics: SectionMetrics): string {
 
 export function getSectionStatusTextClass(metrics: SectionMetrics): string {
 	const status = getSectionStatus(metrics);
-	if (status === "todo") return "text-slate-400";
-	if (status === "complete") return "text-green-600";
-	return "text-primary-500";
+	if (status === "todo") return "text-neutral-400";
+	if (status === "complete") return "text-success-600";
+	return "text-info";
 }
 
 export function getSectionProgressFillClass(metrics: SectionMetrics): string {
 	const status = getSectionStatus(metrics);
 	if (status === "todo") return "bg-secondary-300";
 	if (status === "complete") return "bg-accent-500";
-	return "bg-primary";
+	return "bg-info";
 }
 
 export function getProgressRingOffset(percent: number): number {

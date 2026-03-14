@@ -4,9 +4,6 @@
 	- primary
 	- secondary
 	- accent
-	- lite (todo)
-	- ghost (todo)
-	- link (todo)
 	- success (todo)
 	- warning (todo)
 	- error (todo)
@@ -15,17 +12,25 @@
 
 @theme inline {
 	/* theme (default) */
-	--color-theme: var(--theme-color, var(--theme-color, var(--color-gray-500)));
+	--color-theme: var(--theme-color, var(--theme-color, var(--color-slate-500)));
 
 	/* theme */
-	--color-base: var(--theme-color-base, var(--theme-color, var(--color-gray-500)));
-	--color-neutral: var(--theme-color-neutral, var(--theme-color, var(--color-gray-500)));
+	--color-base: var(--theme-color-base, var(--theme-color, var(--color-slate-500)));
+	--color-neutral: var(--theme-color-neutral, var(--theme-color, var(--color-slate-500)));
 	--color-primary: var(--theme-color-primary, var(--theme-color, var(--color-blue-500)));
-	--color-secondary: var(--theme-color-secondary, var(--theme-color, var(--color-rose-500)));
-	--color-accent: var(--theme-color-accent, var(--theme-color, var(--color-green-500)));
+	--color-secondary: var(--theme-color-secondary, var(--theme-color, var(--color-slate-500)));
+	--color-accent: var(--theme-color-accent, var(--theme-color, var(--color-emerald-500)));
+	
+	/* status */
+	--color-info: var(--theme-color-info, var(--color-blue-500));
+	--color-warning: var(--theme-color-warning, var(--color-amber-500));
+	--color-success: var(--theme-color-success, var(--color-emerald-500));
+	--color-danger: var(--theme-color-danger, var(--color-rose-500));
 }
 
 @theme {
+	/* THEME
+	****************************/
 	/* base */
 	--color-base-50: color-mix(in oklch, var(--color-base) 5%, white);
 	--color-base-100: color-mix(in oklch, var(--color-base) 10%, white);
@@ -90,4 +95,58 @@
 	--color-accent-800: color-mix(in oklch, var(--color-accent) 20%, black);
 	--color-accent-900: color-mix(in oklch, var(--color-accent) 10%, black);
 	--color-accent-950: color-mix(in oklch, var(--color-accent) 5%, black);
+
+	/* STATUS 
+	****************************/
+	/* info */
+	--color-info-50: color-mix(in oklch, var(--color-info) 5%, white);
+	--color-info-100: color-mix(in oklch, var(--color-info) 10%, white);
+	--color-info-200: color-mix(in oklch, var(--color-info) 30%, white);
+	--color-info-300: color-mix(in oklch, var(--color-info) 50%, white);
+	--color-info-400: color-mix(in oklch, var(--color-info) 70%, white);
+	--color-info-500: color-mix(in oklch, var(--color-info) 100%, white);
+	--color-info-600: color-mix(in oklch, var(--color-info) 70%, black);
+	--color-info-700: color-mix(in oklch, var(--color-info) 40%, black);
+	--color-info-800: color-mix(in oklch, var(--color-info) 20%, black);
+	--color-info-900: color-mix(in oklch, var(--color-info) 10%, black);
+	--color-info-950: color-mix(in oklch, var(--color-info) 5%, black);
+
+	/* warning */
+	--color-warning-50: color-mix(in oklch, var(--color-warning) 5%, white);
+	--color-warning-100: color-mix(in oklch, var(--color-warning) 10%, white);
+	--color-warning-200: color-mix(in oklch, var(--color-warning) 30%, white);
+	--color-warning-300: color-mix(in oklch, var(--color-warning) 50%, white);
+	--color-warning-400: color-mix(in oklch, var(--color-warning) 70%, white);
+	--color-warning-500: color-mix(in oklch, var(--color-warning) 100%, white);
+	--color-warning-600: color-mix(in oklch, var(--color-warning) 70%, black);
+	--color-warning-700: color-mix(in oklch, var(--color-warning) 40%, black);
+	--color-warning-800: color-mix(in oklch, var(--color-warning) 20%, black);
+	--color-warning-900: color-mix(in oklch, var(--color-warning) 10%, black);
+	--color-warning-950: color-mix(in oklch, var(--color-warning) 5%, black);
+
+	/* success */
+	--color-success-50: color-mix(in oklch, var(--color-success) 5%, white);
+	--color-success-100: color-mix(in oklch, var(--color-success) 10%, white);
+	--color-success-200: color-mix(in oklch, var(--color-success) 30%, white);
+	--color-success-300: color-mix(in oklch, var(--color-success) 50%, white);
+	--color-success-400: color-mix(in oklch, var(--color-success) 70%, white);
+	--color-success-500: color-mix(in oklch, var(--color-success) 100%, white);
+	--color-success-600: color-mix(in oklch, var(--color-success) 70%, black);
+	--color-success-700: color-mix(in oklch, var(--color-success) 40%, black);
+	--color-success-800: color-mix(in oklch, var(--color-success) 20%, black);
+	--color-success-900: color-mix(in oklch, var(--color-success) 10%, black);
+	--color-success-950: color-mix(in oklch, var(--color-success) 5%, black);
+
+	/* danger */
+	--color-danger-50: color-mix(in oklch, var(--color-danger) 5%, white);
+	--color-danger-100: color-mix(in oklch, var(--color-danger) 10%, white);
+	--color-danger-200: color-mix(in oklch, var(--color-danger) 30%, white);
+	--color-danger-300: color-mix(in oklch, var(--color-danger) 50%, white);
+	--color-danger-400: color-mix(in oklch, var(--color-danger) 70%, white);
+	--color-danger-500: color-mix(in oklch, var(--color-danger) 100%, white);
+	--color-danger-600: color-mix(in oklch, var(--color-danger) 70%, black);
+	--color-danger-700: color-mix(in oklch, var(--color-danger) 40%, black);
+	--color-danger-800: color-mix(in oklch, var(--color-danger) 20%, black);
+	--color-danger-900: color-mix(in oklch, var(--color-danger) 10%, black);
+	--color-danger-950: color-mix(in oklch, var(--color-danger) 5%, black);
 }

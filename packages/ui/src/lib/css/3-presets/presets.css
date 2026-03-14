@@ -53,23 +53,23 @@
 
 /* outline */
 .theme-outline {
-	@apply text-base-950-50 border-base-900-100 border-2;
+	@apply text-base-950-50 border-base-900-100 border-sm;
 }
 .theme-outline-base {
-	@apply text-base-950-50 border-base-950-50 border-2;
+	@apply text-base-950-50 border-base-950-50 border-sm;
 }
 .theme-outline-neutral {
-	@apply text-neutral-950-50 border-neutral-950-50 border-2;
+	@apply text-neutral-950-50 border-neutral-950-50 border-sm;
 }
 
 .theme-outline-primary {
-	@apply text-primary-500-500 border-primary-500-500 border-2;
+	@apply text-primary-500-500 border-primary-500-500 border-sm;
 }
 .theme-outline-secondary {
-	@apply text-secondary-500-500 border-secondary-500-500 border-2;
+	@apply text-secondary-500-500 border-secondary-500-500 border-sm;
 }
 .theme-outline-accent {
-	@apply text-accent-500-500 border-accent-500-500 border-2;
+	@apply text-accent-500-500 border-accent-500-500 border-sm;
 }
 
 /* ghost */

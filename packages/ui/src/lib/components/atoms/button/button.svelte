@@ -392,11 +392,7 @@
 ::::::::::::::::::::::::::::::::::::::::::::: -->
 {#if isLegacyUsage}
 	<!-- Legacy Component Structure (preserves original behavior exactly) -->
-	<Component
-		{...props}
-		{unstyled}
-		base={!unstyled}
-		class="{!unstyled ? 'btn' : ''} 
+	<Component {...props} {unstyled} base={!unstyled} class="{!unstyled ? 'btn' : ''} 
 			{showIcon && showText && !unstyled ? 'btn-wrapper' : ''} 
 			{isIconOnly && !unstyled ? 'btn-icon-only' : ''} 
 			{reverse && !unstyled ? 'btn-reverse' : ''} 

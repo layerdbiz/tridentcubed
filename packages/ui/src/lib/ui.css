@@ -14,6 +14,7 @@
 /* 1. Theme */
 @import './css/1-theme/colors.css';
 @import './css/1-theme/pairings.css';
+@import './css/1-theme/edges.css';
 @import './css/1-theme/fonts.css';
 @import './css/1-theme/size.css';
 @import './css/1-theme/radii.css';
@@ -27,7 +28,7 @@
 @import './css/3-presets/presets.css' layer(components);
 
 /* 4. Components */
-/* @import './css/4-components/components.css' layer(components); */
+@import './css/4-components/components.css' layer(components);
 
 /* 5. Icons */
 @import './css/5-icons/icons.css' layer(components);
@@ -46,6 +47,10 @@
 	--theme-color-primary: var(--color-blue-500);
 	--theme-color-secondary: var(--color-rose-500);
 	--theme-color-accent: var(--color-emerald-500);
+	--theme-color-info: var(--color-blue-600);
+	--theme-color-warning: var(--color-amber-500);
+	--theme-color-success: var(--color-emerald-500);
+	--theme-color-danger: var(--color-rose-500);
 
 	/* fonts */
 	--theme-font: var(--font-asta);
@@ -64,6 +69,15 @@
 	--theme-radius: 9999px;
 	--theme-radius-box: 1.5rem;
 	--theme-radius-button: 10em;
+
+  /* borders, outlines, rings, strokes */
+  --theme-edge: 1px; 
+  
+ 	--theme-edge-xs: 1px;
+	--theme-edge-sm: 2px;
+	--theme-edge-md: 3px;
+	--theme-edge-lg: 4px;
+	--theme-edge-xl: 5px;
 
 	/* container padding values */
 	--spacing-container-mobile: 1rem; /* px-4 = 1rem */
@@ -133,13 +147,55 @@
 	@apply mask-lr mask-r-from-60% mask-l-from-60%;
 }
 
-/* mask: top to bottom */
-@utility mask-tb {
-	@apply mask-alpha mask-b-from-black mask-b-to-transparent mask-t-from-black mask-t-to-transparent;
+/* mask: bottom */
+@utility mask-b {
+	@apply mask-alpha mask-b-from-black mask-b-to-transparent;
+}
+@utility mask-b-sm {
+	@apply mask-b mask-b-from-90% mask-b-to-100%;
+}
+@utility mask-b-md {
+	@apply mask-b mask-b-from-80% mask-b-to-100%;
+}
+@utility mask-b-lg {
+	@apply mask-b mask-b-from-60% mask-b-to-100%;
+}
+@utility mask-b-xl {
+	@apply mask-b mask-b-from-50% mask-b-to-100%;
 }
 
+/* mask: top */
+@utility mask-t {
+	@apply mask-alpha mask-t-from-black mask-t-to-transparent;
+}
+@utility mask-t-sm {
+	@apply mask-t mask-t-from-90% mask-t-to-100%;
+}
+@utility mask-t-md {
+	@apply mask-t mask-t-from-80% mask-t-to-100%;
+}
+@utility mask-t-lg {
+	@apply mask-t mask-t-from-60% mask-t-to-100%;
+}
+@utility mask-t-xl {
+	@apply mask-t mask-t-from-50% mask-t-to-100%;
+}
+
+/* mask: y */
 @utility mask-y {
-	@apply mask-tb mask-t-from-20% mask-b-from-80%;
+	@apply mask-alpha mask-b-from-black mask-b-to-transparent mask-t-from-black mask-t-to-transparent;
+}
+@utility mask-y-sm {
+	@apply mask-y mask-t-from-90% mask-t-to-100% mask-b-from-90% mask-b-to-100%;
+}
+@utility mask-y-md {
+	@apply mask-y mask-t-from-80% mask-t-to-100% mask-b-from-80% mask-b-to-100%;
+}
+@utility mask-y-lg {
+	@apply mask-y mask-t-from-60% mask-t-to-100% mask-b-from-60% mask-b-to-100%;
+}
+@utility mask-y-xl {
+	@apply mask-y mask-t-from-50% mask-t-to-100% mask-b-from-50% mask-b-to-100%;
 }
 
 @utility text-trim {

@@ -16,6 +16,7 @@
 	import type { DroppableParams } from '@layerd/ui';
 	import { browser } from '$app/environment';
 	import { flip } from 'svelte/animate';
+	import { fromAction } from 'svelte/attachments';
 	import { onMount, tick } from 'svelte';
 	import type { Tab, Section, CoverSection, PhotosSection, TimeLogSection, TimeDay, PersistedState } from '$lib/types';
 	import { storageKey, detailFields, metricStatusCaptionClass, overallProgressRingRadius, overallProgressRingCircumference, previewPageWidth, previewPageHeight, previewZoomMin, previewZoomMax, previewDesktopPadding, previewMobilePadding, previewMobileGap, previewMobileVisiblePages } from '$lib/constants';
@@ -57,6 +58,11 @@
 
 	const baseState = createDefaultState();
 
+	type AccordionLayoutMetric = {
+		closedHeight: number;
+		marginTop: number;
+	};
+
 	let activeTab = $state<Tab>(baseState.activeTab);
 	let previewZoom = $state(baseState.previewZoom);
 	let hasUserZoomed = $state(baseState.hasUserZoomed);
@@ -71,6 +77,7 @@
 	let isExporting = $state(false);
 	let suppressSectionToggleId = '';
 	let suppressSectionToggleUntil = 0;
+	let accordionLayoutMetrics = $state<Record<string, AccordionLayoutMetric>>({});
 
 	const draggable = new Draggable({});
 
@@ -106,6 +113,10 @@
 		return `${photoSortTypePrefix}${sectionId}`;
 	}
 
+	function getAccordionAnchorId(sectionId: string) {
+		return `report-section-${sectionId}`;
+	}
+
 	const { addDroppable, addHandle } = draggable;
 
 	function setSections(nextSections: unknown[]) {
@@ -114,6 +125,52 @@
 
 	function setSectionPhotos(section: PhotosSection, nextPhotos: unknown[]) {
 		section.photos = nextPhotos as PhotosSection['photos'];
+	}
+
+	function measureAccordionLayout(node: HTMLElement, params: { sectionId: string; index: number }) {
+		let currentParams = params;
+		let frameId = 0;
+		const summaryElement = node.querySelector('summary');
+
+		const measure = () => {
+			const detailsElement = node.querySelector('details');
+			if (!(detailsElement instanceof HTMLDetailsElement) || !(summaryElement instanceof HTMLElement)) return;
+
+			const detailsStyles = window.getComputedStyle(detailsElement);
+			const wrapperStyles = window.getComputedStyle(node);
+			const closedHeight =
+				summaryElement.getBoundingClientRect().height +
+				parseFloat(detailsStyles.borderTopWidth || '0') +
+				parseFloat(detailsStyles.borderBottomWidth || '0');
+			const marginTop = parseFloat(wrapperStyles.marginTop || '0');
+
+			accordionLayoutMetrics[currentParams.sectionId] = { closedHeight, marginTop };
+		};
+
+		const scheduleMeasure = () => {
+			cancelAnimationFrame(frameId);
+			frameId = requestAnimationFrame(measure);
+		};
+
+		scheduleMeasure();
+
+		const resizeObserver =
+			summaryElement instanceof HTMLElement ? new ResizeObserver(scheduleMeasure) : null;
+
+		if (resizeObserver && summaryElement instanceof HTMLElement) {
+			resizeObserver.observe(summaryElement);
+		}
+
+		return {
+			update(nextParams: { sectionId: string; index: number }) {
+				currentParams = nextParams;
+				scheduleMeasure();
+			},
+			destroy() {
+				cancelAnimationFrame(frameId);
+				resizeObserver?.disconnect();
+			}
+		};
 	}
 
 	function addSortableSection(node: HTMLElement, section: Section) {
@@ -175,9 +232,10 @@
 		const details = event.currentTarget as HTMLDetailsElement | null;
 		if (!details) return;
 
-		for (const section of sections) {
-			section.open = section.id === sectionId ? details.open : false;
-		}
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section) return;
+
+		section.open = details.open;
 	}
 
 	function addSection() {
@@ -284,6 +342,25 @@
 		}
 
 		suppressSectionToggleId = '';
+
+		const createContentPanels = (event.currentTarget as HTMLElement | null)?.closest('#createContentPanels');
+		if (!(createContentPanels instanceof HTMLElement)) return;
+
+		let targetScrollTop = 0;
+
+		for (const section of sections) {
+			const metric = accordionLayoutMetrics[section.id];
+			if (!metric) continue;
+
+			if (section.id === sectionId) {
+				targetScrollTop += metric.marginTop;
+				break;
+			}
+
+			targetScrollTop += metric.closedHeight + metric.marginTop;
+		}
+
+		createContentPanels.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
 	}
 
 	function handleSectionActionClick(event: MouseEvent, sectionId: string) {
@@ -543,7 +620,7 @@
 
 <svelte:window onpaste={handlePaste} />
 
-<div class="page-shell h-svh overflow-hidden text-slate-900">
+<div class="page-shell h-svh overflow-hidden text-neutral-900">
 	<div class="flex h-full min-w-0 flex-col">
 
 		<!-- MOBILE TABS 
@@ -578,10 +655,10 @@
 			<!-- CREATE 
 			-------------------------------------------------->
 			<section id="create" class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
-				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-slate-200 bg-white shadow-sm">
+				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-secondary-200 bg-white shadow-sm">
 
 					<!-- create header -->
-					<div class="shrink-0 border-b border-slate-200 px-4 py-3">
+					<div class="shrink-0 border-b border-secondary-200 px-4 py-3">
 						<div class="flex flex-col gap-4">
 							<div class="grid gap-4 grid-cols-[minmax(0,1fr)_auto] items-start">
 								<div class="min-w-0">
@@ -594,12 +671,10 @@
 									<div class="relative h-18 w-18 shrink-0">
 										<svg viewBox="0 0 96 96" class="h-full w-full overflow-visible -rotate-90" aria-hidden="true">
 											<circle
+												class="fill-none stroke-secondary-200 stroke-12"
 												cx="48"
 												cy="48"
 												r={overallProgressRingRadius}
-												fill="none"
-												stroke="#d9e1ec"
-												stroke-width="12"
 											/>
 											<circle
 												cx="48"
@@ -614,7 +689,7 @@
 											/>
 										</svg>
 										<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-											<span class="text-sm font-bold text-slate-800">{overallMetrics.percent}%</span>
+											<span class="text-sm font-bold text-secondary-800">{overallMetrics.percent}%</span>
 										</div>
 									</div>
 								</div>
@@ -636,41 +711,42 @@
 						/>
 					</div>
 					
-					<!-- create content -->
-					<div id="createContentPanels"
-						class="min-h-0 flex-1 space-y-3 overflow-auto p-4 pt-4"
+					<!-- create panels -->
+					<div id="createContentPanels" class="scroller mask-b-sm min-h-0 flex-1 space-y-3 p-4 pt-1.75"
 						use:addDroppable={{
 							items: { get: () => sections, set: (items: unknown[]) => setSections(items) },
 							accept: [sectionSortType]
 						}}
 					>
-						{#each sections as section (section.id)}
+						{#each sections as section, index (section.id)}
 							{@const metrics = getSectionMetrics(section)}
 							{@const sectionStatusLabel = getSectionStatusLabel(metrics)}
 							{@const sectionStatusTextClass = getSectionStatusTextClass(metrics)}
 							{@const sectionProgressFillClass = getSectionProgressFillClass(metrics)}
 
-<!-- panels -->
-<div
-	animate:flip={{ duration: 180 }}
-	class="relative"
-	data-dragging={draggedSectionId === section.id ? 'true' : 'false'}
-					use:addSortableSection={section}
->
-								<Accordion
-									class="rounded-2xl border border-slate-200 bg-white"
-									name="report-sections"
-									open={section.open}
-									ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}
+						<!-- panels -->
+						<div
+							id={getAccordionAnchorId(section.id)}
+							animate:flip={{ duration: 180 }}
+							class="relative"
+							data-dragging={draggedSectionId === section.id ? 'true' : 'false'}
+							{@attach fromAction(measureAccordionLayout, () => ({ sectionId: section.id, index }))}
+							use:addSortableSection={section}
+						>
+							<Accordion
+								class="relative"
+								name="report-sections"
+								open={section.open}
+								ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}
 							>
 								<AccordionTitle
-									class="block w-full cursor-pointer p-4 text-left"
+									class="shadow-[-12px_-12px_0px_white] rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 block w-full cursor-pointer p-4 text-left sticky top-0 z-1  {section.open ? '' : 'rounded-b-2xl'}"
 									onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
 								>
 									<div class="flex items-start gap-3">
 										{#if isSectionMovable(section)}
 											<div
-												class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-2xl text-slate-700 cursor-grab active:cursor-grabbing"
+												class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing"
 												use:addSortableSectionHandle={section}
 												aria-label={`Reorder ${section.title}`}
 											>
@@ -683,19 +759,19 @@
 											<div class="mb-2 flex items-start justify-between gap-3">
 												<div>
 													<div class="flex flex-wrap items-center gap-2">
-														<h3 class="text-sm font-bold text-slate-800">{section.title}</h3>
+														<h3 class="text-sm font-bold text-neutral-800">{section.title}</h3>
 													</div>
-													<p class="text-xs text-slate-500">{metrics.done} of {metrics.total} complete</p>
+													<p class="text-xs text-neutral-500">{metrics.done} of {metrics.total} complete</p>
 												</div>
 
 												<div class="text-right">
-														<p class="text-sm font-bold text-slate-700">{metrics.percent}%</p>
+													<p class="text-sm font-bold text-neutral-700">{metrics.percent}%</p>
 													<p class={`${metricStatusCaptionClass} ${sectionStatusTextClass}`}>{sectionStatusLabel}</p>
 												</div>
 											</div>
 
-											<div class="h-2.5 overflow-hidden rounded-full bg-slate-200">
-													<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
+											<div class="h-2.5 overflow-hidden rounded-full bg-secondary-200/60">
+												<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
 											</div>
 										</div>
 
@@ -703,7 +779,7 @@
 											<Button
 												variant="icon"
 												icon="close"
-												class="mt-0.5 shrink-0 text-[8px]!"
+												class="absolute! -top-2! -right-2! text-[8px]!"
 												aria-label={`Delete ${section.title}`}
 												onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)}
 											/>
@@ -711,16 +787,17 @@
 											<Button
 												variant="icon"
 												icon="lock"
-												class="mt-0.5 shrink-0 text-[8px]! text-secondary-400 bg-secondary-200 opacity-100"
+												class="absolute! -top-2! -right-2! text-[8px]! text-secondary-400 bg-secondary-200 opacity-100"
 												aria-label={`${section.title} is locked`}
 												onclick={handleSectionActionDisabledClick}
+												disabled
 											/>
 										{/if}
 									</div>
 								</AccordionTitle>
 
 								<!-- panel content -->
-								<AccordionContent class="border-t border-slate-200 p-4">
+								<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
 
 										<!-- 1. COVER PAGE 
 										------------------------------>
@@ -728,10 +805,10 @@
 											<div class="grid gap-3">
 												{#each detailFields as field (field.key)}
 													<label class="block">
-														<span class="mb-1 block text-xs font-semibold text-slate-600">{field.label}</span>
+														<span class="mb-1 block text-xs font-semibold text-neutral-600">{field.label}</span>
 														<input
 															bind:value={section.fields[field.key]}
-															class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 focus:border-primary-500"
+															class="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none ring-0 placeholder:text-neutral-400 focus:border-primary-500"
 															placeholder={field.placeholder || ''}
 															type={field.type || 'text'}
 														/>
@@ -751,7 +828,7 @@
 														<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)}   />
 													</Grid>
 													
-													<p class="mb-3 text-xs font-semibold text-slate-600">{formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
+													<p class="mb-3 text-xs font-semibold text-neutral-600">{formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
 
 													<!-- times -->
 													{#each day.entries as entry (entry.id)}
@@ -824,7 +901,7 @@
 														</label>
 
 														<!-- camera -->
-														<label class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm">
+														<label class="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm">
 															<span>Camera</span>
 															<input accept="image/*" capture="environment" class="hidden" type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
 														</label>
@@ -834,7 +911,7 @@
 													<div
 														role="presentation"
 														class:drop-target={photoDropId === section.id}
-														class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 text-center text-xs font-medium text-slate-500"
+														class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-center text-xs font-medium text-neutral-500"
 														ondragover={(event) => handlePhotoZoneDragOver(section.id, event)}
 														ondragleave={() => handlePhotoZoneDragLeave(section.id)}
 														ondrop={(event) => handlePhotoZoneDrop(section.id, event)}
@@ -861,12 +938,12 @@
 																use:addSortablePhoto={{ section, photo }}
 															>
 																<div
-																	class="relative rounded-xl aspect-square bg-slate-100"
+																	class="relative rounded-xl aspect-square bg-neutral-100"
 																>
 																	<img alt={photo.caption || photo.name} class="h-full w-full object-cover rounded-lg" draggable="false" src={photo.src} />
 
 																	<div
-																		class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-slate-700 shadow-sm cursor-grab active:cursor-grabbing"
+																		class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-neutral-700 shadow-sm cursor-grab active:cursor-grabbing"
 																		use:addHandle
 																		aria-label={`Reorder ${photo.caption || photo.name || 'photo'}`}
 																	>
@@ -918,7 +995,7 @@
 						/>
 
 						<!-- Zoomer -->
-						<div id="zoomer" class="flex h-12 rounded-full border border-slate-300 bg-white shadow-sm">
+						<div id="zoomer" class="flex h-12 rounded-full border border-neutral-300 bg-white shadow-sm">
 							<!-- zoom in -->
 							<Button
 								ghost xl
@@ -929,7 +1006,7 @@
 							<!-- zoom percentage -->
 							<Button
 								ghost lg
-								class="w-18! px-0! font-black! border-x border-slate-200 rounded-none!"
+								class="w-18! px-0! font-black! border-x border-secondary-200 rounded-none!"
 								onclick={resetPreviewZoom}
 							>
 								{Math.round((previewZoom || 1) * 100)}%
@@ -974,12 +1051,12 @@
 												</div>
 
 												<!-- Bottom Cover Page -->
-												<div id="bottomCoverPage" class="grid justify-center bg-secondary-200/60 w-full z-1! absolute bottom-0 left-0 right-0 pb-20">
-													<Divider class="absolute bottom-full" color="text-secondary-200/60" bleed={false} />
+												<div id="bottomCoverPage" class="grid justify-center bg-secondary-200 w-full z-1! absolute bottom-0 left-0 right-0 pb-20">
+													<Divider class="absolute bottom-full" color="text-secondary-200" bleed={false} />
 													{#each coverMeta as item (item.label)}
 													<div class="grid grid-cols-[100px_100px] gap-3">
-														<span class="font-semibold text-slate-600">{item.label}:</span>
-														<span class="text-slate-800">{item.value}</span>
+														<span class="font-semibold text-neutral-600">{item.label}:</span>
+														<span class="text-neutral-800">{item.value}</span>
 													</div>
 													{/each}
 												</div>
@@ -991,9 +1068,9 @@
 											<Text h2="Table of Contents" class="text-4xl mb-4"/>
 											<div class="space-y-2 text-sm">
 												{#each tableOfContentsEntries as item (item.id)}
-													<div class="grid grid-cols-[1fr_auto] gap-3 border-b border-dashed border-slate-200 pb-1">
-														<span class="font-medium text-slate-700">{item.title}</span>
-														<span class="text-slate-500">{item.page}</span>
+													<div class="grid grid-cols-[1fr_auto] gap-3 border-b border-dashed border-secondary-200 pb-1">
+														<span class="font-medium text-neutral-700">{item.title}</span>
+														<span class="text-neutral-500">{item.page}</span>
 													</div>
 												{/each}
 											</div>
@@ -1007,12 +1084,12 @@
 												<PreviewPage>
 													<Text h2={section.title} class="text-4xl mb-4"/>
 													{#each section.days as day (day.id)}
-														<p class="mb-2 text-sm font-semibold text-slate-700">{formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
+														<p class="mb-2 text-sm font-semibold text-neutral-700">{formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
 														<ul class="mb-4 space-y-2 text-sm">
 															{#each getSortedEntries(day) as entry (entry.id)}
 																<li class="flex gap-3">
-																	<span class="w-14 shrink-0 font-bold text-slate-800">{entry.time || '----'}</span>
-																	<span class="text-slate-700">{entry.text || 'No activity entered'}</span>
+																	<span class="w-14 shrink-0 font-bold text-neutral-800">{entry.time || '----'}</span>
+																	<span class="text-neutral-700">{entry.text || 'No activity entered'}</span>
 																</li>
 															{/each}
 														</ul>
@@ -1032,14 +1109,14 @@
 														{#if section.photos.length}
 															{#each section.photos as photo (photo.id)}
 																<figure class={getPreviewPhotoCardClass(section, photo)}>
-																	<div class="grid place-items-center bg-slate-50 p-3" style={`height: ${getPreviewPhotoFrameHeight(section, photo)}`}> 
+																	<div class="grid place-items-center bg-neutral-50 p-3" style={`height: ${getPreviewPhotoFrameHeight(section, photo)}`}> 
 																		<img alt={photo.caption || photo.name} class="h-full w-full object-contain" src={photo.src} />
 																	</div>
-																	<figcaption class="p-3 text-xs text-slate-600">{photo.caption || photo.name || 'Photo'}</figcaption>
+																	<figcaption class="p-3 text-xs text-neutral-600">{photo.caption || photo.name || 'Photo'}</figcaption>
 																</figure>
 															{/each}
 														{:else}
-															<div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-500">No photos added yet.</div>
+															<div class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-5 text-sm text-neutral-500">No photos added yet.</div>
 														{/if}
 													</div>
 												</PreviewPage>
@@ -1093,6 +1170,11 @@
 		background-color: #eef2f7;
 		background-image: radial-gradient(circle at 1px 1px, rgba(100, 116, 139, 0.24) 1.05px, transparent 0);
 		background-size: 16px 16px;
+	}
+
+	#createContentPanels {
+		scroll-behavior: smooth;
+		/* scroll-padding-top: 0.75rem; */
 	}
 
 </style>

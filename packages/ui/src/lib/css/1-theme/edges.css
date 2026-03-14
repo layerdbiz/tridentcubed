@@ -1,0 +1,31 @@
+/* Borders, Outlines, Rings, Strokes
+************************************************************************/
+@theme inline {
+  /* border */
+	--border-width-xs: var(--theme-edge-xs, var(--theme-edge));
+	--border-width-sm: var(--theme-edge-sm, var(--theme-edge));
+	--border-width-md: var(--theme-edge-md, var(--theme-edge));
+	--border-width-lg: var(--theme-edge-lg, var(--theme-edge));
+	--border-width-xl: var(--theme-edge-xl, var(--theme-edge));
+
+  /* outline */
+	--outline-width-xs: var(--theme-edge-xs, var(--theme-edge));
+	--outline-width-sm: var(--theme-edge-sm, var(--theme-edge));
+	--outline-width-md: var(--theme-edge-md, var(--theme-edge));
+	--outline-width-lg: var(--theme-edge-lg, var(--theme-edge));
+	--outline-width-xl: var(--theme-edge-xl, var(--theme-edge));
+
+  /* ring */
+	--ring-width-xs: var(--theme-edge-xs, var(--theme-edge));
+	--ring-width-sm: var(--theme-edge-sm, var(--theme-edge));
+	--ring-width-md: var(--theme-edge-md, var(--theme-edge));
+	--ring-width-lg: var(--theme-edge-lg, var(--theme-edge));
+	--ring-width-xl: var(--theme-edge-xl, var(--theme-edge));
+
+  /* stroke */
+	--stroke-width-xs: var(--theme-edge-xs, var(--theme-edge));
+	--stroke-width-sm: var(--theme-edge-sm, var(--theme-edge));
+	--stroke-width-md: var(--theme-edge-md, var(--theme-edge));
+	--stroke-width-lg: var(--theme-edge-lg, var(--theme-edge));
+	--stroke-width-xl: var(--theme-edge-xl, var(--theme-edge));
+}

@@ -2,9 +2,30 @@
 *************************************************************************/
 
 /* container */
+.scroller {
+	overflow-y: scroll;
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+
+	/* width */
+	::-webkit-scrollbar {
+		width: 4px;
+		height: 4px;
+	}
+
+	/* Track */
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	/* Thumb */
+	::-webkit-scrollbar-thumb {
+		background: transparent;
+	}
+}
 
 /* buttons */
-.btn-container {
+/* .btn-container {
 	@apply flex w-full items-center gap-2 text-wrap;
 
 	&:has(svg + svg) {
@@ -16,4 +37,4 @@
 			@apply ml-auto;
 		}
 	}
-}
+} */

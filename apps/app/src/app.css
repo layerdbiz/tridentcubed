@@ -10,6 +10,10 @@
 	--theme-color-secondary: var(--color-slate-500);
 	--theme-color-accent: var(--color-green-500);
 	--theme-color-neutral: var(--color-slate-500);
+	--theme-color-info: var(--color-blue-600);
+	--theme-color-warning: var(--color-amber-500);
+	--theme-color-success: var(--color-emerald-500);
+	--theme-color-danger: var(--color-rose-500);
 
 	/* fonts */
 	--theme-font: var(--font-asta);
@@ -29,7 +33,12 @@
 	--theme-radius-box: 1.5rem;
 	--theme-radius-button: 10em;
 
-	/* container padding values */
-	--spacing-container-mobile: 1rem; /* px-4 = 1rem */
-	--spacing-container-desktop: 2rem; /* px-8 = 2rem */
+
+  /* borders, outlines, rings, strokes */
+  --theme-edge: 1px; 
+ 	--theme-edge-xs: 1px;
+	--theme-edge-sm: 1px;
+	--theme-edge-md: 3px;
+	--theme-edge-lg: 4px;
+	--theme-edge-xl: 5px;
 }

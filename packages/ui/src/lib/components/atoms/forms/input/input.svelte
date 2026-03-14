@@ -394,7 +394,7 @@
 					shadow-base-100-700
 					group relative min-w-24
 					rounded-xl
-					border-2
+					border-sm
 					shadow-[inset_0_0_0_999rem]
 			"
 		>
