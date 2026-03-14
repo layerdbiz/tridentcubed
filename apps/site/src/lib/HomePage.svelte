@@ -213,8 +213,8 @@
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
 <Section
 	id="Home"
-	class="z-2 !flex min-h-svh !flex-col"
-	container="!flex flex-col items-center justify-start gap-14 !py-0 !pt-10"
+	class="z-2 flex! min-h-svh flex-col!"
+	container="flex! flex-col items-center justify-start gap-14 !py-0 !pt-10"
 >
 	<!-- hero content
 	------------------------------------------>
@@ -285,7 +285,7 @@
 				variant="icon text"
 				icon={shipIcon}
 				label="Learn More"
-				class="mx-auto !w-52 md:min-w-72"
+				class="mx-auto w-52! md:min-w-72"
 				href="#About"
 			/>
 			<Button
@@ -293,7 +293,7 @@
 				variant={mq.sm || mq.md ? 'icon text' : 'text icon'}
 				icon="icon-[mdi--chevron-right]"
 				label="Contact Sales"
-				class="light mx-auto !w-52 md:min-w-72"
+				class="light mx-auto w-52! md:min-w-72"
 				href="#Contact"
 			/>
 		</div>
@@ -447,7 +447,7 @@
 		/>
 	</div>
 	<div
-		class="pointer-events-none absolute inset-0 top-auto isolate h-14 bg-gradient-to-b from-transparent to-black opacity-100"
+		class="pointer-events-none absolute inset-0 top-auto isolate h-14 bg-linear-to-b from-transparent to-black opacity-100"
 	></div>
 </Section>
 
@@ -456,7 +456,7 @@
 <Section
 	id="Partners"
 	class="bg-dark-dark text-light-dark z-0 flex flex-col overflow-clip pt-20"
-	container="!gap-10 !p-0"
+	container="!gap-10 p-0!"
 	divider="bottom"
 	dividerBottom={{ svg: 'text-base-50-950' }}
 >
@@ -650,7 +650,7 @@
 				<Button
 					appearance="ghost"
 					variant="icon text"
-					class="text-base-600-300 text-md !rounded-none !p-0"
+					class="text-base-600-300 text-md rounded-none! p-0!"
 					icon="icon-[flagpack--us]"
 					label="+1 (409) 543-2725"
 					href="tel:+14095432725"
@@ -659,7 +659,7 @@
 				<Button
 					appearance="ghost"
 					variant="icon text"
-					class="text-base-600-300 text-md !rounded-none !p-0"
+					class="text-base-600-300 text-md rounded-none! p-0!"
 					icon="icon-[flagpack--mx]"
 					label="+1 (832) 477-6974"
 					href="tel:+18324776974"
@@ -840,8 +840,8 @@
 				label={isSent ? 'Sent!' : isSubmitting ? 'Sending...' : 'Send'}
 				icon={isSent ? 'icon-[mdi--check]' : isSubmitting ? 'spinner' : 'icon-[mdi--send]'}
 				variant="text icon"
-				class="submit-button mt-10 min-w-full !rounded-xl"
-				disabled={isSubmitting || isSent}
+				class="submit-button mt-10 min-w-full rounded-xl"
+!				disabled={isSubmitting || isSent}
 			/>
 			<!-- Success/Error Messages -->
 			{#await submitContactData.result}

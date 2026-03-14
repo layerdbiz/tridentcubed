@@ -218,7 +218,7 @@
 				year="2020"
 				name="Trident Cubed Solutions"
 				type="llc"
-				class="text-primary-50 !py-0 text-sm"
+				class="text-primary-50 py-0! text-sm"
 			/>
 		</div>
 		<div class="mt-2 flex lg:mt-0">
@@ -266,7 +266,7 @@
 	:global {
 		.nav .link:not(.logo),
 		.nav .link.toggle:not(.link.toggle-trigger) {
-			@apply md:!flex md:h-[calc(100%+1rem)];
+			@apply md:flex! md:h-[calc(100%+1rem)];
 		}
 	}
 </style>

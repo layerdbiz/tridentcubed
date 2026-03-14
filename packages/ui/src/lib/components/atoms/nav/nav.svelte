@@ -81,7 +81,7 @@
 				<!-- This works -->
 				<div
 					bind:this={toggleButtonContainer}
-					class="col-start-2 row-start-1 translate-x-2 justify-self-end lg:!hidden"
+					class="col-start-2 row-start-1 translate-x-2 justify-self-end lg:hidden!"
 				>
 					<Button
 						ghost
