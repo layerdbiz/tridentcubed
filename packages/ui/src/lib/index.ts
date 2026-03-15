@@ -14,6 +14,7 @@ export { default as Image, type ImageProps } from "./components/atoms/image/imag
 export * from "./components/atoms/image/image.data.ts";
 export { default as Indicator } from "./components/atoms/indicator/indicator.svelte";
 export { default as Input, type InputProps } from "./components/atoms/forms/input/input.svelte";
+export { default as InputNew, type InputNewProps } from "./components/atoms/forms/input/input-new.svelte";
 export { default as Link } from "./components/atoms/link/link.svelte";
 export * from "./components/atoms/link/link.data.ts";
 export { default as Metadata } from "./components/atoms/metadata/metadata.svelte";

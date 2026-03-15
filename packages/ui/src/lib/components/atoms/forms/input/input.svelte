@@ -105,6 +105,9 @@
 
 	// Auto-generate name from label if not provided
 	const inputName = $derived(name || label.toLowerCase().replace(/\s+/g, ''));
+	const hasLeadingIcon = $derived(
+		variant === 'icon' || variant === 'icon label' || variant === 'icon label icon'
+	);
 	const legendClass = $derived(
 		[
 			'px-1.25',
@@ -112,7 +115,7 @@
 			'pointer-events-none',
 			'mx-3',
 			'origin-top-left',
-			variant === 'label' ? 'translate-x-0' : 'translate-x-8',
+			hasLeadingIcon ? 'translate-x-8' : 'translate-x-0',
 			'translate-y-[125%]',
 			'font-medium',
 			'leading-5',
