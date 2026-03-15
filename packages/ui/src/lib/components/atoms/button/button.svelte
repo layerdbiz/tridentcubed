@@ -63,15 +63,15 @@
 		/** Callback when toggle state changes */
 		onToggle?: (toggled: boolean) => void;
 
-		// NEW: Variant system (optional, for new usage)
+		// Explicit layout control. When omitted, the component infers a sensible layout.
 		variant?: 'text' | 'icon' | 'icon text' | 'text icon' | 'icon text icon';
 
-		// NEW: Layout control (optional, for new usage)
+		// Layout controls
 		width?: 'auto' | 'full';
 		padding?: 'default' | 'none';
 		align?: 'center' | 'start' | 'end' | 'between' | 'around';
 
-		// NEW: Secondary icon system (for 'icon text icon' variant)
+		// Secondary icon support
 		iconEnd?:
 			| string
 			| {
@@ -114,7 +114,7 @@
 		iconHover = undefined,
 		toggled = undefined,
 		onToggle = undefined,
-		variant = undefined, // Keep undefined to detect legacy usage
+		variant = undefined,
 		width = 'auto',
 		padding = 'default',
 		align = 'center',
@@ -167,38 +167,37 @@
 		isToggled && iconEndToggle ? iconEndToggle : isHovered && iconEndHover ? iconEndHover : iconEnd
 	);
 
-	// Auto-detect variant for backward compatibility
-	const effectiveVariant = $derived(() => {
-		// If variant is explicitly set, use it
+	const hasChildren = $derived(children !== undefined);
+	const hasText = $derived(!!(label || children));
+	const displayText = $derived(label || (!hasChildren ? 'Button' : undefined));
+
+	// Resolve the layout from the explicit variant or the provided content.
+	const effectiveVariant = $derived.by(() => {
 		if (variant) {
 			return reverse && variant === 'text' ? 'text icon' : variant;
 		}
 
-		// Legacy mode: auto-detect based on props
 		const hasIcon = !!currentIcon;
 		const hasIconEnd = !!currentIconEnd;
-		const hasText = !!(label || children);
 
 		if (hasIcon && hasIconEnd && hasText) {
 			return 'icon text icon';
-		} else if (hasIcon && hasText) {
-			return reverse ? 'text icon' : 'icon text';
-		} else if (hasIcon && !hasText) {
-			return 'icon';
-		} else {
-			return 'text';
 		}
+
+		if (hasIcon && hasText) {
+			return reverse ? 'text icon' : 'icon text';
+		}
+
+		if (hasIconEnd && hasText) {
+			return 'text icon';
+		}
+
+		if (hasIcon || hasIconEnd) {
+			return 'icon';
+		}
+
+		return 'text';
 	});
-
-	// Legacy compatibility: detect if this is using old patterns
-	const isLegacyUsage = $derived(variant === undefined);
-
-	// Determine what content to display (for legacy compatibility)
-	let hasChildren = $derived(children !== undefined);
-	let displayText = $derived(label || (!hasChildren && !currentIcon ? 'Button' : undefined));
-	let showIcon = $derived(!!currentIcon);
-	let showText = $derived(!!displayText || hasChildren);
-	let isIconOnly = $derived(showIcon && !showText);
 
 	// Handle toggle click
 	function handleToggle() {
@@ -213,32 +212,28 @@
 		onToggle?.(newToggled);
 	}
 
+	function handleFormControlChange(nextToggled: boolean) {
+		if (toggled === undefined) {
+			internalToggled = nextToggled;
+		}
+
+		onToggle?.(nextToggled);
+	}
+
 	// Build dynamic CSS classes
-	const buttonClasses = $derived(() => {
+	const buttonClasses = $derived.by(() => {
 		const classes = [];
 
 		if (!unstyled) {
 			classes.push('btn');
+			classes.push(`btn-variant-${effectiveVariant.replace(/\s+/g, '-')}`);
 
-			if (isLegacyUsage) {
-				// Legacy CSS classes for backward compatibility
-				if (showIcon && showText) classes.push('btn-wrapper');
-				if (isIconOnly) classes.push('btn-icon-only');
-				if (reverse) classes.push('btn-reverse');
-			} else {
-				// New variant-based classes
-				classes.push(`btn-variant-${effectiveVariant().replace(/\s+/g, '-')}`);
+			if (width === 'full') classes.push('btn-width-full');
 
-				// Width classes
-				if (width === 'full') classes.push('btn-width-full');
+			if (padding === 'none') classes.push('btn-padding-none');
 
-				// Padding classes
-				if (padding === 'none') classes.push('btn-padding-none');
-
-				// Alignment classes (for full width buttons)
-				if (width === 'full' && align !== 'center') {
-					classes.push(`btn-align-${align}`);
-				}
+			if (width === 'full' && align !== 'center') {
+				classes.push(`btn-align-${align}`);
 			}
 		}
 
@@ -250,58 +245,29 @@
 
 <!-- ⬜ default ⬛ prop 🟪 snippet 🟦 children -->
 
-<!-- Legacy Compatibility Snippet (maintains exact original behavior)
-::::::::::::::::::::::::::::::::::::::::::::: -->
-{#snippet legacyButtonContent(elementType: string)}
-	{#snippet textContent(elementType: string)}
-		{#if hasChildren}
-			{@render children()}
-		{:else}
-			{displayText}
-		{/if}
-	{/snippet}
-
-	{#if showIcon && currentIcon}
-		{#if isSnippet(currentIcon)}
-			<span class={!unstyled ? 'btn-icon' : ''}>
-				{@render currentIcon()}
-			</span>
-		{:else}
-			<Icon
-				class={!unstyled ? 'btn-icon' : ''}
-				icon={currentIcon}
-			/>
-		{/if}
-	{/if}
-	{#if showText}
-		<span class={!unstyled ? 'btn-label' : ''}>
-			{@render textContent(elementType)}
-		</span>
-	{/if}
-{/snippet}
-
-<!-- New Variant Snippets 
+<!-- Variant Snippets 
 ::::::::::::::::::::::::::::::::::::::::::::: -->
 <!-- Text Only -->
 {#snippet text()}
 	{#if children}
 		{@render children()}
 	{:else}
-		<span class={!unstyled ? 'btn-label' : ''}>{label || 'Button'}</span>
+		<span class={!unstyled ? 'btn-label' : ''}>{displayText}</span>
 	{/if}
 {/snippet}
 
 <!-- Icon Only -->
 {#snippet iconOnly()}
-	{#if currentIcon}
-		{#if isSnippet(currentIcon)}
+	{@const iconValue = currentIcon || currentIconEnd}
+	{#if iconValue}
+		{#if isSnippet(iconValue)}
 			<span class={!unstyled ? 'btn-icon' : ''}>
-				{@render currentIcon()}
+				{@render iconValue()}
 			</span>
 		{:else}
 			<Icon
 				class={!unstyled ? 'btn-icon' : ''}
-				icon={currentIcon}
+				icon={iconValue}
 			/>
 		{/if}
 	{/if}
@@ -339,15 +305,16 @@
 	{:else if label}
 		<span class={!unstyled ? 'btn-label' : ''}>{label}</span>
 	{/if}
-	{#if currentIcon}
-		{#if isSnippet(currentIcon)}
+	{@const iconValue = currentIconEnd || currentIcon}
+	{#if iconValue}
+		{#if isSnippet(iconValue)}
 			<span class={!unstyled ? 'btn-icon' : ''}>
-				{@render currentIcon()}
+				{@render iconValue()}
 			</span>
 		{:else}
 			<Icon
 				class={!unstyled ? 'btn-icon' : ''}
-				icon={currentIcon}
+				icon={iconValue}
 			/>
 		{/if}
 	{/if}
@@ -388,183 +355,84 @@
 	{/if}
 {/snippet}
 
+{#snippet buttonContent()}
+	{#if effectiveVariant === 'icon'}
+		{@render iconOnly()}
+	{:else if effectiveVariant === 'icon text'}
+		{@render iconText()}
+	{:else if effectiveVariant === 'text icon'}
+		{@render textIcon()}
+	{:else if effectiveVariant === 'icon text icon'}
+		{@render iconTextIcon()}
+	{:else}
+		{@render text()}
+	{/if}
+{/snippet}
+
 <!-- Template 
 ::::::::::::::::::::::::::::::::::::::::::::: -->
-{#if isLegacyUsage}
-	<!-- Legacy Component Structure (preserves original behavior exactly) -->
-	<Component {...props} {unstyled} base={!unstyled} class="{!unstyled ? 'btn' : ''} 
-			{showIcon && showText && !unstyled ? 'btn-wrapper' : ''} 
-			{isIconOnly && !unstyled ? 'btn-icon-only' : ''} 
-			{reverse && !unstyled ? 'btn-reverse' : ''} 
-			{className}"
-	>
-		{#snippet component({
-			props,
-			content
-		}: {
-			props: ComponentReturn;
-			content: import('svelte').Snippet<[string?]>;
-		})}
-			{#if isFormControl}
-				<!-- Form Control (Radio/Checkbox) - Input inside label for better structure -->
-				<label
-					class="{!unstyled ? 'btn w-full' : ''} {showIcon && showText && !unstyled
-						? 'btn-wrapper w-full'
-						: ''} {isIconOnly && !unstyled ? 'btn-icon-only' : ''} {reverse && !unstyled
-						? 'btn-reverse w-full'
-						: ''} {className}"
-					onmouseenter={() => (isHovered = true)}
-					onmouseleave={() => (isHovered = false)}
-				>
-					<input
-						{type}
-						{name}
-						{value}
-						{checked}
-						class="sr-only"
-						onchange={(e) => {
-							const target = e.target as HTMLInputElement;
-							onToggle?.(target.checked);
-						}}
-					/>
-					{@render legacyButtonContent('Label')}
-				</label>
-			{:else if href}
-				<!-- Link Button -->
-				<a
-					{href}
-					target={finalTarget}
-					rel={finalRel}
-					{...props}
-					onmouseenter={() => (isHovered = true)}
-					onmouseleave={() => (isHovered = false)}
-					onclick={(e) => {
-						if (iconToggle || onToggle) {
-							e.preventDefault();
-							handleToggle();
-						}
-						props.onclick?.(e);
+<Component
+	{...props}
+	{unstyled}
+	base={!unstyled}
+	class={buttonClasses}
+>
+	{#snippet component({ props }: { props: ComponentReturn })}
+		{#if isFormControl}
+			<label
+				{...props}
+				onmouseenter={() => (isHovered = true)}
+				onmouseleave={() => (isHovered = false)}
+			>
+				<input
+					{type}
+					{name}
+					{value}
+					{checked}
+					class="sr-only"
+					onchange={(e) => {
+						const target = e.target as HTMLInputElement;
+						handleFormControlChange(target.checked);
 					}}
-				>
-					{@render legacyButtonContent('Link')}
-				</a>
-			{:else}
-				<!-- Regular Button -->
-				<button
-					type={type === 'radio' || type === 'checkbox' ? 'button' : type}
-					{...props}
-					onmouseenter={() => (isHovered = true)}
-					onmouseleave={() => (isHovered = false)}
-					onclick={(e) => {
-						if (iconToggle || onToggle) {
-							handleToggle();
-						}
-						props.onclick?.(e);
-					}}
-				>
-					{@render legacyButtonContent('Button')}
-				</button>
-			{/if}
-		{/snippet}
-	</Component>
-{:else}
-	<!-- New Variant System -->
-	<Component
-		{...props}
-		{unstyled}
-		base={!unstyled}
-		class={buttonClasses()}
-	>
-		{#snippet component({ props }: { props: ComponentReturn })}
-			{#if isFormControl}
-				<!-- Form Control (Radio/Checkbox) -->
-				<label
-					{...props}
-					onmouseenter={() => (isHovered = true)}
-					onmouseleave={() => (isHovered = false)}
-				>
-					<input
-						{type}
-						{name}
-						{value}
-						{checked}
-						class="sr-only"
-						onchange={(e) => {
-							const target = e.target as HTMLInputElement;
-							onToggle?.(target.checked);
-						}}
-					/>
-					{#if effectiveVariant() === 'icon'}
-						{@render iconOnly()}
-					{:else if effectiveVariant() === 'icon text'}
-						{@render iconText()}
-					{:else if effectiveVariant() === 'text icon'}
-						{@render textIcon()}
-					{:else if effectiveVariant() === 'icon text icon'}
-						{@render iconTextIcon()}
-					{:else}
-						{@render text()}
-					{/if}
-				</label>
-			{:else if href}
-				<!-- Link Button -->
-				<a
-					{href}
-					target={finalTarget}
-					rel={finalRel}
-					{...props}
-					onmouseenter={() => (isHovered = true)}
-					onmouseleave={() => (isHovered = false)}
-					onclick={(e) => {
-						if (iconToggle || iconEndToggle || onToggle) {
-							e.preventDefault();
-							handleToggle();
-						}
-						props.onclick?.(e);
-					}}
-				>
-					{#if effectiveVariant() === 'icon'}
-						{@render iconOnly()}
-					{:else if effectiveVariant() === 'icon text'}
-						{@render iconText()}
-					{:else if effectiveVariant() === 'text icon'}
-						{@render textIcon()}
-					{:else if effectiveVariant() === 'icon text icon'}
-						{@render iconTextIcon()}
-					{:else}
-						{@render text()}
-					{/if}
-				</a>
-			{:else}
-				<!-- Regular Button -->
-				<button
-					type={type === 'radio' || type === 'checkbox' ? 'button' : type}
-					{...props}
-					onmouseenter={() => (isHovered = true)}
-					onmouseleave={() => (isHovered = false)}
-					onclick={(e) => {
-						if (iconToggle || iconEndToggle || onToggle) {
-							handleToggle();
-						}
-						props.onclick?.(e);
-					}}
-				>
-					{#if effectiveVariant() === 'icon'}
-						{@render iconOnly()}
-					{:else if effectiveVariant() === 'icon text'}
-						{@render iconText()}
-					{:else if effectiveVariant() === 'text icon'}
-						{@render textIcon()}
-					{:else if effectiveVariant() === 'icon text icon'}
-						{@render iconTextIcon()}
-					{:else}
-						{@render text()}
-					{/if}
-				</button>
-			{/if}
-		{/snippet}
-	</Component>
-{/if}
+				/>
+				{@render buttonContent()}
+			</label>
+		{:else if href}
+			<a
+				{href}
+				target={finalTarget}
+				rel={finalRel}
+				{...props}
+				onmouseenter={() => (isHovered = true)}
+				onmouseleave={() => (isHovered = false)}
+				onclick={(e) => {
+					if (iconToggle || iconEndToggle || onToggle) {
+						e.preventDefault();
+						handleToggle();
+					}
+					props.onclick?.(e);
+				}}
+			>
+				{@render buttonContent()}
+			</a>
+		{:else}
+			<button
+				type={type === 'radio' || type === 'checkbox' ? 'button' : type}
+				{...props}
+				onmouseenter={() => (isHovered = true)}
+				onmouseleave={() => (isHovered = false)}
+				onclick={(e) => {
+					if (iconToggle || iconEndToggle || onToggle) {
+						handleToggle();
+					}
+					props.onclick?.(e);
+				}}
+			>
+				{@render buttonContent()}
+			</button>
+		{/if}
+	{/snippet}
+</Component>
 
 <style lang="postcss">
 	@reference "#ui.css";
@@ -598,7 +466,7 @@
 			}
 		}
 
-		/* NEW: Variant-specific styles - inherit base styles, only modify layout */
+		/* Variant-specific styles */
 		&:where(.btn-variant-text) {
 			/* Text buttons keep default center alignment */
 		}
@@ -609,7 +477,7 @@
 		}
 
 		&:where(.btn-variant-icon-text) {
-			/* Icon + text: left aligned like legacy btn-wrapper */
+			/* Leading icon followed by text */
 			@apply items-center justify-start pr-4 text-left;
 		}
 
@@ -618,21 +486,19 @@
 		}
 
 		&:where(.btn-variant-icon-text-icon) {
-			/* Icon + text + icon: space between like legacy btn-reverse */
+			/* Leading icon, text, and trailing icon */
 			@apply items-center justify-between text-left;
 		}
 
-		/* NEW: Width control */
 		&:where(.btn-width-full) {
 			@apply w-full;
 		}
 
-		/* NEW: Padding control */
 		&:where(.btn-padding-none) {
 			@apply p-0;
 		}
 
-		/* NEW: Alignment control (for full width buttons) */
+		/* Alignment control for full-width buttons */
 		&:where(.btn-align-start) {
 			@apply justify-start;
 		}
@@ -647,18 +513,6 @@
 
 		&:where(.btn-align-around) {
 			@apply justify-around;
-		}
-
-		/* LEGACY: Keep existing classes for backward compatibility */
-
-		/* both icon + label */
-		&:where(.btn-wrapper) {
-			@apply items-center justify-start text-left;
-		}
-
-		/* keep this per your note */
-		&:where(.btn-reverse) {
-			@apply flex-row-reverse items-center justify-between;
 		}
 
 		/* sizes (md stays text-md) */

@@ -122,6 +122,7 @@
 						<Button
 							ghost
 							{invert}
+							variant="icon"
 							onclick={toggleMode}
 							title="Toggle theme"
 							icon="light-mode"

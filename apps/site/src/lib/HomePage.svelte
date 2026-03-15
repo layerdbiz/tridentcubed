@@ -919,6 +919,7 @@
 	<Button
 		size="xl"
 		primary
+		variant="text"
 		label="Contact Sales"
 		class="row-span-2 min-w-72 place-self-end self-center"
 		href="#Contact"

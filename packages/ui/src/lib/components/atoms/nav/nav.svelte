@@ -87,6 +87,7 @@
 						ghost
 						size="lg"
 						invert
+						variant="icon"
 						icon="menu"
 						iconToggle="close"
 						toggled={navOpen}

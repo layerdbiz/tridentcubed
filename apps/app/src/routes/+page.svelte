@@ -632,6 +632,7 @@
 					? { heavy: true, primary: true } 
 					: { outline: true, base: true }
 				)}
+				variant="text"
 				class="w-full flex-1"
 				onclick={() => (activeTab = 'create')}
 				label="Create"
@@ -642,6 +643,7 @@
 					? { heavy: true, primary: true } 
 					: { outline: true, base: true }
 				)}
+				variant="text"
 				class="w-full flex-1"
 				onclick={() => (activeTab = 'preview')}
 				label="Preview"
@@ -701,11 +703,13 @@
 					<div class="flex flex-wrap gap-2 p-4">
 						<Button
 							primary xs
+							variant="text"
 							onclick={addSection}
 							label="Add Section"
 						/>
 						<Button
 							outline xs
+							variant="text"
 							onclick={resetReport}
 							label="Reset"
 						/>
@@ -858,6 +862,7 @@
 
 													<Button
 														primary xs
+														variant="text"
 														label="Add Time"
 														onclick={() => addEntry(day)}
 													/>
@@ -865,6 +870,7 @@
 
 												<Button
 													primary xs
+													variant="text"
 													label="Add Day"
 													onclick={() => addDay(section)}
 												/>
@@ -999,6 +1005,7 @@
 							<!-- zoom in -->
 							<Button
 								ghost xl
+								variant="text"
 								label="-"
 								onclick={() => stepPreviewZoom('out')}
 								class="px-4!"
@@ -1006,6 +1013,7 @@
 							<!-- zoom percentage -->
 							<Button
 								ghost lg
+								variant="text"
 								class="w-18! px-0! font-black! border-x border-secondary-200 rounded-none!"
 								onclick={resetPreviewZoom}
 							>
@@ -1014,6 +1022,7 @@
 							<!-- zoom out -->
 							<Button
 								ghost xl
+								variant="text"
 								label="+"
 								onclick={() => stepPreviewZoom('in')}
 								class="px-4!"
