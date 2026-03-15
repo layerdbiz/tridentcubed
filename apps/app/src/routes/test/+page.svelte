@@ -3,10 +3,11 @@
 </script>
 
 <div class="h-svh p-4">
-	<Grid class="bg-gray-200 h-full" items="a1:b1" debug>
+	<Grid class="gap-4 h-full" items="a1:b1">
 
 		<!-- Old Input -->
-		<Item range="a1" class="p-4">
+		<Item range="a1" class="p-4 bg-base-200/50">
+			<h2>Old Input</h2>
 			<Input />
 			<Input label="Old Input 1" />
 			<Input variant="label" label="Old Input 2" />
@@ -16,13 +17,14 @@
 		</Item>
 
 		<!-- New Input -->
-		<Item range="b1" class="p-4">
+		<Item range="b1" class="p-4 bg-base-200/50">
+			<h2>New Input</h2>
 			<InputNew />
-			<InputNew label="New Input 1" />
-			<InputNew variant="label" label="New Input 2" />
-			<InputNew variant="icon label" icon="home" label="New Input 3" />
-			<InputNew variant="label icon" icon="home" label="New Input 4" />
-			<InputNew variant="icon label icon" icon="home" label="New Input 5" />
+			<!-- <InputNew label="New Input 1" /> -->
+			<!-- <InputNew variant="label" label="New Input 2" /> -->
+			<!-- <InputNew variant="icon label" icon="home" label="New Input 3" /> -->
+			<!-- <InputNew variant="label icon" icon="home" label="New Input 4" /> -->
+			<!-- <InputNew variant="icon label icon" icon="home" label="New Input 5" /> -->
 		</Item>
 
 	</Grid>

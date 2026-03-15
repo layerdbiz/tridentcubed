@@ -1,62 +1,126 @@
-<script lang="ts">
-	import { Component, type ComponentProps } from '@layerd/ui';
+<!-- https://play.tailwindcss.com/TqeaknIMOD?file=css -->
 
-	export interface InputNewProps extends ComponentProps {
-		label?: string;
-	}
+<!-- INPUT STATE EMOJIS
+1. Content: ⬜ empty, ⬛ value, 💬 placeholder-shown, 🤖 autofill
+2. Interaction: ⚪ blur, 🟡 hover, 🔵 focus, 🔵👁️ focus-visible, 🔵📦 focus-within, 🟣 active
+3. Validation: ✅ valid, ✅👤 user-valid, ❌ invalid, ❌👤 user-invalid
+4. Constraints: 🔒 required, 🔲 optional, 📖 readonly, 🚫 disabled, ↗️ open
+-->
 
-	let { label = undefined, ...props }: InputNewProps = $props();
-</script>
+<!-- 🧭 Examples
+▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ -->
 
-<form class="p-10">
-  <fieldset class="group floating-label">
-    <legend>Name</legend>
-    <i role="img" aria-hidden="true"></i> 
-    <input 
-      autocomplete="off" 
-      autocorrect="off" 
-      autocapitalize="off" 
-      type="text" 
-      placeholder=" " 
-      name="name" 
-      required="" 
-      minlength="2" 
-      maxlength="50" 
-      spellcheck="false" />
-  </fieldset>
-</form>
+<!-- ⬜💬⚪🔲 Empty + Placeholder Shown + Blur + Optional -->
+<fieldset class="group floating-label">
+	<legend>Name</legend>
+	<i role="img" aria-hidden="true"></i>
+	<input 
+		autocomplete="off" 
+		autocorrect="off" 
+		autocapitalize="off" 
+		type="text" 
+		placeholder=" " 
+		name="name" 
+		minlength="2" 
+		spellcheck="false" />
+</fieldset>
+
+<!-- ⬜💬⚪🔒 Empty + Placeholder Shown + Blur + Required -->
+<fieldset class="group floating-label">
+	<legend>Name</legend>
+	<i role="img" aria-hidden="true"></i>
+	<input 
+		autocomplete="off" 
+		autocorrect="off" 
+		autocapitalize="off" 
+		type="text" 
+		placeholder=" " 
+		name="name" 
+		minlength="2"
+		maxlength="50" 
+		required
+		spellcheck="false" />
+</fieldset>
 
 <style lang="postcss">
 	@reference "#ui.css";
 
-	/* Base layout */
-	:root { }
+	/* Notch / border model
+	************************************************************/
+	/*
+		This field does not use a simple painted background plus border.
+
+		How it works:
+		1. The fieldset background is set to the current border color.
+		2. A very large inset shadow paints the inner surface color back inside the field.
+		3. The native fieldset + legend relationship creates the notch cutout for the floating label.
+
+		Why this matters:
+		- The legend stays transparent so it can sit on top of any page/theme background.
+		- We do not hardcode a legend background color just to fake the cutout.
+		- If the fieldset stops using the border-colored shell plus inset fill, the notch breaks.
+
+		In short: the "border" is really the outer shell, and the white input surface is recreated
+		inside that shell with the inset fill so the notch can remain native and transparent.
+	*/
+
+	/* Field theme hooks and active tokens
+	************************************************************/
+	fieldset {
+		/* Theme
+		███████████████████████████████████████████████████████████████████████ */
+		--field-rest: var(--input-color-rest, var(--color-base-300));
+		--field-filled: var(--input-color-filled, var(--input-color-valid, var(--color-base-600)));
+		--field-focus: var(--input-color-focus, var(--color-info));
+		--field-valid: var(--input-color-valid, var(--color-base-600));
+		--field-invalid: var(--input-color-invalid, var(--color-danger));
+		--field-surface: var(--input-surface, var(--color-white));
+		--field-value: var(--input-value-color, var(--color-base-950));
+		--field-border-size-resting: var(--input-border-size-resting, var(--border-width-sm, 1px));
+		--field-border-size-active: var(--input-border-size-active, 2px);
+
+		/* Active tokens
+		███████████████████████████████████████████████████████████████████████ */
+		--bg: var(--field-surface);
+		--border: var(--field-rest);
+		--border-size: var(--field-border-size-resting);
+		--label: var(--field-rest);
+		--value: var(--field-value);
+		--icon: var(--field-rest);
+
+		/*
+			The inset fill recreates the inner surface. Its size is derived from the active border
+			thickness so the visual shell stays consistent between resting and focused states.
+		*/
+		--border-fill-offset: calc(var(--field-border-size-active) - var(--border-size));
+		--inset: var(--bg) inset 0 0 0 calc(999rem + var(--border-fill-offset));
+	}
 
 	/* BASE STYLES + CSS VARS SETUP
 	************************************************************/
-	fieldset { 
-		/* Color States: icons, label, border */
-		--initial: var(--color-gray-400);
-		--focused: var(--color-blue-500);
-		--valid: var(--color-blue-700);
-		--invalid: var(--color-rose-500);
+	fieldset {
+		/*
+			The fieldset itself carries the shell color. The inset shadow paints the inner surface back in.
+			That combination is what preserves the native legend notch without painting behind the label.
+		*/
+		@apply bg-(--border) shadow-(--inset) border-(--border)
+		relative min-w-18 rounded-xl;
+		border-width: var(--field-border-size-active);
+	}
 
-		/* Initial State */
-		--bg: var(--color-white);
-		--border: var(--color-gray-300);
-		--borderSize: var(--border-width-2);
-		--label: var(--color-gray-300);
-		--value: var(--color-black);
-		--icon: var(--color-gray-400);
-		--inset: var(--bg) inset 0 0 0 999rem;
-		
-		@apply bg-(--border) shadow-(--inset) border-(--border) 
-		border-2 relative min-w-72 rounded-xl; 
+	/* FOCUS-WITHIN / FILLED — geometry only
+	************************************************************/
+	fieldset:is(:focus-within, :has(input:not(:placeholder-shown))) {
+		@apply bg-transparent;
+	}
+
+	fieldset:is(:focus-within, :has(input:not(:placeholder-shown))) legend {
+		@apply translate-x-0 translate-y-0 text-xs bg-transparent;
 	}
 
 	legend { 
 		@apply text-(--label)
-		pointer-events-none mx-3 px-1.5 leading-5 font-medium origin-top-left translate-x-8 translate-y-[125%] transition-all duration-200; 
+		pointer-events-none mx-3 px-1.5 leading-5 font-medium origin-top-left translate-x-8 translate-y-[125%] transition-all duration-200;
 	}
 
 	i { 
@@ -69,91 +133,41 @@
 		-mt-1.25 mb-1.25 block w-full border-0 bg-transparent px-4 py-2 pl-12 outline-none; 
 	}
 
-	/* FOCUS-WITHIN (parent) — geometry/visibility only */
-	@variant focus-within {
-		fieldset { @apply bg-transparent; }
-		legend { @apply translate-x-0 translate-y-0 text-xs bg-transparent; }
-	}
-
-	/* VALUE PRESENT (not placeholder-shown) — geometry/visibility only */
-	@variant has-[input:not(:placeholder-shown)] {
-		fieldset { @apply bg-transparent; }
-		legend { @apply translate-x-0 translate-y-0 text-xs bg-transparent; }
-	}
-
-
-	/* STATES (TOKENS ONLY; EVERY STATE SETS ALL TOKENS)
+	/* STATES (TOKENS ONLY)
 	************************************************************/
-	/* Focus within */
-	@variant focus-within {
-		fieldset { --border: var(--focused); --bg: transparent; }
-		legend   { --label: var(--focused); }
-		i        { --icon: var(--focused); }
-		input    { --value: var(--value); }
+	/* 🔵📦 Focus + Focus Within */
+	fieldset:focus-within {
+		--bg: var(--field-surface);
+		--border: var(--field-focus);
+		--border-size: var(--field-border-size-active);
+		--label: var(--field-focus);
+		--icon: var(--field-focus);
 	}
 
-	/* Value present (not placeholder-shown) */
-	@variant has-[input:not(:placeholder-shown)] {
-		fieldset { --border: var(--focused); --bg: transparent; }
-		legend   { --label: var(--focused); }
-		i        { --icon: var(--focused); }
-		input    { --value: var(--value); }
+	/* ⬛⚪ Value + Blur */
+	fieldset:not(:focus-within):has(input:not(:placeholder-shown)) {
+		--bg: var(--field-surface);
+		--border: var(--field-filled);
+		--border-size: var(--field-border-size-resting);
+		--label: var(--field-filled);
+		--icon: var(--field-filled);
 	}
 
-	/* Invalid (HTML constraint) — stay neutral initially */
-	@variant has-[input:invalid] {
-		fieldset { --border: var(--initial); --bg: var(--color-white); }
-		legend   { --label: var(--initial); }
-		i        { --icon: var(--initial); }
-		input    { --value: var(--value); }
+	/* ⬛⚪✅👤 Value + Blur + User Valid */
+	fieldset:not(:focus-within):has(input:is(:valid, :user-valid):not(:placeholder-shown)) {
+		--bg: var(--field-surface);
+		--border: var(--field-valid);
+		--border-size: var(--field-border-size-resting);
+		--label: var(--field-valid);
+		--icon: var(--field-valid);
 	}
 
-	/* User-invalid (after interaction) */
-	@variant has-[input:user-invalid] {
-		fieldset { --border: var(--invalid); --bg: var(--color-white); }
-		legend   { --label: var(--invalid); }
-		i        { --icon: var(--invalid); }
-		input    { --value: var(--value); }
-	}
-
-	/* Valid */
-	@variant has-[input:valid] {
-		fieldset { --border: var(--valid); --bg: transparent; }
-		legend   { --label: var(--valid); }
-		i        { --icon: var(--valid); }
-		input    { --value: var(--value); }
-	}
-
-	/* User-valid (after interaction) */
-	@variant has-[input:user-valid] {
-		fieldset { --border: var(--valid); --bg: transparent; }
-		legend   { --label: var(--valid); }
-		i        { --icon: var(--valid); }
-		input    { --value: var(--value); }
-	}
-
-	/* Error/Success win over focus color when combined (and fix focused+invalid) */
-	@variant focus-within {
-		/* focused + user-invalid -> red */
-		@variant has-[input:user-invalid] {
-			fieldset { --border: var(--invalid); --bg: transparent; }
-			legend   { --label: var(--invalid); }
-			i        { --icon: var(--invalid); }
-			input    { --value: var(--value); }
-		}
-		/* focused + user-valid -> green */
-		@variant has-[input:user-valid] {
-			fieldset { --border: var(--valid); --bg: transparent; }
-			legend   { --label: var(--valid); }
-			i        { --icon: var(--valid); }
-			input    { --value: var(--value); }
-		}
-		/* focused + (plain) invalid -> use VALID colors (your requirement) */
-		@variant has-[input:invalid] {
-			fieldset { --border: var(--valid); --bg: transparent; }
-			legend   { --label: var(--valid); }
-			i        { --icon: var(--valid); }
-			input    { --value: var(--value); }
-		}
+	/* ⚪❌👤🔒 Blur + User Invalid + Required */
+	fieldset:not(:focus-within):has(input:required:user-invalid) {
+		--bg: var(--field-surface);
+		--border: var(--field-invalid);
+		--border-size: var(--field-border-size-resting);
+		--label: var(--field-invalid);
+		--icon: var(--field-invalid);
 	}
 </style>
