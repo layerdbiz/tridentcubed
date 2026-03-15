@@ -76,24 +76,21 @@
 		--field-invalid: var(--input-color-invalid, var(--color-danger));
 		--field-surface: var(--input-surface, var(--color-white));
 		--field-value: var(--input-value-color, var(--color-base-950));
-		--field-border-size-resting: var(--input-border-size-resting, var(--border-width-sm, 1px));
-		--field-border-size-active: var(--input-border-size-active, 2px);
+		--field-border-size: var(--input-border-size, var(--border-width-sm, 1px));
 
 		/* Active tokens
 		███████████████████████████████████████████████████████████████████████ */
 		--bg: var(--field-surface);
 		--border: var(--field-rest);
-		--border-size: var(--field-border-size-resting);
 		--label: var(--field-rest);
 		--value: var(--field-value);
 		--icon: var(--field-rest);
 
 		/*
-			The inset fill recreates the inner surface. Its size is derived from the active border
-			thickness so the visual shell stays consistent between resting and focused states.
+			The border width stays constant in every state so the notch geometry and content layout
+			never move. State changes are communicated through color, not border thickness.
 		*/
-		--border-fill-offset: calc(var(--field-border-size-active) - var(--border-size));
-		--inset: var(--bg) inset 0 0 0 calc(999rem + var(--border-fill-offset));
+		--inset: var(--bg) inset 0 0 0 999rem;
 	}
 
 	/* BASE STYLES + CSS VARS SETUP
@@ -101,11 +98,12 @@
 	fieldset {
 		/*
 			The fieldset itself carries the shell color. The inset shadow paints the inner surface back in.
-			That combination is what preserves the native legend notch without painting behind the label.
+			Because the native border width stays constant, the legend notch stays stable and the
+			content does not jump when the field changes state.
 		*/
 		@apply bg-(--border) shadow-(--inset) border-(--border)
 		relative min-w-18 rounded-xl;
-		border-width: var(--field-border-size-active);
+		border-width: var(--field-border-size);
 	}
 
 	/* FOCUS-WITHIN / FILLED — geometry only
@@ -139,7 +137,6 @@
 	fieldset:focus-within {
 		--bg: var(--field-surface);
 		--border: var(--field-focus);
-		--border-size: var(--field-border-size-active);
 		--label: var(--field-focus);
 		--icon: var(--field-focus);
 	}
@@ -148,7 +145,6 @@
 	fieldset:not(:focus-within):has(input:not(:placeholder-shown)) {
 		--bg: var(--field-surface);
 		--border: var(--field-filled);
-		--border-size: var(--field-border-size-resting);
 		--label: var(--field-filled);
 		--icon: var(--field-filled);
 	}
@@ -157,7 +153,6 @@
 	fieldset:not(:focus-within):has(input:is(:valid, :user-valid):not(:placeholder-shown)) {
 		--bg: var(--field-surface);
 		--border: var(--field-valid);
-		--border-size: var(--field-border-size-resting);
 		--label: var(--field-valid);
 		--icon: var(--field-valid);
 	}
@@ -166,7 +161,6 @@
 	fieldset:not(:focus-within):has(input:required:user-invalid) {
 		--bg: var(--field-surface);
 		--border: var(--field-invalid);
-		--border-size: var(--field-border-size-resting);
 		--label: var(--field-invalid);
 		--icon: var(--field-invalid);
 	}
