@@ -150,7 +150,7 @@
 
 	.link:not(.logo) {
 		@apply relative flex items-center ease-in-out;
-		@apply rounded-full px-12 py-3 lg:bg-[transparent] lg:px-[unset] lg:py-[unset];
+		@apply rounded-full px-12 py-3 lg:bg-transparent lg:px-[unset] lg:py-[unset];
 	}
 	/* 
 	:global {

@@ -15,6 +15,7 @@
 		Link,
 		Image,
 		scroll,
+		trackEvent,
 		mq,
 		navigationState
 	} from '@layerd/ui';
@@ -51,21 +52,31 @@
 		{ href: '#Contact', label: 'Contact' },
 		{ href: '#FAQ', label: 'FAQ' }
 	];
+
+	/** @param {string} label */
+	function toLinkEventName(label) {
+		const normalizedLabel = label
+			.toLowerCase()
+			.trim()
+			.replace(/[^a-z0-9]+/g, '_')
+			.replace(/^_+|_+$/g, '');
+
+		return `click_${normalizedLabel}_link`;
+	}
+
+	export {};
 </script>
 
 <svelte:head>
 	<!-- Google tag (gtag.js) -->
-	<script
-		async
-		src="https://www.googletagmanager.com/gtag/js?id=G-RZC3M03LR7"
-	></script>
+	<script async src="https://www.googletagmanager.com/gtag/js?id=G-RZC3M03LR7"></script>
+
 	<script>
 		window.dataLayer = window.dataLayer || [];
 		function gtag() {
 			dataLayer.push(arguments);
 		}
 		gtag('js', new Date());
-
 		gtag('config', 'G-RZC3M03LR7');
 	</script>
 
@@ -152,37 +163,15 @@
 		class="size-11 shrink-0 items-start text-lg lg:col-start-1 lg:row-start-1 lg:size-11"
 	/>
 	<Nav bind:navOpen>
-		<!--     
-		{#each links as link}
-			{#if link.type === 'dropdown'}
-				<Toggle
-					align="bottom"
-					type={mq.sm ? 'panel' : 'menu'}
-					trigger={mq.sm ? 'click' : 'hover'}
-					class="link flex items-center"
-					triggerClass=""
-					contentClass="!pt-4"
-					href={link.href}
-					navId={link.href.slice(1)}
-					icon="chevron-right"
-					label={link.label}
-					unstyled
-				>
-					<div
-						class="grid items-center gap-2 p-4 md:rounded-2xl md:bg-white md:text-black md:ring-2 md:ring-black"
-					>
-						{#each link.children as childLink}
-							<Link href={childLink.href}>{childLink.label}</Link>
-						{/each}
-					</div>
-				</Toggle>
-			{:else}
-				<Link href={link.href}>{link.label}</Link>
-			{/if}
-		{/each} -->
-		{#each links as link}
+		{#each links as link (link.href)}
 			<Link
 				href={link.href}
+				onclick={trackEvent({
+					name: toLinkEventName(link.label),
+					location: 'website_header_navigation',
+					label: link.label,
+					href: link.href
+				})}
 				{currentHash}
 				{activeSection}
 				{stickyActiveSection}>{link.label}</Link
@@ -202,6 +191,12 @@
 			icon="icon-[mdi--phone]"
 			label="Call Us"
 			class="w-full lg:w-14"
+			onclick={trackEvent({
+				name: 'click_call_us',
+				location: 'website_header',
+				label: 'Call Us Button',
+				href: 'tel:+14095432725'
+			})}
 		/>
 	</Nav>
 </Header>
@@ -227,6 +222,12 @@
 				variant="icon"
 				href="https://www.facebook.com/TridentCubed"
 				icon="icon-[mdi--facebook]"
+				onclick={trackEvent({
+					name: 'click_social_facebook',
+					location: 'website_footer_social',
+					label: 'Facebook',
+					href: 'https://www.facebook.com/TridentCubed'
+				})}
 				ghost
 				external
 				class="text-primary-50 hover:text-primary-200 -mx-2"
@@ -236,6 +237,12 @@
 				variant="icon"
 				href="https://www.linkedin.com/company/trident-cubed-solutions"
 				icon="icon-[mdi--linkedin]"
+				onclick={trackEvent({
+					name: 'click_social_linkedin',
+					location: 'website_footer_social',
+					label: 'LinkedIn',
+					href: 'https://www.linkedin.com/company/trident-cubed-solutions'
+				})}
 				ghost
 				external
 				class="text-primary-50 hover:text-primary-200 -mx-2"
@@ -245,6 +252,12 @@
 				variant="icon"
 				href="https://wa.me/15705751179"
 				icon="icon-[mdi--whatsapp]"
+				onclick={trackEvent({
+					name: 'click_social_whatsapp',
+					location: 'website_footer_social',
+					label: 'WhatsApp',
+					href: 'https://wa.me/15705751179'
+				})}
 				ghost
 				external
 				class="text-primary-50 hover:text-primary-200 -mx-2"

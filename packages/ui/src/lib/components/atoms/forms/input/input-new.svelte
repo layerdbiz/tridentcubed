@@ -1,15 +1,57 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
-	import { Component, type ComponentProps, Icon } from '@layerd/ui';
+	/**
+	 * @tags forms, input, textfield, icon, label
+	 * @layout horizontal
+	 */
+	import type { HTMLInputAttributes } from 'svelte/elements';
+	import { Component, type ComponentProps, type ComponentReturn, Icon } from '@layerd/ui';
 
 	export interface InputNewProps extends ComponentProps {
-		children?: Snippet;
+		// component
 		variant?: 'text' | 'icon text' | 'text icon' | 'icon text icon';
 		icon?: string;
-		label?: string;
+		iconEnd?: string;
+		// input
+		type?: HTMLInputAttributes['type'];
+		placeholder?: HTMLInputAttributes['placeholder'];
+		name?: HTMLInputAttributes['name'];
+		required?: HTMLInputAttributes['required'];
+		readonly?: HTMLInputAttributes['readonly'];
+		pattern?: HTMLInputAttributes['pattern'];
+		minlength?: HTMLInputAttributes['minlength'];
+		maxlength?: HTMLInputAttributes['maxlength'];
+		inputmode?: HTMLInputAttributes['inputmode'];
+		autocomplete?: HTMLInputAttributes['autocomplete'];
+		autocorrect?: HTMLInputAttributes['autocorrect'];
+		autocapitalize?: HTMLInputAttributes['autocapitalize'];
+		spellcheck?: HTMLInputAttributes['spellcheck'];
+		// html
+		id?: HTMLInputAttributes['id'];
 	}
 
-	let { variant = 'text', label = 'text', icon = undefined, children = undefined, ...props }: InputNewProps = $props();
+	let {
+		variant = 'text',
+		label = 'Text',
+		icon = undefined,
+		iconEnd = undefined,
+		type = 'text',
+		placeholder = ' ',
+		name = undefined,
+		id = undefined,
+		required = false,
+		readonly = false,
+		pattern = undefined,
+		minlength = undefined,
+		maxlength = undefined,
+		inputmode = undefined,
+		autocomplete = 'off',
+		autocorrect = 'off',
+		autocapitalize = 'off',
+		spellcheck = false,
+		...props
+	}: InputNewProps = $props();
+
+	const trailingIcon = $derived(iconEnd || icon);
 </script>
 
 <!-- INPUT STATE EMOJIS
@@ -22,85 +64,82 @@ Use thse emojis for comments about the state of the input in the examples below.
 4. Constraints: 🔒 required, 🔲 optional, 📖 readonly, 🚫 disabled, ↗️ open
 -->
 
-<!-- Variant: Text -->
-<fieldset>
-  <legend>Text</legend>
-  <label>
-    <input
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      type="text"
-      placeholder=" "
-      name="name"
-      minlength="2"
-      maxlength="50"
-      required
-      spellcheck="false"
-    />
-  </label>
-</fieldset>
+{#snippet leadingIcon()}
+	{#if icon}
+		<Icon
+			icon={icon}
+			class="icon start"
+		/>
+	{/if}
+{/snippet}
 
-<!-- Variant: Icon + Text -->
-<fieldset>
-  <legend>Icon + Text</legend>
-  <label>
-		<Icon name="home" class="start" />
-    <input
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      type="text"
-      placeholder=" "
-      name="name"
-      minlength="2"
-      maxlength="50"
-      required
-      spellcheck="false" 
-    />
-  </label>
-</fieldset>
+{#snippet trailingIconSnippet()}
+	{#if trailingIcon}
+		<Icon
+			icon={trailingIcon}
+			class="icon end"
+		/>
+	{/if}
+{/snippet}
 
-<!-- Variant: Text + Icon -->
-<fieldset>
-  <legend>Text + Icon</legend>
-  <label>
-    <input
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      type="text"
-      placeholder=" "
-      name="name"
-      minlength="2"
-      maxlength="50"
-      required
-      spellcheck="false" 
-			/>
-			<Icon name="home" class="end" />
-  </label>
-</fieldset>
+{#snippet inputElement()}
+	<input
+		{type}
+		{placeholder}
+		{name}
+		{id}
+		{required}
+		disabled={props.disabled}
+		{readonly}
+		{pattern}
+		{minlength}
+		{maxlength}
+		{inputmode}
+		{autocomplete}
+		{autocorrect}
+		{autocapitalize}
+		{spellcheck}
+	/>
+{/snippet}
 
-<!-- Variant: Icon + Text + Icon -->
-<fieldset>
-  <legend>Icon + Text + Icon</legend>
-  <label>
-		<Icon name="home" class="start" />
-    <input
-      autocomplete="off"
-      autocorrect="off"
-      autocapitalize="off"
-      type="text"
-      placeholder=" "
-      name="name"
-      minlength="2"
-      maxlength="50"
-      required
-      spellcheck="false" 
-    />
-		<Icon icon="icon-[carbon--user]" class="icon end" />
-  </label>
-</fieldset>
+{#snippet textVariant()}
+	{@render inputElement()}
+{/snippet}
+
+{#snippet iconTextVariant()}
+	{@render leadingIcon()}
+	{@render inputElement()}
+{/snippet}
+
+{#snippet textIconVariant()}
+	{@render inputElement()}
+	{@render trailingIconSnippet()}
+{/snippet}
+
+{#snippet iconTextIconVariant()}
+	{@render leadingIcon()}
+	{@render inputElement()}
+	{@render trailingIconSnippet()}
+{/snippet}
+
+<Component {...props}>
+	{#snippet component({ props }: { props: ComponentReturn })}
+		<fieldset {...props}>
+			<legend>{label}</legend>
+			<label>
+				{#if variant === 'icon text'}
+					{@render iconTextVariant()}
+				{:else if variant === 'text icon'}
+					{@render textIconVariant()}
+				{:else if variant === 'icon text icon'}
+					{@render iconTextIconVariant()}
+				{:else}
+					{@render textVariant()}
+				{/if}
+			</label>
+		</fieldset>
+	{/snippet}
+</Component>
 
 <style lang="postcss">
 	@reference "#ui.css";
@@ -127,7 +166,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 		--input-state-focus: var(--color-info);
 		--input-state-valid: var(--color-base-500);
 		--input-state-invalid: var(--color-danger);
-		--input-state-disabled: vvar(--color-base-200);
+		--input-state-disabled: var(--color-base-200);
 		--input-state-surface:  var(--color-white);
 		--input-state-surface-disabled: var(--color-base-50);
 		--input-state-value: var(--color-base-900);

@@ -1,3 +1,16 @@
+/* UTILS */
+export * from "./utils/classes.svelte.ts";
+export { default as Component } from "./utils/component/component.svelte";
+export * from "./utils/component/component.svelte.ts";
+export { default as Debug } from "./utils/debug/debug.svelte";
+export * from "./utils/debug/debug.svelte.ts";
+export * from "./utils/draggable.svelte.ts";
+export * from "./utils/mq.svelte.ts";
+export * from "./utils/observe.svelte.ts";
+export * from "./utils/scroll.svelte.ts";
+export * from "./utils/sync.svelte.ts";
+export * from "./utils/trackevent.ts";
+
 /* COMPONENTS */
 // atoms
 export { default as Button, type ButtonProps } from "./components/atoms/button/button.svelte";
@@ -68,15 +81,3 @@ export { default as Home } from "./components/pages/home/home.svelte";
 
 // templates
 export { default as Template, type TemplateProps } from "./components/templates/template.svelte";
-
-/* UTILS */
-export * from "./utils/classes.svelte.ts";
-export { default as Component } from "./utils/component/component.svelte";
-export * from "./utils/component/component.svelte.ts";
-export { default as Debug } from "./utils/debug/debug.svelte";
-export * from "./utils/debug/debug.svelte.ts";
-export * from "./utils/draggable.svelte.ts";
-export * from "./utils/mq.svelte.ts";
-export * from "./utils/observe.svelte.ts";
-export * from "./utils/scroll.svelte.ts";
-export * from "./utils/sync.svelte.ts";

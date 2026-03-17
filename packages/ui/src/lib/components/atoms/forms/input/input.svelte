@@ -1,5 +1,3 @@
-<!-- https://play.tailwindcss.com/TqeaknIMOD?file=css -->
-
 <script lang="ts">
 	/**
 	 * @tags forms, input, textfield, icon, label
@@ -9,13 +7,12 @@
 	import { TextareaAutosize } from 'runed';
 
 	export interface InputProps extends ComponentProps {
-		// Input properties
+		// input
 		type?: 'text' | 'email' | 'password' | 'tel' | 'url' | 'search' | 'number' | 'date' | 'datetime-local' | 'month' | 'week' | string;
 		value?: string;
 		placeholder?: string;
 		label?: string;
 		name?: string;
-		id?: string;
 		required?: boolean;
 		disabled?: boolean;
 		readonly?: boolean;
@@ -27,20 +24,12 @@
 		minlength?: number;
 		maxlength?: number;
 		textarea?: boolean;
-		autocomplete?:
-			| 'on'
-			| 'off'
-			| 'email'
-			| 'username'
-			| 'current-password'
-			| 'new-password'
-			| 'name'
-			| 'tel'
-			| 'url'
-			| AutoFill;
+		autocomplete?: 'on'| 'off'| 'email'| 'username'| 'current-password'| 'new-password'| 'name'| 'tel'| 'url'| AutoFill;
 		autocorrect?: 'on' | 'off';
 		autocapitalize?: 'on' | 'off' | 'words' | 'characters';
 		spellcheck?: boolean;
+		// html
+		id?: string;
 
 		// Validation properties
 		error?: string;

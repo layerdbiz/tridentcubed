@@ -19,6 +19,7 @@
 		Flex,
 		Input,
 		Slider,
+		trackEvent,
 		navigationState,
 		Globe
 	} from '@layerd/ui';
@@ -84,6 +85,16 @@
 	// Helper function for cleaner section access (now synchronous since data is already loaded)
 	function getSection(name: string) {
 		return sectionsData.find((s) => s.section === name);
+	}
+
+	function toButtonEventName(label: string) {
+		const normalizedLabel = label
+			.toLowerCase()
+			.trim()
+			.replace(/[^a-z0-9]+/g, '_')
+			.replace(/^_+|_+$/g, '');
+
+		return `click_${normalizedLabel}_button`;
 	}
 
 	// Stats - dynamically populated from globe data (using $derived because globeStatsData is now reactive)
@@ -287,6 +298,12 @@
 				label="Learn More"
 				class="mx-auto w-52! md:min-w-72"
 				href="#About"
+				onclick={trackEvent({
+					name: toButtonEventName('Learn More'),
+					location: 'homepage_hero',
+					label: 'Learn More',
+					href: '#About'
+				})}
 			/>
 			<Button
 				size={mq.sm ? 'lg' : 'xl'}
@@ -295,6 +312,12 @@
 				label="Contact Sales"
 				class="light mx-auto w-52! md:min-w-72"
 				href="#Contact"
+				onclick={trackEvent({
+					name: toButtonEventName('Contact Sales'),
+					location: 'homepage_hero',
+					label: 'Contact Sales',
+					href: '#Contact'
+				})}
 			/>
 		</div>
 	</section>
@@ -654,6 +677,12 @@
 					icon="icon-[flagpack--us]"
 					label="+1 (409) 543-2725"
 					href="tel:+14095432725"
+					onclick={trackEvent({
+						name: 'click_us_phone_button',
+						location: 'homepage_contact_phone',
+						label: '+1 (409) 543-2725',
+						href: 'tel:+14095432725'
+					})}
 				/>
 				<br />
 				<Button
@@ -663,6 +692,12 @@
 					icon="icon-[flagpack--mx]"
 					label="+1 (832) 477-6974"
 					href="tel:+18324776974"
+					onclick={trackEvent({
+						name: 'click_mx_phone_button',
+						location: 'homepage_contact_phone',
+						label: '+1 (832) 477-6974',
+						href: 'tel:+18324776974'
+					})}
 				/>
 			</div>
 
@@ -730,6 +765,12 @@
 						variant="icon"
 						href="https://www.facebook.com/TridentCubed"
 						icon="icon-[mdi--facebook]"
+						onclick={trackEvent({
+							name: 'click_social_facebook',
+							location: 'homepage_contact_social',
+							label: 'Facebook',
+							href: 'https://www.facebook.com/TridentCubed'
+						})}
 						ghost
 						external
 						class="text-primary -mx-2"
@@ -739,6 +780,12 @@
 						variant="icon"
 						href="https://www.linkedin.com/company/trident-cubed-solutions"
 						icon="icon-[mdi--linkedin]"
+						onclick={trackEvent({
+							name: 'click_social_linkedin',
+							location: 'homepage_contact_social',
+							label: 'LinkedIn',
+							href: 'https://www.linkedin.com/company/trident-cubed-solutions'
+						})}
 						ghost
 						external
 						class="text-primary -mx-2"
@@ -748,6 +795,12 @@
 						variant="icon"
 						href="https://wa.me/15705751179"
 						icon="icon-[mdi--whatsapp]"
+						onclick={trackEvent({
+							name: 'click_social_whatsapp',
+							location: 'homepage_contact_social',
+							label: 'WhatsApp',
+							href: 'https://wa.me/15705751179'
+						})}
 						ghost
 						external
 						class="text-primary -mx-2"
@@ -841,7 +894,12 @@
 				icon={isSent ? 'icon-[mdi--check]' : isSubmitting ? 'spinner' : 'icon-[mdi--send]'}
 				variant="text icon"
 				class="submit-button mt-10 min-w-full rounded-xl"
-!				disabled={isSubmitting || isSent}
+				onclick={trackEvent({
+					name: 'click_send_button',
+					location: 'homepage_contact_form',
+					label: 'Send'
+				})}
+				disabled={isSubmitting || isSent}
 			/>
 			<!-- Success/Error Messages -->
 			{#await submitContactData.result}
@@ -923,6 +981,12 @@
 		label="Contact Sales"
 		class="row-span-2 min-w-72 place-self-end self-center"
 		href="#Contact"
+		onclick={trackEvent({
+			name: toButtonEventName('Contact Sales'),
+			location: 'homepage_cta',
+			label: 'Contact Sales',
+			href: '#Contact'
+		})}
 	/>
 </Section>
 

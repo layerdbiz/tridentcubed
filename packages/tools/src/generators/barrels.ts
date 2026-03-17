@@ -89,11 +89,12 @@ async function generateBarrelContent(
 
 	// Sort sections for consistent output - handle utils specially
 	const sortedSections = Array.from(structure.sections.keys()).sort((a, b) => {
-		// Always put 'components' first, 'utils' second, then alphabetical
-		if (a === "components") return -1;
-		if (b === "components") return 1;
+		// Export utils before components so package-internal imports from the root barrel
+		// can resolve shared runtime primitives like Component without depending on later exports.
 		if (a === "utils") return -1;
 		if (b === "utils") return 1;
+		if (a === "components") return -1;
+		if (b === "components") return 1;
 		return a.localeCompare(b);
 	});
 
