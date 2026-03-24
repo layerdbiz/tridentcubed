@@ -47,13 +47,14 @@ export interface ComponentProps {
 	total?: string;
 
 	// 📏 SIZE
-	size?: "xxs" | "xs" | "sm" | "md" | "lg" | "xl";
+	size?: "xxs" | "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
 	xxs?: boolean;
 	xs?: boolean;
 	sm?: boolean;
 	md?: boolean;
 	lg?: boolean;
 	xl?: boolean;
+	xxl?: boolean;
 
 	// 📍 POSITION
 	position?: "left" | "center" | "right";
@@ -135,6 +136,7 @@ export function createComponent(
 		md = false,
 		lg = false,
 		xl = false,
+		xxl = false,
 		// user class
 		class: userClass = "",
 		children,
@@ -188,6 +190,7 @@ export function createComponent(
 		const isMd = size === "md" || md;
 		const isLg = size === "lg" || lg;
 		const isXl = size === "xl" || xl;
+		const isXxl = size === "xxl" || xxl;
 
 		// Helper function to apply theme preset classes for a color
 		const colorThemes = (colorName: string) => {
@@ -248,7 +251,8 @@ export function createComponent(
 			.is(isSm, "sm")
 			.is(isMd, "md")
 			.is(isLg, "lg")
-			.is(isXl, "xl");
+			.is(isXl, "xl")
+			.is(isXxl, "xxl");
 	}
 
 	// Combine base classes with user classes

@@ -37,7 +37,7 @@
   /* borders, outlines, rings, strokes */
   --theme-edge: 1px; 
  	--theme-edge-xs: 1px;
-	--theme-edge-sm: 1px;
+	--theme-edge-sm: 2px;
 	--theme-edge-md: 3px;
 	--theme-edge-lg: 4px;
 	--theme-edge-xl: 5px;

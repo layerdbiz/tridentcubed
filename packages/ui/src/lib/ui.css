@@ -3,14 +3,6 @@
 @source '../../../node_modules/layerchart/dist';
 @plugin "@iconify/tailwind4";
 
-/* Custom States */
-/* 
-@custom-variant state {
-	&:is(:hover, :focus-visible, :active) {
-		@slot;
-	}
-} */
-
 /* 1. Theme */
 @import './css/1-theme/colors.css';
 @import './css/1-theme/pairings.css';
@@ -23,6 +15,7 @@
 @import './css/2-base/base.css' layer(base);
 
 /* 3. Presets */
+@import './css/3-presets/variants.css' layer(components);
 @import './css/3-presets/icons.css' layer(components);
 @import './css/3-presets/prose.css' layer(components);
 @import './css/3-presets/presets.css' layer(components);

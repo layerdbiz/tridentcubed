@@ -534,6 +534,12 @@
 		&:where(.xl) {
 			@apply text-2xl;
 		}
+		&:where(.xl) {
+			@apply text-2xl;
+		}
+		&:where(.xxl) {
+			@apply text-3xl;
+		}
 	}
 
 	/* Apply button styles to labels when used as form controls */

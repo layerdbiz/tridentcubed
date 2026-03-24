@@ -3,7 +3,7 @@
 		Grid,
 		Logo,
 		Button,
-		Input,
+		InputNew,
 		Content,
 		Text,
 		Divider,
@@ -806,17 +806,9 @@
 										<!-- 1. COVER PAGE 
 										------------------------------>
 										{#if section.type === 'cover'}
-											<div class="grid gap-3">
+											<div class="grid relative z-0 gap-4">
 												{#each detailFields as field (field.key)}
-													<label class="block">
-														<span class="mb-1 block text-xs font-semibold text-neutral-600">{field.label}</span>
-														<input
-															bind:value={section.fields[field.key]}
-															class="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 outline-none ring-0 placeholder:text-neutral-400 focus:border-primary-500"
-															placeholder={field.placeholder || ''}
-															type={field.type || 'text'}
-														/>
-													</label>
+													<InputNew xs bind:value={section.fields[field.key]} label={field.label} type={field.type || 'text'} />
 												{/each}
 											</div>
 
@@ -828,8 +820,8 @@
 
 												{#each section.days as day (day.id)}
 													<Grid items="1x2" cols="1fr auto" gap="8px">
-														<Input type="date" label="Date" bind:value={day.dateISO} />
-														<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)}   />
+														<InputNew xs type="date" label="Date" bind:value={day.dateISO} />
+														<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)} />
 													</Grid>
 													
 													<p class="mb-3 text-xs font-semibold text-neutral-600">{formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
@@ -837,10 +829,10 @@
 													<!-- times -->
 													{#each day.entries as entry (entry.id)}
 														<Grid items="1x3" cols="160px 1fr auto" gap="8px">
-																<Input
+																<InputNew xs
 																	bind:value={entry.time}
 																	label="Time"
-																	variant="label"
+																	variant="text"
 																	inputmode="numeric"
 																	type="time"
 																	min="00:00" 
@@ -848,10 +840,10 @@
 																	step="600"
 																	onblur={() => maybeAddEntry(day, entry.id)}
 																/>
-																<Input
+																<InputNew xs
 																	bind:value={entry.text}
 																	label="Activity"
-																	variant="label"
+																	variant="text"
 																	type="text"
 																	onblur={() => maybeAddEntry(day, entry.id)}
 																	onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)}
@@ -879,19 +871,19 @@
 											<!-- photos -->
 											<div class="space-y-3">
 												{#if !section.locked}
-													<Input
+													<InputNew xs
 														bind:value={section.title}
 														label="Title"
-														variant="label"
+														variant="text"
 														type="text"
 													/>
 												{/if}
 
-													<Input
+													<InputNew xs
 														bind:value={section.description}
 														textarea
 														label="Description"
-														variant="label"
+														variant="text"
 														type="text"
 													/>
 
@@ -962,7 +954,7 @@
 																		aria-label="Remove Photo"
 																		onclick={() => removePhoto(section, photo.id)}
 																	/>
-																	<Input
+																	<InputNew xs
 																		bind:value={photo.caption}
 																		label="Caption"
 																		type="text"
