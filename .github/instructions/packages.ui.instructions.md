@@ -1,7 +1,7 @@
 ---
 name: UI Package Rules
 description: 'Use when editing packages/ui source files. Covers the UI library architecture, alias imports, component system, story generation expectations, theming, icons, and utility naming rules.'
-applyTo: 'packages/ui/src/**/*.{svelte,ts,js,css}'
+applyTo: 'packages/ui/**/*.{svelte,ts,js,css}'
 ---
 
 Always greet the user with: "📦 Packages > UI "

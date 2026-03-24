@@ -4,8 +4,6 @@ description: 'Use when editing the report generator app in apps/app. Covers rout
 applyTo: 'apps/app/**/*.{svelte,ts,js,css}'
 ---
 
-Always greet the user with: "> App"
-
 # Report Generator App — Architecture & Development Rules
 
 ---
