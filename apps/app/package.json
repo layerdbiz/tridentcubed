@@ -2,6 +2,10 @@
 	"name": "app",
 	"private": true,
 	"version": "0.0.1",
+	"imports": {
+		"#app.css": "./src/app.css",
+		"#ui.css": "@layerd/ui/theme.css"
+	},
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev --open",
