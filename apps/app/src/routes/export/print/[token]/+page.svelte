@@ -38,7 +38,7 @@
 		align-items: stretch;
 	}
 
-	:global([data-export-page]) {
+	:global(.preview-page) {
 		width: 8.5in;
 		min-height: 11in;
 		box-sizing: border-box;
@@ -52,18 +52,18 @@
 		page-break-after: always;
 	}
 
-	:global([data-export-page]:last-child) {
+	:global(.preview-page:last-child) {
 		break-after: auto;
 		page-break-after: auto;
 	}
 
-	:global([data-export-page-inner]) {
+	:global(.preview-page-inner) {
 		height: 100%;
 		padding: 28px;
 		overflow: hidden;
 	}
 
-	:global([data-export-page-inner] *) {
+	:global(.preview-page-inner *) {
 		max-width: 100%;
 	}
 </style>

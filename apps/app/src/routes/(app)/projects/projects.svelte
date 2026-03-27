@@ -13,53 +13,32 @@
 		AccordionContent,
 		Draggable
 	} from '@layerd/ui';
-	import type { DroppableParams } from '@layerd/ui';
 	import { browser } from '$app/environment';
 	import { flip } from 'svelte/animate';
 	import { fromAction } from 'svelte/attachments';
 	import { onMount, tick } from 'svelte';
-	import type { Tab, Section, CoverSection, PhotosSection, TimeLogSection, TimeDay, PersistedState } from '$lib/types';
-	import { storageKey, detailFields, metricStatusCaptionClass, overallProgressRingRadius, overallProgressRingCircumference, previewPageWidth, previewPageHeight, previewZoomMin, previewZoomMax, previewDesktopPadding, previewMobilePadding, previewMobileGap, previewMobileVisiblePages } from '$lib/constants';
-	import type { ExportFormat } from '$lib/constants';
-	import { clamp } from '$lib/utils/math';
-	import { slugify, formatDayDate } from '$lib/utils/format';
-	import {
-		createPhotoItem,
-		hydratePhotoDimensions,
-		getPreviewPhotoGridClass,
-		getPreviewPhotoCardClass,
-		getPreviewPhotoFrameHeight
-	} from '$lib/utils/photo';
-	import {
-		getSectionMetrics,
-		getOverallMetrics,
-		getSectionStatusLabel,
-		getSectionStatusTextClass,
-		getSectionProgressFillClass,
-		getProgressRingOffset
-	} from '$lib/utils/metrics';
-	import { setStorageItem, removeStorageItem } from '$lib/utils/storage';
-	import {
-		createTimeEntry,
-		createTimeDay,
-		createPhotoSection,
-		createDefaultState,
-		isSectionMovable,
-		ensureAtLeastOneDay,
-		ensureAtLeastOneEntry,
-		getNextCustomSectionNumber
-	} from '$lib/sections';
-	import { syncIdCounterFromSections } from '$lib/utils/id';
-	import { loadState } from '$lib/normalize';
-	import PreviewPage from '$lib/components/PreviewPage.svelte';
-	import type { ProjectsRouteMode } from './projects.types';
+	import * as constants from './projects.constants';
+	import type { ExportFormat } from './projects.constants';
+	import * as utils from './projects.utils';
+	import * as projectModel from './projects.state';
+	import PreviewPage from './preview/preview-page.svelte';
+	import type {
+		ProjectsRouteMode,
+		Tab,
+		Section,
+		CoverSection,
+		PhotosSection,
+		TimeLogSection,
+		TimeDay,
+		PersistedState
+	} from './projects.types';
 
 	let { mode = 'edit' }: { mode?: ProjectsRouteMode } = $props();
 
 	const sectionSortType = 'report-section';
 	const photoSortTypePrefix = 'report-photo:';
 
-	const baseState = createDefaultState();
+	const baseState = projectModel.createDefaultState();
 
 	type AccordionLayoutMetric = {
 		closedHeight: number;
@@ -89,9 +68,9 @@
 	const draggable = new Draggable({});
 
 	const isDesktop = $derived(!mq.sm);
-	const overallMetrics = $derived(getOverallMetrics(sections));
+	const overallMetrics = $derived(utils.getOverallMetrics(sections));
 	const reportSection = $derived(sections.find((section) => section.type === 'cover') as CoverSection | undefined);
-	const exportFileName = $derived(`${slugify(reportSection?.fields.reportTitle || 'survey-report')}.pdf`);
+	const exportFileName = $derived(`${utils.slugify(reportSection?.fields.reportTitle || 'survey-report')}.pdf`);
 	const previewContentSections = $derived(sections.filter((section) => section.type !== 'cover'));
 	const tableOfContentsEntries = $derived([
 		{ id: 'toc-cover', title: reportSection?.title || 'Cover Page', page: 1 },
@@ -181,7 +160,7 @@
 	}
 
 	function addSortableSection(node: HTMLElement, section: Section) {
-		if (!isSectionMovable(section)) return;
+		if (!projectModel.isSectionMovable(section)) return;
 
 		return draggable.addDraggable(node, {
 			item: () => section,
@@ -191,7 +170,7 @@
 	}
 
 	function addSortableSectionHandle(node: HTMLElement, section: Section) {
-		if (!isSectionMovable(section)) return;
+		if (!projectModel.isSectionMovable(section)) return;
 
 		return addHandle(node);
 	}
@@ -246,11 +225,11 @@
 	}
 
 	function addSection() {
-		const nextNumber = getNextCustomSectionNumber(sections);
+		const nextNumber = projectModel.getNextCustomSectionNumber(sections);
 		const insertIndex = sections.findIndex((section) => section.placement === 'end');
 		for (const section of sections) section.open = false;
 
-		const nextSection = createPhotoSection(`Section ${nextNumber}`, '🧩', false);
+		const nextSection = projectModel.createPhotoSection(`Section ${nextNumber}`, '🧩', false);
 		if (insertIndex === -1) {
 			sections.push(nextSection);
 			return;
@@ -273,16 +252,16 @@
 	}
 
 	function addDay(section: TimeLogSection) {
-		section.days.push(createTimeDay());
+		section.days.push(projectModel.createTimeDay());
 	}
 
 	function removeDay(section: TimeLogSection, dayId: string) {
 		section.days = section.days.filter((day) => day.id !== dayId);
-		ensureAtLeastOneDay(section);
+		projectModel.ensureAtLeastOneDay(section);
 	}
 
 	function addEntry(day: TimeDay) {
-		day.entries.push(createTimeEntry());
+		day.entries.push(projectModel.createTimeEntry());
 	}
 
 	function maybeAddEntry(day: TimeDay, entryId: string) {
@@ -306,7 +285,7 @@
 
 	function removeEntry(day: TimeDay, entryId: string) {
 		day.entries = day.entries.filter((entry) => entry.id !== entryId);
-		ensureAtLeastOneEntry(day);
+		projectModel.ensureAtLeastOneEntry(day);
 	}
 
 	async function addPhotosToSection(sectionId: string, fileList: FileList | File[] | null | undefined) {
@@ -316,7 +295,7 @@
 		for (const file of Array.from(fileList)) {
 			if (!file.type.startsWith('image/')) continue;
 
-			section.photos.push(await createPhotoItem(file));
+			section.photos.push(await utils.createPhotoItem(file));
 		}
 	}
 
@@ -396,7 +375,7 @@
 		isExporting = true;
 
 		try {
-			const markup = Array.from(previewPages.querySelectorAll('[data-export-page]'))
+			const markup = Array.from(previewPages.querySelectorAll('.preview-page'))
 				.map((page) => page.outerHTML)
 				.join('');
 			if (!markup) return;
@@ -463,7 +442,7 @@
 		const bounds = getPreviewZoomBounds();
 
 		if (hasUserZoomed) {
-			previewZoom = clamp(previewZoom || bounds.initial, bounds.min, bounds.max);
+			previewZoom = utils.clamp(previewZoom || bounds.initial, bounds.min, bounds.max);
 			return;
 		}
 
@@ -473,35 +452,40 @@
 	function getPreviewZoomBounds() {
 		if (!previewViewport) {
 			return {
-				min: previewZoomMin,
-				max: previewZoomMax,
-				initial: previewZoomMax
+				min: constants.previewZoomMin,
+				max: constants.previewZoomMax,
+				initial: constants.previewZoomMax
 			};
 		}
 
 		const availableWidth = Math.max(
 			200,
-			previewViewport.clientWidth - (isDesktop ? previewDesktopPadding : previewMobilePadding)
+			previewViewport.clientWidth - (isDesktop ? constants.previewDesktopPadding : constants.previewMobilePadding)
 		);
-		const fitWidthZoom = clamp(availableWidth / previewPageWidth, previewZoomMin, previewZoomMax);
+		const fitWidthZoom = utils.clamp(
+			availableWidth / constants.previewPageWidth,
+			constants.previewZoomMin,
+			constants.previewZoomMax
+		);
 
 		if (isDesktop) {
 			return {
-				min: previewZoomMin,
+				min: constants.previewZoomMin,
 				max: fitWidthZoom,
 				initial: fitWidthZoom
 			};
 		}
 
 		const availableHeight = Math.max(200, previewViewport.clientHeight - 32);
-		const fitVisiblePagesZoom = clamp(
-			(availableHeight - previewMobileGap * 0.5) / (previewPageHeight * previewMobileVisiblePages),
-			previewZoomMin,
+		const fitVisiblePagesZoom = utils.clamp(
+			(availableHeight - constants.previewMobileGap * 0.5) /
+				(constants.previewPageHeight * constants.previewMobileVisiblePages),
+			constants.previewZoomMin,
 			fitWidthZoom
 		);
 
 		return {
-			min: previewZoomMin,
+			min: constants.previewZoomMin,
 			max: fitWidthZoom,
 			initial: Math.min(fitWidthZoom, fitVisiblePagesZoom)
 		};
@@ -513,7 +497,7 @@
 		const bounds = getPreviewZoomBounds();
 		const step = isDesktop ? 0.08 : 0.05;
 		const delta = direction === 'in' ? step : -step;
-		const nextZoom = clamp((previewZoom || bounds.initial) + delta, bounds.min, bounds.max);
+		const nextZoom = utils.clamp((previewZoom || bounds.initial) + delta, bounds.min, bounds.max);
 
 		hasUserZoomed = true;
 		await zoomPreviewAtCursor(previewViewport.clientHeight / 2, nextZoom);
@@ -541,10 +525,10 @@
 
 		const bounds = getPreviewZoomBounds();
 		const rect = previewViewport.getBoundingClientRect();
-		const cursorY = clamp(event.clientY - rect.top, 0, rect.height);
+		const cursorY = utils.clamp(event.clientY - rect.top, 0, rect.height);
 		const delta = Math.sign(event.deltaY);
 		const step = 0.08;
-		const nextZoom = clamp((previewZoom || bounds.initial) + (delta > 0 ? -step : step), bounds.min, bounds.max);
+		const nextZoom = utils.clamp((previewZoom || bounds.initial) + (delta > 0 ? -step : step), bounds.min, bounds.max);
 		await zoomPreviewAtCursor(cursorY, nextZoom);
 	}
 
@@ -556,7 +540,7 @@
 		const dy = first.clientY - second.clientY;
 		const startDist = Math.hypot(dx, dy);
 		const rect = previewViewport.getBoundingClientRect();
-		const midY = clamp((first.clientY + second.clientY) / 2 - rect.top, 0, rect.height);
+		const midY = utils.clamp((first.clientY + second.clientY) / 2 - rect.top, 0, rect.height);
 
 		pinch = { startDist, startZoom: previewZoom || 1, midY };
 		hasUserZoomed = true;
@@ -573,7 +557,7 @@
 		const dy = first.clientY - second.clientY;
 		const distance = Math.hypot(dx, dy);
 		const ratio = distance / pinch.startDist;
-		const nextZoom = clamp(pinch.startZoom * ratio, bounds.min, bounds.max);
+		const nextZoom = utils.clamp(pinch.startZoom * ratio, bounds.min, bounds.max);
 		await zoomPreviewAtCursor(pinch.midY, nextZoom);
 	}
 
@@ -585,8 +569,8 @@
 		if (!browser) return;
 		const okay = window.confirm('Reset this report and clear all saved data? This cannot be undone.');
 		if (!okay) return;
-		removeStorageItem(storageKey);
-		applyState(createDefaultState());
+		utils.removeStorageItem(constants.storageKey);
+		applyState(projectModel.createDefaultState());
 		clearDraggedItems();
 		photoDropId = '';
 	}
@@ -596,10 +580,10 @@
 			draggable.manager.monitor.addEventListener('dragstart', handleDraggableDragStart);
 			draggable.manager.monitor.addEventListener('dragend', clearDraggedItems);
 
-			const next = loadState();
-			syncIdCounterFromSections(next.sections);
+			const next = projectModel.loadState();
+			utils.syncIdCounterFromSections(next.sections);
 			applyState(next);
-			const didHydratePhotoDimensions = await hydratePhotoDimensions(next.sections);
+			const didHydratePhotoDimensions = await utils.hydratePhotoDimensions(next.sections);
 			if (didHydratePhotoDimensions) sections = [...sections];
 			hydrated = true;
 			await tick();
@@ -615,7 +599,7 @@
 
 	$effect(() => {
 		if (!browser || !hydrated) return;
-		setStorageItem(storageKey, { activeTab, previewZoom, hasUserZoomed, sections });
+		utils.setStorageItem(constants.storageKey, { activeTab, previewZoom, hasUserZoomed, sections });
 	});
 
 	$effect(() => {
@@ -629,16 +613,9 @@
 
 <div class="page-shell h-svh overflow-hidden text-neutral-900">
 	<div class="flex h-full min-w-0 flex-col">
-
-		<!-- MOBILE TABS 
-		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
 		<div class="flex shrink-0 items-center gap-2 p-4 md:hidden">
-
 			<Button
-				{...(activeTab === 'create' 
-					? { heavy: true, primary: true } 
-					: { outline: true, base: true }
-				)}
+				{...(activeTab === 'create' ? { heavy: true, primary: true } : { outline: true, base: true })}
 				variant="text"
 				class="w-full flex-1"
 				onclick={() => (activeTab = 'create')}
@@ -646,10 +623,7 @@
 			/>
 
 			<Button
-				{...(activeTab === 'preview' 
-					? { heavy: true, primary: true } 
-					: { outline: true, base: true }
-				)}
+				{...(activeTab === 'preview' ? { heavy: true, primary: true } : { outline: true, base: true })}
 				variant="text"
 				class="w-full flex-1"
 				onclick={() => (activeTab = 'preview')}
@@ -657,44 +631,31 @@
 			/>
 		</div>
 
-		<!-- MAIN 
-		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
 		<main class="grid min-h-0 flex-1 gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:px-6 md:pb-6 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
-			
-			<!-- CREATE 
-			-------------------------------------------------->
 			<section id="create" class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
 				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-secondary-200 bg-white shadow-sm">
-
-					<!-- create header -->
 					<div class="shrink-0 border-b border-secondary-200 px-4 py-3">
 						<div class="flex flex-col gap-4">
-							<div class="grid gap-4 grid-cols-[minmax(0,1fr)_auto] items-start">
+							<div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
 								<div class="min-w-0">
 									<Text h2="Create" />
-									<Text xs class="text-neutral" p="Build the report structure, content, and photos section by section."  />
+									<Text xs class="text-neutral" p="Build the report structure, content, and photos section by section." />
 								</div>
 
-								<!-- progress bar -->
 								<div class="flex items-center gap-5">
 									<div class="relative h-18 w-18 shrink-0">
 										<svg viewBox="0 0 96 96" class="h-full w-full overflow-visible -rotate-90" aria-hidden="true">
-											<circle
-												class="fill-none stroke-secondary-200 stroke-12"
-												cx="48"
-												cy="48"
-												r={overallProgressRingRadius}
-											/>
+											<circle class="fill-none stroke-secondary-200 stroke-12" cx="48" cy="48" r={constants.overallProgressRingRadius} />
 											<circle
 												cx="48"
 												cy="48"
-												r={overallProgressRingRadius}
+												r={constants.overallProgressRingRadius}
 												fill="none"
 												stroke="#22c55e"
 												stroke-linecap="round"
 												stroke-width="12"
-												stroke-dasharray={overallProgressRingCircumference}
-												stroke-dashoffset={getProgressRingOffset(overallMetrics.percent)}
+												stroke-dasharray={constants.overallProgressRingCircumference}
+												stroke-dashoffset={utils.getProgressRingOffset(overallMetrics.percent)}
 											/>
 										</svg>
 										<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -706,213 +667,166 @@
 						</div>
 					</div>
 
-					<!-- create controls -->
 					<div class="flex flex-wrap gap-2 p-4">
-						<Button
-							primary xs
-							variant="text"
-							onclick={addSection}
-							label="Add Section"
-						/>
-						<Button
-							outline xs
-							variant="text"
-							onclick={resetReport}
-							label="Reset"
-						/>
+						<Button primary xs variant="text" onclick={addSection} label="Add Section" />
+						<Button outline xs variant="text" onclick={resetReport} label="Reset" />
 					</div>
-					
-					<!-- create panels -->
-					<div id="createContentPanels" class="scroller mask-b-sm min-h-0 flex-1 space-y-3 p-4 pt-1.75"
+
+					<div
+						id="createContentPanels"
+						class="scroller mask-b-sm min-h-0 flex-1 space-y-3 p-4 pt-1.75"
 						use:addDroppable={{
 							items: { get: () => sections, set: (items: unknown[]) => setSections(items) },
 							accept: [sectionSortType]
 						}}
 					>
 						{#each sections as section, index (section.id)}
-							{@const metrics = getSectionMetrics(section)}
-							{@const sectionStatusLabel = getSectionStatusLabel(metrics)}
-							{@const sectionStatusTextClass = getSectionStatusTextClass(metrics)}
-							{@const sectionProgressFillClass = getSectionProgressFillClass(metrics)}
+							{@const metrics = utils.getSectionMetrics(section)}
+							{@const sectionStatusLabel = utils.getSectionStatusLabel(metrics)}
+							{@const sectionStatusTextClass = utils.getSectionStatusTextClass(metrics)}
+							{@const sectionProgressFillClass = utils.getSectionProgressFillClass(metrics)}
 
-						<!-- panels -->
-						<div
-							id={getAccordionAnchorId(section.id)}
-							animate:flip={{ duration: 180 }}
-							class="relative"
-							data-dragging={draggedSectionId === section.id ? 'true' : 'false'}
-							{@attach fromAction(measureAccordionLayout, () => ({ sectionId: section.id, index }))}
-							use:addSortableSection={section}
-						>
-							<Accordion
+							<div
+								id={getAccordionAnchorId(section.id)}
+								animate:flip={{ duration: 180 }}
 								class="relative"
-								name="report-sections"
-								open={section.open}
-								ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}
+								class:dragging-item={draggedSectionId === section.id}
+								{@attach fromAction(measureAccordionLayout, () => ({ sectionId: section.id, index }))}
+								use:addSortableSection={section}
 							>
-								<AccordionTitle
-									class="shadow-[-12px_-12px_0px_white] rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 block w-full cursor-pointer p-4 text-left sticky top-0 z-1  {section.open ? '' : 'rounded-b-2xl'}"
-									onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
+								<Accordion
+									class="relative"
+									name="report-sections"
+									open={section.open}
+									ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}
 								>
-									<div class="flex items-start gap-3">
-										{#if isSectionMovable(section)}
-											<div
-												class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing"
-												use:addSortableSectionHandle={section}
-												aria-label={`Reorder ${section.title}`}
-											>
-												{section.icon}
-											</div>
-										{:else}
-											<div class="flex h-10 w-10 shrink-0 items-center justify-center text-3xl">{section.icon}</div>
-										{/if}
-										<div class="min-w-0 flex-1">
-											<div class="mb-2 flex items-start justify-between gap-3">
-												<div>
-													<div class="flex flex-wrap items-center gap-2">
-														<h3 class="text-sm font-bold text-neutral-800">{section.title}</h3>
+									<AccordionTitle
+										class="shadow-[-12px_-12px_0px_white] sticky top-0 z-1 block w-full cursor-pointer rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 p-4 text-left {section.open ? '' : 'rounded-b-2xl'}"
+										onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
+									>
+										<div class="flex items-start gap-3">
+											{#if projectModel.isSectionMovable(section)}
+												<div
+													class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing"
+													use:addSortableSectionHandle={section}
+													aria-label={`Reorder ${section.title}`}
+												>
+													{section.icon}
+												</div>
+											{:else}
+												<div class="flex h-10 w-10 shrink-0 items-center justify-center text-3xl">{section.icon}</div>
+											{/if}
+											<div class="min-w-0 flex-1">
+												<div class="mb-2 flex items-start justify-between gap-3">
+													<div>
+														<div class="flex flex-wrap items-center gap-2">
+															<h3 class="text-sm font-bold text-neutral-800">{section.title}</h3>
+														</div>
+														<p class="text-xs text-neutral-500">{metrics.done} of {metrics.total} complete</p>
 													</div>
-													<p class="text-xs text-neutral-500">{metrics.done} of {metrics.total} complete</p>
+
+													<div class="text-right">
+														<p class="text-sm font-bold text-neutral-700">{metrics.percent}%</p>
+														<p class={`${constants.metricStatusCaptionClass} ${sectionStatusTextClass}`}>{sectionStatusLabel}</p>
+													</div>
 												</div>
 
-												<div class="text-right">
-													<p class="text-sm font-bold text-neutral-700">{metrics.percent}%</p>
-													<p class={`${metricStatusCaptionClass} ${sectionStatusTextClass}`}>{sectionStatusLabel}</p>
+												<div class="h-2.5 overflow-hidden rounded-full bg-secondary-200/60">
+													<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
 												</div>
 											</div>
 
-											<div class="h-2.5 overflow-hidden rounded-full bg-secondary-200/60">
-												<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
-											</div>
+											{#if projectModel.isSectionMovable(section)}
+												<Button
+													variant="icon"
+													icon="close"
+													class="absolute! -top-2! -right-2! text-[8px]!"
+													aria-label={`Delete ${section.title}`}
+													onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)}
+												/>
+											{:else}
+												<Button
+													variant="icon"
+													icon="lock"
+													class="absolute! -top-2! -right-2! text-[8px]! bg-secondary-200 text-secondary-400 opacity-100"
+													aria-label={`${section.title} is locked`}
+													onclick={handleSectionActionDisabledClick}
+													disabled
+												/>
+											{/if}
 										</div>
+									</AccordionTitle>
 
-										{#if isSectionMovable(section)}
-											<Button
-												variant="icon"
-												icon="close"
-												class="absolute! -top-2! -right-2! text-[8px]!"
-												aria-label={`Delete ${section.title}`}
-												onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)}
-											/>
-										{:else}
-											<Button
-												variant="icon"
-												icon="lock"
-												class="absolute! -top-2! -right-2! text-[8px]! text-secondary-400 bg-secondary-200 opacity-100"
-												aria-label={`${section.title} is locked`}
-												onclick={handleSectionActionDisabledClick}
-												disabled
-											/>
-										{/if}
-									</div>
-								</AccordionTitle>
-
-								<!-- panel content -->
-								<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
-
-										<!-- 1. COVER PAGE 
-										------------------------------>
+									<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
 										{#if section.type === 'cover'}
-											<div class="grid relative z-0 gap-4">
-												{#each detailFields as field (field.key)}
+											<div class="relative z-0 grid gap-4">
+														{#each constants.detailFields as field (field.key)}
 													<InputNew xs bind:value={section.fields[field.key]} label={field.label} type={field.type || 'text'} />
 												{/each}
 											</div>
-
-										<!-- 3. TIME LOG 
-										------------------------------>
 										{:else if section.type === 'time-log'}
-											<!-- days -->
 											<div class="space-y-4">
-
 												{#each section.days as day (day.id)}
 													<Grid items="1x2" cols="1fr auto" gap="8px">
 														<InputNew xs type="date" label="Date" bind:value={day.dateISO} />
 														<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)} />
 													</Grid>
-													
-													<p class="mb-3 text-xs font-semibold text-neutral-600">{formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
 
-													<!-- times -->
+													<p class="mb-3 text-xs font-semibold text-neutral-600">{utils.formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
+
 													{#each day.entries as entry (entry.id)}
 														<Grid items="1x3" cols="160px 1fr auto" gap="8px">
-																<InputNew xs
-																	bind:value={entry.time}
-																	label="Time"
-																	variant="text"
-																	inputmode="numeric"
-																	type="time"
-																	min="00:00" 
-																	max="23:59"
-																	step="600"
-																	onblur={() => maybeAddEntry(day, entry.id)}
-																/>
-																<InputNew xs
-																	bind:value={entry.text}
-																	label="Activity"
-																	variant="text"
-																	type="text"
-																	onblur={() => maybeAddEntry(day, entry.id)}
-																	onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)}
-																/>
-															<Button ghost secondary variant="icon" icon="close" onclick={() => removeEntry(day, entry.id)}  />
+															<InputNew
+																xs
+																bind:value={entry.time}
+																label="Time"
+																variant="text"
+																inputmode="numeric"
+																type="time"
+																min="00:00"
+																max="23:59"
+																step="600"
+																onblur={() => maybeAddEntry(day, entry.id)}
+															/>
+															<InputNew
+																xs
+																bind:value={entry.text}
+																label="Activity"
+																variant="text"
+																type="text"
+																onblur={() => maybeAddEntry(day, entry.id)}
+																onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)}
+															/>
+															<Button ghost secondary variant="icon" icon="close" onclick={() => removeEntry(day, entry.id)} />
 														</Grid>
 													{/each}
 
-													<Button
-														primary xs
-														variant="text"
-														label="Add Time"
-														onclick={() => addEntry(day)}
-													/>
+													<Button primary xs variant="text" label="Add Time" onclick={() => addEntry(day)} />
 												{/each}
 
-												<Button
-													primary xs
-													variant="text"
-													label="Add Day"
-													onclick={() => addDay(section)}
-												/>
+												<Button primary xs variant="text" label="Add Day" onclick={() => addDay(section)} />
 											</div>
 										{:else}
-											<!-- photos -->
 											<div class="space-y-3">
 												{#if !section.locked}
-													<InputNew xs
-														bind:value={section.title}
-														label="Title"
-														variant="text"
-														type="text"
-													/>
+													<InputNew xs bind:value={section.title} label="Title" variant="text" type="text" />
 												{/if}
 
-													<InputNew xs
-														bind:value={section.description}
-														textarea
-														label="Description"
-														variant="text"
-														type="text"
-													/>
+												<InputNew xs bind:value={section.description} textarea label="Description" variant="text" type="text" />
 
 												<div class="space-y-3">
-												
-													<!-- PHOTO UPLOAD 
-													------------------------------>
 													<div class="flex flex-wrap gap-2">
-														<!-- file -->
 														<label class="rounded-xl bg-primary-500 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-600">
 															<span>Upload</span>
 															<input accept="image/*" class="hidden" multiple type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
 														</label>
 
-														<!-- camera -->
 														<label class="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm">
 															<span>Camera</span>
 															<input accept="image/*" capture="environment" class="hidden" type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
 														</label>
 													</div>
 
-													<!-- drag/drop images -->
 													<div
 														role="presentation"
 														class:drop-target={photoDropId === section.id}
@@ -938,14 +852,12 @@
 															<div
 																animate:flip={{ duration: 180 }}
 																class="rounded-2xl bg-white p-2"
-																data-dragging={draggedPhotoId === photo.id ? 'true' : 'false'}
+																class:dragging-item={draggedPhotoId === photo.id}
 																role="presentation"
 																use:addSortablePhoto={{ section, photo }}
 															>
-																<div
-																	class="relative rounded-xl aspect-square bg-neutral-100"
-																>
-																	<img alt={photo.caption || photo.name} class="h-full w-full object-cover rounded-lg" draggable="false" src={photo.src} />
+																<div class="relative aspect-square rounded-xl bg-neutral-100">
+																	<img alt={photo.caption || photo.name} class="h-full w-full rounded-lg object-cover" draggable="false" src={photo.src} />
 
 																	<div
 																		class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-neutral-700 shadow-sm cursor-grab active:cursor-grabbing"
@@ -954,18 +866,15 @@
 																	>
 																		::
 																	</div>
-																	
+
 																	<Button
-																		variant="icon" icon="close"
-																		class="text-[8px]! absolute! -right-1.5 -top-1.5 z-100"
+																		variant="icon"
+																		icon="close"
+																		class="absolute! -right-1.5 -top-1.5 z-100 text-[8px]!"
 																		aria-label="Remove Photo"
 																		onclick={() => removePhoto(section, photo.id)}
 																	/>
-																	<InputNew xs
-																		bind:value={photo.caption}
-																		label="Caption"
-																		type="text"
-																	/>
+																	<InputNew xs bind:value={photo.caption} label="Caption" type="text" />
 																</div>
 															</div>
 														{/each}
@@ -973,70 +882,48 @@
 												</div>
 											</div>
 										{/if}
-								</AccordionContent>
-							</Accordion>
+									</AccordionContent>
+								</Accordion>
 							</div>
 						{/each}
 					</div>
 				</div>
 			</section>
 
-			<!-- PREVIEW 
-			-------------------------------------------------->
 			<section id="preview" class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
 				<div class="relative flex h-full min-h-0 flex-col">
-
-					<!-- CONTROLS 
-					-------------------------------------------------->
-					<div id="previewControls" class="flex justify-end gap-2 fixed bottom-8 right-8 z-20">
-						<!-- Download -->
+					<div id="previewControls" class="fixed bottom-8 right-8 z-20 flex justify-end gap-2">
 						<Button
-							primary 
+							primary
 							class="bg-primary"
 							variant="icon text"
 							icon="download"
 							onclick={() => handleExport('PDF')}
-							label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting}
+							label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'}
+							disabled={isExporting}
 						/>
 
-						<!-- Zoomer -->
 						<div id="zoomer" class="flex h-12 rounded-full border border-neutral-300 bg-white shadow-sm">
-							<!-- zoom in -->
+							<Button ghost xl variant="text" label="-" onclick={() => stepPreviewZoom('out')} class="px-4!" />
 							<Button
-								ghost xl
+								ghost
+								lg
 								variant="text"
-								label="-"
-								onclick={() => stepPreviewZoom('out')}
-								class="px-4!"
-							/>
-							<!-- zoom percentage -->
-							<Button
-								ghost lg
-								variant="text"
-								class="w-18! px-0! font-black! border-x border-secondary-200 rounded-none!"
+								class="w-18! rounded-none! border-x border-secondary-200 px-0! font-black!"
 								onclick={resetPreviewZoom}
 							>
 								{Math.round((previewZoom || 1) * 100)}%
 							</Button>
-							<!-- zoom out -->
-							<Button
-								ghost xl
-								variant="text"
-								label="+"
-								onclick={() => stepPreviewZoom('in')}
-								class="px-4!"
-							/>
+							<Button ghost xl variant="text" label="+" onclick={() => stepPreviewZoom('in')} class="px-4!" />
 						</div>
 					</div>
 
-					<!-- PAGES 
-					-------------------------------------------------->
 					<div class="min-h-0 flex-1">
 						<div
 							bind:this={previewViewport}
 							role="region"
 							aria-label="Preview pages"
-							class="h-full w-full overflow-y-auto overflow-x-hidden bg-transparent"
+							class="h-full w-full overflow-x-hidden overflow-y-auto bg-transparent"
 							style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`}
 							onwheel={handlePreviewWheel}
 							ontouchstart={handlePreviewTouchStart}
@@ -1044,36 +931,28 @@
 							ontouchend={handlePreviewTouchEnd}
 						>
 							<div class="relative w-full px-1 pb-10 pt-0 md:px-0 md:pb-16 md:pt-2">
-								<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${previewPageWidth}px; --preview-page-height: ${previewPageHeight}px`}>
+								<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${constants.previewPageWidth}px; --preview-page-height: ${constants.previewPageHeight}px`}>
 									<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">
+										<PreviewPage innerClass="relative flex flex-col items-center justify-center gap-6">
+											<div id="topCoverPage" class="mb-50 flex flex-col items-center justify-center gap-6">
+												<Logo mode="light" class="size-42" />
+												<Text h1={reportSection?.fields.reportTitle || 'Survey Report'} class="text-6xl font-black uppercase" />
+												<Text h2={reportSection?.fields.reportTitle || 'Survey Report'} class="text-center text-3xl font-semibold text-pretty text-secondary-500" />
+											</div>
 
-										<!-- 1. COVER PAGE 
-										------------------------------>
-										<PreviewPage innerClass="flex flex-col items-center justify-center gap-6 relative">
-											
-												<!-- Top Cover Page-->
-												<div id="topCoverPage" class="flex flex-col items-center justify-center gap-6 mb-50">
-													<Logo mode="light" class="size-42" />
-													<Text h1={reportSection?.fields.reportTitle || 'Survey Report'} class="text-6xl uppercase font-black" />
-													<Text h2={reportSection?.fields.reportTitle || 'Survey Report'} class="font-semibold text-pretty text-3xl text-secondary-500 text-center" />
-												</div>
-
-												<!-- Bottom Cover Page -->
-												<div id="bottomCoverPage" class="grid justify-center bg-secondary-200 w-full z-1! absolute bottom-0 left-0 right-0 pb-20">
-													<Divider class="absolute bottom-full" color="text-secondary-200" bleed={false} />
-													{#each coverMeta as item (item.label)}
+											<div id="bottomCoverPage" class="absolute bottom-0 left-0 right-0 z-1! grid w-full justify-center bg-secondary-200 pb-20">
+												<Divider class="absolute bottom-full" color="text-secondary-200" bleed={false} />
+												{#each coverMeta as item (item.label)}
 													<div class="grid grid-cols-[100px_100px] gap-3">
 														<span class="font-semibold text-neutral-600">{item.label}:</span>
 														<span class="text-neutral-800">{item.value}</span>
 													</div>
-													{/each}
-												</div>
+												{/each}
+											</div>
 										</PreviewPage>
 
-										<!-- 2. TOC 
-										------------------------------>
 										<PreviewPage>
-											<Text h2="Table of Contents" class="text-4xl mb-4"/>
+											<Text h2="Table of Contents" class="mb-4 text-4xl" />
 											<div class="space-y-2 text-sm">
 												{#each tableOfContentsEntries as item (item.id)}
 													<div class="grid grid-cols-[1fr_auto] gap-3 border-b border-dashed border-secondary-200 pb-1">
@@ -1085,14 +964,11 @@
 										</PreviewPage>
 
 										{#each previewContentSections as section (section.id)}
-											
-											<!-- 3. TIME LOG
-											------------------------------>
 											{#if section.type === 'time-log'}
 												<PreviewPage>
-													<Text h2={section.title} class="text-4xl mb-4"/>
+													<Text h2={section.title} class="mb-4 text-4xl" />
 													{#each section.days as day (day.id)}
-														<p class="mb-2 text-sm font-semibold text-neutral-700">{formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
+														<p class="mb-2 text-sm font-semibold text-neutral-700">{utils.formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
 														<ul class="mb-4 space-y-2 text-sm">
 															{#each getSortedEntries(day) as entry (entry.id)}
 																<li class="flex gap-3">
@@ -1103,21 +979,18 @@
 														</ul>
 													{/each}
 												</PreviewPage>
-												
-											<!-- 4. PHOTOS
-											------------------------------>
 											{:else}
 												<PreviewPage>
-													<Text h2={section.title} class="text-4xl mb-4"/>
+													<Text h2={section.title} class="mb-4 text-4xl" />
 													{#if section.description}
-														<Text p={section.description} class="text-secondary"/>
+														<Text p={section.description} class="text-secondary" />
 													{/if}
 
-													<div class={getPreviewPhotoGridClass(section)}>
+													<div class={utils.getPreviewPhotoGridClass(section)}>
 														{#if section.photos.length}
 															{#each section.photos as photo (photo.id)}
-																<figure class={getPreviewPhotoCardClass(section, photo)}>
-																	<div class="grid place-items-center bg-neutral-50 p-3" style={`height: ${getPreviewPhotoFrameHeight(section, photo)}`}> 
+																<figure class={utils.getPreviewPhotoCardClass(section, photo)}>
+																	<div class="grid place-items-center bg-neutral-50 p-3" style={`height: ${utils.getPreviewPhotoFrameHeight(section, photo)}`}>
 																		<img alt={photo.caption || photo.name} class="h-full w-full object-contain" src={photo.src} />
 																	</div>
 																	<figcaption class="p-3 text-xs text-neutral-600">{photo.caption || photo.name || 'Photo'}</figcaption>
@@ -1131,16 +1004,14 @@
 											{/if}
 										{/each}
 
-										<!-- DISCLAIMER
-										------------------------------>
 										<PreviewPage>
 											<Content class="prose prose-sm">
 												<h2>Standard Disclaimer</h2>
 												<p>This Cargo Survey Report is prepared based on the observations, conditions, and information available to the undersigned at the time of the inspection. The findings and conclusions herein are made to the best of our knowledge and belief, but are subject to the following limitations:</p>
-												<ul class="max-w-lg text-balance prose prose-xs grid gap-1">
+												<ul class="prose prose-xs grid max-w-lg gap-1 text-balance">
 													<li><b>Scope Limitation:</b> The survey was conducted without dismantling or intrusive testing unless explicitly stated otherwise. Our observations are limited to visible and accessible parts of the cargo.</li>
 													<li><b>No Warranty:</b> This report does not constitute a warranty or guarantee of the cargo's condition, quality, or fitness for any particular purpose. It is not a guarantee against latent defects or conditions not apparent at the time of inspection.</li>
-													<li><b>Use Limitation:</b> This report is provided solely for the use of the party to whom it is addressed. No liability is assumed by the Company or the undersigned for any use or reliance by third parties. </li>
+													<li><b>Use Limitation:</b> This report is provided solely for the use of the party to whom it is addressed. No liability is assumed by the Company or the undersigned for any use or reliance by third parties.</li>
 													<li><b>Liability Limitation:</b> The liability of the Company and the undersigned, if any, arising from this report shall be limited to the fee charged for this service. We shall not be liable for any indirect, consequential, or special damages, including but not limited to loss of profit or business interruption.</li>
 													<li><b>Accuracy of Information:</b> The accuracy of this report depends on the information provided by the client and others involved. We do not guarantee the accuracy of such third-party information.</li>
 													<li><b>Right to Amend:</b> We reserve the right to amend or supplement this report should additional pertinent information become available.</li>
@@ -1150,27 +1021,21 @@
 												<p>Please note that this report reflects the situation as observed on a date of Inspection and may not reflect subsequent changes or conditions.</p>
 											</Content>
 										</PreviewPage>
-
 									</div>
 								</div>
 							</div>
-
 						</div>
 					</div>
-
-
 				</div>
 			</section>
 		</main>
-
-
 	</div>
 </div>
 
 <style lang="postcss">
 	@reference "#app.css";
 
-	[data-dragging='true'] {
+	.dragging-item {
 		@apply border-2 border-primary;
 	}
 
@@ -1182,7 +1047,5 @@
 
 	#createContentPanels {
 		scroll-behavior: smooth;
-		/* scroll-padding-top: 0.75rem; */
 	}
-
 </style>

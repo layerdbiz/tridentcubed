@@ -1,40 +1,28 @@
-import type { DetailsFields } from "./types";
+import type { DetailsFields } from "./projects.types";
 
 export const storageKey = "survey-report-mvp-v3";
 
 export const exportFormats = ["PDF", "DOCX", "HTML", "MD"] as const;
 export type ExportFormat = (typeof exportFormats)[number];
 
-// Progress ring
 export const overallProgressRingRadius = 38;
 export const overallProgressRingCircumference = 2 * Math.PI *
 	overallProgressRingRadius;
 
-// Preview page dimensions (pixels at 96dpi)
 export const previewPageWidth = 8.5 * 96;
 export const previewPageHeight = 11 * 96;
 
-// Zoom bounds
 export const previewZoomMin = 0.1;
 export const previewZoomMax = 1;
 
-// Preview layout
 export const previewDesktopPadding = 28;
 export const previewMobilePadding = 32;
 export const previewMobileGap = 16;
 export const previewMobileVisiblePages = 1.5;
 
-// Touch reorder
-export const touchReorderHoldDelay = 220;
-export const touchReorderMoveTolerance = 10;
-
-// Tailwind class constants
 export const metricStatusCaptionClass =
 	"text-[11px] uppercase tracking-[0.16em]";
-export const progressFillClass =
-	"h-full rounded-full bg-green-500 transition-all duration-300";
 
-// Cover page field definitions
 export const detailFields: Array<{
 	key: keyof DetailsFields;
 	label: string;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ProjectsBuilder from '../projects.builder.svelte';
+	import Projects from '../projects.svelte';
 </script>
 
-<ProjectsBuilder mode="preview" />
+<Projects mode="preview" />

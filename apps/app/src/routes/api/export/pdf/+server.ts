@@ -134,7 +134,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		await page.waitForFunction(
-			() => document.querySelectorAll("[data-export-page]").length > 0,
+			() => document.querySelectorAll(".preview-page").length > 0,
 		);
 
 		await page.evaluate(async () => {
