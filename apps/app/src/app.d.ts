@@ -9,7 +9,7 @@ declare global {
 		// interface Locals {}
 		// interface PageData {}
 		interface PageState {
-			projectPane?: 'edit' | 'preview';
+			projectPane?: "edit" | "preview";
 		}
 		// interface Platform {}
 	}
