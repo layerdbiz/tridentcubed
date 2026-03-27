@@ -21,6 +21,16 @@ type DndOptions = Record<string, unknown> & {
 	data?: Record<string, unknown>;
 };
 
+type DragMonitorEventName =
+	| "beforedragstart"
+	| "dragstart"
+	| "dragover"
+	| "dragend";
+
+type DragMonitorHandlers = Partial<
+	Record<DragMonitorEventName, (event: unknown) => void>
+>;
+
 function move<T>(items: T[], from: number, to: number) {
 	items.splice(to, 0, items.splice(from, 1)[0]);
 	return items;
@@ -65,8 +75,12 @@ function toArrayAccessors<T>(items: ArrayAccessors<T>) {
 	return items;
 }
 
-function toItemAccessor<T>(item: ItemAccessor<T>) {
-	return typeof item === "function" ? item : () => item;
+function toItemAccessor<T>(item: ItemAccessor<T>): () => T {
+	if (typeof item === "function") {
+		return item as () => T;
+	}
+
+	return () => item;
 }
 
 type DraggableOptions<T> = {
@@ -77,11 +91,33 @@ type DraggableOptions<T> = {
 	droppableOptions?: DndOptions;
 };
 
+type SortableItemParams<T> =
+	| false
+	| null
+	| undefined
+	| ItemAccessor<T>
+	| {
+		item: ItemAccessor<T>;
+		accept?: string[];
+		draggableOptions?: DndOptions;
+		droppableOptions?: DndOptions;
+	};
+
 export type DroppableParams<T = unknown> = {
 	items: ArrayAccessors<T>;
 	setItems?: (items: T[]) => void;
 	accept?: string[];
 	droppableOptions?: DndOptions;
+};
+
+export type SortableApi<T> = {
+	type: string;
+	list: (element: HTMLElement, options: DroppableParams<T>) => ManagedCleanup;
+	item: (
+		element: HTMLElement,
+		options: SortableItemParams<T>,
+	) => ManagedCleanup | void;
+	handle: (element: HTMLElement, enabled?: boolean) => void;
 };
 
 type DraggableInstanceOptions = {
@@ -109,6 +145,7 @@ const itemMap = new WeakMap<
 export class Draggable {
 	manager: DragDropManager;
 	options: DraggableInstanceOptions;
+	private sortMap = new Map<string, SortableApi<unknown>>();
 
 	constructor(options: DraggableInstanceOptions = {}) {
 		this.options = { ...defaultOptions, ...options };
@@ -122,6 +159,61 @@ export class Draggable {
 		this._restoreLastDroppable = this._restoreLastDroppable.bind(this);
 
 		if (this.options.autoAttach) this.attach();
+	}
+
+	listen(handlers: DragMonitorHandlers): ManagedCleanup {
+		const entries = Object.entries(handlers) as Array<
+			[DragMonitorEventName, (event: unknown) => void]
+		>;
+
+		for (const [eventName, handler] of entries) {
+			this.manager.monitor.addEventListener(eventName, handler as any);
+		}
+
+		return {
+			destroy: () => {
+				for (const [eventName, handler] of entries) {
+					this.manager.monitor.removeEventListener(eventName, handler as any);
+				}
+			},
+		};
+	}
+
+	sort<T>(type: string): SortableApi<T> {
+		const existing = this.sortMap.get(type);
+		if (existing) return existing as SortableApi<T>;
+
+		const sortable: SortableApi<T> = {
+			type,
+			list: (element, options) =>
+				this.addDroppable(element, {
+					...options,
+					accept: options.accept || [type],
+				}),
+			item: (element, options) => {
+				if (!options) return;
+
+				const normalizedOptions =
+					typeof options === "object" && options && "item" in options
+						? options
+						: { item: options as ItemAccessor<T> };
+
+				return this.addDraggable(element, {
+					item: normalizedOptions.item,
+					type,
+					accept: normalizedOptions.accept || [type],
+					draggableOptions: normalizedOptions.draggableOptions,
+					droppableOptions: normalizedOptions.droppableOptions,
+				});
+			},
+			handle: (element, enabled = true) => {
+				if (!enabled) return;
+				this.addHandle(element);
+			},
+		};
+
+		this.sortMap.set(type, sortable as SortableApi<unknown>);
+		return sortable;
 	}
 
 	attach() {

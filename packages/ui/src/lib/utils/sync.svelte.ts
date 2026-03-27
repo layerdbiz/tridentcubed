@@ -1,6 +1,12 @@
 // packages/ui/src/lib/utils/sync.svelte.ts
 import { PersistedState } from "runed";
 
+type PersistFallback<T> = T | (() => T);
+
+function resolveFallback<T>(fallback: PersistFallback<T>): T {
+	return typeof fallback === "function" ? (fallback as () => T)() : fallback;
+}
+
 /**
  * SyncOptions – configuration for Sync class
  */
@@ -10,6 +16,16 @@ export interface SyncOptions {
 	defaultValue?: string; // fallback if none in storage
 	syncTabs?: boolean; // sync across tabs
 	storage?: "local" | "session"; // storage type
+}
+
+export interface PersistJsonOptions<T> {
+	key: string;
+	fallback: PersistFallback<T>;
+	syncTabs?: boolean;
+	storage?: "local" | "session";
+	serialize?: (value: T) => string;
+	deserialize?: (value: string) => T;
+	validate?: (value: unknown) => value is T;
 }
 
 /**
@@ -138,6 +154,95 @@ export class Sync {
 		return this;
 	}
 }
+
+export class PersistJson<T> {
+	public readonly state: PersistedState<string>;
+	private readonly key: string;
+	private readonly fallback: PersistFallback<T>;
+	private readonly serializeValue: (value: T) => string;
+	private readonly deserializeValue: (value: string) => T;
+	private readonly validate?: (value: unknown) => value is T;
+
+	constructor(options: PersistJsonOptions<T>) {
+		const {
+			key,
+			fallback,
+			syncTabs = true,
+			storage = "local",
+			serialize = JSON.stringify,
+			deserialize = JSON.parse as (value: string) => T,
+			validate = undefined,
+		} = options;
+
+		this.key = key;
+		this.fallback = fallback;
+		this.serializeValue = serialize;
+		this.deserializeValue = deserialize;
+		this.validate = validate;
+
+		this.state = new PersistedState(
+			key,
+			this.serializeValue(this.getFallback()),
+			{
+				storage,
+				syncTabs,
+			},
+		);
+	}
+
+	private getFallback(): T {
+		return resolveFallback(this.fallback);
+	}
+
+	private parse(raw: string): T {
+		try {
+			const parsed = this.deserializeValue(raw);
+			if (this.validate && !this.validate(parsed)) {
+				return this.getFallback();
+			}
+			return parsed;
+		} catch {
+			return this.getFallback();
+		}
+	}
+
+	get current(): T {
+		return this.parse(this.state.current);
+	}
+
+	set current(value: T) {
+		this.state.current = this.serializeValue(value);
+	}
+
+	set(value: T): this {
+		this.current = value;
+		return this;
+	}
+
+	update(updater: (value: T) => T): this {
+		this.current = updater(this.current);
+		return this;
+	}
+
+	reset(): this {
+		this.current = this.getFallback();
+		return this;
+	}
+
+	clear(): this {
+		this.reset();
+		return this;
+	}
+}
+
+export const persist = {
+	json<T>(options: PersistJsonOptions<T>) {
+		return new PersistJson(options);
+	},
+	read<T>(options: PersistJsonOptions<T>) {
+		return new PersistJson(options).current;
+	},
+};
 
 /**
  * Create a new Sync instance

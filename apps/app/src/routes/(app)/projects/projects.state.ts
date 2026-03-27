@@ -1,3 +1,4 @@
+import { persist } from "@layerd/ui";
 import { storageKey } from "./projects.constants";
 import type * as projectTypes from "./projects.types";
 
@@ -6,18 +7,6 @@ let idCounter = 0;
 function nextId(prefix: string): string {
 	idCounter += 1;
 	return `${prefix}-${idCounter}`;
-}
-
-function getStorageItem<T>(key: string, fallback: T): T {
-	if (typeof localStorage === "undefined") return fallback;
-
-	try {
-		const raw = localStorage.getItem(key);
-		if (raw === null) return fallback;
-		return JSON.parse(raw) as T;
-	} catch {
-		return fallback;
-	}
 }
 
 export const createTimeEntry = (): projectTypes.TimeEntryType => ({
@@ -330,10 +319,10 @@ export function normalizeSection(
 
 export function loadState(): projectTypes.PersistedStateType {
 	const defaults = createDefaultState();
-	const parsed = getStorageItem<Partial<projectTypes.PersistedStateType>>(
-		storageKey,
-		{},
-	);
+	const parsed = persist.read<Partial<projectTypes.PersistedStateType>>({
+		key: storageKey,
+		fallback: {},
+	});
 
 	if (!parsed || typeof parsed !== "object" || !("sections" in parsed)) {
 		return defaults;

@@ -11,24 +11,28 @@
 		Accordion,
 		AccordionTitle,
 		AccordionContent,
-		Draggable
+		Draggable,
+		persist
 	} from '@layerd/ui';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';
 	import { pushState } from '$app/navigation';
-	import { flip } from 'svelte/animate';
-	import { fromAction } from 'svelte/attachments';
 	import { onMount, tick } from 'svelte';
 	import * as projectConstants from '../projects.constants';
 	import type { ExportFormatType } from '../projects.constants';
 	import * as projectUtils from '../projects.utils';
 	import * as projectStates from '../projects.state';
-	import PreviewPage from '../preview/preview-page.svelte';
+	import Panels from './panels.svelte';
+	import Preview from './preview.svelte';
 	import type * as projectTypes from '../projects.types';
 
 	const sectionSortType = 'report-section';
 	const photoSortTypePrefix = 'report-photo:';
 	const baseState = projectStates.createDefaultState();
+	const projectPersist = persist.json<projectTypes.PersistedStateType>({
+		key: projectConstants.storageKey,
+		fallback: () => projectStates.createDefaultState()
+	});
 
 	type WorkspacePaneType = 'edit' | 'preview';
 	type AccordionLayoutMetricType = {
@@ -52,6 +56,7 @@
 	let accordionLayoutMetrics = $state<Record<string, AccordionLayoutMetricType>>({});
 
 	const draggable = new Draggable({});
+	const sectionSort = draggable.sort<projectTypes.SectionType>(sectionSortType);
 
 	const isDesktop = $derived(!mq.sm);
 	const activePane = $derived.by<WorkspacePaneType>(() => {
@@ -86,8 +91,6 @@
 		{ label: 'Document ID', value: reportSection?.fields.documentId || '—' }
 	]);
 
-	const { addDroppable, addHandle } = draggable;
-
 	function setMobilePane(nextPane: WorkspacePaneType) {
 		const url = new URL(page.url);
 		if (nextPane === 'preview') {
@@ -105,6 +108,10 @@
 
 	function getAccordionAnchorId(sectionId: string) {
 		return `report-section-${sectionId}`;
+	}
+
+	function getPhotoSort(sectionId: string) {
+		return draggable.sort<projectTypes.PhotosSectionType['photos'][number]>(getPhotoSortType(sectionId));
 	}
 
 	function setSections(nextSections: unknown[]) {
@@ -158,32 +165,6 @@
 				resizeObserver?.disconnect();
 			}
 		};
-	}
-
-	function addSortableSection(node: HTMLElement, section: projectTypes.SectionType) {
-		if (!projectStates.isSectionMovable(section)) return;
-
-		return draggable.addDraggable(node, {
-			item: () => section,
-			type: sectionSortType,
-			accept: [sectionSortType]
-		});
-	}
-
-	function addSortableSectionHandle(node: HTMLElement, section: projectTypes.SectionType) {
-		if (!projectStates.isSectionMovable(section)) return;
-
-		return addHandle(node);
-	}
-
-	function addSortablePhoto(node: HTMLElement, args: { section: projectTypes.PhotosSectionType; photo: projectTypes.PhotosSectionType['photos'][number] }) {
-		const sortType = getPhotoSortType(args.section.id);
-
-		return draggable.addDraggable(node, {
-			item: () => args.photo,
-			type: sortType,
-			accept: [sortType]
-		});
 	}
 
 	function handleDraggableDragStart(event: any) {
@@ -569,17 +550,19 @@
 		if (!browser) return;
 		const okay = window.confirm('Reset this report and clear all saved data? This cannot be undone.');
 		if (!okay) return;
-		projectUtils.removeStorageItem(projectConstants.storageKey);
+		projectPersist.reset();
 		applyState(projectStates.createDefaultState());
 		clearDraggedItems();
 		photoDropId = '';
 	}
 
 	onMount(() => {
-		void (async () => {
-			draggable.manager.monitor.addEventListener('dragstart', handleDraggableDragStart);
-			draggable.manager.monitor.addEventListener('dragend', clearDraggedItems);
+		const dragMonitor = draggable.listen({
+			dragstart: handleDraggableDragStart,
+			dragend: clearDraggedItems
+		});
 
+		void (async () => {
 			const next = projectStates.loadState();
 			projectUtils.syncIdCounterFromSections(next.sections);
 			applyState(next);
@@ -591,15 +574,14 @@
 		})();
 
 		return () => {
-			draggable.manager.monitor.removeEventListener('dragstart', handleDraggableDragStart);
-			draggable.manager.monitor.removeEventListener('dragend', clearDraggedItems);
+			dragMonitor.destroy();
 			draggable.destroy();
 		};
 	});
 
 	$effect(() => {
 		if (!browser || !hydrated) return;
-		projectUtils.setStorageItem(projectConstants.storageKey, {
+		projectPersist.set({
 			activeTab: activePane === 'preview' ? 'preview' : 'create',
 			previewZoom,
 			hasUserZoomed,
@@ -637,285 +619,59 @@
 		</div>
 
 		<main class="grid min-h-0 flex-1 gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:px-6 md:pb-6 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
-			<section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
-				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-secondary-200 bg-white shadow-sm">
-					<div class="shrink-0 border-b border-secondary-200 px-4 py-3">
-						<div class="flex flex-col gap-4">
-							<div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
-								<div class="min-w-0">
-									<Text h2="Edit" />
-									<Text xs class="text-neutral" p="Build the report structure, content, and photos section by section." />
-								</div>
+			<Panels
+				{isDesktop}
+				{activePane}
+				{sections}
+				{draggedSectionId}
+				{draggedPhotoId}
+				{photoDropId}
+				{overallMetrics}
+				{sectionSort}
+				{getPhotoSort}
+				{setSections}
+				{setSectionPhotos}
+				{getAccordionAnchorId}
+				{measureAccordionLayout}
+				{handleAccordionToggle}
+				{handleSectionTitleClick}
+				{handleSectionActionClick}
+				{handleSectionActionDisabledClick}
+				{addSection}
+				{resetReport}
+				{removeDay}
+				{addDay}
+				{removeEntry}
+				{addEntry}
+				{maybeAddEntry}
+				{handleActivityKeyup}
+				{handlePhotoInput}
+				{handlePhotoZoneDragOver}
+				{handlePhotoZoneDragLeave}
+				{handlePhotoZoneDrop}
+				{removePhoto}
+			/>
 
-								<div class="flex items-center gap-5">
-									<div class="relative h-18 w-18 shrink-0">
-										<svg viewBox="0 0 96 96" class="h-full w-full overflow-visible -rotate-90" aria-hidden="true">
-											<circle class="fill-none stroke-secondary-200 stroke-12" cx="48" cy="48" r={projectConstants.overallProgressRingRadius} />
-											<circle
-												cx="48"
-												cy="48"
-												r={projectConstants.overallProgressRingRadius}
-												fill="none"
-												stroke="#22c55e"
-												stroke-linecap="round"
-												stroke-width="12"
-												stroke-dasharray={projectConstants.overallProgressRingCircumference}
-												stroke-dashoffset={projectUtils.getProgressRingOffset(overallMetrics.percent)}
-											/>
-										</svg>
-										<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-											<span class="text-sm font-bold text-secondary-800">{overallMetrics.percent}%</span>
-										</div>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="flex flex-wrap gap-2 p-4">
-						<Button primary xs variant="text" onclick={addSection} label="Add Section" />
-						<Button outline xs variant="text" onclick={resetReport} label="Reset" />
-					</div>
-
-					<div
-						id="createContentPanels"
-						class="scroller mask-b-sm min-h-0 flex-1 space-y-3 p-4 pt-1.75"
-						use:addDroppable={{
-							items: { get: () => sections, set: (items: unknown[]) => setSections(items) },
-							accept: [sectionSortType]
-						}}
-					>
-						{#each sections as section, index (section.id)}
-							{@const metrics = projectUtils.getSectionMetrics(section)}
-							{@const sectionStatusLabel = projectUtils.getSectionStatusLabel(metrics)}
-							{@const sectionStatusTextClass = projectUtils.getSectionStatusTextClass(metrics)}
-							{@const sectionProgressFillClass = projectUtils.getSectionProgressFillClass(metrics)}
-
-							<div
-								id={getAccordionAnchorId(section.id)}
-								animate:flip={{ duration: 180 }}
-								class="relative"
-								class:dragging-item={draggedSectionId === section.id}
-								{@attach fromAction(measureAccordionLayout, () => ({ sectionId: section.id, index }))}
-								use:addSortableSection={section}
-							>
-								<Accordion class="relative" name="report-sections" open={section.open} ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}>
-									<AccordionTitle
-										class="shadow-[-12px_-12px_0px_white] sticky top-0 z-1 block w-full cursor-pointer rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 p-4 text-left {section.open ? '' : 'rounded-b-2xl'}"
-										onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
-									>
-										<div class="flex items-start gap-3">
-											{#if projectStates.isSectionMovable(section)}
-												<div class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing" use:addSortableSectionHandle={section} aria-label={`Reorder ${section.title}`}>
-													{section.icon}
-												</div>
-											{:else}
-												<div class="flex h-10 w-10 shrink-0 items-center justify-center text-3xl">{section.icon}</div>
-											{/if}
-											<div class="min-w-0 flex-1">
-												<div class="mb-2 flex items-start justify-between gap-3">
-													<div>
-														<div class="flex flex-wrap items-center gap-2">
-															<h3 class="text-sm font-bold text-neutral-800">{section.title}</h3>
-														</div>
-														<p class="text-xs text-neutral-500">{metrics.done} of {metrics.total} complete</p>
-													</div>
-													<div class="text-right">
-														<p class="text-sm font-bold text-neutral-700">{metrics.percent}%</p>
-														<p class={`${projectConstants.metricStatusCaptionClass} ${sectionStatusTextClass}`}>{sectionStatusLabel}</p>
-													</div>
-												</div>
-												<div class="h-2.5 overflow-hidden rounded-full bg-secondary-200/60">
-													<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
-												</div>
-											</div>
-											{#if projectStates.isSectionMovable(section)}
-												<Button variant="icon" icon="close" class="absolute! -top-2! -right-2! text-[8px]!" aria-label={`Delete ${section.title}`} onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)} />
-											{:else}
-												<Button variant="icon" icon="lock" class="absolute! -top-2! -right-2! text-[8px]! bg-secondary-200 text-secondary-400 opacity-100" aria-label={`${section.title} is locked`} onclick={handleSectionActionDisabledClick} disabled />
-											{/if}
-										</div>
-									</AccordionTitle>
-
-									<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
-										{#if section.type === 'cover'}
-											<div class="relative z-0 grid gap-4">
-												{#each projectConstants.detailFields as field (field.key)}
-													<InputNew xs bind:value={section.fields[field.key]} label={field.label} type={field.type || 'text'} />
-												{/each}
-											</div>
-										{:else if section.type === 'time-log'}
-											<div class="space-y-4">
-												{#each section.days as day (day.id)}
-													<Grid items="1x2" cols="1fr auto" gap="8px">
-														<InputNew xs type="date" label="Date" bind:value={day.dateISO} />
-														<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)} />
-													</Grid>
-													<p class="mb-3 text-xs font-semibold text-neutral-600">{projectUtils.formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
-													{#each day.entries as entry (entry.id)}
-														<Grid items="1x3" cols="160px 1fr auto" gap="8px">
-															<InputNew xs bind:value={entry.time} label="Time" variant="text" inputmode="numeric" type="time" min="00:00" max="23:59" step="600" onblur={() => maybeAddEntry(day, entry.id)} />
-															<InputNew xs bind:value={entry.text} label="Activity" variant="text" type="text" onblur={() => maybeAddEntry(day, entry.id)} onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)} />
-															<Button ghost secondary variant="icon" icon="close" onclick={() => removeEntry(day, entry.id)} />
-														</Grid>
-													{/each}
-													<Button primary xs variant="text" label="Add Time" onclick={() => addEntry(day)} />
-												{/each}
-												<Button primary xs variant="text" label="Add Day" onclick={() => addDay(section)} />
-											</div>
-										{:else}
-											<div class="space-y-3">
-												{#if !section.locked}
-													<InputNew xs bind:value={section.title} label="Title" variant="text" type="text" />
-												{/if}
-												<InputNew xs bind:value={section.description} textarea label="Description" variant="text" type="text" />
-												<div class="space-y-3">
-													<div class="flex flex-wrap gap-2">
-														<label class="rounded-xl bg-primary-500 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-600">
-															<span>Upload</span>
-															<input accept="image/*" class="hidden" multiple type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
-														</label>
-														<label class="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm">
-															<span>Camera</span>
-															<input accept="image/*" capture="environment" class="hidden" type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
-														</label>
-													</div>
-													<div role="presentation" class:drop-target={photoDropId === section.id} class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-center text-xs font-medium text-neutral-500" ondragover={(event) => handlePhotoZoneDragOver(section.id, event)} ondragleave={() => handlePhotoZoneDragLeave(section.id)} ondrop={(event) => handlePhotoZoneDrop(section.id, event)}>
-														Drop images here
-													</div>
-													<div class="grid grid-cols-2 gap-3" use:addDroppable={{ items: { get: () => section.photos, set: (items: unknown[]) => setSectionPhotos(section, items) }, accept: [getPhotoSortType(section.id)] }}>
-														{#each section.photos as photo (photo.id)}
-															<div animate:flip={{ duration: 180 }} class="rounded-2xl bg-white p-2" class:dragging-item={draggedPhotoId === photo.id} role="presentation" use:addSortablePhoto={{ section, photo }}>
-																<div class="relative aspect-square rounded-xl bg-neutral-100">
-																	<img alt={photo.caption || photo.name} class="h-full w-full rounded-lg object-cover" draggable="false" src={photo.src} />
-																	<div class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-neutral-700 shadow-sm cursor-grab active:cursor-grabbing" use:addHandle aria-label={`Reorder ${photo.caption || photo.name || 'photo'}`}>
-																		::
-																	</div>
-																	<Button variant="icon" icon="close" class="absolute! -right-1.5 -top-1.5 z-100 text-[8px]!" aria-label="Remove Photo" onclick={() => removePhoto(section, photo.id)} />
-																	<InputNew xs bind:value={photo.caption} label="Caption" type="text" />
-																</div>
-															</div>
-														{/each}
-													</div>
-												</div>
-											</div>
-										{/if}
-									</AccordionContent>
-								</Accordion>
-							</div>
-						{/each}
-					</div>
-				</div>
-			</section>
-
-			<section class:hidden={!isDesktop && activePane !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
-				<div class="relative flex h-full min-h-0 flex-col">
-					<div id="previewControls" class="fixed bottom-8 right-8 z-20 flex justify-end gap-2">
-						<Button primary class="bg-primary" variant="icon text" icon="download" onclick={() => handleExport('PDF')} label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting} />
-						<div id="zoomer" class="flex h-12 rounded-full border border-neutral-300 bg-white shadow-sm">
-							<Button ghost xl variant="text" label="-" onclick={() => stepPreviewZoom('out')} class="px-4!" />
-							<Button ghost lg variant="text" class="w-18! rounded-none! border-x border-secondary-200 px-0! font-black!" onclick={resetPreviewZoom}>
-								{Math.round((previewZoom || 1) * 100)}%
-							</Button>
-							<Button ghost xl variant="text" label="+" onclick={() => stepPreviewZoom('in')} class="px-4!" />
-						</div>
-					</div>
-
-					<div class="min-h-0 flex-1">
-						<div bind:this={previewViewport} role="region" aria-label="Preview pages" class="h-full w-full overflow-x-hidden overflow-y-auto bg-transparent" style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`} onwheel={handlePreviewWheel} ontouchstart={handlePreviewTouchStart} ontouchmove={handlePreviewTouchMove} ontouchend={handlePreviewTouchEnd}>
-							<div class="relative w-full px-1 pb-10 pt-0 md:px-0 md:pb-16 md:pt-2">
-								<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${projectConstants.previewPageWidth}px; --preview-page-height: ${projectConstants.previewPageHeight}px`}>
-									<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">
-										<PreviewPage innerClass="relative flex flex-col items-center justify-center gap-6">
-											<div id="topCoverPage" class="mb-50 flex flex-col items-center justify-center gap-6">
-												<Logo mode="light" class="size-42" />
-												<Text h1={reportSection?.fields.reportTitle || 'Survey Report'} class="text-6xl font-black uppercase" />
-												<Text h2={reportSection?.fields.reportTitle || 'Survey Report'} class="text-center text-3xl font-semibold text-pretty text-secondary-500" />
-											</div>
-											<div id="bottomCoverPage" class="absolute bottom-0 left-0 right-0 z-1! grid w-full justify-center bg-secondary-200 pb-20">
-												<Divider class="absolute bottom-full" color="text-secondary-200" bleed={false} />
-												{#each coverMeta as item (item.label)}
-													<div class="grid grid-cols-[100px_100px] gap-3">
-														<span class="font-semibold text-neutral-600">{item.label}:</span>
-														<span class="text-neutral-800">{item.value}</span>
-													</div>
-												{/each}
-											</div>
-										</PreviewPage>
-										<PreviewPage>
-											<Text h2="Table of Contents" class="mb-4 text-4xl" />
-											<div class="space-y-2 text-sm">
-												{#each tableOfContentsEntries as item (item.id)}
-													<div class="grid grid-cols-[1fr_auto] gap-3 border-b border-dashed border-secondary-200 pb-1">
-														<span class="font-medium text-neutral-700">{item.title}</span>
-														<span class="text-neutral-500">{item.page}</span>
-													</div>
-												{/each}
-											</div>
-										</PreviewPage>
-										{#each previewContentSections as section (section.id)}
-											{#if section.type === 'time-log'}
-												<PreviewPage>
-													<Text h2={section.title} class="mb-4 text-4xl" />
-													{#each section.days as day (day.id)}
-														<p class="mb-2 text-sm font-semibold text-neutral-700">{projectUtils.formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
-														<ul class="mb-4 space-y-2 text-sm">
-															{#each getSortedEntries(day) as entry (entry.id)}
-																<li class="flex gap-3">
-																	<span class="w-14 shrink-0 font-bold text-neutral-800">{entry.time || '----'}</span>
-																	<span class="text-neutral-700">{entry.text || 'No activity entered'}</span>
-																</li>
-															{/each}
-														</ul>
-													{/each}
-												</PreviewPage>
-											{:else}
-												<PreviewPage>
-													<Text h2={section.title} class="mb-4 text-4xl" />
-													{#if section.description}
-														<Text p={section.description} class="text-secondary" />
-													{/if}
-													<div class={projectUtils.getPreviewPhotoGridClass(section)}>
-														{#if section.photos.length}
-															{#each section.photos as photo (photo.id)}
-																<figure class={projectUtils.getPreviewPhotoCardClass(section, photo)}>
-																	<div class="grid place-items-center bg-neutral-50 p-3" style={`height: ${projectUtils.getPreviewPhotoFrameHeight(section, photo)}`}>
-																		<img alt={photo.caption || photo.name} class="h-full w-full object-contain" src={photo.src} />
-																	</div>
-																	<figcaption class="p-3 text-xs text-neutral-600">{photo.caption || photo.name || 'Photo'}</figcaption>
-																</figure>
-															{/each}
-														{:else}
-															<div class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-5 text-sm text-neutral-500">No photos added yet.</div>
-														{/if}
-													</div>
-												</PreviewPage>
-											{/if}
-										{/each}
-										<PreviewPage>
-											<Content class="prose prose-sm">
-												<h2>Standard Disclaimer</h2>
-												<p>This Cargo Survey Report is prepared based on the observations, conditions, and information available to the undersigned at the time of the inspection. The findings and conclusions herein are made to the best of our knowledge and belief, but are subject to the following limitations:</p>
-												<ul class="prose prose-xs grid max-w-lg gap-1 text-balance">
-													<li><b>Scope Limitation:</b> The survey was conducted without dismantling or intrusive testing unless explicitly stated otherwise. Our observations are limited to visible and accessible parts of the cargo.</li>
-													<li><b>No Warranty:</b> This report does not constitute a warranty or guarantee of the cargo's condition, quality, or fitness for any particular purpose. It is not a guarantee against latent defects or conditions not apparent at the time of inspection.</li>
-													<li><b>Use Limitation:</b> This report is provided solely for the use of the party to whom it is addressed. No liability is assumed by the Company or the undersigned for any use or reliance by third parties.</li>
-													<li><b>Liability Limitation:</b> The liability of the Company and the undersigned, if any, arising from this report shall be limited to the fee charged for this service. We shall not be liable for any indirect, consequential, or special damages, including but not limited to loss of profit or business interruption.</li>
-													<li><b>Accuracy of Information:</b> The accuracy of this report depends on the information provided by the client and others involved. We do not guarantee the accuracy of such third-party information.</li>
-													<li><b>Right to Amend:</b> We reserve the right to amend or supplement this report should additional pertinent information become available.</li>
-													<li><b>Legal Context:</b> This report is not intended to be used for legal proceedings without the express written consent of the Company.</li>
-													<li><b>No Endorsement:</b> This survey does not endorse or approve the cargo for any specific use or handling beyond what is stated in the report.</li>
-												</ul>
-												<p>Please note that this report reflects the situation as observed on a date of Inspection and may not reflect subsequent changes or conditions.</p>
-											</Content>
-										</PreviewPage>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</section>
+			<Preview
+				{isDesktop}
+				{activePane}
+				{isExporting}
+				{handleExport}
+				{stepPreviewZoom}
+				{resetPreviewZoom}
+				{previewZoom}
+				bind:previewViewport
+				bind:previewPages
+				{handlePreviewWheel}
+				{handlePreviewTouchStart}
+				{handlePreviewTouchMove}
+				{handlePreviewTouchEnd}
+				reportSection={reportSection}
+				{coverMeta}
+				{tableOfContentsEntries}
+				{previewContentSections}
+				{getSortedEntries}
+			/>
 		</main>
 	</div>
 </div>
@@ -923,17 +679,9 @@
 <style lang="postcss">
 	@reference "#app.css";
 
-	.dragging-item {
-		@apply border-2 border-primary;
-	}
-
 	.page-shell {
 		background-color: #eef2f7;
 		background-image: radial-gradient(circle at 1px 1px, rgba(100, 116, 139, 0.24) 1.05px, transparent 0);
 		background-size: 16px 16px;
-	}
-
-	#createContentPanels {
-		scroll-behavior: smooth;
 	}
 </style>
