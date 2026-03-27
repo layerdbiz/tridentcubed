@@ -25,6 +25,12 @@ applyTo: 'apps/**/*.{svelte,ts,js,css}'
 - Example: `import * as state from './projects.state'` and then use `state.createDefaultState()`.
 - Use dot notation from the namespace rather than long destructured import lists when it improves readability.
 - Keep imports grouped by module responsibility so the top of the file stays easy to scan.
+- When a route-local module is imported as a namespace, keep the alias aligned with the file name, for example `projectConstants` for `projects.constants`, `projectStates` for `projects.state`, and `projectUtils` for `projects.utils`.
+
+## Route-Local Types
+
+- For route-local domain data shapes, suffix type names with `Type` to distinguish them from component names.
+- Prefer names like `SectionType`, `CoverSectionType`, `PhotosSectionType`, and `ExportFormatType` over names that could collide with components such as `Section` or `CoverSection`.
 
 ## Markup Hooks
 

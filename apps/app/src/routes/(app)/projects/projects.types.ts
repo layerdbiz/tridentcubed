@@ -1,12 +1,12 @@
-export type ProjectsRouteMode = "edit" | "preview";
+export type ProjectsRouteModeType = "edit" | "preview";
 
-export type Tab = "create" | "preview";
-export type SectionType = "cover" | "time-log" | "photos";
-export type SectionPlacement = "start" | "middle" | "end";
-export type SectionStatus = "todo" | "in-progress" | "complete";
-export type PhotoOrientation = "portrait" | "landscape" | "square";
+export type TabType = "create" | "preview";
+export type SectionKindType = "cover" | "time-log" | "photos";
+export type SectionPlacementType = "start" | "middle" | "end";
+export type SectionStatusType = "todo" | "in-progress" | "complete";
+export type PhotoOrientationType = "portrait" | "landscape" | "square";
 
-export interface PhotoItem {
+export interface PhotoItemType {
 	id: string;
 	name: string;
 	caption: string;
@@ -15,7 +15,7 @@ export interface PhotoItem {
 	height: number;
 }
 
-export interface DetailsFields {
+export interface DetailsFieldsType {
 	reportTitle: string;
 	facilityName: string;
 	startDate: string;
@@ -25,63 +25,66 @@ export interface DetailsFields {
 	documentId: string;
 }
 
-export interface TimeEntry {
+export interface TimeEntryType {
 	id: string;
 	time: string;
 	text: string;
 }
 
-export interface TimeDay {
+export interface TimeDayType {
 	id: string;
 	dateISO: string;
-	entries: TimeEntry[];
+	entries: TimeEntryType[];
 }
 
-export interface SectionBase {
+export interface SectionBaseType {
 	id: string;
 	title: string;
 	icon: string;
 	open: boolean;
 	locked: boolean;
-	placement: SectionPlacement;
-	photos: PhotoItem[];
+	placement: SectionPlacementType;
+	photos: PhotoItemType[];
 }
 
-export interface CoverSection extends SectionBase {
+export interface CoverSectionType extends SectionBaseType {
 	type: "cover";
-	fields: DetailsFields;
+	fields: DetailsFieldsType;
 }
 
-export interface TimeLogSection extends SectionBase {
+export interface TimeLogSectionType extends SectionBaseType {
 	type: "time-log";
-	days: TimeDay[];
+	days: TimeDayType[];
 }
 
-export interface PhotosSection extends SectionBase {
+export interface PhotosSectionType extends SectionBaseType {
 	type: "photos";
 	description: string;
 }
 
-export type Section = CoverSection | TimeLogSection | PhotosSection;
+export type SectionType =
+	| CoverSectionType
+	| TimeLogSectionType
+	| PhotosSectionType;
 
-export interface PersistedState {
-	activeTab: Tab;
+export interface PersistedStateType {
+	activeTab: TabType;
 	previewZoom: number;
 	hasUserZoomed: boolean;
-	sections: Section[];
+	sections: SectionType[];
 }
 
-export interface SectionMetrics {
+export interface SectionMetricsType {
 	done: number;
 	total: number;
 	percent: number;
 }
 
-export interface SectionTemplate<T extends Section = Section> {
+export interface SectionTemplateType<T extends SectionType = SectionType> {
 	id: string;
 	type: T["type"];
 	title: string;
 	icon: string;
-	placement: Exclude<SectionPlacement, "middle">;
+	placement: Exclude<SectionPlacementType, "middle">;
 	create: () => T;
 }

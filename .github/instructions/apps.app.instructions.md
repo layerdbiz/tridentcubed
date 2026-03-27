@@ -248,6 +248,20 @@ db (lib/server)
 - Avoid manual fetch unless necessary
 - Imports components from `@layerd/ui`
 
+## Projects Details View
+
+- The project details page should remain the primary workspace for a single project.
+- On desktop, the details page should show edit and preview together in a split view when that is the intended working surface.
+- On mobile, the same details page may switch between edit and preview using tabs or another compact route-aware control.
+- Do not replace the desktop split workspace with separate full-page edit and preview routes unless the user explicitly asks for that behavior.
+- Child routes such as `edit/` and `preview/` should support the details experience rather than forcing a completely different page model when the product intent is a shared workspace.
+
+## Shallow Routing
+
+- Use shallow routing for route-aware UI state such as focused panels, modals, drawers, or mobile view selection when the user wants URL/history integration without a full route replacement.
+- Do not make `page.state` the only source of truth for core workspace state that must survive reloads or SSR; shallow routing is a progressive enhancement.
+- Prefer a reload-safe URL shape for canonical view state, and use shallow routing to improve navigation feel and history behavior on top of that.
+
 ---
 
 ## `*.remote.ts`

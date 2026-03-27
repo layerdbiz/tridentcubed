@@ -9,13 +9,12 @@
 		</Item>
 		<Item range="a2:b2">
 			<Text
-				p="This route group now owns the report workflow. Use Edit to work in the current builder and Preview to open the preview-oriented route as we continue the split."
+				p="Open the project details workspace to edit and preview the report together on desktop, with a mobile pane switch inside the same page."
 				class="text-neutral"
 			/>
 		</Item>
-		<Item range="c2:c2" class="flex flex-col gap-3 md:min-w-56">
-			<Button primary variant="text" label="Open Edit" href="/projects/edit" />
-			<Button outline variant="text" label="Open Preview" href="/projects/preview" />
+		<Item range="c2:c2" class="flex md:min-w-56">
+			<Button primary variant="text" label="Open Workspace" href="/projects/current" />
 		</Item>
 	</Grid>
 </div>

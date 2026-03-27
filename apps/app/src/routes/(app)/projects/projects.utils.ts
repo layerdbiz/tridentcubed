@@ -4,15 +4,7 @@ import {
 	detailFields,
 	overallProgressRingCircumference,
 } from "./projects.constants";
-import type {
-	PhotoItem,
-	PhotoOrientation,
-	PhotosSection,
-	Section,
-	SectionMetrics,
-	SectionStatus,
-	TimeLogSection,
-} from "./projects.types";
+import type * as projectTypes from "./projects.types";
 
 let idCounter = 0;
 
@@ -21,22 +13,17 @@ export function nextId(prefix: string): string {
 	return `${prefix}-${idCounter}`;
 }
 
-export function syncIdCounterFromSections(items: Section[]): void {
+export function syncIdCounterFromSections(items: projectTypes.SectionType[]): void {
 	let maxId = idCounter;
 
 	for (const section of items) {
-		for (
-			const value of [
-				section.id,
-				...section.photos.map((photo) => photo.id),
-			]
-		) {
+		for (const value of [section.id, ...section.photos.map((photo) => photo.id)]) {
 			const match = value.match(/(\d+)$/);
 			if (match) maxId = Math.max(maxId, Number(match[1]));
 		}
 
 		if (section.type === "time-log") {
-			const timeLog = section as TimeLogSection;
+			const timeLog = section as projectTypes.TimeLogSectionType;
 			for (const day of timeLog.days) {
 				const dayMatch = day.id.match(/(\d+)$/);
 				if (dayMatch) maxId = Math.max(maxId, Number(dayMatch[1]));
@@ -79,8 +66,7 @@ export function formatDayDate(dateISO: string): string {
 	if (!year || !month || !day) return "";
 
 	const date = new Date(year, month - 1, day);
-	const weekday = new Intl.DateTimeFormat(undefined, { weekday: "long" })
-		.format(date);
+	const weekday = new Intl.DateTimeFormat(undefined, { weekday: "long" }).format(date);
 	const numeric = new Intl.DateTimeFormat(undefined, {
 		month: "numeric",
 		day: "numeric",
@@ -120,7 +106,7 @@ export function removeStorageItem(key: string): void {
 	}
 }
 
-export function getSectionMetrics(section: Section): SectionMetrics {
+export function getSectionMetrics(section: projectTypes.SectionType): projectTypes.SectionMetricsType {
 	if (section.type === "cover") {
 		const done = detailFields.reduce(
 			(count, field) =>
@@ -150,14 +136,15 @@ export function getSectionMetrics(section: Section): SectionMetrics {
 		return { done, total: safeTotal, percent: toPercent(done, safeTotal) };
 	}
 
-	const done = Number(Boolean(section.title.trim())) +
+	const done =
+		Number(Boolean(section.title.trim())) +
 		Number(Boolean(section.description.trim())) +
 		Number(section.photos.length > 0);
 	const total = 3;
 	return { done, total, percent: toPercent(done, total) };
 }
 
-export function getOverallMetrics(items: Section[]): SectionMetrics {
+export function getOverallMetrics(items: projectTypes.SectionType[]): projectTypes.SectionMetricsType {
 	let done = 0;
 	let total = 0;
 
@@ -170,27 +157,27 @@ export function getOverallMetrics(items: Section[]): SectionMetrics {
 	return { done, total, percent: clamp(toPercent(done, total), 0, 100) };
 }
 
-export function getSectionStatus(metrics: SectionMetrics): SectionStatus {
+export function getSectionStatus(metrics: projectTypes.SectionMetricsType): projectTypes.SectionStatusType {
 	if (metrics.percent <= 0) return "todo";
 	if (metrics.percent >= 100) return "complete";
 	return "in-progress";
 }
 
-export function getSectionStatusLabel(metrics: SectionMetrics): string {
+export function getSectionStatusLabel(metrics: projectTypes.SectionMetricsType): string {
 	const status = getSectionStatus(metrics);
 	if (status === "todo") return "TO DO";
 	if (status === "complete") return "COMPLETE";
 	return "IN PROGRESS";
 }
 
-export function getSectionStatusTextClass(metrics: SectionMetrics): string {
+export function getSectionStatusTextClass(metrics: projectTypes.SectionMetricsType): string {
 	const status = getSectionStatus(metrics);
 	if (status === "todo") return "text-neutral-400";
 	if (status === "complete") return "text-success-600";
 	return "text-info";
 }
 
-export function getSectionProgressFillClass(metrics: SectionMetrics): string {
+export function getSectionProgressFillClass(metrics: projectTypes.SectionMetricsType): string {
 	const status = getSectionStatus(metrics);
 	if (status === "todo") return "bg-secondary-300";
 	if (status === "complete") return "bg-accent-500";
@@ -202,28 +189,28 @@ export function getProgressRingOffset(percent: number): number {
 	return overallProgressRingCircumference * (1 - normalized / 100);
 }
 
-export function getPhotoOrientation(photo: PhotoItem): PhotoOrientation {
+export function getPhotoOrientation(photo: projectTypes.PhotoItemType): projectTypes.PhotoOrientationType {
 	if (!photo.width || !photo.height) return "square";
 	if (photo.width / photo.height >= 1.1) return "landscape";
 	if (photo.height / photo.width >= 1.1) return "portrait";
 	return "square";
 }
 
-export function getPreviewPhotoGridClass(section: PhotosSection): string {
+export function getPreviewPhotoGridClass(section: projectTypes.PhotosSectionType): string {
 	if (section.photos.length <= 1) return "grid gap-3";
 	return "grid grid-cols-2 gap-3";
 }
 
 export function getPreviewPhotoCardClass(
-	_section: PhotosSection,
-	_photo: PhotoItem,
+	_section: projectTypes.PhotosSectionType,
+	_photo: projectTypes.PhotoItemType,
 ): string {
 	return "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white";
 }
 
 export function getPreviewPhotoFrameHeight(
-	section: PhotosSection,
-	photo: PhotoItem,
+	section: projectTypes.PhotosSectionType,
+	photo: projectTypes.PhotoItemType,
 ): string {
 	const orientation = getPhotoOrientation(photo);
 
@@ -267,7 +254,7 @@ export function loadImageDimensions(
 	});
 }
 
-export async function createPhotoItem(file: File): Promise<PhotoItem> {
+export async function createPhotoItem(file: File): Promise<projectTypes.PhotoItemType> {
 	const src = await fileToDataUrl(file);
 	const { width, height } = await loadImageDimensions(src);
 
@@ -282,7 +269,7 @@ export async function createPhotoItem(file: File): Promise<PhotoItem> {
 }
 
 export async function hydratePhotoDimensions(
-	items: Section[],
+	items: projectTypes.SectionType[],
 ): Promise<boolean> {
 	let changed = false;
 

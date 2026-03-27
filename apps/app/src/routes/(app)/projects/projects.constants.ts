@@ -1,9 +1,16 @@
-import type { DetailsFields } from "./projects.types";
+import type * as projectTypes from "./projects.types";
 
 export const storageKey = "survey-report-mvp-v3";
 
 export const exportFormats = ["PDF", "DOCX", "HTML", "MD"] as const;
-export type ExportFormat = (typeof exportFormats)[number];
+export type ExportFormatType = (typeof exportFormats)[number];
+
+export type DetailFieldType = {
+	key: keyof projectTypes.DetailsFieldsType;
+	label: string;
+	type?: "text" | "date";
+	placeholder?: string;
+};
 
 export const overallProgressRingRadius = 38;
 export const overallProgressRingCircumference = 2 * Math.PI *
@@ -23,12 +30,7 @@ export const previewMobileVisiblePages = 1.5;
 export const metricStatusCaptionClass =
 	"text-[11px] uppercase tracking-[0.16em]";
 
-export const detailFields: Array<{
-	key: keyof DetailsFields;
-	label: string;
-	type?: "text" | "date";
-	placeholder?: string;
-}> = [
+export const detailFields: DetailFieldType[] = [
 	{ key: "reportTitle", label: "Report Title" },
 	{ key: "facilityName", label: "Facility Name" },
 	{ key: "startDate", label: "Start Date", type: "date" },

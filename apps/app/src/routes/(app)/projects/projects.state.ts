@@ -1,32 +1,38 @@
 import { storageKey } from "./projects.constants";
-import type {
-	CoverSection,
-	DetailsFields,
-	PersistedState,
-	PhotoItem,
-	PhotosSection,
-	Section,
-	SectionPlacement,
-	SectionTemplate,
-	TimeDay,
-	TimeEntry,
-	TimeLogSection,
-} from "./projects.types";
-import { getStorageItem, nextId } from "./projects.utils";
+import type * as projectTypes from "./projects.types";
 
-export const createTimeEntry = (): TimeEntry => ({
+let idCounter = 0;
+
+function nextId(prefix: string): string {
+	idCounter += 1;
+	return `${prefix}-${idCounter}`;
+}
+
+function getStorageItem<T>(key: string, fallback: T): T {
+	if (typeof localStorage === "undefined") return fallback;
+
+	try {
+		const raw = localStorage.getItem(key);
+		if (raw === null) return fallback;
+		return JSON.parse(raw) as T;
+	} catch {
+		return fallback;
+	}
+}
+
+export const createTimeEntry = (): projectTypes.TimeEntryType => ({
 	id: nextId("entry"),
 	time: "",
 	text: "",
 });
 
-export const createTimeDay = (): TimeDay => ({
+export const createTimeDay = (): projectTypes.TimeDayType => ({
 	id: nextId("day"),
 	dateISO: "",
 	entries: [createTimeEntry()],
 });
 
-export const createCoverSection = (): CoverSection => ({
+export const createCoverSection = (): projectTypes.CoverSectionType => ({
 	id: "section-cover-page",
 	type: "cover",
 	title: "Cover Page",
@@ -46,7 +52,7 @@ export const createCoverSection = (): CoverSection => ({
 	photos: [],
 });
 
-export const createTimeLogSection = (): TimeLogSection => ({
+export const createTimeLogSection = (): projectTypes.TimeLogSectionType => ({
 	id: "section-time-log",
 	type: "time-log",
 	title: "Time Log",
@@ -58,7 +64,7 @@ export const createTimeLogSection = (): TimeLogSection => ({
 	photos: [],
 });
 
-export const createOutroSection = (): PhotosSection => ({
+export const createOutroSection = (): projectTypes.PhotosSectionType => ({
 	id: "section-outro",
 	type: "photos",
 	title: "Outro",
@@ -74,7 +80,7 @@ export const createPhotoSection = (
 	title: string,
 	icon: string,
 	open = false,
-): PhotosSection => ({
+): projectTypes.PhotosSectionType => ({
 	id: nextId("section"),
 	type: "photos",
 	title,
@@ -86,13 +92,13 @@ export const createPhotoSection = (
 	photos: [],
 });
 
-export const createInitialMiddleSections = (): PhotosSection[] => [
+export const createInitialMiddleSections = (): projectTypes.PhotosSectionType[] => [
 	createPhotoSection("Section 1", "🧩"),
 	createPhotoSection("Section 2", "🧩"),
 	createPhotoSection("Section 3", "🧩"),
 ];
 
-export const fixedSectionTemplates: SectionTemplate[] = [
+export const fixedSectionTemplates: projectTypes.SectionTemplateType[] = [
 	{
 		id: "section-cover-page",
 		type: "cover",
@@ -122,31 +128,26 @@ export const fixedSectionTemplates: SectionTemplate[] = [
 export const fixedSectionIds = new Set(
 	fixedSectionTemplates.map((section) => section.id),
 );
+
 export const fixedSectionTemplateById = new Map(
 	fixedSectionTemplates.map((section) => [section.id, section]),
 );
 
-export function orderSections(items: Section[]): Section[] {
-	const middleSections = items.filter((section) =>
-		!fixedSectionIds.has(section.id)
-	);
+export function orderSections(items: projectTypes.SectionType[]): projectTypes.SectionType[] {
+	const middleSections = items.filter((section) => !fixedSectionIds.has(section.id));
 
 	return fixedSectionTemplates
 		.filter((section) => section.placement === "start")
-		.map((section) =>
-			items.find((item) => item.id === section.id) ?? section.create()
-		)
+		.map((section) => items.find((item) => item.id === section.id) ?? section.create())
 		.concat(middleSections)
 		.concat(
 			fixedSectionTemplates
 				.filter((section) => section.placement === "end")
-				.map((section) =>
-					items.find((item) => item.id === section.id) ?? section.create()
-				),
+				.map((section) => items.find((item) => item.id === section.id) ?? section.create()),
 		);
 }
 
-export function createDefaultState(): PersistedState {
+export function createDefaultState(): projectTypes.PersistedStateType {
 	return {
 		activeTab: "create",
 		previewZoom: 1,
@@ -160,19 +161,19 @@ export function createDefaultState(): PersistedState {
 	};
 }
 
-export function isSectionMovable(section: Section): boolean {
+export function isSectionMovable(section: projectTypes.SectionType): boolean {
 	return !section.locked && section.placement === "middle";
 }
 
-export function ensureAtLeastOneDay(section: TimeLogSection): void {
+export function ensureAtLeastOneDay(section: projectTypes.TimeLogSectionType): void {
 	if (!section.days.length) section.days = [createTimeDay()];
 }
 
-export function ensureAtLeastOneEntry(day: TimeDay): void {
+export function ensureAtLeastOneEntry(day: projectTypes.TimeDayType): void {
 	if (!day.entries.length) day.entries = [createTimeEntry()];
 }
 
-export function getNextCustomSectionNumber(sections: Section[]): number {
+export function getNextCustomSectionNumber(sections: projectTypes.SectionType[]): number {
 	const currentMax = sections.reduce((max, section) => {
 		if (section.placement !== "middle") return max;
 		const match = section.title.match(/^Section\s+(\d+)$/i);
@@ -182,52 +183,54 @@ export function getNextCustomSectionNumber(sections: Section[]): number {
 	return currentMax + 1;
 }
 
-export function normalizeTimeEntry(value: unknown): TimeEntry {
+export function normalizeTimeEntry(value: unknown): projectTypes.TimeEntryType {
 	return {
-		id: typeof (value as TimeEntry)?.id === "string"
-			? (value as TimeEntry).id
+		id: typeof (value as projectTypes.TimeEntryType)?.id === "string"
+			? (value as projectTypes.TimeEntryType).id
 			: nextId("entry"),
-		time: String((value as TimeEntry)?.time || ""),
-		text: String((value as TimeEntry)?.text || ""),
+		time: String((value as projectTypes.TimeEntryType)?.time || ""),
+		text: String((value as projectTypes.TimeEntryType)?.text || ""),
 	};
 }
 
-export function normalizeTimeDay(value: unknown): TimeDay {
-	const entries = Array.isArray((value as TimeDay)?.entries)
-		? (value as TimeDay).entries.map(normalizeTimeEntry)
+export function normalizeTimeDay(value: unknown): projectTypes.TimeDayType {
+	const entries = Array.isArray((value as projectTypes.TimeDayType)?.entries)
+		? (value as projectTypes.TimeDayType).entries.map(normalizeTimeEntry)
 		: [createTimeEntry()];
 
 	return {
-		id: typeof (value as TimeDay)?.id === "string"
-			? (value as TimeDay).id
+		id: typeof (value as projectTypes.TimeDayType)?.id === "string"
+			? (value as projectTypes.TimeDayType).id
 			: nextId("day"),
-		dateISO: String((value as TimeDay)?.dateISO || ""),
+		dateISO: String((value as projectTypes.TimeDayType)?.dateISO || ""),
 		entries: entries.length ? entries : [createTimeEntry()],
 	};
 }
 
-export function normalizePhotoItem(value: unknown): PhotoItem {
+export function normalizePhotoItem(value: unknown): projectTypes.PhotoItemType {
 	return {
-		id: typeof (value as PhotoItem)?.id === "string"
-			? (value as PhotoItem).id
+		id: typeof (value as projectTypes.PhotoItemType)?.id === "string"
+			? (value as projectTypes.PhotoItemType).id
 			: nextId("photo"),
-		name: String((value as PhotoItem)?.name || "Photo"),
+		name: String((value as projectTypes.PhotoItemType)?.name || "Photo"),
 		caption: String(
-			(value as PhotoItem)?.caption || (value as PhotoItem)?.name || "Photo",
+			(value as projectTypes.PhotoItemType)?.caption ||
+				(value as projectTypes.PhotoItemType)?.name ||
+				"Photo",
 		),
-		src: String((value as PhotoItem)?.src || ""),
-		width: Math.max(0, Number((value as PhotoItem)?.width || 0)),
-		height: Math.max(0, Number((value as PhotoItem)?.height || 0)),
+		src: String((value as projectTypes.PhotoItemType)?.src || ""),
+		width: Math.max(0, Number((value as projectTypes.PhotoItemType)?.width || 0)),
+		height: Math.max(0, Number((value as projectTypes.PhotoItemType)?.height || 0)),
 	};
 }
 
-export function normalizeSection(value: unknown, index: number): Section {
-	const section = value as Partial<Section> & {
-		fields?: Partial<DetailsFields>;
-		days?: TimeDay[];
-		photos?: PhotoItem[];
+export function normalizeSection(value: unknown, index: number): projectTypes.SectionType {
+	const section = value as Partial<projectTypes.SectionType> & {
+		fields?: Partial<projectTypes.DetailsFieldsType>;
+		days?: projectTypes.TimeDayType[];
+		photos?: projectTypes.PhotoItemType[];
 		locked?: boolean;
-		placement?: SectionPlacement;
+		placement?: projectTypes.SectionPlacementType;
 	};
 	const template = typeof section.id === "string"
 		? fixedSectionTemplateById.get(section.id)
@@ -240,12 +243,14 @@ export function normalizeSection(value: unknown, index: number): Section {
 		return {
 			id: typeof section.id === "string" ? section.id : "section-cover-page",
 			type: "cover",
-			title: typeof section.title === "string"
-				? section.title
-				: template?.title || "Cover Page",
-			icon: typeof section.icon === "string"
-				? section.icon
-				: template?.icon || "📄",
+			title:
+				typeof section.title === "string"
+					? section.title
+					: template?.title || "Cover Page",
+			icon:
+				typeof section.icon === "string"
+					? section.icon
+					: template?.icon || "📄",
 			open: Boolean(section.open),
 			locked: template ? true : Boolean(section.locked),
 			placement: template?.placement || section.placement || "middle",
@@ -270,12 +275,14 @@ export function normalizeSection(value: unknown, index: number): Section {
 		return {
 			id: typeof section.id === "string" ? section.id : "section-time-log",
 			type: "time-log",
-			title: typeof section.title === "string"
-				? section.title
-				: template?.title || "Time Log",
-			icon: typeof section.icon === "string"
-				? section.icon
-				: template?.icon || "⏱️",
+			title:
+				typeof section.title === "string"
+					? section.title
+					: template?.title || "Time Log",
+			icon:
+				typeof section.icon === "string"
+					? section.icon
+					: template?.icon || "⏱️",
 			open: Boolean(section.open),
 			locked: template ? true : Boolean(section.locked),
 			placement: template?.placement || section.placement || "middle",
@@ -287,23 +294,25 @@ export function normalizeSection(value: unknown, index: number): Section {
 	return {
 		id: typeof section.id === "string" ? section.id : nextId("section"),
 		type: "photos",
-		title: typeof section.title === "string"
-			? section.title
-			: template?.title || `New Section ${index + 1}`,
-		icon: typeof section.icon === "string"
-			? section.icon
-			: template?.icon || "🧩",
+		title:
+			typeof section.title === "string"
+				? section.title
+				: template?.title || `New Section ${index + 1}`,
+		icon:
+			typeof section.icon === "string"
+				? section.icon
+				: template?.icon || "🧩",
 		open: Boolean(section.open),
 		locked: template ? true : Boolean(section.locked),
 		placement: template?.placement || section.placement || "middle",
-		description: String((section as PhotosSection)?.description || ""),
+		description: String((section as projectTypes.PhotosSectionType)?.description || ""),
 		photos,
 	};
 }
 
-export function loadState(): PersistedState {
+export function loadState(): projectTypes.PersistedStateType {
 	const defaults = createDefaultState();
-	const parsed = getStorageItem<Partial<PersistedState>>(storageKey, {});
+	const parsed = getStorageItem<Partial<projectTypes.PersistedStateType>>(storageKey, {});
 
 	if (!parsed || typeof parsed !== "object" || !("sections" in parsed)) {
 		return defaults;
@@ -312,25 +321,24 @@ export function loadState(): PersistedState {
 	try {
 		const parsedSections = Array.isArray(parsed.sections)
 			? parsed.sections.filter(
-				(section) =>
-					(section as { id?: string; type?: string }).id !==
-						"section-table-of-contents" &&
-					(section as { id?: string; type?: string }).type !== "toc",
-			)
+					(section: unknown) =>
+						(section as { id?: string; type?: string }).id !==
+							"section-table-of-contents" &&
+						(section as { id?: string; type?: string }).type !== "toc",
+			  )
 			: defaults.sections;
-		const normalizedSections = orderSections(
-			parsedSections.map(normalizeSection),
-		);
+
+		const normalizedSections = orderSections(parsedSections.map(normalizeSection));
 		const hasOpenSection = normalizedSections.some((section) => section.open);
 
 		return {
 			activeTab: parsed.activeTab === "preview" ? "preview" : "create",
-			previewZoom: typeof parsed.previewZoom === "number"
-				? parsed.previewZoom
-				: 1,
-			hasUserZoomed: typeof parsed.hasUserZoomed === "boolean"
-				? parsed.hasUserZoomed
-				: false,
+			previewZoom:
+				typeof parsed.previewZoom === "number" ? parsed.previewZoom : 1,
+			hasUserZoomed:
+				typeof parsed.hasUserZoomed === "boolean"
+					? parsed.hasUserZoomed
+					: false,
 			sections: hasOpenSection
 				? normalizedSections
 				: normalizedSections.map((section) => ({ ...section, open: false })),

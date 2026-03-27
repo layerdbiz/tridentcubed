@@ -14,45 +14,31 @@
 		Draggable
 	} from '@layerd/ui';
 	import { browser } from '$app/environment';
+	import { page } from '$app/state';
+	import { pushState } from '$app/navigation';
 	import { flip } from 'svelte/animate';
 	import { fromAction } from 'svelte/attachments';
 	import { onMount, tick } from 'svelte';
-	import * as constants from './projects.constants';
-	import type { ExportFormat } from './projects.constants';
-	import * as utils from './projects.utils';
-	import * as projectModel from './projects.state';
-	import PreviewPage from './preview/preview-page.svelte';
-	import type {
-		ProjectsRouteMode,
-		Tab,
-		Section,
-		CoverSection,
-		PhotosSection,
-		TimeLogSection,
-		TimeDay,
-		PersistedState
-	} from './projects.types';
-
-	let { mode = 'edit' }: { mode?: ProjectsRouteMode } = $props();
+	import * as projectConstants from '../projects.constants';
+	import type { ExportFormatType } from '../projects.constants';
+	import * as projectUtils from '../projects.utils';
+	import * as projectStates from '../projects.state';
+	import PreviewPage from '../preview/preview-page.svelte';
+	import type * as projectTypes from '../projects.types';
 
 	const sectionSortType = 'report-section';
 	const photoSortTypePrefix = 'report-photo:';
+	const baseState = projectStates.createDefaultState();
 
-	const baseState = projectModel.createDefaultState();
-
-	type AccordionLayoutMetric = {
+	type WorkspacePaneType = 'edit' | 'preview';
+	type AccordionLayoutMetricType = {
 		closedHeight: number;
 		marginTop: number;
 	};
 
-	function getModeTab(): Tab {
-		return mode === 'preview' ? 'preview' : 'create';
-	}
-
-	let activeTab = $state<Tab>(getModeTab());
 	let previewZoom = $state(baseState.previewZoom);
 	let hasUserZoomed = $state(baseState.hasUserZoomed);
-	let sections = $state<Section[]>(baseState.sections);
+	let sections = $state<projectTypes.SectionType[]>(baseState.sections);
 	let draggedSectionId = $state('');
 	let draggedPhotoId = $state('');
 	let photoDropId = $state('');
@@ -63,14 +49,19 @@
 	let isExporting = $state(false);
 	let suppressSectionToggleId = '';
 	let suppressSectionToggleUntil = 0;
-	let accordionLayoutMetrics = $state<Record<string, AccordionLayoutMetric>>({});
+	let accordionLayoutMetrics = $state<Record<string, AccordionLayoutMetricType>>({});
 
 	const draggable = new Draggable({});
 
 	const isDesktop = $derived(!mq.sm);
-	const overallMetrics = $derived(utils.getOverallMetrics(sections));
-	const reportSection = $derived(sections.find((section) => section.type === 'cover') as CoverSection | undefined);
-	const exportFileName = $derived(`${utils.slugify(reportSection?.fields.reportTitle || 'survey-report')}.pdf`);
+	const activePane = $derived.by<WorkspacePaneType>(() => {
+		if (page.state.projectPane === 'preview') return 'preview';
+		if (page.state.projectPane === 'edit') return 'edit';
+		return page.url.searchParams.get('pane') === 'preview' ? 'preview' : 'edit';
+	});
+	const overallMetrics = $derived(projectUtils.getOverallMetrics(sections));
+	const reportSection = $derived(sections.find((section) => section.type === 'cover') as projectTypes.CoverSectionType | undefined);
+	const exportFileName = $derived(`${projectUtils.slugify(reportSection?.fields.reportTitle || 'survey-report')}.pdf`);
 	const previewContentSections = $derived(sections.filter((section) => section.type !== 'cover'));
 	const tableOfContentsEntries = $derived([
 		{ id: 'toc-cover', title: reportSection?.title || 'Cover Page', page: 1 },
@@ -95,6 +86,19 @@
 		{ label: 'Document ID', value: reportSection?.fields.documentId || '—' }
 	]);
 
+	const { addDroppable, addHandle } = draggable;
+
+	function setMobilePane(nextPane: WorkspacePaneType) {
+		const url = new URL(page.url);
+		if (nextPane === 'preview') {
+			url.searchParams.set('pane', 'preview');
+		} else {
+			url.searchParams.delete('pane');
+		}
+
+		pushState(`${url.pathname}${url.search}`, { ...page.state, projectPane: nextPane });
+	}
+
 	function getPhotoSortType(sectionId: string) {
 		return `${photoSortTypePrefix}${sectionId}`;
 	}
@@ -103,14 +107,12 @@
 		return `report-section-${sectionId}`;
 	}
 
-	const { addDroppable, addHandle } = draggable;
-
 	function setSections(nextSections: unknown[]) {
-		sections = nextSections as Section[];
+		sections = nextSections as projectTypes.SectionType[];
 	}
 
-	function setSectionPhotos(section: PhotosSection, nextPhotos: unknown[]) {
-		section.photos = nextPhotos as PhotosSection['photos'];
+	function setSectionPhotos(section: projectTypes.PhotosSectionType, nextPhotos: unknown[]) {
+		section.photos = nextPhotos as projectTypes.PhotosSectionType['photos'];
 	}
 
 	function measureAccordionLayout(node: HTMLElement, params: { sectionId: string; index: number }) {
@@ -140,8 +142,7 @@
 
 		scheduleMeasure();
 
-		const resizeObserver =
-			summaryElement instanceof HTMLElement ? new ResizeObserver(scheduleMeasure) : null;
+		const resizeObserver = summaryElement instanceof HTMLElement ? new ResizeObserver(scheduleMeasure) : null;
 
 		if (resizeObserver && summaryElement instanceof HTMLElement) {
 			resizeObserver.observe(summaryElement);
@@ -159,8 +160,8 @@
 		};
 	}
 
-	function addSortableSection(node: HTMLElement, section: Section) {
-		if (!projectModel.isSectionMovable(section)) return;
+	function addSortableSection(node: HTMLElement, section: projectTypes.SectionType) {
+		if (!projectStates.isSectionMovable(section)) return;
 
 		return draggable.addDraggable(node, {
 			item: () => section,
@@ -169,13 +170,13 @@
 		});
 	}
 
-	function addSortableSectionHandle(node: HTMLElement, section: Section) {
-		if (!projectModel.isSectionMovable(section)) return;
+	function addSortableSectionHandle(node: HTMLElement, section: projectTypes.SectionType) {
+		if (!projectStates.isSectionMovable(section)) return;
 
 		return addHandle(node);
 	}
 
-	function addSortablePhoto(node: HTMLElement, args: { section: PhotosSection; photo: PhotosSection['photos'][number] }) {
+	function addSortablePhoto(node: HTMLElement, args: { section: projectTypes.PhotosSectionType; photo: projectTypes.PhotosSectionType['photos'][number] }) {
 		const sortType = getPhotoSortType(args.section.id);
 
 		return draggable.addDraggable(node, {
@@ -207,8 +208,7 @@
 		draggedPhotoId = '';
 	}
 
-	function applyState(next: PersistedState) {
-		activeTab = getModeTab();
+	function applyState(next: projectTypes.PersistedStateType) {
 		previewZoom = next.previewZoom;
 		hasUserZoomed = next.hasUserZoomed;
 		sections = next.sections;
@@ -225,11 +225,11 @@
 	}
 
 	function addSection() {
-		const nextNumber = projectModel.getNextCustomSectionNumber(sections);
+		const nextNumber = projectStates.getNextCustomSectionNumber(sections);
 		const insertIndex = sections.findIndex((section) => section.placement === 'end');
 		for (const section of sections) section.open = false;
 
-		const nextSection = projectModel.createPhotoSection(`Section ${nextNumber}`, '🧩', false);
+		const nextSection = projectStates.createPhotoSection(`Section ${nextNumber}`, '🧩', false);
 		if (insertIndex === -1) {
 			sections.push(nextSection);
 			return;
@@ -251,20 +251,20 @@
 		if (photoDropId === sectionId) photoDropId = '';
 	}
 
-	function addDay(section: TimeLogSection) {
-		section.days.push(projectModel.createTimeDay());
+	function addDay(section: projectTypes.TimeLogSectionType) {
+		section.days.push(projectStates.createTimeDay());
 	}
 
-	function removeDay(section: TimeLogSection, dayId: string) {
+	function removeDay(section: projectTypes.TimeLogSectionType, dayId: string) {
 		section.days = section.days.filter((day) => day.id !== dayId);
-		projectModel.ensureAtLeastOneDay(section);
+		projectStates.ensureAtLeastOneDay(section);
 	}
 
-	function addEntry(day: TimeDay) {
-		day.entries.push(projectModel.createTimeEntry());
+	function addEntry(day: projectTypes.TimeDayType) {
+		day.entries.push(projectStates.createTimeEntry());
 	}
 
-	function maybeAddEntry(day: TimeDay, entryId: string) {
+	function maybeAddEntry(day: projectTypes.TimeDayType, entryId: string) {
 		const entryIndex = day.entries.findIndex((entry) => entry.id === entryId);
 		if (entryIndex === -1 || entryIndex !== day.entries.length - 1) return;
 
@@ -276,16 +276,16 @@
 		addEntry(day);
 	}
 
-	function handleActivityKeyup(day: TimeDay, entryId: string, event?: KeyboardEvent) {
+	function handleActivityKeyup(day: projectTypes.TimeDayType, entryId: string, event?: KeyboardEvent) {
 		if (event?.key !== 'Enter') return;
 
 		event.preventDefault();
 		maybeAddEntry(day, entryId);
 	}
 
-	function removeEntry(day: TimeDay, entryId: string) {
+	function removeEntry(day: projectTypes.TimeDayType, entryId: string) {
 		day.entries = day.entries.filter((entry) => entry.id !== entryId);
-		projectModel.ensureAtLeastOneEntry(day);
+		projectStates.ensureAtLeastOneEntry(day);
 	}
 
 	async function addPhotosToSection(sectionId: string, fileList: FileList | File[] | null | undefined) {
@@ -295,7 +295,7 @@
 		for (const file of Array.from(fileList)) {
 			if (!file.type.startsWith('image/')) continue;
 
-			section.photos.push(await utils.createPhotoItem(file));
+			section.photos.push(await projectUtils.createPhotoItem(file));
 		}
 	}
 
@@ -305,13 +305,13 @@
 		if (input) input.value = '';
 	}
 
-	function removePhoto(section: PhotosSection, photoId: string) {
+	function removePhoto(section: projectTypes.PhotosSectionType, photoId: string) {
 		section.photos = section.photos.filter((photo) => photo.id !== photoId);
 
 		if (draggedPhotoId === photoId) draggedPhotoId = '';
 	}
 
-	function getSortedEntries(day: TimeDay) {
+	function getSortedEntries(day: projectTypes.TimeDayType) {
 		return [...day.entries].sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
 	}
 
@@ -369,14 +369,14 @@
 		URL.revokeObjectURL(url);
 	}
 
-	async function handleExport(format: ExportFormat) {
+	async function handleExport(format: ExportFormatType) {
 		if (format !== 'PDF' || !browser || !previewPages || isExporting) return;
 
 		isExporting = true;
 
 		try {
 			const markup = Array.from(previewPages.querySelectorAll('.preview-page'))
-				.map((page) => page.outerHTML)
+				.map((item) => item.outerHTML)
 				.join('');
 			if (!markup) return;
 
@@ -419,8 +419,8 @@
 
 	async function handlePaste(event: ClipboardEvent) {
 		const activeSection =
-			(sections.find((section) => section.open && section.type === 'photos') as PhotosSection | undefined) ||
-			(sections.find((section) => section.type === 'photos') as PhotosSection | undefined);
+			(sections.find((section) => section.open && section.type === 'photos') as projectTypes.PhotosSectionType | undefined) ||
+			(sections.find((section) => section.type === 'photos') as projectTypes.PhotosSectionType | undefined);
 		if (!activeSection) return;
 
 		const files: File[] = [];
@@ -442,7 +442,7 @@
 		const bounds = getPreviewZoomBounds();
 
 		if (hasUserZoomed) {
-			previewZoom = utils.clamp(previewZoom || bounds.initial, bounds.min, bounds.max);
+			previewZoom = projectUtils.clamp(previewZoom || bounds.initial, bounds.min, bounds.max);
 			return;
 		}
 
@@ -452,40 +452,40 @@
 	function getPreviewZoomBounds() {
 		if (!previewViewport) {
 			return {
-				min: constants.previewZoomMin,
-				max: constants.previewZoomMax,
-				initial: constants.previewZoomMax
+				min: projectConstants.previewZoomMin,
+				max: projectConstants.previewZoomMax,
+				initial: projectConstants.previewZoomMax
 			};
 		}
 
 		const availableWidth = Math.max(
 			200,
-			previewViewport.clientWidth - (isDesktop ? constants.previewDesktopPadding : constants.previewMobilePadding)
+			previewViewport.clientWidth - (isDesktop ? projectConstants.previewDesktopPadding : projectConstants.previewMobilePadding)
 		);
-		const fitWidthZoom = utils.clamp(
-			availableWidth / constants.previewPageWidth,
-			constants.previewZoomMin,
-			constants.previewZoomMax
+		const fitWidthZoom = projectUtils.clamp(
+			availableWidth / projectConstants.previewPageWidth,
+			projectConstants.previewZoomMin,
+			projectConstants.previewZoomMax
 		);
 
 		if (isDesktop) {
 			return {
-				min: constants.previewZoomMin,
+				min: projectConstants.previewZoomMin,
 				max: fitWidthZoom,
 				initial: fitWidthZoom
 			};
 		}
 
 		const availableHeight = Math.max(200, previewViewport.clientHeight - 32);
-		const fitVisiblePagesZoom = utils.clamp(
-			(availableHeight - constants.previewMobileGap * 0.5) /
-				(constants.previewPageHeight * constants.previewMobileVisiblePages),
-			constants.previewZoomMin,
+		const fitVisiblePagesZoom = projectUtils.clamp(
+			(availableHeight - projectConstants.previewMobileGap * 0.5) /
+				(projectConstants.previewPageHeight * projectConstants.previewMobileVisiblePages),
+			projectConstants.previewZoomMin,
 			fitWidthZoom
 		);
 
 		return {
-			min: constants.previewZoomMin,
+			min: projectConstants.previewZoomMin,
 			max: fitWidthZoom,
 			initial: Math.min(fitWidthZoom, fitVisiblePagesZoom)
 		};
@@ -497,7 +497,7 @@
 		const bounds = getPreviewZoomBounds();
 		const step = isDesktop ? 0.08 : 0.05;
 		const delta = direction === 'in' ? step : -step;
-		const nextZoom = utils.clamp((previewZoom || bounds.initial) + delta, bounds.min, bounds.max);
+		const nextZoom = projectUtils.clamp((previewZoom || bounds.initial) + delta, bounds.min, bounds.max);
 
 		hasUserZoomed = true;
 		await zoomPreviewAtCursor(previewViewport.clientHeight / 2, nextZoom);
@@ -525,10 +525,10 @@
 
 		const bounds = getPreviewZoomBounds();
 		const rect = previewViewport.getBoundingClientRect();
-		const cursorY = utils.clamp(event.clientY - rect.top, 0, rect.height);
+		const cursorY = projectUtils.clamp(event.clientY - rect.top, 0, rect.height);
 		const delta = Math.sign(event.deltaY);
 		const step = 0.08;
-		const nextZoom = utils.clamp((previewZoom || bounds.initial) + (delta > 0 ? -step : step), bounds.min, bounds.max);
+		const nextZoom = projectUtils.clamp((previewZoom || bounds.initial) + (delta > 0 ? -step : step), bounds.min, bounds.max);
 		await zoomPreviewAtCursor(cursorY, nextZoom);
 	}
 
@@ -540,7 +540,7 @@
 		const dy = first.clientY - second.clientY;
 		const startDist = Math.hypot(dx, dy);
 		const rect = previewViewport.getBoundingClientRect();
-		const midY = utils.clamp((first.clientY + second.clientY) / 2 - rect.top, 0, rect.height);
+		const midY = projectUtils.clamp((first.clientY + second.clientY) / 2 - rect.top, 0, rect.height);
 
 		pinch = { startDist, startZoom: previewZoom || 1, midY };
 		hasUserZoomed = true;
@@ -557,7 +557,7 @@
 		const dy = first.clientY - second.clientY;
 		const distance = Math.hypot(dx, dy);
 		const ratio = distance / pinch.startDist;
-		const nextZoom = utils.clamp(pinch.startZoom * ratio, bounds.min, bounds.max);
+		const nextZoom = projectUtils.clamp(pinch.startZoom * ratio, bounds.min, bounds.max);
 		await zoomPreviewAtCursor(pinch.midY, nextZoom);
 	}
 
@@ -569,8 +569,8 @@
 		if (!browser) return;
 		const okay = window.confirm('Reset this report and clear all saved data? This cannot be undone.');
 		if (!okay) return;
-		utils.removeStorageItem(constants.storageKey);
-		applyState(projectModel.createDefaultState());
+		projectUtils.removeStorageItem(projectConstants.storageKey);
+		applyState(projectStates.createDefaultState());
 		clearDraggedItems();
 		photoDropId = '';
 	}
@@ -580,10 +580,10 @@
 			draggable.manager.monitor.addEventListener('dragstart', handleDraggableDragStart);
 			draggable.manager.monitor.addEventListener('dragend', clearDraggedItems);
 
-			const next = projectModel.loadState();
-			utils.syncIdCounterFromSections(next.sections);
+			const next = projectStates.loadState();
+			projectUtils.syncIdCounterFromSections(next.sections);
 			applyState(next);
-			const didHydratePhotoDimensions = await utils.hydratePhotoDimensions(next.sections);
+			const didHydratePhotoDimensions = await projectUtils.hydratePhotoDimensions(next.sections);
 			if (didHydratePhotoDimensions) sections = [...sections];
 			hydrated = true;
 			await tick();
@@ -599,7 +599,12 @@
 
 	$effect(() => {
 		if (!browser || !hydrated) return;
-		utils.setStorageItem(constants.storageKey, { activeTab, previewZoom, hasUserZoomed, sections });
+		projectUtils.setStorageItem(projectConstants.storageKey, {
+			activeTab: activePane === 'preview' ? 'preview' : 'create',
+			previewZoom,
+			hasUserZoomed,
+			sections
+		});
 	});
 
 	$effect(() => {
@@ -615,47 +620,47 @@
 	<div class="flex h-full min-w-0 flex-col">
 		<div class="flex shrink-0 items-center gap-2 p-4 md:hidden">
 			<Button
-				{...(activeTab === 'create' ? { heavy: true, primary: true } : { outline: true, base: true })}
+				{...(activePane === 'edit' ? { heavy: true, primary: true } : { outline: true, base: true })}
 				variant="text"
 				class="w-full flex-1"
-				onclick={() => (activeTab = 'create')}
-				label="Create"
+				onclick={() => setMobilePane('edit')}
+				label="Edit"
 			/>
 
 			<Button
-				{...(activeTab === 'preview' ? { heavy: true, primary: true } : { outline: true, base: true })}
+				{...(activePane === 'preview' ? { heavy: true, primary: true } : { outline: true, base: true })}
 				variant="text"
 				class="w-full flex-1"
-				onclick={() => (activeTab = 'preview')}
+				onclick={() => setMobilePane('preview')}
 				label="Preview"
 			/>
 		</div>
 
 		<main class="grid min-h-0 flex-1 gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:px-6 md:pb-6 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
-			<section id="create" class:hidden={!isDesktop && activeTab !== 'create'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
+			<section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
 				<div class="flex h-full min-h-0 flex-col rounded-2xl border border-secondary-200 bg-white shadow-sm">
 					<div class="shrink-0 border-b border-secondary-200 px-4 py-3">
 						<div class="flex flex-col gap-4">
 							<div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
 								<div class="min-w-0">
-									<Text h2="Create" />
+									<Text h2="Edit" />
 									<Text xs class="text-neutral" p="Build the report structure, content, and photos section by section." />
 								</div>
 
 								<div class="flex items-center gap-5">
 									<div class="relative h-18 w-18 shrink-0">
 										<svg viewBox="0 0 96 96" class="h-full w-full overflow-visible -rotate-90" aria-hidden="true">
-											<circle class="fill-none stroke-secondary-200 stroke-12" cx="48" cy="48" r={constants.overallProgressRingRadius} />
+											<circle class="fill-none stroke-secondary-200 stroke-12" cx="48" cy="48" r={projectConstants.overallProgressRingRadius} />
 											<circle
 												cx="48"
 												cy="48"
-												r={constants.overallProgressRingRadius}
+												r={projectConstants.overallProgressRingRadius}
 												fill="none"
 												stroke="#22c55e"
 												stroke-linecap="round"
 												stroke-width="12"
-												stroke-dasharray={constants.overallProgressRingCircumference}
-												stroke-dashoffset={utils.getProgressRingOffset(overallMetrics.percent)}
+												stroke-dasharray={projectConstants.overallProgressRingCircumference}
+												stroke-dashoffset={projectUtils.getProgressRingOffset(overallMetrics.percent)}
 											/>
 										</svg>
 										<div class="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -681,10 +686,10 @@
 						}}
 					>
 						{#each sections as section, index (section.id)}
-							{@const metrics = utils.getSectionMetrics(section)}
-							{@const sectionStatusLabel = utils.getSectionStatusLabel(metrics)}
-							{@const sectionStatusTextClass = utils.getSectionStatusTextClass(metrics)}
-							{@const sectionProgressFillClass = utils.getSectionProgressFillClass(metrics)}
+							{@const metrics = projectUtils.getSectionMetrics(section)}
+							{@const sectionStatusLabel = projectUtils.getSectionStatusLabel(metrics)}
+							{@const sectionStatusTextClass = projectUtils.getSectionStatusTextClass(metrics)}
+							{@const sectionProgressFillClass = projectUtils.getSectionProgressFillClass(metrics)}
 
 							<div
 								id={getAccordionAnchorId(section.id)}
@@ -694,23 +699,14 @@
 								{@attach fromAction(measureAccordionLayout, () => ({ sectionId: section.id, index }))}
 								use:addSortableSection={section}
 							>
-								<Accordion
-									class="relative"
-									name="report-sections"
-									open={section.open}
-									ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}
-								>
+								<Accordion class="relative" name="report-sections" open={section.open} ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}>
 									<AccordionTitle
 										class="shadow-[-12px_-12px_0px_white] sticky top-0 z-1 block w-full cursor-pointer rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 p-4 text-left {section.open ? '' : 'rounded-b-2xl'}"
 										onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
 									>
 										<div class="flex items-start gap-3">
-											{#if projectModel.isSectionMovable(section)}
-												<div
-													class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing"
-													use:addSortableSectionHandle={section}
-													aria-label={`Reorder ${section.title}`}
-												>
+											{#if projectStates.isSectionMovable(section)}
+												<div class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing" use:addSortableSectionHandle={section} aria-label={`Reorder ${section.title}`}>
 													{section.icon}
 												</div>
 											{:else}
@@ -724,35 +720,19 @@
 														</div>
 														<p class="text-xs text-neutral-500">{metrics.done} of {metrics.total} complete</p>
 													</div>
-
 													<div class="text-right">
 														<p class="text-sm font-bold text-neutral-700">{metrics.percent}%</p>
-														<p class={`${constants.metricStatusCaptionClass} ${sectionStatusTextClass}`}>{sectionStatusLabel}</p>
+														<p class={`${projectConstants.metricStatusCaptionClass} ${sectionStatusTextClass}`}>{sectionStatusLabel}</p>
 													</div>
 												</div>
-
 												<div class="h-2.5 overflow-hidden rounded-full bg-secondary-200/60">
 													<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
 												</div>
 											</div>
-
-											{#if projectModel.isSectionMovable(section)}
-												<Button
-													variant="icon"
-													icon="close"
-													class="absolute! -top-2! -right-2! text-[8px]!"
-													aria-label={`Delete ${section.title}`}
-													onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)}
-												/>
+											{#if projectStates.isSectionMovable(section)}
+												<Button variant="icon" icon="close" class="absolute! -top-2! -right-2! text-[8px]!" aria-label={`Delete ${section.title}`} onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)} />
 											{:else}
-												<Button
-													variant="icon"
-													icon="lock"
-													class="absolute! -top-2! -right-2! text-[8px]! bg-secondary-200 text-secondary-400 opacity-100"
-													aria-label={`${section.title} is locked`}
-													onclick={handleSectionActionDisabledClick}
-													disabled
-												/>
+												<Button variant="icon" icon="lock" class="absolute! -top-2! -right-2! text-[8px]! bg-secondary-200 text-secondary-400 opacity-100" aria-label={`${section.title} is locked`} onclick={handleSectionActionDisabledClick} disabled />
 											{/if}
 										</div>
 									</AccordionTitle>
@@ -760,7 +740,7 @@
 									<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
 										{#if section.type === 'cover'}
 											<div class="relative z-0 grid gap-4">
-														{#each constants.detailFields as field (field.key)}
+												{#each projectConstants.detailFields as field (field.key)}
 													<InputNew xs bind:value={section.fields[field.key]} label={field.label} type={field.type || 'text'} />
 												{/each}
 											</div>
@@ -771,39 +751,16 @@
 														<InputNew xs type="date" label="Date" bind:value={day.dateISO} />
 														<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)} />
 													</Grid>
-
-													<p class="mb-3 text-xs font-semibold text-neutral-600">{utils.formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
-
+													<p class="mb-3 text-xs font-semibold text-neutral-600">{projectUtils.formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
 													{#each day.entries as entry (entry.id)}
 														<Grid items="1x3" cols="160px 1fr auto" gap="8px">
-															<InputNew
-																xs
-																bind:value={entry.time}
-																label="Time"
-																variant="text"
-																inputmode="numeric"
-																type="time"
-																min="00:00"
-																max="23:59"
-																step="600"
-																onblur={() => maybeAddEntry(day, entry.id)}
-															/>
-															<InputNew
-																xs
-																bind:value={entry.text}
-																label="Activity"
-																variant="text"
-																type="text"
-																onblur={() => maybeAddEntry(day, entry.id)}
-																onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)}
-															/>
+															<InputNew xs bind:value={entry.time} label="Time" variant="text" inputmode="numeric" type="time" min="00:00" max="23:59" step="600" onblur={() => maybeAddEntry(day, entry.id)} />
+															<InputNew xs bind:value={entry.text} label="Activity" variant="text" type="text" onblur={() => maybeAddEntry(day, entry.id)} onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)} />
 															<Button ghost secondary variant="icon" icon="close" onclick={() => removeEntry(day, entry.id)} />
 														</Grid>
 													{/each}
-
 													<Button primary xs variant="text" label="Add Time" onclick={() => addEntry(day)} />
 												{/each}
-
 												<Button primary xs variant="text" label="Add Day" onclick={() => addDay(section)} />
 											</div>
 										{:else}
@@ -811,69 +768,30 @@
 												{#if !section.locked}
 													<InputNew xs bind:value={section.title} label="Title" variant="text" type="text" />
 												{/if}
-
 												<InputNew xs bind:value={section.description} textarea label="Description" variant="text" type="text" />
-
 												<div class="space-y-3">
 													<div class="flex flex-wrap gap-2">
 														<label class="rounded-xl bg-primary-500 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-600">
 															<span>Upload</span>
 															<input accept="image/*" class="hidden" multiple type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
 														</label>
-
 														<label class="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm">
 															<span>Camera</span>
 															<input accept="image/*" capture="environment" class="hidden" type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
 														</label>
 													</div>
-
-													<div
-														role="presentation"
-														class:drop-target={photoDropId === section.id}
-														class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-center text-xs font-medium text-neutral-500"
-														ondragover={(event) => handlePhotoZoneDragOver(section.id, event)}
-														ondragleave={() => handlePhotoZoneDragLeave(section.id)}
-														ondrop={(event) => handlePhotoZoneDrop(section.id, event)}
-													>
+													<div role="presentation" class:drop-target={photoDropId === section.id} class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-center text-xs font-medium text-neutral-500" ondragover={(event) => handlePhotoZoneDragOver(section.id, event)} ondragleave={() => handlePhotoZoneDragLeave(section.id)} ondrop={(event) => handlePhotoZoneDrop(section.id, event)}>
 														Drop images here
 													</div>
-
-													<div
-														class="grid grid-cols-2 gap-3"
-														use:addDroppable={{
-															items: {
-																get: () => section.photos,
-																set: (items: unknown[]) => setSectionPhotos(section, items)
-															},
-															accept: [getPhotoSortType(section.id)]
-														}}
-													>
+													<div class="grid grid-cols-2 gap-3" use:addDroppable={{ items: { get: () => section.photos, set: (items: unknown[]) => setSectionPhotos(section, items) }, accept: [getPhotoSortType(section.id)] }}>
 														{#each section.photos as photo (photo.id)}
-															<div
-																animate:flip={{ duration: 180 }}
-																class="rounded-2xl bg-white p-2"
-																class:dragging-item={draggedPhotoId === photo.id}
-																role="presentation"
-																use:addSortablePhoto={{ section, photo }}
-															>
+															<div animate:flip={{ duration: 180 }} class="rounded-2xl bg-white p-2" class:dragging-item={draggedPhotoId === photo.id} role="presentation" use:addSortablePhoto={{ section, photo }}>
 																<div class="relative aspect-square rounded-xl bg-neutral-100">
 																	<img alt={photo.caption || photo.name} class="h-full w-full rounded-lg object-cover" draggable="false" src={photo.src} />
-
-																	<div
-																		class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-neutral-700 shadow-sm cursor-grab active:cursor-grabbing"
-																		use:addHandle
-																		aria-label={`Reorder ${photo.caption || photo.name || 'photo'}`}
-																	>
+																	<div class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-neutral-700 shadow-sm cursor-grab active:cursor-grabbing" use:addHandle aria-label={`Reorder ${photo.caption || photo.name || 'photo'}`}>
 																		::
 																	</div>
-
-																	<Button
-																		variant="icon"
-																		icon="close"
-																		class="absolute! -right-1.5 -top-1.5 z-100 text-[8px]!"
-																		aria-label="Remove Photo"
-																		onclick={() => removePhoto(section, photo.id)}
-																	/>
+																	<Button variant="icon" icon="close" class="absolute! -right-1.5 -top-1.5 z-100 text-[8px]!" aria-label="Remove Photo" onclick={() => removePhoto(section, photo.id)} />
 																	<InputNew xs bind:value={photo.caption} label="Caption" type="text" />
 																</div>
 															</div>
@@ -890,28 +808,13 @@
 				</div>
 			</section>
 
-			<section id="preview" class:hidden={!isDesktop && activeTab !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
+			<section class:hidden={!isDesktop && activePane !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
 				<div class="relative flex h-full min-h-0 flex-col">
 					<div id="previewControls" class="fixed bottom-8 right-8 z-20 flex justify-end gap-2">
-						<Button
-							primary
-							class="bg-primary"
-							variant="icon text"
-							icon="download"
-							onclick={() => handleExport('PDF')}
-							label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'}
-							disabled={isExporting}
-						/>
-
+						<Button primary class="bg-primary" variant="icon text" icon="download" onclick={() => handleExport('PDF')} label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting} />
 						<div id="zoomer" class="flex h-12 rounded-full border border-neutral-300 bg-white shadow-sm">
 							<Button ghost xl variant="text" label="-" onclick={() => stepPreviewZoom('out')} class="px-4!" />
-							<Button
-								ghost
-								lg
-								variant="text"
-								class="w-18! rounded-none! border-x border-secondary-200 px-0! font-black!"
-								onclick={resetPreviewZoom}
-							>
+							<Button ghost lg variant="text" class="w-18! rounded-none! border-x border-secondary-200 px-0! font-black!" onclick={resetPreviewZoom}>
 								{Math.round((previewZoom || 1) * 100)}%
 							</Button>
 							<Button ghost xl variant="text" label="+" onclick={() => stepPreviewZoom('in')} class="px-4!" />
@@ -919,19 +822,9 @@
 					</div>
 
 					<div class="min-h-0 flex-1">
-						<div
-							bind:this={previewViewport}
-							role="region"
-							aria-label="Preview pages"
-							class="h-full w-full overflow-x-hidden overflow-y-auto bg-transparent"
-							style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`}
-							onwheel={handlePreviewWheel}
-							ontouchstart={handlePreviewTouchStart}
-							ontouchmove={handlePreviewTouchMove}
-							ontouchend={handlePreviewTouchEnd}
-						>
+						<div bind:this={previewViewport} role="region" aria-label="Preview pages" class="h-full w-full overflow-x-hidden overflow-y-auto bg-transparent" style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`} onwheel={handlePreviewWheel} ontouchstart={handlePreviewTouchStart} ontouchmove={handlePreviewTouchMove} ontouchend={handlePreviewTouchEnd}>
 							<div class="relative w-full px-1 pb-10 pt-0 md:px-0 md:pb-16 md:pt-2">
-								<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${constants.previewPageWidth}px; --preview-page-height: ${constants.previewPageHeight}px`}>
+								<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${projectConstants.previewPageWidth}px; --preview-page-height: ${projectConstants.previewPageHeight}px`}>
 									<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">
 										<PreviewPage innerClass="relative flex flex-col items-center justify-center gap-6">
 											<div id="topCoverPage" class="mb-50 flex flex-col items-center justify-center gap-6">
@@ -939,7 +832,6 @@
 												<Text h1={reportSection?.fields.reportTitle || 'Survey Report'} class="text-6xl font-black uppercase" />
 												<Text h2={reportSection?.fields.reportTitle || 'Survey Report'} class="text-center text-3xl font-semibold text-pretty text-secondary-500" />
 											</div>
-
 											<div id="bottomCoverPage" class="absolute bottom-0 left-0 right-0 z-1! grid w-full justify-center bg-secondary-200 pb-20">
 												<Divider class="absolute bottom-full" color="text-secondary-200" bleed={false} />
 												{#each coverMeta as item (item.label)}
@@ -950,7 +842,6 @@
 												{/each}
 											</div>
 										</PreviewPage>
-
 										<PreviewPage>
 											<Text h2="Table of Contents" class="mb-4 text-4xl" />
 											<div class="space-y-2 text-sm">
@@ -962,13 +853,12 @@
 												{/each}
 											</div>
 										</PreviewPage>
-
 										{#each previewContentSections as section (section.id)}
 											{#if section.type === 'time-log'}
 												<PreviewPage>
 													<Text h2={section.title} class="mb-4 text-4xl" />
 													{#each section.days as day (day.id)}
-														<p class="mb-2 text-sm font-semibold text-neutral-700">{utils.formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
+														<p class="mb-2 text-sm font-semibold text-neutral-700">{projectUtils.formatDayDate(day.dateISO) || 'Day / date not entered yet'}</p>
 														<ul class="mb-4 space-y-2 text-sm">
 															{#each getSortedEntries(day) as entry (entry.id)}
 																<li class="flex gap-3">
@@ -985,12 +875,11 @@
 													{#if section.description}
 														<Text p={section.description} class="text-secondary" />
 													{/if}
-
-													<div class={utils.getPreviewPhotoGridClass(section)}>
+													<div class={projectUtils.getPreviewPhotoGridClass(section)}>
 														{#if section.photos.length}
 															{#each section.photos as photo (photo.id)}
-																<figure class={utils.getPreviewPhotoCardClass(section, photo)}>
-																	<div class="grid place-items-center bg-neutral-50 p-3" style={`height: ${utils.getPreviewPhotoFrameHeight(section, photo)}`}>
+																<figure class={projectUtils.getPreviewPhotoCardClass(section, photo)}>
+																	<div class="grid place-items-center bg-neutral-50 p-3" style={`height: ${projectUtils.getPreviewPhotoFrameHeight(section, photo)}`}>
 																		<img alt={photo.caption || photo.name} class="h-full w-full object-contain" src={photo.src} />
 																	</div>
 																	<figcaption class="p-3 text-xs text-neutral-600">{photo.caption || photo.name || 'Photo'}</figcaption>
@@ -1003,7 +892,6 @@
 												</PreviewPage>
 											{/if}
 										{/each}
-
 										<PreviewPage>
 											<Content class="prose prose-sm">
 												<h2>Standard Disclaimer</h2>
