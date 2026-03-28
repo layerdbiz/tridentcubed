@@ -1,0 +1,4 @@
+id,name,type,description,options
+1,page,list,the preview pages created from the sections,"Cover, Table of Contents, Introduction, Project Report, Personnel in Attendance, Cargo Description, Cargo Condition Inspection, Time Log, Cargo Operations, Cargo Damages, Cargo Storage, Cargo Trailer Securement, Ships Particulars, Ships Certifications, Barge Information, Lifting Plan, Lifting Gear, Stowage Plan, Post-Discharge Inspection, Disclaimer"
+2,type,list,the type of preview page to render via 'variant' prop,"full, toc, list, template, team, table, photo"
+3,section,list,the sections of each preview page that are shown conditionally,"header, main, footer"

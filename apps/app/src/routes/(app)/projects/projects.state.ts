@@ -1,8 +1,21 @@
 import { persist } from "@layerd/ui";
 import { storageKey } from "./projects.constants";
+import * as projectSchemas from "./projects.schema";
 import type * as projectTypes from "./projects.types";
 
 let idCounter = 0;
+
+const sectionIcons: Record<string, string> = {
+	Organization: "🏢",
+	Team: "👥",
+	Project: "📁",
+	Client: "🤝",
+	Facility: "🏭",
+	Carrier: "🚢",
+	Items: "📦",
+	"Time Log": "⏱️",
+	Custom: "🧩",
+};
 
 function nextId(prefix: string): string {
 	idCounter += 1;
@@ -21,54 +34,72 @@ export const createTimeDay = (): projectTypes.TimeDayType => ({
 	entries: [createTimeEntry()],
 });
 
-export const createCoverSection = (): projectTypes.CoverSectionType => ({
-	id: "section-cover-page",
-	type: "cover",
-	title: "Cover Page",
-	icon: "📄",
+function createCoverFields(
+	group: projectTypes.FieldGroupDefinitionType,
+): projectTypes.DetailsFieldsType {
+	return Object.fromEntries(
+		group.fields.map((
+			field,
+		) => [field.path, projectSchemas.getFieldInitialValue(field)]),
+	);
+}
+
+function getSectionIcon(section: string): string {
+	return sectionIcons[section] || "🧩";
+}
+
+function getPageSectionId(pageId: string): string {
+	return `page-${pageId.toLowerCase()}`;
+}
+
+function getPagePhotoVariant(
+	page: projectTypes.PageDefinitionType,
+): string {
+	if (page.page === "Introduction" || page.page === "Cargo Description") {
+		return "photos-1";
+	}
+
+	return "photos-4";
+}
+
+export const createFieldSection = (
+	group: projectTypes.FieldGroupDefinitionType,
+): projectTypes.FieldSectionType => ({
+	id: `section-${group.section.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+	type: "fields",
+	section: group.section,
+	title: group.section,
+	icon: getSectionIcon(group.section),
 	open: false,
 	locked: true,
+	enabled: true,
 	placement: "start",
-	fields: {
-		reportTitle: "Survey Report",
-		facilityName: "",
-		startDate: "",
-		endDate: "",
-		clientName: "",
-		preparedBy: "Justin O'Neill",
-		documentId: "DOC-001",
-	},
+	fields: createCoverFields(group),
 	photos: [],
 });
 
-export const createTimeLogSection = (): projectTypes.TimeLogSectionType => ({
+export const createTimeLogSection = (
+	schema: projectTypes.ProjectSchemaType,
+): projectTypes.TimeLogSectionType => ({
 	id: "section-time-log",
 	type: "time-log",
-	title: "Time Log",
+	title: schema.timeLogPageTitle,
 	icon: "⏱️",
 	open: false,
 	locked: true,
+	enabled: true,
 	placement: "start",
 	days: [createTimeDay()],
-	photos: [],
-});
-
-export const createOutroSection = (): projectTypes.PhotosSectionType => ({
-	id: "section-outro",
-	type: "photos",
-	title: "Outro",
-	icon: "🏁",
-	open: false,
-	locked: true,
-	placement: "end",
-	description: "",
 	photos: [],
 });
 
 export const createPhotoSection = (
 	title: string,
 	icon: string,
+	variant: string,
 	open = false,
+	pageId: string | null = null,
+	required = false,
 ): projectTypes.PhotosSectionType => ({
 	id: nextId("section"),
 	type: "photos",
@@ -76,56 +107,71 @@ export const createPhotoSection = (
 	icon,
 	open,
 	locked: false,
+	enabled: true,
 	placement: "middle",
 	description: "",
+	variant,
+	pageId,
+	required,
 	photos: [],
 });
 
-export const createInitialMiddleSections =
-	(): projectTypes.PhotosSectionType[] => [
-		createPhotoSection("Section 1", "🧩"),
-		createPhotoSection("Section 2", "🧩"),
-		createPhotoSection("Section 3", "🧩"),
+export const createPagePhotoSection = (
+	page: projectTypes.PageDefinitionType,
+): projectTypes.PhotosSectionType => ({
+	id: getPageSectionId(page.id),
+	type: "photos",
+	title: page.page,
+	icon: "🖼️",
+	open: false,
+	locked: true,
+	enabled: page.required,
+	placement: "middle",
+	description: "",
+	variant: getPagePhotoVariant(page),
+	pageId: page.id,
+	required: page.required,
+	photos: [],
+});
+
+export function createFixedSectionTemplates(
+	schema: projectTypes.ProjectSchemaType,
+): projectTypes.SectionTemplateType[] {
+	return [
+		...schema.fieldGroups.map((group) => ({
+			id: `section-${group.section.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+			type: "fields" as const,
+			title: group.section,
+			icon: getSectionIcon(group.section),
+			placement: "start" as const,
+			create: () => createFieldSection(group),
+		})),
+		{
+			id: "section-time-log",
+			type: "time-log",
+			title: schema.timeLogPageTitle,
+			icon: "⏱️",
+			placement: "start",
+			create: () => createTimeLogSection(schema),
+		},
+		...schema.pages.filter((page) => page.type === "photo").map((page) => ({
+			id: getPageSectionId(page.id),
+			type: "photos" as const,
+			title: page.page,
+			icon: "🖼️",
+			placement: "middle" as const,
+			create: () => createPagePhotoSection(page),
+		})),
 	];
-
-export const fixedSectionTemplates: projectTypes.SectionTemplateType[] = [
-	{
-		id: "section-cover-page",
-		type: "cover",
-		title: "Cover Page",
-		icon: "📄",
-		placement: "start",
-		create: createCoverSection,
-	},
-	{
-		id: "section-time-log",
-		type: "time-log",
-		title: "Time Log",
-		icon: "⏱️",
-		placement: "start",
-		create: createTimeLogSection,
-	},
-	{
-		id: "section-outro",
-		type: "photos",
-		title: "Outro",
-		icon: "🏁",
-		placement: "end",
-		create: createOutroSection,
-	},
-];
-
-export const fixedSectionIds = new Set(
-	fixedSectionTemplates.map((section) => section.id),
-);
-
-export const fixedSectionTemplateById = new Map(
-	fixedSectionTemplates.map((section) => [section.id, section]),
-);
+}
 
 export function orderSections(
 	items: projectTypes.SectionType[],
+	fixedSectionTemplates: projectTypes.SectionTemplateType[],
 ): projectTypes.SectionType[] {
+	const fixedSectionIds = new Set(
+		fixedSectionTemplates.map((section) => section.id),
+	);
 	const middleSections = items.filter((section) =>
 		!fixedSectionIds.has(section.id)
 	);
@@ -135,27 +181,28 @@ export function orderSections(
 		.map((section) =>
 			items.find((item) => item.id === section.id) ?? section.create()
 		)
-		.concat(middleSections)
 		.concat(
 			fixedSectionTemplates
-				.filter((section) => section.placement === "end")
+				.filter((section) => section.placement === "middle")
 				.map((section) =>
 					items.find((item) => item.id === section.id) ?? section.create()
 				),
-		);
+		)
+		.concat(middleSections);
 }
 
-export function createDefaultState(): projectTypes.PersistedStateType {
+export function createDefaultState(
+	schema: projectTypes.ProjectSchemaType,
+): projectTypes.PersistedStateType {
+	const fixedSectionTemplates = createFixedSectionTemplates(schema);
 	return {
 		activeTab: "create",
 		previewZoom: 1,
 		hasUserZoomed: false,
-		sections: orderSections([
-			fixedSectionTemplates[0].create(),
-			fixedSectionTemplates[1].create(),
-			...createInitialMiddleSections(),
-			fixedSectionTemplates[2].create(),
-		]),
+		sections: orderSections(
+			fixedSectionTemplates.map((template) => template.create()),
+			fixedSectionTemplates,
+		),
 	};
 }
 
@@ -235,6 +282,7 @@ export function normalizePhotoItem(value: unknown): projectTypes.PhotoItemType {
 export function normalizeSection(
 	value: unknown,
 	index: number,
+	fixedSectionTemplateById: Map<string, projectTypes.SectionTemplateType>,
 ): projectTypes.SectionType {
 	const section = value as Partial<projectTypes.SectionType> & {
 		fields?: Partial<projectTypes.DetailsFieldsType>;
@@ -250,28 +298,32 @@ export function normalizeSection(
 		? section.photos.map(normalizePhotoItem).filter((photo) => photo.src)
 		: [];
 
-	if (section.type === "cover") {
+	if (section.type === "fields" || section.type === "cover") {
 		return {
-			id: typeof section.id === "string" ? section.id : "section-cover-page",
-			type: "cover",
+			id: typeof section.id === "string" ? section.id : nextId("section"),
+			type: "fields",
+			section:
+				typeof (section as projectTypes.FieldSectionType).section === "string"
+					? String((section as projectTypes.FieldSectionType).section)
+					: template?.title || `Section ${index + 1}`,
 			title: typeof section.title === "string"
 				? section.title
-				: template?.title || "Cover Page",
+				: template?.title || `Section ${index + 1}`,
 			icon: typeof section.icon === "string"
 				? section.icon
-				: template?.icon || "📄",
+				: template?.icon || "🧩",
 			open: Boolean(section.open),
 			locked: template ? true : Boolean(section.locked),
+			enabled: true,
 			placement: template?.placement || section.placement || "middle",
-			fields: {
-				reportTitle: String(section.fields?.reportTitle || "Survey Report"),
-				facilityName: String(section.fields?.facilityName || ""),
-				startDate: String(section.fields?.startDate || ""),
-				endDate: String(section.fields?.endDate || ""),
-				clientName: String(section.fields?.clientName || ""),
-				preparedBy: String(section.fields?.preparedBy || "Justin O'Neill"),
-				documentId: String(section.fields?.documentId || "DOC-001"),
-			},
+			fields: Object.fromEntries(
+				Object.entries(section.fields || {}).map(([key, itemValue]) => [
+					key,
+					Array.isArray(itemValue)
+						? itemValue.map((entry) => String(entry || ""))
+						: String(itemValue || ""),
+				]),
+			),
 			photos,
 		};
 	}
@@ -292,11 +344,26 @@ export function normalizeSection(
 				: template?.icon || "⏱️",
 			open: Boolean(section.open),
 			locked: template ? true : Boolean(section.locked),
+			enabled: true,
 			placement: template?.placement || section.placement || "middle",
 			days: days.length ? days : [createTimeDay()],
 			photos,
 		};
 	}
+
+	const templateSection = template?.create();
+	const templatePhotoSection =
+		templateSection && templateSection.type === "photos"
+			? templateSection
+			: null;
+	const required = templatePhotoSection?.required || Boolean(
+		(section as Partial<projectTypes.PhotosSectionType>)?.required,
+	);
+	const enabled = required
+		? true
+		: typeof section.enabled === "boolean"
+		? section.enabled
+		: templatePhotoSection?.enabled ?? true;
 
 	return {
 		id: typeof section.id === "string" ? section.id : nextId("section"),
@@ -309,16 +376,31 @@ export function normalizeSection(
 			: template?.icon || "🧩",
 		open: Boolean(section.open),
 		locked: template ? true : Boolean(section.locked),
+		enabled,
 		placement: template?.placement || section.placement || "middle",
 		description: String(
 			(section as projectTypes.PhotosSectionType)?.description || "",
 		),
+		variant: String(
+			(section as projectTypes.PhotosSectionType)?.variant || "photos-4",
+		),
+		pageId:
+			typeof (section as projectTypes.PhotosSectionType)?.pageId === "string"
+				? String((section as projectTypes.PhotosSectionType).pageId)
+				: templatePhotoSection?.pageId || null,
+		required,
 		photos,
 	};
 }
 
-export function loadState(): projectTypes.PersistedStateType {
-	const defaults = createDefaultState();
+export function loadState(
+	schema: projectTypes.ProjectSchemaType,
+): projectTypes.PersistedStateType {
+	const defaults = createDefaultState(schema);
+	const fixedSectionTemplates = createFixedSectionTemplates(schema);
+	const fixedSectionTemplateById = new Map(
+		fixedSectionTemplates.map((section) => [section.id, section]),
+	);
 	const parsed = persist.read<Partial<projectTypes.PersistedStateType>>({
 		key: storageKey,
 		fallback: {},
@@ -329,18 +411,42 @@ export function loadState(): projectTypes.PersistedStateType {
 	}
 
 	try {
+		const legacyCoverSection = Array.isArray(parsed.sections)
+			? parsed.sections.find((section: unknown) =>
+				(section as { type?: string }).type === "cover"
+			)
+			: undefined;
 		const parsedSections = Array.isArray(parsed.sections)
 			? parsed.sections.filter(
 				(section: unknown) =>
 					(section as { id?: string; type?: string }).id !==
 						"section-table-of-contents" &&
+					(section as { type?: string }).type !== "cover" &&
 					(section as { id?: string; type?: string }).type !== "toc",
 			)
 			: defaults.sections;
 
 		const normalizedSections = orderSections(
-			parsedSections.map(normalizeSection),
+			parsedSections.map((section, index) =>
+				normalizeSection(section, index, fixedSectionTemplateById)
+			),
+			fixedSectionTemplates,
 		);
+
+		if (legacyCoverSection && typeof legacyCoverSection === "object") {
+			const legacyFields =
+				(legacyCoverSection as { fields?: projectTypes.DetailsFieldsType })
+					.fields || {};
+			for (const section of normalizedSections) {
+				if (section.type !== "fields") continue;
+				for (const path of Object.keys(section.fields)) {
+					if (!(path in legacyFields)) continue;
+					section.fields[path] = Array.isArray(legacyFields[path])
+						? [...legacyFields[path] as string[]]
+						: String(legacyFields[path] || "");
+				}
+			}
+		}
 		const hasOpenSection = normalizedSections.some((section) => section.open);
 
 		return {

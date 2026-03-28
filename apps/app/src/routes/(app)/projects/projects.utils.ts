@@ -1,9 +1,6 @@
 import { browser } from "$app/environment";
 
-import {
-	detailFields,
-	overallProgressRingCircumference,
-} from "./projects.constants";
+import { overallProgressRingCircumference } from "./projects.constants";
 import type * as projectTypes from "./projects.types";
 
 let idCounter = 0;
@@ -87,13 +84,20 @@ export function formatDayDate(dateISO: string): string {
 export function getSectionMetrics(
 	section: projectTypes.SectionType,
 ): projectTypes.SectionMetricsType {
-	if (section.type === "cover") {
-		const done = detailFields.reduce(
-			(count, field) =>
-				count + (String(section.fields[field.key] || "").trim() ? 1 : 0),
-			0,
-		);
-		const total = detailFields.length;
+	if (!section.enabled) {
+		return { done: 0, total: 0, percent: 0 };
+	}
+
+	if (section.type === "fields" || section.type === "cover") {
+		const values = Object.values(section.fields);
+		const done = values.reduce((count, value) => {
+			if (Array.isArray(value)) {
+				return count + Number(value.some((item) => String(item || "").trim()));
+			}
+
+			return count + Number(String(value || "").trim().length > 0);
+		}, 0);
+		const total = Math.max(1, values.length);
 		return { done, total, percent: toPercent(done, total) };
 	}
 
@@ -117,7 +121,9 @@ export function getSectionMetrics(
 	}
 
 	const done = Number(Boolean(section.title.trim())) +
-		Number(Boolean(section.description.trim())) +
+		Number(
+			Boolean((section as projectTypes.PhotosSectionType).description.trim()),
+		) +
 		Number(section.photos.length > 0);
 	const total = 3;
 	return { done, total, percent: toPercent(done, total) };
@@ -190,7 +196,9 @@ export function getPhotoOrientation(
 export function getPreviewPhotoGridClass(
 	section: projectTypes.PhotosSectionType,
 ): string {
-	if (section.photos.length <= 1) return "grid gap-3";
+	const slots = getPhotoVariantCount(section.variant, section.photos.length);
+	if (slots <= 1) return "grid gap-3";
+	if (slots <= 2) return "grid grid-cols-2 gap-3";
 	return "grid grid-cols-2 gap-3";
 }
 
@@ -206,16 +214,26 @@ export function getPreviewPhotoFrameHeight(
 	photo: projectTypes.PhotoItemType,
 ): string {
 	const orientation = getPhotoOrientation(photo);
+	const slots = getPhotoVariantCount(section.variant, section.photos.length);
 
-	if (section.photos.length === 1) {
+	if (slots === 1) {
 		return orientation === "portrait" ? "5.6in" : "4.7in";
 	}
 
-	if (section.photos.length === 2) {
+	if (slots === 2) {
 		return orientation === "portrait" ? "3.55in" : "2.45in";
 	}
 
 	return orientation === "portrait" ? "2.7in" : "1.9in";
+}
+
+export function getPhotoVariantCount(
+	variant: string,
+	fallback: number,
+): number {
+	const match = variant.match(/(\d+)$/);
+	const count = match ? Number(match[1]) : fallback;
+	return Number.isFinite(count) && count > 0 ? count : Math.max(1, fallback);
 }
 
 export function fileToDataUrl(file: File): Promise<string> {

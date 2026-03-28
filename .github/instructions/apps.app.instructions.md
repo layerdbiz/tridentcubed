@@ -64,6 +64,20 @@ The sheet defines:
 - options (`options`)
 - defaults, placeholders, etc.
 
+These sheets are a work in progress but still incomplete. We need to make minimal changes to these files so we can have a solid plan to go by as this is the CORE of our app. I've included both instruction files and data files to reference. We will need to edit these `.csv` files accordingly and I will upload them back into the Google Sheet in order for us to consume the JSON via Sheetari.
+
+csv's:
+
+- `apps/app/src/lib/data/page.instructions.csv`
+- `apps/app/src/lib/data/pages.csv`
+- `apps/app/src/lib/data/section.instructions.csv`
+- `apps/app/src/lib/data/sections.csv`
+
+sheetari (json)
+
+- https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/sections?range=b1:z
+- https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/pages
+
 ---
 
 ## Sheet → JSON (Sheetari)

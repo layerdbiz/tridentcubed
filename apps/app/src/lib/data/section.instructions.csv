@@ -1,0 +1,21 @@
+id,name,type,description,options
+1,id,system,unique row identifier for the field definition,
+2,section,list,groups related fields together in the UI or blueprint,"Organization, Project, Team, Client, Facility, Carrier, Items, Inspection, Damages, Discharge, Time Log, Custom"
+3,label,string,human-readable field label,
+4,path,string,unique field path / logical field identifier,
+5,type,list,actual stored value type,"string, number, boolean, date, datetime, enum, object, array, file, image, richtext"
+6,input,list,UI control used to capture or edit the value,"text, textarea, select, multiselect, date, datetime, number, email, tel, url, file, image, checkbox, radio, repeater, richtext, hidden"
+7,options,list,"If ""select"" or ""multiselect"" is chosen from input list, these options are what can be used",
+8,source,list,where the value comes from,"user, system, prefilled, derived, template, external"
+9,editable,boolean,whether the user can change the value,"TRUE, FALSE"
+10,required,boolean,whether the value must exist for the record to be valid,"TRUE, FALSE"
+11,repeatable,boolean,whether the field is single-value or multi-value,"TRUE, FALSE"
+12,value,any,initial value used when creating a new record,
+13,placeholder,string,form hint text shown before input,
+14,validation,object,"validation rules like min, max, pattern, or format","required, min, max, minLength, maxLength, pattern, email, url, phone, date"
+15,visibility,list,"whether the field is shown, hidden, or conditional. Sometimes hidden fields data/value can be used in output/preview pages or other dervived data","visible, hidden, conditional"
+16,outputToPages,list,what pages the field is consumed in output/rendering,"Cover, Table of Contents, Introduction, Project Report, Personnel in Attendance, Cargo Description, Cargo Condition Inspection, Time Log, Cargo Operations, Cargo Damages, Cargo Storage, Cargo Trailer Securement, Ships Particulars, Ships Certifications, Barge Information, Lifting Plan, Lifting Gear, Stowage Plan, Post-Discharge Inspection, Disclaimer"
+17,outputToPageSection,list,what page sections the field is consumed in output/rendering,"header, main, footer"
+18,example,string,sample value to clarify intent,
+19,reference,array,reference id's that this data field depends on,
+20,notes,string,"implementation notes, edge cases, or extra context",

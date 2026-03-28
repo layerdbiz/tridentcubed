@@ -2,6 +2,7 @@
 	import { flip } from 'svelte/animate';
 	import { fromAction } from 'svelte/attachments';
 	import type { SortableApi } from '@layerd/ui';
+	import * as projectSchemas from '../projects.schema';
 	import {
 		Grid,
 		Button,
@@ -26,6 +27,7 @@
 		isDesktop: boolean;
 		activePane: WorkspacePaneType;
 		sections: projectTypes.SectionType[];
+		schema: projectTypes.ProjectSchemaType;
 		draggedSectionId: string;
 		draggedPhotoId: string;
 		photoDropId: string;
@@ -42,6 +44,7 @@
 		handleSectionActionDisabledClick: (event: MouseEvent) => void;
 		addSection: () => void;
 		resetReport: () => void;
+		toggleSectionEnabled: (sectionId: string) => void;
 		removeDay: (section: projectTypes.TimeLogSectionType, dayId: string) => void;
 		addDay: (section: projectTypes.TimeLogSectionType) => void;
 		removeEntry: (day: projectTypes.TimeDayType, entryId: string) => void;
@@ -53,12 +56,14 @@
 		handlePhotoZoneDragLeave: (sectionId: string) => void;
 		handlePhotoZoneDrop: (sectionId: string, event: DragEvent) => Promise<void>;
 		removePhoto: (section: projectTypes.PhotosSectionType, photoId: string) => void;
+		setSectionFieldValue: (sectionId: string, path: string, value: projectTypes.FieldStateValueType) => void;
 	}
 
 	let {
 		isDesktop,
 		activePane,
 		sections,
+		schema,
 		draggedSectionId,
 		draggedPhotoId,
 		photoDropId,
@@ -75,6 +80,7 @@
 		handleSectionActionDisabledClick,
 		addSection,
 		resetReport,
+		toggleSectionEnabled,
 		removeDay,
 		addDay,
 		removeEntry,
@@ -85,8 +91,42 @@
 		handlePhotoZoneDragOver,
 		handlePhotoZoneDragLeave,
 		handlePhotoZoneDrop,
-		removePhoto
+		removePhoto,
+		setSectionFieldValue
 	}: PanelsProps = $props();
+
+	function isToggleableSection(
+		section: projectTypes.SectionType,
+	): section is projectTypes.PhotosSectionType {
+		return section.type === 'photos' && Boolean(section.pageId) && !section.required;
+	}
+
+	function handleSectionToggleClick(event: MouseEvent, sectionId: string) {
+		event.preventDefault();
+		event.stopPropagation();
+		toggleSectionEnabled(sectionId);
+	}
+
+	function handleFieldInput(sectionId: string, path: string, event: Event) {
+		const target = event.target as HTMLInputElement | HTMLTextAreaElement | null;
+		setSectionFieldValue(sectionId, path, target?.value ?? '');
+	}
+
+	function handleFieldSelect(sectionId: string, path: string, event: Event) {
+		const target = event.currentTarget as HTMLSelectElement | null;
+		if (!target) return;
+
+		if (target.multiple) {
+			setSectionFieldValue(
+				sectionId,
+				path,
+				Array.from(target.selectedOptions).map((option) => option.value)
+			);
+			return;
+		}
+
+		setSectionFieldValue(sectionId, path, target.value);
+	}
 </script>
 
 <section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
@@ -139,9 +179,10 @@
 		>
 			{#each sections as section, index (section.id)}
 				{@const metrics = projectUtils.getSectionMetrics(section)}
-				{@const sectionStatusLabel = projectUtils.getSectionStatusLabel(metrics)}
-				{@const sectionStatusTextClass = projectUtils.getSectionStatusTextClass(metrics)}
-				{@const sectionProgressFillClass = projectUtils.getSectionProgressFillClass(metrics)}
+				{@const sectionDisabled = !section.enabled}
+				{@const sectionStatusLabel = sectionDisabled ? 'DISABLED' : projectUtils.getSectionStatusLabel(metrics)}
+				{@const sectionStatusTextClass = sectionDisabled ? 'text-neutral-400' : projectUtils.getSectionStatusTextClass(metrics)}
+				{@const sectionProgressFillClass = sectionDisabled ? 'bg-secondary-300' : projectUtils.getSectionProgressFillClass(metrics)}
 
 				<div
 					id={getAccordionAnchorId(section.id)}
@@ -153,7 +194,7 @@
 				>
 					<Accordion class="relative" name="report-sections" open={section.open} ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}>
 						<AccordionTitle
-							class="shadow-[-12px_-12px_0px_white] sticky top-0 z-1 block w-full cursor-pointer rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 p-4 text-left {section.open ? '' : 'rounded-b-2xl'}"
+							class="shadow-[-12px_-12px_0px_white] sticky top-0 z-1 block w-full rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 p-4 text-left transition {section.open ? '' : 'rounded-b-2xl'} {sectionDisabled ? 'cursor-not-allowed grayscale opacity-70' : 'cursor-pointer'}"
 							onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
 						>
 							<div class="flex items-start gap-3">
@@ -170,18 +211,29 @@
 											<div class="flex flex-wrap items-center gap-2">
 												<h3 class="text-sm font-bold text-neutral-800">{section.title}</h3>
 											</div>
-											<p class="text-xs text-neutral-500">{metrics.done} of {metrics.total} complete</p>
+											<p class="text-xs text-neutral-500">{sectionDisabled ? 'Disabled for preview' : `${metrics.done} of ${metrics.total} complete`}</p>
 										</div>
 										<div class="text-right">
-											<p class="text-sm font-bold text-neutral-700">{metrics.percent}%</p>
+											<p class="text-sm font-bold text-neutral-700">{sectionDisabled ? 'OFF' : `${metrics.percent}%`}</p>
 											<p class={`${projectConstants.metricStatusCaptionClass} ${sectionStatusTextClass}`}>{sectionStatusLabel}</p>
 										</div>
 									</div>
 									<div class="h-2.5 overflow-hidden rounded-full bg-secondary-200/60">
-										<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${metrics.percent}%`}></div>
+										<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${sectionDisabled ? 0 : metrics.percent}%`}></div>
 									</div>
 								</div>
-								{#if projectStates.isSectionMovable(section)}
+										{#if isToggleableSection(section)}
+											<button
+												type="button"
+												role="switch"
+												aria-checked={section.enabled}
+												aria-label={`${section.enabled ? 'Disable' : 'Enable'} ${section.title}`}
+												class={`absolute -right-2 -top-2 flex h-6 w-11 items-center rounded-full border p-0.5 transition ${section.enabled ? 'justify-end border-success-600 bg-success-500' : 'justify-start border-secondary-300 bg-white'}`}
+												onclick={(event: MouseEvent) => handleSectionToggleClick(event, section.id)}
+											>
+												<span class={`block h-4.5 w-4.5 rounded-full ${section.enabled ? 'bg-white' : 'bg-neutral-400'}`}></span>
+											</button>
+										{:else if projectStates.isSectionMovable(section)}
 									<Button variant="icon" icon="close" class="absolute! -top-2! -right-2! text-[8px]!" aria-label={`Delete ${section.title}`} onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)} />
 								{:else}
 									<Button variant="icon" icon="lock" class="absolute! -top-2! -right-2! text-[8px]! bg-secondary-200 text-secondary-400 opacity-100" aria-label={`${section.title} is locked`} onclick={handleSectionActionDisabledClick} disabled />
@@ -190,11 +242,35 @@
 						</AccordionTitle>
 
 						<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
-							{#if section.type === 'cover'}
-								<div class="relative z-0 grid gap-4">
-									{#each projectConstants.detailFields as field (field.key)}
-										<InputNew xs bind:value={section.fields[field.key]} label={field.label} type={field.type || 'text'} />
-									{/each}
+							<div class:grayscale={sectionDisabled} class:opacity-60={sectionDisabled} class:pointer-events-none={sectionDisabled}>
+							{#if section.type === 'fields' || section.type === 'cover'}
+								{@const group = projectSchemas.getFieldGroup(schema, section.section)}
+								<div class="relative z-0 grid gap-5">
+									{#if group}
+										<div class="space-y-3 rounded-2xl border border-secondary-200 bg-white p-4">
+											<Text h4={group.section} class="font-bold text-neutral-800" />
+											<div class="grid gap-3 md:grid-cols-2">
+												{#each group.fields as field (field.id)}
+													<div class={field.input === 'textarea' || field.input === 'multiselect' ? 'md:col-span-2' : ''}>
+														{#if field.input === 'textarea'}
+															<InputNew xs label={field.label} variant="text" type="text" value={projectSchemas.getFieldStringValue(section.fields, field.path)} placeholder={field.placeholder || ' '} disabled={!section.enabled || !field.editable} oninput={(event: Event) => handleFieldInput(section.id, field.path, event)} />
+														{:else if (field.input === 'select' || field.input === 'multiselect') && field.options.length}
+															<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+																<span>{field.label}</span>
+																<select class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15" multiple={field.input === 'multiselect'} disabled={!section.enabled || !field.editable} onchange={(event) => handleFieldSelect(section.id, field.path, event)}>
+																	{#each field.options as option (option)}
+																		<option selected={Array.isArray(section.fields[field.path]) ? section.fields[field.path].includes(option) : projectSchemas.getFieldStringValue(section.fields, field.path) === option} value={option}>{option}</option>
+																	{/each}
+																</select>
+															</label>
+														{:else}
+															<InputNew xs label={field.label} variant="text" type={field.input === 'date' ? 'date' : field.input === 'email' ? 'email' : field.input === 'tel' ? 'tel' : field.input === 'url' ? 'url' : field.input === 'number' ? 'number' : 'text'} value={projectSchemas.getFieldStringValue(section.fields, field.path)} placeholder={field.placeholder || ' '} disabled={!section.enabled || !field.editable} oninput={(event: Event) => handleFieldInput(section.id, field.path, event)} />
+														{/if}
+													</div>
+												{/each}
+											</div>
+										</div>
+									{/if}
 								</div>
 							{:else if section.type === 'time-log'}
 								<div class="space-y-4">
@@ -203,7 +279,6 @@
 											<InputNew xs type="date" label="Date" bind:value={day.dateISO} />
 											<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)} />
 										</Grid>
-										<p class="mb-3 text-xs font-semibold text-neutral-600">{projectUtils.formatDayDate(day.dateISO) || 'Select a date to generate the day name.'}</p>
 										{#each day.entries as entry (entry.id)}
 											<Grid items="1x3" cols="160px 1fr auto" gap="8px">
 												<InputNew xs bind:value={entry.time} label="Time" variant="text" inputmode="numeric" type="time" min="00:00" max="23:59" step="600" onblur={() => maybeAddEntry(day, entry.id)} />
@@ -215,21 +290,29 @@
 									{/each}
 									<Button primary xs variant="text" label="Add Day" onclick={() => addDay(section)} />
 								</div>
-							{:else}
+							{:else if section.type === 'photos'}
 								<div class="space-y-3">
 									{#if !section.locked}
-										<InputNew xs bind:value={section.title} label="Title" variant="text" type="text" />
+										<InputNew xs bind:value={section.title} label="Title" variant="text" type="text" disabled={!section.enabled} />
 									{/if}
-									<InputNew xs bind:value={section.description} textarea label="Description" variant="text" type="text" />
+									<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+										<span>Variant</span>
+										<select class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15" bind:value={section.variant} disabled={!section.enabled}>
+											{#each schema.customVariantOptions as option (option)}
+												<option value={option}>{option}</option>
+											{/each}
+										</select>
+									</label>
+									<InputNew xs bind:value={section.description} textarea label="Description" variant="text" type="text" disabled={!section.enabled} />
 									<div class="space-y-3">
 										<div class="flex flex-wrap gap-2">
-											<label class="rounded-xl bg-primary-500 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-primary-600">
+											<label class={`rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}>
 												<span>Upload</span>
-												<input accept="image/*" class="hidden" multiple type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
+												<input accept="image/*" class="hidden" multiple type="file" disabled={!section.enabled} onchange={(event) => handlePhotoInput(section.id, event)} />
 											</label>
-											<label class="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 shadow-sm">
+											<label class={`rounded-xl border px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled ? 'border-neutral-300 bg-white text-neutral-700' : 'border-secondary-200 bg-secondary-100 text-neutral-500'}`}>
 												<span>Camera</span>
-												<input accept="image/*" capture="environment" class="hidden" type="file" onchange={(event) => handlePhotoInput(section.id, event)} />
+												<input accept="image/*" capture="environment" class="hidden" type="file" disabled={!section.enabled} onchange={(event) => handlePhotoInput(section.id, event)} />
 											</label>
 										</div>
 										<div role="presentation" class:drop-target={photoDropId === section.id} class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-center text-xs font-medium text-neutral-500" ondragover={(event) => handlePhotoZoneDragOver(section.id, event)} ondragleave={() => handlePhotoZoneDragLeave(section.id)} ondrop={(event) => handlePhotoZoneDrop(section.id, event)}>
@@ -252,6 +335,7 @@
 									</div>
 								</div>
 							{/if}
+							</div>
 						</AccordionContent>
 					</Accordion>
 				</div>

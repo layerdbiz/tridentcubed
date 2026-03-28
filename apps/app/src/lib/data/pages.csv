@@ -1,0 +1,21 @@
+id,order,required,page,type,section,notes,reference
+PAGE-001,1,TRUE,Cover,full,main,"This is a cover photo that includes some branding and some key data that gives an overall snapshot of the report. e.g. it will have report type, report title, carrier name, project owner name, org logo, facility name, dates dervived from the timelog, and the client name and client logo.",
+PAGE-002,2,TRUE,Table of Contents,toc,"header, main, footer",Auto generated table of contents based on a combination of required pages and optional panels. Users will be able to toggle the optional panels on or off. There will also be subsection pages created when photo-based pages exceed their per-page limit.,
+PAGE-003,3,TRUE,Introduction,photo,"header, main, footer",This is a quick intro page that uses the data entered from the panels to create a summary. it should also use a single photo showing the carrier photo that the user uploaded,
+PAGE-004,4,TRUE,Project Report,template,"header, main, footer","This page encompasses the personnel, cargo description, and cargo inspection pages (multi-page)",
+PAGE-005,5,TRUE,Personnel in Attendance,team,"header, main, footer","This section shows the ""project owner"" and ""assigned team members"" in a card style with different data for each e.g. photo, name, title, phone, email. the project owner will have a special badge to signify they are the main point of contact for that particular project. ",
+PAGE-006,6,TRUE,Cargo Description,photo,"header, main, footer",This pulls in the project title and project description along with a full page photo the user uploads of the item list. later on this will be a table view of items we will create in a future release.,PAGE-007
+PAGE-007,7,TRUE,Cargo Condition Inspection,photo,"header, main, footer","This page and all of the pages that reference this page id are what i'm referring to as ""photo"" or ""custom"" pages. These are all similar in nature, the only thing special about them is that there data can change out, the number of photos per page can change out from 1, 2, 4, 6, 8, and lastly they can be multipage based on the number of photos the user uploads. ",
+PAGE-008,8,TRUE,Time Log,list,"header, main, footer","The timelog is dynamic and can have as many days, times, and time activity that the user writes. ",
+PAGE-009,9,TRUE,Cargo Operations,photo,"header, main, footer",,PAGE-007
+PAGE-010,10,FALSE,Cargo Damages,photo,"header, main, footer",see reference,PAGE-007
+PAGE-011,11,FALSE,Cargo Storage,photo,"header, main, footer",see reference,PAGE-007
+PAGE-012,12,FALSE,Cargo Trailer Securement,photo,"header, main, footer",see reference,PAGE-007
+PAGE-013,13,FALSE,Ships Particulars,photo,"header, main, footer",see reference,PAGE-007
+PAGE-014,14,FALSE,Ships Certifications,photo,"header, main, footer",see reference,PAGE-007
+PAGE-015,15,FALSE,Barge Information,photo,"header, main, footer",see reference,PAGE-007
+PAGE-016,16,FALSE,Lifting Plan,photo,"header, main, footer",see reference,PAGE-007
+PAGE-017,17,FALSE,Lifting Gear,photo,"header, main, footer",see reference,PAGE-007
+PAGE-018,18,FALSE,Stowage Plan,photo,"header, main, footer",see reference,PAGE-007
+PAGE-019,19,FALSE,Post-Discharge Inspection,photo,"header, main, footer",see reference,PAGE-007
+PAGE-020,20,TRUE,Disclaimer,template,"header, main, footer","This is custom disclaimer template that never changes. the only dynamic piece is the part that comes after the disclaimer where it will be a photo of the ""project owner"", with a special message that includes their photo, name, title, phone number, and email similar to a custom html email signature.",

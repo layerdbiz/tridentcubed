@@ -20,18 +20,22 @@
 	import { onMount, tick } from 'svelte';
 	import * as projectConstants from '../projects.constants';
 	import type { ExportFormatType } from '../projects.constants';
+	import { fetchProjectDefinitions } from '../projects.remote';
+	import * as projectSchemas from '../projects.schema';
 	import * as projectUtils from '../projects.utils';
 	import * as projectStates from '../projects.state';
 	import Panels from './panels.svelte';
 	import Preview from './preview.svelte';
 	import type * as projectTypes from '../projects.types';
 
+	const projectDefinitions = await fetchProjectDefinitions();
+	const projectSchema = projectSchemas.createProjectSchema(projectDefinitions);
 	const sectionSortType = 'report-section';
 	const photoSortTypePrefix = 'report-photo:';
-	const baseState = projectStates.createDefaultState();
+	const baseState = projectStates.createDefaultState(projectSchema);
 	const projectPersist = persist.json<projectTypes.PersistedStateType>({
 		key: projectConstants.storageKey,
-		fallback: () => projectStates.createDefaultState()
+		fallback: () => projectStates.createDefaultState(projectSchema)
 	});
 
 	type WorkspacePaneType = 'edit' | 'preview';
@@ -65,31 +69,192 @@
 		return page.url.searchParams.get('pane') === 'preview' ? 'preview' : 'edit';
 	});
 	const overallMetrics = $derived(projectUtils.getOverallMetrics(sections));
-	const reportSection = $derived(sections.find((section) => section.type === 'cover') as projectTypes.CoverSectionType | undefined);
-	const exportFileName = $derived(`${projectUtils.slugify(reportSection?.fields.reportTitle || 'survey-report')}.pdf`);
-	const previewContentSections = $derived(sections.filter((section) => section.type !== 'cover'));
-	const tableOfContentsEntries = $derived([
-		{ id: 'toc-cover', title: reportSection?.title || 'Cover Page', page: 1 },
-		{ id: 'toc-index', title: 'Table of Contents', page: 2 },
-		...previewContentSections.map((section, index) => ({
-			id: `toc-${section.id}`,
-			title: section.title,
-			page: index + 3
-		}))
+	const timeLogSection = $derived(sections.find((section) => section.type === 'time-log') as projectTypes.TimeLogSectionType | undefined);
+	const photoSections = $derived(sections.filter((section) => section.type === 'photos') as projectTypes.PhotosSectionType[]);
+	const pagePhotoSections = $derived(photoSections.filter((section) => Boolean(section.pageId)));
+	const customPhotoSections = $derived(photoSections.filter((section) => !section.pageId));
+	const reportTitle = $derived(projectSchemas.getSectionFieldStringValue(sections, 'project.title') || 'Survey Report');
+	const reportSubtitle = $derived(projectSchemas.getSectionFieldStringValue(sections, 'project.subtitle'));
+	const exportFileName = $derived(`${projectUtils.slugify(reportTitle || 'survey-report')}.pdf`);
+	const projectSummaryItems = $derived<projectTypes.PreviewSummaryItemType[]>([
+		{ label: 'Organization', value: projectSchemas.getSectionFieldStringValue(sections, 'org.name') || '—' },
+		{ label: 'Project', value: reportTitle || '—', emphasis: true },
+		{ label: 'Client', value: projectSchemas.getSectionFieldStringValue(sections, 'client.company') || '—' },
+		{ label: 'Facility', value: projectSchemas.getSectionFieldStringValue(sections, 'facility.name') || '—' },
+		{ label: 'Carrier', value: projectSchemas.getSectionFieldStringValue(sections, 'carrier.name') || '—' },
+		{ label: 'Items', value: projectSchemas.getSectionFieldStringValue(sections, 'items.title') || '—' }
 	]);
+	const personnelEntries = $derived.by<projectTypes.PreviewPersonnelItemType[]>(() => {
+		const owner = projectSchemas.getSectionFieldStringValue(sections, 'team.owner').trim();
+		const assigned = getSectionFieldValues('team.assigned').filter((name) => name !== owner);
+
+		return [
+			...(owner ? [{ name: owner, role: 'Project Owner', isPrimary: true }] : []),
+			...assigned.map((name) => ({ name, role: 'Assigned Team Member' }))
+		];
+	});
+	const previewPagesData = $derived.by<projectTypes.PreviewPageItemType[]>(() => {
+		const items: projectTypes.PreviewPageItemType[] = [];
+		const pagePhotoSectionsById = new Map(
+			pagePhotoSections
+				.filter((section): section is projectTypes.PhotosSectionType & { pageId: string } => Boolean(section.pageId))
+				.map((section) => [section.pageId, section])
+		);
+		const enabledCustomSections = customPhotoSections.filter((section) => section.enabled);
+		const disclaimerOrder = projectSchema.pages.reduce((max, item) => Math.max(max, item.order), 0);
+		let customSectionsInserted = false;
+
+		for (const pageDefinition of projectSchema.pages) {
+			if (pageDefinition.order === 1) {
+				items.push({
+					id: pageDefinition.id,
+					title: pageDefinition.page || projectSchema.coverPageTitle,
+					kind: 'cover',
+					pageDefinition,
+					section: null
+				});
+				continue;
+			}
+
+			if (pageDefinition.order === 2 || pageDefinition.page === projectSchema.tocPageTitle) {
+				items.push({
+					id: pageDefinition.id,
+					title: pageDefinition.page || projectSchema.tocPageTitle,
+					kind: 'toc',
+					pageDefinition,
+					section: null
+				});
+				continue;
+			}
+
+			if (pageDefinition.page === projectSchema.timeLogPageTitle) {
+				if (timeLogSection) {
+					items.push({
+						id: pageDefinition.id,
+						title: pageDefinition.page,
+						kind: 'time-log',
+						pageDefinition,
+						section: timeLogSection
+					});
+				}
+				continue;
+			}
+
+			if (pageDefinition.order === disclaimerOrder || pageDefinition.page === projectSchema.disclaimerPageTitle) {
+				for (const section of enabledCustomSections) {
+					items.push({
+						id: section.id,
+						title: section.title,
+						kind: 'photo',
+						pageDefinition: null,
+						section
+					});
+				}
+				customSectionsInserted = true;
+				items.push({
+					id: pageDefinition.id,
+					title: pageDefinition.page || projectSchema.disclaimerPageTitle,
+					kind: 'disclaimer',
+					pageDefinition,
+					section: null
+				});
+				continue;
+			}
+
+			if (pageDefinition.type === 'team') {
+				items.push({
+					id: pageDefinition.id,
+					title: pageDefinition.page,
+					kind: 'team',
+					pageDefinition,
+					section: null
+				});
+				continue;
+			}
+
+			if (pageDefinition.type === 'template') {
+				items.push({
+					id: pageDefinition.id,
+					title: pageDefinition.page,
+					kind: 'template',
+					pageDefinition,
+					section: null
+				});
+				continue;
+			}
+
+			if (pageDefinition.type === 'photo') {
+				const section = pagePhotoSectionsById.get(pageDefinition.id);
+				if (!section) continue;
+				if (!section.enabled && !pageDefinition.required) continue;
+				items.push({
+					id: pageDefinition.id,
+					title: section.title || pageDefinition.page,
+					kind: 'photo',
+					pageDefinition,
+					section
+				});
+			}
+		}
+
+		if (!customSectionsInserted) {
+			for (const section of enabledCustomSections) {
+				items.push({
+					id: section.id,
+					title: section.title,
+					kind: 'photo',
+					pageDefinition: null,
+					section
+				});
+			}
+		}
+
+		return items;
+	});
+	const tableOfContentsEntries = $derived(
+		previewPagesData.map((item, index) => ({
+			id: `toc-${item.id}`,
+			title: item.title,
+			page: index + 1
+		}))
+	);
 	const coverMeta = $derived([
-		{ label: 'Facility', value: reportSection?.fields.facilityName || '—' },
+		{ label: 'Facility', value: projectSchemas.getSectionFieldStringValue(sections, 'facility.name') || '—' },
 		{
 			label: 'Dates',
-			value:
-				reportSection?.fields.startDate && reportSection?.fields.endDate
-					? `${reportSection.fields.startDate} to ${reportSection.fields.endDate}`
-					: '—'
+			value: (() => {
+				const days = timeLogSection?.days.map((day) => day.dateISO).filter(Boolean).sort();
+				if (!days?.length) return '—';
+				if (days.length === 1) return projectUtils.formatDayDate(days[0]) || days[0];
+				const firstDay = days[0];
+				const lastDay = days[days.length - 1];
+				return `${projectUtils.formatDayDate(firstDay) || firstDay} to ${projectUtils.formatDayDate(lastDay) || lastDay}`;
+			})()
 		},
-		{ label: 'Client', value: reportSection?.fields.clientName || '—' },
-		{ label: 'Prepared By', value: reportSection?.fields.preparedBy || '—' },
-		{ label: 'Document ID', value: reportSection?.fields.documentId || '—' }
+		{ label: 'Client', value: projectSchemas.getSectionFieldStringValue(sections, 'client.company') || '—' },
+		{ label: 'Owner', value: projectSchemas.getSectionFieldStringValue(sections, 'team.owner') || '—' },
+		{ label: 'Project Type', value: projectSchemas.getSectionFieldStringValue(sections, 'project.type') || '—' }
 	]);
+
+	function getSectionFieldValues(path: string): string[] {
+		for (const section of sections) {
+			if ((section.type !== 'fields' && section.type !== 'cover') || !(path in section.fields)) {
+				continue;
+			}
+
+			const value = section.fields[path];
+			if (Array.isArray(value)) {
+				return value.map((item) => String(item || '').trim()).filter(Boolean);
+			}
+
+			return String(value || '')
+				.split(',')
+				.map((item) => item.trim())
+				.filter(Boolean);
+		}
+
+		return [];
+	}
 
 	function setMobilePane(nextPane: WorkspacePaneType) {
 		const url = new URL(page.url);
@@ -201,22 +366,55 @@
 
 		const section = sections.find((item) => item.id === sectionId);
 		if (!section) return;
+		if (!section.enabled) {
+			details.open = false;
+			section.open = false;
+			return;
+		}
 
 		section.open = details.open;
 	}
 
 	function addSection() {
 		const nextNumber = projectStates.getNextCustomSectionNumber(sections);
-		const insertIndex = sections.findIndex((section) => section.placement === 'end');
 		for (const section of sections) section.open = false;
 
-		const nextSection = projectStates.createPhotoSection(`Section ${nextNumber}`, '🧩', false);
-		if (insertIndex === -1) {
-			sections.push(nextSection);
-			return;
-		}
+		sections.push(
+			projectStates.createPhotoSection(
+				`Section ${nextNumber}`,
+				'🧩',
+				projectSchema.customVariantOptions[0] || 'photos-4',
+				false
+			)
+		);
+	}
 
-		sections.splice(insertIndex, 0, nextSection);
+	function setSectionFieldValue(sectionId: string, path: string, value: projectTypes.FieldStateValueType) {
+		const sectionIndex = sections.findIndex(
+			(item) => item.id === sectionId && (item.type === 'fields' || item.type === 'cover')
+		);
+		if (sectionIndex === -1) return;
+
+		const section = sections[sectionIndex] as projectTypes.FieldSectionType;
+		const nextSection: projectTypes.FieldSectionType = {
+			...section,
+			fields: {
+				...section.fields,
+				[path]: value
+			}
+		};
+
+		sections = sections.map((item, index) => (index === sectionIndex ? nextSection : item));
+	}
+
+	function toggleSectionEnabled(sectionId: string) {
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section || section.type !== 'photos' || !section.pageId || section.required) return;
+
+		section.enabled = !section.enabled;
+		if (!section.enabled) {
+			section.open = false;
+		}
 	}
 
 	function removeSection(sectionId: string) {
@@ -302,6 +500,14 @@
 	}
 
 	function handleSectionTitleClick(sectionId: string, event: MouseEvent) {
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section) return;
+
+		if (!section.enabled) {
+			event.preventDefault();
+			return;
+		}
+
 		if (suppressSectionToggleId === sectionId && Date.now() < suppressSectionToggleUntil) {
 			suppressSectionToggleId = '';
 			event.preventDefault();
@@ -551,7 +757,7 @@
 		const okay = window.confirm('Reset this report and clear all saved data? This cannot be undone.');
 		if (!okay) return;
 		projectPersist.reset();
-		applyState(projectStates.createDefaultState());
+		applyState(projectStates.createDefaultState(projectSchema));
 		clearDraggedItems();
 		photoDropId = '';
 	}
@@ -563,7 +769,7 @@
 		});
 
 		void (async () => {
-			const next = projectStates.loadState();
+			const next = projectStates.loadState(projectSchema);
 			projectUtils.syncIdCounterFromSections(next.sections);
 			applyState(next);
 			const didHydratePhotoDimensions = await projectUtils.hydratePhotoDimensions(next.sections);
@@ -623,6 +829,7 @@
 				{isDesktop}
 				{activePane}
 				{sections}
+				schema={projectSchema}
 				{draggedSectionId}
 				{draggedPhotoId}
 				{photoDropId}
@@ -639,6 +846,7 @@
 				{handleSectionActionDisabledClick}
 				{addSection}
 				{resetReport}
+				toggleSectionEnabled={toggleSectionEnabled}
 				{removeDay}
 				{addDay}
 				{removeEntry}
@@ -650,6 +858,7 @@
 				{handlePhotoZoneDragLeave}
 				{handlePhotoZoneDrop}
 				{removePhoto}
+				setSectionFieldValue={setSectionFieldValue}
 			/>
 
 			<Preview
@@ -662,14 +871,18 @@
 				{previewZoom}
 				bind:previewViewport
 				bind:previewPages
+				schema={projectSchema}
+				{reportTitle}
+				{reportSubtitle}
 				{handlePreviewWheel}
 				{handlePreviewTouchStart}
 				{handlePreviewTouchMove}
 				{handlePreviewTouchEnd}
-				reportSection={reportSection}
 				{coverMeta}
+				projectSummaryItems={projectSummaryItems}
+				personnelEntries={personnelEntries}
 				{tableOfContentsEntries}
-				{previewContentSections}
+				previewPageItems={previewPagesData}
 				{getSortedEntries}
 			/>
 		</main>
