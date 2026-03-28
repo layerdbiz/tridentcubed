@@ -247,7 +247,7 @@
 								{@const group = projectSchemas.getFieldGroup(schema, section.section)}
 								<div class="relative z-0 grid gap-5">
 									{#if group}
-										<div class="space-y-3 rounded-2xl border border-secondary-200 bg-white p-4">
+										<div class="space-y-3">
 											<Text h4={group.section} class="font-bold text-neutral-800" />
 											<div class="grid gap-3 md:grid-cols-2">
 												{#each group.fields as field (field.id)}

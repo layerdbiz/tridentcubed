@@ -13,7 +13,7 @@
 				class="text-neutral"
 			/>
 		</Item>
-		<Item range="c2:c2" class="flex md:min-w-56">
+		<Item range="c2:c2" class="flex md:min-w-56" row="auto">
 			<Button primary variant="text" label="Open Workspace" href="/projects/current" />
 		</Item>
 	</Grid>
