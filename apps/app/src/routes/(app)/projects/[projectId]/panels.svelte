@@ -249,7 +249,6 @@
 									{#if group}
 										<div class="space-y-3">
 											<Text h4={group.section} class="font-bold text-neutral-800" />
-											<div class="grid gap-3 md:grid-cols-2">
 												{#each group.fields as field (field.id)}
 													<div class={field.input === 'textarea' || field.input === 'multiselect' ? 'md:col-span-2' : ''}>
 														{#if field.input === 'textarea'}
@@ -268,7 +267,6 @@
 														{/if}
 													</div>
 												{/each}
-											</div>
 										</div>
 									{/if}
 								</div>

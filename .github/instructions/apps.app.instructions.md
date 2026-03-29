@@ -46,37 +46,29 @@ Projects List
 
 # 1.4 Planning Source of Truth (Google Sheets + Sheetari)
 
-This app is planned using **Google Sheets as a field registry / blueprint**.
-A `.csv` will eventually be provided to you and we will work on it together and I will import it back into the google sheets to help create the final JSON that will be used to create the form fields.
+This app uses **Google Sheets as the planning source of truth** and **Sheetari** to turn those sheets into JSON.
 
-The sheet defines:
+The core app data currently comes from three sheets:
 
-- field identifiers (`id`)
-- section grouping (`section`)
-- labels (`label`)
-- field paths (`path`)
-- value types (`type`)
-- input controls (`input`)
-- data source (`source`)
-- validation rules (`validation`)
-- visibility (`visibility`)
-- output usage (`usedBy`)
-- options (`options`)
-- defaults, placeholders, etc.
+- `inputs`
+- `panels`
+- `pages`
 
-These sheets are a work in progress but still incomplete. We need to make minimal changes to these files so we can have a solid plan to go by as this is the CORE of our app. I've included both instruction files and data files to reference. We will need to edit these `.csv` files accordingly and I will upload them back into the Google Sheet in order for us to consume the JSON via Sheetari.
+Their structure and meanings are defined by one shared `instructions` sheet.
 
-csv's:
+These sheets are still evolving, so changes should stay minimal and intentional. This data model is the foundation of the app, so we need to keep it clean, easy to reason about, and consistent as we refine it.
 
-- `apps/app/src/lib/data/page.instructions.csv`
-- `apps/app/src/lib/data/pages.csv`
-- `apps/app/src/lib/data/section.instructions.csv`
-- `apps/app/src/lib/data/sections.csv`
+At times, we may edit the sheet structure as `.csv` files first, then upload those changes back into Google Sheets so the updated JSON can be consumed through Sheetari.
 
-sheetari (json)
+app data (json)
 
-- https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/sections?range=b1:z
+- https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/panels
+- https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/inputs?range=b1:u
 - https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/pages
+
+app data instructions (json)
+
+- https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/instructions
 
 ---
 
