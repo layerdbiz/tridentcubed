@@ -44,9 +44,17 @@ Projects List
 
 ---
 
-# 1.4 Planning Source of Truth (Google Sheets + Sheetari)
+# 1.4 Planning Source of Truth (Google Sheets + Sheetari + Local Mirror)
 
 This app uses **Google Sheets as the planning source of truth** and **Sheetari** to turn those sheets into JSON.
+
+For app work inside this repo, there are two layers you must keep distinct:
+
+- the **upstream planning source**: Google Sheets -> Sheetari
+- the **local workspace mirror**: JSON files in `apps/app/src/lib/data/`
+
+Both matter.
+Do not collapse them into one concept.
 
 The core app data currently comes from four sheet-backed JSON sources:
 
@@ -76,7 +84,46 @@ app data instructions (json)
 
 - https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/instructions
 
-If local JSON mirrors of these sheet outputs exist inside the workspace, prefer reading those first for immediate context and fast iteration. The Sheetari URLs remain the canonical remote source and should be used to verify freshness or when no local mirror exists.
+The local mirrored copies live here:
+
+```txt
+apps/app/src/lib/data/
+  config.json
+  inputs.json
+  panels.json
+  pages.json
+  instructions.json
+```
+
+Refresh the local mirror with:
+
+```txt
+pnpm sheetari in the root directory of this monorepo (e.g. `/v/@layerdbiz/template`)
+```
+
+## Workspace Source Of Truth
+
+When working on the app inside this repository, the local JSON mirror is the default source of truth for context, inspection, planning, and code assistance.
+
+That means:
+
+- read `apps/app/src/lib/data/*.json` first when understanding current app data
+- use the local mirror when giving the user guidance about the current structure
+- assume the user may update upstream sheet data separately, then run `pnpm sheetari` to refresh the local copy
+- if the local mirror is stale or missing, refresh it or ask the user to refresh it before making assumptions
+
+The Sheetari URLs remain the upstream remote source and the refresh source, but they are not the first place to look during normal app work when the local mirror exists.
+
+## Remote Function Rule
+
+Keep the existing Sheetari setup in the app's remote functions unless the user explicitly asks to change that architecture.
+
+This means:
+
+- do not remove or rewrite the existing Sheetari-backed remote functions just because the local mirror exists
+- treat the local mirror as the default workspace reference copy
+- treat Sheetari as the upstream sync source that produces the local mirror
+- if sheet structure changes upstream, refresh the local mirror with `pnpm sheetari` before relying on the new data locally
 
 ---
 
@@ -101,6 +148,7 @@ Sheetari:
 ```txt
 Google Sheet
   → Sheetari (JSON API)
+  → local mirror in `apps/app/src/lib/data`
   → App consumes JSON
   → Generates editor panels from `panels`
   → Generates form inputs from `inputs`
@@ -114,10 +162,13 @@ Google Sheet
 
 ## Implementation Rules
 
-- Treat the sheet as the **source of truth for field, panel, page, and instruction definitions**
+- Treat the sheet as the **upstream source of truth for field, panel, page, and instruction definitions**
+- Treat the local mirror in `apps/app/src/lib/data` as the **workspace source of truth** during app development
 - DO NOT recreate schema manually if it exists in sheet
 - DO NOT attempt to parse Google Sheets manually
 - ALWAYS assume Sheetari provides clean JSON
+- ALWAYS prefer reading the local mirror before hitting remote Sheetari URLs when the mirror exists
+- When upstream sheet data changes, refresh the local mirror with `pnpm sheetari`
 - Prefer config-driven UI over hardcoded inputs
 - Editor panel creation must come from `panels`, not from `pages`
 - Output page creation, naming, and ordering must come from `pages`, not from panel titles or panel order
@@ -523,7 +574,9 @@ Do NOT:
 ✅ Keep files minimal
 ✅ Follow naming strictly
 ✅ Use Sheetari for JSON
-✅ Prefer local mirrored JSON in-workspace when available for immediate context, then verify against Sheetari when needed
+✅ Prefer the local mirrored JSON in `apps/app/src/lib/data` as the first reference during app work
+✅ Use `pnpm sheetari` to refresh the local mirror after upstream sheet changes
+✅ Keep the app's existing Sheetari-backed remote functions unless the user explicitly asks for an architectural change
 ✅ Ask before major changes
 ✅ Always check and see if components or utils exist in `@layerd/ui` (`packages/ui/**`) before creating new ones.
 

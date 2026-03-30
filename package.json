@@ -16,6 +16,7 @@
     "play": "turbo watch dev --filter=play",
     "sb": "turbo watch dev --filter=storybook",
     "barrels": "turbo barrel",
+    "sheetari": "pnpm --filter @layerd/tools sheetari",
     "stories": "turbo storybook#story",
     "symlinks": "turbo symlinks",
     "symlinks:clean": "turbo symlinks:clean",
