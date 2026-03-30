@@ -1,6 +1,6 @@
 ---
 name: Report Generator Rules
-description: 'Use when editing the report generator app in apps/app. Covers route-first architecture, remote functions, Sheetari-driven field definitions, file naming, and minimal SvelteKit structure.'
+description: 'Use when editing the report generator app in apps/app. Covers route-first co-located architecture, remote functions, Sheetari-driven field definitions, file naming, and minimal SvelteKit structure.'
 applyTo: 'apps/app/**/*.{svelte,ts,js,css}'
 ---
 
@@ -26,8 +26,8 @@ This app is a **report generation system** used to:
 
 Projects List  
 → Project  
-→ Edit (Form / Panels)  
-→ Preview  
+→ Edit (Panels > Inputs)  
+→ Preview (Pages)
 → Export
 
 ---
@@ -48,13 +48,19 @@ Projects List
 
 This app uses **Google Sheets as the planning source of truth** and **Sheetari** to turn those sheets into JSON.
 
-The core app data currently comes from three sheets:
+The core app data currently comes from four sheet-backed JSON sources:
 
 - `inputs`
 - `panels`
 - `pages`
+- `instructions`
 
-Their structure and meanings are defined by one shared `instructions` sheet.
+These have distinct roles and should not be conflated:
+
+- `inputs` defines the input fields, their storage paths, and which output pages consume them via `outputToPages`
+- `panels` defines the editor panels, their order, visibility, and panel behavior
+- `pages` defines the output pages, their order, names, and render variants
+- `instructions` documents the contract for the other sheets and should be treated as the schema reference
 
 These sheets are still evolving, so changes should stay minimal and intentional. This data model is the foundation of the app, so we need to keep it clean, easy to reason about, and consistent as we refine it.
 
@@ -69,6 +75,8 @@ app data (json)
 app data instructions (json)
 
 - https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/instructions
+
+If local JSON mirrors of these sheet outputs exist inside the workspace, prefer reading those first for immediate context and fast iteration. The Sheetari URLs remain the canonical remote source and should be used to verify freshness or when no local mirror exists.
 
 ---
 
@@ -94,10 +102,11 @@ Sheetari:
 Google Sheet
   → Sheetari (JSON API)
   → App consumes JSON
-  → Generates panels (form inputs)
+  → Generates editor panels from `panels`
+  → Generates form inputs from `inputs`
   → User fills data
   → Structured report object
-  → Preview pages
+  → Preview pages from `pages`
   → Export
 ```
 
@@ -105,11 +114,16 @@ Google Sheet
 
 ## Implementation Rules
 
-- Treat the sheet as the **source of truth for field definitions**
+- Treat the sheet as the **source of truth for field, panel, page, and instruction definitions**
 - DO NOT recreate schema manually if it exists in sheet
 - DO NOT attempt to parse Google Sheets manually
 - ALWAYS assume Sheetari provides clean JSON
 - Prefer config-driven UI over hardcoded inputs
+- Editor panel creation must come from `panels`, not from `pages`
+- Output page creation, naming, and ordering must come from `pages`, not from panel titles or panel order
+- Output page ownership should come from `inputs.outputToPages` first, with code-side fallbacks used only as temporary compatibility bridges
+- Optional output pages should appear when mapped input data has meaningful content or when the page is explicitly required
+- Prefer explicit row references in sheet data over title-based heuristics whenever possible
 
 ---
 
@@ -462,9 +476,9 @@ The system is moving toward:
 ```txt
 Sheet (config)
   → JSON (Sheetari)
-  → dynamic panel generator
+  → dynamic editor panel generator
   → structured data
-  → preview pages
+  → preview pages driven by `pages`
 ```
 
 ---
@@ -475,10 +489,17 @@ Prefer:
 
 - declarative config
 - generated UI
+- `inputs` for field ownership and output mapping
+- `panels` for editor structure
+- `pages` for output structure
+- `instructions` for contract clarity
 
 Avoid:
 
 - hardcoded field duplication
+- deriving editor panels from output pages
+- renaming output pages to match panel titles
+- long-term reliance on title-only fallback mappings when explicit sheet data can replace them
 
 ---
 
@@ -502,6 +523,7 @@ Do NOT:
 ✅ Keep files minimal
 ✅ Follow naming strictly
 ✅ Use Sheetari for JSON
+✅ Prefer local mirrored JSON in-workspace when available for immediate context, then verify against Sheetari when needed
 ✅ Ask before major changes
 ✅ Always check and see if components or utils exist in `@layerd/ui` (`packages/ui/**`) before creating new ones.
 
