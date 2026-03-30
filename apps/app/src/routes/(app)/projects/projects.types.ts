@@ -1,9 +1,12 @@
 export type ProjectsRouteModeType = "edit" | "preview";
 
 export type TabType = "create" | "preview";
-export type SectionKindType = "fields" | "cover" | "time-log" | "photos";
-export type SectionPlacementType = "start" | "middle" | "end";
-export type SectionStatusType = "todo" | "in-progress" | "complete";
+export type PanelKindType = "fields" | "cover" | "time-log" | "photos";
+export type SectionKindType = PanelKindType;
+export type PanelPlacementType = "start" | "middle" | "end";
+export type SectionPlacementType = PanelPlacementType;
+export type PanelStatusType = "todo" | "in-progress" | "complete";
+export type SectionStatusType = PanelStatusType;
 export type PhotoOrientationType = "portrait" | "landscape" | "square";
 
 export interface PhotoItemType {
@@ -31,62 +34,79 @@ export interface TimeDayType {
 	entries: TimeEntryType[];
 }
 
-export interface SectionBaseType {
+export interface PanelBaseType {
 	id: string;
 	title: string;
 	icon: string;
 	open: boolean;
 	locked: boolean;
 	enabled: boolean;
-	placement: SectionPlacementType;
+	placement: PanelPlacementType;
 	photos: PhotoItemType[];
 }
 
-export interface FieldSectionType extends SectionBaseType {
+export type SectionBaseType = PanelBaseType;
+
+export interface FieldPanelType extends PanelBaseType {
 	type: "fields" | "cover";
 	section: string;
 	fields: DetailsFieldsType;
 }
 
-export interface TimeLogSectionType extends SectionBaseType {
+export type FieldSectionType = FieldPanelType;
+
+export interface TimeLogPanelType extends PanelBaseType {
 	type: "time-log";
 	days: TimeDayType[];
 }
 
-export interface PhotosSectionType extends SectionBaseType {
+export type TimeLogSectionType = TimeLogPanelType;
+
+export interface PhotosPanelType extends PanelBaseType {
 	type: "photos";
 	description: string;
 	variant: string;
+	files: string[];
+	panelId: string | null;
 	pageId: string | null;
 	required: boolean;
 }
 
-export type SectionType =
-	| FieldSectionType
-	| TimeLogSectionType
-	| PhotosSectionType;
+export type PhotosSectionType = PhotosPanelType;
+
+export type PanelType =
+	| FieldPanelType
+	| TimeLogPanelType
+	| PhotosPanelType;
+
+export type SectionType = PanelType;
 
 export interface PersistedStateType {
 	activeTab: TabType;
 	previewZoom: number;
 	hasUserZoomed: boolean;
-	sections: SectionType[];
+	sections: PanelType[];
 }
 
-export interface SectionMetricsType {
+export interface PanelMetricsType {
 	done: number;
 	total: number;
 	percent: number;
 }
 
-export interface SectionTemplateType<T extends SectionType = SectionType> {
+export type SectionMetricsType = PanelMetricsType;
+
+export interface PanelTemplateType<T extends PanelType = PanelType> {
 	id: string;
 	type: T["type"];
 	title: string;
 	icon: string;
-	placement: SectionPlacementType;
+	placement: PanelPlacementType;
 	create: () => T;
 }
+
+export type SectionTemplateType<T extends SectionType = SectionType> =
+	PanelTemplateType<T>;
 
 export type FieldSourceType =
 	| "user"
@@ -129,6 +149,7 @@ export type FieldInputType =
 	| "hidden";
 
 export type FieldVisibilityType = "visible" | "hidden" | "conditional";
+export type PanelRendererType = "fields" | "time-log" | "photos" | "custom";
 export type OutputPageSectionType = "header" | "main" | "footer";
 export type PreviewPageVariantType =
 	| "full"
@@ -139,10 +160,10 @@ export type PreviewPageVariantType =
 	| "table"
 	| "photo";
 
-export interface FieldDefinitionType {
+export interface InputDefinitionType {
 	id: string;
 	visibility: FieldVisibilityType | null;
-	section: string;
+	panel: string;
 	label: string;
 	path: string;
 	source: FieldSourceType | null;
@@ -162,28 +183,57 @@ export interface FieldDefinitionType {
 	reference: string[];
 }
 
+export type FieldDefinitionType = InputDefinitionType;
+
+export interface PanelDefinitionType {
+	id: string;
+	order: number;
+	visibility: FieldVisibilityType | null;
+	icon: string;
+	title: string;
+	type: PanelRendererType | null;
+	description: string;
+	required: boolean;
+	readonly: boolean;
+	enabled: boolean;
+	draggable: boolean;
+	notes: string;
+	reference: string[];
+	photo: string;
+	iconClass: string;
+	iconUrl: string;
+}
+
 export interface PageDefinitionType {
 	id: string;
 	order: number;
 	required: boolean;
 	page: string;
-	type: PreviewPageVariantType | string;
+	variant: PreviewPageVariantType | string;
 	section: OutputPageSectionType[];
 	notes: string;
 	reference: string;
 }
 
 export interface ProjectDefinitionsType {
-	fields: FieldDefinitionType[];
+	inputs: InputDefinitionType[];
+	panels: PanelDefinitionType[];
 	pages: PageDefinitionType[];
+}
+
+export interface PanelInputGroupDefinitionType {
+	panel: string;
+	inputs: InputDefinitionType[];
 }
 
 export interface FieldGroupDefinitionType {
 	section: string;
-	fields: FieldDefinitionType[];
+	fields: InputDefinitionType[];
 }
 
 export interface ProjectSchemaType {
+	panels: PanelDefinitionType[];
+	inputGroups: PanelInputGroupDefinitionType[];
 	fieldGroups: FieldGroupDefinitionType[];
 	pages: PageDefinitionType[];
 	coverFieldPaths: string[];

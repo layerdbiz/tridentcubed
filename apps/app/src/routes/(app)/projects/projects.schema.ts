@@ -1,6 +1,20 @@
 import type * as projectTypes from "./projects.types";
 
 const excludedSections = new Set(["Time Log", "Custom"]);
+const photoPagePanelTitleByPageKey = new Map([
+	["cargoconditioninspection", "Inspection"],
+	["cargodamages", "Damages"],
+	["cargooperations", "Discharge"],
+]);
+const photoPanelPageTitleByPanelKey = new Map([
+	["inspection", "Cargo Condition Inspection"],
+	["damages", "Cargo Damages"],
+	["discharge", "Cargo Operations"],
+]);
+
+function toKey(value: string): string {
+	return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
 
 function toTitle(
 	definition: projectTypes.PageDefinitionType | undefined,
@@ -13,31 +27,46 @@ export function createProjectSchema(
 	definitions: projectTypes.ProjectDefinitionsType,
 ): projectTypes.ProjectSchemaType {
 	const pages = [...definitions.pages].sort((a, b) => a.order - b.order);
-	const formFields = definitions.fields.filter((field) => {
-		if (!field.id || !field.section || !field.path) return false;
-		if (field.visibility === "hidden") return false;
-		return !excludedSections.has(field.section);
+	const panels = [...definitions.panels]
+		.filter((panel) => panel.visibility !== "hidden")
+		.sort((left, right) => left.order - right.order);
+	const visiblePanelTitles = new Set(panels.map((panel) => panel.title));
+	const formInputs = definitions.inputs.filter((input) => {
+		if (!input.id || !input.panel || !input.path) return false;
+		if (input.visibility === "hidden") return false;
+		if (!visiblePanelTitles.has(input.panel)) return false;
+		return !excludedSections.has(input.panel);
 	});
+	const inputsByPanel = formInputs.reduce((groups, input) => {
+		const inputs = groups.get(input.panel) ?? [];
+		inputs.push(input);
+		groups.set(input.panel, inputs);
+		return groups;
+	}, new Map<string, projectTypes.InputDefinitionType[]>());
+	const inputGroups = panels
+		.map((panel) => ({
+			panel: panel.title,
+			inputs: inputsByPanel.get(panel.title) ?? [],
+		}))
+		.filter((group) => group.inputs.length > 0);
 
-	const fieldGroups = Array.from(
-		formFields.reduce((groups, field) => {
-			const fields = groups.get(field.section) ?? [];
-			fields.push(field);
-			groups.set(field.section, fields);
-			return groups;
-		}, new Map<string, projectTypes.FieldDefinitionType[]>()),
-	).map(([section, fields]) => ({ section, fields }));
+	const fieldGroups = inputGroups.map((group) => ({
+		section: group.panel,
+		fields: group.inputs,
+	}));
 
 	const customVariantOptions =
-		definitions.fields.find((field) => field.path === "custom.entries.variant")
+		definitions.inputs.find((input) => input.path === "custom.entries.variant")
 			?.options ?? ["photos-1", "photos-2", "photos-4", "photos-6", "photos-8"];
 
 	const pageByName = new Map(pages.map((page) => [page.page, page]));
 
 	return {
+		panels,
+		inputGroups,
 		fieldGroups,
 		pages,
-		coverFieldPaths: formFields.map((field) => field.path),
+		coverFieldPaths: formInputs.map((input) => input.path),
 		customVariantOptions,
 		coverPageTitle: toTitle(pageByName.get("Cover"), "Cover"),
 		tocPageTitle: toTitle(
@@ -50,7 +79,7 @@ export function createProjectSchema(
 }
 
 export function getFieldInitialValue(
-	field: projectTypes.FieldDefinitionType,
+	field: projectTypes.InputDefinitionType,
 ): projectTypes.FieldStateValueType {
 	if (field.input === "multiselect") {
 		return field.value
@@ -78,6 +107,142 @@ export function getFieldGroup(
 	return schema.fieldGroups.find((group) => group.section === section);
 }
 
+export function getInputGroup(
+	schema: projectTypes.ProjectSchemaType,
+	panel: string,
+): projectTypes.PanelInputGroupDefinitionType | undefined {
+	return schema.inputGroups.find((group) => group.panel === panel);
+}
+
+export function getPanelDefinition(
+	schema: projectTypes.ProjectSchemaType,
+	title: string,
+): projectTypes.PanelDefinitionType | undefined {
+	const titleKey = toKey(title);
+	return schema.panels.find((panel) => toKey(panel.title) === titleKey);
+}
+
+export function getPanelDefinitionById(
+	schema: projectTypes.ProjectSchemaType,
+	id: string,
+): projectTypes.PanelDefinitionType | undefined {
+	return schema.panels.find((panel) => panel.id === id);
+}
+
+export function getPanelRenderer(
+	panel: projectTypes.PanelDefinitionType,
+): projectTypes.PanelRendererType {
+	if (panel.type) return panel.type;
+
+	const titleKey = toKey(panel.title);
+	if (titleKey === "timelog") return "time-log";
+	if (titleKey === "custom") return "custom";
+	if (
+		panel.icon === "🖼️" ||
+		panel.reference.some((item) => toKey(item) === "panel009")
+	) {
+		return "photos";
+	}
+
+	return "fields";
+}
+
+function matchesPageTitle(value: string, pageTitle: string): boolean {
+	return toKey(value) === toKey(pageTitle);
+}
+
+function getExplicitPanelPageReferences(
+	panel: projectTypes.PanelDefinitionType,
+): string[] {
+	return panel.reference.filter((item) =>
+		item.toUpperCase().startsWith("PAGE-")
+	);
+}
+
+export function getInputsForOutputPage(
+	schema: projectTypes.ProjectSchemaType,
+	page: projectTypes.PageDefinitionType,
+): projectTypes.InputDefinitionType[] {
+	return schema.inputGroups.flatMap((group) =>
+		group.inputs.filter((input) =>
+			input.outputToPages.some((item) => matchesPageTitle(item, page.page))
+		)
+	);
+}
+
+export function getPanelsForOutputPage(
+	schema: projectTypes.ProjectSchemaType,
+	page: projectTypes.PageDefinitionType,
+): projectTypes.PanelDefinitionType[] {
+	const panels = new Map<string, projectTypes.PanelDefinitionType>();
+
+	for (const input of getInputsForOutputPage(schema, page)) {
+		const panel = getPanelDefinition(schema, input.panel);
+		if (panel) panels.set(panel.id, panel);
+	}
+
+	for (const panel of schema.panels) {
+		if (!getExplicitPanelPageReferences(panel).includes(page.id)) continue;
+		panels.set(panel.id, panel);
+	}
+
+	return Array.from(panels.values());
+}
+
+export function getPrimaryPanelForPage(
+	schema: projectTypes.ProjectSchemaType,
+	page: projectTypes.PageDefinitionType,
+): projectTypes.PanelDefinitionType | undefined {
+	return getPanelsForOutputPage(schema, page)[0];
+}
+
+export function isDerivedPhotoPage(
+	schema: projectTypes.ProjectSchemaType,
+	page: projectTypes.PageDefinitionType,
+): boolean {
+	if (page.variant !== "photo") return false;
+	if (!getInputsForOutputPage(schema, page).length) return false;
+
+	const panel = getPanelForPhotoPage(schema, page);
+	if (!panel) return true;
+
+	return getPanelRenderer(panel) !== "photos";
+}
+
+export function getPhotoPageForPanel(
+	schema: projectTypes.ProjectSchemaType,
+	panel: projectTypes.PanelDefinitionType,
+): projectTypes.PageDefinitionType | undefined {
+	const explicitPageId = getExplicitPanelPageReferences(panel)[0];
+	if (explicitPageId) {
+		return schema.pages.find((page) => page.id === explicitPageId);
+	}
+
+	const panelKey = toKey(panel.title);
+	const pageTitle = photoPanelPageTitleByPanelKey.get(panelKey) || panel.title;
+	const pageKey = toKey(pageTitle);
+
+	return schema.pages.find((page) =>
+		page.variant === "photo" && toKey(page.page) === pageKey
+	);
+}
+
+export function getPanelForPhotoPage(
+	schema: projectTypes.ProjectSchemaType,
+	page: projectTypes.PageDefinitionType,
+): projectTypes.PanelDefinitionType | undefined {
+	if (page.variant !== "photo") return undefined;
+
+	const explicitlyReferencedPanel = schema.panels.find((panel) =>
+		getExplicitPanelPageReferences(panel).includes(page.id)
+	);
+	if (explicitlyReferencedPanel) return explicitlyReferencedPanel;
+
+	const pageKey = toKey(page.page);
+	const panelTitle = photoPagePanelTitleByPageKey.get(pageKey) || page.page;
+	return getPanelDefinition(schema, panelTitle);
+}
+
 export function getSectionFieldStringValue(
 	sections: projectTypes.SectionType[],
 	path: string,
@@ -93,3 +258,5 @@ export function getSectionFieldStringValue(
 
 	return "";
 }
+
+export const getPanelFieldStringValue = getSectionFieldStringValue;

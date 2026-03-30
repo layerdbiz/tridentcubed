@@ -98,7 +98,7 @@
 	function isToggleableSection(
 		section: projectTypes.SectionType,
 	): section is projectTypes.PhotosSectionType {
-		return section.type === 'photos' && Boolean(section.pageId) && !section.required;
+		return section.type === 'photos' && section.locked && !section.required;
 	}
 
 	function handleSectionToggleClick(event: MouseEvent, sectionId: string) {
@@ -126,6 +126,53 @@
 		}
 
 		setSectionFieldValue(sectionId, path, target.value);
+	}
+
+	async function handleFieldFileInput(
+		sectionId: string,
+		field: projectTypes.InputDefinitionType,
+		event: Event
+	) {
+		const target = event.currentTarget as HTMLInputElement | null;
+		const files = Array.from(target?.files ?? []);
+		if (!files.length) return;
+
+		if (field.input === 'image') {
+			const src = await projectUtils.fileToDataUrl(files[0]);
+			setSectionFieldValue(sectionId, field.path, src);
+		} else {
+			const fileNames = files.map((file) => file.name);
+			setSectionFieldValue(
+				sectionId,
+				field.path,
+				field.repeatable || files.length > 1 ? fileNames : (fileNames[0] ?? '')
+			);
+		}
+
+		if (target) target.value = '';
+	}
+
+	function getFieldValueList(value: projectTypes.FieldStateValueType | undefined): string[] {
+		if (Array.isArray(value)) {
+			return value.map((item) => String(item || '').trim()).filter(Boolean);
+		}
+
+		const text = String(value || '').trim();
+		return text ? [text] : [];
+	}
+
+	function getSectionPanelDefinition(
+		section: projectTypes.SectionType
+	): projectTypes.PanelDefinitionType | undefined {
+		if (section.type === 'fields' || section.type === 'cover') {
+			return projectSchemas.getPanelDefinition(schema, section.section);
+		}
+
+		if (section.type === 'photos' && section.panelId) {
+			return projectSchemas.getPanelDefinitionById(schema, section.panelId);
+		}
+
+		return projectSchemas.getPanelDefinition(schema, section.title);
 	}
 </script>
 
@@ -178,11 +225,12 @@
 			}))}
 		>
 			{#each sections as section, index (section.id)}
-				{@const metrics = projectUtils.getSectionMetrics(section)}
+				{@const panelDefinition = getSectionPanelDefinition(section)}
+				{@const metrics = projectUtils.getPanelMetrics(section)}
 				{@const sectionDisabled = !section.enabled}
-				{@const sectionStatusLabel = sectionDisabled ? 'DISABLED' : projectUtils.getSectionStatusLabel(metrics)}
-				{@const sectionStatusTextClass = sectionDisabled ? 'text-neutral-400' : projectUtils.getSectionStatusTextClass(metrics)}
-				{@const sectionProgressFillClass = sectionDisabled ? 'bg-secondary-300' : projectUtils.getSectionProgressFillClass(metrics)}
+				{@const sectionStatusLabel = sectionDisabled ? 'DISABLED' : projectUtils.getPanelStatusLabel(metrics)}
+				{@const sectionStatusTextClass = sectionDisabled ? 'text-neutral-400' : projectUtils.getPanelStatusTextClass(metrics)}
+				{@const sectionProgressFillClass = sectionDisabled ? 'bg-secondary-300' : projectUtils.getPanelProgressFillClass(metrics)}
 
 				<div
 					id={getAccordionAnchorId(section.id)}
@@ -190,7 +238,7 @@
 					class="relative"
 					class:dragging-item={draggedSectionId === section.id}
 					{@attach fromAction(measureAccordionLayout, () => ({ sectionId: section.id, index }))}
-					{@attach fromAction(sectionSort.item, () => (projectStates.isSectionMovable(section) ? section : null))}
+					{@attach fromAction(sectionSort.item, () => (projectStates.isPanelMovable(section) ? section : null))}
 				>
 					<Accordion class="relative" name="report-sections" open={section.open} ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}>
 						<AccordionTitle
@@ -198,7 +246,7 @@
 							onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
 						>
 							<div class="flex items-start gap-3">
-								{#if projectStates.isSectionMovable(section)}
+								{#if projectStates.isPanelMovable(section)}
 									<div class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing" {@attach fromAction(sectionSort.handle, () => true)} aria-label={`Reorder ${section.title}`}>
 										{section.icon}
 									</div>
@@ -233,7 +281,7 @@
 											>
 												<span class={`block h-4.5 w-4.5 rounded-full ${section.enabled ? 'bg-white' : 'bg-neutral-400'}`}></span>
 											</button>
-										{:else if projectStates.isSectionMovable(section)}
+										{:else if projectStates.isPanelMovable(section)}
 									<Button variant="icon" icon="close" class="absolute! -top-2! -right-2! text-[8px]!" aria-label={`Delete ${section.title}`} onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)} />
 								{:else}
 									<Button variant="icon" icon="lock" class="absolute! -top-2! -right-2! text-[8px]! bg-secondary-200 text-secondary-400 opacity-100" aria-label={`${section.title} is locked`} onclick={handleSectionActionDisabledClick} disabled />
@@ -244,15 +292,47 @@
 						<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
 							<div class:grayscale={sectionDisabled} class:opacity-60={sectionDisabled} class:pointer-events-none={sectionDisabled}>
 							{#if section.type === 'fields' || section.type === 'cover'}
-								{@const group = projectSchemas.getFieldGroup(schema, section.section)}
+								{@const inputGroup = projectSchemas.getInputGroup(schema, section.section)}
 								<div class="relative z-0 grid gap-5">
-									{#if group}
+									<div class="space-y-3">
+										{#if panelDefinition?.description}
+											<p class="text-sm text-neutral-600">{panelDefinition.description}</p>
+										{/if}
+										{#if inputGroup}
 										<div class="space-y-3">
-											<Text h4={group.section} class="font-bold text-neutral-800" />
-												{#each group.fields as field (field.id)}
+											<Text h4={inputGroup.panel} class="font-bold text-neutral-800" />
+												{#each inputGroup.inputs as field (field.id)}
 													<div class={field.input === 'textarea' || field.input === 'multiselect' ? 'md:col-span-2' : ''}>
 														{#if field.input === 'textarea'}
 															<InputNew xs label={field.label} variant="text" type="text" value={projectSchemas.getFieldStringValue(section.fields, field.path)} placeholder={field.placeholder || ' '} disabled={!section.enabled || !field.editable} oninput={(event: Event) => handleFieldInput(section.id, field.path, event)} />
+														{:else if field.input === 'image'}
+															{@const imageSrc = projectSchemas.getFieldStringValue(section.fields, field.path)}
+															<div class="space-y-2">
+																<p class="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">{field.label}</p>
+																{#if imageSrc}
+																	<div class="overflow-hidden rounded-2xl border border-secondary-200 bg-white p-2">
+																		<img alt={field.label} class="h-36 w-full rounded-xl object-cover" src={imageSrc} />
+																	</div>
+																{/if}
+																<label class={`inline-flex rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled && field.editable ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}>
+																	<span>{imageSrc ? 'Replace Image' : 'Upload Image'}</span>
+																	<input accept="image/*" class="hidden" type="file" disabled={!section.enabled || !field.editable} onchange={(event) => handleFieldFileInput(section.id, field, event)} />
+																</label>
+															</div>
+														{:else if field.input === 'file'}
+															{@const fileValues = getFieldValueList(section.fields[field.path])}
+															<div class="space-y-2">
+																<p class="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">{field.label}</p>
+																{#if fileValues.length}
+																	<div class="rounded-2xl border border-secondary-200 bg-white p-3 text-sm text-neutral-600">
+																		{fileValues.join(', ')}
+																	</div>
+																{/if}
+																<label class={`inline-flex rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled && field.editable ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}>
+																	<span>{fileValues.length ? 'Replace Files' : 'Upload Files'}</span>
+																	<input class="hidden" type="file" multiple={field.repeatable} disabled={!section.enabled || !field.editable} onchange={(event) => handleFieldFileInput(section.id, field, event)} />
+																</label>
+															</div>
 														{:else if (field.input === 'select' || field.input === 'multiselect') && field.options.length}
 															<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
 																<span>{field.label}</span>
@@ -268,10 +348,18 @@
 													</div>
 												{/each}
 										</div>
-									{/if}
+										{:else}
+											<div class="rounded-2xl border border-dashed border-secondary-300 bg-white/70 p-4 text-sm text-neutral-500">
+												No inputs are configured for this panel yet.
+											</div>
+										{/if}
+									</div>
 								</div>
 							{:else if section.type === 'time-log'}
 								<div class="space-y-4">
+									{#if panelDefinition?.description}
+										<p class="text-sm text-neutral-600">{panelDefinition.description}</p>
+									{/if}
 									{#each section.days as day (day.id)}
 										<Grid items="1x2" cols="1fr auto" gap="8px">
 											<InputNew xs type="date" label="Date" bind:value={day.dateISO} />

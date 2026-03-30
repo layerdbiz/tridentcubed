@@ -84,6 +84,10 @@
 
 		return '';
 	}
+
+	function hasPhotoPageFiles(page: projectTypes.PreviewPageItemType): boolean {
+		return page.section?.type === 'photos' && page.section.files.length > 0;
+	}
 </script>
 
 <section class:hidden={!isDesktop && activePane !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
@@ -183,6 +187,16 @@
 										{#if getPhotoPageDescription(page)}
 											<Text p={getPhotoPageDescription(page)} class="mb-4 text-secondary" />
 										{/if}
+										{#if hasPhotoPageFiles(page)}
+											<div class="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
+												<p class="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500">Documents</p>
+												<ul class="space-y-2 text-sm text-neutral-700">
+													{#each page.section.files as fileName (`${page.id}-${fileName}`)}
+														<li class="rounded-xl bg-neutral-50 px-3 py-2">{fileName}</li>
+													{/each}
+												</ul>
+											</div>
+										{/if}
 										<div class={projectUtils.getPreviewPhotoGridClass(page.section)}>
 											{#if page.section.photos.length}
 												{#each page.section.photos as photo (photo.id)}
@@ -193,7 +207,7 @@
 														<figcaption class="p-3 text-xs text-neutral-600">{photo.caption || photo.name || 'Photo'}</figcaption>
 													</figure>
 												{/each}
-											{:else}
+											{:else if !hasPhotoPageFiles(page)}
 												<div class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-5 text-sm text-neutral-500">No photos added yet.</div>
 											{/if}
 										</div>

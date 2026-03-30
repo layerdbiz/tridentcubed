@@ -129,6 +129,8 @@ export function getSectionMetrics(
 	return { done, total, percent: toPercent(done, total) };
 }
 
+export const getPanelMetrics = getSectionMetrics;
+
 export function getOverallMetrics(
 	items: projectTypes.SectionType[],
 ): projectTypes.SectionMetricsType {
@@ -144,6 +146,8 @@ export function getOverallMetrics(
 	return { done, total, percent: clamp(toPercent(done, total), 0, 100) };
 }
 
+export const getOverallPanelMetrics = getOverallMetrics;
+
 export function getSectionStatus(
 	metrics: projectTypes.SectionMetricsType,
 ): projectTypes.SectionStatusType {
@@ -151,6 +155,8 @@ export function getSectionStatus(
 	if (metrics.percent >= 100) return "complete";
 	return "in-progress";
 }
+
+export const getPanelStatus = getSectionStatus;
 
 export function getSectionStatusLabel(
 	metrics: projectTypes.SectionMetricsType,
@@ -161,6 +167,8 @@ export function getSectionStatusLabel(
 	return "IN PROGRESS";
 }
 
+export const getPanelStatusLabel = getSectionStatusLabel;
+
 export function getSectionStatusTextClass(
 	metrics: projectTypes.SectionMetricsType,
 ): string {
@@ -170,6 +178,8 @@ export function getSectionStatusTextClass(
 	return "text-info";
 }
 
+export const getPanelStatusTextClass = getSectionStatusTextClass;
+
 export function getSectionProgressFillClass(
 	metrics: projectTypes.SectionMetricsType,
 ): string {
@@ -178,6 +188,8 @@ export function getSectionProgressFillClass(
 	if (status === "complete") return "bg-accent-500";
 	return "bg-info";
 }
+
+export const getPanelProgressFillClass = getSectionProgressFillClass;
 
 export function getProgressRingOffset(percent: number): number {
 	const normalized = clamp(percent, 0, 100);

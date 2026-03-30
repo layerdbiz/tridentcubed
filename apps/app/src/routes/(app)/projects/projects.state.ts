@@ -35,10 +35,10 @@ export const createTimeDay = (): projectTypes.TimeDayType => ({
 });
 
 function createCoverFields(
-	group: projectTypes.FieldGroupDefinitionType,
+	inputs: projectTypes.InputDefinitionType[],
 ): projectTypes.DetailsFieldsType {
 	return Object.fromEntries(
-		group.fields.map((
+		inputs.map((
 			field,
 		) => [field.path, projectSchemas.getFieldInitialValue(field)]),
 	);
@@ -46,6 +46,20 @@ function createCoverFields(
 
 function getSectionIcon(section: string): string {
 	return sectionIcons[section] || "🧩";
+}
+
+function getPanelTitle(
+	panel: projectTypes.PanelDefinitionType | undefined,
+	fallback: string,
+): string {
+	return panel?.title || fallback;
+}
+
+function getPanelIcon(
+	panel: projectTypes.PanelDefinitionType | undefined,
+	fallback: string,
+): string {
+	return panel?.icon || fallback;
 }
 
 function getPageSectionId(pageId: string): string {
@@ -62,32 +76,51 @@ function getPagePhotoVariant(
 	return "photos-4";
 }
 
+function getPanelSectionId(
+	panel: projectTypes.PanelDefinitionType,
+	page: projectTypes.PageDefinitionType | undefined,
+): string {
+	if (page) return getPageSectionId(page.id);
+	return `panel-${panel.id.toLowerCase()}`;
+}
+
+function getPanelPhotoVariant(
+	panel: projectTypes.PanelDefinitionType,
+	page: projectTypes.PageDefinitionType | undefined,
+): string {
+	if (panel.photo) return panel.photo;
+	if (page) return getPagePhotoVariant(page);
+	return "photos-4";
+}
+
 export const createFieldSection = (
-	group: projectTypes.FieldGroupDefinitionType,
+	panel: projectTypes.PanelDefinitionType,
+	inputGroup: projectTypes.PanelInputGroupDefinitionType | undefined,
 ): projectTypes.FieldSectionType => ({
-	id: `section-${group.section.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+	id: `section-${panel.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
 	type: "fields",
-	section: group.section,
-	title: group.section,
-	icon: getSectionIcon(group.section),
+	section: panel.title,
+	title: panel.title,
+	icon: getPanelIcon(panel, getSectionIcon(panel.title)),
 	open: false,
 	locked: true,
-	enabled: true,
+	enabled: panel?.enabled ?? true,
 	placement: "start",
-	fields: createCoverFields(group),
+	fields: createCoverFields(inputGroup?.inputs ?? []),
 	photos: [],
 });
 
 export const createTimeLogSection = (
 	schema: projectTypes.ProjectSchemaType,
+	panel: projectTypes.PanelDefinitionType | undefined,
 ): projectTypes.TimeLogSectionType => ({
 	id: "section-time-log",
 	type: "time-log",
-	title: schema.timeLogPageTitle,
-	icon: "⏱️",
+	title: getPanelTitle(panel, schema.timeLogPageTitle),
+	icon: getPanelIcon(panel, "⏱️"),
 	open: false,
 	locked: true,
-	enabled: true,
+	enabled: panel?.enabled ?? true,
 	placement: "start",
 	days: [createTimeDay()],
 	photos: [],
@@ -98,6 +131,7 @@ export const createPhotoSection = (
 	icon: string,
 	variant: string,
 	open = false,
+	panelId: string | null = null,
 	pageId: string | null = null,
 	required = false,
 ): projectTypes.PhotosSectionType => ({
@@ -111,6 +145,8 @@ export const createPhotoSection = (
 	placement: "middle",
 	description: "",
 	variant,
+	files: [],
+	panelId,
 	pageId,
 	required,
 	photos: [],
@@ -129,41 +165,85 @@ export const createPagePhotoSection = (
 	placement: "middle",
 	description: "",
 	variant: getPagePhotoVariant(page),
+	files: [],
+	panelId: null,
 	pageId: page.id,
 	required: page.required,
+	photos: [],
+});
+
+export const createPanelPhotoSection = (
+	panel: projectTypes.PanelDefinitionType,
+	page: projectTypes.PageDefinitionType | undefined,
+): projectTypes.PhotosSectionType => ({
+	id: getPanelSectionId(panel, page),
+	type: "photos",
+	title: panel.title,
+	icon: getPanelIcon(panel, "🖼️"),
+	open: false,
+	locked: true,
+	enabled: panel.enabled,
+	placement: "middle",
+	description: panel.description,
+	variant: getPanelPhotoVariant(panel, page),
+	files: [],
+	panelId: panel.id,
+	pageId: page?.id || null,
+	required: panel.required,
 	photos: [],
 });
 
 export function createFixedSectionTemplates(
 	schema: projectTypes.ProjectSchemaType,
 ): projectTypes.SectionTemplateType[] {
-	return [
-		...schema.fieldGroups.map((group) => ({
-			id: `section-${group.section.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-			type: "fields" as const,
-			title: group.section,
-			icon: getSectionIcon(group.section),
-			placement: "start" as const,
-			create: () => createFieldSection(group),
-		})),
-		{
-			id: "section-time-log",
-			type: "time-log",
-			title: schema.timeLogPageTitle,
-			icon: "⏱️",
+	const fixedPanelTemplates: projectTypes.SectionTemplateType[] = [];
+
+	for (const panel of schema.panels) {
+		const renderer = projectSchemas.getPanelRenderer(panel);
+
+		if (renderer === "custom") {
+			continue;
+		}
+
+		if (renderer === "time-log") {
+			fixedPanelTemplates.push({
+				id: "section-time-log",
+				type: "time-log",
+				title: getPanelTitle(panel, schema.timeLogPageTitle),
+				icon: getPanelIcon(panel, "⏱️"),
+				placement: "start",
+				create: () => createTimeLogSection(schema, panel),
+			});
+			continue;
+		}
+
+		if (renderer === "photos") {
+			const page = projectSchemas.getPhotoPageForPanel(schema, panel);
+			fixedPanelTemplates.push({
+				id: getPanelSectionId(panel, page),
+				type: "photos",
+				title: panel.title,
+				icon: getPanelIcon(panel, "🖼️"),
+				placement: "middle",
+				create: () => createPanelPhotoSection(panel, page),
+			});
+			continue;
+		}
+
+		const inputGroup = projectSchemas.getInputGroup(schema, panel.title);
+		fixedPanelTemplates.push({
+			id: `section-${panel.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+			type: "fields",
+			title: panel.title,
+			icon: getPanelIcon(panel, getSectionIcon(panel.title)),
 			placement: "start",
-			create: () => createTimeLogSection(schema),
-		},
-		...schema.pages.filter((page) => page.type === "photo").map((page) => ({
-			id: getPageSectionId(page.id),
-			type: "photos" as const,
-			title: page.page,
-			icon: "🖼️",
-			placement: "middle" as const,
-			create: () => createPagePhotoSection(page),
-		})),
-	];
+			create: () => createFieldSection(panel, inputGroup),
+		});
+	}
+	return fixedPanelTemplates;
 }
+
+export const createFixedPanelTemplates = createFixedSectionTemplates;
 
 export function orderSections(
 	items: projectTypes.SectionType[],
@@ -191,6 +271,8 @@ export function orderSections(
 		.concat(middleSections);
 }
 
+export const orderPanels = orderSections;
+
 export function createDefaultState(
 	schema: projectTypes.ProjectSchemaType,
 ): projectTypes.PersistedStateType {
@@ -209,6 +291,8 @@ export function createDefaultState(
 export function isSectionMovable(section: projectTypes.SectionType): boolean {
 	return !section.locked && section.placement === "middle";
 }
+
+export const isPanelMovable = isSectionMovable;
 
 export function ensureAtLeastOneDay(
 	section: projectTypes.TimeLogSectionType,
@@ -231,6 +315,8 @@ export function getNextCustomSectionNumber(
 
 	return currentMax + 1;
 }
+
+export const getNextCustomPanelNumber = getNextCustomSectionNumber;
 
 export function normalizeTimeEntry(value: unknown): projectTypes.TimeEntryType {
 	return {
@@ -356,6 +442,12 @@ export function normalizeSection(
 		templateSection && templateSection.type === "photos"
 			? templateSection
 			: null;
+	const files =
+		Array.isArray((section as projectTypes.PhotosSectionType)?.files)
+			? (section as projectTypes.PhotosSectionType).files
+				.map((item) => String(item || "").trim())
+				.filter(Boolean)
+			: templatePhotoSection?.files || [];
 	const required = templatePhotoSection?.required || Boolean(
 		(section as Partial<projectTypes.PhotosSectionType>)?.required,
 	);
@@ -384,14 +476,21 @@ export function normalizeSection(
 		variant: String(
 			(section as projectTypes.PhotosSectionType)?.variant || "photos-4",
 		),
+		panelId:
+			typeof (section as projectTypes.PhotosSectionType)?.panelId === "string"
+				? String((section as projectTypes.PhotosSectionType).panelId)
+				: templatePhotoSection?.panelId || null,
 		pageId:
 			typeof (section as projectTypes.PhotosSectionType)?.pageId === "string"
 				? String((section as projectTypes.PhotosSectionType).pageId)
 				: templatePhotoSection?.pageId || null,
+		files,
 		required,
 		photos,
 	};
 }
+
+export const normalizePanel = normalizeSection;
 
 export function loadState(
 	schema: projectTypes.ProjectSchemaType,
@@ -411,6 +510,7 @@ export function loadState(
 	}
 
 	try {
+		const panelIds = new Set(schema.panels.map((panel) => panel.id));
 		const legacyCoverSection = Array.isArray(parsed.sections)
 			? parsed.sections.find((section: unknown) =>
 				(section as { type?: string }).type === "cover"
@@ -422,7 +522,15 @@ export function loadState(
 					(section as { id?: string; type?: string }).id !==
 						"section-table-of-contents" &&
 					(section as { type?: string }).type !== "cover" &&
-					(section as { id?: string; type?: string }).type !== "toc",
+					(section as { id?: string; type?: string }).type !== "toc" &&
+					!(
+						(section as projectTypes.PhotosSectionType).type === "photos" &&
+						Boolean((section as projectTypes.PhotosSectionType).locked) &&
+						!((section as projectTypes.PhotosSectionType).panelId &&
+							panelIds.has(
+								String((section as projectTypes.PhotosSectionType).panelId),
+							))
+					),
 			)
 			: defaults.sections;
 
