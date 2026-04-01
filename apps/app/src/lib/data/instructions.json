@@ -1,362 +1,362 @@
 [
   {
-    "description": "Human-readable explanation of what the row or field represents.",
-    "entity": "global",
-    "example": "Short explanation",
     "id": "1",
+    "entity": "global",
     "name": "description",
+    "type": "string",
+    "description": "Human-readable explanation of what the row or field represents.",
     "notes": "Shared helper field when needed.",
     "options": null,
-    "type": "string"
+    "example": "Short explanation"
   },
   {
-    "description": "Whether the panel can be reordered in the editor.",
-    "entity": "global",
-    "example": "FALSE",
     "id": "2",
+    "entity": "global",
     "name": "draggable",
+    "type": "boolean",
+    "description": "Whether the panel can be reordered in the editor.",
     "notes": null,
     "options": "TRUE, FALSE",
-    "type": "boolean"
+    "example": "FALSE"
   },
   {
-    "description": "Whether the user can change the value.",
-    "entity": "global",
-    "example": "TRUE",
     "id": "3",
+    "entity": "global",
     "name": "editable",
+    "type": "boolean",
+    "description": "Whether the user can change the value.",
     "notes": null,
     "options": "TRUE, FALSE",
-    "type": "boolean"
+    "example": "TRUE"
   },
   {
-    "description": "Whether the panel is enabled by default.",
-    "entity": "global",
-    "example": "TRUE",
     "id": "4",
+    "entity": "global",
     "name": "enabled",
+    "type": "boolean",
+    "description": "Whether the panel is enabled by default.",
     "notes": null,
     "options": "TRUE, FALSE",
-    "type": "boolean"
+    "example": "TRUE"
   },
   {
-    "description": "Sample value used to clarify intent.",
-    "entity": "global",
-    "example": "Justin",
     "id": "5",
+    "entity": "global",
     "name": "example",
+    "type": "string",
+    "description": "Sample value used to clarify intent.",
     "notes": "Optional helper field.",
     "options": null,
-    "type": "string"
+    "example": "Justin"
   },
   {
-    "description": "Unique row identifier for the record or definition.",
-    "entity": "global",
-    "example": "INP-001",
     "id": "6",
+    "entity": "global",
     "name": "id",
+    "type": "system",
+    "description": "Unique row identifier for the record or definition.",
     "notes": "Used across inputs, panels, and pages.",
     "options": null,
-    "type": "system"
+    "example": "INP-001"
   },
   {
-    "description": "Human-readable input label shown in the UI.",
-    "entity": "global",
-    "example": "Owner",
     "id": "7",
+    "entity": "global",
     "name": "label",
+    "type": "string",
+    "description": "Human-readable input label shown in the UI.",
     "notes": null,
     "options": null,
-    "type": "string"
+    "example": "Owner"
   },
   {
-    "description": "Implementation notes edge cases or extra context.",
-    "entity": "global",
-    "example": "Prefilled from org data",
     "id": "8",
+    "entity": "global",
     "name": "notes",
+    "type": "string",
+    "description": "Implementation notes edge cases or extra context.",
     "notes": "Optional helper field.",
     "options": null,
-    "type": "string"
+    "example": "Prefilled from org data"
   },
   {
-    "description": "Sort order used when rendering or listing rows.",
-    "entity": "global",
-    "example": "1",
     "id": "9",
+    "entity": "global",
     "name": "order",
+    "type": "number",
+    "description": "Sort order used when rendering or listing rows.",
     "notes": "Used by panels and pages.",
     "options": null,
-    "type": "number"
+    "example": "1"
   },
   {
-    "description": "Unique logical storage path using dot notation.",
-    "entity": "global",
-    "example": "team.owner.name",
     "id": "10",
+    "entity": "global",
     "name": "path",
+    "type": "string",
+    "description": "Unique logical storage path using dot notation.",
     "notes": "Should remain stable over time.",
     "options": null,
-    "type": "string"
+    "example": "team.owner.name"
   },
   {
-    "description": "Whether the panel can be edited by the user.",
-    "entity": "global",
-    "example": "FALSE",
     "id": "11",
+    "entity": "global",
     "name": "readonly",
+    "type": "boolean",
+    "description": "Whether the panel can be edited by the user.",
     "notes": null,
     "options": "TRUE, FALSE",
-    "type": "boolean"
+    "example": "FALSE"
   },
   {
-    "description": "Reference to another row id used for inheritance reuse or dependency.",
-    "entity": "global",
-    "example": "PAGE-007",
     "id": "12",
+    "entity": "global",
     "name": "reference",
+    "type": "string",
+    "description": "Reference to another row id used for inheritance reuse or dependency.",
     "notes": "Use when one row depends on or mirrors another.",
     "options": null,
-    "type": "string"
+    "example": "PAGE-007"
   },
   {
-    "description": "Whether this is an object or array in the code.",
-    "entity": "global",
-    "example": "FALSE",
     "id": "13",
+    "entity": "global",
     "name": "repeatable",
+    "type": "boolean",
+    "description": "Whether this is an object or array in the code.",
     "notes": null,
     "options": "TRUE, FALSE",
-    "type": "boolean"
+    "example": "FALSE"
   },
   {
-    "description": "Whether the record or field must exist to be considered valid.",
-    "entity": "global",
-    "example": "TRUE",
     "id": "14",
+    "entity": "global",
     "name": "required",
+    "type": "boolean",
+    "description": "Whether the record or field must exist to be considered valid.",
     "notes": "Used by inputs, panels, and pages.",
     "options": "TRUE, FALSE",
-    "type": "boolean"
+    "example": "TRUE"
   },
   {
-    "description": "Title shown in the UI.",
-    "entity": "global",
-    "example": "Team",
     "id": "15",
+    "entity": "global",
     "name": "title",
+    "type": "string",
+    "description": "Title shown in the UI.",
     "notes": null,
     "options": null,
-    "type": "string"
+    "example": "Team"
   },
   {
-    "description": "Controls whether something is shown hidden or conditionally shown.",
-    "entity": "global",
-    "example": "visible",
     "id": "16",
+    "entity": "global",
     "name": "visibility",
+    "type": "list",
+    "description": "Controls whether something is shown hidden or conditionally shown.",
     "notes": "Used by both inputs and panels. Pages may also use it later if needed.",
     "options": "hidden, visible, conditional",
-    "type": "list"
+    "example": "visible"
   },
   {
-    "description": "UI control used to capture or edit the value (NOTE: use the `<InputNew>` component for all `<input>` related elements. The other 'form' components will be created later so it's ok to use normal html for those.",
-    "entity": "inputs",
-    "example": "text",
     "id": "17",
+    "entity": "inputs",
     "name": "input",
+    "type": "list",
+    "description": "UI control used to capture or edit the value (NOTE: use the `<InputNew>` component for all `<input>` related elements. The other 'form' components will be created later so it's ok to use normal html for those.",
     "notes": null,
     "options": "text, textarea, select, multiselect, date, datetime, number, email, tel, url, file, image, checkbox, radio, repeater, richtext, hidden",
-    "type": "list"
+    "example": "text"
   },
   {
-    "description": "Allowed options when the input uses select-like controls.",
-    "entity": "inputs",
-    "example": "Blake, Tom, Kate",
     "id": "18",
+    "entity": "inputs",
     "name": "options",
+    "type": "list",
+    "description": "Allowed options when the input uses select-like controls.",
     "notes": "Usually comma-separated values.",
     "options": null,
-    "type": "list"
+    "example": "Blake, Tom, Kate"
   },
   {
-    "description": "Pages that consume this input during rendering.",
-    "entity": "inputs",
-    "example": "Cover",
     "id": "19",
+    "entity": "inputs",
     "name": "outputToPages",
+    "type": "list",
+    "description": "Pages that consume this input during rendering.",
     "notes": "Usually comma-separated values.",
     "options": "Cover, Table of Contents, Introduction, Project Report, Personnel in Attendance, Cargo Description, Cargo Condition Inspection, Time Log, Cargo Operations, Cargo Damages, Cargo Storage, Cargo Trailer Securement, Ships Particulars, Ships Certifications, Barge Information, Lifting Plan, Lifting Gear, Stowage Plan, Post-Discharge Inspection, Disclaimer",
-    "type": "list"
+    "example": "Cover"
   },
   {
-    "description": "Page region where the input is rendered.",
-    "entity": "inputs",
-    "example": "main",
     "id": "20",
+    "entity": "inputs",
     "name": "outputToPageSection",
+    "type": "list",
+    "description": "Page region where the input is rendered.",
     "notes": null,
     "options": "header, main, footer",
-    "type": "list"
+    "example": "main"
   },
   {
-    "description": "Panel this input belongs to in the editor.",
-    "entity": "inputs",
-    "example": "Team",
     "id": "21",
+    "entity": "inputs",
     "name": "panel",
+    "type": "list",
+    "description": "Panel this input belongs to in the editor.",
     "notes": "Join target for the panels sheet.",
     "options": "Organization, Project, Team, Client, Facility, Carrier, Items, Inspection, Damages, Discharge, Time Log, Custom",
-    "type": "list"
+    "example": "Team"
   },
   {
-    "description": "Hint text shown before the user enters a value.",
-    "entity": "inputs",
-    "example": "Describe the activity",
     "id": "22",
+    "entity": "inputs",
     "name": "placeholder",
+    "type": "string",
+    "description": "Hint text shown before the user enters a value.",
     "notes": null,
     "options": null,
-    "type": "string"
+    "example": "Describe the activity"
   },
   {
-    "description": "Where the value comes from.",
-    "entity": "inputs",
-    "example": "user",
     "id": "23",
+    "entity": "inputs",
     "name": "source",
+    "type": "list",
+    "description": "Where the value comes from.",
     "notes": null,
     "options": "user, system, prefilled, derived, template, external",
-    "type": "list"
+    "example": "user"
   },
   {
-    "description": "Actual stored data type for the value.",
-    "entity": "inputs",
-    "example": "string",
     "id": "24",
+    "entity": "inputs",
     "name": "type",
+    "type": "list",
+    "description": "Actual stored data type for the value.",
     "notes": null,
     "options": "string, number, boolean, date, datetime, enum, object, array, file, image, richtext",
-    "type": "list"
+    "example": "string"
   },
   {
-    "description": "Validation rules such as min max pattern or format.",
-    "entity": "inputs",
-    "example": "required",
     "id": "25",
+    "entity": "inputs",
     "name": "validation",
+    "type": "object",
+    "description": "Validation rules such as min max pattern or format.",
     "notes": null,
     "options": "required, min, max, minLength, maxLength, pattern, email, url, phone, date",
-    "type": "object"
+    "example": "required"
   },
   {
-    "description": "Initial default value used when creating a new record.",
-    "entity": "inputs",
-    "example": "Survey Report",
     "id": "26",
+    "entity": "inputs",
     "name": "value",
+    "type": "any",
+    "description": "Initial default value used when creating a new record.",
     "notes": null,
     "options": null,
-    "type": "any"
+    "example": "Survey Report"
   },
   {
-    "description": "Dataset this instruction row applies to.",
-    "entity": "meta",
-    "example": "inputs",
     "id": "27",
+    "entity": "meta",
     "name": "entity",
+    "type": "list",
+    "description": "Dataset this instruction row applies to.",
     "notes": "Used only by the instructions sheet itself.",
     "options": "global, inputs, panels, pages",
-    "type": "list"
+    "example": "inputs"
   },
   {
-    "description": "Exact column name this instruction row describes.",
-    "entity": "meta",
-    "example": "outputToPages",
     "id": "28",
+    "entity": "meta",
     "name": "name",
+    "type": "string",
+    "description": "Exact column name this instruction row describes.",
     "notes": "Used only by the instructions sheet itself.",
     "options": null,
-    "type": "string"
+    "example": "outputToPages"
   },
   {
-    "description": "Expected value type for the named column.",
-    "entity": "meta",
-    "example": "list",
     "id": "29",
+    "entity": "meta",
     "name": "type",
+    "type": "list",
+    "description": "Expected value type for the named column.",
     "notes": "Used only by the instructions sheet itself.",
     "options": "system, string, number, boolean, list, object, array, any, image, url",
-    "type": "list"
+    "example": "list"
   },
   {
-    "description": "Name of the output page.",
-    "entity": "pages",
-    "example": "Cover",
     "id": "30",
+    "entity": "pages",
     "name": "page",
+    "type": "list",
+    "description": "Name of the output page.",
     "notes": null,
     "options": "Cover, Table of Contents, Introduction, Project Report, Personnel in Attendance, Cargo Description, Cargo Condition Inspection, Time Log, Cargo Operations, Cargo Damages, Cargo Storage, Cargo Trailer Securement, Ships Particulars, Ships Certifications, Barge Information, Lifting Plan, Lifting Gear, Stowage Plan, Post-Discharge Inspection, Disclaimer",
-    "type": "list"
+    "example": "Cover"
   },
   {
-    "description": "Page regions enabled for the page layout.",
-    "entity": "pages",
-    "example": "header, main, footer",
     "id": "31",
+    "entity": "pages",
     "name": "section",
+    "type": "list",
+    "description": "Page regions enabled for the page layout.",
     "notes": "Usually comma-separated values.",
     "options": "header, main, footer",
-    "type": "list"
+    "example": "header, main, footer"
   },
   {
-    "description": "Render variant used for the page.",
-    "entity": "pages",
-    "example": "photo",
     "id": "32",
+    "entity": "pages",
     "name": "variant",
+    "type": "list",
+    "description": "Render variant used for the page.",
     "notes": null,
     "options": "full, toc, list, template, team, table, photo",
-    "type": "list"
+    "example": "photo"
   },
   {
-    "description": "Emoji to use for icon. Will later be replaced with icon class name.",
-    "entity": "panels",
-    "example": "🖼️",
     "id": "33",
+    "entity": "panels",
     "name": "icon",
+    "type": "string",
+    "description": "Emoji to use for icon. Will later be replaced with icon class name.",
     "notes": null,
     "options": null,
-    "type": "string"
+    "example": "🖼️"
   },
   {
-    "description": "CSS class or token used to render the panel icon.",
-    "entity": "panels",
-    "example": "icon-[tabler--briefcase-2-filled]",
     "id": "34",
+    "entity": "panels",
     "name": "iconClass",
+    "type": "string",
+    "description": "CSS class or token used to render the panel icon.",
     "notes": null,
     "options": null,
-    "type": "string"
+    "example": "icon-[tabler--briefcase-2-filled]"
   },
   {
-    "description": "Optional icon or asset URL associated with the panel.",
-    "entity": "panels",
-    "example": "https://api.iconify.design/tabler:briefcase-2-filled.svg",
     "id": "35",
+    "entity": "panels",
     "name": "iconUrl",
+    "type": "url",
+    "description": "Optional icon or asset URL associated with the panel.",
     "notes": null,
     "options": null,
-    "type": "url"
+    "example": "https://api.iconify.design/tabler:briefcase-2-filled.svg"
   },
   {
-    "description": "Panel behavior or rendering variant if needed.",
-    "entity": "panels",
-    "example": "default",
     "id": "36",
+    "entity": "panels",
     "name": "type",
+    "type": "list",
+    "description": "Panel behavior or rendering variant if needed.",
     "notes": "Optional for now; current data allows this column even if blank.",
     "options": "default, system, custom, repeater, photo",
-    "type": "list"
+    "example": "default"
   }
 ]

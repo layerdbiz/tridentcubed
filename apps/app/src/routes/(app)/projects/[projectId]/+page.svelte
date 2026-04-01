@@ -206,7 +206,7 @@
 				if (!resolvedSection) continue;
 				if (section) {
 					if (!resolvedSection.enabled && !pageDefinition.required) continue;
-				} else if (!pageDefinition.required && !hasDerivedContent) {
+				} else if (!pageDefinition.required && (!hasDerivedContent || !resolvedSection.enabled)) {
 					continue;
 				}
 				items.push({
@@ -278,6 +278,15 @@
 		return String(value || '').trim().length > 0;
 	}
 
+	function getFieldValueList(value: projectTypes.FieldStateValueType | undefined): string[] {
+		if (Array.isArray(value)) {
+			return value.map((item) => String(item || '').trim()).filter(Boolean);
+		}
+
+		const text = String(value || '').trim();
+		return text ? [text] : [];
+	}
+
 	function getOutputPageInputs(pageDefinition: projectTypes.PageDefinitionType) {
 		return projectSchemas.getInputsForOutputPage(projectSchema, pageDefinition);
 	}
@@ -324,6 +333,37 @@
 		return items;
 	}
 
+	function getOutputPagePhotoItems(
+		outputInputs: projectTypes.InputDefinitionType[]
+	): projectTypes.PhotoItemType[] {
+		const items: projectTypes.PhotoItemType[] = [];
+
+		for (const input of outputInputs) {
+			if (input.input !== 'image') continue;
+
+			const sources = getFieldValueList(getFieldValue(input.path));
+			const captionInput = outputInputs.find((candidate) =>
+				candidate.input === 'text' && candidate.reference.includes(input.id)
+			);
+			const captions = captionInput
+				? getFieldValueList(getFieldValue(captionInput.path))
+				: [];
+
+			for (const [index, src] of sources.entries()) {
+				items.push({
+					id: `derived-${input.id}-${index + 1}`,
+					name: input.label || input.path,
+					caption: captions[index] || '',
+					src,
+					width: 0,
+					height: 0
+				});
+			}
+		}
+
+		return items;
+	}
+
 	function getOutputPageDescription(
 		pageDefinition: projectTypes.PageDefinitionType,
 		outputInputs: projectTypes.InputDefinitionType[]
@@ -343,9 +383,20 @@
 
 	function getOutputPageVariant(
 		pageDefinition: projectTypes.PageDefinitionType,
+		outputInputs: projectTypes.InputDefinitionType[],
 		photos: projectTypes.PhotoItemType[],
 		files: string[]
 	): string {
+		const variantInput = outputInputs.find(
+			(input) =>
+				input.input === 'select' &&
+				input.options.some((option) => option.startsWith('photos-'))
+		);
+		const configuredVariant = variantInput
+			? projectSchemas.getPanelFieldStringValue(sections, variantInput.path).trim()
+			: '';
+		if (configuredVariant) return configuredVariant;
+
 		if (pageDefinition.page === 'Introduction' || pageDefinition.page === 'Cargo Description') {
 			return 'photos-1';
 		}
@@ -369,14 +420,22 @@
 		if (!ownerPanel) return null;
 
 		const imagePaths = outputInputs
-			.filter((input) => input.input === 'image')
+			.filter((input) => input.input === 'image' && !input.reference.length)
 			.map((input) => input.path);
 		const filePaths = outputInputs
 			.filter((input) => input.input === 'file')
 			.map((input) => input.path);
-		const photos = getFieldImageItems(imagePaths);
+		const derivedPhotos = getOutputPagePhotoItems(outputInputs);
+		const photos = derivedPhotos.length ? derivedPhotos : getFieldImageItems(imagePaths);
 		const files = getFieldFileItems(filePaths);
 		const description = getOutputPageDescription(pageDefinition, outputInputs);
+		const ownerSection = ownerPanel
+			? sections.find(
+				(section) =>
+					(section.type === 'fields' || section.type === 'cover') &&
+					section.section === ownerPanel.title
+			  ) as projectTypes.FieldSectionType | undefined
+			: undefined;
 
 		return {
 			id: `derived-${pageDefinition.id}`,
@@ -385,10 +444,10 @@
 			icon: ownerPanel.icon || '🖼️',
 			open: false,
 			locked: true,
-			enabled: true,
+			enabled: ownerSection?.enabled ?? true,
 			placement: 'middle',
 			description,
-			variant: getOutputPageVariant(pageDefinition, photos, files),
+			variant: getOutputPageVariant(pageDefinition, outputInputs, photos, files),
 			files,
 			panelId: ownerPanel.id,
 			pageId: pageDefinition.id,
@@ -570,7 +629,21 @@
 
 	function toggleSectionEnabled(sectionId: string) {
 		const section = sections.find((item) => item.id === sectionId);
-		if (!section || section.type !== 'photos' || !section.locked || section.required) return;
+		if (!section || !section.locked) return;
+
+		if (section.type === 'photos') {
+			if (section.required) return;
+			section.enabled = !section.enabled;
+			if (!section.enabled) {
+				section.open = false;
+			}
+			return;
+		}
+
+		if (section.type !== 'fields' && section.type !== 'cover') return;
+
+		const panelDefinition = projectSchemas.getPanelDefinition(projectSchema, section.section);
+		if (!panelDefinition || panelDefinition.required) return;
 
 		section.enabled = !section.enabled;
 		if (!section.enabled) {

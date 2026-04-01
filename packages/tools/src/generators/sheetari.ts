@@ -51,11 +51,12 @@ function stableJsonValue(value: unknown): unknown {
 
 	if (typeof value === "object" && value !== null) {
 		const record = value as Record<string, unknown>;
-		const sortedEntries = Object.keys(record)
-			.sort((left, right) => left.localeCompare(right))
-			.map((key) => [key, stableJsonValue(record[key])] as const);
-
-		return Object.fromEntries(sortedEntries);
+		return Object.fromEntries(
+			Object.entries(record).map(([key, entry]) => [
+				key,
+				stableJsonValue(entry),
+			]),
+		);
 	}
 
 	return value;

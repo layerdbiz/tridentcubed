@@ -1,222 +1,222 @@
 [
   {
     "id": "PAGE-001",
-    "notes": "This is a cover photo that includes some branding and some key data that gives an overall snapshot of the report. e.g. it will have report type, report title, carrier name, project owner name, org logo, facility name, dates dervived from the timelog, and the client name and client logo.",
     "order": "1",
-    "page": "Cover",
-    "reference": null,
+    "visibility": null,
     "required": "TRUE",
-    "section": "main",
+    "page": "Cover",
     "variant": "full",
-    "visibility": null
+    "section": "main",
+    "notes": "This is a cover photo that includes some branding and some key data that gives an overall snapshot of the report. e.g. it will have report type, report title, carrier name, project owner name, org logo, facility name, dates dervived from the timelog, and the client name and client logo.",
+    "reference": null
   },
   {
     "id": "PAGE-002",
-    "notes": "Auto generated table of contents based on a combination of required pages and optional panels. Users will be able to toggle the optional panels on or off. There will also be subsection pages created when photo-based pages exceed their per-page limit.",
     "order": "2",
-    "page": "Table of Contents",
-    "reference": null,
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Table of Contents",
     "variant": "toc",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "Auto generated table of contents based on a combination of required pages and optional panels. Users will be able to toggle the optional panels on or off. There will also be subsection pages created when photo-based pages exceed their per-page limit.",
+    "reference": null
   },
   {
     "id": "PAGE-003",
-    "notes": "This is a quick intro page that uses the data entered from the panels to create a summary. it should also use a single photo showing the carrier photo that the user uploaded",
     "order": "3",
-    "page": "Introduction",
-    "reference": null,
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Introduction",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "This is a quick intro page that uses the data entered from the panels to create a summary. it should also use a single photo showing the carrier photo that the user uploaded",
+    "reference": null
   },
   {
     "id": "PAGE-004",
-    "notes": "This page encompasses the personnel, cargo description, and cargo inspection pages (multi-page)",
     "order": "4",
-    "page": "Project Report",
-    "reference": null,
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Project Report",
     "variant": "template",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "This page encompasses the personnel, cargo description, and cargo inspection pages (multi-page)",
+    "reference": null
   },
   {
     "id": "PAGE-005",
-    "notes": "This section shows the \"project owner\" and \"assigned team members\" in a card style with different data for each e.g. photo, name, title, phone, email. the project owner will have a special badge to signify they are the main point of contact for that particular project.",
     "order": "5",
-    "page": "Personnel in Attendance",
-    "reference": null,
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Personnel in Attendance",
     "variant": "team",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "This section shows the \"project owner\" and \"assigned team members\" in a card style with different data for each e.g. photo, name, title, phone, email. the project owner will have a special badge to signify they are the main point of contact for that particular project.",
+    "reference": null
   },
   {
     "id": "PAGE-006",
-    "notes": "This pulls in the project title and project description along with a full page photo the user uploads of the item list. later on this will be a table view of items we will create in a future release.",
     "order": "6",
-    "page": "Cargo Description",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Cargo Description",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "This pulls in the project title and project description along with a full page photo the user uploads of the item list. later on this will be a table view of items we will create in a future release.",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-007",
-    "notes": "This page and all of the pages that reference this page id are what i'm referring to as \"photo\" or \"custom\" pages. These are all similar in nature, the only thing special about them is that there data can change out, the number of photos per page can change out from 1, 2, 4, 6, 8, and lastly they can be multipage based on the number of photos the user uploads.",
     "order": "7",
-    "page": "Cargo Condition Inspection",
-    "reference": null,
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Cargo Condition Inspection",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "This page and all of the pages that reference this page id are what i'm referring to as \"photo\" or \"custom\" pages. These are all similar in nature, the only thing special about them is that there data can change out, the number of photos per page can change out from 1, 2, 4, 6, 8, and lastly they can be multipage based on the number of photos the user uploads.",
+    "reference": null
   },
   {
     "id": "PAGE-008",
-    "notes": "The timelog is dynamic and can have as many days, times, and time activity that the user writes.",
     "order": "8",
-    "page": "Time Log",
-    "reference": null,
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Time Log",
     "variant": "list",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "The timelog is dynamic and can have as many days, times, and time activity that the user writes.",
+    "reference": null
   },
   {
     "id": "PAGE-009",
-    "notes": null,
     "order": "9",
-    "page": "Cargo Operations",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Cargo Operations",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": null,
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-010",
-    "notes": "see reference",
     "order": "10",
-    "page": "Cargo Damages",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Cargo Damages",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-011",
-    "notes": "see reference",
     "order": "11",
-    "page": "Cargo Storage",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Cargo Storage",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-012",
-    "notes": "see reference",
     "order": "12",
-    "page": "Cargo Trailer Securement",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Cargo Trailer Securement",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-013",
-    "notes": "see reference",
     "order": "13",
-    "page": "Ships Particulars",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Ships Particulars",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-014",
-    "notes": "see reference",
     "order": "14",
-    "page": "Ships Certifications",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Ships Certifications",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-015",
-    "notes": "see reference",
     "order": "15",
-    "page": "Barge Information",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Barge Information",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-016",
-    "notes": "see reference",
     "order": "16",
-    "page": "Lifting Plan",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Lifting Plan",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-017",
-    "notes": "see reference",
     "order": "17",
-    "page": "Lifting Gear",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Lifting Gear",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-018",
-    "notes": "see reference",
     "order": "18",
-    "page": "Stowage Plan",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Stowage Plan",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-019",
-    "notes": "see reference",
     "order": "19",
-    "page": "Post-Discharge Inspection",
-    "reference": "PAGE-007",
+    "visibility": null,
     "required": "FALSE",
-    "section": "header, main, footer",
+    "page": "Post-Discharge Inspection",
     "variant": "photo",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "see reference",
+    "reference": "PAGE-007"
   },
   {
     "id": "PAGE-020",
-    "notes": "This is custom disclaimer template that never changes. the only dynamic piece is the part that comes after the disclaimer where it will be a photo of the \"project owner\", with a special message that includes their photo, name, title, phone number, and email similar to a custom html email signature.",
     "order": "20",
-    "page": "Disclaimer",
-    "reference": null,
+    "visibility": null,
     "required": "TRUE",
-    "section": "header, main, footer",
+    "page": "Disclaimer",
     "variant": "template",
-    "visibility": null
+    "section": "header, main, footer",
+    "notes": "This is custom disclaimer template that never changes. the only dynamic piece is the part that comes after the disclaimer where it will be a photo of the \"project owner\", with a special message that includes their photo, name, title, phone number, and email similar to a custom html email signature.",
+    "reference": null
   }
 ]

@@ -217,6 +217,19 @@ export function createFixedSectionTemplates(
 			continue;
 		}
 
+		const inputGroup = projectSchemas.getInputGroup(schema, panel.title);
+		if (inputGroup) {
+			fixedPanelTemplates.push({
+				id: `section-${panel.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+				type: "fields",
+				title: panel.title,
+				icon: getPanelIcon(panel, getSectionIcon(panel.title)),
+				placement: "start",
+				create: () => createFieldSection(panel, inputGroup),
+			});
+			continue;
+		}
+
 		if (renderer === "photos") {
 			const page = projectSchemas.getPhotoPageForPanel(schema, panel);
 			fixedPanelTemplates.push({
@@ -230,7 +243,6 @@ export function createFixedSectionTemplates(
 			continue;
 		}
 
-		const inputGroup = projectSchemas.getInputGroup(schema, panel.title);
 		fixedPanelTemplates.push({
 			id: `section-${panel.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
 			type: "fields",
@@ -400,7 +412,7 @@ export function normalizeSection(
 				: template?.icon || "🧩",
 			open: Boolean(section.open),
 			locked: template ? true : Boolean(section.locked),
-			enabled: true,
+			enabled: typeof section.enabled === "boolean" ? section.enabled : true,
 			placement: template?.placement || section.placement || "middle",
 			fields: Object.fromEntries(
 				Object.entries(section.fields || {}).map(([key, itemValue]) => [

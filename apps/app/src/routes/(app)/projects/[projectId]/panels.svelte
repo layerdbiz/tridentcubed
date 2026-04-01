@@ -15,6 +15,7 @@
 	import * as projectConstants from '../projects.constants';
 	import * as projectUtils from '../projects.utils';
 	import * as projectStates from '../projects.state';
+	import SharedPhotoInputs from './shared-photo-inputs.svelte';
 	import type * as projectTypes from '../projects.types';
 
 	type WorkspacePaneType = 'edit' | 'preview';
@@ -97,8 +98,16 @@
 
 	function isToggleableSection(
 		section: projectTypes.SectionType,
-	): section is projectTypes.PhotosSectionType {
-		return section.type === 'photos' && section.locked && !section.required;
+		panelDefinition: projectTypes.PanelDefinitionType | undefined,
+		inputGroup: projectTypes.PanelInputGroupDefinitionType | undefined
+	): boolean {
+		if (!section.locked) return false;
+		if (section.type === 'photos') return !section.required;
+		if (section.type === 'fields' || section.type === 'cover') {
+			return Boolean(panelDefinition && !panelDefinition.required && getSharedPhotoFields(inputGroup).imageField);
+		}
+
+		return false;
 	}
 
 	function handleSectionToggleClick(event: MouseEvent, sectionId: string) {
@@ -174,6 +183,44 @@
 
 		return projectSchemas.getPanelDefinition(schema, section.title);
 	}
+
+	type SharedPhotoFieldsType = {
+		descriptionField?: projectTypes.InputDefinitionType;
+		variantField?: projectTypes.InputDefinitionType;
+		imageField?: projectTypes.InputDefinitionType;
+		captionField?: projectTypes.InputDefinitionType;
+		fileField?: projectTypes.InputDefinitionType;
+		regularFields: projectTypes.InputDefinitionType[];
+	};
+
+	function getSharedPhotoFields(
+		inputGroup: projectTypes.PanelInputGroupDefinitionType | undefined
+	): SharedPhotoFieldsType {
+		const fields = inputGroup?.inputs ?? [];
+		const imageField = fields.find((field) => field.input === 'image' && field.repeatable);
+		const captionField = imageField
+			? fields.find(
+				(field) => field.input === 'text' && field.repeatable && field.reference.includes(imageField.id)
+			)
+			: undefined;
+		const descriptionField = fields.find((field) => field.input === 'textarea');
+		const variantField = fields.find(
+			(field) => field.input === 'select' && field.options.some((option) => option.startsWith('photos-'))
+		);
+		const fileField = fields.find((field) => field.input === 'file' && field.repeatable);
+		const specialFieldIds = new Set(
+			[descriptionField?.id, variantField?.id, imageField?.id, captionField?.id, fileField?.id].filter(Boolean)
+		);
+
+		return {
+			descriptionField,
+			variantField,
+			imageField,
+			captionField,
+			fileField,
+			regularFields: fields.filter((field) => !specialFieldIds.has(field.id))
+		};
+	}
 </script>
 
 <section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
@@ -226,6 +273,8 @@
 		>
 			{#each sections as section, index (section.id)}
 				{@const panelDefinition = getSectionPanelDefinition(section)}
+				{@const inputGroup = section.type === 'fields' || section.type === 'cover' ? projectSchemas.getInputGroup(schema, section.section) : undefined}
+				{@const sharedPhotoFields = getSharedPhotoFields(inputGroup)}
 				{@const metrics = projectUtils.getPanelMetrics(section)}
 				{@const sectionDisabled = !section.enabled}
 				{@const sectionStatusLabel = sectionDisabled ? 'DISABLED' : projectUtils.getPanelStatusLabel(metrics)}
@@ -270,7 +319,7 @@
 										<div class={`h-full rounded-full transition-all duration-300 ${sectionProgressFillClass}`} style={`width: ${sectionDisabled ? 0 : metrics.percent}%`}></div>
 									</div>
 								</div>
-										{#if isToggleableSection(section)}
+										{#if isToggleableSection(section, panelDefinition, inputGroup)}
 											<button
 												type="button"
 												role="switch"
@@ -292,16 +341,26 @@
 						<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
 							<div class:grayscale={sectionDisabled} class:opacity-60={sectionDisabled} class:pointer-events-none={sectionDisabled}>
 							{#if section.type === 'fields' || section.type === 'cover'}
-								{@const inputGroup = projectSchemas.getInputGroup(schema, section.section)}
 								<div class="relative z-0 grid gap-5">
 									<div class="space-y-3">
 										{#if panelDefinition?.description}
 											<p class="text-sm text-neutral-600">{panelDefinition.description}</p>
 										{/if}
 										{#if inputGroup}
+										{#if sharedPhotoFields.imageField}
+											<SharedPhotoInputs
+												section={section}
+												descriptionField={sharedPhotoFields.descriptionField}
+												variantField={sharedPhotoFields.variantField}
+												imageField={sharedPhotoFields.imageField}
+												captionField={sharedPhotoFields.captionField}
+												fileField={sharedPhotoFields.fileField}
+												{setSectionFieldValue}
+											/>
+										{/if}
 										<div class="space-y-3">
 											<Text h4={inputGroup.panel} class="font-bold text-neutral-800" />
-												{#each inputGroup.inputs as field (field.id)}
+												{#each sharedPhotoFields.regularFields as field (field.id)}
 													<div class={field.input === 'textarea' || field.input === 'multiselect' ? 'md:col-span-2' : ''}>
 														{#if field.input === 'textarea'}
 															<InputNew xs label={field.label} variant="text" type="text" value={projectSchemas.getFieldStringValue(section.fields, field.path)} placeholder={field.placeholder || ' '} disabled={!section.enabled || !field.editable} oninput={(event: Event) => handleFieldInput(section.id, field.path, event)} />

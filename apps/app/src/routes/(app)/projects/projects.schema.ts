@@ -1,16 +1,6 @@
 import type * as projectTypes from "./projects.types";
 
 const excludedSections = new Set(["Time Log", "Custom"]);
-const photoPagePanelTitleByPageKey = new Map([
-	["cargoconditioninspection", "Inspection"],
-	["cargodamages", "Damages"],
-	["cargooperations", "Discharge"],
-]);
-const photoPanelPageTitleByPanelKey = new Map([
-	["inspection", "Cargo Condition Inspection"],
-	["damages", "Cargo Damages"],
-	["discharge", "Cargo Operations"],
-]);
 
 function toKey(value: string): string {
 	return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -81,7 +71,7 @@ export function createProjectSchema(
 export function getFieldInitialValue(
 	field: projectTypes.InputDefinitionType,
 ): projectTypes.FieldStateValueType {
-	if (field.input === "multiselect") {
+	if (field.input === "multiselect" || field.repeatable) {
 		return field.value
 			.split(",")
 			.map((value) => value.trim())
@@ -218,12 +208,11 @@ export function getPhotoPageForPanel(
 		return schema.pages.find((page) => page.id === explicitPageId);
 	}
 
-	const panelKey = toKey(panel.title);
-	const pageTitle = photoPanelPageTitleByPanelKey.get(panelKey) || panel.title;
-	const pageKey = toKey(pageTitle);
-
 	return schema.pages.find((page) =>
-		page.variant === "photo" && toKey(page.page) === pageKey
+		page.variant === "photo" &&
+		getInputsForOutputPage(schema, page).some((input) =>
+			matchesPageTitle(input.panel, panel.title)
+		)
 	);
 }
 
@@ -233,14 +222,12 @@ export function getPanelForPhotoPage(
 ): projectTypes.PanelDefinitionType | undefined {
 	if (page.variant !== "photo") return undefined;
 
-	const explicitlyReferencedPanel = schema.panels.find((panel) =>
+	const explicitPanel = schema.panels.find((panel) =>
 		getExplicitPanelPageReferences(panel).includes(page.id)
 	);
-	if (explicitlyReferencedPanel) return explicitlyReferencedPanel;
+	if (explicitPanel) return explicitPanel;
 
-	const pageKey = toKey(page.page);
-	const panelTitle = photoPagePanelTitleByPageKey.get(pageKey) || page.page;
-	return getPanelDefinition(schema, panelTitle);
+	return getPrimaryPanelForPage(schema, page);
 }
 
 export function getSectionFieldStringValue(

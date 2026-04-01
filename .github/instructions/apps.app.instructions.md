@@ -72,6 +72,16 @@ These have distinct roles and should not be conflated:
 
 These sheets are still evolving, so changes should stay minimal and intentional. This data model is the foundation of the app, so we need to keep it clean, easy to reason about, and consistent as we refine it.
 
+When preparing rows for Google Sheets or telling the user what to paste into a sheet:
+
+- never tell the user to enter the literal value `null` into a sheet cell
+- if a sheet value is absent, leave the cell blank instead
+- the local JSON mirror may still represent blank sheet cells as `null` after Sheetari sync, and that is expected
+- when the user asks for changes to any app data sheet (`inputs`, `panels`, `pages`, or `instructions`) for manual copy/paste, always include paste-ready table output for the affected rows
+- those tables must use the current live column order from the local JSON mirror, not alphabetical key order
+- explicitly tell the user which sheet the rows belong to
+- prefer showing only the rows that changed, unless the user asks for a full sheet view
+
 At times, we may edit the sheet structure as `.csv` files first, then upload those changes back into Google Sheets so the updated JSON can be consumed through Sheetari.
 
 app data (json)
@@ -124,6 +134,8 @@ This means:
 - treat the local mirror as the default workspace reference copy
 - treat Sheetari as the upstream sync source that produces the local mirror
 - if sheet structure changes upstream, refresh the local mirror with `pnpm sheetari` before relying on the new data locally
+- a Google Sheets MCP connection is available for upstream read/write access, but do not use it unless the user explicitly asks you to edit the live Google Sheet
+- unless explicitly instructed otherwise, prefer planning against the local JSON mirror first and treat live sheet edits as a deliberate upstream operation
 
 ---
 
@@ -170,11 +182,45 @@ Google Sheet
 - ALWAYS prefer reading the local mirror before hitting remote Sheetari URLs when the mirror exists
 - When upstream sheet data changes, refresh the local mirror with `pnpm sheetari`
 - Prefer config-driven UI over hardcoded inputs
+- When giving the user paste-ready sheet rows, render blank cells as blank cells, not as the literal string `null`
 - Editor panel creation must come from `panels`, not from `pages`
 - Output page creation, naming, and ordering must come from `pages`, not from panel titles or panel order
 - Output page ownership should come from `inputs.outputToPages` first, with code-side fallbacks used only as temporary compatibility bridges
+- DO NOT hardcode panel-to-page, panel-to-section, or page-to-panel routing in app code when that relationship belongs to sheet data
+- Do not use `panels.reference` as the steady-state source of output page routing; panel references may support inheritance or reuse, but output ownership should come from `inputs.outputToPages` and `inputs.outputToPageSection`
+- Treat title-based matching as a bug-prone migration bridge only, not as an acceptable steady-state architecture
+- When a single panel must contribute to multiple preview pages or multiple page sections, prefer a dedicated sheet-backed join model over overloading code-side conditionals or heuristics
 - Optional output pages should appear when mapped input data has meaningful content or when the page is explicitly required
 - Prefer explicit row references in sheet data over title-based heuristics whenever possible
+
+## Output Mapping Contract
+
+Use this contract moving forward for preview/export ownership:
+
+- `inputs.outputToPages` + `inputs.outputToPageSection` owns field-level rendering on pages
+- `panels` should describe editor behavior and panel capability/configuration, not output routing
+- If the app needs stable many-to-many panel preview mappings at scale, add a dedicated sheet-backed join source such as `panel_outputs` instead of encoding that logic in TypeScript
+
+Recommended `panel_outputs` row shape for the next evolution:
+
+- `id`: unique row id such as `POUT-001`
+- `panelId`: source panel row id such as `PANEL-009`
+- `pageId`: destination page row id such as `PAGE-009`
+- `section`: target page section such as `header`, `main`, or `footer`
+- `role`: relationship role such as `primary`, `secondary`, `append`, or `summary`
+- `order`: explicit output order when multiple mappings target the same page/section
+- `enabled`: whether the mapping is active by default
+- `required`: whether this contribution is mandatory for the page
+- `notes`: implementation context only; never execution logic
+
+Why this is the recommended path:
+
+- `panels` should define editor behavior
+- `pages` should define preview/export surfaces
+- `inputs` should define field ownership
+- a join source should define many-to-many panel/page relationships
+
+If preview/export routing is unclear, expand the existing input contract before adding more routing behavior to panel data.
 
 ---
 
