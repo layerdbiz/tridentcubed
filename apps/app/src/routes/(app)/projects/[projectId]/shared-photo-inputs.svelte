@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { Button, InputNew } from '@layerd/ui';
-	import * as projectUtils from '../projects.utils';
+	import type { SortableApi } from '@layerd/ui';
+	import { InputNew } from '@layerd/ui';
+	import * as projectAssets from '../projects.assets';
+	import PhotoGrid from './photo-grid.svelte';
 	import type * as projectTypes from '../projects.types';
 
 	export interface SharedPhotoInputsProps {
@@ -10,10 +12,16 @@
 		imageField: projectTypes.InputDefinitionType;
 		captionField?: projectTypes.InputDefinitionType;
 		fileField?: projectTypes.InputDefinitionType;
+		photoSort: SortableApi<projectTypes.PhotoItemType>;
+		draggedPhotoId: string;
 		setSectionFieldValue: (
 			sectionId: string,
 			path: string,
 			value: projectTypes.FieldStateValueType
+		) => void;
+		setSectionFieldValues: (
+			sectionId: string,
+			values: Record<string, projectTypes.FieldStateValueType>
 		) => void;
 	}
 
@@ -24,7 +32,10 @@
 		imageField,
 		captionField,
 		fileField,
-		setSectionFieldValue
+		photoSort,
+		draggedPhotoId,
+		setSectionFieldValue,
+		setSectionFieldValues
 	}: SharedPhotoInputsProps = $props();
 
 	let isDropTarget = $state(false);
@@ -45,17 +56,51 @@
 		return getFieldValueList(section.fields[captionField.path]);
 	}
 
+	let photoItemCache: Record<string, projectTypes.PhotoItemType> = {};
+
 	const photoItems = $derived.by(() => {
 		const images = getFieldValueList(section.fields[imageField.path]);
 		const captions = getCaptionValues();
+		const nextCache: Record<string, projectTypes.PhotoItemType> = {};
 
-		return images.map((src, index) => ({
-			id: `${section.id}-${imageField.id}-${index + 1}`,
-			src,
-			caption: captions[index] || '',
-			name: `${imageField.label || 'Photo'} ${index + 1}`
-		}));
+		const items = images.map((src, index) => {
+			const photoId = src || `${section.id}-${imageField.id}-${index + 1}`;
+			const photo = photoItemCache[photoId] ?? {
+				id: photoId,
+				src,
+				caption: captions[index] || '',
+				name: `${imageField.label || 'Photo'} ${index + 1}`,
+				width: 0,
+				height: 0
+			};
+
+			photo.src = src;
+			photo.caption = captions[index] || '';
+			photo.name = `${imageField.label || 'Photo'} ${index + 1}`;
+			nextCache[photoId] = photo;
+			return photo;
+		});
+
+		photoItemCache = nextCache;
+		return items;
 	});
+
+	function commitPhotos(nextPhotos: projectTypes.PhotoItemType[]) {
+		const nextValues: Record<string, projectTypes.FieldStateValueType> = {
+			[imageField.path]: nextPhotos.map((photo) => photo.src)
+		};
+
+		if (captionField) {
+			nextValues[captionField.path] = nextPhotos.map((photo) => photo.caption);
+		}
+
+		setSectionFieldValues(section.id, nextValues);
+	}
+
+	function reorderPhotos(nextPhotos: unknown[]) {
+		const orderedPhotos = nextPhotos as projectTypes.PhotoItemType[];
+		commitPhotos(orderedPhotos);
+	}
 
 	async function addPhotos(fileList: FileList | File[] | null | undefined) {
 		if (!fileList?.length) return;
@@ -65,16 +110,23 @@
 
 		for (const file of Array.from(fileList)) {
 			if (!file.type.startsWith('image/')) continue;
-			nextImages.push(await projectUtils.fileToDataUrl(file));
+			const src = await projectAssets.saveImageFile(file);
+			nextImages.push(src);
 			if (captionField) {
 				nextCaptions.push(file.name ? file.name.replace(/\.[^.]+$/, '') : '');
 			}
 		}
 
-		setSectionFieldValue(section.id, imageField.path, nextImages);
-		if (captionField) {
-			setSectionFieldValue(section.id, captionField.path, nextCaptions);
-		}
+		commitPhotos(
+			nextImages.map((src, index) => ({
+				id: src || `${section.id}-${imageField.id}-${index + 1}`,
+				src,
+				caption: nextCaptions[index] || '',
+				name: `${imageField.label || 'Photo'} ${index + 1}`,
+				width: photoItems[index]?.width || 0,
+				height: photoItems[index]?.height || 0
+			}))
+		);
 	}
 
 	async function handlePhotoInput(event: Event) {
@@ -115,18 +167,16 @@
 	function handleCaptionInput(index: number, event: Event) {
 		if (!captionField) return;
 		const target = event.target as HTMLInputElement | HTMLTextAreaElement | null;
-		const nextCaptions = getCaptionValues();
-		nextCaptions[index] = target?.value ?? '';
-		setSectionFieldValue(section.id, captionField.path, nextCaptions);
+		const nextPhotos = photoItems.map((photo, photoIndex) =>
+			photoIndex === index ? { ...photo, caption: target?.value ?? '' } : photo
+		);
+		commitPhotos(nextPhotos);
 	}
 
 	function removePhoto(index: number) {
-		const nextImages = getFieldValueList(section.fields[imageField.path]).filter((_, itemIndex) => itemIndex !== index);
-		setSectionFieldValue(section.id, imageField.path, nextImages);
-
-		if (!captionField) return;
-		const nextCaptions = getCaptionValues().filter((_, itemIndex) => itemIndex !== index);
-		setSectionFieldValue(section.id, captionField.path, nextCaptions);
+		const removedImage = photoItems[index]?.src || '';
+		void projectAssets.removeStoredAsset(removedImage);
+		commitPhotos(photoItems.filter((_, itemIndex) => itemIndex !== index));
 	}
 
 	function handleDragOver(event: DragEvent) {
@@ -162,37 +212,23 @@
 	{/if}
 
 	<div class="space-y-3">
-		<div class="flex flex-wrap gap-2">
-			<label class={`rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled && imageField.editable ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}>
-				<span>Upload</span>
-				<input accept="image/*" class="hidden" multiple={imageField.repeatable} type="file" disabled={!section.enabled || !imageField.editable} onchange={handlePhotoInput} />
-			</label>
-			<label class={`rounded-xl border px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled && imageField.editable ? 'border-neutral-300 bg-white text-neutral-700' : 'border-secondary-200 bg-secondary-100 text-neutral-500'}`}>
-				<span>Camera</span>
-				<input accept="image/*" capture="environment" class="hidden" type="file" disabled={!section.enabled || !imageField.editable} onchange={handlePhotoInput} />
-			</label>
-		</div>
-
-		<div role="presentation" class:drop-target={isDropTarget} class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-center text-xs font-medium text-neutral-500" ondragover={handleDragOver} ondragleave={handleDragLeave} ondrop={handleDrop}>
-			Drop images here
-		</div>
-
-		<div class="grid grid-cols-2 gap-3">
-			{#each photoItems as photo, photoIndex (photo.id)}
-				<div class="rounded-2xl bg-secondary-50 p-2">
-					<div class="relative aspect-square rounded-xl bg-neutral-100">
-						<img alt={photo.caption || photo.name} class="h-full w-full rounded-lg object-cover" draggable="false" src={photo.src} />
-						<Button variant="icon" icon="close" class="absolute! -right-1.5 -top-1.5 z-100 text-[8px]!" aria-label="Remove Photo" onclick={() => removePhoto(photoIndex)} />
-					</div>
-					{#if captionField}
-						<InputNew xs label={captionField.label} variant="text" type="text" value={photo.caption} oninput={(event: Event) => handleCaptionInput(photoIndex, event)} />
-					{/if}
-				</div>
-			{/each}
-			{#if !photoItems.length}
-				<div class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-5 text-sm text-neutral-500">No photos added yet.</div>
-			{/if}
-		</div>
+		<PhotoGrid
+			photos={photoItems}
+			{photoSort}
+			{draggedPhotoId}
+			enabled={section.enabled}
+			editable={imageField.editable}
+			{isDropTarget}
+			captionLabel={captionField?.label || 'Caption'}
+			cardClass="rounded-2xl bg-secondary-50 p-2"
+			onUpload={handlePhotoInput}
+			onDragOver={handleDragOver}
+			onDragLeave={handleDragLeave}
+			onDrop={handleDrop}
+			onReorder={reorderPhotos}
+			onRemove={(_, index) => removePhoto(index)}
+			onCaptionInput={captionField ? (_, index, event) => handleCaptionInput(index, event) : undefined}
+		/>
 
 		{#if fileField}
 			{@const fileValues = getFieldValueList(section.fields[fileField.path])}

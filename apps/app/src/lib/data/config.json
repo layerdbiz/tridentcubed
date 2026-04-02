@@ -1,7 +1,7 @@
 {
   "baseUrl": "https://sheetari.deno.dev",
   "sheetId": "1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k",
-  "fetchedAt": "2026-04-01T20:06:55.968Z",
+  "fetchedAt": "2026-04-01T22:47:38.808Z",
   "outputDirectory": "apps/app/src/lib/data",
   "files": {
     "config": "config.json",
@@ -15,7 +15,7 @@
       "file": "inputs.json",
       "url": "https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/inputs?range=b1:u",
       "type": "array",
-      "itemCount": 74
+      "itemCount": 75
     },
     "panels": {
       "file": "panels.json",

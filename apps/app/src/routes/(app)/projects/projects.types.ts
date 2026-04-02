@@ -272,3 +272,32 @@ export interface PreviewPersonnelItemType {
 	role: string;
 	isPrimary?: boolean;
 }
+
+export type ProjectDataPrimitiveType = string | number | boolean | null;
+
+export interface ProjectDataArrayType extends Array<ProjectDataNodeType> {}
+
+export interface ProjectDataRecordType {
+	[key: string]: ProjectDataNodeType;
+}
+
+export type ProjectDataNodeType =
+	| ProjectDataPrimitiveType
+	| ProjectDataRecordType
+	| ProjectDataArrayType;
+
+export interface ProjectRuntimePanelStateType {
+	id: string;
+	type: SectionKindType;
+	enabled: boolean;
+	locked: boolean;
+	placement: SectionPlacementType;
+	title: string;
+	icon: string;
+}
+
+export interface ProjectRuntimeMetaType {
+	panels: Record<string, ProjectRuntimePanelStateType>;
+}
+
+export type ProjectDataType = ProjectDataRecordType;

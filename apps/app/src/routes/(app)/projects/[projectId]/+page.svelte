@@ -20,12 +20,14 @@
 	import { onMount, tick } from 'svelte';
 	import * as projectConstants from '../projects.constants';
 	import type { ExportFormatType } from '../projects.constants';
+	import * as projectAssets from '../projects.assets';
+	import * as projectDataUtils from '../projects.data';
 	import { fetchProjectDefinitions } from '../projects.remote';
 	import * as projectSchemas from '../projects.schema';
 	import * as projectUtils from '../projects.utils';
 	import * as projectStates from '../projects.state';
+	import Pages from './pages.svelte';
 	import Panels from './panels.svelte';
-	import Preview from './preview.svelte';
 	import type * as projectTypes from '../projects.types';
 
 	const projectDefinitions = await fetchProjectDefinitions();
@@ -64,6 +66,9 @@
 	const sectionSort = draggable.sort<projectTypes.SectionType>(sectionSortType);
 
 	const isDesktop = $derived(!mq.sm);
+	const projectData = $derived(projectDataUtils.createProjectData(projectDefinitions, sections));
+	const projectRuntimeMeta = $derived(projectDataUtils.createProjectRuntimeMeta(sections));
+	const projectDataJson = $derived(JSON.stringify(projectData, null, 2));
 	const activePane = $derived.by<WorkspacePaneType>(() => {
 		if (page.state.projectPane === 'preview') return 'preview';
 		if (page.state.projectPane === 'edit') return 'edit';
@@ -74,20 +79,20 @@
 	const photoSections = $derived(sections.filter((section) => section.type === 'photos') as projectTypes.PhotosSectionType[]);
 	const fixedPhotoSections = $derived(photoSections.filter((section) => section.locked));
 	const customPhotoSections = $derived(photoSections.filter((section) => !section.locked));
-	const reportTitle = $derived(projectSchemas.getPanelFieldStringValue(sections, 'project.title') || 'Survey Report');
-	const reportSubtitle = $derived(projectSchemas.getPanelFieldStringValue(sections, 'project.subtitle'));
+	const reportTitle = $derived(projectDataUtils.getProjectDataString(projectData, 'project.title') || 'Survey Report');
+	const reportSubtitle = $derived(projectDataUtils.getProjectDataString(projectData, 'project.subtitle'));
 	const exportFileName = $derived(`${projectUtils.slugify(reportTitle || 'survey-report')}.pdf`);
 	const projectSummaryItems = $derived<projectTypes.PreviewSummaryItemType[]>([
-		{ label: 'Organization', value: projectSchemas.getPanelFieldStringValue(sections, 'org.name') || '—' },
+		{ label: 'Organization', value: projectDataUtils.getProjectDataString(projectData, 'org.name') || '—' },
 		{ label: 'Project', value: reportTitle || '—', emphasis: true },
-		{ label: 'Client', value: projectSchemas.getPanelFieldStringValue(sections, 'client.company') || '—' },
-		{ label: 'Facility', value: projectSchemas.getPanelFieldStringValue(sections, 'facility.name') || '—' },
-		{ label: 'Carrier', value: projectSchemas.getPanelFieldStringValue(sections, 'carrier.name') || '—' },
-		{ label: 'Items', value: projectSchemas.getPanelFieldStringValue(sections, 'items.title') || '—' }
+		{ label: 'Client', value: projectDataUtils.getProjectDataString(projectData, 'client.company') || '—' },
+		{ label: 'Facility', value: projectDataUtils.getProjectDataString(projectData, 'facility.name') || '—' },
+		{ label: 'Carrier', value: projectDataUtils.getProjectDataString(projectData, 'carrier.name') || '—' },
+		{ label: 'Items', value: projectDataUtils.getProjectDataString(projectData, 'items.title') || '—' }
 	]);
 	const personnelEntries = $derived.by<projectTypes.PreviewPersonnelItemType[]>(() => {
-		const owner = projectSchemas.getPanelFieldStringValue(sections, 'team.owner').trim();
-		const assigned = getSectionFieldValues('team.assigned').filter((name) => name !== owner);
+		const owner = projectDataUtils.getProjectDataString(projectData, 'team.owner').trim();
+		const assigned = projectDataUtils.getProjectDataList(projectData, 'team.assigned').filter((name) => name !== owner);
 
 		return [
 			...(owner ? [{ name: owner, role: 'Project Owner', isPrimary: true }] : []),
@@ -134,13 +139,14 @@
 			}
 
 			if (pageDefinition.page === projectSchema.timeLogPageTitle) {
-				if (timeLogSection) {
+				const derivedTimeLogSection = createDerivedTimeLogPreviewSection();
+				if (derivedTimeLogSection) {
 					items.push({
 						id: pageDefinition.id,
 						title: pageDefinition.page,
 						kind: 'time-log',
 						pageDefinition,
-						section: timeLogSection
+						section: derivedTimeLogSection
 					});
 				}
 				continue;
@@ -241,11 +247,11 @@
 		}))
 	);
 	const coverMeta = $derived([
-		{ label: 'Facility', value: projectSchemas.getPanelFieldStringValue(sections, 'facility.name') || '—' },
+		{ label: 'Facility', value: projectDataUtils.getProjectDataString(projectData, 'facility.name') || '—' },
 		{
 			label: 'Dates',
 			value: (() => {
-				const days = timeLogSection?.days.map((day) => day.dateISO).filter(Boolean).sort();
+				const days = getProjectTimeLogDays().map((day) => day.dateISO).filter(Boolean).sort();
 				if (!days?.length) return '—';
 				if (days.length === 1) return projectUtils.formatDayDate(days[0]) || days[0];
 				const firstDay = days[0];
@@ -253,21 +259,68 @@
 				return `${projectUtils.formatDayDate(firstDay) || firstDay} to ${projectUtils.formatDayDate(lastDay) || lastDay}`;
 			})()
 		},
-		{ label: 'Client', value: projectSchemas.getPanelFieldStringValue(sections, 'client.company') || '—' },
-		{ label: 'Owner', value: projectSchemas.getPanelFieldStringValue(sections, 'team.owner') || '—' },
-		{ label: 'Project Type', value: projectSchemas.getPanelFieldStringValue(sections, 'project.type') || '—' }
+		{ label: 'Client', value: projectDataUtils.getProjectDataString(projectData, 'client.company') || '—' },
+		{ label: 'Owner', value: projectDataUtils.getProjectDataString(projectData, 'team.owner') || '—' },
+		{ label: 'Project Type', value: projectDataUtils.getProjectDataString(projectData, 'project.type') || '—' }
 	]);
 
 	function getFieldValue(path: string): projectTypes.FieldStateValueType | undefined {
-		for (const section of sections) {
-			if ((section.type !== 'fields' && section.type !== 'cover') || !(path in section.fields)) {
-				continue;
-			}
+		return projectDataUtils.getProjectDataFieldValue(projectData, path);
+	}
 
-			return section.fields[path];
-		}
+	function getProjectTimeLogDays(): projectTypes.TimeDayType[] {
+		const value = projectDataUtils.getProjectDataAtPath(projectData, 'timelog.dates');
+		if (!Array.isArray(value)) return [];
 
-		return undefined;
+		return value
+			.map((day, dayIndex) => {
+				if (typeof day !== 'object' || day === null || Array.isArray(day)) return null;
+				const dayRecord = day as Record<string, unknown>;
+
+				const entriesValue = Array.isArray(dayRecord.entries) ? dayRecord.entries : [];
+				const entries = entriesValue
+					.map((entry: unknown, entryIndex: number) => {
+						if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return null;
+						const entryRecord = entry as Record<string, unknown>;
+
+						return {
+							id: `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
+							time: typeof entryRecord.time === 'string' ? entryRecord.time : '',
+							text: typeof entryRecord.description === 'string' ? entryRecord.description : ''
+						};
+					})
+					.filter(Boolean) as projectTypes.TimeEntryType[];
+
+				return {
+					id: `derived-day-${dayIndex + 1}`,
+					dateISO: typeof dayRecord.date === 'string' ? dayRecord.date : '',
+					entries: entries.length
+						? entries
+						: [{ id: `derived-entry-${dayIndex + 1}-1`, time: '', text: '' }]
+				};
+			})
+			.filter(Boolean) as projectTypes.TimeDayType[];
+	}
+
+	function createDerivedTimeLogPreviewSection(): projectTypes.TimeLogSectionType | null {
+		const days = getProjectTimeLogDays();
+		const panelDefinition = projectSchemas.getPanelDefinition(projectSchema, projectSchema.timeLogPageTitle);
+		const panelMeta = projectRuntimeMeta.panels[projectSchema.timeLogPageTitle];
+
+		return {
+			id: 'derived-time-log',
+			type: 'time-log',
+			title: projectSchema.timeLogPageTitle,
+			icon: panelDefinition?.icon || '⏱️',
+			open: false,
+			locked: true,
+			enabled: panelMeta?.enabled ?? true,
+			placement: 'start',
+			days: days.length
+				? days
+				: [{ id: 'derived-day-1', dateISO: '', entries: [{ id: 'derived-entry-1-1', time: '', text: '' }] }],
+			photos: []
+		};
 	}
 
 	function hasFieldValue(value: projectTypes.FieldStateValueType | undefined): boolean {
@@ -285,6 +338,20 @@
 
 		const text = String(value || '').trim();
 		return text ? [text] : [];
+	}
+
+	function getReferencedOutputInput(
+		outputInputs: projectTypes.InputDefinitionType[],
+		ownerId: string,
+		acceptedInputs: projectTypes.FieldInputType[]
+	): projectTypes.InputDefinitionType | undefined {
+		return outputInputs.find(
+			(candidate) => {
+				const inputType = candidate.input;
+				if (!inputType) return false;
+				return acceptedInputs.includes(inputType) && candidate.reference.includes(ownerId);
+			}
+		);
 	}
 
 	function getOutputPageInputs(pageDefinition: projectTypes.PageDefinitionType) {
@@ -342,9 +409,7 @@
 			if (input.input !== 'image') continue;
 
 			const sources = getFieldValueList(getFieldValue(input.path));
-			const captionInput = outputInputs.find((candidate) =>
-				candidate.input === 'text' && candidate.reference.includes(input.id)
-			);
+			const captionInput = getReferencedOutputInput(outputInputs, input.id, ['text', 'textarea', 'richtext']);
 			const captions = captionInput
 				? getFieldValueList(getFieldValue(captionInput.path))
 				: [];
@@ -370,12 +435,12 @@
 	): string {
 		for (const input of outputInputs) {
 			if (input.input !== 'textarea' && input.input !== 'richtext') continue;
-			const value = projectSchemas.getPanelFieldStringValue(sections, input.path).trim();
+			const value = projectDataUtils.getProjectDataString(projectData, input.path).trim();
 			if (value) return value;
 		}
 
 		if (pageDefinition.page === 'Cargo Description') {
-			return projectSchemas.getPanelFieldStringValue(sections, 'items.description') || projectSchemas.getPanelFieldStringValue(sections, 'items.title');
+			return projectDataUtils.getProjectDataString(projectData, 'items.description') || projectDataUtils.getProjectDataString(projectData, 'items.title');
 		}
 
 		return '';
@@ -393,7 +458,7 @@
 				input.options.some((option) => option.startsWith('photos-'))
 		);
 		const configuredVariant = variantInput
-			? projectSchemas.getPanelFieldStringValue(sections, variantInput.path).trim()
+			? projectDataUtils.getProjectDataString(projectData, variantInput.path).trim()
 			: '';
 		if (configuredVariant) return configuredVariant;
 
@@ -429,13 +494,7 @@
 		const photos = derivedPhotos.length ? derivedPhotos : getFieldImageItems(imagePaths);
 		const files = getFieldFileItems(filePaths);
 		const description = getOutputPageDescription(pageDefinition, outputInputs);
-		const ownerSection = ownerPanel
-			? sections.find(
-				(section) =>
-					(section.type === 'fields' || section.type === 'cover') &&
-					section.section === ownerPanel.title
-			  ) as projectTypes.FieldSectionType | undefined
-			: undefined;
+		const ownerPanelMeta = projectRuntimeMeta.panels[ownerPanel.title];
 
 		return {
 			id: `derived-${pageDefinition.id}`,
@@ -444,7 +503,7 @@
 			icon: ownerPanel.icon || '🖼️',
 			open: false,
 			locked: true,
-			enabled: ownerSection?.enabled ?? true,
+			enabled: ownerPanelMeta?.enabled ?? true,
 			placement: 'middle',
 			description,
 			variant: getOutputPageVariant(pageDefinition, outputInputs, photos, files),
@@ -457,23 +516,7 @@
 	}
 
 	function getSectionFieldValues(path: string): string[] {
-		for (const section of sections) {
-			if ((section.type !== 'fields' && section.type !== 'cover') || !(path in section.fields)) {
-				continue;
-			}
-
-			const value = section.fields[path];
-			if (Array.isArray(value)) {
-				return value.map((item) => String(item || '').trim()).filter(Boolean);
-			}
-
-			return String(value || '')
-				.split(',')
-				.map((item) => item.trim())
-				.filter(Boolean);
-		}
-
-		return [];
+		return projectDataUtils.getProjectDataList(projectData, path);
 	}
 
 	function setMobilePane(nextPane: WorkspacePaneType) {
@@ -610,21 +653,21 @@
 	}
 
 	function setSectionFieldValue(sectionId: string, path: string, value: projectTypes.FieldStateValueType) {
-		const sectionIndex = sections.findIndex(
+		setSectionFieldValues(sectionId, { [path]: value });
+	}
+
+	function setSectionFieldValues(
+		sectionId: string,
+		values: Record<string, projectTypes.FieldStateValueType>
+	) {
+		const section = sections.find(
 			(item) => item.id === sectionId && (item.type === 'fields' || item.type === 'cover')
-		);
-		if (sectionIndex === -1) return;
+		) as projectTypes.FieldSectionType | undefined;
+		if (!section) return;
 
-		const section = sections[sectionIndex] as projectTypes.FieldSectionType;
-		const nextSection: projectTypes.FieldSectionType = {
-			...section,
-			fields: {
-				...section.fields,
-				[path]: value
-			}
-		};
-
-		sections = sections.map((item, index) => (index === sectionIndex ? nextSection : item));
+		for (const [path, value] of Object.entries(values)) {
+			section.fields[path] = value;
+		}
 	}
 
 	function toggleSectionEnabled(sectionId: string) {
@@ -659,6 +702,9 @@
 		if (!okay) return;
 
 		sections = sections.filter((item) => item.id !== sectionId);
+		for (const photo of section.photos) {
+			void projectAssets.removeStoredAsset(photo.src);
+		}
 
 		if (draggedSectionId === sectionId) draggedSectionId = '';
 		if (photoDropId === sectionId) photoDropId = '';
@@ -719,9 +765,40 @@
 	}
 
 	function removePhoto(section: projectTypes.PhotosSectionType, photoId: string) {
+		const removedPhoto = section.photos.find((photo) => photo.id === photoId);
 		section.photos = section.photos.filter((photo) => photo.id !== photoId);
+		if (removedPhoto) {
+			void projectAssets.removeStoredAsset(removedPhoto.src);
+		}
 
 		if (draggedPhotoId === photoId) draggedPhotoId = '';
+	}
+
+	async function getExportMarkup(): Promise<string> {
+		if (!previewPages) return '';
+
+		const clonedPages = previewPages.cloneNode(true) as HTMLDivElement;
+		const originalImages = Array.from(previewPages.querySelectorAll('img'));
+		const clonedImages = Array.from(clonedPages.querySelectorAll('img'));
+
+		await Promise.all(
+			originalImages.map(async (image, index) => {
+				const clonedImage = clonedImages[index];
+				if (!clonedImage) return;
+
+				const source = image.getAttribute('src') || '';
+				if (!source) return;
+
+				const exportableSource = await projectAssets.getExportableImageSource(source);
+				if (!exportableSource) return;
+
+				clonedImage.setAttribute('src', exportableSource);
+			})
+		);
+
+		return Array.from(clonedPages.querySelectorAll('.preview-page'))
+			.map((item) => item.outerHTML)
+			.join('');
 	}
 
 	function getSortedEntries(day: projectTypes.TimeDayType) {
@@ -796,9 +873,7 @@
 		isExporting = true;
 
 		try {
-			const markup = Array.from(previewPages.querySelectorAll('.preview-page'))
-				.map((item) => item.outerHTML)
-				.join('');
+			const markup = await getExportMarkup();
 			if (!markup) return;
 
 			const response = await fetch('/api/export/pdf', {
@@ -990,6 +1065,7 @@
 		if (!browser) return;
 		const okay = window.confirm('Reset this report and clear all saved data? This cannot be undone.');
 		if (!okay) return;
+		void projectAssets.clearStoredAssets();
 		projectPersist.reset();
 		applyState(projectStates.createDefaultState(projectSchema));
 		clearDraggedItems();
@@ -1005,6 +1081,7 @@
 		void (async () => {
 			const next = projectStates.loadState(projectSchema);
 			projectUtils.syncIdCounterFromSections(next.sections);
+			await projectAssets.preloadSectionAssetUrls(next.sections);
 			applyState(next);
 			const didHydratePhotoDimensions = await projectUtils.hydratePhotoDimensions(next.sections);
 			if (didHydratePhotoDimensions) sections = [...sections];
@@ -1047,6 +1124,7 @@
 				class="w-full flex-1"
 				onclick={() => setMobilePane('edit')}
 				label="Edit"
+				 {setSectionFieldValues}
 			/>
 
 			<Button
@@ -1092,10 +1170,11 @@
 				{handlePhotoZoneDragLeave}
 				{handlePhotoZoneDrop}
 				{removePhoto}
+				setSectionFieldValues={setSectionFieldValues}
 				setSectionFieldValue={setSectionFieldValue}
 			/>
 
-			<Preview
+			<Pages
 				{isDesktop}
 				{activePane}
 				{isExporting}
@@ -1118,6 +1197,7 @@
 				{tableOfContentsEntries}
 				previewPageItems={previewPagesData}
 				{getSortedEntries}
+				{projectDataJson}
 			/>
 		</main>
 	</div>

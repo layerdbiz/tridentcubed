@@ -1,6 +1,7 @@
 import { browser } from "$app/environment";
 
 import { overallProgressRingCircumference } from "./projects.constants";
+import * as projectAssets from "./projects.assets";
 import type * as projectTypes from "./projects.types";
 
 let idCounter = 0;
@@ -260,8 +261,14 @@ export function fileToDataUrl(file: File): Promise<string> {
 export function loadImageDimensions(
 	src: string,
 ): Promise<{ width: number; height: number }> {
-	return new Promise<{ width: number; height: number }>((resolve) => {
+	return new Promise<{ width: number; height: number }>(async (resolve) => {
 		if (!browser || !src) {
+			resolve({ width: 0, height: 0 });
+			return;
+		}
+
+		const resolvedSrc = await projectAssets.resolveAssetUrl(src);
+		if (!resolvedSrc) {
 			resolve({ width: 0, height: 0 });
 			return;
 		}
@@ -273,14 +280,14 @@ export function loadImageDimensions(
 				height: image.naturalHeight || 0,
 			});
 		image.onerror = () => resolve({ width: 0, height: 0 });
-		image.src = src;
+		image.src = resolvedSrc;
 	});
 }
 
 export async function createPhotoItem(
 	file: File,
 ): Promise<projectTypes.PhotoItemType> {
-	const src = await fileToDataUrl(file);
+	const src = await projectAssets.saveImageFile(file);
 	const { width, height } = await loadImageDimensions(src);
 
 	return {

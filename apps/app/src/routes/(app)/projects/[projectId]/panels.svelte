@@ -2,6 +2,7 @@
 	import { flip } from 'svelte/animate';
 	import { fromAction } from 'svelte/attachments';
 	import type { SortableApi } from '@layerd/ui';
+	import * as projectAssets from '../projects.assets';
 	import * as projectSchemas from '../projects.schema';
 	import {
 		Grid,
@@ -15,6 +16,7 @@
 	import * as projectConstants from '../projects.constants';
 	import * as projectUtils from '../projects.utils';
 	import * as projectStates from '../projects.state';
+	import PhotoGrid from './photo-grid.svelte';
 	import SharedPhotoInputs from './shared-photo-inputs.svelte';
 	import type * as projectTypes from '../projects.types';
 
@@ -58,6 +60,10 @@
 		handlePhotoZoneDrop: (sectionId: string, event: DragEvent) => Promise<void>;
 		removePhoto: (section: projectTypes.PhotosSectionType, photoId: string) => void;
 		setSectionFieldValue: (sectionId: string, path: string, value: projectTypes.FieldStateValueType) => void;
+	setSectionFieldValues: (
+		sectionId: string,
+		values: Record<string, projectTypes.FieldStateValueType>
+	) => void;
 	}
 
 	let {
@@ -93,7 +99,8 @@
 		handlePhotoZoneDragLeave,
 		handlePhotoZoneDrop,
 		removePhoto,
-		setSectionFieldValue
+		setSectionFieldValue,
+		setSectionFieldValues
 	}: PanelsProps = $props();
 
 	function isToggleableSection(
@@ -147,7 +154,12 @@
 		if (!files.length) return;
 
 		if (field.input === 'image') {
-			const src = await projectUtils.fileToDataUrl(files[0]);
+			const section = sections.find(
+				(item) => item.id === sectionId && (item.type === 'fields' || item.type === 'cover')
+			) as projectTypes.FieldSectionType | undefined;
+			const existingValue = section ? projectSchemas.getFieldStringValue(section.fields, field.path) : '';
+			const src = await projectAssets.saveImageFile(files[0]);
+			void projectAssets.removeStoredAsset(existingValue);
 			setSectionFieldValue(sectionId, field.path, src);
 		} else {
 			const fileNames = files.map((file) => file.name);
@@ -355,7 +367,10 @@
 												imageField={sharedPhotoFields.imageField}
 												captionField={sharedPhotoFields.captionField}
 												fileField={sharedPhotoFields.fileField}
+												photoSort={getPhotoSort(section.id)}
+												{draggedPhotoId}
 												{setSectionFieldValue}
+												{setSectionFieldValues}
 											/>
 										{/if}
 										<div class="space-y-3">
@@ -370,7 +385,7 @@
 																<p class="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">{field.label}</p>
 																{#if imageSrc}
 																	<div class="overflow-hidden rounded-2xl border border-secondary-200 bg-white p-2">
-																		<img alt={field.label} class="h-36 w-full rounded-xl object-cover" src={imageSrc} />
+																		<img alt={field.label} class="h-36 w-full rounded-xl object-cover" src={projectAssets.getRenderableAssetUrl(imageSrc)} />
 																	</div>
 																{/if}
 																<label class={`inline-flex rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled && field.editable ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}>
@@ -450,33 +465,23 @@
 									</label>
 									<InputNew xs bind:value={section.description} textarea label="Description" variant="text" type="text" disabled={!section.enabled} />
 									<div class="space-y-3">
-										<div class="flex flex-wrap gap-2">
-											<label class={`rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}>
-												<span>Upload</span>
-												<input accept="image/*" class="hidden" multiple type="file" disabled={!section.enabled} onchange={(event) => handlePhotoInput(section.id, event)} />
-											</label>
-											<label class={`rounded-xl border px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled ? 'border-neutral-300 bg-white text-neutral-700' : 'border-secondary-200 bg-secondary-100 text-neutral-500'}`}>
-												<span>Camera</span>
-												<input accept="image/*" capture="environment" class="hidden" type="file" disabled={!section.enabled} onchange={(event) => handlePhotoInput(section.id, event)} />
-											</label>
-										</div>
-										<div role="presentation" class:drop-target={photoDropId === section.id} class="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50 p-3 text-center text-xs font-medium text-neutral-500" ondragover={(event) => handlePhotoZoneDragOver(section.id, event)} ondragleave={() => handlePhotoZoneDragLeave(section.id)} ondrop={(event) => handlePhotoZoneDrop(section.id, event)}>
-											Drop images here
-										</div>
-										<div class="grid grid-cols-2 gap-3" {@attach fromAction(getPhotoSort(section.id).list, () => ({ items: { get: () => section.photos, set: (items: unknown[]) => setSectionPhotos(section, items) }, accept: [getPhotoSort(section.id).type] }))}>
-											{#each section.photos as photo (photo.id)}
-												<div animate:flip={{ duration: 180 }} class="rounded-2xl bg-white p-2" class:dragging-item={draggedPhotoId === photo.id} role="presentation" {@attach fromAction(getPhotoSort(section.id).item, () => photo)}>
-													<div class="relative aspect-square rounded-xl bg-neutral-100">
-														<img alt={photo.caption || photo.name} class="h-full w-full rounded-lg object-cover" draggable="false" src={photo.src} />
-														<div class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-neutral-700 shadow-sm cursor-grab active:cursor-grabbing" {@attach fromAction(getPhotoSort(section.id).handle, () => true)} aria-label={`Reorder ${photo.caption || photo.name || 'photo'}`}>
-															::
-														</div>
-														<Button variant="icon" icon="close" class="absolute! -right-1.5 -top-1.5 z-100 text-[8px]!" aria-label="Remove Photo" onclick={() => removePhoto(section, photo.id)} />
-														<InputNew xs bind:value={photo.caption} label="Caption" type="text" />
-													</div>
-												</div>
-											{/each}
-										</div>
+										<PhotoGrid
+											photos={section.photos}
+											photoSort={getPhotoSort(section.id)}
+											{draggedPhotoId}
+											enabled={section.enabled}
+											isDropTarget={photoDropId === section.id}
+											onUpload={(event) => handlePhotoInput(section.id, event)}
+											onDragOver={(event) => handlePhotoZoneDragOver(section.id, event)}
+											onDragLeave={() => handlePhotoZoneDragLeave(section.id)}
+											onDrop={(event) => handlePhotoZoneDrop(section.id, event)}
+											onReorder={(items) => setSectionPhotos(section, items)}
+											onRemove={(photo) => removePhoto(section, photo.id)}
+											onCaptionInput={(photo, _index, event) => {
+												const target = event.target as HTMLInputElement | HTMLTextAreaElement | null;
+												photo.caption = target?.value ?? '';
+											}}
+										/>
 									</div>
 								</div>
 							{/if}
