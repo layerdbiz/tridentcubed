@@ -230,7 +230,7 @@ export function getProjectDataList(
 	const value = getProjectDataAtPath(data, path);
 	if (Array.isArray(value)) {
 		return value.filter((item): item is string => typeof item === "string").map(
-			(item) => item.trim()
+			(item) => item.trim(),
 		).filter(Boolean);
 	}
 

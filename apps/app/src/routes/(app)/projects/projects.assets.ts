@@ -109,7 +109,9 @@ export function isStoredAssetReference(
 	return Boolean(value?.startsWith(assetReferencePrefix));
 }
 
-export function getStoredAssetKey(value: string | null | undefined): string | null {
+export function getStoredAssetKey(
+	value: string | null | undefined,
+): string | null {
 	if (!isStoredAssetReference(value)) return null;
 	return value.slice(assetReferencePrefix.length) || null;
 }
@@ -163,7 +165,9 @@ export async function preloadSectionAssetUrls(
 		}
 	}
 
-	await Promise.all(Array.from(references).map((reference) => resolveAssetUrl(reference)));
+	await Promise.all(
+		Array.from(references).map((reference) => resolveAssetUrl(reference)),
+	);
 }
 
 export async function removeStoredAsset(value: string): Promise<void> {
