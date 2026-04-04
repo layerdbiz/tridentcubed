@@ -1,4 +1,10 @@
 export const storageKey = "survey-report-mvp-v3";
+export const projectsRegistryKey = `${storageKey}-registry`;
+export const projectStorageKeyPrefix = `${storageKey}-project`;
+
+export function getProjectStorageKey(projectId: string): string {
+	return `${projectStorageKeyPrefix}-${projectId}`;
+}
 
 export const exportFormats = ["PDF", "DOCX", "HTML", "MD"] as const;
 export type ExportFormatType = (typeof exportFormats)[number];

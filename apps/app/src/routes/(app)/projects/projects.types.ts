@@ -88,6 +88,23 @@ export interface PersistedStateType {
 	sections: PanelType[];
 }
 
+export interface ProjectRegistryEntryType {
+	id: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ProjectListRowType {
+	id: string;
+	title: string;
+	client: string;
+	facility: string;
+	updatedAt: string;
+	status: string;
+	progress: string;
+	progressPercent: number;
+}
+
 export interface PanelMetricsType {
 	done: number;
 	total: number;

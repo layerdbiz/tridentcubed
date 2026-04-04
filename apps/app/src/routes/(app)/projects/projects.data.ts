@@ -1,4 +1,5 @@
 import { getFieldInitialValue } from "./projects.schema";
+import * as projectUtils from "./projects.utils";
 import type * as projectTypes from "./projects.types";
 
 const derivedPanels = new Set(["Time Log", "Custom"]);
@@ -236,4 +237,25 @@ export function getProjectDataList(
 
 	const text = typeof value === "string" ? value.trim() : "";
 	return text ? [text] : [];
+}
+
+export function createProjectListRow(
+	definitions: projectTypes.ProjectDefinitionsType,
+	state: projectTypes.PersistedStateType,
+	registryEntry: projectTypes.ProjectRegistryEntryType,
+): projectTypes.ProjectListRowType {
+	const projectData = createProjectData(definitions, state.sections);
+	const progress = projectUtils.getOverallPanelMetrics(state.sections);
+	const title = getProjectDataString(projectData, "project.title") || "Untitled Project";
+
+	return {
+		id: registryEntry.id,
+		title,
+		client: getProjectDataString(projectData, "client.company") || "—",
+		facility: getProjectDataString(projectData, "facility.name") || "—",
+		updatedAt: registryEntry.updatedAt,
+		status: progress.percent >= 100 ? "Complete" : progress.percent > 0 ? "In Progress" : "Draft",
+		progress: `${progress.percent}%`,
+		progressPercent: progress.percent,
+	};
 }

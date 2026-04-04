@@ -1,5 +1,9 @@
 import { persist } from "@layerd/ui";
-import { storageKey } from "./projects.constants";
+import {
+	getProjectStorageKey,
+	projectsRegistryKey,
+	storageKey,
+} from "./projects.constants";
 import * as projectSchemas from "./projects.schema";
 import type * as projectTypes from "./projects.types";
 
@@ -20,6 +24,30 @@ const sectionIcons: Record<string, string> = {
 function nextId(prefix: string): string {
 	idCounter += 1;
 	return `${prefix}-${idCounter}`;
+}
+
+function createProjectId(): string {
+	if (
+		typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+	) {
+		return crypto.randomUUID();
+	}
+
+	return nextId("project");
+}
+
+function createTimestamp(): string {
+	return new Date().toISOString();
+}
+
+function writeStoredValue(key: string, value: unknown): void {
+	if (typeof localStorage === "undefined") return;
+	localStorage.setItem(key, JSON.stringify(value));
+}
+
+function removeStoredValue(key: string): void {
+	if (typeof localStorage === "undefined") return;
+	localStorage.removeItem(key);
 }
 
 export const createTimeEntry = (): projectTypes.TimeEntryType => ({
@@ -506,6 +534,7 @@ export const normalizePanel = normalizeSection;
 
 export function loadState(
 	schema: projectTypes.ProjectSchemaType,
+	storageKeyValue = storageKey,
 ): projectTypes.PersistedStateType {
 	const defaults = createDefaultState(schema);
 	const fixedSectionTemplates = createFixedSectionTemplates(schema);
@@ -513,7 +542,7 @@ export function loadState(
 		fixedSectionTemplates.map((section) => [section.id, section]),
 	);
 	const parsed = persist.read<Partial<projectTypes.PersistedStateType>>({
-		key: storageKey,
+		key: storageKeyValue,
 		fallback: {},
 	});
 
@@ -584,4 +613,186 @@ export function loadState(
 	} catch {
 		return defaults;
 	}
+}
+
+export function loadProjectsRegistry(): projectTypes.ProjectRegistryEntryType[] {
+	const parsed = persist.read<projectTypes.ProjectRegistryEntryType[]>({
+		key: projectsRegistryKey,
+		fallback: [],
+	});
+
+	if (!Array.isArray(parsed)) return [];
+
+	return parsed
+		.filter((item) => item && typeof item === "object")
+		.map((item) => ({
+			id: String(item.id || "").trim(),
+			createdAt: String(item.createdAt || ""),
+			updatedAt: String(item.updatedAt || item.createdAt || ""),
+		}))
+		.filter((item) => Boolean(item.id));
+}
+
+export function saveProjectsRegistry(
+	registry: projectTypes.ProjectRegistryEntryType[],
+): void {
+	writeStoredValue(projectsRegistryKey, registry);
+}
+
+export function upsertProjectRegistryEntry(
+	entry: projectTypes.ProjectRegistryEntryType,
+): projectTypes.ProjectRegistryEntryType[] {
+	const registry = loadProjectsRegistry();
+	const nextRegistry = registry.some((item) => item.id === entry.id)
+		? registry.map((item) => item.id === entry.id ? entry : item)
+		: [...registry, entry];
+
+	saveProjectsRegistry(nextRegistry);
+	return nextRegistry;
+}
+
+export function createProjectRegistryEntry(
+	projectId = createProjectId(),
+	timestamp = createTimestamp(),
+): projectTypes.ProjectRegistryEntryType {
+	return {
+		id: projectId,
+		createdAt: timestamp,
+		updatedAt: timestamp,
+	};
+}
+
+export function createProjectRecord(
+	schema: projectTypes.ProjectSchemaType,
+	state?: projectTypes.PersistedStateType,
+	projectId?: string,
+): projectTypes.ProjectRegistryEntryType {
+	const entry = createProjectRegistryEntry(projectId);
+	writeStoredValue(
+		getProjectStorageKey(entry.id),
+		state ?? createDefaultState(schema),
+	);
+	upsertProjectRegistryEntry(entry);
+	return entry;
+}
+
+export function deleteProjectRecord(
+	projectId: string,
+): projectTypes.ProjectRegistryEntryType[] {
+	removeStoredValue(getProjectStorageKey(projectId));
+	const nextRegistry = loadProjectsRegistry().filter((item) =>
+		item.id !== projectId
+	);
+	saveProjectsRegistry(nextRegistry);
+	return nextRegistry;
+}
+
+export function touchProjectRecord(projectId: string): void {
+	const existingEntry = loadProjectsRegistry().find((item) =>
+		item.id === projectId
+	);
+	const entry = existingEntry
+		? { ...existingEntry, updatedAt: createTimestamp() }
+		: createProjectRegistryEntry(projectId);
+
+	upsertProjectRegistryEntry(entry);
+}
+
+function setFieldValue(
+	sections: projectTypes.SectionType[],
+	path: string,
+	value: projectTypes.FieldStateValueType,
+): void {
+	for (const section of sections) {
+		if (section.type !== "fields" && section.type !== "cover") continue;
+		if (!(path in section.fields)) continue;
+		section.fields[path] = value;
+		return;
+	}
+}
+
+function createSeedProjectState(
+	schema: projectTypes.ProjectSchemaType,
+	variant: "blank" | "in-progress" | "complete",
+): projectTypes.PersistedStateType {
+	const state = createDefaultState(schema);
+
+	if (variant === "blank") {
+		return state;
+	}
+
+	setFieldValue(
+		state.sections,
+		"project.title",
+		variant === "complete" ? "MV Ocean Survey" : "Draft Cargo Survey",
+	);
+	setFieldValue(
+		state.sections,
+		"project.subtitle",
+		variant === "complete"
+			? "Voyage Condition Assessment"
+			: "Initial Inspection",
+	);
+	setFieldValue(
+		state.sections,
+		"client.company",
+		variant === "complete" ? "Atlas Freight" : "Northwind Logistics",
+	);
+	setFieldValue(
+		state.sections,
+		"facility.name",
+		variant === "complete" ? "Pier 48 Terminal" : "East Harbor Berth",
+	);
+	setFieldValue(state.sections, "org.name", "Layerd Marine");
+	setFieldValue(
+		state.sections,
+		"carrier.name",
+		variant === "complete" ? "MV Horizon" : "TBD Carrier",
+	);
+	setFieldValue(
+		state.sections,
+		"items.title",
+		variant === "complete" ? "Steel Coil Shipment" : "Cargo Intake",
+	);
+
+	const timeLogSection = state.sections.find(
+		(section): section is projectTypes.TimeLogSectionType =>
+			section.type === "time-log",
+	);
+	if (timeLogSection) {
+		timeLogSection.days[0].dateISO = "2026-03-28";
+		timeLogSection.days[0].entries[0].time = "08:00";
+		timeLogSection.days[0].entries[0].text = variant === "complete"
+			? "Completed onboard survey walkthrough."
+			: "Started receiving intake notes.";
+	}
+
+	if (variant === "complete") {
+		setFieldValue(state.sections, "team.owner", "Jordan Blake");
+		setFieldValue(
+			state.sections,
+			"items.description",
+			"Coils inspected, documented, and staged for discharge review.",
+		);
+		setFieldValue(state.sections, "project.type", "Condition Survey");
+	}
+
+	return state;
+}
+
+export function ensureSeedProjects(
+	schema: projectTypes.ProjectSchemaType,
+): projectTypes.ProjectRegistryEntryType[] {
+	const existingRegistry = loadProjectsRegistry();
+	if (existingRegistry.length) return existingRegistry;
+
+	const seedVariants: Array<"blank" | "in-progress" | "complete"> = [
+		"blank",
+		"in-progress",
+		"complete",
+	];
+
+	return seedVariants.map((variant) =>
+		createProjectRecord(schema, createSeedProjectState(schema, variant))
+	);
 }

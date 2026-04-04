@@ -33,11 +33,12 @@
 	const projectDefinitions = await fetchProjectDefinitions();
 	const projectSchema = projectSchemas.createProjectSchema(projectDefinitions);
 	const customPanelDefinition = projectSchemas.getPanelDefinition(projectSchema, 'Custom');
+	const projectId = page.params.projectId || 'current';
 	const sectionSortType = 'report-section';
 	const photoSortTypePrefix = 'report-photo:';
 	const baseState = projectStates.createDefaultState(projectSchema);
 	const projectPersist = persist.json<projectTypes.PersistedStateType>({
-		key: projectConstants.storageKey,
+		key: projectConstants.getProjectStorageKey(projectId),
 		fallback: () => projectStates.createDefaultState(projectSchema)
 	});
 
@@ -269,6 +270,20 @@
 	}
 
 	function getProjectTimeLogDays(): projectTypes.TimeDayType[] {
+		if (timeLogSection?.days?.length) {
+			return timeLogSection.days.map((day, dayIndex) => ({
+				id: day.id || `derived-day-${dayIndex + 1}`,
+				dateISO: typeof day.dateISO === 'string' ? day.dateISO : '',
+				entries: day.entries.length
+					? day.entries.map((entry, entryIndex) => ({
+						id: entry.id || `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
+						time: typeof entry.time === 'string' ? entry.time : '',
+						text: typeof entry.text === 'string' ? entry.text : ''
+					}))
+					: [{ id: `derived-entry-${dayIndex + 1}-1`, time: '', text: '' }]
+			}));
+		}
+
 		const value = projectDataUtils.getProjectDataAtPath(projectData, 'timelog.dates');
 		if (!Array.isArray(value)) return [];
 
@@ -286,7 +301,14 @@
 						return {
 							id: `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
 							time: typeof entryRecord.time === 'string' ? entryRecord.time : '',
-							text: typeof entryRecord.description === 'string' ? entryRecord.description : ''
+							text:
+								typeof entryRecord.text === 'string'
+									? entryRecord.text
+									: typeof entryRecord.description === 'string'
+										? entryRecord.description
+										: typeof entryRecord.activity === 'string'
+											? entryRecord.activity
+											: ''
 						};
 					})
 					.filter(Boolean) as projectTypes.TimeEntryType[];
@@ -1079,7 +1101,11 @@
 		});
 
 		void (async () => {
-			const next = projectStates.loadState(projectSchema);
+			projectStates.touchProjectRecord(projectId);
+			const next = projectStates.loadState(
+				projectSchema,
+				projectConstants.getProjectStorageKey(projectId)
+			);
 			projectUtils.syncIdCounterFromSections(next.sections);
 			await projectAssets.preloadSectionAssetUrls(next.sections);
 			applyState(next);
@@ -1104,6 +1130,7 @@
 			hasUserZoomed,
 			sections
 		});
+		projectStates.touchProjectRecord(projectId);
 	});
 
 	$effect(() => {

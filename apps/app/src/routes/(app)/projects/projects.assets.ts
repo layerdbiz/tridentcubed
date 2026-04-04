@@ -178,6 +178,30 @@ export async function removeStoredAsset(value: string): Promise<void> {
 	await deleteBlob(assetKey);
 }
 
+export async function removeSectionAssets(
+	sections: projectTypes.SectionType[],
+): Promise<void> {
+	const references = new Set<string>();
+
+	for (const section of sections) {
+		if (section.type === "fields" || section.type === "cover") {
+			for (const value of Object.values(section.fields)) {
+				for (const reference of collectFieldValueAssetReferences(value)) {
+					references.add(reference);
+				}
+			}
+		}
+
+		for (const photo of section.photos) {
+			if (isStoredAssetReference(photo.src)) references.add(photo.src);
+		}
+	}
+
+	await Promise.all(
+		Array.from(references).map((reference) => removeStoredAsset(reference)),
+	);
+}
+
 export async function clearStoredAssets(): Promise<void> {
 	if (!browser || !("indexedDB" in window)) return;
 
