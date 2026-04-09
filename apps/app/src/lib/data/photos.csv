@@ -1,0 +1,19 @@
+id,category,tags,url,width,height,caption,credit,notes
+PHOTO-001,cover,"cover,port,terminal",https://picsum.photos/id/1060/1200/800,1200,800,Wide port terminal approach,Picsum,Good default cover image.
+PHOTO-002,facility,"facility,warehouse,dock",https://picsum.photos/id/1061/1200/800,1200,800,Warehouse and loading apron,Picsum,Facility support image.
+PHOTO-003,carrier,"carrier,vessel,sea",https://picsum.photos/id/1062/1200/800,1200,800,Vessel profile at berth,Picsum,Carrier hero image.
+PHOTO-004,cargo,"cargo,containers,terminal",https://picsum.photos/id/1063/1200/800,1200,800,Stacked cargo units near quay,Picsum,Cargo overview image.
+PHOTO-005,inspection,"inspection,cargo,detail",https://picsum.photos/id/1064/1200/800,1200,800,Inspection detail frame,Picsum,Shared inspection pool.
+PHOTO-006,inspection,"inspection,operations,deck",https://picsum.photos/id/1065/1200/800,1200,800,Operations deck view,Picsum,Shared inspection pool.
+PHOTO-007,damages,"damages,cargo,detail",https://picsum.photos/id/1066/1200/800,1200,800,Damage documentation angle,Picsum,Damage example image.
+PHOTO-008,damages,"damages,terminal,close-up",https://picsum.photos/id/1067/1200/800,1200,800,Terminal damage follow-up,Picsum,Damage example image.
+PHOTO-009,discharge,"discharge,terminal,ops",https://picsum.photos/id/1068/1200/800,1200,800,Discharge operations in progress,Picsum,Discharge example image.
+PHOTO-010,discharge,"discharge,follow-up,cargo",https://picsum.photos/id/1069/1200/800,1200,800,Post-discharge cargo review,Picsum,Discharge example image.
+PHOTO-011,heavy-lift,"heavy-lift,final,archive",https://picsum.photos/id/1070/1200/800,1200,800,Heavy lift cargo staging,Picsum,Completed project image.
+PHOTO-012,review,"review,client,meeting",https://picsum.photos/id/1071/1200/800,1200,800,Revision walkthrough frame,Picsum,Review project support image.
+PHOTO-013,cover,"cover,harbor,vessel",https://picsum.photos/id/1072/1200/800,1200,800,Harbor approach with vessel silhouette,Picsum,Alternate cover image.
+PHOTO-014,facility,"facility,harbor,gate",https://picsum.photos/id/1073/1200/800,1200,800,Terminal gate and yard,Picsum,Alternate facility image.
+PHOTO-015,carrier,"carrier,rail,transport",https://picsum.photos/id/1074/1200/800,1200,800,Rail carrier reference frame,Picsum,Non-vessel carrier image.
+PHOTO-016,cargo,"cargo,steel,operations",https://picsum.photos/id/1075/1200/800,1200,800,Steel cargo handling scene,Picsum,Steel-focused image.
+PHOTO-017,inspection,"inspection,warehouse,close-up",https://picsum.photos/id/1076/1200/800,1200,800,Warehouse inspection detail,Picsum,Inspection fallback image.
+PHOTO-018,terminal,"terminal,port,wide",https://picsum.photos/id/1077/1200/800,1200,800,Wide terminal operations frame,Picsum,General terminal pool.

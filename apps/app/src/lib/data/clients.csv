@@ -1,0 +1,7 @@
+id,company,shortname,logo,website,contact,phone,email,address.line1,address.line2,address.city,address.state,address.zip
+CLT-001,Atlas Freight,ATLAS,https://picsum.photos/id/64/400/400,https://atlasfreight.example,Morgan Lee,+17135550101,ops@atlasfreight.example,900 Market St,Suite 300,Houston,TX,77002
+CLT-002,Northwind Logistics,NORTHWIND,https://picsum.photos/id/91/400/400,https://northwindlogistics.example,Jamie Carter,+13125550102,projects@northwindlogistics.example,100 Lake Shore Dr,,Chicago,IL,60601
+CLT-003,Blue Current Shipping,BLUECURRENT,https://picsum.photos/id/119/400/400,https://bluecurrent.example,Riley Brooks,+15045550103,coordination@bluecurrent.example,44 Riverwalk Ave,,New Orleans,LA,70112
+CLT-004,Iron Harbor Transport,IRONHARBOR,https://picsum.photos/id/129/400/400,https://ironharbor.example,Casey Morgan,+12125550104,marine@ironharbor.example,18 Harbor Front,,New York,NY,10004
+CLT-005,Coastal Terminal Group,COASTAL,https://picsum.photos/id/177/400/400,https://coastalterminal.example,Drew Bennett,+19125550105,support@coastalterminal.example,220 Dockside Blvd,,Savannah,GA,31408
+CLT-006,Aurora Heavy Lift,AURORA,https://picsum.photos/id/180/400/400,https://auroraheavylift.example,Taylor Reed,+15625550106,clients@auroraheavylift.example,500 Pacific Gateway,,Long Beach,CA,90802

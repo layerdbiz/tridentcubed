@@ -1,0 +1,13 @@
+id,name,title,email,phone,photo,city,state,active,tags
+TEAM-001,Jordan Blake,Senior Surveyor,jordan.blake@example.com,+17135551001,https://picsum.photos/id/1005/320/320,Houston,TX,TRUE,"lead,marine,cargo"
+TEAM-002,Avery Chen,Project Surveyor,avery.chen@example.com,+17135551002,https://picsum.photos/id/1001/320/320,Houston,TX,TRUE,"field,terminal,ops"
+TEAM-003,Morgan Lee,Operations Coordinator,morgan.lee@example.com,+17135551003,https://picsum.photos/id/1000/320/320,New Orleans,LA,TRUE,"coordination,ops,client"
+TEAM-004,Riley Brooks,Marine Inspector,riley.brooks@example.com,+15045551004,https://picsum.photos/id/1012/320/320,New Orleans,LA,TRUE,"marine,inspection,vessel"
+TEAM-005,Jamie Carter,Survey Technician,jamie.carter@example.com,+13125551005,https://picsum.photos/id/1011/320/320,Chicago,IL,TRUE,"field,photos,reporting"
+TEAM-006,Casey Morgan,Terminal Specialist,casey.morgan@example.com,+12125551006,https://picsum.photos/id/1013/320/320,New York,NY,TRUE,"terminal,cargo,logistics"
+TEAM-007,Drew Bennett,Discharge Inspector,drew.bennett@example.com,+19125551007,https://picsum.photos/id/1014/320/320,Savannah,GA,TRUE,"discharge,follow-up,cargo"
+TEAM-008,Taylor Reed,Client Liaison,taylor.reed@example.com,+15625551008,https://picsum.photos/id/1015/320/320,Long Beach,CA,TRUE,"client,review,delivery"
+TEAM-009,Harper Stone,Documentation Lead,harper.stone@example.com,+15625551009,https://picsum.photos/id/1016/320/320,Long Beach,CA,TRUE,"docs,certs,reporting"
+TEAM-010,Quinn Foster,Heavy Lift Surveyor,quinn.foster@example.com,+19125551010,https://picsum.photos/id/1027/320/320,Savannah,GA,TRUE,"heavy-lift,field,marine"
+TEAM-011,Reese Parker,Facility Assessor,reese.parker@example.com,+12125551011,https://picsum.photos/id/1021/320/320,New York,NY,TRUE,"facility,terminal,ops"
+TEAM-012,Alex Sutton,Senior Reviewer,alex.sutton@example.com,+17135551012,https://picsum.photos/id/1020/320/320,Houston,TX,TRUE,"review,approval,lead"

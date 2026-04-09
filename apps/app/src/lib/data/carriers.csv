@@ -1,0 +1,7 @@
+id,type,name,photo,documents,notes
+CAR-001,Sea,MV Horizon Starter,https://picsum.photos/id/1050/1200/800,"starter-manifest.pdf,starter-cert.pdf",Blank baseline carrier.
+CAR-002,Road,Terminal Linehaul 12,https://picsum.photos/id/1051/1200/800,"linehaul-bol.pdf,inspection-sheet.pdf",In-progress cargo movement carrier.
+CAR-003,Sea,MV Blue Current,https://picsum.photos/id/1052/1200/800,"class-record.pdf,bridge-log.pdf",Ready status vessel.
+CAR-004,Rail,Iron Harbor Rail Set,https://picsum.photos/id/1053/1200/800,"wagon-list.pdf,rail-cert.pdf",Sent status carrier example.
+CAR-005,Road,Delta Discharge Fleet,https://picsum.photos/id/1054/1200/800,"gate-pass.pdf,dispatch-note.pdf",Review status carrier example.
+CAR-006,Sea,MV Aurora Lift,https://picsum.photos/id/1055/1200/800,"heavy-lift-plan.pdf,final-cert.pdf",Completed status carrier example.

@@ -1,7 +1,7 @@
 {
   "baseUrl": "https://sheetari.deno.dev",
   "sheetId": "1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k",
-  "fetchedAt": "2026-04-01T22:47:38.808Z",
+  "fetchedAt": "2026-04-04T21:56:22.365Z",
   "outputDirectory": "apps/app/src/lib/data",
   "files": {
     "config": "config.json",

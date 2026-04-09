@@ -1,0 +1,18 @@
+id,scenarioId,projectType,status,dayNumber,entryOrder,time,activity,tags,notes
+TLOG-001-001,TLOG-001,Cargo,blank,1,1,08:00,Project created and awaiting field activity.,"blank,setup",Blank baseline row.
+TLOG-002-001,TLOG-002,Warehousing,in-progress,1,1,07:30,Arrived on site and reviewed intake paperwork.,"intake,arrival",In-progress scenario.
+TLOG-002-002,TLOG-002,Warehousing,in-progress,1,2,08:15,Initial cargo count completed at receiving zone.,"intake,count",In-progress scenario.
+TLOG-002-003,TLOG-002,Warehousing,in-progress,1,3,10:45,Documented packaging condition and dock layout.,"photos,dock",In-progress scenario.
+TLOG-003-001,TLOG-003,Vessel Condition,ready,1,1,06:45,Met vessel representative and confirmed access sequence.,"vessel,coordination",Ready scenario.
+TLOG-003-002,TLOG-003,Vessel Condition,ready,1,2,08:20,Surveyed deck areas and recorded readiness observations.,"vessel,inspection",Ready scenario.
+TLOG-003-003,TLOG-003,Vessel Condition,ready,2,1,09:10,Compiled summary findings for internal approval.,"reporting,summary",Ready scenario.
+TLOG-004-001,TLOG-004,Cargo,sent,1,1,07:10,Reviewed outbound cargo layout before loading sequence.,"cargo,layout",Sent scenario.
+TLOG-004-002,TLOG-004,Cargo,sent,1,2,09:00,Captured representative condition photographs and notes.,"photos,condition",Sent scenario.
+TLOG-004-003,TLOG-004,Cargo,sent,2,1,11:30,Delivered draft report package to client for confirmation.,"client,delivery",Sent scenario.
+TLOG-005-001,TLOG-005,Terminal,review,1,1,08:05,Returned to terminal for client follow-up walkthrough.,"review,follow-up",Review scenario.
+TLOG-005-002,TLOG-005,Terminal,review,1,2,09:40,Verified revised discharge area observations with staff.,"review,discharge",Review scenario.
+TLOG-005-003,TLOG-005,Terminal,review,2,1,13:15,Prepared response notes for requested revisions.,"review,notes",Review scenario.
+TLOG-006-001,TLOG-006,Cargo,completed,1,1,06:30,Confirmed final cargo inventory and documentation package.,"final,inventory",Completed scenario.
+TLOG-006-002,TLOG-006,Cargo,completed,1,2,08:50,Completed final condition survey and supporting photography.,"final,photos",Completed scenario.
+TLOG-006-003,TLOG-006,Cargo,completed,2,1,10:20,Issued approved report and archived supporting materials.,"final,archive",Completed scenario.
+TLOG-006-004,TLOG-006,Cargo,completed,2,2,14:00,Closed project after client acknowledgement was received.,"final,closeout",Completed scenario.

@@ -1,0 +1,7 @@
+id,name,city,state,photo,notes
+FAC-001,Pier 48 Terminal,Houston,TX,https://picsum.photos/id/1040/1200/800,Starter blank facility.
+FAC-002,East Harbor Berth,New Orleans,LA,https://picsum.photos/id/1041/1200/800,Receiving facility with warehouse adjacency.
+FAC-003,Harbor West Slip,New York,NY,https://picsum.photos/id/1042/1200/800,Vessel readiness staging location.
+FAC-004,South Gate Cargo Yard,Savannah,GA,https://picsum.photos/id/1043/1200/800,Outbound cargo handling area.
+FAC-005,Delta Transit Terminal,Mobile,AL,https://picsum.photos/id/1044/1200/800,Post-discharge review site.
+FAC-006,Pacific Heavy Lift Dock,Long Beach,CA,https://picsum.photos/id/1045/1200/800,Final archive project facility.

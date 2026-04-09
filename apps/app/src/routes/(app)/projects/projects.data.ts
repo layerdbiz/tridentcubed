@@ -246,7 +246,8 @@ export function createProjectListRow(
 ): projectTypes.ProjectListRowType {
 	const projectData = createProjectData(definitions, state.sections);
 	const progress = projectUtils.getOverallPanelMetrics(state.sections);
-	const title = getProjectDataString(projectData, "project.title") || "Untitled Project";
+	const title = getProjectDataString(projectData, "project.title") ||
+		"Untitled Project";
 
 	return {
 		id: registryEntry.id,
@@ -254,7 +255,11 @@ export function createProjectListRow(
 		client: getProjectDataString(projectData, "client.company") || "—",
 		facility: getProjectDataString(projectData, "facility.name") || "—",
 		updatedAt: registryEntry.updatedAt,
-		status: progress.percent >= 100 ? "Complete" : progress.percent > 0 ? "In Progress" : "Draft",
+		status: progress.percent >= 100
+			? "Complete"
+			: progress.percent > 0
+			? "In Progress"
+			: "Draft",
 		progress: `${progress.percent}%`,
 		progressPercent: progress.percent,
 	};
