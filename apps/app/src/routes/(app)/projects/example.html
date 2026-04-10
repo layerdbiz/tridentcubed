@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Group Repeater Blueprint</title>
+
+    <style>
+      /*
+        ============================================================================
+        GROUP REPEATER BLUEPRINT
+        ----------------------------------------------------------------------------
+        PURPOSE
+        This file is a visual / structural blueprint for a single reusable
+        <GroupRepeater> component used inside the panels section for repeatable 
+        grouped inputs.
+
+        IMPORTANT
+        - This is NOT meant to be copied literally into the app as raw HTML/CSS.
+        - The real implementation should blend into the existing codebase.
+        - Use existing project conventions, naming, utility functions, and layout
+          patterns already in place.
+        - Use Tailwind in the real implementation.
+        - Do NOT introduce vanilla CSS into the app for this feature.
+        - This <style> block exists only to make this blueprint readable in isolation.
+
+        REAL APP BUILD RULES
+        - Build ONE component: GroupRepeater
+        - Reuse existing components/utilities instead of recreating primitives
+        - Do NOT split this into extra new subcomponents just because this blueprint
+          shows repeated structural regions
+        - Keep the implementation aligned with existing code style and architecture
+
+        EXISTING THINGS TO REUSE
+        - InputNew
+          Use this instead of rebuilding fieldset/legend/label/input markup from scratch.
+          InputNew already handles most field chrome and should remain the source of truth.
+
+        - Button
+          Use the existing button component already in the project.
+
+        - Accordion / AccordionTitle / AccordionContent
+          Use the existing accordion component already in the project.
+          It already uses details/summary under the hood.
+          This blueprint shows the semantic structure, but the real implementation
+          should use the existing Accordion abstraction.
+
+        - existing drag-and-drop utility
+          Do not create a new drag/drop system.
+          Plug GroupRepeater into the existing drag/drop utility already used in the app.
+
+        - existing Tailwind patterns
+          Follow the existing utility and composition style already used in the codebase.
+          Do not let this feature become a one-off styling island.
+
+        WHAT THIS COMPONENT SHOULD HANDLE
+        - repeatable groups
+        - repeatable items inside each group
+        - add/remove groups
+        - add/remove items
+        - group reorder
+        - item reorder
+        - optional cross-group item moves
+        - summary labels for each group
+        - empty state vs filled state
+        - config-driven behavior differences between use cases (sheetari json output)
+
+        BEST COMPONENT NAME
+        - GroupRepeater
+        ============================================================================
+      */
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font: 16px/1.4 sans-serif;
+        background: #eee;
+        color: #111;
+      }
+
+      img {
+        display: block;
+        max-width: 100%;
+      }
+
+      main {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.5rem;
+        padding: 1.5rem;
+        align-items: start;
+      }
+
+      .collection {
+        display: grid;
+        gap: 1rem;
+        padding: 1.5rem;
+        border: 1px solid #999;
+        background: #ccc;
+        align-content: start;
+      }
+
+      .collection-header {
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .collection-header>h2,
+      .collection-header>p {
+        margin: 0;
+      }
+
+      .groups {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .group {
+        border: 1px solid #aaa;
+        background: #eee;
+      }
+
+      .group-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem;
+        cursor: pointer;
+        border-bottom: 1px solid #bbb;
+        background: #e3e3e3;
+      }
+
+      .group-summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .group-summary-text {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .group-summary-title {
+        font-weight: 700;
+      }
+
+      .group-summary-meta {
+        font-size: 0.875rem;
+      }
+
+      .group-panel {
+        display: grid;
+        gap: 1rem;
+        padding: 1rem;
+      }
+
+      .group-body {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .group-header {
+        display: grid;
+        gap: 1rem;
+        align-items: end;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 12rem);
+      }
+
+      .group-header-full {
+        grid-template-columns: 1fr;
+      }
+
+      .items {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .items-row {
+        grid-template-columns: 1fr;
+      }
+
+      .items-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .item-shell,
+      .upload-row {
+        display: grid;
+        gap: 1rem;
+        padding: 1rem;
+        border: 1px solid #bbb;
+        background: #f5f5f5;
+      }
+
+      .item {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .item-row {
+        align-items: end;
+        grid-template-columns: minmax(8rem, 10rem) minmax(0, 1fr) auto;
+      }
+
+      .item-column {
+        grid-template-columns: 1fr;
+      }
+
+      .upload-row {
+        grid-column: 1 / -1;
+      }
+
+      .photo-frame {
+        overflow: hidden;
+        aspect-ratio: 4 / 3;
+        border: 1px solid #bbb;
+        background: #ddd;
+      }
+
+      .photo-frame>img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .actions-inline {
+        align-items: center;
+      }
+
+      .actions-icons {
+        gap: 0.5rem;
+      }
+
+      .actions-icons>button {
+        width: 2.75rem;
+        min-width: 2.75rem;
+        height: 2.75rem;
+        padding: 0;
+      }
+
+      fieldset {
+        min-width: 0;
+        margin: 0;
+        padding: 0.75rem;
+        border: 1px solid #bbb;
+        background: #f5f5f5;
+      }
+
+      legend {
+        padding: 0 0.25rem;
+        font-weight: 700;
+      }
+
+      label {
+        display: block;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        font: inherit;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        margin: 0;
+        padding: 0.75rem;
+        border: 1px solid #999;
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 8rem;
+        resize: vertical;
+      }
+
+      button {
+        width: fit-content;
+        max-width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #999;
+        background: #eee;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 1100px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 900px) {
+
+        .group-header,
+        .items-grid,
+        .item-row {
+          grid-template-columns: 1fr;
+        }
+
+        .upload-row {
+          grid-column: auto;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <!--
+        ============================================================================
+        TIME LOG EXAMPLE
+        ----------------------------------------------------------------------------
+        This is one usage of GroupRepeater.
+
+        DATA SHAPE IDEA
+        collection: timeLog
+        groups: days
+        items: entries
+
+        REAL APP NOTES
+        - In the real app, fields should be rendered with InputNew
+        - In the real app, the outer collapsible wrapper should use Accordion,
+          AccordionTitle, and AccordionContent
+        - In the real app, Tailwind should handle layout/styling
+        - In the real app, drag hooks should plug into the existing drag/drop utility
+
+        SUMMARY TITLE GUIDANCE
+        For time log groups, it probably makes sense to keep:
+        - Day 1
+        - Day 2
+        - Day 3
+
+        Optional summary metadata could show:
+        - selected date
+        - number of entries
+        - validation state
+        - generated/suggested markers later
+        ============================================================================
+      -->
+      <section class="collection" data-collection="time-log">
+        <header class="collection-header">
+          <h2>Time Log</h2>
+          <p>GroupRepeater example where groups are days and items are time entries.</p>
+        </header>
+
+        <!--
+          In the real component:
+          - this outer list is generated from group data
+          - Add Day inserts after the current group
+          - Delete Day removes the current group
+          - groups can be reordered using the existing drag utility if enabled
+        -->
+        <div class="groups" data-group-list="timeLog">
+          <!-- GROUP: filled example -->
+          <details class="group" open data-group draggable="true">
+            <summary class="group-summary">
+              <span class="group-summary-text">
+                <span class="group-summary-title">Day 1</span>
+                <span class="group-summary-meta">2 entries</span>
+              </span>
+
+              <span class="group-summary-meta">2026-02-03</span>
+            </summary>
+
+            <div class="group-panel">
+              <!--
+                In the real component, this whole area would likely be rendered from
+                config + InputNew, not hand-written markup like this.
+              -->
+              <div class="group-header group-header-full">
+                <fieldset>
+                  <legend>Date</legend>
+                  <label>
+                    <input type="date" name="timeLog[0][date]" value="2026-02-03" />
+                  </label>
+                </fieldset>
+              </div>
+
+              <div class="items items-row" data-item-list="timeLog[0].entries">
+                <!--
+                  ITEM RULES
+                  - item actions are local
+                  - Add Entry inserts after current item
+                  - Delete Entry removes current item
+                  - time log items likely stay within their day group
+                  - time log items may auto-sort by time later
+                -->
+                <div class="item-shell" data-item>
+                  <div class="item item-row">
+                    <fieldset>
+                      <legend>Time</legend>
+                      <label>
+                        <input type="time" name="timeLog[0][entries][0][time]" value="08:00" />
+                      </label>
+                    </fieldset>
+
+                    <fieldset>
+                      <legend>Activity</legend>
+                      <label>
+                        <input type="text" name="timeLog[0][entries][0][description]" value="Site arrival and setup" />
+                      </label>
+                    </fieldset>
+
+                    <div class="actions actions-inline actions-icons">
+                      <button type="button" aria-label="Add entry" title="Add entry">＋</button>
+                      <button type="button" aria-label="Delete entry" title="Delete entry">－</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="item-shell" data-item>
+                  <div class="item item-row">
+                    <fieldset>
+                      <legend>Time</legend>
+                      <label>
+                        <input type="time" name="timeLog[0][entries][1][time]" value="10:30" />
+                      </label>
+                    </fieldset>
+
+                    <fieldset>
+                      <legend>Activity</legend>
+                      <label>
+                        <input type="text" name="timeLog[0][entries][1][description]" value="Equipment inspection" />
+                      </label>
+                    </fieldset>
+
+                    <div class="actions actions-inline actions-icons">
+                      <button type="button" aria-label="Add entry" title="Add entry">＋</button>
+                      <button type="button" aria-label="Delete entry" title="Delete entry">－</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button type="button">Add Day</button>
+                <button type="button">Delete Day</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- GROUP: lighter / near-empty example -->
+          <details class="group" data-group draggable="true">
+            <summary class="group-summary">
+              <span class="group-summary-text">
+                <span class="group-summary-title">Day 2</span>
+                <span class="group-summary-meta">1 entry</span>
+              </span>
+
+              <span class="group-summary-meta">2026-02-04</span>
+            </summary>
+
+            <div class="group-panel">
+              <div class="group-header group-header-full">
+                <fieldset>
+                  <legend>Date</legend>
+                  <label>
+                    <input type="date" name="timeLog[1][date]" value="2026-02-04" />
+                  </label>
+                </fieldset>
+              </div>
+
+              <div class="items items-row" data-item-list="timeLog[1].entries">
+                <div class="item-shell" data-item>
+                  <div class="item item-row">
+                    <fieldset>
+                      <legend>Time</legend>
+                      <label>
+                        <input type="time" name="timeLog[1][entries][0][time]" value="" />
+                      </label>
+                    </fieldset>
+
+                    <fieldset>
+                      <legend>Activity</legend>
+                      <label>
+                        <input type="text" name="timeLog[1][entries][0][description]" value="" />
+                      </label>
+                    </fieldset>
+
+                    <div class="actions actions-inline actions-icons">
+                      <button type="button" aria-label="Add entry" title="Add entry">＋</button>
+                      <button type="button" aria-label="Delete entry" title="Delete entry">－</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button type="button">Add Day</button>
+                <button type="button">Delete Day</button>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!--
+        ============================================================================
+        PHOTO GROUP EXAMPLE
+        ----------------------------------------------------------------------------
+        This is another usage of GroupRepeater.
+
+        DATA SHAPE IDEA
+        collection: photoGroups
+        groups: photo groups / sections
+        items: photos
+
+        IMPORTANT BEHAVIOR
+        - photo groups can be reordered
+        - photo items can be reordered within a group
+        - photo items can move across groups
+        - moving across groups should remove from old group and insert into new group
+        - this must use the existing drag-and-drop utility
+
+        SUMMARY TITLE GUIDANCE
+        For photo groups, the summary title should be bound to the group title input.
+
+        Example:
+        - current title = PhotoGroup1
+        - click Add Group
+        - new group title seeds as PhotoGroup2
+        - summary immediately shows PhotoGroup2
+        - if user edits title input, summary updates live
+
+        OPTIONAL SUMMARY META IDEAS
+        - photo count
+        - layout
+        - missing captions
+        - EXIF date range later
+        ============================================================================
+      -->
+      <section class="collection" data-collection="photo-groups">
+        <header class="collection-header">
+          <h2>Photo Section</h2>
+          <p>GroupRepeater example where groups are photo sections and items are photos.</p>
+        </header>
+
+        <div class="groups" data-group-list="photoGroups">
+          <!-- GROUP: filled example -->
+          <details class="group" open data-group draggable="true">
+            <summary class="group-summary">
+              <span class="group-summary-text">
+                <!--
+                  This should be bound to the group title field in the real implementation.
+                -->
+                <span class="group-summary-title">PhotoGroup1</span>
+                <span class="group-summary-meta">2 photos</span>
+              </span>
+
+              <span class="group-summary-meta">2-up</span>
+            </summary>
+
+            <div class="group-panel">
+              <div class="group-body">
+                <div class="group-header">
+                  <fieldset>
+                    <legend>Group Title</legend>
+                    <label>
+                      <input type="text" name="photoGroups[0][title]" value="PhotoGroup1" />
+                    </label>
+                  </fieldset>
+
+                  <fieldset>
+                    <legend>Layout</legend>
+                    <label>
+                      <select name="photoGroups[0][layout]">
+                        <option value="1-up">1-up</option>
+                        <option value="2-up" selected>2-up</option>
+                        <option value="4-up">4-up</option>
+                        <option value="8-up">8-up</option>
+                        <option value="9-up">9-up</option>
+                      </select>
+                    </label>
+                  </fieldset>
+                </div>
+
+                <fieldset>
+                  <legend>Description</legend>
+                  <label>
+                    <textarea name="photoGroups[0][description]">Photos captured during field inspection.</textarea>
+                  </label>
+                </fieldset>
+              </div>
+
+              <!--
+                ITEM LIST RULES
+                - filled photos stay in 2-column layout
+                - there should only be one visible upload row
+                - upload row spans full width
+                - empty photo item state = file input only
+                - filled photo item state = preview + caption + actions
+              -->
+              <div
+                class="items items-grid"
+                data-item-list="photoGroups[0].photos"
+                data-can-cross-group-drop="true">
+                <div class="item-shell" data-item draggable="true">
+                  <div class="item item-column">
+                    <div class="photo-frame">
+                      <img src="https://picsum.photos/id/1061/1200/800" alt="Sample uploaded photo" />
+                    </div>
+
+                    <fieldset>
+                      <legend>Caption</legend>
+                      <label>
+                        <input type="text" name="photoGroups[0][photos][0][caption]" value="20260203_082458" />
+                      </label>
+                    </fieldset>
+
+                    <div class="actions actions-inline">
+                      <button type="button">Add Photo</button>
+                      <button type="button">Delete Photo</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="item-shell" data-item draggable="true">
+                  <div class="item item-column">
+                    <div class="photo-frame">
+                      <img src="https://picsum.photos/id/1040/1200/800" alt="Sample uploaded photo" />
+                    </div>
+
+                    <fieldset>
+                      <legend>Caption</legend>
+                      <label>
+                        <input type="text" name="photoGroups[0][photos][1][caption]" value="20260203_072631" />
+                      </label>
+                    </fieldset>
+
+                    <div class="actions actions-inline">
+                      <button type="button">Add Photo</button>
+                      <button type="button">Delete Photo</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="upload-row" data-upload-row>
+                  <fieldset>
+                    <legend>Photo</legend>
+                    <label>
+                      <input type="file" accept="image/*" name="photoGroups[0][photos][new][file]" />
+                    </label>
+                  </fieldset>
+                </div>
+              </div>
+
+              <div class="actions">
+                <!--
+                  Add Group behavior in real implementation:
+                  - insert after current group
+                  - seed title as PhotoGroup{n + 1}
+                  - bind summary title to that same value immediately
+                -->
+                <button type="button">Add Group</button>
+                <button type="button">Delete Group</button>
+              </div>
+            </div>
+          </details>
+
+          <!-- GROUP: empty example -->
+          <details class="group" data-group draggable="true">
+            <summary class="group-summary">
+              <span class="group-summary-text">
+                <span class="group-summary-title">PhotoGroup2</span>
+                <span class="group-summary-meta">0 photos</span>
+              </span>
+
+              <span class="group-summary-meta">2-up</span>
+            </summary>
+
+            <div class="group-panel">
+              <div class="group-body">
+                <div class="group-header">
+                  <fieldset>
+                    <legend>Group Title</legend>
+                    <label>
+                      <input type="text" name="photoGroups[1][title]" value="PhotoGroup2" />
+                    </label>
+                  </fieldset>
+
+                  <fieldset>
+                    <legend>Layout</legend>
+                    <label>
+                      <select name="photoGroups[1][layout]">
+                        <option value="1-up">1-up</option>
+                        <option value="2-up" selected>2-up</option>
+                        <option value="4-up">4-up</option>
+                        <option value="8-up">8-up</option>
+                        <option value="9-up">9-up</option>
+                      </select>
+                    </label>
+                  </fieldset>
+                </div>
+
+                <fieldset>
+                  <legend>Description</legend>
+                  <label>
+                    <textarea name="photoGroups[1][description]"></textarea>
+                  </label>
+                </fieldset>
+              </div>
+
+              <div
+                class="items items-grid"
+                data-item-list="photoGroups[1].photos"
+                data-can-cross-group-drop="true">
+                <div class="upload-row" data-upload-row>
+                  <fieldset>
+                    <legend>Photo</legend>
+                    <label>
+                      <input type="file" accept="image/*" name="photoGroups[1][photos][new][file]" />
+                    </label>
+                  </fieldset>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button type="button">Add Group</button>
+                <button type="button">Delete Group</button>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <!--
+      ============================================================================
+      IMPLEMENTATION NOTES
+      ----------------------------------------------------------------------------
+      1. Real implementation should be a single GroupRepeater component.
+         Reuse existing project pieces instead of inventing new primitive layers.
+
+      2. Use InputNew for actual field rendering.
+         This blueprint uses raw field markup only to show intent and structure.
+
+      3. Use Accordion / AccordionTitle / AccordionContent in the app.
+         This blueprint uses details/summary only as a semantic stand-in.
+
+      4. Use existing drag-and-drop utility.
+         Build drag hooks around what already exists.
+
+      5. Use Tailwind and existing codebase patterns.
+         Do not add one-off vanilla CSS to production.
+
+      6. Keep behavior configurable by use case.
+         Example differences:
+         - time log: stable Day X summary, optional auto-sort by time
+         - photos: title-bound summary, cross-group moves, upload row state
+
+      7. Future EXIF groundwork
+         This shape should support:
+         - photo upload
+         - EXIF extraction
+         - timestamp/date inference
+         - suggested time log entries later
+
+      8. Empty states matter
+         - zero groups should have an add-first action
+         - photo groups should still render upload row when empty
+         - time log groups should still render clean partial states
+
+      9. Insertion model
+         - Add Group inserts after current group
+         - Add Item inserts after current item
+
+      10. Keep this feature blended into the current codebase.
+          It should feel native to the app, not like a foreign subsystem.
+      ============================================================================
+    -->
+  </body>
+
+</html>
