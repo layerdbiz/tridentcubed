@@ -18,6 +18,27 @@ export interface PhotoItemType {
 	height: number;
 }
 
+export interface PhotoGroupType {
+	id: string;
+	title: string;
+	description: string;
+	variant: string;
+	files: string[];
+	photos: PhotoItemType[];
+}
+
+export interface PhotoPanelFieldsType {
+	groupPath: string;
+	titlePath: string | null;
+	descriptionPath: string | null;
+	variantPath: string | null;
+	filesPath: string | null;
+	photoRepeaterPath: string | null;
+	photoPath: string | null;
+	captionPath: string | null;
+	variantOptions: string[];
+}
+
 export type FieldStateValueType = string | string[];
 
 export type DetailsFieldsType = Record<string, FieldStateValueType>;
@@ -42,7 +63,6 @@ export interface PanelBaseType {
 	locked: boolean;
 	enabled: boolean;
 	placement: PanelPlacementType;
-	photos: PhotoItemType[];
 }
 
 export type SectionBaseType = PanelBaseType;
@@ -64,9 +84,8 @@ export type TimeLogSectionType = TimeLogPanelType;
 
 export interface PhotosPanelType extends PanelBaseType {
 	type: "photos";
-	description: string;
-	variant: string;
-	files: string[];
+	defaultVariant: string;
+	groups: PhotoGroupType[];
 	panelId: string | null;
 	pageId: string | null;
 	required: boolean;
@@ -276,6 +295,7 @@ export interface PreviewPageItemType {
 	kind: PreviewPageKindType;
 	pageDefinition: PageDefinitionType | null;
 	section: TimeLogSectionType | PhotosSectionType | null;
+	photoGroup: PhotoGroupType | null;
 }
 
 export interface PreviewSummaryItemType {

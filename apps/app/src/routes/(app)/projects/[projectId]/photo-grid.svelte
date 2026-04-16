@@ -2,7 +2,7 @@
 	import { flip } from 'svelte/animate';
 	import { fromAction } from 'svelte/attachments';
 	import type { SortableApi } from '@layerd/ui';
-	import { Button, InputNew } from '@layerd/ui';
+	import { Button, Input } from '@layerd/ui';
 	import * as projectAssets from '../projects.assets';
 	import type * as projectTypes from '../projects.types';
 
@@ -74,7 +74,7 @@
 					<Button variant="icon" icon="close" class="absolute! -right-1.5 -top-1.5 z-100 text-[8px]!" aria-label="Remove Photo" onclick={() => onRemove(photo, photoIndex)} />
 				</div>
 				{#if onCaptionInput}
-					<InputNew xs label={captionLabel} variant="text" type="text" value={photo.caption} oninput={(event: Event) => onCaptionInput(photo, photoIndex, event)} />
+					<Input xs label={captionLabel} variant="text" type="text" value={photo.caption} oninput={(event: Event) => onCaptionInput(photo, photoIndex, event)} />
 				{/if}
 			</div>
 		{/each}

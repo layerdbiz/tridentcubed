@@ -62,6 +62,18 @@ export const createTimeDay = (): projectTypes.TimeDayType => ({
 	entries: [createTimeEntry()],
 });
 
+export const createPhotoGroup = (
+	title = "Section 1",
+	variant = "photos-4",
+): projectTypes.PhotoGroupType => ({
+	id: nextId("group"),
+	title,
+	description: "",
+	variant,
+	files: [],
+	photos: [],
+});
+
 function createCoverFields(
 	inputs: projectTypes.InputDefinitionType[],
 ): projectTypes.DetailsFieldsType {
@@ -135,7 +147,6 @@ export const createFieldSection = (
 	enabled: panel?.enabled ?? true,
 	placement: "start",
 	fields: createCoverFields(inputGroup?.inputs ?? []),
-	photos: [],
 });
 
 export const createTimeLogSection = (
@@ -151,7 +162,6 @@ export const createTimeLogSection = (
 	enabled: panel?.enabled ?? true,
 	placement: "start",
 	days: [createTimeDay()],
-	photos: [],
 });
 
 export const createPhotoSection = (
@@ -171,13 +181,11 @@ export const createPhotoSection = (
 	locked: false,
 	enabled: true,
 	placement: "middle",
-	description: "",
-	variant,
-	files: [],
+	defaultVariant: variant,
+	groups: [createPhotoGroup(title, variant)],
 	panelId,
 	pageId,
 	required,
-	photos: [],
 });
 
 export const createPagePhotoSection = (
@@ -191,13 +199,13 @@ export const createPagePhotoSection = (
 	locked: true,
 	enabled: page.required,
 	placement: "middle",
-	description: "",
-	variant: getPagePhotoVariant(page),
-	files: [],
+	defaultVariant: getPagePhotoVariant(page),
+	groups: page.required
+		? [createPhotoGroup(page.page, getPagePhotoVariant(page))]
+		: [],
 	panelId: null,
 	pageId: page.id,
 	required: page.required,
-	photos: [],
 });
 
 export const createPanelPhotoSection = (
@@ -212,13 +220,13 @@ export const createPanelPhotoSection = (
 	locked: true,
 	enabled: panel.enabled,
 	placement: "middle",
-	description: panel.description,
-	variant: getPanelPhotoVariant(panel, page),
-	files: [],
+	defaultVariant: getPanelPhotoVariant(panel, page),
+	groups: panel.enabled || panel.required
+		? [createPhotoGroup(panel.title, getPanelPhotoVariant(panel, page))]
+		: [],
 	panelId: panel.id,
 	pageId: page?.id || null,
 	required: panel.required,
-	photos: [],
 });
 
 export function createFixedSectionTemplates(
@@ -228,10 +236,6 @@ export function createFixedSectionTemplates(
 
 	for (const panel of schema.panels) {
 		const renderer = projectSchemas.getPanelRenderer(panel);
-
-		if (renderer === "custom") {
-			continue;
-		}
 
 		if (renderer === "time-log") {
 			fixedPanelTemplates.push({
@@ -245,19 +249,6 @@ export function createFixedSectionTemplates(
 			continue;
 		}
 
-		const inputGroup = projectSchemas.getInputGroup(schema, panel.title);
-		if (inputGroup) {
-			fixedPanelTemplates.push({
-				id: `section-${panel.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-				type: "fields",
-				title: panel.title,
-				icon: getPanelIcon(panel, getSectionIcon(panel.title)),
-				placement: "start",
-				create: () => createFieldSection(panel, inputGroup),
-			});
-			continue;
-		}
-
 		if (renderer === "photos") {
 			const page = projectSchemas.getPhotoPageForPanel(schema, panel);
 			fixedPanelTemplates.push({
@@ -267,6 +258,19 @@ export function createFixedSectionTemplates(
 				icon: getPanelIcon(panel, "🖼️"),
 				placement: "middle",
 				create: () => createPanelPhotoSection(panel, page),
+			});
+			continue;
+		}
+
+		const inputGroup = projectSchemas.getInputGroup(schema, panel.title);
+		if (inputGroup) {
+			fixedPanelTemplates.push({
+				id: `section-${panel.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+				type: "fields",
+				title: panel.title,
+				icon: getPanelIcon(panel, getSectionIcon(panel.title)),
+				placement: "start",
+				create: () => createFieldSection(panel, inputGroup),
 			});
 			continue;
 		}
@@ -405,6 +409,65 @@ export function normalizePhotoItem(value: unknown): projectTypes.PhotoItemType {
 	};
 }
 
+export function normalizePhotoGroup(
+	value: unknown,
+): projectTypes.PhotoGroupType {
+	const group = value as Partial<projectTypes.PhotoGroupType>;
+	const photos = Array.isArray(group.photos)
+		? group.photos.map(normalizePhotoItem).filter((photo) => photo.src)
+		: [];
+
+	return {
+		id: typeof group.id === "string" ? group.id : nextId("group"),
+		title: String(group.title || ""),
+		description: String(group.description || ""),
+		variant: String(group.variant || "photos-4"),
+		files: Array.isArray(group.files)
+			? group.files.map((item) => String(item || "").trim()).filter(Boolean)
+			: [],
+		photos,
+	};
+}
+
+function toPanelPathKey(title: string): string {
+	return title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+
+function createLegacyPhotoGroupFromFields(
+	section: Partial<projectTypes.FieldSectionType>,
+	title: string,
+	defaultVariant: string,
+): projectTypes.PhotoGroupType {
+	const basePath = toPanelPathKey(title);
+	const fields = section.fields || {};
+	const photos = Array.isArray(fields[`${basePath}.photos`])
+		? (fields[`${basePath}.photos`] as string[])
+			.map((src, index) =>
+				normalizePhotoItem({
+					src,
+					name: `${title} ${index + 1}`,
+					caption: Array.isArray(fields[`${basePath}.captions`])
+						? String((fields[`${basePath}.captions`] as string[])[index] || "")
+						: "",
+				})
+			)
+			.filter((photo) => photo.src)
+		: [];
+
+	return {
+		id: nextId("group"),
+		title,
+		description: String(fields[`${basePath}.description`] || ""),
+		variant: String(fields[`${basePath}.variant`] || defaultVariant),
+		files: Array.isArray(fields[`${basePath}.files`])
+			? (fields[`${basePath}.files`] as string[])
+				.map((item) => String(item || "").trim())
+				.filter(Boolean)
+			: [],
+		photos,
+	};
+}
+
 export function normalizeSection(
 	value: unknown,
 	index: number,
@@ -420,9 +483,44 @@ export function normalizeSection(
 	const template = typeof section.id === "string"
 		? fixedSectionTemplateById.get(section.id)
 		: undefined;
-	const photos = Array.isArray(section.photos)
-		? section.photos.map(normalizePhotoItem).filter((photo) => photo.src)
-		: [];
+	const templateSection = template?.create();
+	const templatePhotoSection =
+		templateSection && templateSection.type === "photos"
+			? templateSection
+			: null;
+
+	if (
+		(section.type === "fields" || section.type === "cover") &&
+		templatePhotoSection
+	) {
+		const legacyGroup = createLegacyPhotoGroupFromFields(
+			section as Partial<projectTypes.FieldSectionType>,
+			templatePhotoSection.title,
+			templatePhotoSection.defaultVariant,
+		);
+
+		return {
+			id: typeof section.id === "string" ? section.id : nextId("section"),
+			type: "photos",
+			title: typeof section.title === "string"
+				? section.title
+				: templatePhotoSection.title,
+			icon: typeof section.icon === "string"
+				? section.icon
+				: templatePhotoSection.icon,
+			open: Boolean(section.open),
+			locked: true,
+			enabled: typeof section.enabled === "boolean"
+				? section.enabled
+				: templatePhotoSection.enabled,
+			placement: templatePhotoSection.placement,
+			defaultVariant: templatePhotoSection.defaultVariant,
+			groups: [legacyGroup],
+			panelId: templatePhotoSection.panelId,
+			pageId: templatePhotoSection.pageId,
+			required: templatePhotoSection.required,
+		};
+	}
 
 	if (section.type === "fields" || section.type === "cover") {
 		return {
@@ -450,7 +548,6 @@ export function normalizeSection(
 						: String(itemValue || ""),
 				]),
 			),
-			photos,
 		};
 	}
 
@@ -473,21 +570,38 @@ export function normalizeSection(
 			enabled: true,
 			placement: template?.placement || section.placement || "middle",
 			days: days.length ? days : [createTimeDay()],
-			photos,
 		};
 	}
 
-	const templateSection = template?.create();
-	const templatePhotoSection =
-		templateSection && templateSection.type === "photos"
-			? templateSection
-			: null;
-	const files =
-		Array.isArray((section as projectTypes.PhotosSectionType)?.files)
-			? (section as projectTypes.PhotosSectionType).files
-				.map((item) => String(item || "").trim())
-				.filter(Boolean)
-			: templatePhotoSection?.files || [];
+	const legacyPhotos = Array.isArray((section as { photos?: unknown[] }).photos)
+		? (section as { photos?: unknown[] }).photos
+		: [];
+	const groups =
+		Array.isArray((section as projectTypes.PhotosSectionType)?.groups)
+			? (section as projectTypes.PhotosSectionType).groups
+				.map(normalizePhotoGroup)
+			: legacyPhotos.length ||
+					String((section as { description?: string }).description || "")
+						.trim() ||
+					Array.isArray((section as { files?: string[] }).files)
+			? [normalizePhotoGroup({
+				id: nextId("group"),
+				title: typeof section.title === "string"
+					? section.title
+					: template?.title || "Section 1",
+				description: String(
+					(section as { description?: string }).description || "",
+				),
+				variant: String(
+					(section as { variant?: string }).variant ||
+						templatePhotoSection?.defaultVariant || "photos-4",
+				),
+				files: Array.isArray((section as { files?: string[] }).files)
+					? (section as { files?: string[] }).files
+					: [],
+				photos: legacyPhotos,
+			})]
+			: templatePhotoSection?.groups.map(normalizePhotoGroup) || [];
 	const required = templatePhotoSection?.required || Boolean(
 		(section as Partial<projectTypes.PhotosSectionType>)?.required,
 	);
@@ -510,12 +624,12 @@ export function normalizeSection(
 		locked: template ? true : Boolean(section.locked),
 		enabled,
 		placement: template?.placement || section.placement || "middle",
-		description: String(
-			(section as projectTypes.PhotosSectionType)?.description || "",
+		defaultVariant: String(
+			(section as projectTypes.PhotosSectionType)?.defaultVariant ||
+				templatePhotoSection?.defaultVariant ||
+				(groups[0]?.variant ?? "photos-4"),
 		),
-		variant: String(
-			(section as projectTypes.PhotosSectionType)?.variant || "photos-4",
-		),
+		groups,
 		panelId:
 			typeof (section as projectTypes.PhotosSectionType)?.panelId === "string"
 				? String((section as projectTypes.PhotosSectionType).panelId)
@@ -524,9 +638,7 @@ export function normalizeSection(
 			typeof (section as projectTypes.PhotosSectionType)?.pageId === "string"
 				? String((section as projectTypes.PhotosSectionType).pageId)
 				: templatePhotoSection?.pageId || null,
-		files,
 		required,
-		photos,
 	};
 }
 
@@ -581,12 +693,31 @@ export function loadState(
 			),
 			fixedSectionTemplates,
 		);
+		const customSection = normalizedSections.find(
+			(section): section is projectTypes.PhotosSectionType =>
+				section.type === "photos" && section.title === "Custom" &&
+				section.locked,
+		);
+		const migratedSections = customSection
+			? normalizedSections.filter((section) => {
+				if (section.type !== "photos" || section.locked) return true;
+
+				customSection.groups.push(
+					...section.groups.map((group) => ({
+						...group,
+						title: group.title || section.title,
+					})),
+				);
+				customSection.enabled = true;
+				return false;
+			})
+			: normalizedSections;
 
 		if (legacyCoverSection && typeof legacyCoverSection === "object") {
 			const legacyFields =
 				(legacyCoverSection as { fields?: projectTypes.DetailsFieldsType })
 					.fields || {};
-			for (const section of normalizedSections) {
+			for (const section of migratedSections) {
 				if (section.type !== "fields") continue;
 				for (const path of Object.keys(section.fields)) {
 					if (!(path in legacyFields)) continue;
@@ -596,7 +727,7 @@ export function loadState(
 				}
 			}
 		}
-		const hasOpenSection = normalizedSections.some((section) => section.open);
+		const hasOpenSection = migratedSections.some((section) => section.open);
 
 		return {
 			activeTab: parsed.activeTab === "preview" ? "preview" : "create",
@@ -607,8 +738,8 @@ export function loadState(
 				? parsed.hasUserZoomed
 				: false,
 			sections: hasOpenSection
-				? normalizedSections
-				: normalizedSections.map((section) => ({ ...section, open: false })),
+				? migratedSections
+				: migratedSections.map((section) => ({ ...section, open: false })),
 		};
 	} catch {
 		return defaults;

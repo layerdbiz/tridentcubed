@@ -87,7 +87,16 @@
 	@apply icon-[material-symbols--play-circle];
 }
 .icon-chevron-right {
-	@apply icon-[material-symbols--chevron-right];
+	@apply icon-[mdi--chevron-right];
+}
+.icon-chevron-down {
+	@apply icon-[mdi--chevron-down];
+}
+.icon-chevron-left {
+	@apply icon-[mdi--chevron-left];
+}
+.icon-chevron-up {
+	@apply icon-[mdi--chevron-up];
 }
 
 /* account */

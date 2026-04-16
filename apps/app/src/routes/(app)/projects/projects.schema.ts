@@ -1,6 +1,6 @@
 import type * as projectTypes from "./projects.types";
 
-const excludedSections = new Set(["Time Log", "Custom"]);
+const excludedSections = new Set(["Time Log"]);
 
 function toKey(value: string): string {
 	return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -126,7 +126,6 @@ export function getPanelRenderer(
 
 	const titleKey = toKey(panel.title);
 	if (titleKey === "timelog") return "time-log";
-	if (titleKey === "custom") return "custom";
 	if (
 		panel.icon === "🖼️" ||
 		panel.reference.some((item) => toKey(item) === "panel009")
@@ -135,6 +134,83 @@ export function getPanelRenderer(
 	}
 
 	return "fields";
+}
+
+function sortByPathDepth(
+	left: projectTypes.InputDefinitionType,
+	right: projectTypes.InputDefinitionType,
+): number {
+	const leftDepth = left.path.split(".").length;
+	const rightDepth = right.path.split(".").length;
+	if (leftDepth !== rightDepth) return leftDepth - rightDepth;
+	return left.path.localeCompare(right.path);
+}
+
+function findNestedField(
+	inputs: projectTypes.InputDefinitionType[],
+	prefix: string,
+	segment: string,
+): projectTypes.InputDefinitionType | undefined {
+	return inputs.find((input) => input.path === `${prefix}.${segment}`) ??
+		inputs.find((input) =>
+			input.path.startsWith(`${prefix}.`) && input.path.endsWith(`.${segment}`)
+		);
+}
+
+export function getPhotoPanelFields(
+	schema: projectTypes.ProjectSchemaType,
+	panel: string | projectTypes.PanelDefinitionType,
+): projectTypes.PhotoPanelFieldsType | null {
+	const panelTitle = typeof panel === "string" ? panel : panel.title;
+	const inputGroup = getInputGroup(schema, panelTitle);
+	if (!inputGroup) return null;
+
+	const repeaters = inputGroup.inputs
+		.filter((input) => input.input === "repeater")
+		.sort(sortByPathDepth);
+	const groupRepeater = repeaters[0];
+	if (!groupRepeater?.path) return null;
+
+	const groupPath = groupRepeater.path;
+	const groupInputs = inputGroup.inputs.filter((input) =>
+		input.path.startsWith(`${groupPath}.`)
+	);
+	const photoRepeater =
+		repeaters.find((input) =>
+			input.path !== groupPath && input.path.startsWith(`${groupPath}.`)
+		) ?? null;
+	const photoPath = photoRepeater
+		? groupInputs.find((input) =>
+			input.input === "image" && input.path.startsWith(`${photoRepeater.path}.`)
+		)
+		: null;
+	const captionPath = photoPath
+		? groupInputs.find((input) =>
+			input.reference.includes(photoPath.id) ||
+			input.path === `${photoRepeater?.path}.description` ||
+			input.path === `${photoRepeater?.path}.caption`
+		)
+		: null;
+	const variantField = groupInputs.find((input) =>
+		input.input === "select" &&
+		input.options.some((option) => option.startsWith("photos-"))
+	) ?? null;
+
+	return {
+		groupPath,
+		titlePath: findNestedField(groupInputs, groupPath, "title")?.path ?? null,
+		descriptionPath:
+			findNestedField(groupInputs, groupPath, "description")?.path ?? null,
+		variantPath: variantField?.path ?? null,
+		filesPath: groupInputs.find((input) => input.input === "file")?.path ??
+			null,
+		photoRepeaterPath: photoRepeater?.path ?? null,
+		photoPath: photoPath?.path ?? null,
+		captionPath: captionPath?.path ?? null,
+		variantOptions: variantField?.options.length
+			? variantField.options
+			: schema.customVariantOptions,
+	};
 }
 
 function matchesPageTitle(value: string, pageTitle: string): boolean {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { SortableApi } from '@layerd/ui';
-	import { InputNew } from '@layerd/ui';
+	import { Input } from '@layerd/ui';
 	import * as projectAssets from '../projects.assets';
 	import PhotoGrid from './photo-grid.svelte';
 	import type * as projectTypes from '../projects.types';
@@ -208,7 +208,7 @@
 	{/if}
 
 	{#if descriptionField}
-		<InputNew xs label={descriptionField.label} textarea variant="text" type="text" value={getFieldValueList(section.fields[descriptionField.path])[0] || ''} placeholder={descriptionField.placeholder || ' '} disabled={!section.enabled || !descriptionField.editable} oninput={handleDescriptionInput} />
+		<Input xs label={descriptionField.label} textarea variant="text" type="text" value={getFieldValueList(section.fields[descriptionField.path])[0] || ''} placeholder={descriptionField.placeholder || ' '} disabled={!section.enabled || !descriptionField.editable} oninput={handleDescriptionInput} />
 	{/if}
 
 	<div class="space-y-3">

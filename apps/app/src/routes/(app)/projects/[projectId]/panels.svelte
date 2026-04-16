@@ -7,7 +7,7 @@
 	import {
 		Grid,
 		Button,
-		InputNew,
+		Input,
 		Text,
 		Accordion,
 		AccordionTitle,
@@ -16,6 +16,8 @@
 	import * as projectConstants from '../projects.constants';
 	import * as projectUtils from '../projects.utils';
 	import * as projectStates from '../projects.state';
+	import GroupedRepeater from './grouped-repeater.svelte';
+	import PhotoSection from './photo-section.svelte';
 	import PhotoGrid from './photo-grid.svelte';
 	import SharedPhotoInputs from './shared-photo-inputs.svelte';
 	import type * as projectTypes from '../projects.types';
@@ -36,34 +38,39 @@
 		photoDropId: string;
 		overallMetrics: projectTypes.SectionMetricsType;
 		sectionSort: SortableApi<projectTypes.SectionType>;
-		getPhotoSort: (sectionId: string) => SortableApi<projectTypes.PhotoItemType>;
+		getPhotoSort: (groupId: string) => SortableApi<projectTypes.PhotoItemType>;
+		getPhotoGroupSort: (sectionId: string) => SortableApi<projectTypes.PhotoGroupType>;
 		setSections: (nextSections: unknown[]) => void;
-		setSectionPhotos: (section: projectTypes.PhotosSectionType, nextPhotos: unknown[]) => void;
+		setSectionGroups: (section: projectTypes.PhotosSectionType, nextGroups: unknown[]) => void;
+		setPhotoGroupPhotos: (group: projectTypes.PhotoGroupType, nextPhotos: unknown[]) => void;
 		getAccordionAnchorId: (sectionId: string) => string;
 		measureAccordionLayout: (node: HTMLElement, params: { sectionId: string; index: number }) => { update: (params: { sectionId: string; index: number }) => void; destroy: () => void };
 		handleAccordionToggle: (sectionId: string, event: Event) => void;
 		handleSectionTitleClick: (sectionId: string, event: MouseEvent) => void;
 		handleSectionActionClick: (event: MouseEvent, sectionId: string) => void;
 		handleSectionActionDisabledClick: (event: MouseEvent) => void;
-		addSection: () => void;
+		addSection: (afterSectionId?: string) => void;
+		addPhotoGroup: (section: projectTypes.PhotosSectionType, afterIndex?: number) => void;
+		removePhotoGroup: (section: projectTypes.PhotosSectionType, groupId: string) => void;
 		resetReport: () => void;
 		toggleSectionEnabled: (sectionId: string) => void;
 		removeDay: (section: projectTypes.TimeLogSectionType, dayId: string) => void;
-		addDay: (section: projectTypes.TimeLogSectionType) => void;
+		addDay: (section: projectTypes.TimeLogSectionType, afterIndex?: number) => void;
 		removeEntry: (day: projectTypes.TimeDayType, entryId: string) => void;
-		addEntry: (day: projectTypes.TimeDayType) => void;
+		addEntry: (day: projectTypes.TimeDayType, afterIndex?: number) => void;
 		maybeAddEntry: (day: projectTypes.TimeDayType, entryId: string) => void;
 		handleActivityKeyup: (day: projectTypes.TimeDayType, entryId: string, event?: KeyboardEvent) => void;
-		handlePhotoInput: (sectionId: string, event: Event) => Promise<void>;
-		handlePhotoZoneDragOver: (sectionId: string, event: DragEvent) => void;
-		handlePhotoZoneDragLeave: (sectionId: string) => void;
-		handlePhotoZoneDrop: (sectionId: string, event: DragEvent) => Promise<void>;
-		removePhoto: (section: projectTypes.PhotosSectionType, photoId: string) => void;
+		handlePhotoInput: (sectionId: string, groupId: string, event: Event) => Promise<void>;
+		handlePhotoFilesInput: (sectionId: string, groupId: string, event: Event) => void;
+		handlePhotoZoneDragOver: (groupId: string, event: DragEvent) => void;
+		handlePhotoZoneDragLeave: (groupId: string) => void;
+		handlePhotoZoneDrop: (sectionId: string, groupId: string, event: DragEvent) => Promise<void>;
+		removePhoto: (group: projectTypes.PhotoGroupType, photoId: string) => void;
 		setSectionFieldValue: (sectionId: string, path: string, value: projectTypes.FieldStateValueType) => void;
-	setSectionFieldValues: (
-		sectionId: string,
-		values: Record<string, projectTypes.FieldStateValueType>
-	) => void;
+		setSectionFieldValues: (
+			sectionId: string,
+			values: Record<string, projectTypes.FieldStateValueType>
+		) => void;
 	}
 
 	let {
@@ -77,8 +84,10 @@
 		overallMetrics,
 		sectionSort,
 		getPhotoSort,
+		getPhotoGroupSort,
 		setSections,
-		setSectionPhotos,
+		setSectionGroups,
+		setPhotoGroupPhotos,
 		getAccordionAnchorId,
 		measureAccordionLayout,
 		handleAccordionToggle,
@@ -86,6 +95,8 @@
 		handleSectionActionClick,
 		handleSectionActionDisabledClick,
 		addSection,
+		addPhotoGroup,
+		removePhotoGroup,
 		resetReport,
 		toggleSectionEnabled,
 		removeDay,
@@ -95,6 +106,7 @@
 		maybeAddEntry,
 		handleActivityKeyup,
 		handlePhotoInput,
+		handlePhotoFilesInput,
 		handlePhotoZoneDragOver,
 		handlePhotoZoneDragLeave,
 		handlePhotoZoneDrop,
@@ -235,6 +247,41 @@
 	}
 </script>
 
+{#snippet timeLogGroupContent(
+	day: projectTypes.TimeDayType,
+	_dayIndex: number,
+	addDayAfter: () => void,
+	removeDayAt: () => void,
+	canRemoveDay: boolean
+)}
+	<div class="space-y-3">
+		<Input xs type="date" label="Date" bind:value={day.dateISO} />
+		<div class="flex flex-wrap gap-2">
+			<Button primary xs variant="text" label="Add Day" onclick={addDayAfter} />
+			<Button outline xs variant="text" label="Delete Day" onclick={removeDayAt} disabled={!canRemoveDay} />
+		</div>
+	</div>
+{/snippet}
+
+{#snippet timeLogItem(
+	day: projectTypes.TimeDayType,
+	_dayIndex: number,
+	entry: projectTypes.TimeEntryType,
+	_entryIndex: number,
+	addEntryAfter: () => void,
+	removeEntryAt: () => void,
+	canRemoveEntry: boolean
+)}
+	<Grid items="1x3" cols="160px 1fr auto" gap="8px">
+		<Input xs bind:value={entry.time} label="Time" variant="text" inputmode="numeric" type="time" min="00:00" max="23:59" step="600" onblur={() => maybeAddEntry(day, entry.id)} />
+		<Input xs bind:value={entry.text} label="Activity" variant="text" type="text" onblur={() => maybeAddEntry(day, entry.id)} onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)} />
+		<div class="flex items-center gap-2">
+			<Button primary xs variant="text" label="Add" onclick={addEntryAfter} />
+			<Button ghost secondary variant="icon" icon="close" onclick={removeEntryAt} disabled={!canRemoveEntry} />
+		</div>
+	</Grid>
+{/snippet}
+
 <section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
 	<div class="flex h-full min-h-0 flex-col rounded-2xl border border-secondary-200 bg-white shadow-sm">
 		<div class="shrink-0 border-b border-secondary-200 px-4 py-3">
@@ -271,7 +318,7 @@
 		</div>
 
 		<div class="flex flex-wrap gap-2 p-4">
-			<Button primary xs variant="text" onclick={addSection} label="Add Section" />
+			<Button primary xs variant="text" onclick={addSection} label="Add Panel" />
 			<Button outline xs variant="text" onclick={resetReport} label="Reset" />
 		</div>
 
@@ -286,6 +333,7 @@
 			{#each sections as section, index (section.id)}
 				{@const panelDefinition = getSectionPanelDefinition(section)}
 				{@const inputGroup = section.type === 'fields' || section.type === 'cover' ? projectSchemas.getInputGroup(schema, section.section) : undefined}
+				{@const photoPanelFields = section.type === 'photos' && panelDefinition ? projectSchemas.getPhotoPanelFields(schema, panelDefinition) : null}
 				{@const sharedPhotoFields = getSharedPhotoFields(inputGroup)}
 				{@const metrics = projectUtils.getPanelMetrics(section)}
 				{@const sectionDisabled = !section.enabled}
@@ -378,7 +426,7 @@
 												{#each sharedPhotoFields.regularFields as field (field.id)}
 													<div class={field.input === 'textarea' || field.input === 'multiselect' ? 'md:col-span-2' : ''}>
 														{#if field.input === 'textarea'}
-															<InputNew xs label={field.label} variant="text" type="text" value={projectSchemas.getFieldStringValue(section.fields, field.path)} placeholder={field.placeholder || ' '} disabled={!section.enabled || !field.editable} oninput={(event: Event) => handleFieldInput(section.id, field.path, event)} />
+															<Input xs label={field.label} variant="text" type="text" value={projectSchemas.getFieldStringValue(section.fields, field.path)} placeholder={field.placeholder || ' '} disabled={!section.enabled || !field.editable} oninput={(event: Event) => handleFieldInput(section.id, field.path, event)} />
 														{:else if field.input === 'image'}
 															{@const imageSrc = projectSchemas.getFieldStringValue(section.fields, field.path)}
 															<div class="space-y-2">
@@ -417,7 +465,7 @@
 																</select>
 															</label>
 														{:else}
-															<InputNew xs label={field.label} variant="text" type={field.input === 'date' ? 'date' : field.input === 'email' ? 'email' : field.input === 'tel' ? 'tel' : field.input === 'url' ? 'url' : field.input === 'number' ? 'number' : 'text'} value={projectSchemas.getFieldStringValue(section.fields, field.path)} placeholder={field.placeholder || ' '} disabled={!section.enabled || !field.editable} oninput={(event: Event) => handleFieldInput(section.id, field.path, event)} />
+															<Input xs label={field.label} variant="text" type={field.input === 'date' ? 'date' : field.input === 'email' ? 'email' : field.input === 'tel' ? 'tel' : field.input === 'url' ? 'url' : field.input === 'number' ? 'number' : 'text'} value={projectSchemas.getFieldStringValue(section.fields, field.path)} placeholder={field.placeholder || ' '} disabled={!section.enabled || !field.editable} oninput={(event: Event) => handleFieldInput(section.id, field.path, event)} />
 														{/if}
 													</div>
 												{/each}
@@ -434,56 +482,48 @@
 									{#if panelDefinition?.description}
 										<p class="text-sm text-neutral-600">{panelDefinition.description}</p>
 									{/if}
-									{#each section.days as day (day.id)}
-										<Grid items="1x2" cols="1fr auto" gap="8px">
-											<InputNew xs type="date" label="Date" bind:value={day.dateISO} />
-											<Button ghost secondary variant="icon" icon="close" onclick={() => removeDay(section, day.id)} />
-										</Grid>
-										{#each day.entries as entry (entry.id)}
-											<Grid items="1x3" cols="160px 1fr auto" gap="8px">
-												<InputNew xs bind:value={entry.time} label="Time" variant="text" inputmode="numeric" type="time" min="00:00" max="23:59" step="600" onblur={() => maybeAddEntry(day, entry.id)} />
-												<InputNew xs bind:value={entry.text} label="Activity" variant="text" type="text" onblur={() => maybeAddEntry(day, entry.id)} onkeyup={(event?: KeyboardEvent) => handleActivityKeyup(day, entry.id, event)} />
-												<Button ghost secondary variant="icon" icon="close" onclick={() => removeEntry(day, entry.id)} />
-											</Grid>
-										{/each}
-										<Button primary xs variant="text" label="Add Time" onclick={() => addEntry(day)} />
-									{/each}
-									<Button primary xs variant="text" label="Add Day" onclick={() => addDay(section)} />
+									<GroupedRepeater
+										id={`${section.id}-timelog`}
+										groups={section.days}
+										enabled={section.enabled}
+										groupReorderEnabled={false}
+										itemReorderEnabled={false}
+										getGroupKey={(day) => day.id}
+										getGroupTitle={(_day, dayIndex) => `Day ${dayIndex + 1}`}
+										getGroupMeta={(day) => `${day.entries.length} ${day.entries.length === 1 ? 'entry' : 'entries'}`}
+										getGroupTrailingMeta={(day) => day.dateISO || ''}
+										getItems={(day) => day.entries}
+										getItemKey={(entry) => entry.id}
+										addGroup={(afterIndex) => addDay(section, afterIndex)}
+										removeGroup={(day) => removeDay(section, day.id)}
+										addItem={(day, _groupIndex, afterIndex) => addEntry(day, afterIndex)}
+										removeItem={(day, _groupIndex, entry) => removeEntry(day, entry.id)}
+										canRemoveGroup={() => section.days.length > 1}
+										canRemoveItem={(day) => day.entries.length > 1}
+										renderGroupContent={timeLogGroupContent}
+										renderItem={timeLogItem}
+									/>
 								</div>
 							{:else if section.type === 'photos'}
-								<div class="space-y-3">
-									{#if !section.locked}
-										<InputNew xs bind:value={section.title} label="Title" variant="text" type="text" disabled={!section.enabled} />
-									{/if}
-									<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
-										<span>Variant</span>
-										<select class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15" bind:value={section.variant} disabled={!section.enabled}>
-											{#each schema.customVariantOptions as option (option)}
-												<option value={option}>{option}</option>
-											{/each}
-										</select>
-									</label>
-									<InputNew xs bind:value={section.description} textarea label="Description" variant="text" type="text" disabled={!section.enabled} />
-									<div class="space-y-3">
-										<PhotoGrid
-											photos={section.photos}
-											photoSort={getPhotoSort(section.id)}
-											{draggedPhotoId}
-											enabled={section.enabled}
-											isDropTarget={photoDropId === section.id}
-											onUpload={(event) => handlePhotoInput(section.id, event)}
-											onDragOver={(event) => handlePhotoZoneDragOver(section.id, event)}
-											onDragLeave={() => handlePhotoZoneDragLeave(section.id)}
-											onDrop={(event) => handlePhotoZoneDrop(section.id, event)}
-											onReorder={(items) => setSectionPhotos(section, items)}
-											onRemove={(photo) => removePhoto(section, photo.id)}
-											onCaptionInput={(photo, _index, event) => {
-												const target = event.target as HTMLInputElement | HTMLTextAreaElement | null;
-												photo.caption = target?.value ?? '';
-											}}
-										/>
-									</div>
-								</div>
+								<PhotoSection
+									{section}
+									variantOptions={photoPanelFields?.variantOptions?.length ? photoPanelFields.variantOptions : schema.customVariantOptions}
+									{draggedPhotoId}
+									{photoDropId}
+									showFiles={Boolean(photoPanelFields?.filesPath)}
+									groupSort={getPhotoGroupSort(section.id)}
+									{getPhotoSort}
+									onSetGroups={(items) => setSectionGroups(section, items)}
+									onSetGroupPhotos={setPhotoGroupPhotos}
+									onAddGroup={(afterIndex) => addPhotoGroup(section, afterIndex)}
+									onRemoveGroup={(groupId) => removePhotoGroup(section, groupId)}
+									onUpload={(groupId, event) => handlePhotoInput(section.id, groupId, event)}
+									onFilesInput={(groupId, event) => handlePhotoFilesInput(section.id, groupId, event)}
+									onDragOver={handlePhotoZoneDragOver}
+									onDragLeave={handlePhotoZoneDragLeave}
+									onDrop={(groupId, event) => handlePhotoZoneDrop(section.id, groupId, event)}
+									onRemove={(group, photo) => removePhoto(group, photo.id)}
+								/>
 							{/if}
 							</div>
 						</AccordionContent>

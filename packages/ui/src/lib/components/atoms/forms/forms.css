@@ -1,0 +1,178 @@
+@reference "#ui.css";
+
+fieldset {
+	font-size: 1rem;
+
+	--input-height: 3em;
+	--prefix-width: 0em;
+	--suffix-width: 0em;
+	--icon-size: 1.5em;
+	--icon-gap: 0.5em;
+	--notch-padding: 0.25em;
+	--notch-indent: 0.75em;
+	--content-start: var(--notch-indent);
+	--content-end: var(--notch-indent);
+	--input-pad-start: calc(var(--content-start) + var(--prefix-width));
+	--input-pad-end: calc(var(--content-end) + var(--suffix-width));
+	--field-radius: 0.5em;
+
+	--legend-font-size: 0.78em;
+	--legend-float-scale: 1.25;
+	--legend-float-pad-start: 0em;
+	--legend-float-pad-end: 0em;
+	--legend-pad-start: var(--notch-padding);
+	--legend-pad-end: var(--notch-padding);
+	--legend-start: calc(var(--content-start) - var(--notch-padding));
+	--legend-initial-offset-x: calc(var(--prefix-width) + var(--legend-float-pad-start));
+	--legend-float-y: calc((var(--input-height) - 1em) / 1.1);
+
+	@apply relative block w-full border-0 bg-white outline-0 pointer-events-none;
+	@apply h-(--input-height) rounded-(--field-radius);
+}
+
+fieldset.xxs { font-size: 0.625rem; }
+fieldset.xs { font-size: 0.75rem; }
+fieldset.sm { font-size: 0.875rem; }
+fieldset.md { font-size: 1rem; }
+fieldset.lg { font-size: 1.125rem; }
+fieldset.xl { font-size: 1.25rem; }
+fieldset.xxl { font-size: 1.375rem; }
+
+fieldset:has(.start) {
+	--prefix-width: calc(var(--icon-size) + var(--icon-gap));
+	--legend-float-pad-start: var(--icon-gap);
+}
+
+fieldset:has(.end) {
+	--suffix-width: calc(var(--icon-size) + var(--icon-gap));
+	--legend-float-pad-end: var(--icon-gap);
+}
+
+fieldset legend {
+	@apply relative z-2 grid items-center whitespace-nowrap bg-transparent font-semibold leading-0 origin-top-left transition-transform pointer-events-none;
+	@apply ml-(--legend-start) text-base-400/50;
+	@apply ps-(--legend-pad-start) pe-(--legend-pad-end);
+
+	font-size: var(--legend-font-size);
+}
+
+fieldset label {
+	@apply absolute inset-0 z-0 grid items-center justify-center pointer-events-auto;
+	@apply grid-cols-[calc(var(--content-start)+var(--prefix-width))_minmax(0,1fr)_calc(var(--content-end)+var(--suffix-width))];
+}
+
+fieldset .icon.start,
+fieldset .icon.end {
+	@apply z-2 block shrink-0 overflow-clip text-base-400 bg-base-400 transition-colors;
+	@apply size-(--icon-size);
+}
+
+fieldset .icon.start {
+	@apply col-start-1 row-start-1 self-center ml-(--content-start);
+}
+
+fieldset .icon.end {
+	@apply col-start-3 row-start-1 self-center justify-self-end mr-(--content-end);
+}
+
+fieldset :is(input, select, textarea) {
+	@apply relative z-0 col-span-full row-start-1 size-full border-0 bg-transparent text-base-900 outline-0 transition-colors;
+	@apply rounded-(--field-radius) text-[1em] ps-(--input-pad-start) pe-(--input-pad-end);
+}
+
+fieldset input::placeholder,
+fieldset textarea::placeholder {
+	@apply text-transparent;
+}
+
+fieldset:has(.start) :is(input, select, textarea) {
+	padding-inline-start: calc(var(--input-pad-start) + var(--notch-padding));
+}
+
+fieldset.field-empty {
+	--legend-pad-start: calc(var(--notch-padding) + var(--legend-float-pad-start));
+	--legend-pad-end: calc(var(--notch-padding) + var(--legend-float-pad-end));
+
+	@apply -outline-offset-1 outline-1 outline-base-200;
+}
+
+fieldset.field-empty legend {
+	@apply text-base-400 opacity-60;
+	@apply translate-x-(--legend-initial-offset-x) translate-y-(--legend-float-y) scale-(--legend-float-scale);
+	font-size: var(--legend-font-size);
+}
+
+fieldset.field-empty:hover:not(:focus-within) {
+	@apply outline-base-300;
+}
+
+fieldset.field-empty:hover:not(:focus-within) legend {
+	@apply opacity-70;
+}
+
+
+fieldset:is(.field-filled, :focus-within) {
+	--legend-pad-start: var(--notch-padding);
+	--legend-pad-end: var(--notch-padding);
+
+	@apply border-2 border-info-500 outline-0;
+}
+
+fieldset:is(.field-filled, :focus-within) legend {
+	@apply translate-x-0 translate-y-0 scale-100 opacity-100;
+}
+
+fieldset:is(.field-filled, :focus-within) label {
+	@apply -inset-0.5;
+}
+
+fieldset:is(.field-filled, :focus-within) :is(input, select, textarea) {
+	@apply outline-0;
+}
+
+fieldset:focus-within {
+	@apply border-2 border-info-500;
+}
+
+fieldset:focus-within legend {
+	@apply text-info-500!;
+}
+
+fieldset:focus-within legend,
+fieldset:focus-within .icon {
+	@apply text-info-500 bg-info-500;
+}
+
+fieldset:focus-within legend {
+	@apply translate-x-0 translate-y-0 scale-100 opacity-100;
+	top: -0.5px;
+	margin-left: calc(var(--legend-start) - 1px);
+}
+
+fieldset.field-filled:not(:focus-within) {
+	@apply border border-base-200;
+}
+
+fieldset.field-filled:not(:focus-within) legend {
+	@apply text-info-600;
+}
+
+fieldset.field-filled:not(:focus-within) label {
+	@apply -left-px -right-px;
+}
+
+fieldset.field-filled:not(:focus-within) label .icon {
+	@apply text-base-500 bg-base-500;
+}
+
+fieldset.field-filled:not(:focus-within) label :is(input, select, textarea) {
+	@apply outline-0;
+}
+
+input:is(:-webkit-autofill, :autofill),
+textarea:is(:-webkit-autofill, :autofill) {
+	-webkit-text-fill-color: currentColor;
+	caret-color: currentColor;
+	transition: background-color 99999s ease-out 0s;
+	box-shadow: 0 0 0 1000px var(--field-bg, white) inset;
+}

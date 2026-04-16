@@ -1,8 +1,12 @@
-import { getFieldInitialValue } from "./projects.schema";
+import {
+	createProjectSchema,
+	getFieldInitialValue,
+	getPanelDefinitionById,
+	getPanelRenderer,
+	getPhotoPanelFields,
+} from "./projects.schema";
 import * as projectUtils from "./projects.utils";
 import type * as projectTypes from "./projects.types";
-
-const derivedPanels = new Set(["Time Log", "Custom"]);
 
 function isRecord(value: unknown): value is projectTypes.ProjectDataRecordType {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -111,6 +115,7 @@ function applyFieldSections(
 function applyDefinitionDefaults(
 	record: projectTypes.ProjectDataRecordType,
 	definitions: projectTypes.ProjectDefinitionsType,
+	derivedPanels: Set<string>,
 ): void {
 	for (const input of definitions.inputs) {
 		if (!input.path || derivedPanels.has(input.panel)) continue;
@@ -143,29 +148,77 @@ function applyTimeLogSection(
 	);
 }
 
-function applyCustomSections(
+function toRelativePath(path: string | null, prefix: string): string | null {
+	if (!path) return null;
+	if (path === prefix) return "";
+	if (!path.startsWith(`${prefix}.`)) return null;
+	return path.slice(prefix.length + 1);
+}
+
+function applyPhotoSections(
 	record: projectTypes.ProjectDataRecordType,
+	schema: projectTypes.ProjectSchemaType,
 	sections: projectTypes.SectionType[],
 ): void {
-	const customSections = sections.filter(
+	const photoSections = sections.filter(
 		(section): section is projectTypes.PhotosSectionType =>
-			section.type === "photos" && !section.locked,
+			section.type === "photos" && Boolean(section.panelId),
 	);
 
-	setPathValue(
-		record,
-		"custom.entries",
-		customSections.map((section) => ({
-			title: section.title,
-			description: section.description,
-			variant: section.variant,
-			enabled: section.enabled,
-			photos: section.photos.map((photo) => ({
-				photo: photo.src,
-				description: photo.caption,
-			})),
-		})),
-	);
+	for (const section of photoSections) {
+		const panel = section.panelId
+			? getPanelDefinitionById(schema, section.panelId)
+			: undefined;
+		if (!panel || getPanelRenderer(panel) !== "photos") continue;
+
+		const fields = getPhotoPanelFields(schema, panel);
+		if (!fields?.groupPath) continue;
+
+		setPathValue(
+			record,
+			fields.groupPath,
+			(section.enabled || section.required ? section.groups : []).map(
+				(group) => {
+					const groupRecord: projectTypes.ProjectDataRecordType = {};
+					const titlePath = toRelativePath(fields.titlePath, fields.groupPath);
+					const descriptionPath = toRelativePath(
+						fields.descriptionPath,
+						fields.groupPath,
+					);
+					const variantPath = toRelativePath(
+						fields.variantPath,
+						fields.groupPath,
+					);
+					const filesPath = toRelativePath(fields.filesPath, fields.groupPath);
+					const photoRepeaterPath = toRelativePath(
+						fields.photoRepeaterPath,
+						fields.groupPath,
+					);
+
+					if (titlePath) setPathValue(groupRecord, titlePath, group.title);
+					if (descriptionPath) {
+						setPathValue(groupRecord, descriptionPath, group.description);
+					}
+					if (variantPath) {
+						setPathValue(groupRecord, variantPath, group.variant);
+					}
+					if (filesPath) setPathValue(groupRecord, filesPath, group.files);
+					if (photoRepeaterPath) {
+						setPathValue(
+							groupRecord,
+							photoRepeaterPath,
+							group.photos.map((photo) => ({
+								photo: photo.src,
+								description: photo.caption,
+							})),
+						);
+					}
+
+					return groupRecord;
+				},
+			),
+		);
+	}
 }
 
 export function createProjectData(
@@ -173,11 +226,20 @@ export function createProjectData(
 	sections: projectTypes.SectionType[],
 ): projectTypes.ProjectDataType {
 	const record: projectTypes.ProjectDataRecordType = {};
+	const schema = createProjectSchema(definitions);
+	const derivedPanels = new Set(
+		schema.panels
+			.filter((panel) => {
+				const renderer = getPanelRenderer(panel);
+				return renderer === "time-log" || renderer === "photos";
+			})
+			.map((panel) => panel.title),
+	);
 
 	applyFieldSections(record, sections);
-	applyDefinitionDefaults(record, definitions);
+	applyDefinitionDefaults(record, definitions, derivedPanels);
 	applyTimeLogSection(record, sections);
-	applyCustomSections(record, sections);
+	applyPhotoSections(record, schema, sections);
 
 	return record;
 }

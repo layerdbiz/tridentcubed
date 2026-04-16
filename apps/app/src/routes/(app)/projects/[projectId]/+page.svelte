@@ -3,7 +3,7 @@
 		Grid,
 		Logo,
 		Button,
-		InputNew,
+		Input,
 		Content,
 		Text,
 		Divider,
@@ -35,6 +35,7 @@
 	const customPanelDefinition = projectSchemas.getPanelDefinition(projectSchema, 'Custom');
 	const projectId = page.params.projectId || 'current';
 	const sectionSortType = 'report-section';
+	const photoGroupSortTypePrefix = 'report-photo-group:';
 	const photoSortTypePrefix = 'report-photo:';
 	const baseState = projectStates.createDefaultState(projectSchema);
 	const projectPersist = persist.json<projectTypes.PersistedStateType>({
@@ -78,8 +79,11 @@
 	const overallMetrics = $derived(projectUtils.getOverallPanelMetrics(sections));
 	const timeLogSection = $derived(sections.find((section) => section.type === 'time-log') as projectTypes.TimeLogSectionType | undefined);
 	const photoSections = $derived(sections.filter((section) => section.type === 'photos') as projectTypes.PhotosSectionType[]);
-	const fixedPhotoSections = $derived(photoSections.filter((section) => section.locked));
-	const customPhotoSections = $derived(photoSections.filter((section) => !section.locked));
+	const customPhotoSection = $derived(
+		customPanelDefinition
+			? photoSections.find((section) => section.panelId === customPanelDefinition.id)
+			: undefined
+	);
 	const reportTitle = $derived(projectDataUtils.getProjectDataString(projectData, 'project.title') || 'Survey Report');
 	const reportSubtitle = $derived(projectDataUtils.getProjectDataString(projectData, 'project.subtitle'));
 	const exportFileName = $derived(`${projectUtils.slugify(reportTitle || 'survey-report')}.pdf`);
@@ -103,16 +107,18 @@
 	const previewPagesData = $derived.by<projectTypes.PreviewPageItemType[]>(() => {
 		const items: projectTypes.PreviewPageItemType[] = [];
 		const fixedPhotoSectionsByPanelId = new Map(
-			fixedPhotoSections
+			photoSections
 				.filter((section): section is projectTypes.PhotosSectionType & { panelId: string } => Boolean(section.panelId))
 				.map((section) => [section.panelId, section])
 		);
 		const fallbackPhotoSectionsByPageId = new Map(
-			fixedPhotoSections
+			photoSections
 				.filter((section): section is projectTypes.PhotosSectionType & { pageId: string } => !section.panelId && Boolean(section.pageId))
 				.map((section) => [section.pageId, section])
 		);
-		const enabledCustomSections = customPhotoSections.filter((section) => section.enabled);
+		const customPreviewItems = customPhotoSection
+			? createPreviewPhotoPageItems(customPhotoSection, null)
+			: [];
 		const disclaimerOrder = projectSchema.pages.reduce((max, item) => Math.max(max, item.order), 0);
 		let customSectionsInserted = false;
 
@@ -123,7 +129,8 @@
 					title: pageDefinition.page || projectSchema.coverPageTitle,
 					kind: 'cover',
 					pageDefinition,
-					section: null
+					section: null,
+					photoGroup: null
 				});
 				continue;
 			}
@@ -134,7 +141,8 @@
 					title: pageDefinition.page || projectSchema.tocPageTitle,
 					kind: 'toc',
 					pageDefinition,
-					section: null
+					section: null,
+					photoGroup: null
 				});
 				continue;
 			}
@@ -147,29 +155,23 @@
 						title: pageDefinition.page,
 						kind: 'time-log',
 						pageDefinition,
-						section: derivedTimeLogSection
+						section: derivedTimeLogSection,
+						photoGroup: null
 					});
 				}
 				continue;
 			}
 
 			if (pageDefinition.order === disclaimerOrder || pageDefinition.page === projectSchema.disclaimerPageTitle) {
-				for (const section of enabledCustomSections) {
-					items.push({
-						id: section.id,
-						title: section.title,
-						kind: 'photo',
-						pageDefinition: null,
-						section
-					});
-				}
+				items.push(...customPreviewItems);
 				customSectionsInserted = true;
 				items.push({
 					id: pageDefinition.id,
 					title: pageDefinition.page || projectSchema.disclaimerPageTitle,
 					kind: 'disclaimer',
 					pageDefinition,
-					section: null
+					section: null,
+					photoGroup: null
 				});
 				continue;
 			}
@@ -180,7 +182,8 @@
 					title: pageDefinition.page,
 					kind: 'team',
 					pageDefinition,
-					section: null
+					section: null,
+					photoGroup: null
 				});
 				continue;
 			}
@@ -191,7 +194,8 @@
 					title: pageDefinition.page,
 					kind: 'template',
 					pageDefinition,
-					section: null
+					section: null,
+					photoGroup: null
 				});
 				continue;
 			}
@@ -203,50 +207,48 @@
 					? fixedPhotoSectionsByPanelId.get(panel.id) || fallbackPhotoSectionsByPageId.get(pageDefinition.id)
 					: fallbackPhotoSectionsByPageId.get(pageDefinition.id);
 				const resolvedSection = section || derivedSection;
-				const hasDerivedContent = Boolean(
-					derivedSection && (
-						derivedSection.photos.length ||
-						derivedSection.files.length ||
-						derivedSection.description.trim()
-					)
-				);
 				if (!resolvedSection) continue;
-				if (section) {
-					if (!resolvedSection.enabled && !pageDefinition.required) continue;
-				} else if (!pageDefinition.required && (!hasDerivedContent || !resolvedSection.enabled)) {
+				if (!resolvedSection.enabled && !pageDefinition.required) continue;
+
+				const previewItems = createPreviewPhotoPageItems(resolvedSection, pageDefinition);
+				if (!previewItems.length && !pageDefinition.required) {
 					continue;
 				}
-				items.push({
-					id: pageDefinition.id,
-					title: pageDefinition.page,
-					kind: 'photo',
-					pageDefinition,
-					section: resolvedSection
-				});
+				items.push(...previewItems);
 			}
 		}
 
 		if (!customSectionsInserted) {
-			for (const section of enabledCustomSections) {
-				items.push({
-					id: section.id,
-					title: section.title,
-					kind: 'photo',
-					pageDefinition: null,
-					section
-				});
-			}
+			items.push(...customPreviewItems);
 		}
 
 		return items;
 	});
-	const tableOfContentsEntries = $derived(
-		previewPagesData.map((item, index) => ({
-			id: `toc-${item.id}`,
-			title: item.title,
-			page: index + 1
-		}))
-	);
+	const tableOfContentsEntries = $derived.by(() => {
+		const entries: Array<{ id: string; title: string; pageStart: number; pageEnd: number }> = [];
+
+		for (const [index, item] of previewPagesData.entries()) {
+			const pageNumber = index + 1;
+			const lastEntry = entries[entries.length - 1];
+			if (item.kind === 'photo' && lastEntry && lastEntry.title === item.title) {
+				lastEntry.pageEnd = pageNumber;
+				continue;
+			}
+
+			entries.push({
+				id: `toc-${item.id}`,
+				title: item.title,
+				pageStart: pageNumber,
+				pageEnd: pageNumber
+			});
+		}
+
+		return entries.map((entry) => ({
+			id: entry.id,
+			title: entry.title,
+			page: entry.pageStart === entry.pageEnd ? String(entry.pageStart) : `${entry.pageStart}-${entry.pageEnd}`
+		}));
+	});
 	const coverMeta = $derived([
 		{ label: 'Facility', value: projectDataUtils.getProjectDataString(projectData, 'facility.name') || '—' },
 		{
@@ -340,8 +342,7 @@
 			placement: 'start',
 			days: days.length
 				? days
-				: [{ id: 'derived-day-1', dateISO: '', entries: [{ id: 'derived-entry-1-1', time: '', text: '' }] }],
-			photos: []
+				: [{ id: 'derived-day-1', dateISO: '', entries: [{ id: 'derived-entry-1-1', time: '', text: '' }] }]
 		};
 	}
 
@@ -527,14 +528,55 @@
 			locked: true,
 			enabled: ownerPanelMeta?.enabled ?? true,
 			placement: 'middle',
-			description,
-			variant: getOutputPageVariant(pageDefinition, outputInputs, photos, files),
-			files,
+			defaultVariant: getOutputPageVariant(pageDefinition, outputInputs, photos, files),
+			groups: [
+				{
+					id: `derived-group-${pageDefinition.id}`,
+					title: pageDefinition.page,
+					description,
+					variant: getOutputPageVariant(pageDefinition, outputInputs, photos, files),
+					files,
+					photos
+				}
+			],
 			panelId: ownerPanel.id,
 			pageId: pageDefinition.id,
 			required: pageDefinition.required,
-			photos
 		};
+	}
+
+	function createPreviewPhotoPageItems(
+		section: projectTypes.PhotosSectionType,
+		pageDefinition: projectTypes.PageDefinitionType | null
+	): projectTypes.PreviewPageItemType[] {
+		if (!section.enabled && !section.required) return [];
+
+		const groups = section.groups.length
+			? section.groups
+			: section.required || pageDefinition?.required
+				? [
+					{
+						id: `preview-group-${section.id}`,
+						title: section.title,
+						description: '',
+						variant: section.defaultVariant,
+						files: [],
+						photos: []
+					}
+				]
+				: [];
+
+		return groups.map((group, groupIndex) => ({
+			id: `${pageDefinition?.id || section.id}-${group.id}`,
+			title: section.title,
+			kind: 'photo',
+			pageDefinition,
+			section,
+			photoGroup: {
+				...group,
+				title: group.title || `${section.title} ${groupIndex + 1}`
+			}
+		}));
 	}
 
 	function getSectionFieldValues(path: string): string[] {
@@ -556,20 +598,35 @@
 		return `${photoSortTypePrefix}${sectionId}`;
 	}
 
+	function getPhotoGroupSortType(sectionId: string) {
+		return `${photoGroupSortTypePrefix}${sectionId}`;
+	}
+
 	function getAccordionAnchorId(sectionId: string) {
 		return `report-section-${sectionId}`;
 	}
 
 	function getPhotoSort(sectionId: string) {
-		return draggable.sort<projectTypes.PhotosSectionType['photos'][number]>(getPhotoSortType(sectionId));
+		return draggable.sort<projectTypes.PhotoItemType>(getPhotoSortType(sectionId));
+	}
+
+	function getPhotoGroupSort(sectionId: string) {
+		return draggable.sort<projectTypes.PhotoGroupType>(getPhotoGroupSortType(sectionId));
 	}
 
 	function setSections(nextSections: unknown[]) {
 		sections = nextSections as projectTypes.SectionType[];
 	}
 
-	function setSectionPhotos(section: projectTypes.PhotosSectionType, nextPhotos: unknown[]) {
-		section.photos = nextPhotos as projectTypes.PhotosSectionType['photos'];
+	function setSectionGroups(section: projectTypes.PhotosSectionType, nextGroups: unknown[]) {
+		section.groups = nextGroups as projectTypes.PhotoGroupType[];
+	}
+
+	function setPhotoGroupPhotos(
+		group: projectTypes.PhotoGroupType,
+		nextPhotos: unknown[]
+	) {
+		group.photos = nextPhotos as projectTypes.PhotoItemType[];
 	}
 
 	function measureAccordionLayout(node: HTMLElement, params: { sectionId: string; index: number }) {
@@ -660,18 +717,44 @@
 		section.open = details.open;
 	}
 
-	function addSection() {
-		const nextNumber = projectStates.getNextCustomPanelNumber(sections);
-		for (const section of sections) section.open = false;
-
-		sections.push(
-			projectStates.createPhotoSection(
-				`Section ${nextNumber}`,
-				customPanelDefinition?.icon || '🧩',
-				projectSchema.customVariantOptions[0] || 'photos-4',
-				false
+	function addSection(afterSectionId?: string) {
+		const customSection = customPanelDefinition
+			? sections.find(
+				(section): section is projectTypes.PhotosSectionType =>
+					section.type === 'photos' && section.panelId === customPanelDefinition.id
 			)
-		);
+			: undefined;
+		if (!customSection) return;
+
+		for (const section of sections) section.open = false;
+		customSection.open = true;
+		customSection.enabled = true;
+		addPhotoGroup(customSection, customSection.groups.length - 1);
+	}
+
+	function getNextPhotoGroupTitle(section: projectTypes.PhotosSectionType): string {
+		const baseTitle = section.title === 'Custom' ? 'Section' : section.title;
+		return `${baseTitle} ${section.groups.length + 1}`;
+	}
+
+	function addPhotoGroup(section: projectTypes.PhotosSectionType, afterIndex = section.groups.length - 1) {
+		const insertIndex = Math.max(0, Math.min(afterIndex + 1, section.groups.length));
+		const title = section.groups.length ? getNextPhotoGroupTitle(section) : section.title === 'Custom' ? 'Section 1' : section.title;
+		section.groups.splice(insertIndex, 0, projectStates.createPhotoGroup(title, section.defaultVariant));
+	}
+
+	function removePhotoGroup(section: projectTypes.PhotosSectionType, groupId: string) {
+		const group = section.groups.find((item) => item.id === groupId);
+		if (!group) return;
+
+		for (const photo of group.photos) {
+			void projectAssets.removeStoredAsset(photo.src);
+		}
+
+		section.groups = section.groups.filter((item) => item.id !== groupId);
+		if (section.required && !section.groups.length) {
+			section.groups = [projectStates.createPhotoGroup(section.title, section.defaultVariant)];
+		}
 	}
 
 	function setSectionFieldValue(sectionId: string, path: string, value: projectTypes.FieldStateValueType) {
@@ -699,6 +782,9 @@
 		if (section.type === 'photos') {
 			if (section.required) return;
 			section.enabled = !section.enabled;
+			if (section.enabled && !section.groups.length) {
+				section.groups = [projectStates.createPhotoGroup(section.title === 'Custom' ? 'Section 1' : section.title, section.defaultVariant)];
+			}
 			if (!section.enabled) {
 				section.open = false;
 			}
@@ -724,16 +810,24 @@
 		if (!okay) return;
 
 		sections = sections.filter((item) => item.id !== sectionId);
-		for (const photo of section.photos) {
-			void projectAssets.removeStoredAsset(photo.src);
+		if (section.type === 'photos') {
+			for (const group of section.groups) {
+				for (const photo of group.photos) {
+					void projectAssets.removeStoredAsset(photo.src);
+				}
+			}
 		}
 
 		if (draggedSectionId === sectionId) draggedSectionId = '';
 		if (photoDropId === sectionId) photoDropId = '';
 	}
 
-	function addDay(section: projectTypes.TimeLogSectionType) {
-		section.days.push(projectStates.createTimeDay());
+	function addDay(
+		section: projectTypes.TimeLogSectionType,
+		afterIndex = section.days.length - 1
+	) {
+		const insertIndex = Math.max(0, Math.min(afterIndex + 1, section.days.length));
+		section.days.splice(insertIndex, 0, projectStates.createTimeDay());
 	}
 
 	function removeDay(section: projectTypes.TimeLogSectionType, dayId: string) {
@@ -741,8 +835,9 @@
 		projectStates.ensureAtLeastOneDay(section);
 	}
 
-	function addEntry(day: projectTypes.TimeDayType) {
-		day.entries.push(projectStates.createTimeEntry());
+	function addEntry(day: projectTypes.TimeDayType, afterIndex = day.entries.length - 1) {
+		const insertIndex = Math.max(0, Math.min(afterIndex + 1, day.entries.length));
+		day.entries.splice(insertIndex, 0, projectStates.createTimeEntry());
 	}
 
 	function maybeAddEntry(day: projectTypes.TimeDayType, entryId: string) {
@@ -754,7 +849,7 @@
 		const textValue = String(entry.text ?? '').trim();
 		if (!timeValue || !textValue) return;
 
-		addEntry(day);
+		addEntry(day, entryIndex);
 	}
 
 	function handleActivityKeyup(day: projectTypes.TimeDayType, entryId: string, event?: KeyboardEvent) {
@@ -769,26 +864,43 @@
 		projectStates.ensureAtLeastOneEntry(day);
 	}
 
-	async function addPhotosToSection(sectionId: string, fileList: FileList | File[] | null | undefined) {
+	async function addPhotosToGroup(
+		sectionId: string,
+		groupId: string,
+		fileList: FileList | File[] | null | undefined
+	) {
 		const section = sections.find((item) => item.id === sectionId);
 		if (!section || section.type !== 'photos' || !fileList?.length) return;
+		const group = section.groups.find((item) => item.id === groupId);
+		if (!group) return;
 
 		for (const file of Array.from(fileList)) {
 			if (!file.type.startsWith('image/')) continue;
 
-			section.photos.push(await projectUtils.createPhotoItem(file));
+			group.photos.push(await projectUtils.createPhotoItem(file));
 		}
 	}
 
-	async function handlePhotoInput(sectionId: string, event: Event) {
+	async function handlePhotoInput(sectionId: string, groupId: string, event: Event) {
 		const input = event.currentTarget as HTMLInputElement | null;
-		await addPhotosToSection(sectionId, input?.files ?? null);
+		await addPhotosToGroup(sectionId, groupId, input?.files ?? null);
 		if (input) input.value = '';
 	}
 
-	function removePhoto(section: projectTypes.PhotosSectionType, photoId: string) {
-		const removedPhoto = section.photos.find((photo) => photo.id === photoId);
-		section.photos = section.photos.filter((photo) => photo.id !== photoId);
+	function handlePhotoFilesInput(sectionId: string, groupId: string, event: Event) {
+		const section = sections.find((item) => item.id === sectionId);
+		if (!section || section.type !== 'photos') return;
+		const group = section.groups.find((item) => item.id === groupId);
+		if (!group) return;
+
+		const input = event.currentTarget as HTMLInputElement | null;
+		group.files = Array.from(input?.files ?? []).map((file) => file.name).filter(Boolean);
+		if (input) input.value = '';
+	}
+
+	function removePhoto(group: projectTypes.PhotoGroupType, photoId: string) {
+		const removedPhoto = group.photos.find((photo) => photo.id === photoId);
+		group.photos = group.photos.filter((photo) => photo.id !== photoId);
 		if (removedPhoto) {
 			void projectAssets.removeStoredAsset(removedPhoto.src);
 		}
@@ -920,19 +1032,19 @@
 		}
 	}
 
-	function handlePhotoZoneDragOver(sectionId: string, event: DragEvent) {
+	function handlePhotoZoneDragOver(groupId: string, event: DragEvent) {
 		event.preventDefault();
-		photoDropId = sectionId;
+		photoDropId = groupId;
 	}
 
-	function handlePhotoZoneDragLeave(sectionId: string) {
-		if (photoDropId === sectionId) photoDropId = '';
+	function handlePhotoZoneDragLeave(groupId: string) {
+		if (photoDropId === groupId) photoDropId = '';
 	}
 
-	async function handlePhotoZoneDrop(sectionId: string, event: DragEvent) {
+	async function handlePhotoZoneDrop(sectionId: string, groupId: string, event: DragEvent) {
 		event.preventDefault();
 		photoDropId = '';
-		await addPhotosToSection(sectionId, event.dataTransfer?.files ?? null);
+		await addPhotosToGroup(sectionId, groupId, event.dataTransfer?.files ?? null);
 	}
 
 	async function handlePaste(event: ClipboardEvent) {
@@ -940,6 +1052,8 @@
 			(sections.find((section) => section.open && section.type === 'photos') as projectTypes.PhotosSectionType | undefined) ||
 			(sections.find((section) => section.type === 'photos') as projectTypes.PhotosSectionType | undefined);
 		if (!activeSection) return;
+		const activeGroup = activeSection.groups[activeSection.groups.length - 1];
+		if (!activeGroup) return;
 
 		const files: File[] = [];
 		for (const item of Array.from(event.clipboardData?.items || [])) {
@@ -952,7 +1066,7 @@
 
 		if (!files.length) return;
 		event.preventDefault();
-		await addPhotosToSection(activeSection.id, files);
+		await addPhotosToGroup(activeSection.id, activeGroup.id, files);
 	}
 
 	function applyFitZoomIfNeeded() {
@@ -1175,8 +1289,10 @@
 				{overallMetrics}
 				{sectionSort}
 				{getPhotoSort}
+				{getPhotoGroupSort}
 				{setSections}
-				{setSectionPhotos}
+				{setSectionGroups}
+				{setPhotoGroupPhotos}
 				{getAccordionAnchorId}
 				{measureAccordionLayout}
 				{handleAccordionToggle}
@@ -1184,6 +1300,8 @@
 				{handleSectionActionClick}
 				{handleSectionActionDisabledClick}
 				{addSection}
+				{addPhotoGroup}
+				{removePhotoGroup}
 				{resetReport}
 				toggleSectionEnabled={toggleSectionEnabled}
 				{removeDay}
@@ -1193,6 +1311,7 @@
 				{maybeAddEntry}
 				{handleActivityKeyup}
 				{handlePhotoInput}
+				{handlePhotoFilesInput}
 				{handlePhotoZoneDragOver}
 				{handlePhotoZoneDragLeave}
 				{handlePhotoZoneDrop}
@@ -1221,7 +1340,7 @@
 				{coverMeta}
 				projectSummaryItems={projectSummaryItems}
 				personnelEntries={personnelEntries}
-				{tableOfContentsEntries}
+				tableOfContentsEntries={tableOfContentsEntries as unknown as Array<{ id: string; title: string; page: number }>}
 				previewPageItems={previewPagesData}
 				{getSortedEntries}
 				{projectDataJson}

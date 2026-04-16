@@ -33,9 +33,9 @@
         - Keep the implementation aligned with existing code style and architecture
 
         EXISTING THINGS TO REUSE
-        - InputNew
+        - Input
           Use this instead of rebuilding fieldset/legend/label/input markup from scratch.
-          InputNew already handles most field chrome and should remain the source of truth.
+          Input already handles most field chrome and should remain the source of truth.
 
         - Button
           Use the existing button component already in the project.
@@ -336,7 +336,7 @@
         items: entries
 
         REAL APP NOTES
-        - In the real app, fields should be rendered with InputNew
+        - In the real app, fields should be rendered with Input
         - In the real app, the outer collapsible wrapper should use Accordion,
           AccordionTitle, and AccordionContent
         - In the real app, Tailwind should handle layout/styling
@@ -383,7 +383,7 @@
             <div class="group-panel">
               <!--
                 In the real component, this whole area would likely be rendered from
-                config + InputNew, not hand-written markup like this.
+                config + Input, not hand-written markup like this.
               -->
               <div class="group-header group-header-full">
                 <fieldset>
@@ -749,7 +749,7 @@
       1. Real implementation should be a single GroupRepeater component.
          Reuse existing project pieces instead of inventing new primitive layers.
 
-      2. Use InputNew for actual field rendering.
+      2. Use Input for actual field rendering.
          This blueprint uses raw field markup only to show intent and structure.
 
       3. Use Accordion / AccordionTitle / AccordionContent in the app.

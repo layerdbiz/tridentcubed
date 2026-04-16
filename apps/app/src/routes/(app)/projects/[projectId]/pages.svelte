@@ -15,7 +15,7 @@
 	type TocEntryType = {
 		id: string;
 		title: string;
-		page: number;
+		page: number | string;
 	};
 
 	type CoverMetaItemType = {
@@ -94,7 +94,7 @@
 
 	function getPhotoPageDescription(pageItem: projectTypes.PreviewPageItemType): string {
 		if (pageItem.section?.type !== 'photos') return '';
-		if (pageItem.section.description) return pageItem.section.description;
+		if (pageItem.photoGroup?.description) return pageItem.photoGroup.description;
 
 		if (pageItem.title === 'Introduction') {
 			return reportSubtitle || 'Project overview and inspection context.';
@@ -108,7 +108,7 @@
 	}
 
 	function hasPhotoPageFiles(pageItem: projectTypes.PreviewPageItemType): boolean {
-		return pageItem.section?.type === 'photos' && pageItem.section.files.length > 0;
+		return pageItem.section?.type === 'photos' && Boolean(pageItem.photoGroup?.files.length);
 	}
 </script>
 
@@ -163,9 +163,9 @@
 											<div id="bottomCoverPage" class="absolute bottom-0 left-0 right-0 z-1! grid w-full justify-center bg-secondary-200 pb-20">
 												<Divider class="absolute bottom-full" color="text-secondary-200" bleed={false} />
 												{#each coverMeta as item (item.label)}
-													<div class="grid grid-cols-[100px_100px] gap-3">
-														<span class="font-semibold text-neutral-600">{item.label}:</span>
-														<span class="text-neutral-800">{item.value}</span>
+													<div class="grid grid-cols-[100px_1fr] gap-3">
+														<span class="font-bold text-neutral-600">{item.label}:</span>
+														<span class="text-neutral-600">{item.value}</span>
 													</div>
 												{/each}
 											</div>
@@ -228,6 +228,9 @@
 									{:else if pageItem.kind === 'photo' && pageItem.section?.type === 'photos'}
 										<PreviewPage>
 											<Text h2={pageItem.title} class="mb-4 text-4xl" />
+											{#if pageItem.photoGroup?.title && pageItem.photoGroup.title !== pageItem.title}
+												<Text h3={pageItem.photoGroup.title} class="mb-3 text-xl text-neutral-700" />
+											{/if}
 											{#if getPhotoPageDescription(pageItem)}
 												<Text p={getPhotoPageDescription(pageItem)} class="mb-4 text-secondary" />
 											{/if}
@@ -235,17 +238,17 @@
 												<div class="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
 													<p class="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500">Documents</p>
 													<ul class="space-y-2 text-sm text-neutral-700">
-														{#each pageItem.section.files as fileName (`${pageItem.id}-${fileName}`)}
+														{#each pageItem.photoGroup?.files ?? [] as fileName (`${pageItem.id}-${fileName}`)}
 															<li class="rounded-xl bg-neutral-50 px-3 py-2">{fileName}</li>
 														{/each}
 													</ul>
 												</div>
 											{/if}
-											<div class={projectUtils.getPreviewPhotoGridClass(pageItem.section)}>
-												{#if pageItem.section.photos.length}
-													{#each pageItem.section.photos as photo (photo.id)}
-														<figure class={projectUtils.getPreviewPhotoCardClass(pageItem.section, photo)}>
-															<div class="grid place-items-center bg-neutral-50 p-3" style={`height: ${projectUtils.getPreviewPhotoFrameHeight(pageItem.section, photo)}`}>
+											<div class={projectUtils.getPreviewPhotoGridClass(pageItem.photoGroup ?? { variant: 'photos-4', photos: [] })}>
+												{#if pageItem.photoGroup?.photos.length}
+													{#each pageItem.photoGroup.photos as photo (photo.id)}
+														<figure class={projectUtils.getPreviewPhotoCardClass(pageItem.photoGroup, photo)}>
+															<div class="grid place-items-center bg-neutral-50 p-3" style={`height: ${projectUtils.getPreviewPhotoFrameHeight(pageItem.photoGroup, photo)}`}>
 																<img alt={photo.caption || photo.name} class="h-full w-full object-contain" src={projectAssets.getRenderableAssetUrl(photo.src)} />
 															</div>
 															<figcaption class="p-3 text-xs text-neutral-600">{photo.caption || photo.name || 'Photo'}</figcaption>

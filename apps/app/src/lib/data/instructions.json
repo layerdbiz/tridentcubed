@@ -164,7 +164,7 @@
     "entity": "inputs",
     "name": "input",
     "type": "list",
-    "description": "UI control used to capture or edit the value (NOTE: use the `<InputNew>` component for all `<input>` related elements. The other 'form' components will be created later so it's ok to use normal html for those.",
+    "description": "UI control used to capture or edit the value (NOTE: use the `<Input>` component for all `<input>` related elements. The other 'form' components will be created later so it's ok to use normal html for those.",
     "notes": null,
     "options": "text, textarea, select, multiselect, date, datetime, number, email, tel, url, file, image, checkbox, radio, repeater, richtext, hidden",
     "example": "text"

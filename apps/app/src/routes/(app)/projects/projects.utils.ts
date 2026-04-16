@@ -17,12 +17,15 @@ export function syncIdCounterFromSections(
 	let maxId = idCounter;
 
 	for (const section of items) {
-		for (
-			const value of [
-				section.id,
-				...section.photos.map((photo) => photo.id),
-			]
-		) {
+		const ids = [section.id];
+		if (section.type === "photos") {
+			for (const group of section.groups) {
+				ids.push(group.id);
+				ids.push(...group.photos.map((photo) => photo.id));
+			}
+		}
+
+		for (const value of ids) {
 			const match = value.match(/(\d+)$/);
 			if (match) maxId = Math.max(maxId, Number(match[1]));
 		}
@@ -121,12 +124,13 @@ export function getSectionMetrics(
 		return { done, total: safeTotal, percent: toPercent(done, safeTotal) };
 	}
 
-	const done = Number(Boolean(section.title.trim())) +
-		Number(
-			Boolean((section as projectTypes.PhotosSectionType).description.trim()),
-		) +
-		Number(section.photos.length > 0);
-	const total = 3;
+	const done = section.groups.reduce((count, group) => {
+		return count +
+			Number(Boolean(group.title.trim())) +
+			Number(Boolean(group.description.trim())) +
+			Number(group.photos.length > 0 || group.files.length > 0);
+	}, 0);
+	const total = Math.max(1, section.groups.length) * 3;
 	return { done, total, percent: toPercent(done, total) };
 }
 
@@ -207,27 +211,27 @@ export function getPhotoOrientation(
 }
 
 export function getPreviewPhotoGridClass(
-	section: projectTypes.PhotosSectionType,
+	group: Pick<projectTypes.PhotoGroupType, "variant" | "photos">,
 ): string {
-	const slots = getPhotoVariantCount(section.variant, section.photos.length);
+	const slots = getPhotoVariantCount(group.variant, group.photos.length);
 	if (slots <= 1) return "grid gap-3";
 	if (slots <= 2) return "grid grid-cols-2 gap-3";
 	return "grid grid-cols-2 gap-3";
 }
 
 export function getPreviewPhotoCardClass(
-	_section: projectTypes.PhotosSectionType,
+	_group: Pick<projectTypes.PhotoGroupType, "variant" | "photos">,
 	_photo: projectTypes.PhotoItemType,
 ): string {
 	return "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white";
 }
 
 export function getPreviewPhotoFrameHeight(
-	section: projectTypes.PhotosSectionType,
+	group: Pick<projectTypes.PhotoGroupType, "variant" | "photos">,
 	photo: projectTypes.PhotoItemType,
 ): string {
 	const orientation = getPhotoOrientation(photo);
-	const slots = getPhotoVariantCount(section.variant, section.photos.length);
+	const slots = getPhotoVariantCount(group.variant, group.photos.length);
 
 	if (slots === 1) {
 		return orientation === "portrait" ? "5.6in" : "4.7in";
@@ -306,15 +310,19 @@ export async function hydratePhotoDimensions(
 	let changed = false;
 
 	for (const section of items) {
-		for (const photo of section.photos) {
-			if (photo.width > 0 && photo.height > 0) continue;
+		if (section.type !== "photos") continue;
 
-			const { width, height } = await loadImageDimensions(photo.src);
-			if (!width || !height) continue;
+		for (const group of section.groups) {
+			for (const photo of group.photos) {
+				if (photo.width > 0 && photo.height > 0) continue;
 
-			photo.width = width;
-			photo.height = height;
-			changed = true;
+				const { width, height } = await loadImageDimensions(photo.src);
+				if (!width || !height) continue;
+
+				photo.width = width;
+				photo.height = height;
+				changed = true;
+			}
 		}
 	}
 

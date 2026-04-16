@@ -101,6 +101,12 @@ export const mySync = new Proxy({}, {
 - **Auto-generation**: Barrel exports and stories generate automatically during `pnpm dev`
 - **JSDoc tags required**: `@tags` comments enable story generation
 - **Tailwind layout only**: No color utilities - colors come from base system
+- **Prop type naming**: Use the `NameProps` convention for prop types and imported prop type names, for example `GridProps`, `InputProps`, `FieldProps`
+
+### Internal Package Import Exception
+
+- When a source file in `packages/ui` needs a private module that is not exported through `@layerd/ui`, do not use `$lib` because consumer-side Vite import analysis can resolve it against the app instead of the package.
+- In that narrow case, use the smallest safe package-local relative import until the module is promoted to a public `@layerd/ui` export.
 
 ### Utility Module Naming Convention
 

@@ -160,8 +160,12 @@ export async function preloadSectionAssetUrls(
 			}
 		}
 
-		for (const photo of section.photos) {
-			if (isStoredAssetReference(photo.src)) references.add(photo.src);
+		if (section.type !== "photos") continue;
+
+		for (const group of section.groups) {
+			for (const photo of group.photos) {
+				if (isStoredAssetReference(photo.src)) references.add(photo.src);
+			}
 		}
 	}
 
@@ -192,8 +196,12 @@ export async function removeSectionAssets(
 			}
 		}
 
-		for (const photo of section.photos) {
-			if (isStoredAssetReference(photo.src)) references.add(photo.src);
+		if (section.type !== "photos") continue;
+
+		for (const group of section.groups) {
+			for (const photo of group.photos) {
+				if (isStoredAssetReference(photo.src)) references.add(photo.src);
+			}
 		}
 	}
 
