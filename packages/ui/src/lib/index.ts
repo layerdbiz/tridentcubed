@@ -75,6 +75,7 @@ export { default as Footer } from "./components/organisms/footer/footer.svelte";
 export { default as Globe } from "./components/organisms/globe/globe.svelte";
 export * from "./components/organisms/globe/globe.svelte.ts";
 export { default as Header } from "./components/organisms/header/header.svelte";
+export { default as Page, type PreviewPageProps } from "./components/organisms/page/page.svelte";
 
 // pages
 export { default as About } from "./components/pages/about/about.svelte";
