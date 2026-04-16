@@ -57,23 +57,8 @@
 		<Item col="1fr" class="grid auto-rows-min gap-5 bg-base-200/50 p-4">
 			<!-- boolean -->
 			<h3>Select (boolean)</h3>
-			<Select xxs variant="text icon" icon="chevron-down" label="xxs (boolean)" options={selectOptions} />
-			<Select xs variant="text icon" icon="chevron-down" label="xs (boolean)" options={selectOptions} />
-			<Select sm variant="text icon" icon="chevron-down" label="sm (boolean)" options={selectOptions} />
-			<Select md variant="text icon" icon="chevron-down" label="md (boolean)" options={selectOptions} />
-			<Select lg variant="text icon" icon="chevron-down" label="lg (boolean)" options={selectOptions} />
-			<Select xl variant="text icon" icon="chevron-down" label="xl (boolean)" options={selectOptions} />
-			<Select xxl variant="text icon" icon="chevron-down" label="xxl (boolean)" options={selectOptions} />
-			
-			<!-- prop -->
-			<h3>Select (prop)</h3>
-			<Select bind:value={selectValue} size="xxs" variant="icon text icon" icon="home" iconEnd="home" label="size='xxs' (prop)" options={selectOptions} />
-			<Select size="xs" variant="icon text icon" icon="home" iconEnd="home" label="size='xs' (prop)" options={selectOptions} placeholder="Choose status" />
-			<Select size="sm" variant="icon text icon" icon="home" iconEnd="home" label="size='sm' (prop)" options={selectOptions} placeholder="Choose status" />
-			<Select size="md" variant="icon text icon" icon="home" iconEnd="home" label="size='md' (prop)" options={selectOptions} placeholder="Choose status" />
-			<Select size="lg" variant="icon text icon" icon="home" iconEnd="home" label="size='lg' (prop)" options={selectOptions} placeholder="Choose status" />
-			<Select size="xl" variant="icon text icon" icon="home" iconEnd="home" label="size='xl' (prop)" options={selectOptions} placeholder="Choose status" />
-			<Select bind:value={selectValueSized} size="xxl" variant="icon text icon" icon="home" iconEnd="home" label="size='xxl' (prop)" options={selectOptions} />
+			<Select variant="text icon" icon="chevron-down" label="Select" options={selectOptions} />
+			<Select variant="text icon" icon="chevron-down" label="Select Multiple" options={selectOptions} multiple/>
 		</Item>
 
 		<!-- <Button> Examples 
