@@ -5,12 +5,12 @@
 	 */
 	import { Component, type ComponentProps } from '@layerd/ui';
 
-	export interface FlexProps extends ComponentProps {
+	export interface ExampleProps extends ComponentProps {
 		text?: string;
 		variant?: 'base' | 'variant1' | 'variant2';
 	}
 
-	let { text = undefined, variant = 'base', children = undefined, ...props }: FlexProps = $props();
+	let { text = undefined, variant = 'base', children = undefined, ...props }: ExampleProps = $props();
 </script>
 
 <!-- ⬜ default ⬛ prop 🟪 snippet 🟦 children -->
@@ -36,7 +36,7 @@
 ::::::::::::::::::::::::::::::::::::::::::::: -->
 <Component
 	{...props}
-	class="flex {props.class}"
+	class="example {props.class}"
 >
 	{#snippet component(props)}
 		<div {...props}>
@@ -47,7 +47,7 @@
 			{:else if variant === 'variant2'}
 				{@render variant2('hi variant2')}
 			{:else}
-				{@render base('flex')}
+				{@render base('example')}
 			{/if}
 		</div>
 	{/snippet}

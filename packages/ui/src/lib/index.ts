@@ -21,8 +21,8 @@ export { default as Container, type ContainerProps } from "./components/atoms/co
 export { default as Content } from "./components/atoms/content/content.svelte";
 export * from "./components/atoms/content/content.svelte.ts";
 export { default as Divider, type DividerProps } from "./components/atoms/divider/divider.svelte";
+export { default as Example, type ExampleProps } from "./components/atoms/example/example.svelte";
 export * from "./components/atoms/forms/field.svelte.ts";
-export { default as Flex, type FlexProps } from "./components/atoms/flex/flex.svelte";
 export { default as Icon, type IconProps } from "./components/atoms/icon/icon.svelte";
 export { default as IconTheme } from "./components/atoms/icon/icon-theme.svelte";
 export { default as Image, type ImageProps } from "./components/atoms/image/image.svelte";
