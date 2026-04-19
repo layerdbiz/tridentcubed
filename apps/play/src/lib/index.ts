@@ -1,4 +1,5 @@
-// place files you want to import through the `$lib` alias in this folder.
-
-// export * from "./icons/icons.remote.js";
-// export * from "./team/team.remote.js";
+/* COMPONENTS */
+export { default as A } from "./a/a.svelte";
+export { default as B } from "./b/b.svelte";
+export * from "./b/b.ts";
+export * from "./b/b.svelte.ts";

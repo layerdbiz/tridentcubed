@@ -10,8 +10,5 @@
   "settings": [
     "vscode"
   ],
-  "source": [
-    "oneezy/ui",
-    "sveltejs/kit/documentation/docs"
-  ]
+  "source": []
 }

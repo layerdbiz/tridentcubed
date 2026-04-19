@@ -72,6 +72,24 @@ These have distinct roles and should not be conflated:
 
 These sheets are still evolving, so changes should stay minimal and intentional. This data model is the foundation of the app, so we need to keep it clean, easy to reason about, and consistent as we refine it.
 
+## Simple Route Migration Carveout
+
+The new `routes/simple/` surface is the proving ground for the reduced sheet model.
+
+When working in `apps/app/src/routes/simple/`:
+
+- keep the work additive and do not remove or rewrite the legacy `(app)/projects` flow
+- prefer direct Sheetari reads through route-local remote functions for the first simple-route implementation
+- treat `panels`, `inputs`, and `pages` as the source of truth for the simple route
+- use `instructions` only as secondary reference help while it catches up
+- panels own panel `layout`
+- pages own page `layout`
+- inputs bridge panels to pages, but do not control panel layout
+- pages are hidden by default and should render only when referenced by inputs or explicitly included by a dedicated page-level include field
+- `visibility: none` means fully remove the row from the app, even if other rows still reference it
+- keep route logic in the route file unless it clearly belongs in a route-local remote file, types file, or utility file
+- reuse existing UI components and avoid drag/drop, progress bars, user-controlled page zoom, and other non-core enhancements during this foundation pass
+
 When preparing rows for Google Sheets or telling the user what to paste into a sheet:
 
 - never tell the user to enter the literal value `null` into a sheet cell

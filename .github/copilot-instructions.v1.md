@@ -20,6 +20,40 @@ Path-specific rules live in `.github/instructions/*.instructions.md`.
 - When package installation is required, use root-level ` pnpm --filter <package-name> add <dependency>`.
 - When terminal commands are explicitly approved, keep the leading space prefix in repo commands.
 
+## Response Style
+
+- Default to brief, direct answers.
+- Do not explain your process unless the user explicitly asks.
+- Do not narrate what you are doing or about to do.
+- Do not restate the user's request unless needed for clarity.
+- Prefer short bullets over paragraphs.
+- Prefer ordered steps for implementation help.
+- Keep summaries to 2–4 bullets max.
+- Keep code examples minimal, accurate, and production-ready.
+- Lead with the answer or fix, then add only the necessary detail.
+- When comparing options, show the best choice first.
+- Avoid filler, repetition, and long conclusions.
+
+## Preferred Answer Formats
+
+- Default:
+  - one direct answer
+  - 2–5 short bullets if needed
+
+- Steps:
+  1. do this
+  2. do this next
+  3. do this last
+
+- Review:
+  - Verdict: one line
+  - Issues: 1–3 bullets
+  - Fix: 1–3 bullets
+
+- Code:
+  - smallest useful snippet first
+  - max 3 bullets of explanation after code
+
 ## Universal Coding Rules
 
 - DRY-extend-never-delete: never remove working logic, loggers, or helpers; only add, refactor, or replace when trust breaks.
