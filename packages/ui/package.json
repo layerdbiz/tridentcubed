@@ -7,9 +7,8 @@
 	"scripts": {
 		"dev": "svelte-kit sync",
 		"dev:build": "svelte-package -i src/lib --watch || pnpm dev:build",
-		"build": "svelte-kit sync && pnpm barrel && pnpm styles && pnpm components",
+		"build": "svelte-kit sync && pnpm styles && pnpm components",
 		"styles": "postcss ./src/lib/ui.css -o ./dist/ui.css",
-		"barrel": "barrels",
 		"components": "svelte-package -i src/lib",
 		"sync": "svelte-kit sync",
 		"prepare": "svelte-kit sync || echo ''",

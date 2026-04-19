@@ -19,6 +19,8 @@ export const REGEX_PATTERNS = {
 	// File naming
 	testFiles: /\.(test|spec)\./,
 	barrelFiles: /^index\.ts$/,
+	backupFiles: /(\.bak|\.tmp|\.old|\.orig|\.rej)(\.|$)|~$/,
+	serverEntries: /(^server$|\.server\.)/,
 	configFiles: /\.(css|json|config\.)$/,
 
 	// Case conversion
@@ -151,6 +153,7 @@ export async function scanRecursively(
 		// Skip barrel files and config files
 		if (
 			REGEX_PATTERNS.barrelFiles.test(entry.name) ||
+			REGEX_PATTERNS.backupFiles.test(entry.name) ||
 			REGEX_PATTERNS.configFiles.test(entry.name)
 		) {
 			continue;
@@ -453,6 +456,12 @@ export class Logger {
 	info(message: string, ...args: any[]): void {
 		if (["debug", "info"].includes(this.level)) {
 			console.log(`ℹ️  ${message}`, ...args);
+		}
+	}
+
+	infoRaw(message: string, ...args: any[]): void {
+		if (["debug", "info"].includes(this.level)) {
+			console.log(message, ...args);
 		}
 	}
 

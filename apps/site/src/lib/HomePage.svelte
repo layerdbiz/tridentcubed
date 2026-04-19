@@ -16,22 +16,14 @@
 		Text,
 		Number,
 		Toggle,
-		Flex,
 		Input,
+		Textarea,
 		Slider,
 		trackEvent,
 		navigationState,
 		Globe
 	} from '@layerd/ui';
-	import { getTeamData } from '$lib/team/team.remote';
-	import { getFaqData } from '$lib/faq/faq.remote';
-	import { getPartnersData, type PartnerProps } from '$lib/partners/partners.remote';
-	import { getServicesData } from '$lib/services/services.remote';
-	import { getTestimonialsData } from '$lib/testimonials/testimonials.remote';
-	import { getAboutData } from '$lib/about/about.remote';
-	import { getSectionsData } from '$lib/sections/sections.remote';
-	import { submitContactData } from '$lib/contact/contact.remote';
-	import { validateField } from '$lib/contact/validation';
+	import { getTeamData, getFaqData, getPartnersData, getServicesData, getTestimonialsData, getAboutData, getSectionsData, submitContactData, validateField } from '$lib';
 	import {
 		getGlobeLocations,
 		getGlobePolygons,
@@ -813,7 +805,7 @@
 		---------------------------------------------------->
 		<form
 			bind:this={formElement}
-			class="contact-form w-xs sticky order-1 max-w-xs lg:top-32 lg:order-2"
+			class="grid gap-3 contact-form w-xs sticky order-1 max-w-xs lg:top-32 lg:order-2"
 			{...submitContactData.enhance(async ({ submit, form }) => {
 				try {
 					// HTML5 validation will prevent submission if fields are invalid
@@ -839,7 +831,7 @@
 			<Input
 				bind:value={nameValue}
 				icon="icon-[mdi--account]"
-				variant="icon label"
+				variant="icon text"
 				label="Name"
 				required={true}
 				minlength={2}
@@ -852,7 +844,7 @@
 				bind:value={phoneValue}
 				type="tel"
 				icon="icon-[mdi--phone]"
-				variant="icon label"
+				variant="icon text"
 				label="Phone"
 				required={true}
 				minlength={7}
@@ -865,7 +857,7 @@
 				bind:value={emailValue}
 				type="email"
 				icon="icon-[mdi--email]"
-				variant="icon label"
+				variant="icon text"
 				label="Email"
 				required={true}
 				maxlength={254}
@@ -873,12 +865,11 @@
 				isValid={!emailError}
 				onblur={validateEmail}
 			/>
-			<Input
+			<Textarea
 				bind:value={messageValue}
 				icon="icon-[mdi--pencil]"
-				variant="icon label"
+				variant="icon text"
 				label="Message"
-				textarea
 				required={true}
 				minlength={10}
 				maxlength={500}

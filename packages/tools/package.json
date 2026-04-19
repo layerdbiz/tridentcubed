@@ -22,7 +22,7 @@
 		"./types": "./src/generators/types.ts"
 	},
 	"scripts": {
-		"barrels": "barrels",
+		"barrels:run": "node ./bin/barrels.js",
 		"sheetari": "node bin/sheetari.js",
 		"stories": "stories",
 		"story": "node bin/stories.js",
@@ -30,7 +30,7 @@
 		"symlinks:clean": "node -e \"import('./src/generators/symlinks.ts').then(m => m.cleanSymlinks())\"",
 		"symlinks:check": "node -e \"import('./src/generators/symlinks.ts').then(m => m.checkSymlinks())\"",
 		"types": "types",
-		"test": "barrels"
+		"test": "node ./bin/barrels.js"
 	},
 	"devDependencies": {
 		"@types/node": "^25.2.1",

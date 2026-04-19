@@ -2,43 +2,12 @@
   "$schema": "https://turborepo.com/schema.json",
   "tasks": {
     "dev": {
-      "dependsOn": [
-        "barrel"
-      ],
-      "cache": false,
-      "persistent": true
-    },
-    "site#dev": {
-      "dependsOn": [
-        "@layerd/ui#barrel"
-      ],
-      "cache": false,
-      "persistent": true
-    },
-    "report#dev": {
-      "dependsOn": [
-        "@layerd/ui#barrel"
-      ],
-      "cache": false,
-      "persistent": true
-    },
-    "app#dev": {
-      "dependsOn": [
-        "@layerd/ui#barrel"
-      ],
-      "cache": false,
-      "persistent": true
-    },
-    "play#dev": {
-      "dependsOn": [
-        "@layerd/ui#barrel"
-      ],
       "cache": false,
       "persistent": true
     },
     "build": {
       "dependsOn": [
-        "barrel",
+        "//#barrels",
         "^build"
       ],
       "outputs": [
@@ -53,6 +22,52 @@
         "dist/ui.css"
       ]
     },
+    "//#barrels:watch": {
+      "cache": false,
+      "persistent": true,
+      "interruptible": true,
+      "inputs": [
+        "packages/ui/src/lib/**",
+        "!packages/ui/src/lib/index.ts",
+        "apps/app/src/lib/**",
+        "!apps/app/src/lib/index.ts",
+        "apps/play/src/lib/**",
+        "!apps/play/src/lib/index.ts",
+        "apps/report/src/lib/**",
+        "!apps/report/src/lib/index.ts",
+        "apps/site/src/lib/**",
+        "!apps/site/src/lib/index.ts"
+      ],
+      "outputs": [
+        "packages/ui/src/lib/index.ts",
+        "apps/app/src/lib/index.ts",
+        "apps/play/src/lib/index.ts",
+        "apps/report/src/lib/index.ts",
+        "apps/site/src/lib/index.ts"
+      ]
+    },
+    "//#barrels": {
+      "cache": false,
+      "inputs": [
+        "packages/ui/src/lib/**",
+        "!packages/ui/src/lib/index.ts",
+        "apps/app/src/lib/**",
+        "!apps/app/src/lib/index.ts",
+        "apps/play/src/lib/**",
+        "!apps/play/src/lib/index.ts",
+        "apps/report/src/lib/**",
+        "!apps/report/src/lib/index.ts",
+        "apps/site/src/lib/**",
+        "!apps/site/src/lib/index.ts"
+      ],
+      "outputs": [
+        "packages/ui/src/lib/index.ts",
+        "apps/app/src/lib/index.ts",
+        "apps/play/src/lib/index.ts",
+        "apps/report/src/lib/index.ts",
+        "apps/site/src/lib/index.ts"
+      ]
+    },
     "barrel": {
       "inputs": [
         "src/lib/**/*.{svelte,ts}",
@@ -65,7 +80,7 @@
     },
     "components": {
       "dependsOn": [
-        "barrel"
+        "//#barrels"
       ],
       "cache": true,
       "outputs": [
@@ -75,7 +90,7 @@
     },
     "storybook#story": {
       "dependsOn": [
-        "^barrel"
+        "//#barrels"
       ],
       "inputs": [
         "../ui/src/lib/components/**/*.svelte"

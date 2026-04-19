@@ -1,1 +1,1 @@
-A
+<div>Component A</div>

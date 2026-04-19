@@ -1,13 +1,15 @@
 {
-	"extends": [
-		"../../packages/config/ts/tsconfig.svelte.json",
-		"./.svelte-kit/tsconfig.json"
-	],
-	"exclude": [
-		"node_modules/**",
-		"dist/**",
-		".svelte-kit/**",
-		"storybook-static/**",
-		"**/.turbo/**"
-	]
+	"extends": ["../../packages/config/ts/tsconfig.svelte.json", "./.svelte-kit/tsconfig.json"],
+	"compilerOptions": {
+		"allowImportingTsExtensions": true,
+		"allowJs": true,
+		"checkJs": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true
+	},
+	"exclude": ["node_modules/**", "dist/**", ".svelte-kit/**", "storybook-static/**", "**/.turbo/**"]
 }
