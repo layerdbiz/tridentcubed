@@ -1,0 +1,100 @@
+<script>
+	let { tag = `div`, text = `text`, classes = '' } = $props();
+</script>
+
+<!-- custom element -->
+{#snippet el(tag, text, classes)}
+	<svelte:element this={tag} class={classes}>
+		{text}
+	</svelte:element>
+{/snippet}
+
+<!-- left -->
+{#snippet left(tag='div', text='left', classes='left')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<!-- top -->
+{#snippet top(tag='div', text='top', classes='top')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<!-- right -->
+{#snippet right(tag='div', text='right', classes='right')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<!-- bottom -->
+{#snippet bottom(tag='div', text='bottom', classes='bottom')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<!-- topLeft -->
+{#snippet topLeft(tag='div', text='top left', classes='top-left')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<!-- topRight -->
+{#snippet topRight(tag='div', text='top right', classes='top-right')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<!-- bottomLeft -->
+{#snippet bottomLeft(tag='div', text='bottom left', classes='bottom-left')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<!-- center -->
+{#snippet center(tag='div', text='center', classes='center')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<!-- bottomRight -->
+{#snippet bottomRight(tag='div', text='bottom right', classes='bottom-right')}
+	{@render el(tag, text, classes)}
+{/snippet}
+
+<main class="root-grid">
+	{@render topLeft()} {@render top()} {@render topRight()}
+	{@render left()}    {@render center()} {@render right()}
+	{@render bottomLeft()} {@render bottom()} {@render bottomRight()}
+</main>
+
+<style>
+	:root {
+		--bgDebug: #ccc;
+		--bgItems: lime;
+	}
+
+  .root-grid { 
+    display: grid; 
+    gap: 0.5rem; 
+    grid-template: 
+      'top-left top top-right' auto 
+      'left center right' auto 
+      'bottom-left bottom bottom-right' auto / auto minmax(0, 1fr) auto; 
+  }
+  .root-grid > * {
+    min-width: 0;
+    min-height: 0;
+  }
+  .root-grid > .debug {
+    z-index: 0;
+    background: var(--bgDebug);
+    pointer-events: none;
+  }
+  .root-grid > :not(.debug) {
+    z-index: 1;
+    background: var(--bgItems);
+  }
+	
+  .top-left { grid-area: top-left; }
+  .top { grid-area: top; }
+  .top-right { grid-area: top-right; }
+  .left { grid-area: left; }
+  .center { grid-area: center; }
+  .right { grid-area: right; }
+  .bottom-left { grid-area: bottom-left; }
+  .bottom { grid-area: bottom; }
+  .bottom-right { grid-area: bottom-right; }
+</style>

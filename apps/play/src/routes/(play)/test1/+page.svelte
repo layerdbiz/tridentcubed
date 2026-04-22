@@ -1,22 +1,16 @@
 <!-- App.svelte -->
 <script lang="ts">
+  import { Component } from '$lib';
   import { Text } from '@layerd/ui';
-  import { Component2 } from '$lib';
-	import New2 from '$lib/components/new2.svelte';
 </script>
 
-<main class="grid auto-rows-auto gap-4 p-10">
+<main class="grid gap-4 p-10 auto-rows-auto">
+
+  <!-- default full 
+  -------------------------------------------------------------------------------->
   <section class="grid gap-2 rounded-lg border border-black/10 bg-white p-4">
-    <Text h2="Component2" />
-    <Component2 
-      class="btn"
-      tag="button"
-      snippets={{
-        left:   { tag: 'i' },
-        center: { tag: 'span' },
-        right:  { tag: 'b' }
-      }}
-    >
+    <Text h2="Component" />
+    <Component class="btn">
       {#snippet left()}
         left
       {/snippet}
@@ -28,48 +22,29 @@
       {#snippet right()}
         right
       {/snippet}
-    </Component2>
+    </Component>
 
-    <Text h2="Component2 (debug)" />
-    <Component2 
-      debug
-      class="btn"
-      tag="button"
-      left="left"
-      center="center"
-      right="right"
-      snippets={{
-        left:   { tag: 'i' },
-        center: { tag: 'span' },
-        right:  { tag: 'b' }
-      }}
-    />
-
-    <Text h2="fallbacks" />
-    <Component2 />
-    <Component2 label="label" />
-    <Component2>
-      Test
-    </Component2>
-
-    <Text h2="New2 overrides" />
-    <New2 left="prop left override" center="prop center override" />
-
-    <New2 href="https://oneezy.com" target="_blank">
+    <Text h2="Component (all snippet position)" />
+    <Component class="btn" debug>
       {#snippet left()}
-        snippet left override
+        left
       {/snippet}
 
       {#snippet center()}
-        snippet center override
+        center
       {/snippet}
-    </New2>
+
+      {#snippet right()}
+        right
+      {/snippet}
+    </Component>
   </section>
 
+  <!-- FIX: inline 
+  -------------------------------------------------------------------------------->
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="inline" />
-    <Component2
-      debug
+    <Component debug
       class="rounded-md border border-black/10 bg-white px-3 py-2"
       grid="inline"
       left="left"
@@ -78,10 +53,11 @@
     />
   </section>
 
+  <!-- size 
+  -------------------------------------------------------------------------------->
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="size" />
-    <Component2
-      debug
+    <Component debug
       class="rounded-md border border-black/10 bg-white px-3 py-2"
       left="left"
       center="center"
@@ -90,10 +66,11 @@
     />
   </section>
 
+  <!-- rows and cols 
+  -------------------------------------------------------------------------------->
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="rows and cols" />
-    <Component2
-      debug
+    <Component debug
       class="rounded-md border border-black/10 bg-white px-3 py-2"
       left="left"
       center="center"
@@ -103,10 +80,11 @@
     />
   </section>
 
+  <!-- FIX: inline with snippets 
+  -------------------------------------------------------------------------------->
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="inline with snippets" />
-    <Component2
-      debug
+    <Component debug
       class="rounded-md border border-black/10 bg-white px-3 py-2"
       grid="inline"
       rows="auto 200px auto"
@@ -123,13 +101,15 @@
       {#snippet right()}
         right
       {/snippet}
-    </Component2>
+    </Component>
   </section>
 
+  <!-- items and content 
+  -------------------------------------------------------------------------------->
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="items and content" />
-    <Component2 
-      class="min-h-80 rounded-md border border-black/10 bg-white px-3 py-2"
+    <Component 
+      class="rounded-md border border-black/10 bg-white px-3 py-2 min-h-80"
       cols="120px 120px 120px"
       items="start"
       content="center"

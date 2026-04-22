@@ -38,16 +38,16 @@
 	{...props}
 	class="example {props.class}"
 >
-	{#snippet component(props)}
+	{#snippet component({ props })}
 		<div {...props}>
 			{#if children}
 				{@render children()}
 			{:else if variant === 'variant1'}
-				{@render variant1('hi variant1')}
+				{@render variant1(text ?? 'hi variant1')}
 			{:else if variant === 'variant2'}
-				{@render variant2('hi variant2')}
+				{@render variant2(text ?? 'hi variant2')}
 			{:else}
-				{@render base('example')}
+				{@render base(text ?? 'example')}
 			{/if}
 		</div>
 	{/snippet}
