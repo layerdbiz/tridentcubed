@@ -1,14 +1,13 @@
 <!-- App.svelte -->
 <script lang="ts">
   import { Text } from '@layerd/ui';
-  import { Component2 } from '$lib';
-	import New2 from '$lib/components/new2.svelte';
+  import { Component, Example } from '$lib';
 </script>
 
 <main class="grid auto-rows-auto gap-4 p-10">
   <section class="grid gap-2 rounded-lg border border-black/10 bg-white p-4">
-    <Text h2="Component2" />
-    <Component2 
+    <Text h2="Component" />
+    <Component 
       class="btn"
       tag="button"
       snippets={{
@@ -28,10 +27,10 @@
       {#snippet right()}
         right
       {/snippet}
-    </Component2>
+    </Component>
 
-    <Text h2="Component2 (debug)" />
-    <Component2 
+    <Text h2="Component (debug)" />
+    <Component 
       debug
       class="btn"
       tag="button"
@@ -46,16 +45,16 @@
     />
 
     <Text h2="fallbacks" />
-    <Component2 />
-    <Component2 label="label" />
-    <Component2>
+    <Component />
+    <Component label="label" />
+    <Component>
       Test
-    </Component2>
+    </Component>
 
-    <Text h2="New2 overrides" />
-    <New2 left="prop left override" center="prop center override" />
+    <Text h2="Example overrides" />
+    <Example left="prop left override" center="prop center override" />
 
-    <New2 href="https://oneezy.com" target="_blank">
+    <Example href="https://oneezy.com" target="_blank">
       {#snippet left()}
         snippet left override
       {/snippet}
@@ -63,12 +62,12 @@
       {#snippet center()}
         snippet center override
       {/snippet}
-    </New2>
+    </Example>
   </section>
 
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="inline" />
-    <Component2
+    <Component
       debug
       class="rounded-md border border-black/10 bg-white px-3 py-2"
       grid="inline"
@@ -80,7 +79,7 @@
 
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="size" />
-    <Component2
+    <Component
       debug
       class="rounded-md border border-black/10 bg-white px-3 py-2"
       left="left"
@@ -92,7 +91,7 @@
 
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="rows and cols" />
-    <Component2
+    <Component
       debug
       class="rounded-md border border-black/10 bg-white px-3 py-2"
       left="left"
@@ -105,7 +104,7 @@
 
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="inline with snippets" />
-    <Component2
+    <Component
       debug
       class="rounded-md border border-black/10 bg-white px-3 py-2"
       grid="inline"
@@ -123,12 +122,12 @@
       {#snippet right()}
         right
       {/snippet}
-    </Component2>
+    </Component>
   </section>
 
   <section class="grid gap-2 rounded-lg border border-black/10 bg-black/5 p-4">
     <Text h2="items and content" />
-    <Component2 
+    <Component 
       class="min-h-80 rounded-md border border-black/10 bg-white px-3 py-2"
       cols="120px 120px 120px"
       items="start"

@@ -1,4 +1,4 @@
-<!-- Root2.svelte -->
+<!-- Root.svelte -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { SvelteHTMLElements } from 'svelte/elements';
@@ -15,18 +15,18 @@
 		| 'bottomRight';
 	type PlaceValue = string;
 	type GridValue = 'full' | 'inline';
-	type Root2Content = Snippet | string | number | boolean | null | undefined;
-	type Root2SnippetConfig = {
+	type RootContent = Snippet | string | number | boolean | null | undefined;
+	type RootSnippetConfig = {
 		tag?: keyof SvelteHTMLElements;
 		class?: string;
 	};
-	type Root2LayoutSnippet = Snippet;
-	type Root2RenderArgs = {
+	type RootLayoutSnippet = Snippet;
+	type RootRenderArgs = {
 		props: Record<string, unknown> & { class?: string; style?: string };
-		layout: Root2LayoutSnippet;
+		layout: RootLayoutSnippet;
 	};
-	type Root2Props = {
-		root: Snippet<[Root2RenderArgs]>;
+	type RootProps = {
+		root: Snippet<[RootRenderArgs]>;
 		children?: Snippet;
 		label?: string;
 		class?: string;
@@ -38,16 +38,16 @@
 		rows?: string;
 		cols?: string;
 		size?: string;
-		snippets?: Partial<Record<AreaName, Root2SnippetConfig>>;
-		topLeft?: Root2Content;
-		top?: Root2Content;
-		topRight?: Root2Content;
-		left?: Root2Content;
-		center?: Root2Content;
-		right?: Root2Content;
-		bottomLeft?: Root2Content;
-		bottom?: Root2Content;
-		bottomRight?: Root2Content;
+		snippets?: Partial<Record<AreaName, RootSnippetConfig>>;
+		topLeft?: RootContent;
+		top?: RootContent;
+		topRight?: RootContent;
+		left?: RootContent;
+		center?: RootContent;
+		right?: RootContent;
+		bottomLeft?: RootContent;
+		bottom?: RootContent;
+		bottomRight?: RootContent;
 	} & Record<string, unknown>;
 
 	const areaMeta: Record<AreaName, { tag: keyof SvelteHTMLElements; position: string; label: string }> = {
@@ -98,7 +98,7 @@
 		bottom,
 		bottomRight,
 		...props
-	}: Root2Props = $props();
+	}: RootProps = $props();
 
 	const namedAreaValues = $derived({
 		topLeft,
@@ -154,14 +154,14 @@
 		return typeof value === 'function';
 	}
 
-	function hasValue(value: Root2Content): boolean {
+	function hasValue(value: RootContent): boolean {
 		return (
 			isSnippet(value) ||
 			(value !== null && value !== undefined && value !== false && value !== true && value !== '')
 		);
 	}
 
-	function hasContent(values: Partial<Record<AreaName, Root2Content>>): boolean {
+	function hasContent(values: Partial<Record<AreaName, RootContent>>): boolean {
 		for (const areaName of areaOrder) {
 			if (hasValue(values[areaName])) {
 				return true;

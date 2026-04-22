@@ -1,28 +1,28 @@
-<!-- Component2.svelte -->
+<!-- Component.svelte -->
 <script lang="ts">
-	import Root2 from './root2.svelte';
+	import {Root} from '$lib';
 	import type { ComponentProps, Snippet } from 'svelte';
 	import type { SvelteHTMLElements } from 'svelte/elements';
 
-	type Root2Props = ComponentProps<typeof Root2>;
-	type Component2RenderArgs = {
+	type RootProps = ComponentProps<typeof Root>;
+	type ComponentRenderArgs = {
 		props: Record<string, unknown> & { class?: string; style?: string };
 		layout: Snippet;
 	};
-	type Component2Props = Omit<Root2Props, 'root'> & {
+	type ComponentProps = Omit<RootProps, 'root'> & {
 		tag?: keyof SvelteHTMLElements;
-		component?: Snippet<[Component2RenderArgs]>;
+		component?: Snippet<[ComponentRenderArgs]>;
 	};
 
 	let {
 		component,
 		tag = 'div',
 		...props
-	}: Component2Props = $props();
+	}: ComponentProps = $props();
 </script>
 
 
-{#snippet rootRenderer(args: Component2RenderArgs)}
+{#snippet rootRenderer(args: ComponentRenderArgs)}
 	{#if component}
 		{@render component(args)}
 	{:else}
@@ -32,4 +32,4 @@
 	{/if}
 {/snippet}
 
-<Root2 {...props} root={rootRenderer} />
+<Root {...props} root={rootRenderer} />
