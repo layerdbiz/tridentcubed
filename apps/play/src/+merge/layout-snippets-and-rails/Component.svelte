@@ -1,0 +1,751 @@
+
+<!-- Component.svelte -->
+<script>
+	import * as engine from './component.svelte.js';
+
+	let {
+		tag = 'div',
+		class: className = '',
+
+		grid = 'full',
+		rail = '',
+		rails = '',
+		ratio = '',
+		mode = 'auto',
+		size = '',
+		rows = '',
+		cols = '',
+		items = '',
+		content = '',
+		gap = '0.5rem',
+
+		debug = false,
+
+		children,
+
+		...snippets
+	} = $props();
+
+	let item_refs = $state({});
+	let item_empty = $state({});
+
+	function hasMeaningfulContent(element) {
+		if (!element) return false;
+
+		for (const node of element.childNodes) {
+			if (node.nodeType === 3 && node.textContent.trim()) return true;
+
+			if (node.nodeType === 1) {
+				const isFallback = node.classList.contains('slot-fallback');
+				if (!isFallback) return true;
+			}
+		}
+
+		return false;
+	}
+
+	function refreshItemEmptyState(key) {
+		item_empty[key] = !hasMeaningfulContent(item_refs[key]);
+	}
+
+	const itemTag = $derived(engine.getItemTag(tag));
+	const rootGrid = $derived(engine.normalizeGrid(grid));
+	const rootRatio = $derived(engine.normalizeRatio(ratio));
+	const rootRail = $derived(engine.normalizeRail(rail));
+	const rootRails = $derived(engine.normalizeRail(rails));
+	const rootRailColumn = $derived(engine.getRailColumn(rail));
+	const rootRailsColumn = $derived(engine.getRailColumn(rails));
+	const hasRatio = $derived(rootRatio !== 'auto');
+	const shouldShowRailFallback = $derived(Boolean(rootRail && !children));
+
+	const resolvedItems = $derived(engine.resolveItems(snippets, mode, ratio, rootGrid));
+	const usageEnvelope = $derived(engine.getUsageEnvelope(resolvedItems));
+
+	const usesGridPlacement = $derived(debug || engine.hasGridPlacement(resolvedItems));
+	const usesCompactMode = $derived(engine.hasCompactPlacement(resolvedItems));
+	const usesCompactPlacement = $derived(!debug && usesCompactMode);
+	const usesFitPlacement = $derived(engine.hasFitPlacement(resolvedItems));
+	const usesFillPlacement = $derived(engine.hasFillPlacement(resolvedItems));
+	const usesDebugFitPlacement = $derived(debug && usesFitPlacement);
+
+	const hasResolvedItems = $derived(resolvedItems.length > 0);
+	const hasExplicitRowTracks = $derived(Boolean(rows.trim() || size.trim()));
+	const hasExplicitColTracks = $derived(Boolean(cols.trim() || size.trim()));
+	const shouldEmitRows = $derived(debug || hasResolvedItems || hasExplicitRowTracks);
+	const shouldEmitCols = $derived(debug || hasResolvedItems || hasExplicitColTracks);
+
+	const activeTracks = $derived(
+		debug
+			? {
+					rows: engine.getInternalTrackIndexes(),
+					cols: engine.getInternalTrackIndexes(),
+					row_start: 1,
+					col_start: 1
+				}
+			: usageEnvelope
+	);
+
+	const rootPlacementTracks = $derived(debug && hasRatio ? usageEnvelope : activeTracks);
+
+	const colTrackConfig = $derived(
+		cols.trim()
+			? engine.getResolvedTrackConfig(
+					cols,
+					'auto',
+					['auto', 'auto', 'minmax(0, 1fr)', 'minmax(0, 1fr)', 'auto', 'auto'],
+					activeTracks.cols,
+					'tracks'
+				)
+			: size.trim()
+				? engine.getResolvedTrackConfig(
+						size,
+						'auto',
+						engine.getDefaultColTracks(
+							activeTracks.cols,
+							usesGridPlacement,
+							usesCompactPlacement,
+							usesFitPlacement,
+							usesFillPlacement,
+							usesDebugFitPlacement
+						),
+						activeTracks.cols,
+						'size'
+					)
+				: {
+						tracks: engine.getDefaultColTracks(
+							activeTracks.cols,
+							usesGridPlacement,
+							usesCompactPlacement,
+							usesFitPlacement,
+							usesFillPlacement,
+							usesDebugFitPlacement
+						),
+						is_pruned: !debug,
+						kind: 'default'
+					}
+	);
+
+	const rowTrackConfig = $derived(
+		rows.trim()
+			? engine.getResolvedTrackConfig(
+					rows,
+					'auto',
+					['auto', 'auto', '1fr', '1fr', 'auto', 'auto'],
+					activeTracks.rows,
+					'tracks'
+				)
+			: size.trim()
+				? engine.getResolvedTrackConfig(
+						size,
+						'auto',
+						engine.getDefaultRowTracks(
+							activeTracks.rows,
+							usesGridPlacement,
+							usesCompactPlacement,
+							usesFitPlacement,
+							usesFillPlacement,
+							usesDebugFitPlacement
+						),
+						activeTracks.rows,
+						'size'
+					)
+				: {
+						tracks: engine.getDefaultRowTracks(
+							activeTracks.rows,
+							usesGridPlacement,
+							usesCompactPlacement,
+							usesFitPlacement,
+							usesFillPlacement,
+							usesDebugFitPlacement
+						),
+						is_pruned: !debug,
+						kind: 'default'
+					}
+	);
+
+	const rootCols = $derived((colTrackConfig.tracks.length ? colTrackConfig.tracks : ['auto']).join(' '));
+	const rootRows = $derived((rowTrackConfig.tracks.length ? rowTrackConfig.tracks : ['auto']).join(' '));
+
+	const debugItems = $derived(
+		engine.addPlacement(debug ? engine.createDebugItems() : [], rowTrackConfig, colTrackConfig, activeTracks, rootGrid)
+	);
+
+	const positionedItems = $derived(engine.addPlacement(resolvedItems, rowTrackConfig, colTrackConfig, activeTracks, rootGrid));
+
+	const shouldUseSnippetZone = $derived(rootGrid === 'rails' && rootRails && positionedItems.length > 0);
+
+	const rootTemplateCols = $derived(rootGrid === 'rails' ? undefined : shouldEmitCols ? rootCols : undefined);
+	const rootTemplateRows = $derived(shouldUseSnippetZone ? undefined : shouldEmitRows ? rootRows : undefined);
+	const rootGap = $derived(String(gap).trim() || '0.5rem');
+	const rootItems = $derived(engine.normalizePlacement(items, 'items') || undefined);
+	const rootContent = $derived(
+		engine.normalizePlacement(content, 'content') ||
+			engine.getAutoRatioRootContent(rootPlacementTracks.rows, rootPlacementTracks.cols, hasRatio, usesCompactMode, usesFillPlacement) ||
+			engine.getAutoRootContent(activeTracks.cols, debug)
+	);
+
+	const rootClassName = $derived(
+		[
+			engine.createRootClassName({
+				className,
+				rootGrid,
+				rail,
+				debug
+			}),
+			rootRails ? `is-rails-${rootRails}` : ''
+		]
+			.filter(Boolean)
+			.join(' ')
+	);
+
+	const rootMode = $derived(engine.normalizeMode(mode));
+	const rootTrackRows = $derived(activeTracks.rows.join(','));
+	const rootTrackCols = $derived(activeTracks.cols.join(','));
+
+	const rootDebugAttributes = $derived(
+		engine.createRootDebugAttributes(debug, {
+			rootGrid,
+			rootMode,
+			rootRail,
+			rootRatio,
+			rootTrackRows,
+			rootTrackCols
+		})
+	);
+
+	$effect(() => {
+		positionedItems;
+		item_refs;
+
+		for (const item of positionedItems) {
+			refreshItemEmptyState(item.key);
+		}
+	});
+</script>
+
+<svelte:element
+	this={tag}
+	class={rootClassName}
+	style:--grid-ratio={rootRatio}
+	style:--grid-column={rootRailColumn}
+	style:--grid-template-columns={rootTemplateCols}
+	style:--grid-template-rows={rootTemplateRows}
+	style:--grid-gap={rootGap}
+	style:--grid-place-items={rootItems}
+	style:--grid-place-content={rootContent}
+	{...rootDebugAttributes}
+>
+	{#if shouldUseSnippetZone}
+		<div
+			class="is-snippet-zone"
+			style:--grid-column={rootRailsColumn}
+			style:--grid-template-columns={rootCols}
+			style:--grid-template-rows={rootRows}
+			style:--grid-gap={rootGap}
+			style:--grid-place-items={rootItems}
+			style:--grid-place-content={rootContent}
+		>
+			{#each debugItems as item (item.key)}
+				<div
+					class={item.className}
+					style:--grid-column={item.grid_column}
+					style:--grid-row={item.grid_row}
+					aria-hidden="true"
+					{...engine.createItemDebugAttributes(debug, item, 'debug')}
+				>
+					<span class="slot-fallback">{item.label}</span>
+				</div>
+			{/each}
+
+			{#each positionedItems as item (item.key)}
+				<svelte:element
+					this={itemTag}
+					class={item.className}
+					style:--grid-column={item.grid_column}
+					style:--grid-row={item.grid_row}
+					style:--grid-place-self={item.place_self}
+					bind:this={item_refs[item.key]}
+					{...engine.createItemDebugAttributes(debug, item, 'item')}
+				>
+					{@render item.snippet()}
+
+					{#if item_empty[item.key]}
+						<span class="slot-fallback">{item.label}</span>
+					{/if}
+				</svelte:element>
+			{/each}
+		</div>
+	{:else}
+		{#each debugItems as item (item.key)}
+			<div
+				class={item.className}
+				style:--grid-column={item.grid_column}
+				style:--grid-row={item.grid_row}
+				aria-hidden="true"
+				{...engine.createItemDebugAttributes(debug, item, 'debug')}
+			>
+				<span class="slot-fallback">{item.label}</span>
+			</div>
+		{/each}
+
+		{#if children && !positionedItems.length}
+			{@render children()}
+		{/if}
+
+		{#if shouldShowRailFallback && !positionedItems.length}
+			<span class="slot-fallback is-rail-fallback">{rootRail}</span>
+		{/if}
+
+		{#each positionedItems as item (item.key)}
+			<svelte:element
+				this={itemTag}
+				class={item.className}
+				style:--grid-column={item.grid_column}
+				style:--grid-row={item.grid_row}
+				style:--grid-place-self={item.place_self}
+				bind:this={item_refs[item.key]}
+				{...engine.createItemDebugAttributes(debug, item, 'item')}
+			>
+				{@render item.snippet()}
+
+				{#if item_empty[item.key]}
+					<span class="slot-fallback">{item.label}</span>
+				{/if}
+			</svelte:element>
+		{/each}
+	{/if}
+</svelte:element>
+
+<style>
+	:global {
+		.root-grid {
+			--tl: start start;
+			--tc: start center;
+			--tr: start end;
+			--lc: center start;
+			--cc: center center;
+			--rc: center end;
+			--bl: end start;
+			--bc: end center;
+			--br: end end;
+
+			--grid-min-row: 1lh;
+			--grid-min-col: 2ch;
+
+			--grid-ratio: auto;
+			--grid-column: auto;
+			--grid-row: auto;
+			--grid-template-columns: none;
+			--grid-template-rows: none;
+			--grid-gap: 0;
+			--grid-place-items: stretch;
+			--grid-place-content: normal;
+			--grid-place-self: auto;
+
+			box-sizing: border-box;
+			display: grid;
+			position: relative;
+			min-width: 0;
+			min-height: 0;
+			aspect-ratio: var(--grid-ratio);
+			grid-column: var(--grid-column);
+			grid-template-columns: var(--grid-template-columns);
+			grid-template-rows: var(--grid-template-rows);
+			gap: var(--grid-gap);
+			place-items: var(--grid-place-items);
+			place-content: var(--grid-place-content);
+		}
+
+		.root-grid.is-inline {
+			display: inline-grid;
+			justify-self: start;
+			align-self: start;
+			width: max-content;
+			max-width: 100%;
+		}
+
+		.root-grid.is-grid-rails {
+			--gutter: clamp(1rem, 4vi, 3rem);
+
+			--content-xs-max: 38ch;
+			--content-sm-max: 55ch;
+			--content-md-max: 72ch;
+			--content-lg-max: 64rem;
+			--content-xl-max: 80rem;
+
+			--content-available: calc(100% - (var(--gutter) * 2));
+			--size-xs: min(var(--content-available), var(--content-xs-max));
+			--size-sm: min(var(--content-available), var(--content-sm-max));
+			--size-md: min(var(--content-available), var(--content-md-max));
+			--size-lg: min(var(--content-available), var(--content-lg-max));
+			--size-xl: min(var(--content-available), var(--content-xl-max));
+
+			--edge: minmax(var(--gutter), 1fr);
+			--track-xs-half: minmax(0, calc(var(--size-xs) / 2));
+			--track-sm: minmax(0, calc((var(--size-sm) - var(--size-xs)) / 2));
+			--track-md: minmax(0, calc((var(--size-md) - var(--size-sm)) / 2));
+			--track-lg: minmax(0, calc((var(--size-lg) - var(--size-md)) / 2));
+			--track-xl: minmax(0, calc((var(--size-xl) - var(--size-lg)) / 2));
+
+			grid-template-columns:
+				[content-full-start]
+					var(--edge)
+					[content-xl-start]
+						var(--track-xl)
+						[content-lg-start]
+							var(--track-lg)
+							[content-md-start]
+								var(--track-md)
+								[content-sm-start]
+									var(--track-sm)
+									[content-xs-start]
+										var(--track-xs-half)
+										[content-center]
+										var(--track-xs-half)
+									[content-xs-end]
+									var(--track-sm)
+								[content-sm-end]
+								var(--track-md)
+							[content-md-end]
+							var(--track-lg)
+						[content-lg-end]
+						var(--track-xl)
+					[content-xl-end]
+					var(--edge)
+				[content-full-end];
+		}
+
+		.root-grid > .is-snippet-zone {
+			--grid-row: auto;
+			--grid-place-self: auto;
+
+			box-sizing: border-box;
+			display: grid;
+			position: relative;
+			min-width: 0;
+			min-height: 0;
+			grid-column: var(--grid-column, auto);
+			grid-template-columns: var(--grid-template-columns, none);
+			grid-template-rows: var(--grid-template-rows, none);
+			gap: var(--grid-gap, 0);
+			place-items: var(--grid-place-items, stretch);
+			place-content: var(--grid-place-content, normal);
+		}
+
+		.root-grid
+			> :where(
+				.is-cell,
+				.is-row,
+				.is-col,
+				.is-range,
+				.is-half,
+				.is-full,
+				.is-bg,
+				.is-fg,
+				.is-debug
+			),
+		.root-grid
+			> .is-snippet-zone
+			> :where(
+				.is-cell,
+				.is-row,
+				.is-col,
+				.is-range,
+				.is-half,
+				.is-full,
+				.is-bg,
+				.is-fg,
+				.is-debug
+			) {
+			box-sizing: border-box;
+			position: relative;
+			min-width: 0;
+			min-height: 0;
+			grid-column: var(--grid-column, auto);
+			grid-row: var(--grid-row, auto);
+			place-self: var(--grid-place-self, auto);
+		}
+
+		.root-grid > .is-rail-fallback {
+			place-self: start;
+		}
+
+		.root-grid.is-grid-rails > :where(:not(.is-debug)) {
+			grid-column: content-md-start / content-md-end;
+		}
+
+		.root-grid.is-grid-rails > .is-rail-zone {
+			display: grid;
+			grid-template-columns: subgrid;
+			grid-column: content-full-start / content-full-end;
+			row-gap: inherit;
+			column-gap: inherit;
+		}
+
+		.root-grid.is-grid-rails > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-md-start / content-md-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-content-xs > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-content-xs > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-xs-start / content-xs-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-content-sm > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-content-sm > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-sm-start / content-sm-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-content > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-content-md > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-content > .is-rail-zone > :where(:not(.is-debug)),
+		.root-grid.is-grid-rails.is-rails-content-md > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-md-start / content-md-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-content-lg > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-popout > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-content-lg > .is-rail-zone > :where(:not(.is-debug)),
+		.root-grid.is-grid-rails.is-rails-popout > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-lg-start / content-lg-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-content-xl > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-content-xl > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-xl-start / content-xl-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-content-full > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-full > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-content-full > .is-rail-zone > :where(:not(.is-debug)),
+		.root-grid.is-grid-rails.is-rails-full > .is-rail-zone > :where(:not(.is-debug)),
+		.root-grid.is-grid-rails.is-rails-bleed > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-full-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-left > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-center > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-half > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left > .is-rail-zone > :where(:not(.is-debug)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-center > .is-rail-zone > :where(:not(.is-debug)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-half > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-full-start / content-center;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-right > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-center > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-half > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right > .is-rail-zone > :where(:not(.is-debug)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-center > .is-rail-zone > :where(:not(.is-debug)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-half > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-center / content-full-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-left-xs > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-xs > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-full-start / content-xs-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-left-sm > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-sm > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-full-start / content-sm-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-left-md > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-md > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-full-start / content-md-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-left-lg > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-lg > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-full-start / content-lg-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-left-xl > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-xl > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-full-start / content-xl-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-right-xs > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-xs > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-xs-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-right-sm > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-sm > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-sm-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-right-md > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-md > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-md-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-right-lg > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-lg > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-lg-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails.is-rails-bleed-right-xl > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-xl > .is-rail-zone > :where(:not(.is-debug)) {
+			grid-column: content-xl-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.content-xs, .is-rail-content-xs),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.content-xs, .is-rail-content-xs) {
+			grid-column: content-xs-start / content-xs-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.content-sm, .is-rail-content-sm),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.content-sm, .is-rail-content-sm) {
+			grid-column: content-sm-start / content-sm-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.content, .content-md, .is-rail-content, .is-rail-content-md),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.content, .content-md, .is-rail-content, .is-rail-content-md) {
+			grid-column: content-md-start / content-md-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.content-lg, .popout, .is-rail-content-lg, .is-rail-popout),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.content-lg, .popout, .is-rail-content-lg, .is-rail-popout) {
+			grid-column: content-lg-start / content-lg-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.content-xl, .is-rail-content-xl),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.content-xl, .is-rail-content-xl) {
+			grid-column: content-xl-start / content-xl-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.content-full, .full, .bleed, .is-rail-content-full, .is-rail-full, .is-rail-bleed),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.content-full, .full, .bleed, .is-rail-content-full, .is-rail-full, .is-rail-bleed) {
+			grid-column: content-full-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-left, .bleed-left-center, .bleed-left-half, .is-rail-bleed-left, .is-rail-bleed-left-center, .is-rail-bleed-left-half),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-left, .bleed-left-center, .bleed-left-half, .is-rail-bleed-left, .is-rail-bleed-left-center, .is-rail-bleed-left-half) {
+			grid-column: content-full-start / content-center;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-right, .bleed-right-center, .bleed-right-half, .is-rail-bleed-right, .is-rail-bleed-right-center, .is-rail-bleed-right-half),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-right, .bleed-right-center, .bleed-right-half, .is-rail-bleed-right, .is-rail-bleed-right-center, .is-rail-bleed-right-half) {
+			grid-column: content-center / content-full-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-left-xs, .is-rail-bleed-left-xs),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-left-xs, .is-rail-bleed-left-xs) {
+			grid-column: content-full-start / content-xs-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-left-sm, .is-rail-bleed-left-sm),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-left-sm, .is-rail-bleed-left-sm) {
+			grid-column: content-full-start / content-sm-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-left-md, .is-rail-bleed-left-md),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-left-md, .is-rail-bleed-left-md) {
+			grid-column: content-full-start / content-md-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-left-lg, .is-rail-bleed-left-lg),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-left-lg, .is-rail-bleed-left-lg) {
+			grid-column: content-full-start / content-lg-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-left-xl, .is-rail-bleed-left-xl),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-left-xl, .is-rail-bleed-left-xl) {
+			grid-column: content-full-start / content-xl-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-right-xs, .is-rail-bleed-right-xs),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-right-xs, .is-rail-bleed-right-xs) {
+			grid-column: content-xs-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-right-sm, .is-rail-bleed-right-sm),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-right-sm, .is-rail-bleed-right-sm) {
+			grid-column: content-sm-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-right-md, .is-rail-bleed-right-md),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-right-md, .is-rail-bleed-right-md) {
+			grid-column: content-md-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-right-lg, .is-rail-bleed-right-lg),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-right-lg, .is-rail-bleed-right-lg) {
+			grid-column: content-lg-start / content-full-end;
+		}
+
+		.root-grid.is-grid-rails > :is(.bleed-right-xl, .is-rail-bleed-right-xl),
+		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-right-xl, .is-rail-bleed-right-xl) {
+			grid-column: content-xl-start / content-full-end;
+		}
+
+		.root-grid > .is-debug,
+		.root-grid > .is-snippet-zone > .is-debug {
+			z-index: 0;
+			pointer-events: none;
+			overflow: visible;
+			outline: 1px dashed rgb(100 116 139 / 0.65);
+			background: rgb(148 163 184 / 0.14);
+			color: #64748b;
+			place-self: stretch;
+		}
+
+		.slot-fallback {
+			display: inline-block;
+			color: inherit;
+			font: inherit;
+			line-height: inherit;
+			pointer-events: none;
+		}
+
+		.root-grid > .is-debug .slot-fallback,
+		.root-grid > .is-snippet-zone > .is-debug .slot-fallback {
+			color: inherit;
+			white-space: nowrap;
+		}
+
+		.root-grid > .is-bg,
+		.root-grid > .is-snippet-zone > .is-bg {
+			z-index: 0;
+		}
+
+		.root-grid > .is-row,
+		.root-grid > .is-col,
+		.root-grid > .is-snippet-zone > .is-row,
+		.root-grid > .is-snippet-zone > .is-col {
+			z-index: 1;
+		}
+
+		.root-grid > .is-range,
+		.root-grid > .is-full,
+		.root-grid > .is-half,
+		.root-grid > .is-snippet-zone > .is-range,
+		.root-grid > .is-snippet-zone > .is-full,
+		.root-grid > .is-snippet-zone > .is-half {
+			z-index: 2;
+		}
+
+		.root-grid > .is-cell,
+		.root-grid > .is-snippet-zone > .is-cell {
+			z-index: 3;
+		}
+
+		.root-grid > .is-fg,
+		.root-grid > .is-snippet-zone > .is-fg {
+			z-index: 4;
+		}
+
+		.is-tl { place-self: var(--tl); }
+		.is-tc { place-self: var(--tc); }
+		.is-tr { place-self: var(--tr); }
+		.is-lc { place-self: var(--lc); }
+		.is-cc { place-self: var(--cc); }
+		.is-rc { place-self: var(--rc); }
+		.is-bl { place-self: var(--bl); }
+		.is-bc { place-self: var(--bc); }
+		.is-br { place-self: var(--br); }
+	}
+</style>
