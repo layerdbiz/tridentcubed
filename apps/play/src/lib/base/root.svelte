@@ -2,7 +2,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { SvelteHTMLElements } from 'svelte/elements';
-	import * as engine from './root.svelte.ts';
+	import * as engine from '$lib';
 
 	type RootContent = Snippet | string | number | boolean | null | undefined;
 	type ItemConfig = {
@@ -35,17 +35,17 @@
 		gap?: string;
 		snippets?: Partial<Record<string, ItemConfig>>;
 		[key: string]: unknown;
-	} & Partial<engine.RootItemSource>;
+	};
 
 	let {
 		root,
 		children,
-		label = 'Component',
+		label = undefined,
 		class: className = '',
 		style: styleName = undefined,
 		tag = 'div',
 		debug = false,
-		grid = 'full',
+		grid = undefined,
 		rail = '',
 		rails = '',
 		ratio = '',
@@ -55,7 +55,7 @@
 		rows = '',
 		cols = '',
 		size = '',
-		gap = '0.5rem',
+		gap = undefined,
 		snippets = {},
 		topLeft,
 		top,
@@ -104,7 +104,6 @@
 	const rootRailColumn = $derived(engine.getRailColumn(rail));
 	const rootRailsColumn = $derived(engine.getRailColumn(rails));
 	const hasRatio = $derived(rootRatio !== 'auto');
-	const shouldShowRailFallback = $derived(Boolean(rootRail && !children));
 
 	const itemSources = $derived(
 		engine.pickItemSources({
@@ -142,6 +141,24 @@
 			fg
 		})
 	);
+	const shouldUseRootRuntime = $derived(
+		engine.shouldUseRootRuntime({
+			debug,
+			grid,
+			rail,
+			rails,
+			ratio,
+			mode,
+			items,
+			content,
+			rows,
+			cols,
+			size,
+			gap,
+			itemSources
+		})
+	);
+	const shouldShowRailFallback = $derived(shouldUseRootRuntime && Boolean(rootRail && !children));
 
 	const resolvedItems = $derived(engine.resolveItems(itemSources, mode, ratio, rootGrid));
 	const usageEnvelope = $derived(engine.getUsageEnvelope(resolvedItems));
@@ -248,7 +265,9 @@
 	const shouldUseSnippetZone = $derived(rootGrid === 'rails' && Boolean(rootRails) && positionedItems.length > 0);
 	const rootTemplateCols = $derived(rootGrid === 'rails' ? undefined : shouldEmitCols ? rootCols : undefined);
 	const rootTemplateRows = $derived(shouldUseSnippetZone ? undefined : shouldEmitRows ? rootRows : undefined);
-	const rootGap = $derived(String(gap).trim() || '0.5rem');
+	const rootGap = $derived(
+		shouldUseRootRuntime ? String(gap ?? '').trim() || '0.5rem' : undefined
+	);
 	const rootItems = $derived(engine.normalizePlacement(items, 'items') || undefined);
 	const rootContent = $derived(
 		engine.normalizePlacement(content, 'content') ||
@@ -257,13 +276,15 @@
 	);
 	const rootClassName = $derived(
 		engine.mergeClasses(
-			engine.createRootClassName({
-				className,
-				rootGrid,
-				rail,
-				debug
-			}),
-			rootRails ? `is-rails-${rootRails}` : undefined
+			shouldUseRootRuntime
+				? engine.createRootClassName({
+					className,
+					rootGrid,
+					rail,
+					debug
+				})
+				: className,
+			shouldUseRootRuntime && rootRails ? `is-rails-${rootRails}` : undefined
 		)
 	);
 	const rootTrackRows = $derived(activeTracks.rows.join(','));
@@ -281,16 +302,18 @@
 	const rootProps = $derived({
 		...props,
 		class: rootClassName,
-		style: engine.mergeStyles(
-			styleName,
-			rootRatio !== 'auto' ? `--grid-ratio: ${rootRatio}` : undefined,
-			rootRailColumn ? `--grid-column: ${rootRailColumn}` : undefined,
-			rootTemplateCols ? `--grid-template-columns: ${rootTemplateCols}` : undefined,
-			rootTemplateRows ? `--grid-template-rows: ${rootTemplateRows}` : undefined,
-			rootGap ? `--grid-gap: ${rootGap}` : undefined,
-			rootItems ? `--grid-place-items: ${rootItems}` : undefined,
-			rootContent ? `--grid-place-content: ${rootContent}` : undefined
-		),
+		style: shouldUseRootRuntime
+			? engine.mergeStyles(
+				styleName,
+				rootRatio !== 'auto' ? `--grid-ratio: ${rootRatio}` : undefined,
+				rootRailColumn ? `--grid-column: ${rootRailColumn}` : undefined,
+				rootTemplateCols ? `--grid-template-columns: ${rootTemplateCols}` : undefined,
+				rootTemplateRows ? `--grid-template-rows: ${rootTemplateRows}` : undefined,
+				rootGap ? `--grid-gap: ${rootGap}` : undefined,
+				rootItems ? `--grid-place-items: ${rootItems}` : undefined,
+				rootContent ? `--grid-place-content: ${rootContent}` : undefined
+			)
+			: styleName,
 		...rootDebugAttributes
 	} satisfies engine.RootRendererProps);
 
@@ -386,7 +409,13 @@
 {/snippet}
 
 {#snippet layout()}
-	{#if shouldUseSnippetZone}
+	{#if !shouldUseRootRuntime}
+		{#if children}
+			{@render children()}
+		{:else if label}
+			{label}
+		{/if}
+	{:else if shouldUseSnippetZone}
 		<div
 			class="is-snippet-zone"
 			style={engine.mergeStyles(

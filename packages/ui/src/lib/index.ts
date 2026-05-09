@@ -10,6 +10,7 @@ export * from "./utils/observe.svelte.ts";
 export * from "./utils/scroll.svelte.ts";
 export * from "./utils/sync.svelte.ts";
 export * from "./utils/text.ts";
+export * from "./utils/total.svelte.ts";
 export * from "./utils/trackevent.ts";
 
 /* COMPONENTS */

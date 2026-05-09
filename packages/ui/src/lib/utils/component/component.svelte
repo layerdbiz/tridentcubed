@@ -10,6 +10,7 @@
 	} from '@layerd/ui';
 	import {
 		createComponentWithStyles,
+		createTotalIndexes,
 		Debug,
 		DebugClass,
 		ObserveClass,
@@ -66,8 +67,8 @@
 	const elementSize = new ElementSize(() => elementRefs[0]);
 
 	// Handle multiplication
-	const componentTotal = $derived(Math.max(1, Math.floor(Number(props.total) || 1)));
-	const componentTotals = $derived(Array.from({ length: componentTotal }, (_, i) => i));
+	const componentTotals = $derived(createTotalIndexes(props.total));
+	const componentTotal = $derived(componentTotals.length);
 
 	// Create utility instances for each component instance
 	const debugInstances = $derived(
