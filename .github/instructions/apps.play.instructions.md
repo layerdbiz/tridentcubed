@@ -22,6 +22,14 @@ A common workflow is to test new features here first, validate the approach, and
 - Anything under `src/lib/` should be treated as the current implementation.
 - Do not assume files outside `src/lib/` are active just because they are newer or more experimental.
 
+## Component Ownership
+
+- Keep helper ownership aligned with the component that uses it.
+- `root.svelte` should depend on `root.svelte.ts`, not on `component.svelte.ts`.
+- Root-owned runtime types, merge helpers, and rendering helpers belong in `root.svelte.ts`.
+- `component.svelte.ts` should stay adapter-specific and only support `component.svelte`.
+- Build upward from `Root` into `Component`, not the other way around.
+
 ## Folder Roles
 
 ### `src/lib/`
@@ -84,6 +92,8 @@ When the user is in planning mode:
 - After something looks good there, it may later be broken out into another route folder.
 - Keep experiments understandable and easy to compare back to `src/lib/`.
 - Avoid unnecessary drift between the active implementation and merge candidates.
+- When proving snippet or rail behavior, prefer empty snippets and built-in fallback labels before adding hardcoded demo content.
+- Use light visual demo skinning to reveal snippet, rail, and debug boundaries, but keep the runtime fallback behavior visible.
 
 ## Guardrails
 
