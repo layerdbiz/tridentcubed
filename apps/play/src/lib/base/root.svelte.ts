@@ -11,7 +11,7 @@ export type RootSnippetValue =
 	| undefined;
 export type GridValue = "full" | "inline" | "rails";
 export type PlacementMode = "auto" | "grid" | "compact" | "fit" | "fill";
-export type RootRendererProps = Record<string, unknown> & {
+export type RootRendererProps = Record<PropertyKey, unknown> & {
 	class?: string;
 	style?: string;
 };

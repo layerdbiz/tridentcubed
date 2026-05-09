@@ -16,6 +16,10 @@
 	const panelViewCols = '1';
 	const resolvedDemoCols = $derived(getResolvedDemoCols(viewCols));
 
+	function withComponentProps(localProps = {}) {
+		return { ...componentProps, ...localProps };
+	}
+
 	function getResolvedDemoCols(value) {
 		const numericValue = Number(value);
 
@@ -125,6 +129,19 @@
 	</details>
 
 	<details class="demo-section" open>
+		<summary class="demo-summary">Wrapper parity</summary>
+		<section class="demo-section-content" style:grid-template-columns="repeat({resolvedDemoCols}, minmax(0, 1fr))">
+			<Demo label="0d. total repeats plain component x4" class="demo plain-probe total-probe" componentProps={withComponentProps({ total: '4' })} modeViews={['auto']} debugView="off" viewCols={panelViewCols}>repeat me</Demo>
+			<Demo label="0e. total repeats snippet layout x3" class="demo" componentProps={withComponentProps({ total: '3' })} gap="0.5rem" modeViews={['auto']} debugView="off" viewCols={panelViewCols}>{#snippet left()}left{/snippet}{#snippet right()}right{/snippet}</Demo>
+			<Demo label="0f. observe adds active class" class="demo plain-probe observe-probe" componentProps={withComponentProps({ observe: true })} modeViews={['auto']} debugView="off" viewCols={panelViewCols}>scroll this card into view</Demo>
+			<Demo label="0g. disabled button forwards disabled" class="demo plain-probe disabled-probe" tag="button" componentProps={withComponentProps({ disabled: true })} modeViews={['auto']} debugView="off" viewCols={panelViewCols}>disabled action</Demo>
+			<Demo label="0h. heavy primary class shaping" class="demo plain-probe style-probe" componentProps={withComponentProps({ color: 'primary', appearance: 'heavy' })} modeViews={['auto']} debugView="off" viewCols={panelViewCols}>theme-heavy-primary</Demo>
+			<Demo label="0i. outline secondary class shaping" class="demo plain-probe style-probe" componentProps={withComponentProps({ color: 'secondary', appearance: 'outline' })} modeViews={['auto']} debugView="off" viewCols={panelViewCols}>theme-outline-secondary</Demo>
+			<Demo label="0j. ghost accent plus right align" class="demo plain-probe style-probe" componentProps={withComponentProps({ accent: true, appearance: 'ghost', position: 'right' })} modeViews={['auto']} debugView="off" viewCols={panelViewCols}>ghost accent right</Demo>
+		</section>
+	</details>
+
+	<details class="demo-section" open>
 		<summary class="demo-summary">Canonical cells</summary>
 		<section class="demo-section-content" style:grid-template-columns="repeat({resolvedDemoCols}, minmax(0, 1fr))">
 			<Demo label="1. canonical cell a1" class="demo" gap="0.5rem" {componentProps} {modeViews} {debugView} viewCols={panelViewCols} {placeModifier} inspect expect={expected.canonicalA1} {logMode}>{#snippet a1()}{/snippet}</Demo>
@@ -217,6 +234,44 @@
 			border-radius: 0.875rem;
 			background: linear-gradient(135deg, rgb(248 250 252 / 0.96), rgb(241 245 249 / 0.96));
 			color: #0f172a;
+		}
+
+		.demo.total-probe:not(.root-grid) {
+			margin-block-end: 0.5rem;
+		}
+
+		.demo.observe-probe.active:not(.root-grid) {
+			border-color: #22c55e;
+			background: linear-gradient(135deg, rgb(220 252 231 / 0.96), rgb(240 253 244 / 0.96));
+			box-shadow: inset 0 0 0 1px rgb(34 197 94 / 0.22);
+		}
+
+		.demo.disabled-probe[disabled]:not(.root-grid) {
+			cursor: not-allowed;
+			opacity: 0.55;
+			filter: saturate(0.65);
+		}
+
+		.demo.style-probe.theme-heavy-primary:not(.root-grid) {
+			border-color: #1d4ed8;
+			background: linear-gradient(135deg, #2563eb, #1d4ed8);
+			color: white;
+		}
+
+		.demo.style-probe.theme-outline-secondary:not(.root-grid) {
+			border: 2px solid #7c3aed;
+			background: white;
+			color: #5b21b6;
+		}
+
+		.demo.style-probe.theme-ghost-accent:not(.root-grid) {
+			border-color: #14b8a6;
+			background: rgb(20 184 166 / 0.1);
+			color: #0f766e;
+		}
+
+		.demo.style-probe.text-right:not(.root-grid) {
+			text-align: right;
 		}
 
 		.demo.root-grid {

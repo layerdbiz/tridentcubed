@@ -1,6 +1,11 @@
 import type { Snippet } from "svelte";
 import type { SvelteHTMLElements } from "svelte/elements";
 import type {
+	ComponentProps as UiComponentProps,
+	ObserveClass,
+	ObserveOptions,
+} from "@layerd/ui";
+import type {
 	GridValue,
 	PlacementMode,
 	RootRendererProps,
@@ -11,11 +16,14 @@ import type {
 export type ComponentTag = keyof SvelteHTMLElements;
 export type RootLayoutSnippet = Snippet;
 export type ComponentContentSnippet = Snippet<[string?]>;
+export type ComponentColor = UiComponentProps["color"];
+export type ComponentAppearance = UiComponentProps["appearance"];
+export type ComponentPosition = UiComponentProps["position"];
 export type ComponentRenderArgs = {
 	props: RootRendererProps;
 	layout: RootLayoutSnippet;
 	content?: ComponentContentSnippet;
-	observe?: unknown;
+	observe?: ObserveClass;
 };
 
 type ComponentItemProps = {
@@ -55,6 +63,15 @@ type ComponentItemProps = {
 export interface ComponentProps extends ComponentItemProps {
 	children?: Snippet;
 	label?: string;
+	color?: ComponentColor;
+	appearance?: ComponentAppearance;
+	invert?: boolean;
+	base?: boolean;
+	primary?: boolean;
+	secondary?: boolean;
+	accent?: boolean;
+	position?: ComponentPosition;
+	disabled?: boolean;
 	total?: string;
 	class?: string;
 	style?: string;
@@ -73,7 +90,7 @@ export interface ComponentProps extends ComponentItemProps {
 	gap?: string;
 	snippets?: Partial<Record<string, RootSnippetConfig>>;
 	component?: Snippet<[ComponentRenderArgs]>;
-	observe?: unknown;
+	observe?: boolean | ObserveOptions;
 	[key: string]: unknown;
 }
 
