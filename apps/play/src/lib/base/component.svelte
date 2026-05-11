@@ -5,14 +5,14 @@
 		createTotalIndexes,
 		ObserveClass
 	} from '@layerd/ui';
-	import { Root } from '$lib';
 	import type { Snippet } from 'svelte';
 	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
+	import Root from './root.svelte';
 	import {
 		normalizeComponentTag,
 		type ComponentProps,
 		type ComponentRenderArgs
-	} from '$lib';
+	} from './component.svelte.ts';
 
 	const COMPONENT_DEFAULT_TEXT = 'Component';
 

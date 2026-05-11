@@ -99,6 +99,46 @@ export function mergeStyles(
 export const publicTrackCount = 3;
 export const internalTrackCount = 6;
 
+export const placementValues = [
+	"start",
+	"end",
+	"stretch",
+	"center",
+	"top",
+	"right",
+	"bottom",
+	"left",
+	"between",
+	"around",
+	"evenly",
+	"top left",
+	"top center",
+	"top right",
+	"left center",
+	"center center",
+	"right center",
+	"bottom left",
+	"bottom center",
+	"bottom right",
+	"start start",
+	"start center",
+	"start end",
+	"center start",
+	"center end",
+	"end start",
+	"end center",
+	"end end",
+	"top stretch",
+	"center stretch",
+	"bottom stretch",
+	"stretch start",
+	"stretch center",
+	"stretch end",
+	"stretch stretch",
+] as const;
+
+export type PlacementValue = (typeof placementValues)[number];
+
 export const itemTagMap: Record<string, string> = {
 	button: "span",
 	a: "span",
@@ -143,7 +183,34 @@ export function normalizePlacement(value: unknown, type = "items"): string {
 		return "";
 	}
 	if (raw === "center" && type === "items") return "center center";
-	return placementAliasMap[raw] ?? raw;
+	const exact = placementAliasMap[raw];
+	if (exact) return exact;
+
+	const rawTokens = raw.split(" ").filter(Boolean);
+	if (rawTokens.length === 2) {
+		const block = getPlacementAxisValue(rawTokens[0], "block", type);
+		const inline = getPlacementAxisValue(rawTokens[1], "inline", type);
+		if (block && inline) return `${block} ${inline}`;
+	}
+
+	return raw;
+}
+
+export function getPlacementAxisValue(
+	value: string,
+	axis: "block" | "inline",
+	type = "items",
+): string {
+	const raw = toAliasKey(value);
+	if (!raw) return "";
+	if (type === "items" && contentOnlyPlacements.includes(raw as never)) {
+		return "";
+	}
+	const normalized = placementAliasMap[raw] ?? raw;
+	const tokens = normalized.split(" ").filter(Boolean);
+	if (!tokens.length) return "";
+	if (tokens.length === 1) return tokens[0];
+	return axis === "block" ? tokens[0] : tokens[1];
 }
 
 export function normalizeRatio(value: unknown): string {
@@ -389,6 +456,105 @@ export function resolveItems(
 		}
 	}
 	return resolved;
+}
+
+export function getFriendlyRailPackAxis(
+	items: ResolvedItem[],
+): "horizontal" | "vertical" | undefined {
+	if (!items.length) return undefined;
+
+	let isHorizontal = true;
+	let isVertical = true;
+
+	for (const item of items) {
+		if (item.family !== "cell" || item.is_canonical) return undefined;
+		if (!["a2", "b2", "c2"].includes(item.base)) {
+			isHorizontal = false;
+		}
+		if (!["b1", "b2", "b3"].includes(item.base)) {
+			isVertical = false;
+		}
+		if (!isHorizontal && !isVertical) return undefined;
+	}
+
+	if (isHorizontal) return "horizontal";
+	if (isVertical) return "vertical";
+	return undefined;
+}
+
+export function getPackedFriendlySelfPlacement(
+	value: string | undefined,
+	axis: "horizontal" | "vertical" | undefined,
+): string | undefined {
+	if (!value || !axis) return undefined;
+	if (value.startsWith("space-")) return undefined;
+
+	const [first = "", second = ""] = value.trim().split(/\s+/);
+	if (!first) return undefined;
+
+	if (axis === "horizontal") {
+		const inlineValue = second || first;
+		return `stretch ${inlineValue}`;
+	}
+
+	const blockValue = first;
+	return `${blockValue} stretch`;
+}
+
+export function getPackedFriendlyContent(
+	value: string | undefined,
+	axis: "horizontal" | "vertical" | undefined,
+): string | undefined {
+	if (!value || !axis) return undefined;
+
+	const tokens = value.trim().split(/\s+/).filter(Boolean);
+	if (!tokens.length) return undefined;
+	if (tokens.length >= 2) return `${tokens[0]} ${tokens[1]}`;
+
+	if (axis === "horizontal") {
+		return `center ${tokens[0]}`;
+	}
+
+	return `${tokens[0]} center`;
+}
+
+export function getPackedFriendlyPlacement(
+	item: ResolvedItem,
+	axis: "horizontal" | "vertical" | undefined,
+): Placement | undefined {
+	if (!axis || item.family !== "cell" || item.is_canonical) return undefined;
+
+	if (axis === "horizontal") {
+		const columnLookup: Record<string, string> = {
+			a2: "1 / 2",
+			b2: "2 / 3",
+			c2: "3 / 4",
+		};
+		const gridColumn = columnLookup[item.base];
+		if (!gridColumn) return undefined;
+		const [col_start, col_end] = gridColumn.split(" / ");
+		return {
+			col_start,
+			col_end,
+			row_start: "1",
+			row_end: "2",
+		};
+	}
+
+	const rowLookup: Record<string, string> = {
+		b1: "1 / 2",
+		b2: "2 / 3",
+		b3: "3 / 4",
+	};
+	const gridRow = rowLookup[item.base];
+	if (!gridRow) return undefined;
+	const [row_start, row_end] = gridRow.split(" / ");
+	return {
+		col_start: "1",
+		col_end: "2",
+		row_start,
+		row_end,
+	};
 }
 
 export function getInternalTrackIndexes(): number[] {
@@ -946,12 +1112,13 @@ export function getPlacement(
 	};
 }
 
-export function getItemPlaceSelf(item: ResolvedItem): string | undefined {
+export function getItemPlaceSelf(
+	item: ResolvedItem,
+	packedFriendlyAxis?: "horizontal" | "vertical",
+): string | undefined {
 	if (item.place_modifier) return undefined;
-	if (item.placement_mode !== "compact" && item.placement_mode !== "fit") {
-		return undefined;
-	}
-	return "stretch stretch";
+	if (packedFriendlyAxis) return undefined;
+	return undefined;
 }
 
 export function isRailZone(
@@ -971,15 +1138,17 @@ export function addPlacement(
 	activeTracks: UsageEnvelope,
 	rootGrid: GridValue,
 	useSnippetZone = false,
+	packedFriendlyAxis?: "horizontal" | "vertical",
 ): PositionedItem[] {
 	const placed: PositionedItem[] = [];
 	for (const item of items) {
-		const placement = getPlacement(
-			item,
-			rowTrackConfig,
-			colTrackConfig,
-			activeTracks,
-		);
+		const placement = getPackedFriendlyPlacement(item, packedFriendlyAxis) ??
+			getPlacement(
+				item,
+				rowTrackConfig,
+				colTrackConfig,
+				activeTracks,
+			);
 		const isRailZoneItem = isRailZone(item, rootGrid, useSnippetZone);
 		const itemClassName = isRailZoneItem
 			? `${item.className} is-rail-zone`
@@ -993,7 +1162,7 @@ export function addPlacement(
 				? lib.railSpans["content-full"]
 				: `${placement.col_start} / ${placement.col_end}`,
 			grid_row: `${placement.row_start} / ${placement.row_end}`,
-			place_self: getItemPlaceSelf(item),
+			place_self: getItemPlaceSelf(item, packedFriendlyAxis),
 		});
 	}
 	return placed;

@@ -27,8 +27,8 @@
 		rails?: string;
 		ratio?: string;
 		mode?: engine.PlacementMode;
-		items?: string;
-		content?: string;
+		items?: engine.PlacementValue;
+		content?: engine.PlacementValue;
 		rows?: string;
 		cols?: string;
 		size?: string;
@@ -262,26 +262,6 @@
 	const rootCols = $derived((colTrackConfig.tracks.length ? colTrackConfig.tracks : ['auto']).join(' '));
 	const rootRows = $derived((rowTrackConfig.tracks.length ? rowTrackConfig.tracks : ['auto']).join(' '));
 	const shouldUseSnippetZone = $derived(rootGrid === 'rails' && hasResolvedItems);
-	const debugItems = $derived(
-		engine.addPlacement(
-			debug ? engine.createDebugItems() : [],
-			rowTrackConfig,
-			colTrackConfig,
-			activeTracks,
-			rootGrid,
-			shouldUseSnippetZone
-		)
-	);
-	const positionedItems = $derived(
-		engine.addPlacement(
-			resolvedItems,
-			rowTrackConfig,
-			colTrackConfig,
-			activeTracks,
-			rootGrid,
-			shouldUseSnippetZone
-		)
-	);
 	const snippetZoneRailColumn = $derived(rootRailsColumn ?? defaultSnippetZoneRailColumn);
 	const rootTemplateCols = $derived(rootGrid === 'rails' ? undefined : shouldEmitCols ? rootCols : undefined);
 	const rootTemplateRows = $derived(shouldUseSnippetZone ? undefined : shouldEmitRows ? rootRows : undefined);
@@ -291,11 +271,64 @@
 	const rootGapTokens = $derived(rootGap ? rootGap.split(/\s+/).filter(Boolean) : []);
 	const rootRowGap = $derived(rootGapTokens[0] ?? '0px');
 	const rootColGap = $derived(rootGapTokens[1] ?? rootGapTokens[0] ?? '0px');
-	const rootItems = $derived(engine.normalizePlacement(items, 'items') || undefined);
+	const userItems = $derived(engine.normalizePlacement(items, 'items') || undefined);
+	const userContent = $derived(engine.normalizePlacement(content, 'content') || undefined);
+	const friendlyRailPackAxis = $derived(engine.getFriendlyRailPackAxis(resolvedItems));
+	const packedFriendlyContent = $derived(
+		engine.getPackedFriendlyContent(userContent, friendlyRailPackAxis)
+	);
+	const shouldUsePackedFriendlySnippetZone = $derived(
+		shouldUseSnippetZone &&
+			!debug &&
+			rootMode === 'auto' &&
+			!hasRatio &&
+			!rows.trim() &&
+			!cols.trim() &&
+			!size.trim() &&
+			Boolean(friendlyRailPackAxis) &&
+			Boolean(userContent)
+	);
+	const rootItems = $derived(
+		shouldUsePackedFriendlySnippetZone
+			? userItems ?? 'center'
+			: userItems
+	);
 	const rootContent = $derived(
-		engine.normalizePlacement(content, 'content') ||
+		userContent ||
 			engine.getAutoRatioRootContent(rootPlacementTracks.rows, rootPlacementTracks.cols, hasRatio, usesCompactMode, usesFillPlacement) ||
 			engine.getAutoRootContent(activeTracks.cols, debug)
+	);
+	const packedFriendlyCols = $derived(
+		friendlyRailPackAxis === 'horizontal'
+			? 'max-content max-content max-content'
+			: 'max-content'
+	);
+	const packedFriendlyRows = $derived(
+		friendlyRailPackAxis === 'horizontal'
+			? 'max-content'
+			: 'max-content max-content max-content'
+	);
+	const debugItems = $derived(
+		engine.addPlacement(
+			debug ? engine.createDebugItems() : [],
+			rowTrackConfig,
+			colTrackConfig,
+			activeTracks,
+			rootGrid,
+			shouldUseSnippetZone,
+			shouldUsePackedFriendlySnippetZone ? friendlyRailPackAxis ?? undefined : undefined
+		)
+	);
+	const positionedItems = $derived(
+		engine.addPlacement(
+			resolvedItems,
+			rowTrackConfig,
+			colTrackConfig,
+			activeTracks,
+			rootGrid,
+			shouldUseSnippetZone,
+			shouldUsePackedFriendlySnippetZone ? friendlyRailPackAxis ?? undefined : undefined
+		)
 	);
 	const rootClassName = $derived(
 		engine.mergeClasses(
@@ -445,11 +478,15 @@
 			class="is-snippet-zone"
 			style={engine.mergeStyles(
 				snippetZoneRailColumn ? `--grid-column: ${snippetZoneRailColumn}` : undefined,
-				`--grid-template-columns: ${rootCols}`,
-				`--grid-template-rows: ${rootRows}`,
+				`--grid-template-columns: ${shouldUsePackedFriendlySnippetZone ? packedFriendlyCols : rootCols}`,
+				`--grid-template-rows: ${shouldUsePackedFriendlySnippetZone ? packedFriendlyRows : rootRows}`,
 				rootGap ? `--grid-gap: ${rootGap}` : undefined,
 				rootItems ? `--grid-place-items: ${rootItems}` : undefined,
-				rootContent ? `--grid-place-content: ${rootContent}` : undefined
+				shouldUsePackedFriendlySnippetZone && packedFriendlyContent
+					? `--grid-place-content: ${packedFriendlyContent}`
+					: !shouldUsePackedFriendlySnippetZone && rootContent
+					? `--grid-place-content: ${rootContent}`
+					: undefined
 			)}
 		>
 			{#each debugItems as item (item.key)}
@@ -595,8 +632,10 @@
 			place-content: var(--grid-place-content, normal);
 		}
 
-		.root-grid > :where(.is-cell, .is-row, .is-col, .is-range, .is-half, .is-full, .is-bg, .is-fg, .is-debug),
-		.root-grid > .is-snippet-zone > :where(.is-cell, .is-row, .is-col, .is-range, .is-half, .is-full, .is-bg, .is-fg, .is-debug) {
+		:where(
+			.root-grid > :where(.is-cell, .is-row, .is-col, .is-range, .is-half, .is-full, .is-bg, .is-fg, .is-debug),
+			.root-grid > .is-snippet-zone > :where(.is-cell, .is-row, .is-col, .is-range, .is-half, .is-full, .is-bg, .is-fg, .is-debug)
+		) {
 			box-sizing: border-box;
 			position: relative;
 			min-width: 0;

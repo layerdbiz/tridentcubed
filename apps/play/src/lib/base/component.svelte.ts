@@ -8,6 +8,7 @@ import type {
 import type {
 	GridValue,
 	PlacementMode,
+	PlacementValue,
 	RootRendererProps,
 	RootSnippetConfig,
 	RootSnippetValue,
@@ -82,8 +83,8 @@ export interface ComponentProps extends ComponentItemProps {
 	rails?: string;
 	ratio?: string;
 	mode?: PlacementMode;
-	items?: string;
-	content?: string;
+	items?: PlacementValue;
+	content?: PlacementValue;
 	rows?: string;
 	cols?: string;
 	size?: string;
