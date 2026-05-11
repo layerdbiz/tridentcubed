@@ -304,27 +304,6 @@ export function getPlacementMode(
 	return isCanonical ? "grid" : "compact";
 }
 
-export function getImplicitPlaceModifier(
-	base: string,
-	isCanonical: boolean,
-): string {
-	if (isCanonical) return "";
-
-	const cellPlaceModifiers: Record<string, string> = {
-		a1: "TL",
-		b1: "TC",
-		c1: "TR",
-		a2: "LC",
-		b2: "CC",
-		c2: "RC",
-		a3: "BL",
-		b3: "BC",
-		c3: "BR",
-	};
-
-	return cellPlaceModifiers[base] ?? "";
-}
-
 export function resolveSnippet(
 	base: string,
 	itemSources: RootItemSource,
@@ -339,8 +318,7 @@ export function resolveSnippet(
 		const key = candidate.place_modifier
 			? base + candidate.place_modifier
 			: base;
-		const placeModifier = candidate.place_modifier ||
-			getImplicitPlaceModifier(base, candidate.is_canonical);
+		const placeModifier = candidate.place_modifier;
 		const placementMode = getPlacementMode(
 			candidate.is_canonical,
 			family,
@@ -976,7 +954,12 @@ export function getItemPlaceSelf(item: ResolvedItem): string | undefined {
 	return "stretch stretch";
 }
 
-export function isRailZone(item: ResolvedItem, rootGrid: GridValue): boolean {
+export function isRailZone(
+	item: ResolvedItem,
+	rootGrid: GridValue,
+	useSnippetZone = false,
+): boolean {
+	if (useSnippetZone) return false;
 	return rootGrid === "rails" &&
 		(item.family === "row" || lib.isLayerFamily(item.family));
 }
@@ -987,6 +970,7 @@ export function addPlacement(
 	colTrackConfig: TrackConfig,
 	activeTracks: UsageEnvelope,
 	rootGrid: GridValue,
+	useSnippetZone = false,
 ): PositionedItem[] {
 	const placed: PositionedItem[] = [];
 	for (const item of items) {
@@ -996,7 +980,7 @@ export function addPlacement(
 			colTrackConfig,
 			activeTracks,
 		);
-		const isRailZoneItem = isRailZone(item, rootGrid);
+		const isRailZoneItem = isRailZone(item, rootGrid, useSnippetZone);
 		const itemClassName = isRailZoneItem
 			? `${item.className} is-rail-zone`
 			: item.className;

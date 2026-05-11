@@ -103,6 +103,7 @@
 	const rootRails = $derived(engine.normalizeRail(rails));
 	const rootRailColumn = $derived(engine.getRailColumn(rail));
 	const rootRailsColumn = $derived(engine.getRailColumn(rails));
+	const defaultSnippetZoneRailColumn = $derived(engine.getRailColumn('content'));
 	const hasRatio = $derived(rootRatio !== 'auto');
 
 	const itemSources = $derived(
@@ -260,9 +261,28 @@
 	);
 	const rootCols = $derived((colTrackConfig.tracks.length ? colTrackConfig.tracks : ['auto']).join(' '));
 	const rootRows = $derived((rowTrackConfig.tracks.length ? rowTrackConfig.tracks : ['auto']).join(' '));
-	const debugItems = $derived(engine.addPlacement(debug ? engine.createDebugItems() : [], rowTrackConfig, colTrackConfig, activeTracks, rootGrid));
-	const positionedItems = $derived(engine.addPlacement(resolvedItems, rowTrackConfig, colTrackConfig, activeTracks, rootGrid));
-	const shouldUseSnippetZone = $derived(rootGrid === 'rails' && Boolean(rootRails) && positionedItems.length > 0);
+	const shouldUseSnippetZone = $derived(rootGrid === 'rails' && hasResolvedItems);
+	const debugItems = $derived(
+		engine.addPlacement(
+			debug ? engine.createDebugItems() : [],
+			rowTrackConfig,
+			colTrackConfig,
+			activeTracks,
+			rootGrid,
+			shouldUseSnippetZone
+		)
+	);
+	const positionedItems = $derived(
+		engine.addPlacement(
+			resolvedItems,
+			rowTrackConfig,
+			colTrackConfig,
+			activeTracks,
+			rootGrid,
+			shouldUseSnippetZone
+		)
+	);
+	const snippetZoneRailColumn = $derived(rootRailsColumn ?? defaultSnippetZoneRailColumn);
 	const rootTemplateCols = $derived(rootGrid === 'rails' ? undefined : shouldEmitCols ? rootCols : undefined);
 	const rootTemplateRows = $derived(shouldUseSnippetZone ? undefined : shouldEmitRows ? rootRows : undefined);
 	const rootGap = $derived(
@@ -315,8 +335,8 @@
 				rootGap ? `--grid-gap: ${rootGap}` : undefined,
 				`--grid-row-gap: ${rootRowGap}`,
 				`--grid-col-gap: ${rootColGap}`,
-				rootItems ? `--grid-place-items: ${rootItems}` : undefined,
-				rootContent ? `--grid-place-content: ${rootContent}` : undefined
+				!shouldUseSnippetZone && rootItems ? `--grid-place-items: ${rootItems}` : undefined,
+				!shouldUseSnippetZone && rootContent ? `--grid-place-content: ${rootContent}` : undefined
 			)
 			: styleName,
 		...rootDebugAttributes
@@ -424,7 +444,7 @@
 		<div
 			class="is-snippet-zone"
 			style={engine.mergeStyles(
-				rootRailsColumn ? `--grid-column: ${rootRailsColumn}` : undefined,
+				snippetZoneRailColumn ? `--grid-column: ${snippetZoneRailColumn}` : undefined,
 				`--grid-template-columns: ${rootCols}`,
 				`--grid-template-rows: ${rootRows}`,
 				rootGap ? `--grid-gap: ${rootGap}` : undefined,
