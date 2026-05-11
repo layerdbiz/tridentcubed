@@ -41,7 +41,7 @@
 		@apply pointer-events-none fixed isolate select-none;
 
 		&:where(.debug-overlay) {
-			@apply z-[9999] -translate-x-1/2 whitespace-nowrap rounded bg-pink-600/90 px-1.5 py-0.5 py-1 text-xs font-medium leading-tight text-white;
+			@apply z-9999 -translate-x-1/2 whitespace-nowrap rounded bg-pink-600/90 px-1.5 py-1 text-xs font-medium leading-tight text-white;
 		}
 
 		&:where(.debug-component-overlay) {
@@ -52,11 +52,11 @@
 			@apply z-1;
 
 			&:before {
-				@apply absolute left-0 top-1/2 h-[1px] w-full -translate-y-1/2 bg-pink-600 content-[''];
+				@apply absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-pink-600 content-[''];
 			}
 			&:after {
 				content: '';
-				@apply absolute left-1/2 top-0 h-full w-[1px] -translate-x-1/2 bg-pink-600 content-[''];
+				@apply absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-pink-600 content-[''];
 			}
 		}
 	}

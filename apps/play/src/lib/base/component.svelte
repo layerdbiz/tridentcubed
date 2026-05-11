@@ -31,7 +31,7 @@
 	const resolvedLabel = $derived(label ?? COMPONENT_DEFAULT_TEXT);
 	const componentTotals = $derived(createTotalIndexes(total));
 	const componentPropsWithoutLayoutSize = $derived(() => {
-		const { size: _, ...rest } = props;
+		const { size: _, debug: __, ...rest } = props;
 		return rest;
 	});
 	const { base: componentBaseProps, classes: componentClasses } = $derived(
@@ -42,6 +42,7 @@
 	);
 	const componentRootProps = $derived({
 		...componentBaseProps,
+		debug: props.debug,
 		size: props.size,
 		class: componentClasses
 	});

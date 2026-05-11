@@ -26,7 +26,7 @@
 		gap = '',
 		class: className = '',
 
-		children,
+		children = undefined,
 		...snippets
 	} = $props();
 

@@ -353,12 +353,12 @@
 >
 	{#snippet typewriterContent()}
 		<span
-			class="sr-only !absolute !m-0 !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0"
+			class="typewriter-screen-reader"
 			>{finalContent}</span
 		>
 		<span
 			bind:this={typewriterEl}
-			class="typewriter-text before:inline-block before:size-[1px] before:opacity-0 before:content-['.']"
+			class="typewriter-text"
 			class:reveal={shouldApplyRevealClasses}
 			class:reveal-r={shouldApplyRevealClasses}
 			class:reveal-active={isRevealed}
@@ -441,5 +441,26 @@
 
 	.text {
 		@apply block;
+	}
+
+	.typewriter-screen-reader {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: 0;
+		padding: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		border: 0;
+		clip: rect(0 0 0 0);
+		clip-path: inset(50%);
+	}
+
+	.typewriter-text::before {
+		display: inline-block;
+		width: 1px;
+		height: 1px;
+		opacity: 0;
+		content: '.';
 	}
 </style>

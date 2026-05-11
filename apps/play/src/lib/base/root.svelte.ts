@@ -1,4 +1,5 @@
 import type { Snippet } from "svelte";
+import type { HTMLAttributes } from "svelte/elements";
 import * as lib from "$lib";
 
 export type ItemSnippet = Snippet;
@@ -11,7 +12,7 @@ export type RootSnippetValue =
 	| undefined;
 export type GridValue = "full" | "inline" | "rails";
 export type PlacementMode = "auto" | "grid" | "compact" | "fit" | "fill";
-export type RootRendererProps = Record<PropertyKey, unknown> & {
+export type RootRendererProps = HTMLAttributes<HTMLElement> & {
 	class?: string;
 	style?: string;
 };
