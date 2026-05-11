@@ -304,6 +304,27 @@ export function getPlacementMode(
 	return isCanonical ? "grid" : "compact";
 }
 
+export function getImplicitPlaceModifier(
+	base: string,
+	isCanonical: boolean,
+): string {
+	if (isCanonical) return "";
+
+	const cellPlaceModifiers: Record<string, string> = {
+		a1: "TL",
+		b1: "TC",
+		c1: "TR",
+		a2: "LC",
+		b2: "CC",
+		c2: "RC",
+		a3: "BL",
+		b3: "BC",
+		c3: "BR",
+	};
+
+	return cellPlaceModifiers[base] ?? "";
+}
+
 export function resolveSnippet(
 	base: string,
 	itemSources: RootItemSource,
@@ -318,6 +339,8 @@ export function resolveSnippet(
 		const key = candidate.place_modifier
 			? base + candidate.place_modifier
 			: base;
+		const placeModifier = candidate.place_modifier ||
+			getImplicitPlaceModifier(base, candidate.is_canonical);
 		const placementMode = getPlacementMode(
 			candidate.is_canonical,
 			family,
@@ -333,11 +356,11 @@ export function resolveSnippet(
 				label: candidate.key,
 				snippet,
 				className: lib.toClassName(
-					candidate.place_modifier,
+					placeModifier,
 					family,
 					placementMode,
 				),
-				place_modifier: candidate.place_modifier,
+				place_modifier: placeModifier,
 				placement_mode: placementMode,
 				is_canonical: candidate.is_canonical,
 				family,
@@ -351,11 +374,11 @@ export function resolveSnippet(
 				label: candidate.key,
 				value: snippet,
 				className: lib.toClassName(
-					candidate.place_modifier,
+					placeModifier,
 					family,
 					placementMode,
 				),
-				place_modifier: candidate.place_modifier,
+				place_modifier: placeModifier,
 				placement_mode: placementMode,
 				is_canonical: candidate.is_canonical,
 				family,
@@ -668,7 +691,7 @@ export function getAutoRatioRootContent(
 	if (shouldUseFill) return "start start";
 	if (hasFullTrackEnvelope(trackRows, trackCols)) return "start start";
 	if (shouldUseCompact) return `start ${getTrackAlignment(trackCols)}`;
-	return `${getTrackAlignment(trackRows)} ${getTrackAlignment(trackCols)}`;
+	return `start ${getTrackAlignment(trackCols)}`;
 }
 
 export function createDefaultTracks(

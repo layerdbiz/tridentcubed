@@ -80,15 +80,21 @@
 	<details class="demo-section" open>
 		<summary class="demo-summary">Rails 5. Real-world combinations</summary>
 		<section class="demo-section-content">
+
+
+
+			
 			<Demo {...sharedDemoProps} label="Rails 5a. full bleed header with content nav">
-				<Component tag="header" grid="rails" rail="full" rails="content" class="bg-slate-950 py-4 text-white">
-					<Component tag="nav" gap="0.5rem" items="center" class="min-h-0 text-white">
+				<Component tag="header" grid="rails" rail="full" rails="content-xl" class="bg-slate-950 py-4 text-white">
 						{#snippet left()}<strong class="inline-flex rounded-full bg-white/10 px-3 py-2">Logo</strong>{/snippet}
 						{#snippet center()}<span class="flex flex-wrap gap-3"><a href="/" class="font-black text-sky-300 no-underline">Reports</a><a href="/" class="font-black text-sky-300 no-underline">Photos</a><a href="/" class="font-black text-sky-300 no-underline">Settings</a></span>{/snippet}
 						{#snippet right()}<button type="button" class="rounded-full bg-white px-4 py-2 font-black text-slate-950">Export</button>{/snippet}
-					</Component>
 				</Component>
 			</Demo>
+
+
+
+
 			<Demo {...sharedDemoProps} label="Rails 5b. bleed hero with content-lg split">
 				<Component tag="section" grid="rails" rail="bleed" class="bg-blue-900 py-8 text-white">
 					<Component rail="content-lg" gap="0.75rem" items="center" class="min-h-0">
@@ -107,7 +113,30 @@
 		<section class="demo-section-content">
 			<Demo {...sharedDemoProps} label="Rails 6a. full shell, children default to content"><Component tag="section" grid="rails" rail="full" rails="content" class="bg-sky-100 px-5 py-5"><section class={railTokenClass}><span class={railTokenInnerClass}>default child -&gt; content</span></section><section class={railTokenClass}><span class={railTokenInnerClass}>default child -&gt; content</span></section><section class="bleed rounded-xl bg-sky-100/50 p-3 font-black outline-1 outline-sky-400"><span class={railTokenInnerClass}>explicit child -&gt; bleed</span></section></Component></Demo>
 			<Demo {...sharedDemoProps} label="Rails 6b. full shell, children default to popout"><Component tag="section" grid="rails" rail="full" rails="popout" class="bg-orange-100 px-5 py-5"><section class={railTokenClass}><span class={railTokenInnerClass}>default child -&gt; popout</span></section><section class={railTokenClass}><span class={railTokenInnerClass}>default child -&gt; popout</span></section><Component rail="content-sm" class={railTokenClass}><span class={railTokenInnerClass}>explicit component -&gt; content-sm</span></Component></Component></Demo>
-			<Demo {...sharedDemoProps} label="Rails 6c. full header, nav defaults to content"><Component tag="header" grid="rails" rail="full" rails="content" class="bg-slate-950 py-4 text-white"><Component tag="nav" gap="0.5rem" items="center" class="min-h-0 text-white">{#snippet left()}<strong class="inline-flex rounded-full bg-white/10 px-3 py-2">Logo</strong>{/snippet}{#snippet center()}<span class="flex flex-wrap gap-3"><a href="/" class="font-black text-sky-300 no-underline">Reports</a><a href="/" class="font-black text-sky-300 no-underline">Photos</a><a href="/" class="font-black text-sky-300 no-underline">Settings</a></span>{/snippet}{#snippet right()}<button type="button" class="rounded-full bg-white px-4 py-2 font-black text-slate-950">Export</button>{/snippet}</Component></Component></Demo>
+			
+			
+			<Demo {...sharedDemoProps} label="Rails 6c. full header, nav defaults to content">
+				<Component tag="header" grid="rails" rail="full" rails="content-xl" class="bg-slate-950 py-4 text-white">
+					<Component tag="nav" gap="0.5rem" class=" text-white ">
+						{#snippet left()}
+							<strong class="inline-flex rounded-full bg-white/10 px-3 py-2">Logo</strong>
+						{/snippet}
+						{#snippet center()}
+							<span class="flex flex-wrap gap-3">
+								<a href="/" class="font-black text-sky-300 no-underline">Reports</a>
+								<a href="/" class="font-black text-sky-300 no-underline">Photos</a>
+								<a href="/" class="font-black text-sky-300 no-underline">Settings</a>
+							</span>
+						{/snippet}
+						{#snippet right()}
+							<button type="button" class="rounded-full bg-white px-4 py-2 font-black text-slate-950">Export</button>
+						{/snippet}
+					</Component>
+				</Component>
+			</Demo>
+			
+			
+			
 			<Demo {...sharedDemoProps} label="Rails 6d. bleed hero, direct snippets default to content-lg"><Component tag="section" grid="rails" rail="bleed" rails="content-lg" gap="0.75rem" class="bg-blue-900 px-5 py-8 text-white">{#snippet left()}<section class="space-y-2"><h2 class="text-2xl font-black">Bleed hero</h2><p class="text-slate-200">The section bleeds full width, but direct snippets should live inside content-lg.</p></section>{/snippet}{#snippet right()}<section class="rounded-2xl bg-white/10 p-5 font-black outline-1 outline-white/20">Preview</section>{/snippet}</Component></Demo>
 		</section>
 	</details>
