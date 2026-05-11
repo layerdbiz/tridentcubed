@@ -687,7 +687,7 @@ export function getDefaultColTracks(
 	shouldUseFill: boolean,
 	shouldUseDebugFit: boolean,
 ): string[] {
-	const minColUnit = "calc(var(--grid-min-col, 2ch) * 0.5)";
+	const minColUnit = "var(--grid-min-col-unit, 1ch)";
 	const sideTrack = `minmax(${minColUnit}, max-content)`;
 	const centerTrack = "minmax(0, 1fr)";
 	const contentTracks = [
@@ -722,8 +722,8 @@ export function getDefaultRowTracks(
 	shouldUseFill: boolean,
 	shouldUseDebugFit: boolean,
 ): string[] {
-	const minRowUnit = "calc(var(--grid-min-row, 1lh) * 0.5)";
-	const contentTrack = `minmax(${minRowUnit}, max-content)`;
+	const minRowUnit = "var(--grid-min-row-unit, 0.5lh)";
+	const contentTrack = `minmax(${minRowUnit}, auto)`;
 	const flexibleTrack = `minmax(${minRowUnit}, 1fr)`;
 	const contentTracks = [
 		contentTrack,

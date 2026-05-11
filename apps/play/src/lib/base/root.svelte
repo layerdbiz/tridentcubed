@@ -268,6 +268,9 @@
 	const rootGap = $derived(
 		shouldUseRootRuntime ? String(gap ?? '').trim() || '0.5rem' : undefined
 	);
+	const rootGapTokens = $derived(rootGap ? rootGap.split(/\s+/).filter(Boolean) : []);
+	const rootRowGap = $derived(rootGapTokens[0] ?? '0px');
+	const rootColGap = $derived(rootGapTokens[1] ?? rootGapTokens[0] ?? '0px');
 	const rootItems = $derived(engine.normalizePlacement(items, 'items') || undefined);
 	const rootContent = $derived(
 		engine.normalizePlacement(content, 'content') ||
@@ -310,6 +313,8 @@
 				rootTemplateCols ? `--grid-template-columns: ${rootTemplateCols}` : undefined,
 				rootTemplateRows ? `--grid-template-rows: ${rootTemplateRows}` : undefined,
 				rootGap ? `--grid-gap: ${rootGap}` : undefined,
+				`--grid-row-gap: ${rootRowGap}`,
+				`--grid-col-gap: ${rootColGap}`,
 				rootItems ? `--grid-place-items: ${rootItems}` : undefined,
 				rootContent ? `--grid-place-content: ${rootContent}` : undefined
 			)
@@ -470,6 +475,10 @@
 			--br: end end;
 			--grid-min-row: 1lh;
 			--grid-min-col: 2ch;
+			--grid-row-gap: 0px;
+			--grid-col-gap: 0px;
+			--grid-min-row-unit: calc((var(--grid-min-row, 1lh) - var(--grid-row-gap, 0px)) * 0.5);
+			--grid-min-col-unit: calc((var(--grid-min-col, 2ch) - var(--grid-col-gap, 0px)) * 0.5);
 			--grid-ratio: auto;
 			--grid-column: auto;
 			--grid-row: auto;
