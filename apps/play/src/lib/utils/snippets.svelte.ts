@@ -125,6 +125,7 @@ export const aliases = {
 		start: ["start"],
 		end: ["end"],
 		stretch: ["stretch"],
+		full: ["stretch", "full"],
 		center: ["center center", "center", "middle"],
 		top: ["start center", "top"],
 		right: ["center end", "right"],
@@ -233,6 +234,11 @@ export const aliases = {
 			"br",
 			"rb",
 		],
+		topfull: ["start stretch", "top full", "full top"],
+		centerfull: ["center stretch", "center full", "full center"],
+		bottomfull: ["end stretch", "bottom full", "full bottom"],
+		leftfull: ["stretch start", "left full", "full left"],
+		rightfull: ["stretch end", "right full", "full right"],
 	},
 };
 

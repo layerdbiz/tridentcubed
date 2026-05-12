@@ -103,6 +103,7 @@ export const placementValues = [
 	"start",
 	"end",
 	"stretch",
+	"full",
 	"center",
 	"top",
 	"right",
@@ -115,8 +116,10 @@ export const placementValues = [
 	"top center",
 	"top right",
 	"left center",
+	"center left",
 	"center center",
 	"right center",
+	"center right",
 	"bottom left",
 	"bottom center",
 	"bottom right",
@@ -129,15 +132,26 @@ export const placementValues = [
 	"end center",
 	"end end",
 	"top stretch",
+	"top full",
+	"full top",
 	"center stretch",
+	"center full",
+	"full center",
 	"bottom stretch",
+	"bottom full",
+	"full bottom",
 	"stretch start",
+	"left full",
+	"full left",
 	"stretch center",
 	"stretch end",
+	"right full",
+	"full right",
 	"stretch stretch",
 ] as const;
 
-export type PlacementValue = (typeof placementValues)[number];
+export type PlacementSuggestion = (typeof placementValues)[number];
+export type PlacementValue = PlacementSuggestion | (string & {});
 
 export const itemTagMap: Record<string, string> = {
 	button: "span",
@@ -239,6 +253,11 @@ export function normalizeGrid(value: unknown): GridValue {
 	return gridNames.includes(raw) ? raw : "full";
 }
 
+export function getRootGrid(grid: unknown, rails: unknown): GridValue {
+	if (String(grid ?? "").trim()) return normalizeGrid(grid);
+	return lib.normalizeRail(rails) ? "rails" : "full";
+}
+
 export function createNumberRange(start: number, end: number): number[] {
 	const range: number[] = [];
 	for (let value = start; value <= end; value += 1) {
@@ -273,15 +292,8 @@ export function shouldUseRootRuntime(
 	const {
 		debug = false,
 		grid,
-		rail,
 		rails,
-		ratio,
-		mode,
 		items,
-		content,
-		rows,
-		cols,
-		size,
 		gap,
 		itemSources = {},
 	} = options;
@@ -289,16 +301,12 @@ export function shouldUseRootRuntime(
 	if (debug) return true;
 	if (Object.keys(itemSources).length > 0) return true;
 	if (String(grid ?? "").trim()) return true;
-	if (lib.normalizeRail(rail) || lib.normalizeRail(rails)) {
+	if (lib.normalizeRail(rails)) {
 		return true;
 	}
-	if (normalizeRatio(ratio) !== "auto") return true;
-	if (normalizeMode(mode) !== "auto") return true;
-	if (
-		normalizePlacement(items, "items") || normalizePlacement(content, "content")
-	) return true;
+	if (normalizePlacement(items, "items")) return true;
 
-	for (const value of [rows, cols, size, gap]) {
+	for (const value of [gap]) {
 		if (String(value ?? "").trim()) return true;
 	}
 

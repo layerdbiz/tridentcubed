@@ -1,12 +1,160 @@
 <!-- Demo.svelte -->
-<script>
+<script lang="ts">
 	import { Component } from '$lib';
+	import type { PlacementMode } from '$lib';
+	import type { Snippet } from 'svelte';
 	import { tick } from 'svelte';
+
+	type DemoMode = PlacementMode;
+	type DemoComponentProps = Record<string, unknown> & {
+		class?: string;
+		mode?: DemoMode;
+		debug?: boolean;
+		children?: Snippet;
+	};
+	type DemoSnippets = Record<string, unknown>;
+	type DebugViewName = 'off' | 'split' | 'inline';
+	type LogMode = 'hide' | 'open' | 'failed';
+	type DebugViewKey = 'normal' | 'debug' | 'inline';
+	type ComparableValue = string | number;
+	const validModes: DemoMode[] = ['auto', 'grid', 'compact', 'fit', 'fill'];
+
+	interface DebugViewItem {
+		key: DebugViewKey;
+		label: string;
+		debug: boolean;
+	}
+
+	interface FlatView {
+		key: string;
+		mode: DemoMode;
+		view: DebugViewItem;
+	}
+
+	interface ItemData {
+		label: string;
+		base: string;
+		family: string;
+		mode: string;
+		canonical: string;
+		railZone: string;
+		col: string;
+		row: string;
+	}
+
+	interface ChildDataItem {
+		tag: string;
+		className: string;
+		text: string;
+	}
+
+	interface ChildData {
+		count: number;
+		items: ChildDataItem[];
+	}
+
+	interface CssData {
+		display: string;
+		position: string;
+		boxSizing: string;
+		minWidth: string;
+		width: string;
+		maxWidth: string;
+		minHeight: string;
+		height: string;
+		maxHeight: string;
+		padding: string;
+		margin: string;
+		border: string;
+		aspectRatio: string;
+		gridTemplateRows: string;
+		gridTemplateColumns: string;
+		gridAutoRows: string;
+		gridAutoColumns: string;
+		gridAutoFlow: string;
+		gap: string;
+		rowGap: string;
+		columnGap: string;
+		placeContent: string;
+		placeItems: string;
+		placeSelf: string;
+		gridColumn: string;
+		gridRow: string;
+	}
+
+	interface RootData {
+		index: number;
+		tag: string;
+		className: string;
+		text: string;
+		size: {
+			width: number;
+			height: number;
+		};
+		css: CssData;
+		data: {
+			grid: string;
+			mode: string;
+			rail: string;
+			ratio: string;
+			rows: string;
+			cols: string;
+			internal: string;
+		};
+		children: ChildData;
+	}
+
+	interface PanelStats {
+		found: boolean;
+		mode: string;
+		debug: boolean;
+		rows: number[];
+		cols: number[];
+		internalRows: number[];
+		internalCols: number[];
+		resolvedModes: string[];
+		items: ItemData[];
+		roots: RootData[];
+	}
+
+	interface ExpectedModeValue {
+		rows?: ComparableValue[];
+		cols?: ComparableValue[];
+		items?: string[];
+		itemCount?: number;
+	}
+
+	type DemoExpectation = Partial<Record<DemoMode, ExpectedModeValue>> &
+		Record<string, ExpectedModeValue | undefined>;
+
+	interface DemoProps extends Record<string, unknown> {
+		label?: string;
+		componentProps?: DemoComponentProps;
+		modeViews?: Array<DemoMode | string>;
+		debugView?: DebugViewName | string;
+		viewCols?: string | number;
+		placeModifier?: string;
+		inspect?: boolean;
+		expect?: DemoExpectation | null;
+		logMode?: LogMode | string;
+		tag?: string;
+		grid?: string;
+		rail?: string;
+		ratio?: string;
+		size?: string;
+		rows?: string;
+		cols?: string;
+		items?: string;
+		content?: string;
+		gap?: string;
+		class?: string;
+		children?: Snippet;
+	}
 
 	let {
 		label = '',
 		componentProps = {},
-		modeViews = ['auto'],
+		modeViews = ['auto'] as DemoMode[],
 		debugView = 'off',
 		viewCols = '1',
 		placeModifier = '',
@@ -28,15 +176,17 @@
 
 		children = undefined,
 		...snippets
-	} = $props();
+	}: DemoProps = $props();
 
-	let panelRefs = $state({});
-	let stats = $state({});
+	let panelRefs = $state<Record<string, HTMLDivElement | undefined>>({});
+	let stats = $state<Record<string, PanelStats>>({});
 
-	const placeModifiers = ['TL', 'TC', 'TR', 'LC', 'CC', 'RC', 'BL', 'BC', 'BR'];
+	const placeModifiers = ['TL', 'TC', 'TR', 'LC', 'CC', 'RC', 'BL', 'BC', 'BR'] as const;
 
-	const visibleModes = $derived(modeViews.length ? modeViews : ['auto']);
-	const debugViews = $derived(getDebugViews(debugView));
+	const normalizedDebugView = $derived(normalizeDebugView(debugView));
+	const normalizedLogMode = $derived(normalizeLogMode(logMode));
+	const visibleModes = $derived(normalizeModeViews(modeViews));
+	const debugViews = $derived(getDebugViews(normalizedDebugView));
 	const flatViews = $derived(createFlatViews(visibleModes, debugViews));
 	const resolvedViewCols = $derived(getResolvedViewCols(viewCols, visibleModes, debugViews));
 	const modifiedSnippets = $derived(createModifiedSnippets(snippets, placeModifier));
@@ -60,11 +210,39 @@
 
 	const mergedProps = $derived(mergeProps(localProps, componentProps));
 	const propsKey = $derived(JSON.stringify(mergedProps));
-	const shouldShowLog = $derived(inspect && logMode !== 'hide');
-	const shouldOpenLog = $derived(logMode === 'open' || (logMode === 'failed' && getTotalIssues().length > 0));
+	const shouldShowLog = $derived(inspect && normalizedLogMode !== 'hide');
+	const shouldOpenLog = $derived(
+		normalizedLogMode === 'open' ||
+			(normalizedLogMode === 'failed' && getTotalIssues().length > 0)
+	);
 
-	function cleanProps(props) {
-		const clean = {};
+	function normalizeModeViews(values: Array<DemoMode | string>): DemoMode[] {
+		const nextModes: DemoMode[] = [];
+
+		for (const value of values) {
+			const candidate = String(value).trim().toLowerCase() as DemoMode;
+			if (validModes.includes(candidate)) nextModes.push(candidate);
+		}
+
+		return nextModes.length ? nextModes : ['auto'];
+	}
+
+	function normalizeDebugView(value: unknown): DebugViewName {
+		const candidate = String(value).trim().toLowerCase();
+		if (candidate === 'inline') return 'inline';
+		if (candidate === 'split') return 'split';
+		return 'off';
+	}
+
+	function normalizeLogMode(value: unknown): LogMode {
+		const candidate = String(value).trim().toLowerCase();
+		if (candidate === 'open') return 'open';
+		if (candidate === 'failed') return 'failed';
+		return 'hide';
+	}
+
+	function cleanProps(props: DemoComponentProps): DemoComponentProps {
+		const clean: DemoComponentProps = {};
 
 		for (const [key, value] of Object.entries(props)) {
 			if (value !== '') clean[key] = value;
@@ -73,13 +251,13 @@
 		return clean;
 	}
 
-	function mergeProps(local, global) {
+	function mergeProps(local: DemoComponentProps, global: DemoComponentProps): DemoComponentProps {
 		const cleanLocal = cleanProps(local);
 		const cleanGlobal = cleanProps(global);
-		const classNames = [];
+		const classNames: string[] = [];
 
-		if (cleanLocal.class) classNames.push(cleanLocal.class);
-		if (cleanGlobal.class) classNames.push(cleanGlobal.class);
+		if (typeof cleanLocal.class === 'string' && cleanLocal.class) classNames.push(cleanLocal.class);
+		if (typeof cleanGlobal.class === 'string' && cleanGlobal.class) classNames.push(cleanGlobal.class);
 
 		return {
 			...cleanLocal,
@@ -88,7 +266,7 @@
 		};
 	}
 
-	function getDebugViews(value) {
+	function getDebugViews(value: DebugViewName): DebugViewItem[] {
 		if (value === 'inline') {
 			return [{ key: 'inline', label: 'Debug', debug: true }];
 		}
@@ -103,7 +281,11 @@
 		];
 	}
 
-	function getResolvedViewCols(value, modes, views) {
+	function getResolvedViewCols(
+		value: string | number,
+		modes: DemoMode[],
+		views: DebugViewItem[]
+	): number {
 		const numericValue = Number(value);
 
 		if ([1, 2, 3, 4, 5, 6].includes(numericValue)) return numericValue;
@@ -111,7 +293,7 @@
 		return Math.min(6, Math.max(1, modes.length * views.length));
 	}
 
-	function hasExplicitModifier(key) {
+	function hasExplicitModifier(key: string): boolean {
 		for (const modifier of placeModifiers) {
 			if (key.endsWith(modifier)) return true;
 		}
@@ -119,10 +301,10 @@
 		return false;
 	}
 
-	function createModifiedSnippets(source, modifier) {
+	function createModifiedSnippets(source: DemoSnippets, modifier: string): DemoSnippets {
 		if (!modifier) return source;
 
-		const modified = {};
+		const modified: DemoSnippets = {};
 
 		for (const [key, snippet] of Object.entries(source)) {
 			if (typeof snippet !== 'function') {
@@ -137,8 +319,8 @@
 		return modified;
 	}
 
-	function createFlatViews(modes, views) {
-		const flat = [];
+	function createFlatViews(modes: DemoMode[], views: DebugViewItem[]): FlatView[] {
+		const flat: FlatView[] = [];
 
 		for (const mode of modes) {
 			for (const view of views) {
@@ -149,12 +331,12 @@
 		return flat;
 	}
 
-	function getPrimaryView() {
-		if (debugView === 'inline') return 'inline';
+	function getPrimaryView(): DebugViewKey {
+		if (normalizedDebugView === 'inline') return 'inline';
 		return 'normal';
 	}
 
-	function createProps(mode, debug) {
+	function createProps(mode: DemoMode, debug: boolean): DemoComponentProps {
 		const { mode: _mode, debug: _debug, children: _children, ...rest } = mergedProps;
 
 		return {
@@ -164,11 +346,11 @@
 		};
 	}
 
-	function getPanelKey(mode, view) {
+	function getPanelKey(mode: DemoMode | string, view: string): string {
 		return `${mode}:${view}`;
 	}
 
-	function createEmptyStats() {
+	function createEmptyStats(): PanelStats {
 		return {
 			found: false,
 			mode: '',
@@ -183,18 +365,18 @@
 		};
 	}
 
-	function toIndexes(value) {
+	function toIndexes(value: unknown): number[] {
 		return String(value || '')
 			.split(',')
 			.map((item) => Number(item.trim()))
 			.filter(Boolean);
 	}
 
-	function toText(element) {
+	function toText(element: Element | null | undefined): string {
 		return element?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
 	}
 
-	function toCssData(element) {
+	function toCssData(element: Element): CssData {
 		const style = getComputedStyle(element);
 
 		return {
@@ -227,21 +409,22 @@
 		};
 	}
 
-	function toChildData(element) {
-		const items = [];
+	function toChildData(element: HTMLElement): ChildData {
+		const items: ChildDataItem[] = [];
 
 		for (const child of element.children) {
+			const childElement = child as HTMLElement;
 			items.push({
-				tag: child.tagName.toLowerCase(),
-				className: child.className || '',
-				text: toText(child)
+				tag: childElement.tagName.toLowerCase(),
+				className: childElement.className || '',
+				text: toText(childElement)
 			});
 		}
 
 		return { count: items.length, items };
 	}
 
-	function toRootData(element, index) {
+	function toRootData(element: HTMLElement, index: number): RootData {
 		const rect = element.getBoundingClientRect();
 
 		return {
@@ -267,7 +450,7 @@
 		};
 	}
 
-	function toItemData(element) {
+	function toItemData(element: HTMLElement): ItemData {
 		return {
 			label: element.dataset.gridLabel || '',
 			base: element.dataset.gridBase || '',
@@ -280,8 +463,8 @@
 		};
 	}
 
-	function getResolvedModes(roots) {
-		const modes = new Set();
+	function getResolvedModes(roots: RootData[]): string[] {
+		const modes = new Set<string>();
 
 		for (const root of roots) {
 			for (const child of root.children.items) {
@@ -293,23 +476,23 @@
 		return [...modes];
 	}
 
-	function readPanel(panel) {
-		const roots = [];
-		const rootElements = panel?.querySelectorAll('.root-grid') ?? [];
+	function readPanel(panel: HTMLDivElement | undefined): PanelStats {
+		const roots: RootData[] = [];
+		const rootElements = panel ? panel.querySelectorAll<HTMLElement>('.root-grid') : [];
 
-		for (const [index, root] of rootElements.entries()) {
+		for (const [index, root] of Array.from(rootElements).entries()) {
 			roots.push(toRootData(root, index));
 		}
 
-		const debugRoot = panel?.querySelector('[data-grid-root="true"]');
+		const debugRoot = panel?.querySelector<HTMLElement>('[data-grid-root="true"]');
 		const resolvedModes = getResolvedModes(roots);
 
 		if (!debugRoot) {
 			return { ...createEmptyStats(), resolvedModes, roots };
 		}
 
-		const itemElements = debugRoot.querySelectorAll('[data-grid-role="item"]');
-		const items = [];
+		const itemElements = debugRoot.querySelectorAll<HTMLElement>('[data-grid-role="item"]');
+		const items: ItemData[] = [];
 
 		for (const element of itemElements) {
 			items.push(toItemData(element));
@@ -329,11 +512,11 @@
 		};
 	}
 
-	function getStats(mode, view = getPrimaryView()) {
+	function getStats(mode: DemoMode, view: DebugViewKey = getPrimaryView()): PanelStats {
 		return stats[getPanelKey(mode, view)] ?? createEmptyStats();
 	}
 
-	function getAutoModeLabel(mode, viewKey) {
+	function getAutoModeLabel(mode: DemoMode, viewKey: DebugViewKey): string {
 		const activeStats = getStats(mode, viewKey);
 		const modes = activeStats.resolvedModes;
 
@@ -342,25 +525,25 @@
 		return `AUTO (${modes.map((item) => item.toUpperCase()).join('+')})`;
 	}
 
-	function getModeClass(mode) {
+	function getModeClass(mode: DemoMode): string {
 		return `is-mode-${mode}`;
 	}
 
-	function toComparableList(values) {
+	function toComparableList(values: ComparableValue[]): string {
 		return [...values].map(String).sort().join('|');
 	}
 
-	function toExpectedLabel(value) {
+	function toExpectedLabel(value: string): string {
 		if (!placeModifier) return value;
 		if (!value.endsWith(placeModifier)) return value;
 
 		return value.slice(0, -placeModifier.length);
 	}
 
-	function createIssues(mode) {
+	function createIssues(mode: DemoMode): string[] {
 		const expectedValue = expect?.[mode];
 		const activeStats = getStats(mode);
-		const nextIssues = [];
+		const nextIssues: string[] = [];
 
 		if (!expectedValue) return nextIssues;
 
@@ -385,8 +568,8 @@
 		return nextIssues;
 	}
 
-	function getTotalIssues() {
-		const issues = [];
+	function getTotalIssues(): string[] {
+		const issues: string[] = [];
 
 		for (const mode of visibleModes) {
 			for (const issue of createIssues(mode)) {
@@ -397,18 +580,18 @@
 		return issues;
 	}
 
-	function getStatusLabel() {
+	function getStatusLabel(): string {
 		if (!expect) return 'Inspect';
 		return getTotalIssues().length ? 'Failed' : 'Passed';
 	}
 
-	function getStatusClass() {
+	function getStatusClass(): string {
 		if (!expect) return 'is-neutral';
 		return getTotalIssues().length ? 'is-failed' : 'is-passed';
 	}
 
-	function createLogPayload() {
-		const payload = {};
+	function createLogPayload(): Record<string, Record<string, PanelStats>> {
+		const payload: Record<string, Record<string, PanelStats>> = {};
 
 		for (const mode of visibleModes) {
 			payload[mode] = {};
@@ -421,15 +604,15 @@
 		return payload;
 	}
 
-	async function copyLog(value) {
+	async function copyLog(value: unknown): Promise<void> {
 		if (typeof navigator === 'undefined' || !navigator.clipboard) return;
 		await navigator.clipboard.writeText(JSON.stringify(value, null, 2));
 	}
 
-	async function refreshStats() {
+	async function refreshStats(): Promise<void> {
 		await tick();
 
-		const nextStats = {};
+		const nextStats: Record<string, PanelStats> = {};
 
 		for (const panel of flatViews) {
 			nextStats[getPanelKey(panel.mode, panel.view.key)] = readPanel(panelRefs[panel.key]);
@@ -444,10 +627,12 @@
 		snippetsKey;
 		modeViews;
 		debugView;
+		normalizedDebugView;
 		viewCols;
 		placeModifier;
 		inspect;
 		logMode;
+		normalizedLogMode;
 		children;
 
 		refreshStats();
@@ -472,11 +657,13 @@
 
 				<div class="demo-panel-body" bind:this={panelRefs[panel.key]}>
 					{#key `${panel.mode}:${panel.view.key}:${propsKey}:${snippetsKey}`}
-						<Component {...createProps(panel.mode, panel.view.debug)} {...modifiedSnippets}>
-							{#if children}
+						{#if children}
+							<Component {...createProps(panel.mode, panel.view.debug)} {...modifiedSnippets}>
 								{@render children()}
-							{/if}
-						</Component>
+							</Component>
+						{:else}
+							<Component {...createProps(panel.mode, panel.view.debug)} {...modifiedSnippets} />
+						{/if}
 					{/key}
 				</div>
 			</section>

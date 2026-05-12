@@ -96,13 +96,14 @@
 
 	const resolvedTag = $derived(tag ?? 'div');
 	const defaultItemTag = $derived(engine.getItemTag(String(resolvedTag)));
-	const rootGrid = $derived(engine.normalizeGrid(grid));
-	const rootMode = $derived(engine.normalizeMode(mode));
-	const rootRatio = $derived(engine.normalizeRatio(ratio));
 	const rootRail = $derived(engine.normalizeRail(rail));
 	const rootRails = $derived(engine.normalizeRail(rails));
+	const rootGrid = $derived(engine.getRootGrid(grid, rails));
+	const rootMode = $derived(engine.normalizeMode(mode));
+	const rootRatio = $derived(engine.normalizeRatio(ratio));
 	const rootRailColumn = $derived(engine.getRailColumn(rail));
 	const rootRailsColumn = $derived(engine.getRailColumn(rails));
+	const rootRailClassName = $derived(engine.getRailClassName(rail));
 	const defaultSnippetZoneRailColumn = $derived(engine.getRailColumn('content'));
 	const hasRatio = $derived(rootRatio !== 'auto');
 
@@ -146,7 +147,6 @@
 		engine.shouldUseRootRuntime({
 			debug,
 			grid,
-			rail,
 			rails,
 			ratio,
 			mode,
@@ -340,6 +340,7 @@
 					debug
 				})
 				: className,
+			!shouldUseRootRuntime ? rootRailClassName : undefined,
 			shouldUseRootRuntime && rootRails ? `is-rails-${rootRails}` : undefined
 		)
 	);
@@ -371,7 +372,10 @@
 				!shouldUseSnippetZone && rootItems ? `--grid-place-items: ${rootItems}` : undefined,
 				!shouldUseSnippetZone && rootContent ? `--grid-place-content: ${rootContent}` : undefined
 			)
-			: styleName,
+			: engine.mergeStyles(
+				styleName,
+				rootRailColumn ? `grid-column: ${rootRailColumn}` : undefined
+			),
 		...rootDebugAttributes
 	} satisfies engine.RootRendererProps);
 
@@ -472,6 +476,8 @@
 			{@render children()}
 		{:else if label}
 			{label}
+		{:else if rootRail}
+			{rootRail}
 		{/if}
 	{:else if shouldUseSnippetZone}
 		<div
