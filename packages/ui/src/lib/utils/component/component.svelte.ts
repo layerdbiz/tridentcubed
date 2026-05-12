@@ -1,14 +1,74 @@
-import { createClasses } from "@layerd/ui";
-import type { ObserveOptions } from "@layerd/ui";
+import type { Snippet } from "svelte";
+import type { SvelteHTMLElements } from "svelte/elements";
+import {
+	createClasses,
+	type GridValue,
+	type ObserveClass,
+	type ObserveOptions,
+	type PlacementMode,
+	type PlacementValue,
+	type RootRendererProps,
+	type RootSnippetConfig,
+	type RootSnippetValue,
+} from "@layerd/ui";
 
 /**
  * Creates base styling attributes that can be spread onto HTML elements
  */
 
+export type ComponentTag = keyof SvelteHTMLElements;
+export type ComponentLayoutSnippet = Snippet;
+export type ComponentContentSnippet = Snippet<[string?]>;
+export type ComponentRootArgs = {
+	props: RootRendererProps;
+	layout: ComponentLayoutSnippet;
+};
+export type ComponentRenderProps = ComponentReturn & RootRendererProps;
+export type ComponentRenderArgs = ComponentRootArgs & {
+	props: ComponentRenderProps;
+	content: ComponentContentSnippet;
+	observe?: ObserveClass;
+};
+
+export interface ComponentItemProps {
+	topLeft?: RootSnippetValue;
+	top?: RootSnippetValue;
+	topRight?: RootSnippetValue;
+	left?: RootSnippetValue;
+	center?: RootSnippetValue;
+	right?: RootSnippetValue;
+	bottomLeft?: RootSnippetValue;
+	bottom?: RootSnippetValue;
+	bottomRight?: RootSnippetValue;
+	a1?: RootSnippetValue;
+	b1?: RootSnippetValue;
+	c1?: RootSnippetValue;
+	a2?: RootSnippetValue;
+	b2?: RootSnippetValue;
+	c2?: RootSnippetValue;
+	a3?: RootSnippetValue;
+	b3?: RootSnippetValue;
+	c3?: RootSnippetValue;
+	row1?: RootSnippetValue;
+	row2?: RootSnippetValue;
+	row3?: RootSnippetValue;
+	col1?: RootSnippetValue;
+	col2?: RootSnippetValue;
+	col3?: RootSnippetValue;
+	topHalf?: RootSnippetValue;
+	bottomHalf?: RootSnippetValue;
+	leftHalf?: RootSnippetValue;
+	rightHalf?: RootSnippetValue;
+	bg?: RootSnippetValue;
+	full?: RootSnippetValue;
+	fg?: RootSnippetValue;
+}
+
 // Simple approach: Use a regular interface with JSDoc warnings for conflicts
-export interface ComponentProps {
+export interface ComponentProps extends ComponentItemProps {
 	// 📝 CONTENT
 	label?: string;
+	children?: Snippet;
 
 	// 🎨 STYLES
 	color?:
@@ -31,6 +91,7 @@ export interface ComponentProps {
 
 	// STYLED
 	base?: boolean;
+	neutral?: boolean;
 	primary?: boolean;
 	secondary?: boolean;
 	accent?: boolean;
@@ -71,6 +132,22 @@ export interface ComponentProps {
 	// 📜 SCROLL
 	scroll?: boolean;
 
+	// 🧱 LAYOUT
+	tag?: ComponentTag;
+	style?: string;
+	grid?: GridValue;
+	rail?: string;
+	rails?: string;
+	ratio?: string;
+	mode?: PlacementMode;
+	items?: PlacementValue;
+	content?: PlacementValue;
+	rows?: string;
+	cols?: string;
+	gap?: string;
+	snippets?: Partial<Record<string, RootSnippetConfig>>;
+	component?: Snippet<[ComponentRenderArgs]>;
+
 	// 🎯 CUSTOMIZATION
 	class?: string;
 
@@ -89,13 +166,12 @@ export interface ComponentReturn {
  * with snippet-specific functionality
  */
 export interface ComponentWrapperProps extends ComponentProps {
-	component?: import("svelte").Snippet<
-		[{
-			props: ComponentReturn;
-			content: import("svelte").Snippet<[string?]>;
-			observe?: import("@layerd/ui").ObserveClass;
-		}]
-	>;
+}
+
+export function normalizeComponentTag(
+	tag: ComponentTag | undefined,
+): ComponentTag {
+	return tag ?? "div";
 }
 
 export function createComponent(

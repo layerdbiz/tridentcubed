@@ -101,7 +101,55 @@ export const mySync = new Proxy({}, {
 - **Auto-generation**: Barrel exports and stories generate automatically during `pnpm dev`
 - **JSDoc tags required**: `@tags` comments enable story generation
 - **Tailwind layout only**: No color utilities - colors come from base system
+- **Svelte attribute style**: In markup attributes, avoid JavaScript template literals. Prefer quoted interpolation such as `class="panel {(props.class ?? '').trim()}"`
 - **Prop type naming**: Use the `NameProps` convention for prop types and imported prop type names, for example `GridProps`, `InputProps`, `FieldProps`
+
+### Base Component Runtime
+
+- `Component` is the public base component for normal authoring in `packages/ui`.
+- `Root` is the internal runtime owner for layout, snippets, rails, and base grid behavior.
+- Keep only `component.svelte.ts` and `root.svelte.ts` in `src/lib/utils/component/` because they pair directly with `component.svelte` and `root.svelte`.
+- Move supporting utility-only `.svelte.ts` files such as `rails.svelte.ts` and `snippets.svelte.ts` into root `src/lib/utils/`, not `src/lib/utils/component/`.
+- Do not import `Root` directly for normal component authoring.
+- Preserve the existing `ComponentProps` extension and `Omit<ComponentProps, ...>` patterns instead of inventing wrapper-local base prop types.
+- Prefer direct wrapper authoring with `<Component tag="section">` and place wrapper children or named layout snippets directly inside `<Component>`.
+- Preserve legacy `component({ props, content, observe })` compatibility for advanced wrappers that must fully take over rendering, but do not use that snippet as the default authoring pattern anymore.
+- Layout snippets such as `left`, `center`, `right`, `topLeft`, `row1`, `a1b2`, `topHalf`, `bg`, `full`, and `fg` are available through `ComponentProps`.
+- `rails` enables the rail-aware container runtime. `rail` is placement-only and must not imply rails container mode.
+- Snippet-zone wrappers are runtime-owned and should only appear when the rails-plus-layout case requires them.
+- Keep `size` as the existing UI visual size prop in `packages/ui`; do not use it as layout track sizing here.
+- When building wrapper components, keep passing `...props` into `<Component>`. The default base runtime now renders the requested `tag` and carries HTML attributes, classes, children, and layout snippets through automatically. Only spread snippet `props` onto a rendered element when you intentionally opt into the legacy custom `component(...)` snippet path.
+
+```svelte
+<script lang="ts">
+	import { Component, type ComponentProps } from '@layerd/ui';
+
+	export interface PanelProps extends ComponentProps {
+		title?: string;
+	}
+
+	let { title = 'Panel', children = undefined, ...props }: PanelProps = $props();
+</script>
+
+<Component
+	{...props}
+	tag="section"
+	rails="content-lg"
+	class="panel {(props.class ?? '').trim()}"
+>
+	{#snippet left()}
+		<h2>{title}</h2>
+	{/snippet}
+
+	{#snippet right()}
+		{#if children}
+			{@render children()}
+		{/if}
+	{/snippet}
+</Component>
+```
+
+- Use the legacy `component(...)` snippet only when a wrapper needs to replace the default single-root-tag rendering or requires direct access to render args such as `layout`, `content`, or `observe`.
 
 ### Internal Package Import Exception
 
@@ -117,6 +165,7 @@ export const mySync = new Proxy({}, {
 - **Folder organization**:
   - Utilities with ONLY `.svelte.ts` files → stay in root `utils/` directory
   - Utilities with BOTH `.svelte.ts` AND `.svelte` components → create dedicated `utils/utilityname/` folder
+  - Base runtime exception: only `utils/component/component.svelte.ts` and `utils/component/root.svelte.ts` stay in `utils/component/`; related helper-only files still belong in root `utils/`
 - **Import conventions**:
   - Components: Always import as `import { UtilityName } from '@layerd/ui';`
   - Utility classes: Always import as `import { UtilityNameClass } from '@layerd/ui';`

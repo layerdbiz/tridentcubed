@@ -1,6 +1,6 @@
 <!-- RailsDemos.svelte -->
 <script>
-	import { Component } from '$lib';
+	import { Component } from '@layerd/ui';
 	import Demo from './Demo.svelte';
 
 	let {

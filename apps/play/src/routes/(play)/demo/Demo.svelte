@@ -1,6 +1,6 @@
 <!-- Demo.svelte -->
 <script lang="ts">
-	import { Component } from '$lib';
+	import { Component } from '@layerd/ui';
 	import type { PlacementMode } from '$lib';
 	import type { Snippet } from 'svelte';
 	import { tick } from 'svelte';

@@ -2,7 +2,7 @@
 	/**
 	 * @tags text, typography, heading, paragraph
 	 */
-	import { Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
+	import { Component, type ComponentProps, type ComponentRenderArgs } from '@layerd/ui';
 	import { onMount, onDestroy, untrack } from 'svelte';
 
 	export interface TextProps extends ComponentProps {
@@ -372,11 +372,7 @@
 		props: componentProps,
 		content,
 		observe: observeInstance
-	}: {
-		props: ComponentReturn;
-		content: import('svelte').Snippet<[string?]>;
-		observe?: import('@layerd/ui').ObserveClass;
-	})}
+	}: ComponentRenderArgs)}
 		{@const isIntersecting = observeInstance?.isIntersecting ?? true}
 		{@const enabledProp = typewriter?.enabled}
 		{@const enabled = enabledProp !== undefined ? enabledProp : isIntersecting}

@@ -15,8 +15,8 @@ export default defineConfig({
 	],
 	server: {
 		fs: {
-			// Allow serving files from the monorepo root
-			allow: [".."],
+			// Allow serving workspace package sources like packages/ui during dev
+			allow: [path.resolve(__dirname, "../..")],
 		},
 		watch: {
 			// Better symlink handling

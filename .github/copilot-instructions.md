@@ -26,6 +26,7 @@ Path-specific rules live in `.github/instructions/*.instructions.md`.
 - Atomic: each function does one job; build flows from atoms; reuse helpers.
 - Flexible APIs: matcher, transformer, and check APIs accept String, RegExp, or Function and receive `(value, pos)`.
 - Loops and style: use `for...of` only; no `forEach` or `for (i = ...)`; use dot notation.
+- In Svelte markup attributes, do not use JavaScript template literals for class or attribute composition. Prefer Svelte interpolation inside quoted attributes, for example `class="panel {(props.class ?? '').trim()}"`.
 - Naming: camelCase public, snake_case private, kebab-case CSS; booleans use `is` or `has`; converters use `toX`.
 - Reuse before write: scan prior summaries, extend utilities, and ask if unsure.
 - Output hygiene: keep answers lean, readable, modular, and emit only needed code.
