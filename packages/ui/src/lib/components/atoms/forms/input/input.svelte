@@ -5,11 +5,13 @@
 	 */
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import '../forms.css';
-	import { Component, type ComponentReturn, Icon } from '@layerd/ui';
 	import {
+		Component,
+		type ComponentReturn,
 		createFormField,
+		Icon,
 		type TextFieldProps
-	} from '../field.svelte.ts';
+	} from '@layerd/ui';
 
 	const uid = $props.id();
 

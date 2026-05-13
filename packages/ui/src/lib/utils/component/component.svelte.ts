@@ -1,5 +1,6 @@
 import type { Snippet } from "svelte";
 import type { SvelteHTMLElements } from "svelte/elements";
+import type { DebugValueType } from "../debug/debug.svelte.ts";
 import {
 	createClasses,
 	type GridValue,
@@ -124,7 +125,7 @@ export interface ComponentProps extends ComponentItemProps {
 	disabled?: boolean;
 
 	// 🐞 DEBUG
-	debug?: boolean;
+	debug?: boolean | DebugValueType;
 
 	// 🎯 OBSERVATION
 	observe?: boolean | ObserveOptions;

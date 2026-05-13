@@ -5,11 +5,13 @@
 	 */
 	import type { HTMLSelectAttributes } from 'svelte/elements';
 	import '../forms.css';
-	import { Component, type ComponentReturn, Icon } from '@layerd/ui';
 	import {
+		Component,
+		type ComponentReturn,
 		createFormField,
-		type FieldProps
-	} from '../field.svelte.ts';
+		type FieldProps,
+		Icon
+	} from '@layerd/ui';
 
 	const uid = $props.id();
 	type SelectValueType = string | string[];

@@ -1,11 +1,6 @@
 <script lang="ts">
-	import {
-		Component,
-		type ComponentAppearance,
-		type ComponentColor,
-		type ComponentRenderArgs
-	} from '$lib';
-	import { mq } from '@layerd/ui/utils/mq.svelte.ts';
+	import { Component, type ComponentRenderArgs } from '@layerd/ui';
+	import { mq } from '@layerd/ui';
 
 	const featureMode = $derived(mq.sm || mq.md ? 'compact' : 'grid');
 
@@ -23,7 +18,7 @@
 							: 'base'
 	);
 
-	const mqComponentColor = $derived<ComponentColor>(
+	const mqComponentColor = $derived(
 		mq.xxl
 			? 'primary'
 			: mq.xl
@@ -37,7 +32,7 @@
 							: 'base'
 	);
 
-	const mqComponentAppearance = $derived<ComponentAppearance>(
+	const mqComponentAppearance = $derived(
 		mq.xxl
 			? 'gradient'
 			: mq.xl

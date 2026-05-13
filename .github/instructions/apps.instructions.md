@@ -26,6 +26,8 @@ applyTo: 'apps/**/*.{svelte,ts,js,css}'
 - Use dot notation from the namespace rather than long destructured import lists when it improves readability.
 - Keep imports grouped by module responsibility so the top of the file stays easy to scan.
 - When a route-local module is imported as a namespace, keep the alias aligned with the file name, for example `projectConstants` for `projects.constants`, `projectStates` for `projects.state`, and `projectUtils` for `projects.utils`.
+- For shared UI package symbols in app code, import components, helpers, classes, and prop types from `@layerd/ui`, not from package-internal relative paths.
+- Do not reach into private `packages/ui/src/lib/**` files from app code when a symbol is exported from `@layerd/ui`.
 
 ## Svelte Component Props Pattern
 

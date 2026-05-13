@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import Controls from './Controls.svelte';
 	import RailsDemos from './RailsDemos.svelte';
 	import SnippetsDemos from './SnippetsDemos.svelte';
@@ -327,52 +327,55 @@
 	.demo-route-tabs button { @apply rounded-full bg-white px-4 py-2 text-sm font-black capitalize text-slate-500 outline-1 outline-slate-300 transition-colors; }
 	.demo-route-tabs button.active { @apply bg-slate-950 text-white outline-slate-950; }
 	.demo-route-stage { @apply grid gap-4; }
-	:global(.snippet-demos),
-	:global(.rails-demos) { @apply grid gap-2; }
-	:global(.demo-section-content) { @apply grid gap-3 p-3; }
-	:global(.demo.root-grid) { @apply min-h-16 rounded-xl p-3 outline-1 outline-sky-300; }
-	:global(.demo.root-grid > :where(:not(.root-grid):not(.is-debug):not(.slot-fallback):not(.is-snippet-zone))),
-	:global(.demo.root-grid > .is-snippet-zone > :where(:not(.root-grid):not(.is-debug):not(.slot-fallback))) {
-		@apply relative box-border block min-h-0 min-w-0 rounded-lg bg-white p-3 font-extrabold text-slate-950 shadow-sm outline-1 outline-slate-400/45;
+
+	:global {
+		.snippet-demos,
+		.rails-demos { @apply grid gap-2; }
+		.demo-section-content { @apply grid gap-3 p-3; }
+		.demo.root-grid { @apply min-h-16 rounded-xl p-3 outline-1 outline-sky-300; }
+		.demo.root-grid > :where(:not(.root-grid):not(.is-debug):not(.slot-fallback):not(.is-snippet-zone)),
+		.demo.root-grid > .is-snippet-zone > :where(:not(.root-grid):not(.is-debug):not(.slot-fallback)) {
+			@apply relative box-border block min-h-0 min-w-0 rounded-lg bg-white p-3 font-extrabold text-slate-950 shadow-sm outline-1 outline-slate-400/45;
+		}
+		.demo.root-grid > .is-cell:not(.is-debug),
+		.demo.root-grid > .is-snippet-zone > .is-cell:not(.is-debug) { @apply bg-sky-50 outline-sky-400; }
+		.demo.root-grid > .is-row:not(.is-debug),
+		.demo.root-grid > .is-snippet-zone > .is-row:not(.is-debug) { @apply bg-violet-50 outline-violet-400; }
+		.demo.root-grid > .is-col:not(.is-debug),
+		.demo.root-grid > .is-snippet-zone > .is-col:not(.is-debug) { @apply bg-indigo-50 outline-indigo-400; }
+		.demo.root-grid > .is-range:not(.is-debug),
+		.demo.root-grid > .is-snippet-zone > .is-range:not(.is-debug) { @apply bg-emerald-50 outline-emerald-400; }
+		.demo.root-grid > .is-half:not(.is-debug),
+		.demo.root-grid > .is-snippet-zone > .is-half:not(.is-debug) { @apply bg-orange-50 outline-orange-400; }
+		.demo.root-grid > .is-bg:not(.is-debug),
+		.demo.root-grid > .is-snippet-zone > .is-bg:not(.is-debug) { @apply bg-cyan-100/70 outline-cyan-400; }
+		.demo.root-grid > .is-full:not(.is-debug),
+		.demo.root-grid > .is-snippet-zone > .is-full:not(.is-debug) { @apply bg-amber-100/70 outline-amber-400; }
+		.demo.root-grid > .is-fg:not(.is-debug),
+		.demo.root-grid > .is-snippet-zone > .is-fg:not(.is-debug) { @apply bg-pink-100/70 outline-pink-400; }
+		.demo.root-grid > .is-debug,
+		.demo.root-grid > .is-snippet-zone > .is-debug {
+			@apply relative z-0 min-h-0 min-w-0 overflow-visible bg-slate-400/15 p-0 text-slate-500 outline-1 outline-dashed outline-slate-400;
+			pointer-events: none;
+			box-shadow: none;
+			border: 0;
+		}
+		.demo.root-grid > .is-debug .slot-fallback,
+		.demo.root-grid > .is-snippet-zone > .is-debug .slot-fallback {
+			@apply inline-block bg-transparent;
+			color: inherit;
+			font: inherit;
+			line-height: inherit;
+			white-space: nowrap;
+			pointer-events: none;
+		}
+		.demo.root-grid > .is-snippet-zone > :not(.is-debug) .slot-fallback,
+		.demo.root-grid > :not(.is-debug) .slot-fallback,
+		.demo.root-grid > .slot-fallback {
+			@apply inline-block rounded bg-white/70 px-2 py-1 font-extrabold;
+			color: inherit;
+		}
+		.demo-section { @apply overflow-hidden rounded-2xl bg-white outline-1 outline-slate-200; }
+		.demo-summary { @apply cursor-pointer px-4 py-3 text-sm font-black text-slate-900; }
 	}
-	:global(.demo.root-grid > .is-cell:not(.is-debug)),
-	:global(.demo.root-grid > .is-snippet-zone > .is-cell:not(.is-debug)) { @apply bg-sky-50 outline-sky-400; }
-	:global(.demo.root-grid > .is-row:not(.is-debug)),
-	:global(.demo.root-grid > .is-snippet-zone > .is-row:not(.is-debug)) { @apply bg-violet-50 outline-violet-400; }
-	:global(.demo.root-grid > .is-col:not(.is-debug)),
-	:global(.demo.root-grid > .is-snippet-zone > .is-col:not(.is-debug)) { @apply bg-indigo-50 outline-indigo-400; }
-	:global(.demo.root-grid > .is-range:not(.is-debug)),
-	:global(.demo.root-grid > .is-snippet-zone > .is-range:not(.is-debug)) { @apply bg-emerald-50 outline-emerald-400; }
-	:global(.demo.root-grid > .is-half:not(.is-debug)),
-	:global(.demo.root-grid > .is-snippet-zone > .is-half:not(.is-debug)) { @apply bg-orange-50 outline-orange-400; }
-	:global(.demo.root-grid > .is-bg:not(.is-debug)),
-	:global(.demo.root-grid > .is-snippet-zone > .is-bg:not(.is-debug)) { @apply bg-cyan-100/70 outline-cyan-400; }
-	:global(.demo.root-grid > .is-full:not(.is-debug)),
-	:global(.demo.root-grid > .is-snippet-zone > .is-full:not(.is-debug)) { @apply bg-amber-100/70 outline-amber-400; }
-	:global(.demo.root-grid > .is-fg:not(.is-debug)),
-	:global(.demo.root-grid > .is-snippet-zone > .is-fg:not(.is-debug)) { @apply bg-pink-100/70 outline-pink-400; }
-	:global(.demo.root-grid > .is-debug),
-	:global(.demo.root-grid > .is-snippet-zone > .is-debug) {
-		@apply relative z-0 min-h-0 min-w-0 overflow-visible bg-slate-400/15 p-0 text-slate-500 outline-1 outline-dashed outline-slate-400;
-		pointer-events: none;
-		box-shadow: none;
-		border: 0;
-	}
-	:global(.demo.root-grid > .is-debug .slot-fallback),
-	:global(.demo.root-grid > .is-snippet-zone > .is-debug .slot-fallback) {
-		@apply inline-block bg-transparent;
-		color: inherit;
-		font: inherit;
-		line-height: inherit;
-		white-space: nowrap;
-		pointer-events: none;
-	}
-	:global(.demo.root-grid > .is-snippet-zone > :not(.is-debug) .slot-fallback),
-	:global(.demo.root-grid > :not(.is-debug) .slot-fallback),
-	:global(.demo.root-grid > .slot-fallback) {
-		@apply inline-block rounded bg-white/70 px-2 py-1 font-extrabold;
-		color: inherit;
-	}
-	:global(.demo-section) { @apply overflow-hidden rounded-2xl bg-white outline-1 outline-slate-200; }
-	:global(.demo-summary) { @apply cursor-pointer px-4 py-3 text-sm font-black text-slate-900; }
 </style>

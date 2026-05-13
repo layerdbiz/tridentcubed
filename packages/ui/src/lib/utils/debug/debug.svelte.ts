@@ -1,6 +1,20 @@
 import { useEventListener } from "runed";
 import { browser } from "$app/environment";
 
+export interface DebugValueType {
+	auto?: boolean;
+	box?: boolean;
+	grid?: boolean;
+	rails?: boolean;
+}
+
+export interface NormalizedDebugValue {
+	auto: boolean;
+	box: boolean;
+	grid: boolean;
+	rails: boolean;
+}
+
 export interface DebugOptions {
 	/**
 	 * Whether debug mode is enabled
@@ -16,6 +30,43 @@ export interface DebugPosition {
 	centerY: number;
 	width: number;
 	height: number;
+}
+
+export function isDebugValueType(value: unknown): value is DebugValueType {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function normalizeDebugValue(value: unknown): NormalizedDebugValue {
+	if (value === true) {
+		return {
+			auto: true,
+			box: false,
+			grid: false,
+			rails: false,
+		};
+	}
+
+	if (!isDebugValueType(value)) {
+		return {
+			auto: false,
+			box: false,
+			grid: false,
+			rails: false,
+		};
+	}
+
+	return {
+		auto: Boolean(value.auto),
+		box: Boolean(value.box),
+		grid: Boolean(value.grid),
+		rails: Boolean(value.rails),
+	};
+}
+
+export function hasLayoutDebugValue(
+	value: Pick<NormalizedDebugValue, "grid" | "rails">,
+): boolean {
+	return value.grid || value.rails;
 }
 
 export class DebugClass {

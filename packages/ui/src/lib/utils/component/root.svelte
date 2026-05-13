@@ -2,6 +2,11 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { SvelteHTMLElements } from 'svelte/elements';
+	import {
+		hasLayoutDebugValue,
+		normalizeDebugValue,
+		type DebugValueType
+	} from '../debug/debug.svelte.ts';
 	import * as engine from '@layerd/ui';
 
 	type RootContent = Snippet | string | number | boolean | null | undefined;
@@ -21,7 +26,7 @@
 		class?: string;
 		style?: string;
 		tag?: keyof SvelteHTMLElements;
-		debug?: boolean;
+		debug?: boolean | DebugValueType;
 		grid?: engine.GridValue;
 		rail?: string;
 		rails?: string;
@@ -93,6 +98,8 @@
 
 	let itemRefs = $state<Record<string, HTMLElement | undefined>>({});
 	let itemEmpty = $state<Record<string, boolean>>({});
+	const resolvedDebug = $derived(normalizeDebugValue(debug));
+	const hasExplicitLayoutDebug = $derived(hasLayoutDebugValue(resolvedDebug));
 
 	const resolvedTag = $derived(tag ?? 'div');
 	const defaultItemTag = $derived(engine.getItemTag(String(resolvedTag)));
@@ -145,7 +152,7 @@
 	);
 	const shouldUseRootRuntime = $derived(
 		engine.shouldUseRootRuntime({
-			debug,
+			debug: hasExplicitLayoutDebug,
 			grid,
 			rails,
 			ratio,
@@ -159,23 +166,33 @@
 			itemSources
 		})
 	);
+	const hasRailsDebugImplementation = false;
+	const isAutoGridDebug = $derived(resolvedDebug.auto && shouldUseRootRuntime && rootGrid !== 'rails');
+	const isAutoRailsDebug = $derived(
+		hasRailsDebugImplementation && resolvedDebug.auto && shouldUseRootRuntime && rootGrid === 'rails'
+	);
+	const isGridDebugEnabled = $derived(resolvedDebug.grid || isAutoGridDebug);
+	const isRailsDebugEnabled = $derived(
+		hasRailsDebugImplementation && (resolvedDebug.rails || isAutoRailsDebug)
+	);
+	const isLayoutDebugEnabled = $derived(isGridDebugEnabled || isRailsDebugEnabled);
 	const shouldShowRailFallback = $derived(shouldUseRootRuntime && Boolean(rootRail && !children));
 
 	const resolvedItems = $derived(engine.resolveItems(itemSources, mode, ratio, rootGrid));
 	const usageEnvelope = $derived(engine.getUsageEnvelope(resolvedItems));
-	const usesGridPlacement = $derived(debug || engine.hasGridPlacement(resolvedItems));
+	const usesGridPlacement = $derived(isLayoutDebugEnabled || engine.hasGridPlacement(resolvedItems));
 	const usesCompactMode = $derived(engine.hasCompactPlacement(resolvedItems));
-	const usesCompactPlacement = $derived(!debug && usesCompactMode);
+	const usesCompactPlacement = $derived(!isLayoutDebugEnabled && usesCompactMode);
 	const usesFitPlacement = $derived(engine.hasFitPlacement(resolvedItems));
 	const usesFillPlacement = $derived(engine.hasFillPlacement(resolvedItems));
-	const usesDebugFitPlacement = $derived(debug && usesFitPlacement);
+	const usesDebugFitPlacement = $derived(isLayoutDebugEnabled && usesFitPlacement);
 	const hasResolvedItems = $derived(resolvedItems.length > 0);
 	const hasExplicitRowTracks = $derived(Boolean(rows.trim() || size.trim()));
 	const hasExplicitColTracks = $derived(Boolean(cols.trim() || size.trim()));
-	const shouldEmitRows = $derived(debug || hasResolvedItems || hasExplicitRowTracks);
-	const shouldEmitCols = $derived(debug || hasResolvedItems || hasExplicitColTracks);
+	const shouldEmitRows = $derived(isLayoutDebugEnabled || hasResolvedItems || hasExplicitRowTracks);
+	const shouldEmitCols = $derived(isLayoutDebugEnabled || hasResolvedItems || hasExplicitColTracks);
 	const activeTracks = $derived(
-		debug
+		isLayoutDebugEnabled
 			? {
 					rows: engine.getInternalTrackIndexes(),
 					cols: engine.getInternalTrackIndexes(),
@@ -184,7 +201,7 @@
 				}
 			: usageEnvelope
 	);
-	const rootPlacementTracks = $derived(debug && hasRatio ? usageEnvelope : activeTracks);
+	const rootPlacementTracks = $derived(isLayoutDebugEnabled && hasRatio ? usageEnvelope : activeTracks);
 	const colTrackConfig = $derived(
 		cols.trim()
 			? engine.getResolvedTrackConfig(
@@ -218,7 +235,7 @@
 							usesFillPlacement,
 							usesDebugFitPlacement
 						),
-						is_pruned: !debug,
+						is_pruned: !isLayoutDebugEnabled,
 						kind: 'default'
 					}
 	);
@@ -255,7 +272,7 @@
 							usesFillPlacement,
 							usesDebugFitPlacement
 						),
-						is_pruned: !debug,
+						is_pruned: !isLayoutDebugEnabled,
 						kind: 'default'
 					}
 	);
@@ -279,7 +296,7 @@
 	);
 	const shouldUsePackedFriendlySnippetZone = $derived(
 		shouldUseSnippetZone &&
-			!debug &&
+			!isLayoutDebugEnabled &&
 			rootMode === 'auto' &&
 			!hasRatio &&
 			!rows.trim() &&
@@ -296,7 +313,7 @@
 	const rootContent = $derived(
 		userContent ||
 			engine.getAutoRatioRootContent(rootPlacementTracks.rows, rootPlacementTracks.cols, hasRatio, usesCompactMode, usesFillPlacement) ||
-			engine.getAutoRootContent(activeTracks.cols, debug)
+			engine.getAutoRootContent(activeTracks.cols, isLayoutDebugEnabled)
 	);
 	const packedFriendlyCols = $derived(
 		friendlyRailPackAxis === 'horizontal'
@@ -310,7 +327,7 @@
 	);
 	const debugItems = $derived(
 		engine.addPlacement(
-			debug ? engine.createDebugItems() : [],
+			isLayoutDebugEnabled ? engine.createDebugItems() : [],
 			rowTrackConfig,
 			colTrackConfig,
 			activeTracks,
@@ -330,6 +347,16 @@
 			shouldUsePackedFriendlySnippetZone ? friendlyRailPackAxis ?? undefined : undefined
 		)
 	);
+	const shouldUsePlainRailsAutoFlow = $derived(
+		rootGrid === 'rails' &&
+			Boolean(children) &&
+			!hasResolvedItems &&
+			!rows.trim() &&
+			!cols.trim() &&
+			!size.trim() &&
+			!userItems &&
+			!userContent
+	);
 	const rootClassName = $derived(
 		engine.mergeClasses(
 			shouldUseRootRuntime
@@ -337,17 +364,18 @@
 					className,
 					rootGrid,
 					rail,
-					debug
+					debug: isLayoutDebugEnabled
 				})
 				: className,
 			!shouldUseRootRuntime ? rootRailClassName : undefined,
+			shouldUsePlainRailsAutoFlow ? 'is-plain-rails-flow' : undefined,
 			shouldUseRootRuntime && rootRails ? `is-rails-${rootRails}` : undefined
 		)
 	);
 	const rootTrackRows = $derived(activeTracks.rows.join(','));
 	const rootTrackCols = $derived(activeTracks.cols.join(','));
 	const rootDebugAttributes = $derived(
-		engine.createRootDebugAttributes(debug, {
+		engine.createRootDebugAttributes(isLayoutDebugEnabled, {
 			rootGrid,
 			rootMode,
 			rootRail,
@@ -445,7 +473,7 @@
 		class={getItemClassName(item)}
 		style={getItemStyle(item)}
 		bind:this={itemRefs[item.key]}
-		{...engine.createItemDebugAttributes(debug, item, getItemDebugRole(item))}
+		{...engine.createItemDebugAttributes(isLayoutDebugEnabled, item, getItemDebugRole(item))}
 	>
 		{#if item.snippet}
 			{@render item.snippet()}
@@ -464,7 +492,7 @@
 		class={item.className}
 		style={getItemStyle(item)}
 		aria-hidden="true"
-		{...engine.createItemDebugAttributes(debug, item, 'debug')}
+		{...engine.createItemDebugAttributes(isLayoutDebugEnabled, item, 'debug')}
 	>
 		<span class="slot-fallback">{item.label}</span>
 	</div>
@@ -657,6 +685,11 @@
 
 		.root-grid.is-grid-rails > :where(:not(.is-debug)) {
 			grid-column: content-md-start / content-md-end;
+		}
+
+		.root-grid.is-grid-rails.is-plain-rails-flow {
+			align-content: start;
+			grid-auto-rows: max-content;
 		}
 
 		.root-grid.is-grid-rails > .is-rail-zone {

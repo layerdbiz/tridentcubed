@@ -46,6 +46,9 @@ import { Component } from '../component/component.svelte.ts';
 - `@layerd/ui` is configured as an alias in all Svelte configs
 - This prevents circular dependency issues and maintains consistency
 - Works for all exports
+- This applies to shared UI helpers, classes, runtime utilities, prop types, and base components, not just leaf UI components.
+- If a symbol is publicly exported from `@layerd/ui`, import it from `@layerd/ui` even when you are editing a file inside `packages/ui`.
+- Only use a package-local relative import when the target is truly private and not exported from `@layerd/ui`.
 
 ## Avoiding Circular Execution Dependencies
 
@@ -98,6 +101,7 @@ export const mySync = new Proxy({}, {
 
 - **Co-locate utilities**: `component.svelte.ts` for logic, `component.data.ts` for sample data
 - **Always use `@layerd/ui` imports**: Never use relative imports
+- **Shared UI symbols use the barrel**: In `packages/ui`, import shared helpers such as `createFormField`, `DebugClass`, `ObserveClass`, `ScrollClass`, `Root`, `ComponentProps`, and other exported runtime utilities from `@layerd/ui`, not sibling `../*.svelte.ts` files
 - **Auto-generation**: Barrel exports and stories generate automatically during `pnpm dev`
 - **JSDoc tags required**: `@tags` comments enable story generation
 - **Tailwind layout only**: No color utilities - colors come from base system

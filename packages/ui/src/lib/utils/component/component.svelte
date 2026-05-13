@@ -10,14 +10,18 @@
 		type ComponentRootArgs,
 		Debug,
 		DebugClass,
+		getRootGrid,
 		normalizeComponentTag,
+		normalizeDebugValue,
 		ObserveClass,
+		pickItemSources,
 		Root,
-		ScrollClass
+		ScrollClass,
 	} from '@layerd/ui';
 
 	// Constants
 	const COMPONENT_DEFAULT_TEXT = 'Component';
+	const trackAttachmentKey = createAttachmentKey();
 
 	let {
 		label = undefined,
@@ -37,7 +41,8 @@
 	const normalizedTag = $derived(normalizeComponentTag(tag));
 	const componentChildren = $derived(children || props.children);
 	const componentLabel = $derived(label ?? props.label);
-	const componentLayoutProps = $derived(() => {
+	const resolvedDebug = $derived(normalizeDebugValue(debug));
+	const componentLayoutProps = $derived.by(() => {
 		const {
 			topLeft,
 			top,
@@ -126,7 +131,39 @@
 			gap
 		};
 	});
-	const componentPropsWithoutRuntime = $derived(() => {
+	const componentItemSources = $derived(pickItemSources(componentLayoutProps));
+	const componentRootGrid = $derived(
+		getRootGrid(componentLayoutProps.grid, componentLayoutProps.rails)
+	);
+	const componentHasLayoutRuntimeRequest = $derived.by(() => {
+		if (Object.keys(componentItemSources).length > 0) {
+			return true;
+		}
+
+		for (const value of [
+			componentLayoutProps.grid,
+			componentLayoutProps.rails,
+			componentLayoutProps.ratio,
+			componentLayoutProps.mode,
+			componentLayoutProps.items,
+			componentLayoutProps.content,
+			componentLayoutProps.rows,
+			componentLayoutProps.cols,
+			componentLayoutProps.gap
+		]) {
+			if (String(value ?? '').trim()) {
+				return true;
+			}
+		}
+
+		return false;
+	});
+	const shouldShowBoxDebug = $derived(
+		resolvedDebug.box ||
+			resolvedDebug.rails ||
+			(resolvedDebug.auto && (!componentHasLayoutRuntimeRequest || componentRootGrid === 'rails'))
+	);
+	const componentPropsWithoutRuntime = $derived.by(() => {
 		const {
 			topLeft: _topLeft,
 			top: _top,
@@ -177,7 +214,7 @@
 
 	// Component creation
 	const { base: componentBaseProps, classes: componentClasses } = $derived(
-		createComponentWithStyles(componentPropsWithoutRuntime(), {
+		createComponentWithStyles(componentPropsWithoutRuntime, {
 			defaults: {},
 			componentClass,
 			getComponentClasses: () => []
@@ -207,7 +244,7 @@
 	const debugInstances = $derived(
 		Array.from(
 			{ length: componentTotal },
-			(_, i) => new DebugClass(() => elementRefs[i], { enabled: debug })
+			(_, i) => new DebugClass(() => elementRefs[i], { enabled: shouldShowBoxDebug })
 		)
 	);
 
@@ -229,12 +266,12 @@
 
 	function getComponentRootProps(index: number) {
 		return {
-			...componentLayoutProps(),
+			...componentLayoutProps,
 			...componentBaseProps,
-		class:
+			[trackAttachmentKey]:
+				shouldShowBoxDebug || observe || scroll ? createTrackElement(index) : undefined,
+			class:
 				`${componentClasses} ${observe && observeInstances[index]?.isIntersecting ? 'active' : ''} ${scroll && scrollInstances[index]?.hasScrolledDown ? 'scrolled' : ''}`.trim(),
-		// Add attachment to track element reference when debug, observe, or scroll is enabled
-			...(debug || observe || scroll ? { [createAttachmentKey()]: createTrackElement(index) } : {})
 		};
 	}
 </script>
@@ -262,7 +299,11 @@
 				observe: observe ? observeInstances[componentOffset] : undefined
 			})}
 		{:else}
-			<svelte:element this={normalizedTag} {...args.props}>
+			<svelte:element
+				this={normalizedTag}
+				{...args.props}
+				bind:this={elementRefs[componentOffset]}
+			>
 				{@render args.layout()}
 			</svelte:element>
 		{/if}
@@ -271,6 +312,7 @@
 	<Root
 		{...getComponentRootProps(componentOffset)}
 		{children}
+		debug={resolvedDebug}
 		label={componentLabel}
 		{snippets}
 		tag={normalizedTag}
@@ -279,8 +321,8 @@
 {/each}
 
 <!-- Debug overlays for all instances using Debug component -->
-{#if browser && debug}
-	{#each debugInstances as debugInstance, i}
+{#if browser && shouldShowBoxDebug}
+	{#each debugInstances as debugInstance, i (i)}
 		<Debug
 			debug={debugInstance}
 			index={i}
