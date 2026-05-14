@@ -345,10 +345,13 @@ export function getRailColumn(value: unknown): string | undefined {
 }
 
 /**
-	* Gutter rails expose preset spacing through the canonical definition, while
-	* dynamic inset values act as one-off safe-zone overrides for any rail.
+ * Gutter rails expose preset spacing through the canonical definition, while
+ * dynamic inset values act as one-off safe-zone overrides for any rail.
  */
-export function getRailInset(value: unknown, inset?: unknown): string | undefined {
+export function getRailInset(
+	value: unknown,
+	inset?: unknown,
+): string | undefined {
 	const railKey = normalizeRail(value);
 	if (!railKey) return undefined;
 

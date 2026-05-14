@@ -77,7 +77,7 @@
 	------------------------------------------------------------->
 	{#snippet a1a3()}
 		<!-- Deubg: Rails -->
-		<Component tag="nav" rails="full" class="flex flex-wrap gap-3 h-full py-5 bg-neutral-200">
+		<Component tag="nav" rails="gutter" class="flex flex-wrap gap-3 h-full py-5 bg-neutral-200">
 			{@render links()}
 			{@render railsDebugToggle()}
 		</Component>
