@@ -125,6 +125,10 @@ export interface ComponentProps extends ComponentItemProps {
 	disabled?: boolean;
 
 	// 🐞 DEBUG
+	/**
+	 * `true` enables automatic debug selection. Use the object form to opt into
+	 * `box`, `grid`, or `rails` explicitly.
+	 */
 	debug?: boolean | DebugValueType;
 
 	// 🎯 OBSERVATION
@@ -137,7 +141,19 @@ export interface ComponentProps extends ComponentItemProps {
 	tag?: ComponentTag;
 	style?: string;
 	grid?: GridValue;
+	/**
+	 * Places this component inside an existing rails container without enabling
+	 * rails mode on the component itself. Prefer short canonical names such as
+	 * `content`, `xs`, `sm`, `lg`, `xl`, `xxl`, `full`, `gutter-lg`, `left`,
+	 * and `right`; older long names remain compatibility aliases.
+	 */
 	rail?: string;
+	/**
+	 * Enables the rails container runtime. The canonical set includes the
+	 * content rails, the `gutter-*` pull-in family, `full`, and directional
+	 * rails. Values such as `md`, `content-md`, `content-xl`, `bleed-left`,
+	 * `inset-md`, and `full-inset-md` normalize back to that canonical set.
+	 */
 	rails?: string;
 	ratio?: string;
 	mode?: PlacementMode;
@@ -146,6 +162,13 @@ export interface ComponentProps extends ComponentItemProps {
 	rows?: string;
 	cols?: string;
 	gap?: string;
+	/**
+	 * Modifies a rail instead of naming a rail family. On `content`, `inset`
+	 * adjusts the safe edge. On `full`, it creates a one-off pull-in. Token
+	 * aliases such as `1`, `2`, `3`, `4`, `5`, `6`, `sm`, `md`, `lg`, and `xl`
+	 * map to inset spacing, while reusable pull-ins should use `gutter-*` rails.
+	 */
+	inset?: string;
 	snippets?: Partial<Record<string, RootSnippetConfig>>;
 	component?: Snippet<[ComponentRenderArgs]>;
 

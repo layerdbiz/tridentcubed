@@ -84,7 +84,8 @@
 			content,
 			rows,
 			cols,
-			gap
+			gap,
+			inset
 		} = props;
 
 		return {
@@ -128,7 +129,8 @@
 			content,
 			rows,
 			cols,
-			gap
+			gap,
+			inset
 		};
 	});
 	const componentItemSources = $derived(pickItemSources(componentLayoutProps));
@@ -159,9 +161,7 @@
 		return false;
 	});
 	const shouldShowBoxDebug = $derived(
-		resolvedDebug.box ||
-			resolvedDebug.rails ||
-			(resolvedDebug.auto && (!componentHasLayoutRuntimeRequest || componentRootGrid === 'rails'))
+		resolvedDebug.box || (resolvedDebug.auto && !componentHasLayoutRuntimeRequest)
 	);
 	const componentPropsWithoutRuntime = $derived.by(() => {
 		const {
@@ -206,6 +206,7 @@
 			rows: _rows,
 			cols: _cols,
 			gap: _gap,
+			inset: _inset,
 			...rest
 		} = props;
 

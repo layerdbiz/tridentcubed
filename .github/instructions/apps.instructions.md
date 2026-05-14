@@ -40,6 +40,9 @@ applyTo: 'apps/**/*.{svelte,ts,js,css}'
 - `Component` from `@layerd/ui` remains the public base wrapper; do not import the internal `Root` runtime in app code.
 - Layout snippets and rails behavior should be used through `Component`, not by recreating the runtime in route-local components.
 - `rails` enables the rail-aware container runtime. Singular `rail` stays placement-only and must not imply rails mode.
+- Rail aliases should normalize back to the short canonical rail names. Prefer `content`, `xs`, `sm`, `lg`, `xl`, `xxl`, `full`, `gutter-xs`, `gutter-sm`, `gutter-md`, `gutter-lg`, `gutter-xl`, `gutter-xxl`, `left`, `right`, `left-lg`, and `right-xl` when you are choosing or documenting rails explicitly.
+- `md` and `content-md` both normalize to the canonical `content` rail. The long `content-*`, `bleed-*`, `inset-*`, and `full-inset-*` names remain compatibility aliases, and numeric gutter aliases such as `gutter-4` normalize back to the matching canonical gutter rail.
+- Use `inset` as a modifier, not as a canonical rail family. On `content`, it adjusts the safe edge. On `full`, it creates a one-off pull-in. Token aliases such as `inset="1"`, `inset="sm"`, and `inset="md"` map to inset spacing, and reusable full-width pull-ins should use the canonical `gutter-*` rails.
 - In app wrappers, keep `size` aligned with the existing UI visual size prop semantics rather than treating it as layout track sizing.
 - For app wrapper components that compose child UI primitives, prefer a single `classes` prop object for child-part overrides instead of many parallel class props when callers need to style parts such as `accordion`, `title`, `content`, or `article`.
 - When both a root `class` prop and a `classes` object part override affect the same wrapper element, prefer the root `class` prop to win by placing it later in the final class string.

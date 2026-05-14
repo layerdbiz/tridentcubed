@@ -27,6 +27,7 @@ Path-specific rules live in `.github/instructions/*.instructions.md`.
 - Flexible APIs: matcher, transformer, and check APIs accept String, RegExp, or Function and receive `(value, pos)`.
 - Loops and style: use `for...of` only; no `forEach` or `for (i = ...)`; use dot notation.
 - In Svelte markup attributes, do not use JavaScript template literals for class or attribute composition. Prefer Svelte interpolation inside quoted attributes, for example `class="panel {(props.class ?? '').trim()}"`.
+- For shared `@layerd/ui` base layout work, keep `rails` as the container switch, keep `rail` placement-only, normalize old long rail names back to the short canonical names, use `content` as the default middle rail, use `gutter-*` as the reusable full-width-minus-spacing family, and use `inset` as a modifier rather than a canonical rail family.
 - Naming: camelCase public, snake_case private, kebab-case CSS; booleans use `is` or `has`; converters use `toX`.
 - Reuse before write: scan prior summaries, extend utilities, and ask if unsure.
 - Output hygiene: keep answers lean, readable, modular, and emit only needed code.

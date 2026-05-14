@@ -120,6 +120,10 @@ export const mySync = new Proxy({}, {
 - Preserve legacy `component({ props, content, observe })` compatibility for advanced wrappers that must fully take over rendering, but do not use that snippet as the default authoring pattern anymore.
 - Layout snippets such as `left`, `center`, `right`, `topLeft`, `row1`, `a1b2`, `topHalf`, `bg`, `full`, and `fg` are available through `ComponentProps`.
 - `rails` enables the rail-aware container runtime. `rail` is placement-only and must not imply rails container mode.
+- Keep rail names canonical when possible: `content`, `xs`, `sm`, `lg`, `xl`, `xxl`, `full`, `gutter-xs|sm|md|lg|xl|xxl`, `left`, `right`, `left-*`, and `right-*` are the source of truth. Friendly or legacy aliases such as `md`, `content-md`, `content-xl`, `content-xxl`, `popout`, `bleed-left`, `inset-md`, `full-inset-md`, and `gutter-4` should normalize back to those short canonical names.
+- Use `inset` as a modifier instead of a canonical rail family: on `content` it adjusts the safe edge, on `full` it creates a one-off pull-in, and reusable full-width pull-ins should use the canonical `gutter-*` rails.
+- Dynamic `inset` aliases such as `1`, `2`, `3`, `4`, `5`, `6`, `sm`, `md`, `lg`, and `xl` map to inset spacing tokens, not to rail widths.
+- Rails debug should visualize the canonical rail line system and use the same short canonical label on mirrored rails instead of separate alias-specific labels.
 - Snippet-zone wrappers are runtime-owned and should only appear when the rails-plus-layout case requires them.
 - Keep `size` as the existing UI visual size prop in `packages/ui`; do not use it as layout track sizing here.
 - When building wrapper components, keep passing `...props` into `<Component>`. The default base runtime now renders the requested `tag` and carries HTML attributes, classes, children, and layout snippets through automatically. Only spread snippet `props` onto a rendered element when you intentionally opt into the legacy custom `component(...)` snippet path.
@@ -138,7 +142,7 @@ export const mySync = new Proxy({}, {
 <Component
 	{...props}
 	tag="section"
-	rails="content-lg"
+	rails="lg"
 	class="panel {(props.class ?? '').trim()}"
 >
 	{#snippet left()}

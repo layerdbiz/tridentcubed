@@ -3,32 +3,67 @@
 	import RailsDemos from './RailsDemos.svelte';
 	import SnippetsDemos from './SnippetsDemos.svelte';
 
+	type TabType = 'snippets' | 'rails';
+	type ModeType = 'auto' | 'grid' | 'compact' | 'fit' | 'fill';
+	type DebugViewType = 'off' | 'inline' | 'split';
+	type ViewColsType = 'auto' | '1' | '2' | '3' | '4' | '5' | '6';
+	type LogModeType = 'open' | 'failed' | 'closed' | 'hide';
+	type ControlStateType = {
+		modeViews: ModeType[];
+		viewCols: ViewColsType;
+		debugView: DebugViewType;
+		logMode: LogModeType;
+	};
+	type ControlsStateType = Record<TabType, ControlStateType>;
+	type PartialControlsStateType = Partial<Record<TabType, Partial<ControlStateType>>>;
+	type SettingsStateType = {
+		activeTab: TabType;
+		controls: ControlsStateType;
+		placeModifier: string;
+		tag: string;
+		grid: string;
+		rail: string;
+		ratio: string;
+		size: string;
+		rows: string;
+		cols: string;
+		items: string;
+		content: string;
+		gap: string;
+		className: string;
+	};
+
 	const storageKey = 'play-route-demo-controls-v1';
-	const tabs = ['snippets', 'rails'];
-	const modeOptions = ['auto', 'grid', 'compact', 'fit', 'fill'];
-	const debugViewOptions = ['off', 'inline', 'split'];
-	const viewColOptions = ['auto', '1', '2', '3', '4', '5', '6'];
+	const tabs: TabType[] = ['snippets', 'rails'];
+	const modeOptions: ModeType[] = ['auto', 'grid', 'compact', 'fit', 'fill'];
+	const debugViewOptions: DebugViewType[] = ['off', 'inline', 'split'];
+	const viewColOptions: ViewColsType[] = ['auto', '1', '2', '3', '4', '5', '6'];
 	const placeModifierOptions = ['', 'TL', 'TC', 'TR', 'LC', 'CC', 'RC', 'BL', 'BC', 'BR'];
-	const logOptions = ['open', 'failed', 'closed', 'hide'];
+	const logOptions: LogModeType[] = ['open', 'failed', 'closed', 'hide'];
 	const gridOptions = ['', 'full', 'inline', 'rails'];
 	const tagOptions = ['', 'div', 'main', 'section', 'article', 'header', 'footer', 'aside', 'button', 'a', 'label', 'ul', 'ol'];
 
 	const railOptions = [
 		{ label: 'default', value: '' },
 		{ label: 'content', value: 'content' },
-		{ label: 'xs', value: 'content-xs' },
-		{ label: 'sm', value: 'content-sm' },
-		{ label: 'md', value: 'content-md' },
-		{ label: 'lg', value: 'content-lg' },
-		{ label: 'xl', value: 'content-xl' },
+		{ label: 'xs', value: 'xs' },
+		{ label: 'sm', value: 'sm' },
+		{ label: 'lg', value: 'lg' },
+		{ label: 'xl', value: 'xl' },
+		{ label: 'xxl', value: 'xxl' },
 		{ label: 'full', value: 'full' },
-		{ label: 'bleed', value: 'bleed' },
-		{ label: 'left', value: 'bleed-left' },
-		{ label: 'right', value: 'bleed-right' },
-		{ label: 'left-sm', value: 'bleed-left-sm' },
-		{ label: 'right-sm', value: 'bleed-right-sm' },
-		{ label: 'left-lg', value: 'bleed-left-lg' },
-		{ label: 'right-lg', value: 'bleed-right-lg' }
+		{ label: 'gutter-xs', value: 'gutter-xs' },
+		{ label: 'gutter-sm', value: 'gutter-sm' },
+		{ label: 'gutter-md', value: 'gutter-md' },
+		{ label: 'gutter-lg', value: 'gutter-lg' },
+		{ label: 'gutter-xl', value: 'gutter-xl' },
+		{ label: 'gutter-xxl', value: 'gutter-xxl' },
+		{ label: 'left', value: 'left' },
+		{ label: 'right', value: 'right' },
+		{ label: 'left-sm', value: 'left-sm' },
+		{ label: 'right-sm', value: 'right-sm' },
+		{ label: 'left-lg', value: 'left-lg' },
+		{ label: 'right-xl', value: 'right-xl' }
 	];
 
 	const ratioOptions = [
@@ -124,9 +159,9 @@
 	];
 
 	let hasLoadedSettings = $state(false);
-	let activeTab = $state('snippets');
+	let activeTab = $state<TabType>('snippets');
 	let placeModifier = $state('');
-	let controls = $state({
+	let controls = $state<ControlsStateType>({
 		snippets: { modeViews: ['auto'], viewCols: '2', debugView: 'split', logMode: 'hide' },
 		rails: { modeViews: ['auto'], viewCols: '1', debugView: 'off', logMode: 'hide' }
 	});
@@ -151,17 +186,32 @@
 
 	const componentProps = $derived(cleanProps({ tag, grid, rail, ratio, size, rows, cols, items, content, gap, class: className }));
 	const railsComponentProps = $derived({ ...componentProps, grid: 'rails' });
-	const currentSettings = $derived({ activeTab, controls, placeModifier, tag, grid, rail, ratio, size, rows, cols, items, content, gap, className });
+	const currentSettings = $derived({
+		activeTab,
+		controls,
+		placeModifier,
+		tag,
+		grid,
+		rail,
+		ratio,
+		size,
+		rows,
+		cols,
+		items,
+		content,
+		gap,
+		className
+	} satisfies SettingsStateType);
 
-	function cleanProps(props) {
-		const clean = {};
+	function cleanProps(props: Record<string, string>): Record<string, string> {
+		const clean: Record<string, string> = {};
 		for (const [key, value] of Object.entries(props)) {
 			if (value !== '') clean[key] = value;
 		}
 		return clean;
 	}
 
-	function getDefaultSettings() {
+	function getDefaultSettings(): SettingsStateType {
 		return {
 			activeTab: 'snippets',
 			controls: {
@@ -183,26 +233,31 @@
 		};
 	}
 
-	function normalizeModeViews(value) {
+	function normalizeModeViews(value: unknown): ModeType[] {
 		if (!Array.isArray(value) || !value.length) return ['auto'];
 		const nextModes = modeOptions.filter((mode) => value.includes(mode));
 		return nextModes.length ? nextModes : ['auto'];
 	}
 
-	function normalizeControls(value) {
+	function normalizeControls(value: unknown): ControlsStateType {
 		const defaults = getDefaultSettings().controls;
-		const source = value && typeof value === 'object' ? value : defaults;
+		const source = value && typeof value === 'object' ? (value as PartialControlsStateType) : defaults;
 		return {
 			snippets: { ...defaults.snippets, ...(source.snippets ?? {}), modeViews: normalizeModeViews(source.snippets?.modeViews) },
 			rails: { ...defaults.rails, ...(source.rails ?? {}), modeViews: normalizeModeViews(source.rails?.modeViews) }
 		};
 	}
 
-	function parseSettings(value) {
+	function parseSettings(value: string): SettingsStateType {
 		try {
-			const parsed = JSON.parse(value);
+			const parsed = JSON.parse(value) as Partial<SettingsStateType> | null;
 			if (!parsed || typeof parsed !== 'object') return getDefaultSettings();
-			return { ...getDefaultSettings(), ...parsed, activeTab: tabs.includes(parsed.activeTab) ? parsed.activeTab : 'snippets', controls: normalizeControls(parsed.controls) };
+			return {
+				...getDefaultSettings(),
+				...parsed,
+				activeTab: tabs.includes(parsed.activeTab as TabType) ? (parsed.activeTab as TabType) : 'snippets',
+				controls: normalizeControls(parsed.controls)
+			};
 		} catch {
 			return getDefaultSettings();
 		}
@@ -215,12 +270,12 @@
 		return parseSettings(saved);
 	}
 
-	function saveSettings(settings) {
+	function saveSettings(settings: SettingsStateType): void {
 		if (typeof localStorage === 'undefined') return;
 		localStorage.setItem(storageKey, JSON.stringify(settings));
 	}
 
-	function applySettings(settings) {
+	function applySettings(settings: SettingsStateType): void {
 		activeTab = settings.activeTab;
 		controls = settings.controls;
 		placeModifier = settings.placeModifier;
@@ -262,7 +317,7 @@
 		</div>
 
 		<nav class="demo-route-tabs" aria-label="Demo groups">
-			{#each tabs as tab}
+			{#each tabs as tab (tab)}
 				<button type="button" class:active={activeTab === tab} onclick={() => (activeTab = tab)}>{tab}</button>
 			{/each}
 		</nav>
