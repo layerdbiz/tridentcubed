@@ -1,12 +1,23 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import type { Snippet } from 'svelte';
+	import type { LayoutData } from './$types';
 	import '../app.css';
-	import { Component, mq } from '@layerd/ui';
+	import { Component, Mq, mq } from '@layerd/ui';
 	import * as demoRoutes from './(play)/demo/demo-routes';
 
-	let { children } = $props();
+	type LayoutProps = {
+		children: Snippet;
+		data: LayoutData;
+	};
+
+	let { children, data }: LayoutProps = $props();
+	let navOpen = $state(false);
 	const showRailsDebug = $derived(page.url.searchParams.get('railsDebug') === '1');
+	const layoutMqBucket = $derived(browser ? mq.bucket : data.initialMqBucket ?? 'md');
+	const isSm = $derived(layoutMqBucket === 'sm');
 
 	const navLinks = [
 		{ href: '/', label: 'Home' },
@@ -28,9 +39,27 @@
 		return nextUrl.pathname + nextUrl.search + nextUrl.hash;
 	}
 
+	function openNav(): void {
+		navOpen = true;
+	}
+
+	function closeNav(): void {
+		navOpen = false;
+	}
+
+	function handleNavSelection(): void {
+		if (isSm) {
+			closeNav();
+		}
+	}
+
 	function toggleRailsDebug(event: Event): void {
 		const target = event.currentTarget;
 		if (!(target instanceof HTMLInputElement)) return;
+
+		if (isSm) {
+			closeNav();
+		}
 
 		const nextUrl = new URL(page.url);
 		if (target.checked) {
@@ -45,15 +74,30 @@
 			replaceState: true
 		});
 	}
+
+	$effect(() => {
+		if (navOpen && !isSm) {
+			navOpen = false;
+		}
+	});
+
+	$effect(() => {
+		const handleKeydown = (event: KeyboardEvent) => {
+			if (event.key === 'Escape' && navOpen) {
+				closeNav();
+			}
+		};
+
+		window.addEventListener('keydown', handleKeydown);
+		return () => window.removeEventListener('keydown', handleKeydown);
+	});
 </script>
 
-{#snippet content(el: any)}
-	<div class="demo">{el}</div>
-{/snippet}
+<Mq />
 
 {#snippet links()}
 	{#each navLinks as link (link.href)}
-		<a href={getNavHref(link.href)}>{link.label}</a>
+		<a href={getNavHref(link.href)} onclick={handleNavSelection}>{link.label}</a>
 	{/each}
 {/snippet}
 
@@ -69,35 +113,87 @@
 	</label>
 {/snippet}
 
-<!-- App -->
-<!-- Deubg: Grid -->
-<Component tag="main" class="h-svh gap-5!">
+{#snippet navBody()}
+	<Component tag="nav" rails="gutter" class="flex h-full flex-wrap gap-3 bg-neutral-200 py-5">
+		{@render links()}
+		{@render railsDebugToggle()}
+	</Component>
+{/snippet}
 
-	<!-- Nav 
-	------------------------------------------------------------->
-	{#snippet a1a3()}
-		<!-- Deubg: Rails -->
-		<Component tag="nav" rails="gutter" class="flex flex-wrap gap-3 h-full py-5 bg-neutral-200">
-			{@render links()}
-			{@render railsDebugToggle()}
+{#snippet nav()}
+	{#if isSm}
+		<div class="fixed inset-0 z-40 pointer-events-none">
+			<button
+				type="button"
+				class="pointer-events-auto fixed left-3 top-3 z-40 inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-slate-700 shadow-[0_10px_30px_rgb(15_23_42/0.12)] {navOpen ? 'opacity-0 pointer-events-none' : ''}"
+				aria-expanded={navOpen}
+				onclick={openNav}
+			>
+				Menu
+			</button>
+
+			{#if navOpen}
+				<button
+					type="button"
+					class="pointer-events-auto fixed inset-0 z-40 bg-slate-950/35"
+					aria-label="Close navigation"
+					onclick={closeNav}
+				></button>
+			{/if}
+
+			<aside
+				class="pointer-events-auto fixed inset-y-0 left-0 z-50 h-full w-[min(85vw,22rem)] max-w-full bg-neutral-200 shadow-[0_25px_50px_rgb(15_23_42/0.2)] transition-transform duration-200 {navOpen ? 'translate-x-0' : '-translate-x-full'}"
+				aria-hidden={!navOpen}
+			>
+				<div class="flex items-center justify-between border-b border-slate-300 px-4 py-4">
+					<span class="text-xs font-black uppercase tracking-[0.18em] text-slate-700">Navigation</span>
+					<button
+						type="button"
+						class="rounded-full bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-700 outline-1 outline-slate-300"
+						aria-label="Close navigation"
+						onclick={closeNav}
+					>
+						X
+					</button>
+				</div>
+
+				<div class="h-full overflow-y-auto pb-20">
+					{@render navBody()}
+				</div>
+			</aside>
+		</div>
+	{:else}
+		<aside class="h-full bg-neutral-200">
+			{@render navBody()}
+		</aside>
+	{/if}
+{/snippet}
+
+{#snippet content()}
+	<Component tag="article" rails="full">
+		{@render children()}
+	</Component>
+{/snippet}
+
+<!-- Main -->
+	{#if isSm}
+		<Component tag="main" gap="1.25rem">
+			{#snippet full()}
+				{@render content()}
+			{/snippet}
+
+			{#snippet fg()}
+				{@render nav()}
+			{/snippet}
 		</Component>
-	{/snippet}
+	{:else}
+		<Component tag="main" gap="1.25rem">
+			{#snippet a1a3()}
+				{@render nav()}
+			{/snippet}
 
-	<!-- Content 
-	------------------------------------------------------------->
-	<!-- ✅ no rails -->
-	{#snippet b1c3()}
-		<Component tag="article" rails="full" class="h-full py-5 overflow-y-scroll">
-			{@render children()}
+			{#snippet b1c3()}
+				{@render content()}
+			{/snippet}
 		</Component>
-	{/snippet}
-
-</Component>
-
-
-<style lang="postcss">
-	@reference "#app.css";
-
-	.demo { @apply p-2 bg-white/40 border-2 border-primary rounded-xl; }
-
-</style>
+	{/if}

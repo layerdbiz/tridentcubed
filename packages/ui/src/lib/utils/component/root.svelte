@@ -10,11 +10,6 @@
 	import * as engine from '@layerd/ui';
 
 	type RootContent = Snippet | string | number | boolean | null | undefined;
-	type ItemConfig = {
-		tag?: keyof SvelteHTMLElements;
-		class?: string;
-		rail?: string;
-	};
 	type RootRenderArgs = {
 		props: engine.RootRendererProps;
 		layout: Snippet;
@@ -40,7 +35,7 @@
 		size?: string;
 		gap?: string;
 		inset?: string;
-		snippets?: Partial<Record<string, ItemConfig>>;
+		snippets?: Partial<Record<string, engine.RootSnippetConfig>>;
 		[key: string]: unknown;
 	};
 
@@ -445,7 +440,7 @@
 		return false;
 	}
 
-	function getItemConfig(item: engine.PositionedItem): ItemConfig {
+	function getItemConfig(item: engine.PositionedItem): engine.RootSnippetConfig {
 		return snippets[item.key] ?? snippets[item.label] ?? snippets[item.base] ?? {};
 	}
 

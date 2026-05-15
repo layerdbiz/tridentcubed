@@ -79,6 +79,32 @@ interface ScanResult {
 	}>;
 }
 
+function getFileNameParts(fileName: string): { name: string; extension: string } {
+	const supportedExtensions = [".svelte.ts", ".svelte", ".ts"];
+
+	for (const extension of supportedExtensions) {
+		if (fileName.endsWith(extension)) {
+			return {
+				name: fileName.slice(0, -extension.length),
+				extension,
+			};
+		}
+	}
+
+	const lastDotIndex = fileName.lastIndexOf(".");
+	if (lastDotIndex === -1) {
+		return {
+			name: fileName,
+			extension: "",
+		};
+	}
+
+	return {
+		name: fileName.slice(0, lastDotIndex),
+		extension: fileName.slice(lastDotIndex),
+	};
+}
+
 /**
  * Core scanning engine - discovers all files and folders recursively
  */
@@ -178,7 +204,7 @@ export async function scanRecursively(
 				options,
 			);
 		} else if (entry.isFile()) {
-			const extension = entry.name.substring(entry.name.lastIndexOf("."));
+			const { extension, name } = getFileNameParts(entry.name);
 
 			// Filter by file types if specified
 			if (options.includeFileTypes.length > 0) {
@@ -194,7 +220,7 @@ export async function scanRecursively(
 				relativePath,
 				depth,
 				hierarchy: [...hierarchy],
-				name: entry.name.replace(extension, ""),
+				name,
 				extension,
 			});
 		}

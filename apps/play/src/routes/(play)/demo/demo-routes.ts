@@ -34,6 +34,20 @@ export const demoRouteLinks: DemoRouteLinkType[] = [
 		description:
 			"Teaches gutter rails first, then content safe-zone inset and one-off full inset values.",
 	},
+	{
+		slug: "mq-bootstrap",
+		href: "/demo/mq-bootstrap",
+		title: "MQ Bootstrap",
+		description:
+			"Shows the head bootstrap that writes html data-mq before hydration and keeps it synced on resize.",
+	},
+	{
+		slug: "mq-layout",
+		href: "/demo/mq-layout",
+		title: "MQ Layout",
+		description:
+			"Demonstrates using the public mq helpers inside play surfaces and snippet-driven layouts without touching the base runtime.",
+	},
 ];
 
 export function getDemoRoute(slug: string): DemoRouteLinkType | undefined {

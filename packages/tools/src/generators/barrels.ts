@@ -379,7 +379,7 @@ async function extractInterfacesFromSvelte(
  */
 function generateFileExports(file: FileInfo): string[] {
 	const exportLines: string[] = [];
-	const importPath = `./${file.relativePath}`;
+	const importPath = getImportPath(file);
 
 	if (file.fileType === "svelte.ts" || file.fileType === "ts") {
 		// For TypeScript files, export all
@@ -397,14 +397,20 @@ function generateFileExports(file: FileInfo): string[] {
 
 /**
  * Check if a file should be exported as both default and named exports
- * This handles special cases like component.svelte.ts that should have both
+ * This only applies when a .svelte.ts module actually provides a default export
  */
 function shouldExportBoth(file: FileInfo): boolean {
-	// Special case: component.svelte.ts should have both default and named exports
-	if (file.name === "component" && file.fileType === "svelte.ts") {
-		return true;
-	}
-	return false;
+	return file.fileType === "svelte.ts" && file.exportType === "default";
+}
+
+function getImportPath(file: FileInfo): string {
+	const pathSegments = file.relativePath.split("/");
+	const directory = pathSegments.slice(0, -1).join("/");
+	const normalizedRelativePath = directory
+		? `${directory}/${file.name}`
+		: file.name;
+
+	return `./${normalizedRelativePath}.${file.fileType}`;
 }
 
 /**
@@ -412,7 +418,7 @@ function shouldExportBoth(file: FileInfo): boolean {
  */
 async function generateFileExportsEnhanced(file: FileInfo): Promise<string[]> {
 	const exportLines: string[] = [];
-	const importPath = `./${file.relativePath}`;
+	const importPath = getImportPath(file);
 
 	if (file.fileType === "svelte.ts" || file.fileType === "ts") {
 		// Check if we should export both default and named
