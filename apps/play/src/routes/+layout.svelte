@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import type { Snippet } from 'svelte';
 	import '../app.css';
-	import { Component, Mq, mq } from '@layerd/ui';
+	import { Component, Button, Mq, mq } from '@layerd/ui';
 	import * as demoRoutes from './(play)/demo/demo-routes';
 
 	type LayoutProps = {
@@ -13,8 +13,6 @@
 	let { children }: LayoutProps = $props();
 	let navOpen = $state(false);
 	const showRailsDebug = $derived(page.url.searchParams.get('railsDebug') === '1');
-	const layoutMqBucket = $derived(mq.bucket);
-	const isSm = $derived(layoutMqBucket === 'sm');
 
 	const navLinks = [
 		{ href: '/', label: 'Home' },
@@ -45,7 +43,7 @@
 	}
 
 	function handleNavSelection(): void {
-		if (isSm) {
+		if (mq.sm) {
 			closeNav();
 		}
 	}
@@ -54,7 +52,7 @@
 		const target = event.currentTarget;
 		if (!(target instanceof HTMLInputElement)) return;
 
-		if (isSm) {
+		if (mq.sm) {
 			closeNav();
 		}
 
@@ -82,67 +80,38 @@
 <Mq />
 <svelte:window onkeydown={handleWindowKeydown} />
 
-{#snippet links()}
-	{#each navLinks as link (link.href)}
-		<a href={getNavHref(link.href)} onclick={handleNavSelection}>{link.label}</a>
-	{/each}
-{/snippet}
-
-{#snippet railsDebugToggle()}
-	<label class="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-700 outline-1 outline-slate-300">
-		<input
-			type="checkbox"
-			class="size-4 accent-slate-950"
-			checked={showRailsDebug}
-			onchange={toggleRailsDebug}
-		/>
-		<span>Rails Debug</span>
-	</label>
-{/snippet}
-
 {#snippet navBody()}
 	<Component tag="nav" rails="gutter" class="flex h-full flex-wrap gap-3 bg-neutral-200 py-5">
-		{@render links()}
-		{@render railsDebugToggle()}
+		{#each navLinks as link (link.href)}
+			<a href={getNavHref(link.href)} onclick={handleNavSelection}>{link.label}</a>
+		{/each}
+		
+		<label class="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-700 outline-1 outline-slate-300">
+			<input
+				type="checkbox"
+				class="size-4 accent-slate-950"
+				checked={showRailsDebug}
+				onchange={toggleRailsDebug}
+			/>
+			<span>Rails Debug</span>
+		</label>
 	</Component>
 {/snippet}
 
 {#snippet nav()}
-	{#if isSm}
+	{#if mq.sm}
 		<div class="fixed inset-0 z-40 pointer-events-none">
-			<button
-				type="button"
-				class="pointer-events-auto fixed left-3 top-3 z-40 inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-slate-700 shadow-[0_10px_30px_rgb(15_23_42/0.12)] {navOpen ? 'opacity-0 pointer-events-none' : ''}"
-				aria-expanded={navOpen}
-				onclick={openNav}
-			>
-				Menu
-			</button>
+			<Button label="Menu" icon="menu" aria-expanded={navOpen} onclick={openNav} class="pointer-events-auto fixed left-3 top-3 z-40 {navOpen ? 'opacity-0 pointer-events-none' : ''}"/>
 
 			{#if navOpen}
-				<button
-					type="button"
-					class="pointer-events-auto fixed inset-0 z-40 bg-slate-950/35"
-					aria-label="Close navigation"
-					onclick={closeNav}
-				></button>
+				<Button label="Close" icon="close" aria-label="Close navigation" onclick={closeNav} class="pointer-events-auto fixed inset-0 z-40"/>
 			{/if}
 
 			<aside
-				class="pointer-events-auto fixed inset-y-0 left-0 z-50 h-full w-[min(85vw,22rem)] max-w-full bg-neutral-200 shadow-[0_25px_50px_rgb(15_23_42/0.2)] transition-transform duration-200 {navOpen ? 'translate-x-0' : '-translate-x-full'}"
+				class="pointer-events-auto fixed inset-y-0 left-0 z-50 h-full w-[min(85vw,22rem)] max-w-full bg-neutral-200 transition-transform duration-200 {navOpen ? 'translate-x-0' : '-translate-x-full'}"
 				aria-hidden={!navOpen}
 			>
-				<div class="flex items-center justify-between border-b border-slate-300 px-4 py-4">
-					<span class="text-xs font-black uppercase tracking-[0.18em] text-slate-700">Navigation</span>
-					<button
-						type="button"
-						class="rounded-full bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-slate-700 outline-1 outline-slate-300"
-						aria-label="Close navigation"
-						onclick={closeNav}
-					>
-						X
-					</button>
-				</div>
+				<Button label="Close" icon="close" aria-label="Close navigation" onclick={closeNav} class="pointer-events-auto fixed inset-0 z-40"/>
 
 				<div class="h-full overflow-y-auto pb-20">
 					{@render navBody()}
@@ -157,14 +126,14 @@
 {/snippet}
 
 {#snippet content()}
-	<Component tag="article" rails="full">
+	<Component tag="article" rails="gutter-lg">
 		{@render children()}
 	</Component>
 {/snippet}
 
 <!-- Main -->
-{#if isSm}
-	<Component tag="main" gap="1.25rem">
+{#if mq.sm}
+	<Component tag="main" gap="0" class="h-svh">
 		{#snippet full()}
 			{@render content()}
 		{/snippet}
@@ -174,7 +143,7 @@
 		{/snippet}
 	</Component>
 {:else}
-	<Component tag="main" gap="1.25rem">
+	<Component tag="main" gap="0" class="h-svh">
 		{#snippet a1a3()}
 			{@render nav()}
 		{/snippet}

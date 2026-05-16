@@ -52,8 +52,8 @@ export { default as Text, type TextProps } from "./components/atoms/text/text.sv
 export * from "./components/atoms/text/text.data.ts";
 export { default as Textarea } from "./components/atoms/forms/textarea/textarea.svelte";
 export { default as Theme } from "./components/atoms/theme/theme.svelte";
-export { default as ThemeToggle } from "./components/atoms/theme/theme-toggle.svelte";
 export * from "./components/atoms/theme/theme.svelte.ts";
+export { default as ThemeToggle } from "./components/atoms/theme/theme-toggle.svelte";
 export { default as Title } from "./components/atoms/title/title.svelte";
 
 // molecules

@@ -128,7 +128,7 @@
 	<title>MQ Bootstrap | Play</title>
 </svelte:head>
 
-<div class="grid gap-4 p-4 md:p-5">
+<div class="grid gap-4 py-4 md:py-5">
 	<h1 class="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">MQ Bootstrap</h1>
 	<p class="max-w-3xl text-sm leading-6 text-slate-700 md:text-base">
 		The <code>Mq</code> utility now writes <code>data-mq</code> from <code>&lt;svelte:head&gt;</code>
