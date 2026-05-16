@@ -79,7 +79,9 @@ interface ScanResult {
 	}>;
 }
 
-function getFileNameParts(fileName: string): { name: string; extension: string } {
+function getFileNameParts(
+	fileName: string,
+): { name: string; extension: string } {
 	const supportedExtensions = [".svelte.ts", ".svelte", ".ts"];
 
 	for (const extension of supportedExtensions) {

@@ -75,25 +75,15 @@
 		});
 	}
 
-	$effect(() => {
-		if (navOpen && !isSm) {
-			navOpen = false;
-		}
-	});
-
-	$effect(() => {
-		const handleKeydown = (event: KeyboardEvent) => {
+		function handleWindowKeydown(event: KeyboardEvent): void {
 			if (event.key === 'Escape' && navOpen) {
 				closeNav();
 			}
-		};
-
-		window.addEventListener('keydown', handleKeydown);
-		return () => window.removeEventListener('keydown', handleKeydown);
-	});
+		}
 </script>
 
 <Mq />
+	<svelte:window onkeydown={handleWindowKeydown} />
 
 {#snippet links()}
 	{#each navLinks as link (link.href)}
