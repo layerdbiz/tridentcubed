@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import {
 		BREAKPOINTS,
-		MQ_COOKIE_KEY,
 		MQ_QUERY_MAP,
 		MQ_BUCKET_PRIORITY,
 		MQ_STORAGE_KEY,
@@ -64,7 +63,6 @@
 		attribute: 'data-mq',
 		initAttribute: 'data-mq-init',
 		storageKey: MQ_STORAGE_KEY,
-		cookieKey: MQ_COOKIE_KEY,
 		breakpoints: BREAKPOINTS,
 		queries: MQ_QUERY_MAP,
 		priority: MQ_BUCKET_PRIORITY,
@@ -86,17 +84,6 @@
 			}
 		};
 
-		const readCookieMqBucket = () => {
-			const prefix = config.cookieKey + '=';
-			for (const part of doc.cookie.split(';')) {
-				const cookie = part.trim();
-				if (!cookie.startsWith(prefix)) continue;
-				const value = decodeURIComponent(cookie.slice(prefix.length));
-				return isMqBucket(value) ? value : null;
-			}
-			return null;
-		};
-
 		const readBootstrapMqBucket = () => {
 			const storedValue = readLocalMqBucket();
 			if (storedValue) {
@@ -108,7 +95,7 @@
 				return attributeValue;
 			}
 
-			return readCookieMqBucket();
+			return null;
 		};
 
 		const resolveMqBucket = () => {
@@ -138,7 +125,6 @@
 				// Ignore storage failures and keep the document attribute as the source of truth.
 			}
 
-			doc.cookie = config.cookieKey + '=' + encodeURIComponent(bucket) + '; Path=/; Max-Age=31536000; SameSite=Lax';
 		};
 
 		const bootstrapBucket = readBootstrapMqBucket();

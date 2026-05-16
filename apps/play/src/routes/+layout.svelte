@@ -1,22 +1,19 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import type { Snippet } from 'svelte';
-	import type { LayoutData } from './$types';
 	import '../app.css';
 	import { Component, Mq, mq } from '@layerd/ui';
 	import * as demoRoutes from './(play)/demo/demo-routes';
 
 	type LayoutProps = {
 		children: Snippet;
-		data: LayoutData;
 	};
 
-	let { children, data }: LayoutProps = $props();
+	let { children }: LayoutProps = $props();
 	let navOpen = $state(false);
 	const showRailsDebug = $derived(page.url.searchParams.get('railsDebug') === '1');
-	const layoutMqBucket = $derived(browser ? mq.bucket : data.initialMqBucket ?? 'md');
+	const layoutMqBucket = $derived(mq.bucket);
 	const isSm = $derived(layoutMqBucket === 'sm');
 
 	const navLinks = [
@@ -75,15 +72,15 @@
 		});
 	}
 
-		function handleWindowKeydown(event: KeyboardEvent): void {
-			if (event.key === 'Escape' && navOpen) {
-				closeNav();
-			}
+	function handleWindowKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape' && navOpen) {
+			closeNav();
 		}
+	}
 </script>
 
 <Mq />
-	<svelte:window onkeydown={handleWindowKeydown} />
+<svelte:window onkeydown={handleWindowKeydown} />
 
 {#snippet links()}
 	{#each navLinks as link (link.href)}
@@ -166,24 +163,24 @@
 {/snippet}
 
 <!-- Main -->
-	{#if isSm}
-		<Component tag="main" gap="1.25rem">
-			{#snippet full()}
-				{@render content()}
-			{/snippet}
+{#if isSm}
+	<Component tag="main" gap="1.25rem">
+		{#snippet full()}
+			{@render content()}
+		{/snippet}
 
-			{#snippet fg()}
-				{@render nav()}
-			{/snippet}
-		</Component>
-	{:else}
-		<Component tag="main" gap="1.25rem">
-			{#snippet a1a3()}
-				{@render nav()}
-			{/snippet}
+		{#snippet fg()}
+			{@render nav()}
+		{/snippet}
+	</Component>
+{:else}
+	<Component tag="main" gap="1.25rem">
+		{#snippet a1a3()}
+			{@render nav()}
+		{/snippet}
 
-			{#snippet b1c3()}
-				{@render content()}
-			{/snippet}
-		</Component>
-	{/if}
+		{#snippet b1c3()}
+			{@render content()}
+		{/snippet}
+	</Component>
+{/if}

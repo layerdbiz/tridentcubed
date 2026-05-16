@@ -11,7 +11,6 @@ export const BREAKPOINTS = {
 export type MqBucketType = keyof typeof BREAKPOINTS;
 
 export const MQ_STORAGE_KEY = "layerd:mq";
-export const MQ_COOKIE_KEY = "layerd_mq";
 export const MQ_DEFAULT_BUCKET: MqBucketType = "sm";
 
 export const MQ_QUERY_MAP = {
@@ -63,20 +62,8 @@ export function readLocalMqBucket(): MqBucketType | null {
 	}
 }
 
-export function readCookieMqBucket(): MqBucketType | null {
-	if (!_isBrowser) return null;
-	const prefix = `${MQ_COOKIE_KEY}=`;
-	for (const part of document.cookie.split(";")) {
-		const cookie = part.trim();
-		if (!cookie.startsWith(prefix)) continue;
-		const value = decodeURIComponent(cookie.slice(prefix.length));
-		return isMqBucket(value) ? value : null;
-	}
-	return null;
-}
-
 export function readBootstrapMqBucket(): MqBucketType | null {
-	return readHtmlMqBucket() ?? readLocalMqBucket() ?? readCookieMqBucket();
+	return readHtmlMqBucket() ?? readLocalMqBucket();
 }
 
 export function resolveMqBucket(): MqBucketType {
@@ -107,13 +94,6 @@ function readInitialMqBucket(): MqBucketType {
 // already useful on both the server fallback and the hydrated client.
 let _mqBucket: MqBucketType = $state(readInitialMqBucket());
 
-function writeMqCookie(bucket: MqBucketType): void {
-	if (!_isBrowser) return;
-	document.cookie = `${MQ_COOKIE_KEY}=${
-		encodeURIComponent(bucket)
-	}; Path=/; Max-Age=31536000; SameSite=Lax`;
-}
-
 // Called by the Mq component on mount and on every resize to keep the
 // reactive bucket, the data-mq attribute, and localStorage in sync.
 export function _setMqBucket(bucket: MqBucketType): void {
@@ -126,7 +106,6 @@ export function _setMqBucket(bucket: MqBucketType): void {
 		try {
 			localStorage.setItem(MQ_STORAGE_KEY, bucket);
 		} catch { /* ignore */ }
-		writeMqCookie(bucket);
 	}
 }
 
