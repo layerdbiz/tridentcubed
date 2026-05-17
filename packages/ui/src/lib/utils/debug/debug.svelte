@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { DebugClass } from './debug.svelte.ts';
+	import { DebugClass } from '@layerd/ui';
 
 	interface DebugProps {
 		debug: DebugClass;

@@ -142,8 +142,9 @@
 <style lang="postcss">
 	@reference "#app.css";
 
+	h2 { @apply mt-8 text-2xl font-bold; }
+	
 	:global {
-		h2 { @apply mt-8 text-2xl font-bold; }
 		.header-demo {
 			@apply bg-slate-950 py-4 text-white mb-4;
 			
@@ -152,6 +153,5 @@
 			& nav > a { @apply font-black text-white no-underline inline-block bg-black/40; }
 			& button { @apply rounded-full bg-white px-4 py-2 font-black text-black; }
 		}
-		
 	}
 </style>
