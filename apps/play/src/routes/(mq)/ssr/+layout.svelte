@@ -7,10 +7,10 @@
 	let { children }: LayoutProps = $props();
 </script>
 
-<Mq mode="ssr" loading="fade" duration={3000} />
+<!-- <Mq mode="ssr" loading="fade" duration={3000} /> -->
 
 {#snippet content()}
-	<Component tag="article" rails="gutter-lg" class="py-10">
+	<Component tag="article" rails="gutter-lg" class="py-10 h-full overflow-y-scroll">
 		{@render children()}
 	</Component>
 {/snippet}

@@ -466,10 +466,18 @@
 	}
 
 	function shouldShowItemFallback(item: engine.PositionedItem): boolean {
-		return (
-			!hasMeaningfulContent(itemRefs[item.key]) &&
-			(Boolean(item.snippet) || engine.hasRenderableValue(item.value))
-		);
+		const itemElement = itemRefs[item.key];
+		if (!itemElement) return false;
+
+		if (item.snippet) {
+			return !hasMeaningfulContent(itemElement);
+		}
+
+		if (!engine.hasRenderableValue(item.value)) {
+			return false;
+		}
+
+		return !hasMeaningfulContent(itemElement);
 	}
 
 	$effect(() => {

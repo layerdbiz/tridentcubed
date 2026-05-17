@@ -8,7 +8,7 @@
 </script>
 
 {#snippet content()}
-	<Component tag="article" rails="gutter-xl">
+	<Component tag="article" rails="gutter-lg" class="py-10 h-full overflow-y-scroll">
 		{@render children()}
 	</Component>
 {/snippet}
@@ -25,7 +25,7 @@
 		{/snippet}
 	</Component>
 {:else}
-	<Component tag="main" gap="0" class="h-svh">
+	<Component tag="main" cols="auto 1fr auto" gap="0" class="h-svh">
 		{#snippet a1a3()}
 			<Nav />
 		{/snippet}
