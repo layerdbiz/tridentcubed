@@ -7,7 +7,7 @@
 	let { children }: LayoutProps = $props();
 </script>
 
-<!-- <Mq mode="client" /> -->
+<Mq />
 
 {#snippet content()}
 	<Component tag="article" rails="gutter-lg" class="py-10 h-full overflow-y-scroll">

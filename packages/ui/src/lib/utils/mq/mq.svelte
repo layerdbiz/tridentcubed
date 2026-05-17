@@ -1,177 +1,178 @@
+<script module lang="ts">
+	let hasMountedMqRuntime = false;
+</script>
+
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { Component } from '@layerd/ui';
 	import {
 		BREAKPOINTS,
-		MQ_QUERY_MAP,
 		MQ_BUCKET_PRIORITY,
+		MQ_ORIENTATION_PRIORITY,
+		MQ_ORIENTATION_QUERY_MAP,
+		MQ_ORIENTATION_STORAGE_KEY,
+		MQ_QUERY_MAP,
 		MQ_STORAGE_KEY,
-		mq,
-		_setMqBucket,
-		_setMqReady,
 		_setMqLoading,
-		readBootstrapMqBucket,
-		resolveMqBucket,
-		type MqBucketType,
+		_setMqReady,
+		initMqRuntime,
+		syncMqState
 	} from '@layerd/ui';
 
-	type MqMode = 'ssr' | 'client';
 	type MqLoadingEffect = 'fade' | 'slide' | 'zoom';
+	type MqLoadingProp = boolean | MqLoadingEffect;
+	type MqMsValue = number | string;
 
 	interface MqProps {
-		mode?: MqMode;
-		loading?: boolean | MqLoadingEffect;
-		duration?: number;
+		loading?: MqLoadingProp;
+		delay?: MqMsValue;
+		duration?: MqMsValue;
 		children?: Snippet;
 	}
 
-	let {
-		mode = 'client',
-		loading = false,
-		duration = 3000,
-		children,
-	}: MqProps = $props();
+	let { loading = false, delay = 1000, duration = 300, children }: MqProps = $props();
 
-	let isOverlayExiting = $state(false);
-	let overlayExitTimer: ReturnType<typeof setTimeout> | null = null;
-	let resizeFrame = 0;
+const hasLoading = $derived(loading !== false || Boolean(children));
+const loadingEffect = $derived(toLoadingEffect(loading));
+const delayMs = $derived(toMs(delay, 0));
+const durationMs = $derived(toMs(duration, 300));
 
-	const OVERLAY_EXIT_MS = 300;
-	const MQ_LOADING_INTRO_DONE_KEY = `${MQ_STORAGE_KEY}:loading-intro-done`;
-	const MQ_LOADING_INTRO_DONE_ATTR = 'data-mq-loading-intro-done';
+let showOverlay = $state(hasInitialOverlay());
+let isOverlayExiting = $state(false);
 
-	function readLoadingIntroDone(): boolean {
-		if (typeof window === 'undefined') return false;
-		try {
-			return window.localStorage.getItem(MQ_LOADING_INTRO_DONE_KEY) === '1';
-		} catch {
-			return false;
+const loadingEffectClass = $derived(`mq-loading-${loadingEffect}`);
+const loadingExitClass = $derived(isOverlayExiting ? 'mq-loading-exit' : '');
+
+	let delayTimer: ReturnType<typeof setTimeout> | null = null;
+	let exitTimer: ReturnType<typeof setTimeout> | null = null;
+	let exitFrame = 0;
+
+	function hasInitialOverlay(): boolean {
+		return (loading !== false || Boolean(children)) && !hasMountedMqRuntime;
+	}
+
+	function toLoadingEffect(value: MqLoadingProp): MqLoadingEffect {
+		if (value === 'slide' || value === 'zoom' || value === 'fade') {
+			return value;
 		}
-	}
 
-	function writeLoadingIntroDone(): void {
-		if (typeof window === 'undefined') return;
-		try {
-			window.localStorage.setItem(MQ_LOADING_INTRO_DONE_KEY, '1');
-			document.documentElement.setAttribute(MQ_LOADING_INTRO_DONE_ATTR, '1');
-		} catch {
-			// Ignore storage failures and keep behavior functional.
-		}
-	}
-
-	let hasShownLoadingIntro = readLoadingIntroDone();
-
-	function isLoadingEnabled(): boolean {
-		return mode === 'ssr' && loading !== false && !hasShownLoadingIntro;
-	}
-
-	const loadingEffectName = $derived.by(() => {
-		if (loading === 'slide') return 'slide';
-		if (loading === 'zoom') return 'zoom';
 		return 'fade';
-	});
-
-	const loadingExitClass = $derived(
-		isOverlayExiting ? `mq-loading-${loadingEffectName}` : ''
-	);
-
-	const shouldShowLoadingIntro = isLoadingEnabled();
-	if (shouldShowLoadingIntro) {
-		hasShownLoadingIntro = true;
-		writeLoadingIntroDone();
 	}
 
-	// Initialize SSR state before first render so mq.loading starts true on first intro only.
-	_setMqReady(false);
-	_setMqLoading(shouldShowLoadingIntro);
+	function toMs(value: MqMsValue | undefined, fallback: number): number {
+		const parsed = typeof value === 'number' ? value : Number.parseFloat(value ?? '');
 
-	function applyMqBucket(bucket: MqBucketType): void {
-		if (typeof window === 'undefined') {
-			return;
+		if (!Number.isFinite(parsed)) {
+			return fallback;
 		}
-		// Delegates to _setMqBucket which updates the reactive $state, data-mq, and localStorage.
-		_setMqBucket(bucket);
+
+		return Math.max(0, parsed);
 	}
 
-	function syncMqBucket(): void {
-		if (typeof window === 'undefined') {
-			return;
+	function clearOverlayTimers(): void {
+		if (delayTimer) {
+			clearTimeout(delayTimer);
+			delayTimer = null;
 		}
 
-		applyMqBucket(resolveMqBucket());
+		if (exitTimer) {
+			clearTimeout(exitTimer);
+			exitTimer = null;
+		}
+
+		if (exitFrame) {
+			cancelAnimationFrame(exitFrame);
+			exitFrame = 0;
+		}
 	}
 
-	function handleWindowResize(): void {
-		if (typeof window === 'undefined') {
+	function prefersReducedMotion(): boolean {
+		if (typeof window === 'undefined') return false;
+
+		return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+	}
+
+	function finishOverlay(): void {
+		clearOverlayTimers();
+
+		showOverlay = false;
+		isOverlayExiting = false;
+
+		_setMqLoading(false);
+	}
+
+	function startOverlayExit(): void {
+		if (!showOverlay || isOverlayExiting) return;
+
+		if (durationMs === 0 || prefersReducedMotion()) {
+			finishOverlay();
 			return;
 		}
 
-		if (resizeFrame) {
-			window.cancelAnimationFrame(resizeFrame);
-		}
+		isOverlayExiting = true;
 
-		resizeFrame = window.requestAnimationFrame(() => {
-			syncMqBucket();
-			resizeFrame = 0;
+		exitTimer = setTimeout(() => {
+			finishOverlay();
+		}, durationMs + 50);
+	}
+
+	function queueOverlayExit(): void {
+		exitFrame = requestAnimationFrame(() => {
+			exitFrame = requestAnimationFrame(() => {
+				exitFrame = 0;
+
+				delayTimer = setTimeout(() => {
+					startOverlayExit();
+				}, delayMs);
+			});
 		});
 	}
 
+	function handleOverlayAnimationEnd(event: AnimationEvent): void {
+		if (event.target !== event.currentTarget) return;
+
+		finishOverlay();
+	}
+
 	onMount(() => {
-		// Initialize MQ bucket from bootstrap or viewport
-		const bootstrapBucket = readBootstrapMqBucket();
-		if (bootstrapBucket) {
-			applyMqBucket(bootstrapBucket);
-		}
-
-		syncMqBucket();
-
-		// Mark MQ as ready after initialization
+		initMqRuntime();
+		syncMqState();
 		_setMqReady(true);
 
-		if (!shouldShowLoadingIntro) {
+		const shouldShowOverlay = hasLoading && showOverlay;
+
+		hasMountedMqRuntime = true;
+
+		if (!shouldShowOverlay) {
 			_setMqLoading(false);
+
 			return () => {
-				if (resizeFrame && typeof window !== 'undefined') {
-					window.cancelAnimationFrame(resizeFrame);
-				}
-				if (overlayExitTimer) {
-					clearTimeout(overlayExitTimer);
-					overlayExitTimer = null;
-				}
+				clearOverlayTimers();
 			};
 		}
 
-		// Keep overlay visible for `duration`, then play exit animation and hide.
-		const holdTimer = setTimeout(() => {
-			isOverlayExiting = true;
-			overlayExitTimer = setTimeout(() => {
-				_setMqLoading(false);
-				overlayExitTimer = null;
-			}, OVERLAY_EXIT_MS);
-		}, duration);
+		_setMqLoading(true);
+		queueOverlayExit();
 
 		return () => {
-			if (resizeFrame && typeof window !== 'undefined') {
-				window.cancelAnimationFrame(resizeFrame);
-			}
-			clearTimeout(holdTimer);
-			if (overlayExitTimer) {
-				clearTimeout(overlayExitTimer);
-				overlayExitTimer = null;
-			}
+			clearOverlayTimers();
+			_setMqLoading(false);
 		};
 	});
 
 	const mqBootstrapConfig = JSON.stringify({
-		attribute: 'data-mq',
-		initAttribute: 'data-mq-init',
-		storageKey: MQ_STORAGE_KEY,
-		loadingIntroDoneKey: MQ_LOADING_INTRO_DONE_KEY,
-		loadingIntroDoneAttr: MQ_LOADING_INTRO_DONE_ATTR,
+		mqAttribute: 'data-mq',
+		mqInitAttribute: 'data-mq-init',
+		orientationAttribute: 'data-orientation',
+		orientationInitAttribute: 'data-orientation-init',
+		mqStorageKey: MQ_STORAGE_KEY,
+		orientationStorageKey: MQ_ORIENTATION_STORAGE_KEY,
 		breakpoints: BREAKPOINTS,
-		queries: MQ_QUERY_MAP,
-		priority: MQ_BUCKET_PRIORITY,
+		mqQueries: MQ_QUERY_MAP,
+		orientationQueries: MQ_ORIENTATION_QUERY_MAP,
+		mqPriority: MQ_BUCKET_PRIORITY,
+		orientationPriority: MQ_ORIENTATION_PRIORITY
 	});
 
 	const mqBootstrapScript = String.raw`(() => {
@@ -179,77 +180,108 @@
 		const doc = document.documentElement;
 		const win = window;
 
-		const isMqBucket = (value) => value !== null && config.priority.includes(value);
+		const isMqBucket = (value) => value !== null && config.mqPriority.includes(value);
+		const isMqOrientation = (value) => value !== null && config.orientationPriority.includes(value);
 
-		const readLocalMqBucket = () => {
+		const readLocalValue = (key, checker) => {
 			try {
-				const storedValue = win.localStorage.getItem(config.storageKey);
-				return isMqBucket(storedValue) ? storedValue : null;
+				const storedValue = win.localStorage.getItem(key);
+
+				return checker(storedValue) ? storedValue : null;
 			} catch {
 				return null;
 			}
 		};
 
-		const markLoadingIntroDone = () => {
-			try {
-				if (win.localStorage.getItem(config.loadingIntroDoneKey) === '1') {
-					doc.setAttribute(config.loadingIntroDoneAttr, '1');
-				}
-			} catch {
-				// Ignore storage failures.
+		const readBootstrapMqBucket = () => {
+			const attr = doc.getAttribute(config.mqAttribute);
+
+			if (isMqBucket(attr)) {
+				return attr;
 			}
+
+			return readLocalValue(config.mqStorageKey, isMqBucket);
 		};
 
-		const readBootstrapMqBucket = () => {
-			const storedValue = readLocalMqBucket();
-			if (storedValue) {
-				return storedValue;
+		const readBootstrapMqOrientation = () => {
+			const attr = doc.getAttribute(config.orientationAttribute);
+
+			if (isMqOrientation(attr)) {
+				return attr;
 			}
 
-			const attributeValue = doc.getAttribute(config.attribute);
-			if (isMqBucket(attributeValue)) {
-				return attributeValue;
-			}
-
-			return null;
+			return readLocalValue(config.orientationStorageKey, isMqOrientation);
 		};
 
 		const resolveMqBucket = () => {
 			if (typeof win.matchMedia === 'function') {
-				for (const bucket of config.priority) {
-					if (win.matchMedia(config.queries[bucket]).matches) {
+				for (const bucket of config.mqPriority) {
+					if (win.matchMedia(config.mqQueries[bucket]).matches) {
 						return bucket;
 					}
 				}
 			}
 
 			const width = win.innerWidth || doc.clientWidth || 0;
+
 			if (width >= config.breakpoints.xxl) return 'xxl';
 			if (width >= config.breakpoints.xl) return 'xl';
 			if (width >= config.breakpoints.lg) return 'lg';
 			if (width >= config.breakpoints.md) return 'md';
+
 			return 'sm';
 		};
 
-		const applyMqBucket = (bucket) => {
-			doc.setAttribute(config.attribute, bucket);
-			doc.setAttribute(config.initAttribute, '1');
-
-			try {
-				win.localStorage.setItem(config.storageKey, bucket);
-			} catch {
-				// Ignore storage failures and keep the document attribute as the source of truth.
+		const resolveMqOrientation = () => {
+			if (typeof win.matchMedia === 'function') {
+				for (const orientation of config.orientationPriority) {
+					if (win.matchMedia(config.orientationQueries[orientation]).matches) {
+						return orientation;
+					}
+				}
 			}
 
+			const width = win.innerWidth || doc.clientWidth || 0;
+			const height = win.innerHeight || doc.clientHeight || 0;
+
+			return height >= width ? 'portrait' : 'landscape';
+		};
+
+		const writeLocalValue = (key, value) => {
+			try {
+				win.localStorage.setItem(key, value);
+			} catch {
+				// Ignore storage failures and keep document attributes as the source of truth.
+			}
+		};
+
+		const applyMqBucket = (bucket) => {
+			doc.setAttribute(config.mqAttribute, bucket);
+			doc.setAttribute(config.mqInitAttribute, '1');
+
+			writeLocalValue(config.mqStorageKey, bucket);
+		};
+
+		const applyMqOrientation = (orientation) => {
+			doc.setAttribute(config.orientationAttribute, orientation);
+			doc.setAttribute(config.orientationInitAttribute, '1');
+
+			writeLocalValue(config.orientationStorageKey, orientation);
 		};
 
 		const bootstrapBucket = readBootstrapMqBucket();
-		markLoadingIntroDone();
+		const bootstrapOrientation = readBootstrapMqOrientation();
+
 		if (bootstrapBucket) {
 			applyMqBucket(bootstrapBucket);
 		}
 
+		if (bootstrapOrientation) {
+			applyMqOrientation(bootstrapOrientation);
+		}
+
 		applyMqBucket(resolveMqBucket());
+		applyMqOrientation(resolveMqOrientation());
 	})();`;
 </script>
 
@@ -257,10 +289,16 @@
 	{@html `<script>${mqBootstrapScript}</script>`}
 </svelte:head>
 
-<svelte:window onresize={handleWindowResize} />
-
-{#if mq.loading}
-	<Component tag="div" class="mq-loading fixed! inset-0 z-9999 bg-white {loadingExitClass}" items="center" aria-live="polite" aria-busy="true">
+{#if hasLoading && showOverlay}
+	<Component
+		tag="div"
+		class="mq-loading {loadingEffectClass} {loadingExitClass} fixed! inset-0 z-50 h-dvh w-dvw bg-white pointer-events-auto"
+		style="--mq-loading-duration: {durationMs}ms;"
+		items="center"
+		aria-live="polite"
+		aria-busy="true"
+		onanimationend={handleOverlayAnimationEnd}
+	>
 		{#snippet fg()}
 			{#if children}
 				{@render children()}
@@ -271,59 +309,61 @@
 	</Component>
 {/if}
 
-
 <style lang="postcss">
 	:global {
-		.mq-loading {
-			z-index: 99999;
-			width: 100dvw;
-			height: 100dvh;
-			pointer-events: auto;
+		.mq-loading-fade.mq-loading-exit {
+			animation: mq-loading-fade-out var(--mq-loading-duration, 300ms) ease-out forwards;
 		}
 
-		.mq-loading-fade {
-			animation: mq-fade-out 0.3s ease-out forwards;
-			animation-delay: 0.2s;
+		.mq-loading-slide.mq-loading-exit {
+			animation: mq-loading-slide-out var(--mq-loading-duration, 300ms) ease-out forwards;
 		}
 
-		.mq-loading-slide {
-			animation: mq-slide-out 0.3s ease-out forwards;
-			animation-delay: 0.2s;
+		.mq-loading-zoom.mq-loading-exit {
+			animation: mq-loading-zoom-out var(--mq-loading-duration, 300ms) ease-out forwards;
+		}
+	}
+
+	@keyframes -global-mq-loading-fade-out {
+		from {
+			opacity: 1;
 		}
 
-		.mq-loading-zoom {
-			animation: mq-zoom-out 0.3s ease-out forwards;
-			animation-delay: 0.2s;
+		to {
+			opacity: 0;
+		}
+	}
+
+	@keyframes -global-mq-loading-slide-out {
+		from {
+			transform: translateY(0);
+			opacity: 1;
 		}
 
-		@keyframes mq-fade-out {
-			from {
-				opacity: 1;
-			}
-			to {
-				opacity: 0;
-			}
+		to {
+			transform: translateY(-100%);
+			opacity: 0;
+		}
+	}
+
+	@keyframes -global-mq-loading-zoom-out {
+		from {
+			transform: scale(1);
+			opacity: 1;
 		}
 
-		@keyframes mq-slide-out {
-			from {
-				transform: translateY(0);
-				opacity: 1;
-			}
-			to {
-				transform: translateY(-100%);
-				opacity: 0;
-			}
+		to {
+			transform: scale(0.9);
+			opacity: 0;
 		}
+	}
 
-		@keyframes mq-zoom-out {
-			from {
-				transform: scale(1);
-				opacity: 1;
-			}
-			to {
-				transform: scale(0.9);
-				opacity: 0;
+	:global {
+		@media (prefers-reduced-motion: reduce) {
+			.mq-loading-fade.mq-loading-exit,
+			.mq-loading-slide.mq-loading-exit,
+			.mq-loading-zoom.mq-loading-exit {
+				animation-duration: 1ms;
 			}
 		}
 	}

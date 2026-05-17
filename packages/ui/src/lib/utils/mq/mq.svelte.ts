@@ -9,9 +9,13 @@ export const BREAKPOINTS = {
 } as const;
 
 export type MqBucketType = keyof typeof BREAKPOINTS;
+export type MqOrientationType = "portrait" | "landscape";
 
 export const MQ_STORAGE_KEY = "layerd:mq";
+export const MQ_ORIENTATION_STORAGE_KEY = "layerd:mq:orientation";
+
 export const MQ_DEFAULT_BUCKET: MqBucketType = "sm";
+export const MQ_DEFAULT_ORIENTATION: MqOrientationType = "landscape";
 
 export const MQ_QUERY_MAP = {
 	sm: `(max-width: ${BREAKPOINTS.md - 1}px)`,
@@ -27,6 +31,11 @@ export const MQ_QUERY_MAP = {
 	xxl: `(min-width: ${BREAKPOINTS.xxl}px)`,
 } as const satisfies Record<MqBucketType, string>;
 
+export const MQ_ORIENTATION_QUERY_MAP = {
+	portrait: "(orientation: portrait)",
+	landscape: "(orientation: landscape)",
+} as const satisfies Record<MqOrientationType, string>;
+
 export const MQ_BUCKET_PRIORITY = [
 	"xxl",
 	"xl",
@@ -35,15 +44,20 @@ export const MQ_BUCKET_PRIORITY = [
 	"sm",
 ] as const satisfies readonly MqBucketType[];
 
-// Standard browser check - works in any environment (SvelteKit, Vite, etc.)
-// Svelte core doesn't provide a built-in browser detection
+export const MQ_ORIENTATION_PRIORITY = [
+	"portrait",
+	"landscape",
+] as const satisfies readonly MqOrientationType[];
+
 const _isBrowser = typeof window !== "undefined";
 
-// Configuration to enable or disable data-mq updates
 let _updateHtmlAttributes = true;
+let _isMqRuntimeReady = false;
+let _resizeFrame = 0;
 
-// Function to configure the MQ utility
-export function configureMqUtility(options: { updateHtmlAttributes?: boolean } = {}): void {
+export function configureMqUtility(
+	options: { updateHtmlAttributes?: boolean } = {},
+): void {
 	if (options.updateHtmlAttributes !== undefined) {
 		_updateHtmlAttributes = options.updateHtmlAttributes;
 	}
@@ -53,20 +67,48 @@ export function isMqBucket(value: string | null): value is MqBucketType {
 	return value !== null && MQ_BUCKET_PRIORITY.includes(value as MqBucketType);
 }
 
-// Read the bucket written to data-mq by the Mq head bootstrap script.
-// Module scripts (type="module") are deferred, so the inline head script has
-// already had a chance to seed the attribute before this module evaluates.
+export function isMqOrientation(
+	value: string | null,
+): value is MqOrientationType {
+	return value !== null &&
+		MQ_ORIENTATION_PRIORITY.includes(value as MqOrientationType);
+}
+
 export function readHtmlMqBucket(): MqBucketType | null {
 	if (!_isBrowser) return null;
+
 	const attr = document.documentElement.getAttribute("data-mq");
+
 	return isMqBucket(attr) ? attr : null;
+}
+
+export function readHtmlMqOrientation(): MqOrientationType | null {
+	if (!_isBrowser) return null;
+
+	const attr = document.documentElement.getAttribute("data-orientation");
+
+	return isMqOrientation(attr) ? attr : null;
 }
 
 export function readLocalMqBucket(): MqBucketType | null {
 	if (!_isBrowser) return null;
+
 	try {
 		const storedValue = window.localStorage.getItem(MQ_STORAGE_KEY);
+
 		return isMqBucket(storedValue) ? storedValue : null;
+	} catch {
+		return null;
+	}
+}
+
+export function readLocalMqOrientation(): MqOrientationType | null {
+	if (!_isBrowser) return null;
+
+	try {
+		const storedValue = window.localStorage.getItem(MQ_ORIENTATION_STORAGE_KEY);
+
+		return isMqOrientation(storedValue) ? storedValue : null;
 	} catch {
 		return null;
 	}
@@ -74,6 +116,10 @@ export function readLocalMqBucket(): MqBucketType | null {
 
 export function readBootstrapMqBucket(): MqBucketType | null {
 	return readHtmlMqBucket() ?? readLocalMqBucket();
+}
+
+export function readBootstrapMqOrientation(): MqOrientationType | null {
+	return readHtmlMqOrientation() ?? readLocalMqOrientation();
 }
 
 export function resolveMqBucket(): MqBucketType {
@@ -88,40 +134,55 @@ export function resolveMqBucket(): MqBucketType {
 	}
 
 	const width = window.innerWidth || document.documentElement.clientWidth || 0;
+
 	if (width >= BREAKPOINTS.xxl) return "xxl";
 	if (width >= BREAKPOINTS.xl) return "xl";
 	if (width >= BREAKPOINTS.lg) return "lg";
 	if (width >= BREAKPOINTS.md) return "md";
+
 	return MQ_DEFAULT_BUCKET;
+}
+
+export function resolveMqOrientation(): MqOrientationType {
+	if (!_isBrowser) return MQ_DEFAULT_ORIENTATION;
+
+	if (typeof window.matchMedia === "function") {
+		for (const orientation of MQ_ORIENTATION_PRIORITY) {
+			if (window.matchMedia(MQ_ORIENTATION_QUERY_MAP[orientation]).matches) {
+				return orientation;
+			}
+		}
+	}
+
+	const width = window.innerWidth || document.documentElement.clientWidth || 0;
+	const height = window.innerHeight || document.documentElement.clientHeight ||
+		0;
+
+	return height >= width ? "portrait" : "landscape";
 }
 
 function readInitialMqBucket(): MqBucketType {
 	return readBootstrapMqBucket() ?? resolveMqBucket();
 }
 
-// Single reactive source of truth for the active MQ bucket.
-// Initialized from the bootstrapped bucket so the first reactive read is
-// already useful on both the server fallback and the hydrated client.
+function readInitialMqOrientation(): MqOrientationType {
+	return readBootstrapMqOrientation() ?? resolveMqOrientation();
+}
+
 let _mqBucket: MqBucketType = $state(readInitialMqBucket());
-
-// Ready state: false until the exact breakpoint is resolved.
-// In SSR mode, stays false initially so base/content is the initial projection.
-// After client init, becomes true when breakpoint is confirmed.
+let _mqOrientation: MqOrientationType = $state(readInitialMqOrientation());
 let _mqReady: boolean = $state(false);
-
-// Loading state: true while the visual loading overlay should be visible.
-// Controlled by <Mq /> duration and effect logic, not by breakpoint resolution.
 let _mqLoading: boolean = $state(false);
 
-// Called by the Mq component on mount and on every resize to keep the
-// reactive bucket, the data-mq attribute, and localStorage in sync.
 export function _setMqBucket(bucket: MqBucketType): void {
 	if (_mqBucket !== bucket) {
 		_mqBucket = bucket;
 	}
+
 	if (_isBrowser && _updateHtmlAttributes) {
 		document.documentElement.setAttribute("data-mq", bucket);
 		document.documentElement.setAttribute("data-mq-init", "1");
+
 		try {
 			localStorage.setItem(MQ_STORAGE_KEY, bucket);
 		} catch {
@@ -130,26 +191,107 @@ export function _setMqBucket(bucket: MqBucketType): void {
 	}
 }
 
-// Set MQ ready state (breakpoint is resolved and exact projection can take over).
+export function _setMqOrientation(orientation: MqOrientationType): void {
+	if (_mqOrientation !== orientation) {
+		_mqOrientation = orientation;
+	}
+
+	if (_isBrowser && _updateHtmlAttributes) {
+		document.documentElement.setAttribute("data-orientation", orientation);
+		document.documentElement.setAttribute("data-orientation-init", "1");
+
+		try {
+			localStorage.setItem(MQ_ORIENTATION_STORAGE_KEY, orientation);
+		} catch {
+			/* ignore */
+		}
+	}
+}
+
 export function _setMqReady(ready: boolean): void {
 	_mqReady = ready;
 }
 
-// Set MQ loading state (visual overlay is visible).
 export function _setMqLoading(loading: boolean): void {
 	_mqLoading = loading;
 }
 
-// Orientation queries are not bucket-based so they still use MediaQuery.
-const _orientationCache = new Map<string, MediaQuery>();
+export function syncMqBucket(): MqBucketType {
+	const bucket = resolveMqBucket();
+
+	_setMqBucket(bucket);
+
+	return bucket;
+}
+
+export function syncMqOrientation(): MqOrientationType {
+	const orientation = resolveMqOrientation();
+
+	_setMqOrientation(orientation);
+
+	return orientation;
+}
+
+export function syncMqState(): {
+	bucket: MqBucketType;
+	orientation: MqOrientationType;
+} {
+	return {
+		bucket: syncMqBucket(),
+		orientation: syncMqOrientation(),
+	};
+}
+
+function handleMqResize(): void {
+	if (!_isBrowser) return;
+
+	if (_resizeFrame) {
+		window.cancelAnimationFrame(_resizeFrame);
+	}
+
+	_resizeFrame = window.requestAnimationFrame(() => {
+		syncMqState();
+		_resizeFrame = 0;
+	});
+}
+
+function completeMqRuntimeInit(): void {
+	syncMqState();
+	_setMqReady(true);
+}
+
+export function initMqRuntime(): void {
+	if (!_isBrowser || _isMqRuntimeReady) return;
+
+	_isMqRuntimeReady = true;
+
+	syncMqState();
+
+	window.addEventListener("resize", handleMqResize, { passive: true });
+	window.addEventListener("orientationchange", handleMqResize, {
+		passive: true,
+	});
+
+	if (typeof window.requestAnimationFrame === "function") {
+		window.requestAnimationFrame(completeMqRuntimeInit);
+		return;
+	}
+
+	window.setTimeout(completeMqRuntimeInit, 0);
+}
+
+const _mediaQueryCache = new Map<string, MediaQuery>();
 
 function _mq(query: string): { readonly current: boolean } {
 	if (!_isBrowser) return { current: false };
-	let existing = _orientationCache.get(query);
+
+	let existing = _mediaQueryCache.get(query);
+
 	if (!existing) {
 		existing = new MediaQuery(query);
-		_orientationCache.set(query, existing);
+		_mediaQueryCache.set(query, existing);
 	}
+
 	return existing;
 }
 
@@ -158,62 +300,60 @@ export const mq = {
 		return _mqBucket;
 	},
 
-	// SSR canonical projection state.
-	// True before exact breakpoint is ready (SSR or client startup).
-	// False after MQ resolves.
+	get orientation() {
+		return _mqOrientation;
+	},
+
 	get base() {
 		return !_mqReady;
 	},
 
-	// Alias for base for semantic clarity.
 	get content() {
 		return !_mqReady;
 	},
 
-	// True when the exact breakpoint has been resolved.
-	// False during SSR and client startup until MQ confirms the breakpoint.
 	get ready() {
 		return _mqReady;
 	},
 
-	// True while visual loading overlay should be visible.
 	get loading() {
 		return _mqLoading;
 	},
 
-	// Bucket getters — reactive via _mqBucket ($state), no matchMedia race.
 	get sm() {
 		return _mqBucket === "sm";
 	},
+
 	get md() {
 		return _mqBucket === "md";
 	},
+
 	get lg() {
 		return _mqBucket === "lg";
 	},
+
 	get xl() {
 		return _mqBucket === "xl";
 	},
+
 	get xxl() {
 		return _mqBucket === "xxl";
 	},
 
-	// Orientation — not captured in data-mq, uses MediaQuery directly.
 	get portrait() {
-		if (!_isBrowser) return false;
-		return _mq("(orientation: portrait)").current;
+		return _mqOrientation === "portrait";
 	},
+
 	get vertical() {
-		if (!_isBrowser) return false;
-		return _mq("(orientation: portrait)").current;
+		return _mqOrientation === "portrait";
 	},
+
 	get landscape() {
-		if (!_isBrowser) return true;
-		return _mq("(orientation: landscape)").current;
+		return _mqOrientation === "landscape";
 	},
+
 	get horizontal() {
-		if (!_isBrowser) return true;
-		return _mq("(orientation: landscape)").current;
+		return _mqOrientation === "landscape";
 	},
 };
 
@@ -253,5 +393,8 @@ export function screens<T>(
 	if (mq.lg && lg !== undefined) return lg;
 	if (mq.md && md !== undefined) return md;
 	if (mq.sm && sm !== undefined) return sm;
+
 	return base;
 }
+
+initMqRuntime();
