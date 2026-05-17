@@ -1,16 +1,16 @@
 /* UTILS */
 export * from "./utils/classes.svelte.ts";
-export { default as Component } from "./utils/component/component.svelte";
 export * from "./utils/component/component.svelte.ts";
-export { default as Debug } from "./utils/debug/debug.svelte";
+export { default as Component } from "./utils/component/component.svelte";
 export * from "./utils/debug/debug.svelte.ts";
+export { default as Debug } from "./utils/debug/debug.svelte";
 export * from "./utils/draggable.svelte.ts";
-export { default as Mq } from "./utils/mq/mq.svelte";
 export * from "./utils/mq/mq.svelte.ts";
+export { default as Mq } from "./utils/mq/mq.svelte";
 export * from "./utils/observe.svelte.ts";
 export * from "./utils/rails.svelte.ts";
-export { default as Root } from "./utils/component/root.svelte";
 export * from "./utils/component/root.svelte.ts";
+export { default as Root } from "./utils/component/root.svelte";
 export * from "./utils/scroll.svelte.ts";
 export * from "./utils/snippets.svelte.ts";
 export * from "./utils/sync.svelte.ts";
@@ -24,8 +24,8 @@ export { default as Button, type ButtonProps } from "./components/atoms/button/b
 export { default as Checkbox } from "./components/atoms/forms/checkbox/checkbox.svelte";
 export { default as Colorss } from "./components/atoms/Colorss.svelte";
 export { default as Container, type ContainerProps } from "./components/atoms/container/container.svelte";
-export { default as Content } from "./components/atoms/content/content.svelte";
 export * from "./components/atoms/content/content.svelte.ts";
+export { default as Content } from "./components/atoms/content/content.svelte";
 export { default as Divider, type DividerProps } from "./components/atoms/divider/divider.svelte";
 export { default as Example, type ExampleProps } from "./components/atoms/example/example.svelte";
 export { default as ExampleOld, type ExampleOldProps } from "./components/atoms/example-old/example-old.svelte";
@@ -51,22 +51,22 @@ export { default as Table, type TableColumn, type TableProps } from "./component
 export { default as Text, type TextProps } from "./components/atoms/text/text.svelte";
 export * from "./components/atoms/text/text.data.ts";
 export { default as Textarea } from "./components/atoms/forms/textarea/textarea.svelte";
-export { default as Theme } from "./components/atoms/theme/theme.svelte";
 export * from "./components/atoms/theme/theme.svelte.ts";
+export { default as Theme } from "./components/atoms/theme/theme.svelte";
 export { default as ThemeToggle } from "./components/atoms/theme/theme-toggle.svelte";
 export { default as Title } from "./components/atoms/title/title.svelte";
 
 // molecules
-export { default as Accordion, type AccordionProps } from "./components/molecules/accordion/accordion.svelte";
 export * from "./components/molecules/accordion/accordion.ts";
+export { default as Accordion, type AccordionProps } from "./components/molecules/accordion/accordion.svelte";
 export { default as AccordionContent, type AccordionContentProps } from "./components/molecules/accordion/accordion-content.svelte";
 export { default as AccordionTitle, type AccordionTitleProps } from "./components/molecules/accordion/accordion-title.svelte";
 export { default as Card, type CardProps } from "./components/molecules/card/card.svelte";
 export * from "./components/molecules/card/card.data.ts";
 export { default as Controls } from "./components/molecules/chart/controls.svelte";
 export { default as Copyright, type CopyrightProps } from "./components/molecules/copyright/copyright.svelte";
-export { default as Grid, type GridProps } from "./components/molecules/grid/grid.svelte";
 export * from "./components/molecules/grid/grid.svelte.ts";
+export { default as Grid, type GridProps } from "./components/molecules/grid/grid.svelte";
 export { default as Item, type ItemProps } from "./components/molecules/grid/item.svelte";
 export { default as Line } from "./components/molecules/chart/line/line.svelte";
 export { default as Logo, type LogoProps } from "./components/molecules/logo/logo.svelte";
@@ -79,8 +79,8 @@ export { default as Tree } from "./components/molecules/chart/tree/tree.svelte";
 
 // organisms
 export { default as Footer } from "./components/organisms/footer/footer.svelte";
-export { default as Globe } from "./components/organisms/globe/globe.svelte";
 export * from "./components/organisms/globe/globe.svelte.ts";
+export { default as Globe } from "./components/organisms/globe/globe.svelte";
 export { default as Header } from "./components/organisms/header/header.svelte";
 export { default as Page, type PreviewPageProps } from "./components/organisms/page/page.svelte";
 

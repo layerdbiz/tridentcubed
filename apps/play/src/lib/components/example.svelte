@@ -1,6 +1,6 @@
 <!-- Example.svelte -->
 <script lang="ts">
-  import { Component } from '$lib';
+  import { Component } from '@layerd/ui';
   import type { ComponentProps as SvelteComponentProps } from 'svelte';
 
   type BaseProps = SvelteComponentProps<typeof Component>;

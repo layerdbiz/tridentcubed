@@ -94,6 +94,15 @@ function readInitialMqBucket(): MqBucketType {
 // already useful on both the server fallback and the hydrated client.
 let _mqBucket: MqBucketType = $state(readInitialMqBucket());
 
+// Ready state: false until the exact breakpoint is resolved.
+// In SSR mode, stays false initially so base/content is the initial projection.
+// After client init, becomes true when breakpoint is confirmed.
+let _mqReady: boolean = $state(false);
+
+// Loading state: true while the visual loading overlay should be visible.
+// Controlled by <Mq /> duration and effect logic, not by breakpoint resolution.
+let _mqLoading: boolean = $state(false);
+
 // Called by the Mq component on mount and on every resize to keep the
 // reactive bucket, the data-mq attribute, and localStorage in sync.
 export function _setMqBucket(bucket: MqBucketType): void {
@@ -107,6 +116,16 @@ export function _setMqBucket(bucket: MqBucketType): void {
 			localStorage.setItem(MQ_STORAGE_KEY, bucket);
 		} catch { /* ignore */ }
 	}
+}
+
+// Set MQ ready state (breakpoint is resolved and exact projection can take over).
+export function _setMqReady(ready: boolean): void {
+	_mqReady = ready;
+}
+
+// Set MQ loading state (visual overlay is visible).
+export function _setMqLoading(loading: boolean): void {
+	_mqLoading = loading;
 }
 
 // Orientation queries are not bucket-based so they still use MediaQuery.
@@ -125,6 +144,29 @@ function _mq(query: string): { readonly current: boolean } {
 export const mq = {
 	get bucket() {
 		return _mqBucket;
+	},
+
+	// SSR canonical projection state.
+	// True before exact breakpoint is ready (SSR or client startup).
+	// False after MQ resolves.
+	get base() {
+		return !_mqReady;
+	},
+
+	// Alias for base for semantic clarity.
+	get content() {
+		return !_mqReady;
+	},
+
+	// True when the exact breakpoint has been resolved.
+	// False during SSR and client startup until MQ confirms the breakpoint.
+	get ready() {
+		return _mqReady;
+	},
+
+	// True while visual loading overlay should be visible.
+	get loading() {
+		return _mqLoading;
 	},
 
 	// Bucket getters — reactive via _mqBucket ($state), no matchMedia race.

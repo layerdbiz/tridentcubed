@@ -51,6 +51,23 @@ interface BarrelPlacement {
 	category?: string;
 }
 
+function getBarrelFileTypeWeight(file: FileInfo): number {
+	if (file.fileType === "ts") return 0;
+	if (file.fileType === "svelte.ts") return 1;
+	if (file.fileType === "svelte") return 2;
+	return 3;
+}
+
+function compareBarrelFiles(a: FileInfo, b: FileInfo): number {
+	const byName = a.name.localeCompare(b.name);
+	if (byName !== 0) return byName;
+
+	const byType = getBarrelFileTypeWeight(a) - getBarrelFileTypeWeight(b);
+	if (byType !== 0) return byType;
+
+	return a.relativePath.localeCompare(b.relativePath);
+}
+
 const UI_BARREL_TARGET: BarrelTarget = {
 	name: "ui",
 	label: "UI",
@@ -275,9 +292,7 @@ async function generateBarrelContent(
 
 		if (sectionName === "root") {
 			for (
-				const file of sectionFiles.sort((a: FileInfo, b: FileInfo) =>
-					a.name.localeCompare(b.name)
-				)
+				const file of sectionFiles.sort(compareBarrelFiles)
 			) {
 				const fileExports = await generateFileExportsEnhanced(file);
 				lines.push(...fileExports);
@@ -289,9 +304,7 @@ async function generateBarrelContent(
 		// Special handling for utils section - no categories, flat structure
 		if (sectionName === "utils") {
 			for (
-				const file of sectionFiles.sort((a: FileInfo, b: FileInfo) =>
-					a.name.localeCompare(b.name)
-				)
+				const file of sectionFiles.sort(compareBarrelFiles)
 			) {
 				const fileExports = await generateFileExportsEnhanced(file);
 				lines.push(...fileExports);
@@ -311,9 +324,7 @@ async function generateBarrelContent(
 				lines.push(`// ${categoryName}`);
 
 				for (
-					const file of categoryFiles.sort((a: FileInfo, b: FileInfo) =>
-						a.name.localeCompare(b.name)
-					)
+					const file of categoryFiles.sort(compareBarrelFiles)
 				) {
 					const fileExports = await generateFileExportsEnhanced(file);
 					lines.push(...fileExports);
@@ -324,9 +335,7 @@ async function generateBarrelContent(
 		} else {
 			// No categories, just list all files in section
 			for (
-				const file of sectionFiles.sort((a: FileInfo, b: FileInfo) =>
-					a.name.localeCompare(b.name)
-				)
+				const file of sectionFiles.sort(compareBarrelFiles)
 			) {
 				const fileExports = await generateFileExportsEnhanced(file);
 				lines.push(...fileExports);
