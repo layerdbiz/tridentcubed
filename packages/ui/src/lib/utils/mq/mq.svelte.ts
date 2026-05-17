@@ -39,6 +39,16 @@ export const MQ_BUCKET_PRIORITY = [
 // Svelte core doesn't provide a built-in browser detection
 const _isBrowser = typeof window !== "undefined";
 
+// Configuration to enable or disable data-mq updates
+let _updateHtmlAttributes = true;
+
+// Function to configure the MQ utility
+export function configureMqUtility(options: { updateHtmlAttributes?: boolean } = {}): void {
+	if (options.updateHtmlAttributes !== undefined) {
+		_updateHtmlAttributes = options.updateHtmlAttributes;
+	}
+}
+
 export function isMqBucket(value: string | null): value is MqBucketType {
 	return value !== null && MQ_BUCKET_PRIORITY.includes(value as MqBucketType);
 }
@@ -109,12 +119,14 @@ export function _setMqBucket(bucket: MqBucketType): void {
 	if (_mqBucket !== bucket) {
 		_mqBucket = bucket;
 	}
-	if (_isBrowser) {
+	if (_isBrowser && _updateHtmlAttributes) {
 		document.documentElement.setAttribute("data-mq", bucket);
 		document.documentElement.setAttribute("data-mq-init", "1");
 		try {
 			localStorage.setItem(MQ_STORAGE_KEY, bucket);
-		} catch { /* ignore */ }
+		} catch {
+			/* ignore */
+		}
 	}
 }
 
