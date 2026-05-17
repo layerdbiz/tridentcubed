@@ -70,7 +70,7 @@
 
 {#snippet linkItem(link: NavLink)}
 	<a
-		class="rounded-lg inline-block w-full px-2 py-1 {getActiveClass(link.href)}"
+		class="inline-block w-full rounded-lg px-2 py-1 {getActiveClass(link.href)}"
 		aria-current={isActiveLink(link.href) ? 'page' : undefined}
 		href={getNavHref(link.href)}
 		onclick={handleNavSelection}
@@ -85,7 +85,7 @@
 		icon="menu"
 		aria-expanded={navOpen}
 		onclick={openNav}
-		class="sticky top-0 z-40 m-3 {navOpen ? 'hidden' : ''}"
+		class="fixed! left-3 top-3 z-40 {navOpen ? 'hidden' : ''}"
 	/>
 {/snippet}
 
@@ -137,14 +137,14 @@
 	{#if navOpen}
 		<button
 			type="button"
-			class="fixed inset-0 z-40 bg-black/40"
+			class="fixed! inset-0 z-40 bg-black/40"
 			aria-label="Close navigation"
 			onclick={closeNav}
 		></button>
 	{/if}
 
 	<Component
-		class="fixed inset-y-0 left-0 z-50 h-full w-64 bg-neutral-200 transition-transform duration-200 {navOpen ? 'translate-x-0' : '-translate-x-full'}"
+		class="fixed! inset-y-0 left-0 z-50 h-full w-64 bg-neutral-200 transition-transform duration-200 {navOpen ? 'translate-x-0' : '-translate-x-full'}"
 		aria-hidden={!navOpen}
 	>
 		<div class="p-3">

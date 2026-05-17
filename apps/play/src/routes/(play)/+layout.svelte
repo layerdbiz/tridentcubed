@@ -15,17 +15,14 @@
 
 <!-- Main -->
 {#if mq.sm}
-	<Component tag="main" gap="0" class="h-svh">
+	<Component tag="main" rails="full" gap="0" class="h-svh overflow-hidden">
 		{#snippet full()}
-			{@render content()}
-		{/snippet}
-
-		{#snippet fg()}
 			<Nav />
+			{@render content()}
 		{/snippet}
 	</Component>
 {:else}
-	<Component tag="main" cols="auto 1fr auto" gap="0" class="h-svh">
+	<Component tag="main" cols="auto 1fr auto" gap="0" class="h-svh overflow-hidden">
 		{#snippet a1a3()}
 			<Nav />
 		{/snippet}
