@@ -187,7 +187,9 @@ export async function run(
 
 	const command = inputCommand as WorkspaceCommand;
 	const explicitApps = normalizeOverrideApps(overrideApps);
-	const apps = explicitApps.length > 0 ? explicitApps : await getConfiguredApps();
+	const apps = explicitApps.length > 0
+		? explicitApps
+		: await getConfiguredApps();
 	await validateConfiguredApps(apps);
 	await runTurbo(buildTurboArgs(command, apps));
 }
