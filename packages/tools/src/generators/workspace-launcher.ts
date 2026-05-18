@@ -125,28 +125,88 @@ function normalizeOverrideApps(overrideApps: string[]): string[] {
 	);
 }
 
-function buildTurboArgs(command: WorkspaceCommand, apps: string[]): string[] {
-	if (command === "watch") {
-		return [
-			"watch",
-			"//#barrels:watch",
-			...apps.map((appName) => `${appName}#dev`),
-			"storybook#story",
-		];
+function parseWorkspaceArgs(
+	args: string[],
+	workspaceApps: Set<string>,
+): {
+	overrideApps: string[];
+	passthroughArgs: string[];
+} {
+	const overrideApps: string[] = [];
+	const passthroughArgs: string[] = [];
+	let isPassthroughMode = false;
+
+	for (const arg of args) {
+		if (!arg) {
+			continue;
+		}
+
+		if (isPassthroughMode) {
+			passthroughArgs.push(arg);
+			continue;
+		}
+
+		if (arg === "--") {
+			isPassthroughMode = true;
+			continue;
+		}
+
+		if (workspaceApps.has(arg)) {
+			overrideApps.push(arg);
+			continue;
+		}
+
+		if (arg.startsWith("-")) {
+			passthroughArgs.push(arg);
+			continue;
+		}
+
+		const knownApps = Array.from(workspaceApps).sort().join(", ");
+		throw new Error(
+			`Unknown workspace argument: ${arg}. Known apps: ${knownApps}.`,
+		);
 	}
 
-	if (command === "dev") {
+	return {
+		overrideApps: normalizeOverrideApps(overrideApps),
+		passthroughArgs,
+	};
+}
+
+function buildTurboArgs(
+	command: WorkspaceCommand,
+	apps: string[],
+	passthroughArgs: string[] = [],
+): string[] {
+	const turboArgs = (() => {
+		if (command === "watch") {
+			return [
+				"watch",
+				"//#barrels:watch",
+				...apps.map((appName) => `${appName}#dev`),
+				"storybook#story",
+			];
+		}
+
+		if (command === "dev") {
+			return [
+				"watch",
+				"//#barrels:watch",
+				...apps.map((appName) => `${appName}#dev`),
+			];
+		}
+
 		return [
-			"watch",
-			"//#barrels:watch",
-			...apps.map((appName) => `${appName}#dev`),
+			"run",
+			...apps.map((appName) => `${appName}#${command}`),
 		];
+	})();
+
+	if (passthroughArgs.length > 0) {
+		turboArgs.push("--", ...passthroughArgs);
 	}
 
-	return [
-		"run",
-		...apps.map((appName) => `${appName}#${command}`),
-	];
+	return turboArgs;
 }
 
 function runTurbo(args: string[]): Promise<void> {
@@ -175,7 +235,7 @@ function runTurbo(args: string[]): Promise<void> {
 
 export async function run(
 	inputCommand?: string,
-	overrideApps: string[] = [],
+	workspaceArgs: string[] = [],
 ): Promise<void> {
 	if (
 		!inputCommand || !WORKSPACE_COMMANDS.has(inputCommand as WorkspaceCommand)
@@ -186,10 +246,15 @@ export async function run(
 	}
 
 	const command = inputCommand as WorkspaceCommand;
+	const workspaceApps = await getWorkspaceApps();
+	const { overrideApps, passthroughArgs } = parseWorkspaceArgs(
+		workspaceArgs,
+		workspaceApps,
+	);
 	const explicitApps = normalizeOverrideApps(overrideApps);
 	const apps = explicitApps.length > 0
 		? explicitApps
 		: await getConfiguredApps();
 	await validateConfiguredApps(apps);
-	await runTurbo(buildTurboArgs(command, apps));
+	await runTurbo(buildTurboArgs(command, apps, passthroughArgs));
 }
