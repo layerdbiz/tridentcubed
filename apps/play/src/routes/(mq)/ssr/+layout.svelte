@@ -7,7 +7,9 @@
 	let { children }: LayoutProps = $props();
 </script>
 
-<Mq loading="fade" delay={2000} duration={300} />
+<Mq loading="fade" delay={2000} duration={300}>
+	Loading...
+</Mq>
 
 {#snippet content()}
 	<Component tag="article" rails="gutter-lg" class="py-10 h-full overflow-y-scroll">
