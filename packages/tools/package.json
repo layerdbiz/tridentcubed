@@ -8,7 +8,8 @@
 		"sheetari": "./bin/sheetari.js",
 		"stories": "./bin/stories.js",
 		"symlinks": "./bin/symlinks.js",
-		"types": "./src/main.ts"
+		"types": "./src/main.ts",
+		"workspace": "./bin/workspace.js"
 	},
 	"exports": {
 		".": {
@@ -19,7 +20,8 @@
 		"./sheetari": "./src/generators/sheetari.ts",
 		"./stories": "./src/generators/stories.ts",
 		"./symlinks": "./src/generators/symlinks.ts",
-		"./types": "./src/generators/types.ts"
+		"./types": "./src/generators/types.ts",
+		"./workspace": "./src/generators/workspace-launcher.ts"
 	},
 	"scripts": {
 		"barrels:run": "node ./bin/barrels.js",
@@ -29,6 +31,7 @@
 		"symlinks": "node bin/symlinks.js",
 		"symlinks:clean": "node -e \"import('./src/generators/symlinks.ts').then(m => m.cleanSymlinks())\"",
 		"symlinks:check": "node -e \"import('./src/generators/symlinks.ts').then(m => m.checkSymlinks())\"",
+		"workspace": "node ./bin/workspace.js",
 		"types": "types",
 		"test": "node ./bin/barrels.js"
 	},

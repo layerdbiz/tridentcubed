@@ -26,10 +26,15 @@ export async function main() {
 				await run();
 				break;
 			}
+			case "workspace": {
+				const { run } = await import("./generators/workspace-launcher.ts");
+				await run(process.argv[3]);
+				break;
+			}
 			default: {
 				console.error(`Unknown command: ${command}`);
 				console.error(
-					"Available commands: barrels, sheetari, stories, types",
+					"Available commands: barrels, sheetari, stories, types, workspace",
 				);
 				process.exit(1);
 			}
@@ -48,3 +53,4 @@ export { run as barrels } from "./generators/barrels.ts";
 export { run as sheetari } from "./generators/sheetari.ts";
 export { run as stories } from "./generators/stories.ts";
 export { run as types } from "./generators/types.ts";
+export { run as workspace } from "./generators/workspace-launcher.ts";

@@ -17,6 +17,7 @@ export {
 	generateSymlinks,
 	watchSymlinks,
 } from "./generators/symlinks.js";
+export { run as runWorkspace } from "./generators/workspace-launcher.js";
 
 /* CORE */
 export * from "./utils.js";
