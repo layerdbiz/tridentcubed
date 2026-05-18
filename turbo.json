@@ -29,21 +29,12 @@
       "inputs": [
         "packages/ui/src/lib/**",
         "!packages/ui/src/lib/index.ts",
-        "apps/app/src/lib/**",
-        "!apps/app/src/lib/index.ts",
-        "apps/play/src/lib/**",
-        "!apps/play/src/lib/index.ts",
-        "apps/report/src/lib/**",
-        "!apps/report/src/lib/index.ts",
-        "apps/site/src/lib/**",
-        "!apps/site/src/lib/index.ts"
+        "apps/*/src/lib/**",
+        "!apps/*/src/lib/index.ts"
       ],
       "outputs": [
         "packages/ui/src/lib/index.ts",
-        "apps/app/src/lib/index.ts",
-        "apps/play/src/lib/index.ts",
-        "apps/report/src/lib/index.ts",
-        "apps/site/src/lib/index.ts"
+        "apps/*/src/lib/index.ts"
       ]
     },
     "//#barrels": {
@@ -51,21 +42,12 @@
       "inputs": [
         "packages/ui/src/lib/**",
         "!packages/ui/src/lib/index.ts",
-        "apps/app/src/lib/**",
-        "!apps/app/src/lib/index.ts",
-        "apps/play/src/lib/**",
-        "!apps/play/src/lib/index.ts",
-        "apps/report/src/lib/**",
-        "!apps/report/src/lib/index.ts",
-        "apps/site/src/lib/**",
-        "!apps/site/src/lib/index.ts"
+        "apps/*/src/lib/**",
+        "!apps/*/src/lib/index.ts"
       ],
       "outputs": [
         "packages/ui/src/lib/index.ts",
-        "apps/app/src/lib/index.ts",
-        "apps/play/src/lib/index.ts",
-        "apps/report/src/lib/index.ts",
-        "apps/site/src/lib/index.ts"
+        "apps/*/src/lib/index.ts"
       ]
     },
     "barrel": {

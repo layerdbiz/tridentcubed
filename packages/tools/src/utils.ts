@@ -49,6 +49,15 @@ export interface FolderStructure {
 	depthMap: Map<number, Map<string, FileInfo[]>>; // depth -> name -> files
 }
 
+export interface WorkspaceAppInfo {
+	directoryName: string;
+	packageName: string;
+	rootPath: string;
+	libPath: string;
+	barrelFile: string;
+	staticPath: string;
+}
+
 /**
  * Core scanning options
  */
@@ -388,6 +397,43 @@ export async function fileExists(filePath: string): Promise<boolean> {
 	} catch {
 		return false;
 	}
+}
+
+export async function getWorkspaceApps(): Promise<WorkspaceAppInfo[]> {
+	const appsRootPath = resolvePath("apps");
+	const entries = await fs.readdir(appsRootPath, { withFileTypes: true });
+	const apps: WorkspaceAppInfo[] = [];
+
+	for (const entry of entries) {
+		if (!entry.isDirectory()) {
+			continue;
+		}
+
+		const rootPath = resolvePath("apps", entry.name);
+		const packagePath = join(rootPath, "package.json");
+
+		if (!(await fileExists(packagePath))) {
+			continue;
+		}
+
+		const packageContent = await fs.readFile(packagePath, "utf8");
+		const packageJson = JSON.parse(packageContent) as { name?: string };
+
+		if (!packageJson.name) {
+			continue;
+		}
+
+		apps.push({
+			directoryName: entry.name,
+			packageName: packageJson.name,
+			rootPath,
+			libPath: join(rootPath, "src", "lib"),
+			barrelFile: join(rootPath, "src", "lib", "index.ts"),
+			staticPath: join(rootPath, "static"),
+		});
+	}
+
+	return apps.sort((a, b) => a.packageName.localeCompare(b.packageName));
 }
 
 /**

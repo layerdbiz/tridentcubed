@@ -1,16 +1,16 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { TOOLS_CONFIG } from "../config.ts";
+import { getWorkspaceApps, resolvePath } from "../utils.ts";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+function toWorkspaceRelativePath(targetPath: string): string {
+	return path.relative(resolvePath(), targetPath).replace(/\\/g, "/");
+}
 
-// Helper function to get project root - reduces redundancy
-const getProjectRoot = () => path.resolve(__dirname, "../../../../");
-
-// Helper function to resolve paths from project root - reduces redundancy
-const resolvePath = (...paths: string[]) =>
-	path.resolve(getProjectRoot(), ...paths);
+async function getSymlinkTargets(): Promise<string[]> {
+	const apps = await getWorkspaceApps();
+	return apps.map((app) => toWorkspaceRelativePath(app.staticPath));
+}
 
 /**
  * Check if a path exists
@@ -54,9 +54,8 @@ async function createSymlink(source: string, target: string): Promise<void> {
 			await fs.unlink(absoluteTarget);
 			console.log(`🗑️ Removed existing symlink: ${target}`);
 		} else {
-			// If it's a regular directory, remove it
-			await fs.rm(absoluteTarget, { recursive: true, force: true });
-			console.log(`🗑️ Removed existing directory: ${target}`);
+			console.log(`↩️ Skipping managed static folder with existing directory: ${target}`);
+			return;
 		}
 	}
 
@@ -95,7 +94,8 @@ async function createSymlink(source: string, target: string): Promise<void> {
 export async function generateSymlinks(): Promise<void> {
 	console.log("🔗 Setting up static asset symlinks...");
 
-	const { source, targets } = TOOLS_CONFIG.symlinks;
+	const { source } = TOOLS_CONFIG.symlinks;
+	const targets = await getSymlinkTargets();
 
 	// Ensure source directory exists
 	const absoluteSource = resolvePath(source);
@@ -123,7 +123,7 @@ export async function generateSymlinks(): Promise<void> {
 export async function cleanSymlinks(): Promise<void> {
 	console.log("🧹 Cleaning up static asset symlinks...");
 
-	const { targets } = TOOLS_CONFIG.symlinks;
+	const targets = await getSymlinkTargets();
 
 	for (const target of targets) {
 		// Resolve paths from the project root using helper function
@@ -153,7 +153,8 @@ export async function cleanSymlinks(): Promise<void> {
 export async function checkSymlinks(): Promise<boolean> {
 	console.log("🔍 Checking symlink status...");
 
-	const { source, targets } = TOOLS_CONFIG.symlinks;
+	const { source } = TOOLS_CONFIG.symlinks;
+	const targets = await getSymlinkTargets();
 	let allValid = true;
 
 	// Check if source exists
@@ -177,11 +178,11 @@ export async function checkSymlinks(): Promise<boolean> {
 		if (exists && isSymlink) {
 			status = "Valid symlink";
 		} else if (exists && !isSymlink) {
-			status = "Regular directory (not symlink)";
+			status = "Managed manually (regular directory)";
 		}
 
 		console.log(`${isSymlink ? "✅" : "❌"} ${target}: ${status}`);
-		if (!isSymlink) allValid = false;
+		if (!isSymlink && !exists) allValid = false;
 	}
 
 	return allValid;

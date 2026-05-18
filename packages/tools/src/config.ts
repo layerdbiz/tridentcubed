@@ -29,15 +29,10 @@ export interface ToolsConfig {
 		};
 		storybook: {
 			storiesPath: string;
-			staticPath: string;
-		};
-		site: {
-			staticPath: string;
 		};
 	};
 	symlinks: {
 		source: string;
-		targets: string[];
 	};
 	logging: {
 		level: "debug" | "info" | "warn" | "error";
@@ -75,18 +70,10 @@ export const TOOLS_CONFIG: ToolsConfig = {
 		},
 		storybook: {
 			storiesPath: "apps/storybook/src/stories",
-			staticPath: "apps/storybook/static",
-		},
-		site: {
-			staticPath: "apps/site/static",
 		},
 	},
 	symlinks: {
 		source: "packages/ui/static",
-		targets: [
-			"apps/site/static",
-			"apps/storybook/static",
-		],
 	},
 	logging: {
 		level: "info",

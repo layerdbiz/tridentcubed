@@ -5,6 +5,7 @@ import {
 	fileExists,
 	type FileInfo,
 	type FolderStructure,
+	getWorkspaceApps,
 	Logger,
 	pascalCase,
 	readFile,
@@ -76,39 +77,28 @@ const UI_BARREL_TARGET: BarrelTarget = {
 	barrelFile: TOOLS_CONFIG.packages.ui.barrelFile,
 };
 
-const WORKSPACE_BARREL_TARGETS: BarrelTarget[] = [
-	UI_BARREL_TARGET,
-	{
-		name: "app",
-		label: "APP",
-		emoji: "🚀",
-		libPath: "apps/app/src/lib",
-		barrelFile: "apps/app/src/lib/index.ts",
-	},
-	{
-		name: "play",
-		label: "PLAY",
-		emoji: "🚀",
-		libPath: "apps/play/src/lib",
-		barrelFile: "apps/play/src/lib/index.ts",
-	},
-	{
-		name: "report",
-		label: "REPORT",
-		emoji: "🚀",
-		libPath: "apps/report/src/lib",
-		barrelFile: "apps/report/src/lib/index.ts",
-	},
-	{
-		name: "site",
-		label: "SITE",
-		emoji: "🚀",
-		libPath: "apps/site/src/lib",
-		barrelFile: "apps/site/src/lib/index.ts",
-	},
-];
-
 const SPECIAL_BARREL_SECTIONS = new Set(["utils", "components"]);
+
+async function getWorkspaceBarrelTargets(): Promise<BarrelTarget[]> {
+	const apps = await getWorkspaceApps();
+	const appTargets: BarrelTarget[] = [];
+
+	for (const app of apps) {
+		if (!(await fileExists(app.libPath))) {
+			continue;
+		}
+
+		appTargets.push({
+			name: app.packageName,
+			label: app.packageName.toUpperCase(),
+			emoji: "🚀",
+			libPath: app.libPath,
+			barrelFile: app.barrelFile,
+		});
+	}
+
+	return [UI_BARREL_TARGET, ...appTargets];
+}
 
 function toWorkspacePath(path: string): string {
 	return path.replace(/\\/g, "/").replace(/^([A-Za-z]:)?\//, "");
@@ -124,19 +114,6 @@ function isIgnoredWatchPath(watchedPath: string): boolean {
 	return normalizedPath.endsWith("/index.ts") ||
 		normalizedPath.endsWith(".tmp") ||
 		normalizedPath.endsWith(".lock");
-}
-
-function findTargetForPath(watchedPath: string): BarrelTarget | null {
-	const normalizedPath = watchedPath.replace(/\\/g, "/");
-
-	for (const target of WORKSPACE_BARREL_TARGETS) {
-		const targetLibPath = toWorkspacePath(resolvePath(target.libPath));
-		if (toWorkspacePath(normalizedPath).startsWith(targetLibPath)) {
-			return target;
-		}
-	}
-
-	return null;
 }
 
 function resolveBarrelPlacement(hierarchyKey: string): BarrelPlacement {
@@ -549,8 +526,9 @@ async function writeBarrelTarget(target: BarrelTarget): Promise<boolean> {
 
 async function generateWorkspaceBarrels(): Promise<void> {
 	let updatedTargets = 0;
+	const targets = await getWorkspaceBarrelTargets();
 
-	for (const target of WORKSPACE_BARREL_TARGETS) {
+	for (const target of targets) {
 		const wasUpdated = await writeBarrelTarget(target);
 		if (wasUpdated) {
 			updatedTargets += 1;
@@ -580,9 +558,10 @@ async function runWorkspaceGeneration(): Promise<void> {
 async function watchWorkspaceBarrels(): Promise<void> {
 	await runWorkspaceGeneration();
 
-	const watchPaths = WORKSPACE_BARREL_TARGETS.map((target) =>
-		resolvePath(target.libPath)
-	);
+	const watchPaths = [
+		resolvePath(TOOLS_CONFIG.packages.ui.libPath),
+		resolvePath("apps/*/src/lib"),
+	];
 
 	const watcher = chokidar.watch(watchPaths, {
 		ignoreInitial: true,

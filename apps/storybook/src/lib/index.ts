@@ -1,1 +1,2 @@
-// place files you want to import through the `$lib` alias in this folder.
+/* ROOT */
+export { default as DualTheme } from "./DualTheme.svelte";
