@@ -89,7 +89,7 @@
 
 	<!-- Example 4 -->
 	<h2>✅ 4. explicit rails mode</h2>
-	<Component tag="header" grid="rails" rails="full" items="center stretch" class="header-demo">
+	<Component tag="header" grid="rails" rails="gutter" items="center stretch" class="header-demo">
 		{#snippet left()}
 			{@render leftContent()}
 		{/snippet}

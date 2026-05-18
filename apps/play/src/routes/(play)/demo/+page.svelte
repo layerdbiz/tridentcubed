@@ -372,12 +372,12 @@
 <style lang="postcss">
 	@reference '#app.css';
 
-	.demo-route-page { @apply grid gap-4 p-4 md:gap-5 md:p-5; }
-	.demo-route-header { @apply grid gap-3 rounded-2xl bg-linear-to-br from-amber-50 via-white to-sky-50 p-4 outline-1 outline-slate-200 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:p-5; }
+	.demo-route-page { @apply grid gap-4 p-4; }
+	.demo-route-header { @apply grid gap-3 rounded-2xl bg-linear-to-br outline-1 outline-slate-200 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:p-5; }
 	.demo-route-copy { @apply grid gap-2; }
 	.demo-route-eyebrow { @apply text-xs font-black uppercase tracking-[0.24em] text-amber-700; }
 	.demo-route-title { @apply text-2xl font-black tracking-tight text-slate-950 md:text-3xl; }
-	.demo-route-text { @apply max-w-3xl text-sm leading-6 text-slate-600; }
+	.demo-route-text { @apply text-sm leading-6 text-slate-600; }
 	.demo-route-tabs { @apply inline-flex flex-wrap gap-2; }
 	.demo-route-tabs button { @apply rounded-full bg-white px-4 py-2 text-sm font-black capitalize text-slate-500 outline-1 outline-slate-300 transition-colors; }
 	.demo-route-tabs button.active { @apply bg-slate-950 text-white outline-slate-950; }
