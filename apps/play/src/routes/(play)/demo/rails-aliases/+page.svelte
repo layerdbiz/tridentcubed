@@ -19,8 +19,8 @@
 			values: ['gutter-2', 'inset-sm', 'full-inset-sm', 'gutter-4', 'inset-lg', 'full-inset-lg']
 		}
 	];
-	const surfaceClass = 'rounded-2xl bg-slate-50 p-4';
-	const railClass = 'rounded-xl bg-slate-950 px-4 py-5 font-black text-white';
+	const surfaceClass = 'rounded-2xl bg-slate-50';
+	const railClass = 'rounded-xl bg-slate-950 p-4 font-black text-white';
 	const showRailsDebug = $derived(page.url.searchParams.get('railsDebug') === '1');
 </script>
 

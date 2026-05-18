@@ -109,6 +109,7 @@ export const mySync = new Proxy({}, {
 - **Auto-generation**: barrel exports generate during root dev/watch flows and dedicated barrel workflows; story generation runs through dedicated story workflows such as `pnpm watch` or `pnpm stories`.
 - **JSDoc tags required**: `@tags`, `@type`, and `@layout` comments drive current story metadata and generation assumptions.
 - **Tailwind layout first**: avoid ad hoc color utility patterns that bypass the shared theme tokens.
+- **Prefer Tailwind gap utilities**: for normal component and app spacing, use Tailwind `gap-*`, `row-gap-*`, or `col-gap-*` classes. Treat the runtime `gap` prop as opt-in for layout-runtime cases only; it should not inject a default gap.
 - **Prop type naming**: use the `NameProps` convention for prop types and imported prop type names, for example `GridProps`, `InputProps`, and `FieldProps`.
 - **Document new universal helpers**: if a new runtime helper becomes public, document its purpose, public import path, and whether apps need a bootstrap component or layout-level setup.
 
@@ -129,6 +130,8 @@ export const mySync = new Proxy({}, {
 - Use `inset` as a modifier instead of a canonical rail family: on `content` it adjusts the safe edge, on `full` it creates a one-off pull-in, and reusable full-width pull-ins should use the canonical `gutter-*` rails.
 - Dynamic `inset` aliases such as `1`, `2`, `3`, `4`, `5`, `6`, `sm`, `md`, `lg`, and `xl` map to inset spacing tokens, not to rail widths.
 - Rails debug should visualize the canonical rail line system and use the same short canonical label on mirrored rails instead of separate alias-specific labels.
+- Rails debug should keep the full canonical line system visible, but active highlighting should come from descendant rail usage inside the rails container, not from the parent container's own `rails` configuration. Matching start and end debug lines and labels should promote above the rest and switch to the active highlight color.
+- Root runtime layout helpers must not hard-code the root container to `position: relative` just to support debug overlays; debug surfaces should anchor themselves so caller-supplied positioning utilities such as Tailwind `fixed` or `absolute` can still control the container.
 - Snippet-zone wrappers are runtime-owned and should only appear when the rails-plus-layout case requires them.
 - Keep `size` as the existing UI visual size prop in `packages/ui`; do not use it as layout track sizing here.
 - When building wrapper components, keep passing `...props` into `<Component>`. The default base runtime renders the requested `tag` and carries HTML attributes, classes, children, MQ-aware snippet behavior, and layout snippets through automatically. Only spread snippet `props` onto a rendered element when you intentionally opt into the legacy custom `component(...)` snippet path.

@@ -39,6 +39,8 @@
 
 	.debug {
 		@apply pointer-events-none fixed isolate select-none;
+		user-select: none;
+		-webkit-user-select: none;
 
 		&:where(.debug-overlay) {
 			@apply z-9999 -translate-x-1/2 whitespace-nowrap rounded bg-pink-600/90 px-1.5 py-1 text-xs font-medium leading-tight text-white;
@@ -59,5 +61,11 @@
 				@apply absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-pink-600 content-[''];
 			}
 		}
+	}
+
+	.debug {
+		pointer-events: none;
+		user-select: none;
+		-webkit-user-select: none;
 	}
 </style>

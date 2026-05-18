@@ -7,7 +7,7 @@
 	let { children }: LayoutProps = $props();
 </script>
 
-<Mq loading="fade" delay={2000} duration={300}>
+<Mq loading="zoom" delay={2000} duration={300}>
 	Loading...
 </Mq>
 

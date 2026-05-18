@@ -49,5 +49,7 @@ applyTo: 'apps/play/**/*.svelte,apps/play/**/*.ts,apps/play/**/*.js,apps/play/**
 - Keep experiments understandable and easy to compare back to `src/lib`.
 - When proving snippet or rail behavior, prefer empty snippets and built-in fallback labels before adding hardcoded demo content.
 - Use light visual demo skinning to reveal snippet, rail, and debug boundaries, but keep the runtime fallback behavior visible.
+- For simple play demos, keep trivial MQ branching and one-off Tailwind class strings inline in the markup when that makes the example easier to read.
+- Do not lift simple demo-only `mq` choices, fallback labels, or one-off class strings into top-level constants unless reuse or complexity clearly justifies it.
 - `apps/play/src/routes/(mq)/**` and `apps/play/src/routes/(play)/demo/mq-*` are the active proving-ground examples for `Mq`, `mq`, responsive layout snippet behavior, and rails plus snippets plus MQ interaction.
 - Patterns proven here may later be merged into `packages/ui`, but `apps/play` rules do not apply globally.

@@ -294,11 +294,11 @@
 	const rootTemplateCols = $derived(rootGrid === 'rails' ? undefined : shouldEmitCols ? rootCols : undefined);
 	const rootTemplateRows = $derived(shouldUseSnippetZone ? undefined : shouldEmitRows ? rootRows : undefined);
 	const rootGap = $derived(
-		shouldUseRootRuntime ? String(gap ?? '').trim() || '0.5rem' : undefined
+		shouldUseRootRuntime ? String(gap ?? '').trim() || undefined : undefined
 	);
 	const rootGapTokens = $derived(rootGap ? rootGap.split(/\s+/).filter(Boolean) : []);
-	const rootRowGap = $derived(rootGapTokens[0] ?? '0px');
-	const rootColGap = $derived(rootGapTokens[1] ?? rootGapTokens[0] ?? '0px');
+	const rootRowGap = $derived(normalizeGapTrackValue(rootGapTokens[0]));
+	const rootColGap = $derived(normalizeGapTrackValue(rootGapTokens[1] ?? rootGapTokens[0]));
 	const userItems = $derived(engine.normalizePlacement(items, 'items') || undefined);
 	const userContent = $derived(engine.normalizePlacement(content, 'content') || undefined);
 	const friendlyRailPackAxis = $derived(engine.getFriendlyRailPackAxis(resolvedItems));
@@ -413,7 +413,7 @@
 				rootRailsInset ? `--rails-inset: ${rootRailsInset}` : undefined,
 				rootTemplateCols ? `--grid-template-columns: ${rootTemplateCols}` : undefined,
 				rootTemplateRows ? `--grid-template-rows: ${rootTemplateRows}` : undefined,
-				rootGap ? `--grid-gap: ${rootGap}` : undefined,
+				rootGap ? `gap: ${rootGap}` : undefined,
 				`--grid-row-gap: ${rootRowGap}`,
 				`--grid-col-gap: ${rootColGap}`,
 				!shouldUseSnippetZone && rootItems ? `--grid-place-items: ${rootItems}` : undefined,
@@ -465,6 +465,37 @@
 		return item.key.startsWith('debug-') ? 'debug' : 'item';
 	}
 
+	function normalizeGapTrackValue(token: string | undefined): string {
+		const value = String(token ?? '').trim();
+		if (!value) return '0px';
+		return /^0(?:\.0+)?$/.test(value) ? '0px' : value;
+	}
+
+	function getRailDebugLineRailKey(line: RailDebugLine): string | undefined {
+		if (line.kind === 'named') {
+			return line.label ? engine.normalizeRail(line.label) : undefined;
+		}
+
+		return engine.normalizeRail(line.key.replace(/-(?:start|end)$/, '')) || undefined;
+	}
+
+	function collectActiveRailKeys(root: HTMLElement): string[] {
+		const keys: Record<string, true> = {};
+
+		for (const element of root.querySelectorAll<HTMLElement>('*')) {
+			if (element.closest('.is-debug-rail-overlay')) continue;
+			if (element.classList.contains('is-debug')) continue;
+
+			for (const className of element.classList) {
+				if (!className.startsWith('is-rail-')) continue;
+				const railKey = engine.normalizeRail(className.slice('is-rail-'.length));
+				if (railKey) keys[railKey] = true;
+			}
+		}
+
+		return Object.keys(keys).sort();
+	}
+
 	function shouldShowItemFallback(item: engine.PositionedItem): boolean {
 		const itemElement = itemRefs[item.key];
 		if (!itemElement) return false;
@@ -490,10 +521,13 @@
 		void lineKeys;
 
 		function measure() {
+			const nextActiveRailKeys = collectActiveRailKeys(parent!);
+			const activeRails = Object.fromEntries(nextActiveRailKeys.map((railKey) => [railKey, true]));
 			const pRect = parent!.getBoundingClientRect();
 			const cs = getComputedStyle(parent!);
 			const pl = parseFloat(cs.paddingLeft);
 			const pr = parseFloat(cs.paddingRight);
+			const dpr = window.devicePixelRatio || 1;
 			const contentLeft = Math.round(pRect.x + pl);
 			const contentRight = Math.round(pRect.x + pRect.width - pr);
 
@@ -501,6 +535,13 @@
 			for (const [key, el] of Object.entries(_debugLineEls)) {
 				if (!el) continue;
 				const r = el.getBoundingClientRect();
+				const railKey = el.dataset.railDebugKey ?? '';
+				const side = el.dataset.railDebugSide ?? '';
+				const snappedLeft = Math.round(r.left * dpr) / dpr;
+				const shift = snappedLeft - r.left;
+				const isActive = Boolean(railKey) && side !== 'center' && Boolean(activeRails[railKey]);
+				el.style.setProperty('--rail-debug-shift', `${shift}px`);
+				el.classList.toggle('is-debug-rail-line-active', isActive);
 				lines[key] = { relToContentArea: Math.round(r.x - contentLeft) };
 			}
 
@@ -514,9 +555,19 @@
 		}
 
 		const obs = new ResizeObserver(measure);
+		const mutations = new MutationObserver(measure);
 		obs.observe(parent);
+		mutations.observe(parent, {
+			attributes: true,
+			attributeFilter: ['class'],
+			childList: true,
+			subtree: true
+		});
 		measure();
-		return () => obs.disconnect();
+		return () => {
+			obs.disconnect();
+			mutations.disconnect();
+		};
 	});
 </script>
 
@@ -579,6 +630,8 @@
 				  )
 				: engine.mergeStyles(`--rail-debug-inset: ${line.inset}`)
 		}
+		data-rail-debug-key={getRailDebugLineRailKey(line)}
+		data-rail-debug-side={line.side}
 		aria-hidden="true"
 		bind:this={_debugLineEls[line.key]}
 	>
@@ -623,7 +676,7 @@
 					snippetZoneRailColumn ? `--grid-column: ${snippetZoneRailColumn}` : undefined,
 					`--grid-template-columns: ${shouldUsePackedFriendlySnippetZone ? packedFriendlyCols : rootCols}`,
 					`--grid-template-rows: ${shouldUsePackedFriendlySnippetZone ? packedFriendlyRows : rootRows}`,
-					rootGap ? `--grid-gap: ${rootGap}` : undefined,
+					rootGap ? `gap: ${rootGap}` : undefined,
 					rootItems ? `--grid-place-items: ${rootItems}` : undefined,
 					shouldUsePackedFriendlySnippetZone && packedFriendlyContent
 						? `--grid-place-content: ${packedFriendlyContent}`
@@ -685,7 +738,6 @@
 			--grid-row: auto;
 			--grid-template-columns: none;
 			--grid-template-rows: none;
-			--grid-gap: 0;
 			--grid-place-items: stretch;
 			--grid-place-content: normal;
 			--grid-place-self: auto;
@@ -694,14 +746,12 @@
 			--rail-debug-inset: 0px;
 			box-sizing: border-box;
 			display: grid;
-			position: relative;
 			min-width: 0;
 			min-height: 0;
 			aspect-ratio: var(--grid-ratio);
 			grid-column: var(--grid-column);
 			grid-template-columns: var(--grid-template-columns);
 			grid-template-rows: var(--grid-template-rows);
-			gap: var(--grid-gap);
 			place-items: var(--grid-place-items);
 			place-content: var(--grid-place-content);
 		}
@@ -714,11 +764,15 @@
 			max-width: 100%;
 		}
 
+		.root-grid.is-debug-mode {
+			position: relative;
+		}
+
 		.root-grid.is-grid-rails {
 			--gutter: clamp(1rem, 4vi, 3rem);
 			--rail-safe-edge: var(--gutter);
 			--rail-debug-line-color: rgb(236 72 153 / 0.92);
-			--rail-debug-line-glow: rgb(251 207 232 / 0.4);
+			--rail-debug-active-line-color: rgb(34 255 136 / 0.96);
 			--rail-debug-fill: rgb(236 72 153 / 0.1);
 			--rail-debug-outline: rgb(236 72 153 / 0.72);
 			--rail-inset-xs: 0.25rem;
@@ -790,7 +844,6 @@
 			place-self: var(--grid-place-self, auto);
 			grid-template-columns: var(--grid-template-columns, none);
 			grid-template-rows: var(--grid-template-rows, none);
-			gap: var(--grid-gap, 0);
 			place-items: var(--grid-place-items, stretch);
 			place-content: var(--grid-place-content, normal);
 		}
@@ -1187,6 +1240,9 @@
 		}
 
 		.root-grid.is-grid-rails > .is-debug-rail-overlay {
+			pointer-events: none;
+			user-select: none;
+			-webkit-user-select: none;
 			display: contents;
 		}
 
@@ -1196,7 +1252,7 @@
 			inset: 0;
 			z-index: 5;
 			grid-column: content-full-start / content-full-end;
-			border: 1px solid var(--rail-debug-outline);
+			border-block: 1px solid var(--rail-debug-outline);
 			background: var(--rail-debug-fill);
 		}
 
@@ -1207,8 +1263,15 @@
 			top: 0;
 			bottom: 0;
 			left: 0;
-			width: 0;
+			width: 1px;
+			background: var(--rail-debug-line-color);
+			transform: translateX(var(--rail-debug-shift, 0px));
 			overflow: visible;
+		}
+
+		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line.is-debug-rail-line-active {
+			z-index: 7;
+			background: var(--rail-debug-active-line-color);
 		}
 
 		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line-named {
@@ -1232,16 +1295,6 @@
 			right: var(--rail-debug-inset);
 		}
 
-		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line::before {
-			content: '';
-			position: absolute;
-			inset-block: 0;
-			left: 0;
-			width: 1px;
-			background: var(--rail-debug-line-color);
-			box-shadow: 0 0 0 1px var(--rail-debug-line-glow);
-		}
-
 		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line .slot-fallback {
 			position: absolute;
 			top: 50%;
@@ -1258,6 +1311,11 @@
 			white-space: nowrap;
 		}
 
+		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line.is-debug-rail-line-active .slot-fallback {
+			z-index: 8;
+			background: var(--rail-debug-active-line-color);
+		}
+
 		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line-end .slot-fallback {
 			left: 0;
 			right: auto;
@@ -1272,11 +1330,22 @@
 		.root-grid > .is-snippet-zone > .is-debug {
 			z-index: 0;
 			pointer-events: none;
+			user-select: none;
+			-webkit-user-select: none;
 			overflow: visible;
 			outline: 1px dashed rgb(100 116 139 / 0.65);
 			background: rgb(148 163 184 / 0.14);
 			color: #64748b;
 			place-self: stretch;
+		}
+
+		.root-grid > .is-debug :where(*, *::before, *::after),
+		.root-grid > .is-snippet-zone > .is-debug :where(*, *::before, *::after),
+		.root-grid.is-grid-rails > .is-debug-rail-overlay > :where(.is-debug-rail-surface, .is-debug-rail-line),
+		.root-grid.is-grid-rails > .is-debug-rail-overlay > :where(.is-debug-rail-surface, .is-debug-rail-line) :where(*, *::before, *::after) {
+			pointer-events: none;
+			user-select: none;
+			-webkit-user-select: none;
 		}
 
 		.slot-fallback {

@@ -18,8 +18,8 @@
 		'xl',
 		'xxl'
 	];
-	const surfaceClass = 'rounded-2xl bg-slate-50 p-4';
-	const railClass = 'rounded-xl bg-sky-200 px-4 py-5 font-black text-slate-950';
+	const surfaceClass = '';
+	const railClass = 'rounded-xl bg-sky-200 p-4 font-black text-slate-950';
 	const showRailsDebug = $derived(page.url.searchParams.get('railsDebug') === '1');
 </script>
 
@@ -33,7 +33,7 @@
 	<Component
 		rails="full"
 		debug={showRailsDebug ? { rails: true } : false}
-		class={surfaceClass}
+		class="rounded-2xl bg-slate-50 gap-4"
 	>
 		<Component rail="xs" class={railClass} />
 	</Component>
@@ -45,7 +45,7 @@
 	<Component
 		rails="full"
 		debug={showRailsDebug ? { rails: true } : false}
-		class={surfaceClass}
+		class="rounded-2xl bg-slate-50 gap-4"
 	>
 		{#each railWidths as rail (rail)}
 			<Component rail={rail} class={railClass} />
@@ -59,7 +59,7 @@
 	<Component
 		rails="full"
 		debug={showRailsDebug ? { rails: true } : false}
-		class={surfaceClass}
+		class="rounded-2xl bg-slate-50 gap-4"
 	>
 		<Component rail="full" class={railClass} />
 		{#each gutterWidths as rail (rail)}
