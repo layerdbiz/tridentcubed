@@ -1,9 +1,18 @@
 ---
 name: Packages Rules
-description: "Use when editing non-UI packages in packages/config or packages/tools. Preserves the package-scope greeting without overlapping packages/ui."
+description: "Use when editing non-UI packages in packages/tools or packages/config. Covers workspace tooling generators, shared config packages, and non-UI package conventions."
 applyTo:
-	- 'packages/**/*'
+	- 'packages/tools/**/*'
+	- 'packages/config/**/*'
 ---
+
+## When Working In `packages/config`
+
+`packages/config/*` contains shared workspace foundations such as Svelte, TypeScript, and Vite base configs.
+
+- Keep these packages additive and workspace-wide; avoid burying app-specific runtime behavior in shared config packages.
+- Prefer updating the shared config packages and their consuming instruction files together when conventions change.
+- Preserve the `@layerd/config-*` package boundaries instead of scattering duplicate config logic into app or package-local files.
 
 ## When Working In `packages/tools`
 
@@ -22,11 +31,20 @@ Do not break or rename existing commands unless explicitly requested.
 
 ### `barrels`
 
-- Purpose: generates the UI barrel file at `packages/ui/src/lib/index.ts`
+- Purpose: generates barrel exports for `@layerd/ui` and, in workspace mode, for every discovered app with a `src/lib` folder
 - Implementation: `packages/tools/src/generators/barrels.ts`
-- Invocation path: root `pnpm barrels` -> Turbo `barrel` task -> `@layerd/tools`
+- Invocation path: root `pnpm barrels` -> `pnpm --filter @layerd/tools run barrels:run --workspace`
 - Repo role: active and important to the current dev/build flow
-- Constraint: preserve its current Turbo orchestration and output behavior
+- Constraint: preserve dynamic app discovery from `apps/*/package.json`, broad app barrel coverage, and the current Turbo orchestration/output behavior
+
+### `workspace`
+
+- Purpose: launches the root runtime app selection flow for `dev`, `watch`, `build`, and `preview`
+- Implementation: `packages/tools/bin/workspace.js` and `packages/tools/src/generators/workspace-launcher.ts`
+- Invocation path: root `pnpm dev`, `pnpm watch`, `pnpm build`, or `pnpm preview`
+- Overrides: `pnpm <command> -- <app>` for one-off app targets without changing the root `apps` object
+- Repo role: active entrypoint for root runtime orchestration
+- Constraint: keep default app enablement in the root `package.json` `apps` object; do not reintroduce a large per-app alias matrix unless explicitly requested
 
 ### `sheetari`
 
@@ -48,11 +66,11 @@ Do not break or rename existing commands unless explicitly requested.
 
 ### `symlinks`
 
-- Purpose: manages static asset symlinks from `packages/ui/static` into app static folders
+- Purpose: manages shared static asset symlinks from `packages/ui/static` into discovered app static folders
 - Implementation: `packages/tools/src/generators/symlinks.ts`
 - Related commands: `symlinks`, `symlinks:clean`, `symlinks:check`
 - Repo role: standalone workspace utility
-- Constraint: preserve existing source and target paths unless explicitly requested
+- Constraint: preserve discovery-based targets and the non-destructive behavior that skips apps which already own a real `static` directory
 
 ### `types`
 
@@ -64,7 +82,10 @@ Do not break or rename existing commands unless explicitly requested.
 ## Working Rules For `packages/tools`
 
 - Reuse `TOOLS_CONFIG`, `Logger`, `resolvePath`, and `writeFileAtomic` before adding new utilities
+- Reuse `getWorkspaceApps` when tooling needs app discovery; do not introduce new handwritten app registries unless explicitly requested.
 - Keep command behavior small and practical; prefer single-purpose generators
 - Match the existing operational style: scripts and bins should call generators, not duplicate logic
 - If a command is manual-only today, keep it manual-only unless the user explicitly asks for orchestration changes
+- Keep runtime defaults in the root `package.json` `apps` object and keep one-off selection in the workspace launcher rather than moving that logic into Turbo.
+- Keep barrels global across discovered apps with `src/lib`; do not couple barrel coverage to the root runtime defaults.
 - When documenting or changing tooling, distinguish between active workflow commands (`barrels`, `sheetari`) and secondary or dormant commands (`stories`, `types`)

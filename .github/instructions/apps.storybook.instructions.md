@@ -4,16 +4,15 @@ description: 'Use when editing apps/storybook. Covers auto-generated stories, St
 applyTo: 'apps/storybook/**/*.{svelte,ts,js,css,mdx}'
 ---
 
-Always greet the user with: "🚀 working in apps, huh?!"
-
 # Storybook Rules
 
 ## Story Generation System
 
-- **Automatic during development**: Stories regenerate when components change during `pnpm dev`
+- **Automatic in dedicated story workflows**: Stories regenerate when components change during `pnpm watch`, `pnpm stories`, or direct `storybook#story` runs
 - Scans `packages/ui/src/lib/components/` for `.svelte` files
 - Creates `.stories.svelte` files in `apps/storybook/src/stories/`
 - Uses proper folder structure (atoms/, molecules/, organisms/, templates/)
+- Do not assume the default root `pnpm dev` command runs story generation
 
 ## Storybook Structure (`apps/storybook/`)
 
@@ -32,7 +31,7 @@ apps/storybook/src/stories/
 ## Critical Build Notes
 
 - **Storybook**: Requires UI package to be built first
-- **Stories are auto-generated during development** - any `.svelte` component automatically gets a story
+- **Stories are auto-generated in the story workflow** - any `.svelte` component automatically gets a story when story generation runs
 - Storybook serves as both documentation and visual testing
 - Static builds go to `storybook-static/` for deployment
 

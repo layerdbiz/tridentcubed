@@ -1,10 +1,13 @@
 ---
 name: App Rules
-description: 'Use when editing any of the apps.'
+description: 'Use when editing app source files under apps/**. Shared baseline for all apps; app-specific instruction files may add more rules for apps/app, apps/play, or apps/storybook.'
 applyTo: 'apps/**/*.{svelte,ts,js,css}'
 ---
 
-# Apps
+# Shared App Rules
+
+These rules are the shared baseline for app source files under `apps/**`.
+More specific app instruction files may add route or workflow rules for `apps/app`, `apps/play`, or `apps/storybook`.
 
 ## Route Component Naming
 

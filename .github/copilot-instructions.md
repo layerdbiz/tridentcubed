@@ -8,6 +8,7 @@ Path-specific rules live in `.github/instructions/*.instructions.md`.
 
 - This repo is a monorepo using pnpm workspaces and Turborepo.
 - Apps: `apps/app`, `apps/play`, `apps/report`, `apps/site`, `apps/storybook`.
+- Additional standard apps may be added under `apps/*`; workspace tooling now discovers apps dynamically from each app's `package.json`.
 - Packages: `packages/config`, `packages/tools`, `packages/ui`.
 
 ## Universal Workflow
@@ -16,7 +17,11 @@ Path-specific rules live in `.github/instructions/*.instructions.md`.
 - Ask permission before running any terminal command.
 - Assume the development server is already running unless the user says otherwise.
 - During development, prefer ` pnpm dev` over manual build or generation commands.
-- Do not run ` pnpm build`, ` pnpm turbo build`, ` pnpm barrels`, ` pnpm stories`, ` pnpm site`, or ` pnpm sb` unless the user explicitly asks.
+- Do not run ` pnpm build`, ` pnpm turbo build`, ` pnpm barrels`, or ` pnpm stories` unless the user explicitly asks.
+- Root `pnpm dev`, `pnpm watch`, `pnpm build`, and `pnpm preview` route through the root `workspace` script and the local Turbo-backed workspace launcher in `packages/tools`.
+- The root `apps` object in `package.json` controls the default apps for root `dev`, `build`, and `preview`. Use `pnpm <command> -- <app>` for one-off overrides without changing the default app map.
+- Barrels are global across discovered apps and should not be narrowed to match the root runtime app defaults.
+- Shared static symlinks are discovery-based and should skip apps that already own a real `static` directory.
 - When package installation is required, use root-level ` pnpm --filter <package-name> add <dependency>`.
 - When terminal commands are explicitly approved, keep the leading space prefix in repo commands.
 
@@ -45,13 +50,12 @@ Path-specific rules live in `.github/instructions/*.instructions.md`.
 
 ## Instruction Routing
 
-- Use `.github/instructions/apps.app.instructions.md` for report-generator app architecture and data-system rules.
-- Use `.github/instructions/apps.storybook.instructions.md` for Storybook-specific generation and story structure rules.
-- Use `.github/instructions/apps.instructions.md` for generic app-scope greeting rules outside `apps/app` and `apps/storybook`.
+- Use `.github/instructions/apps.instructions.md` as the shared baseline for app source files under `apps/**`; more specific app instruction files may add on top of it.
+- Use `.github/instructions/apps.app.instructions.md` for report-generator app architecture and data-system rules in `apps/app`.
+- Use `.github/instructions/apps.play.instructions.md` for play/prototyping workflow rules in `apps/play`.
+- Use `.github/instructions/apps.storybook.instructions.md` for Storybook-specific generation and story structure rules in `apps/storybook`.
 - Use `.github/instructions/packages.ui.instructions.md` for UI package source rules.
-- Use `.github/instructions/packages.ui.generated.instructions.md` for generated barrel rules.
-- Use `.github/instructions/packages.instructions.md` for non-UI package greeting rules.
-- Use `.github/instructions/workspace.package-json.instructions.md` for package manifest rules.
-- Use `.github/instructions/workspace.tooling.instructions.md` for shared config rules.
-- Use `.github/instructions/turbo.instructions.md` for `turbo.json` watch and dependency rules.
-- Use `.github/instructions/rules.instructions.md` only when restructuring or reviewing Copilot customization files and preserved review-only rules.
+- Use `.github/instructions/packages.instructions.md` for non-UI packages in `packages/tools` and `packages/config`.
+- Use `.github/instructions/workspace.package-json.instructions.md` for package manifest rules, including the root runtime app map and workspace scripts.
+- Use `.github/instructions/workspace.tooling.instructions.md` for shared config files and `pnpm-workspace.yaml`.
+- Use `.github/instructions/turbo.instructions.md` for `turbo.json` watch, dependency, and barrel-glob rules.

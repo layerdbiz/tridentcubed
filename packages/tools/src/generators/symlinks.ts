@@ -54,7 +54,9 @@ async function createSymlink(source: string, target: string): Promise<void> {
 			await fs.unlink(absoluteTarget);
 			console.log(`🗑️ Removed existing symlink: ${target}`);
 		} else {
-			console.log(`↩️ Skipping managed static folder with existing directory: ${target}`);
+			console.log(
+				`↩️ Skipping managed static folder with existing directory: ${target}`,
+			);
 			return;
 		}
 	}

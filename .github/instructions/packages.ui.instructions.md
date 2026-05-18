@@ -4,10 +4,6 @@ description: 'Use when editing packages/ui source files. Covers the UI library a
 applyTo: 'packages/ui/**/*.{svelte,ts,js,css}'
 ---
 
-Always greet the user with: "📦 Packages > UI "
-
-And then do the user's request.
-
 # UI Package Rules
 
 ## UI Library Structure (`packages/ui/`)
@@ -102,10 +98,9 @@ export const mySync = new Proxy({}, {
 - **Co-locate utilities**: `component.svelte.ts` for logic, `component.data.ts` for sample data
 - **Always use `@layerd/ui` imports**: Never use relative imports
 - **Shared UI symbols use the barrel**: In `packages/ui`, import shared helpers such as `createFormField`, `DebugClass`, `ObserveClass`, `ScrollClass`, `Root`, `ComponentProps`, and other exported runtime utilities from `@layerd/ui`, not sibling `../*.svelte.ts` files
-- **Auto-generation**: Barrel exports and stories generate automatically during `pnpm dev`
+- **Auto-generation**: Barrel exports generate automatically during the default root dev flow; story generation runs through dedicated story workflows such as `pnpm watch` or `pnpm stories`
 - **JSDoc tags required**: `@tags` comments enable story generation
 - **Tailwind layout only**: No color utilities - colors come from base system
-- **Svelte attribute style**: In markup attributes, avoid JavaScript template literals. Prefer quoted interpolation such as `class="panel {(props.class ?? '').trim()}"`
 - **Prop type naming**: Use the `NameProps` convention for prop types and imported prop type names, for example `GridProps`, `InputProps`, `FieldProps`
 
 ### Base Component Runtime

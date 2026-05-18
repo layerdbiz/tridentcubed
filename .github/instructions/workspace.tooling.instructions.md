@@ -15,3 +15,4 @@ applyTo:
 - Svelte config: import from `@layerd/config-svelte`
 - TypeScript config: extend from `@layerd/config-ts`
 - Vite config: import plugins from `@layerd/config-vite`
+- In `pnpm-workspace.yaml`, preserve the broad workspace globs for `apps/*`, `packages/*`, and `packages/config/*` unless the monorepo shape is intentionally changing.
