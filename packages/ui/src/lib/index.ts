@@ -1,7 +1,5 @@
 /* UTILS */
 export * from "./utils/classes.svelte.ts";
-export * from "./utils/component/component.svelte.ts";
-export { default as Component } from "./utils/component/component.svelte";
 export * from "./utils/debug/debug.svelte.ts";
 export { default as Debug } from "./utils/debug/debug.svelte";
 export * from "./utils/draggable.svelte.ts";
@@ -9,14 +7,32 @@ export * from "./utils/mq/mq.svelte.ts";
 export { default as Mq } from "./utils/mq/mq.svelte";
 export * from "./utils/observe.svelte.ts";
 export * from "./utils/rails.svelte.ts";
-export * from "./utils/component/root.svelte.ts";
-export { default as Root } from "./utils/component/root.svelte";
 export * from "./utils/scroll.svelte.ts";
 export * from "./utils/snippets.svelte.ts";
 export * from "./utils/sync.svelte.ts";
 export * from "./utils/text.ts";
 export * from "./utils/total.svelte.ts";
 export * from "./utils/trackevent.ts";
+
+/* ROOT */
+export * from "./base/utils/classes.svelte.ts";
+export * from "./base/component.svelte.ts";
+export { default as Component } from "./base/component.svelte";
+export * from "./base/utils/debug/debug.svelte.ts";
+export { default as Debug } from "./base/utils/debug/debug.svelte";
+export * from "./base/utils/draggable.svelte.ts";
+export * from "./base/utils/mq/mq.svelte.ts";
+export { default as Mq } from "./base/utils/mq/mq.svelte";
+export * from "./base/utils/observe.svelte.ts";
+export * from "./base/utils/rails.svelte.ts";
+export * from "./base/root.svelte.ts";
+export { default as Root } from "./base/root.svelte";
+export * from "./base/utils/scroll.svelte.ts";
+export * from "./base/utils/snippets.svelte.ts";
+export * from "./base/utils/sync.svelte.ts";
+export * from "./base/utils/text.ts";
+export * from "./base/utils/total.svelte.ts";
+export * from "./base/utils/trackevent.ts";
 
 /* COMPONENTS */
 // atoms

@@ -6,7 +6,7 @@
 		hasLayoutDebugValue,
 		normalizeDebugValue,
 		type DebugValueType
-	} from '../debug/debug.svelte.ts';
+	} from '@layerd/ui';
 	import * as engine from '@layerd/ui';
 
 	type RootContent = Snippet | string | number | boolean | null | undefined;
