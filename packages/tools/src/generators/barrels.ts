@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import chokidar from "chokidar";
-import { TOOLS_CONFIG } from "../config.ts";
+import { TOOLS_CONFIG, type UiBarrelTargetConfig } from "../config.ts";
 import {
 	fileExists,
 	type FileInfo,
@@ -32,12 +32,15 @@ interface BarrelStructure {
 	categories: Map<string, Map<string, FileInfo[]>>; // section -> category -> files
 }
 
+type BarrelTargetMode = "app" | UiBarrelTargetConfig["kind"];
+
 interface BarrelTarget {
 	name: string;
 	label: string;
 	emoji: string;
 	libPath: string;
 	barrelFile: string;
+	mode: BarrelTargetMode;
 }
 
 interface BarrelGenerationResult {
@@ -69,15 +72,66 @@ function compareBarrelFiles(a: FileInfo, b: FileInfo): number {
 	return a.relativePath.localeCompare(b.relativePath);
 }
 
-const UI_BARREL_TARGET: BarrelTarget = {
-	name: "ui",
-	label: "UI",
-	emoji: "📦",
-	libPath: TOOLS_CONFIG.packages.ui.libPath,
-	barrelFile: TOOLS_CONFIG.packages.ui.barrelFile,
-};
+function getSectionHeader(target: BarrelTarget, sectionName: string): string {
+	if (target.mode === "flat") {
+		const label = target.label.replace(/^UI\s+/, "").trim();
+		if (label) {
+			return label;
+		}
+	}
 
-const SPECIAL_BARREL_SECTIONS = new Set(["utils", "components"]);
+	return sectionName.toUpperCase();
+}
+
+function getSectionFilePriority(
+	target: BarrelTarget,
+	sectionName: string,
+	file: FileInfo,
+): number {
+	if (sectionName !== "base") {
+		return 0;
+	}
+
+	if (target.mode === "ui-root") {
+		return file.hierarchy[1] === "helpers" ? 1 : 0;
+	}
+
+	if (target.mode === "flat" && target.name === "ui-base") {
+		return file.hierarchy[0] === "helpers" ? 1 : 0;
+	}
+
+	return 0;
+}
+
+function compareSectionFiles(
+	target: BarrelTarget,
+	sectionName: string,
+	a: FileInfo,
+	b: FileInfo,
+): number {
+	const priorityDelta = getSectionFilePriority(target, sectionName, a) -
+		getSectionFilePriority(target, sectionName, b);
+
+	if (priorityDelta !== 0) {
+		return priorityDelta;
+	}
+
+	return compareBarrelFiles(a, b);
+}
+
+const UI_BARREL_TARGETS: BarrelTarget[] = TOOLS_CONFIG.packages.ui.barrelTargets
+	.map((target) => ({
+		name: target.name,
+		label: target.label,
+		emoji: "📦",
+		libPath: target.libPath,
+		barrelFile: target.barrelFile,
+		mode: target.kind,
+	}));
+
+const UI_ROOT_BARREL_TARGET = UI_BARREL_TARGETS.find((target) =>
+	target.mode === "ui-root"
+);
 
 async function getWorkspaceBarrelTargets(): Promise<BarrelTarget[]> {
 	const apps = await getWorkspaceApps();
@@ -94,10 +148,11 @@ async function getWorkspaceBarrelTargets(): Promise<BarrelTarget[]> {
 			emoji: "🚀",
 			libPath: app.libPath,
 			barrelFile: app.barrelFile,
+			mode: "app",
 		});
 	}
 
-	return [UI_BARREL_TARGET, ...appTargets];
+	return [...UI_BARREL_TARGETS, ...appTargets];
 }
 
 function toWorkspacePath(path: string): string {
@@ -116,17 +171,46 @@ function isIgnoredWatchPath(watchedPath: string): boolean {
 		normalizedPath.endsWith(".lock");
 }
 
-function resolveBarrelPlacement(hierarchyKey: string): BarrelPlacement {
+function getSectionPriority(target: BarrelTarget, sectionName: string): number {
+	const priorityOrder = (() => {
+		switch (target.mode) {
+			case "ui-root":
+				return ["root", "base", "utils", "components"];
+			case "app":
+				return ["utils", "root", "components"];
+			case "components":
+				return ["components"];
+			default:
+				return ["root"];
+		}
+	})();
+
+	const priority = priorityOrder.indexOf(sectionName);
+	return priority === -1 ? priorityOrder.length : priority;
+}
+
+function compareBarrelSections(
+	target: BarrelTarget,
+	a: string,
+	b: string,
+): number {
+	const priorityDelta = getSectionPriority(target, a) -
+		getSectionPriority(target, b);
+
+	if (priorityDelta !== 0) {
+		return priorityDelta;
+	}
+
+	return a.localeCompare(b);
+}
+
+function resolveAppBarrelPlacement(hierarchyKey: string): BarrelPlacement {
 	if (!hierarchyKey) {
 		return { section: "root" };
 	}
 
 	const hierarchy = hierarchyKey.split(".");
 	const section = hierarchy[0];
-
-	if (!SPECIAL_BARREL_SECTIONS.has(section)) {
-		return { section: "root" };
-	}
 
 	if (section === "components") {
 		return {
@@ -135,7 +219,64 @@ function resolveBarrelPlacement(hierarchyKey: string): BarrelPlacement {
 		};
 	}
 
+	if (section === "utils") {
+		return { section };
+	}
+
+	return { section: "root" };
+}
+
+function resolveUiRootBarrelPlacement(hierarchyKey: string): BarrelPlacement {
+	if (!hierarchyKey) {
+		return { section: "root" };
+	}
+
+	const hierarchy = hierarchyKey.split(".");
+	const section = hierarchy[0];
+
+	if (section === "components") {
+		return {
+			section,
+			category: hierarchy[1],
+		};
+	}
+
+	if (section === "base" || section === "utils") {
+		return { section };
+	}
+
 	return { section };
+}
+
+function resolveComponentsBarrelPlacement(
+	hierarchyKey: string,
+): BarrelPlacement {
+	if (!hierarchyKey) {
+		return { section: "components" };
+	}
+
+	const hierarchy = hierarchyKey.split(".");
+
+	return {
+		section: "components",
+		category: hierarchy[0],
+	};
+}
+
+function resolveBarrelPlacement(
+	target: BarrelTarget,
+	hierarchyKey: string,
+): BarrelPlacement {
+	switch (target.mode) {
+		case "app":
+			return resolveAppBarrelPlacement(hierarchyKey);
+		case "ui-root":
+			return resolveUiRootBarrelPlacement(hierarchyKey);
+		case "components":
+			return resolveComponentsBarrelPlacement(hierarchyKey);
+		default:
+			return { section: "root" };
+	}
 }
 
 function delay(ms: number): Promise<void> {
@@ -188,6 +329,7 @@ async function acquireBarrelLock(
  */
 function convertToBarrelStructure(
 	folderStructure: FolderStructure,
+	target: BarrelTarget,
 ): BarrelStructure {
 	const structure: BarrelStructure = {
 		sections: new Map(),
@@ -202,7 +344,7 @@ function convertToBarrelStructure(
 
 	// Process files from the universal structure
 	for (const [hierarchyKey, files] of folderStructure.files) {
-		const { section, category } = resolveBarrelPlacement(hierarchyKey);
+		const { section, category } = resolveBarrelPlacement(target, hierarchyKey);
 
 		logger.debug(
 			`Processing hierarchy: ${hierarchyKey} -> section: ${section}, category: ${category}, files: ${files.length}`,
@@ -241,21 +383,13 @@ function convertToBarrelStructure(
  */
 async function generateBarrelContent(
 	structure: BarrelStructure,
+	target: BarrelTarget,
 ): Promise<string> {
 	const lines: string[] = [];
 
-	// Sort sections for consistent output - handle utils specially
-	const sortedSections = Array.from(structure.sections.keys()).sort((a, b) => {
-		// Export utils before components so package-internal imports from the root barrel
-		// can resolve shared runtime primitives like Component without depending on later exports.
-		if (a === "utils") return -1;
-		if (b === "utils") return 1;
-		if (a === "root") return -1;
-		if (b === "root") return 1;
-		if (a === "components") return -1;
-		if (b === "components") return 1;
-		return a.localeCompare(b);
-	});
+	const sortedSections = Array.from(structure.sections.keys()).sort((a, b) =>
+		compareBarrelSections(target, a, b)
+	);
 
 	for (const sectionName of sortedSections) {
 		const sectionFiles = structure.sections.get(sectionName) || [];
@@ -265,33 +399,32 @@ async function generateBarrelContent(
 		if (sectionFiles.length === 0) continue;
 
 		// Add section header
-		lines.push(`/* ${sectionName.toUpperCase()} */`);
-
-		if (sectionName === "root") {
-			for (
-				const file of sectionFiles.sort(compareBarrelFiles)
-			) {
-				const fileExports = await generateFileExportsEnhanced(file);
-				lines.push(...fileExports);
-			}
-			lines.push("");
-			continue;
-		}
-
-		// Special handling for utils section - no categories, flat structure
-		if (sectionName === "utils") {
-			for (
-				const file of sectionFiles.sort(compareBarrelFiles)
-			) {
-				const fileExports = await generateFileExportsEnhanced(file);
-				lines.push(...fileExports);
-			}
-			lines.push("");
-			continue;
-		}
+		lines.push(`/* ${getSectionHeader(target, sectionName)} */`);
 
 		// If we have categories in this section, organize by category
 		if (sectionCategories.size > 0) {
+			const categorizedFiles = new Set(
+				Array.from(sectionCategories.values())
+					.flat()
+					.map((file) => file.path),
+			);
+			const uncategorizedFiles = sectionFiles.filter((file) =>
+				!categorizedFiles.has(file.path)
+			);
+
+			for (
+				const file of uncategorizedFiles.sort((a: FileInfo, b: FileInfo) =>
+					compareSectionFiles(target, sectionName, a, b)
+				)
+			) {
+				const fileExports = await generateFileExportsEnhanced(file);
+				lines.push(...fileExports);
+			}
+
+			if (uncategorizedFiles.length > 0) {
+				lines.push("");
+			}
+
 			const sortedCategories = Array.from(sectionCategories.keys()).sort();
 
 			for (const categoryName of sortedCategories) {
@@ -301,7 +434,9 @@ async function generateBarrelContent(
 				lines.push(`// ${categoryName}`);
 
 				for (
-					const file of categoryFiles.sort(compareBarrelFiles)
+					const file of categoryFiles.sort((a: FileInfo, b: FileInfo) =>
+						compareSectionFiles(target, sectionName, a, b)
+					)
 				) {
 					const fileExports = await generateFileExportsEnhanced(file);
 					lines.push(...fileExports);
@@ -312,7 +447,9 @@ async function generateBarrelContent(
 		} else {
 			// No categories, just list all files in section
 			for (
-				const file of sectionFiles.sort(compareBarrelFiles)
+				const file of sectionFiles.sort((a: FileInfo, b: FileInfo) =>
+					compareSectionFiles(target, sectionName, a, b)
+				)
 			) {
 				const fileExports = await generateFileExportsEnhanced(file);
 				lines.push(...fileExports);
@@ -471,7 +608,7 @@ async function buildBarrelTarget(
 		],
 	});
 
-	const barrelStructure = convertToBarrelStructure(folderStructure);
+	const barrelStructure = convertToBarrelStructure(folderStructure, target);
 	const totalFiles = Array.from(barrelStructure.sections.values())
 		.reduce((sum, files) => sum + files.length, 0);
 
@@ -482,7 +619,7 @@ async function buildBarrelTarget(
 
 	return {
 		target,
-		content: await generateBarrelContent(barrelStructure),
+		content: await generateBarrelContent(barrelStructure, target),
 		totalFiles,
 		sectionCount: barrelStructure.sections.size,
 	};
@@ -616,10 +753,14 @@ export async function generateBarrel(): Promise<void> {
 		return;
 	}
 
+	if (!UI_ROOT_BARREL_TARGET) {
+		throw new Error("Missing UI root barrel target configuration.");
+	}
+
 	isGenerating = true;
 
 	try {
-		await writeBarrelTarget(UI_BARREL_TARGET);
+		await writeBarrelTarget(UI_ROOT_BARREL_TARGET);
 	} catch (error) {
 		logger.error("Failed to generate barrel file:", error);
 		throw error;

@@ -1,6 +1,6 @@
 import type { Snippet } from "svelte";
 import type { SvelteHTMLElements } from "svelte/elements";
-import type { DebugValueType } from "../debug/debug.svelte.ts";
+import type { DebugValueType } from "@layerd/ui";
 import {
 	createClasses,
 	type GridValue,

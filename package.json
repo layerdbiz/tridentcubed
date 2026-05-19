@@ -1,8 +1,8 @@
 {
   "name": "template",
   "apps": {
-    "app": true,
-    "play": false,
+    "app": false,
+    "play": true,
     "report": false,
     "site": false,
     "storybook": false

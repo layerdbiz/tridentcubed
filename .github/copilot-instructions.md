@@ -29,10 +29,11 @@ Path-specific rules live in `.github/instructions/*.instructions.md`.
 
 ### Import And Export Surface
 
-- If a symbol is publicly exported from `packages/ui`, import it from `@layerd/ui`.
+- If a symbol is publicly exported from `packages/ui`, import it from a public UI entrypoint such as `@layerd/ui`, `@layerd/ui/base`, `@layerd/ui/base/helpers`, `@layerd/ui/helpers`, `@layerd/ui/utils`, or `@layerd/ui/components`.
+- Prefer the root `@layerd/ui` entrypoint for mixed runtime imports such as `Component`, `ComponentProps`, `mq`, and `Mq`; use the generated subpaths when staying within one grouped public surface.
 - In app code, import app-shared symbols from `$lib`, not from deep relative paths into `src/lib`.
 - Use route-local relative imports only for private route-colocated files that are intentionally not exported through `$lib`.
-- In `packages/ui`, use the smallest package-local relative import only for truly private modules that are not exported from `@layerd/ui`.
+- In `packages/ui`, use the smallest package-local relative import only for truly private modules that are not exported from a public UI entrypoint.
 - Do not maintain parallel manual export systems alongside the generated barrels.
 
 ### Base Component Contract
@@ -45,7 +46,7 @@ Path-specific rules live in `.github/instructions/*.instructions.md`.
 
 ### Generated Barrels
 
-- `packages/ui/src/lib/index.ts` and discovered `apps/*/src/lib/index.ts` files are generated architecture contracts.
+- `packages/ui/src/lib/index.ts`, `packages/ui/src/lib/base/index.ts`, `packages/ui/src/lib/base/helpers/index.ts`, `packages/ui/src/lib/utils/index.ts`, `packages/ui/src/lib/components/index.ts`, and discovered `apps/*/src/lib/index.ts` files are generated architecture contracts.
 - Do not hand-edit generated barrel files or recreate the same exports by hand elsewhere.
 - If app code needs a shared symbol, prefer exporting it through `src/lib` and importing it from `$lib` instead of deep imports.
 - Barrel coverage is global across discovered apps with `src/lib`; it is separate from the root runtime app defaults.

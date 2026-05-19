@@ -11,7 +11,8 @@ More specific app instruction files should add only local workflow or product ru
 
 ## App Import Contract
 
-- Import shared UI package symbols from `@layerd/ui`.
+- Import shared UI package symbols from `@layerd/ui` or the generated public subpaths such as `@layerd/ui/base`, `@layerd/ui/helpers`, `@layerd/ui/utils`, and `@layerd/ui/components`.
+- Prefer the root `@layerd/ui` entrypoint for mixed runtime imports such as `Component`, `ComponentProps`, `mq`, and `Mq`; use subpaths when they keep one grouped surface together.
 - Import app-local shared symbols from `$lib`.
 - Do not deep import into `src/lib` with relative paths or `$lib/...` when the symbol is meant to come from the app barrel.
 - Use route-local relative imports only for private route-owned files that are intentionally not exported through `$lib`.

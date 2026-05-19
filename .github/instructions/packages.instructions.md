@@ -34,12 +34,12 @@ applyTo: 'packages/tools/**,packages/config/**'
 
 ### `barrels`
 
-- `packages/tools/src/generators/barrels.ts` generates `packages/ui/src/lib/index.ts` and `apps/*/src/lib/index.ts` for every discovered app that has `src/lib`.
+- `packages/tools/src/generators/barrels.ts` generates `packages/ui/src/lib/index.ts`, `packages/ui/src/lib/base/index.ts`, `packages/ui/src/lib/base/helpers/index.ts`, `packages/ui/src/lib/utils/index.ts`, `packages/ui/src/lib/components/index.ts`, and `apps/*/src/lib/index.ts` for every discovered app that has `src/lib`.
 - The generator scans `.svelte`, `.ts`, and `.svelte.ts` files, skips barrels, tests, backups, server entries, and config files, and writes the source export contract only.
-- Export ordering matters: `utils` exports are emitted before `components`, then the remaining groups.
+- Export ordering matters: the root UI barrel keeps grouped `base`, `utils`, and `components` surfaces, while the generated sub-barrels stay grouped by their own public surface.
 - Svelte component files are exported as default components plus detected interface types when present.
 - `.svelte.ts` modules that expose a default export are emitted as both default and named exports.
-- Treat the UI barrel and app lib barrels as architecture-level import contracts. Do not hand-maintain parallel export lists or narrow barrel coverage to the root runtime defaults.
+- Treat the UI barrels and app lib barrels as architecture-level import contracts. Do not hand-maintain parallel export lists or narrow barrel coverage to the root runtime defaults.
 - Do not invent a second typed or dist-only barrel system unless the user explicitly asks for that architecture change.
 
 ### `sheetari`

@@ -1,3 +1,11 @@
+export interface UiBarrelTargetConfig {
+	name: string;
+	label: string;
+	libPath: string;
+	barrelFile: string;
+	kind: "ui-root" | "flat" | "components";
+}
+
 export interface ToolsConfig {
 	packages: {
 		app: {
@@ -24,6 +32,7 @@ export interface ToolsConfig {
 			srcPath: string;
 			libPath: string;
 			barrelFile: string;
+			barrelTargets: UiBarrelTargetConfig[];
 			componentsPath: string;
 			staticPath: string;
 		};
@@ -65,6 +74,43 @@ export const TOOLS_CONFIG: ToolsConfig = {
 			srcPath: "packages/ui/src",
 			libPath: "packages/ui/src/lib",
 			barrelFile: "packages/ui/src/lib/index.ts",
+			barrelTargets: [
+				{
+					name: "ui",
+					label: "UI",
+					libPath: "packages/ui/src/lib",
+					barrelFile: "packages/ui/src/lib/index.ts",
+					kind: "ui-root",
+				},
+				{
+					name: "ui-base",
+					label: "UI BASE",
+					libPath: "packages/ui/src/lib/base",
+					barrelFile: "packages/ui/src/lib/base/index.ts",
+					kind: "flat",
+				},
+				{
+					name: "ui-helpers",
+					label: "UI HELPERS",
+					libPath: "packages/ui/src/lib/base/helpers",
+					barrelFile: "packages/ui/src/lib/base/helpers/index.ts",
+					kind: "flat",
+				},
+				{
+					name: "ui-utils",
+					label: "UI UTILS",
+					libPath: "packages/ui/src/lib/utils",
+					barrelFile: "packages/ui/src/lib/utils/index.ts",
+					kind: "flat",
+				},
+				{
+					name: "ui-components",
+					label: "UI COMPONENTS",
+					libPath: "packages/ui/src/lib/components",
+					barrelFile: "packages/ui/src/lib/components/index.ts",
+					kind: "components",
+				},
+			],
 			componentsPath: "packages/ui/src/lib/components",
 			staticPath: "packages/ui/static",
 		},

@@ -12,7 +12,18 @@ These rules are the strongest source of truth for shared UI component authoring 
 
 ```txt
 packages/ui/src/lib/
-├── index.ts                     # Auto-generated barrel exports
+├── index.ts                     # Auto-generated root barrel exports
+├── base/
+│   ├── index.ts                 # Auto-generated base barrel exports
+│   ├── component.svelte
+│   ├── component.svelte.ts
+│   ├── root.svelte
+│   ├── root.svelte.ts
+│   └── helpers/
+│       ├── index.ts             # Auto-generated base-helpers barrel exports
+│       ├── debug/
+│       ├── mq/
+│       └── ...
 ├── ui.css                       # Tailwind v4 + shared theme entry
 ├── css/                         # Organized CSS architecture
 │   ├── 1-theme/                 # Theme variables, pairings, fonts, size, radii
@@ -22,39 +33,43 @@ packages/ui/src/lib/
 │   ├── 5-icons/                 # Shared icon utilities
 │   └── 6-themes/                # Named theme overrides
 ├── components/
+│   ├── index.ts                 # Auto-generated components barrel exports
 │   ├── atoms/                   # Basic building blocks that extend the base runtime
 │   ├── molecules/               # Composed atoms
 │   ├── organisms/               # Complex sections and higher-order wrappers
+│   ├── pages/                   # Page-level components
 │   └── templates/               # Page/layout templates
 └── utils/
-    ├── component/              # Base runtime pairs: Component + Root
-    ├── debug/                  # Debug helper + component pair
-    ├── mq/                     # MQ state helper + bootstrap component
-    └── ...                     # Shared runtime utilities
+	├── index.ts                 # Auto-generated package-wide utilities barrel exports
+	└── trackevent.ts            # Shared package utility
 ```
 
 ## Import Aliases
 
-**ALWAYS** use `@layerd/ui` for publicly exported symbols inside the UI package:
+**ALWAYS** use public `@layerd/ui` entrypoints for publicly exported symbols inside the UI package:
 
 ```svelte
-// ✅ CORRECT - Use the configured alias for public symbols
+// ✅ CORRECT - Use the configured public entrypoints for public symbols
 import { Component, type ComponentProps, mq, Mq } from '@layerd/ui';
+import * as base from '@layerd/ui/base';
+import * as helpers from '@layerd/ui/helpers';
 
 // ❌ WRONG - Never deep import public runtime helpers
-import { Component } from '../../utils/component/component.svelte.ts';
-import { mq } from '../../utils/mq/mq.svelte.ts';
+import { Component } from '../../base/component.svelte.ts';
+import { mq } from '../../base/helpers/mq/mq.svelte.ts';
 ```
 
 - `@layerd/ui` is configured as an alias in the package and consuming apps.
+- The generated public subpaths currently include `@layerd/ui/base`, `@layerd/ui/base/helpers`, `@layerd/ui/helpers`, `@layerd/ui/utils`, and `@layerd/ui/components`.
 - This rule applies to shared UI helpers, classes, runtime utilities, prop types, MQ helpers, and base components, not just leaf UI components.
-- If a symbol is publicly exported from `@layerd/ui`, import it from `@layerd/ui` even when you are editing a file inside `packages/ui`.
-- Only use a package-local relative import when the target is truly private and not exported from `@layerd/ui`.
+- Prefer the root `@layerd/ui` entrypoint for mixed runtime imports such as `Component`, `ComponentProps`, `mq`, and `Mq`; use the subpaths when they keep one grouped public surface together.
+- If a symbol is publicly exported from a public `@layerd/ui` entrypoint, import it from that entrypoint even when you are editing a file inside `packages/ui`.
+- Only use a package-local relative import when the target is truly private and not exported from a public `@layerd/ui` entrypoint.
 - Do not use `$lib` for private package-internal imports inside `packages/ui`; consumer-side Vite analysis can resolve it against the app instead of the package.
 
 ## Avoiding Circular Execution Dependencies
 
-**CRITICAL**: When importing from `@layerd/ui` within the same package, **NEVER** call imported functions immediately at module level:
+**CRITICAL**: When importing from a public `@layerd/ui` entrypoint within the same package, **NEVER** call imported functions immediately at module level:
 
 ```ts
 // ❌ WRONG - Immediate execution causes circular dependency
@@ -74,7 +89,7 @@ export const mySync = new Proxy({}, {
 
 **Why this happens:**
 
-1. Your file imports from `@layerd/ui`.
+1. Your file imports from a public `@layerd/ui` entrypoint.
 2. The barrel export tries to load your file.
 3. Your file executes a helper call before the imported symbol is fully ready.
 4. Result: a circular runtime failure such as `function is not a function`.
@@ -102,8 +117,8 @@ export const mySync = new Proxy({}, {
 ### Development Patterns
 
 - **Co-locate utilities**: use `component.svelte.ts` for logic and `component.data.ts` for sample data when it helps a component.
-- **Always use `@layerd/ui` imports for public symbols**: do not deep import shared helpers through sibling runtime files.
-- **Shared UI symbols use the barrel**: import shared helpers such as `createFormField`, `DebugClass`, `ObserveClass`, `ScrollClass`, `Root`, `ComponentProps`, `mq`, and `Mq` from `@layerd/ui` when they are publicly exported.
+- **Always use public `@layerd/ui` entrypoints for public symbols**: do not deep import shared helpers through sibling runtime files.
+- **Shared UI symbols use the generated public barrels**: import shared helpers such as `createFormField`, `DebugClass`, `ObserveClass`, `ScrollClass`, `Root`, `ComponentProps`, `mq`, and `Mq` from `@layerd/ui` or an appropriate grouped subpath when they are publicly exported there.
 - **New universal helpers extend existing runtime helpers**: do not create parallel systems when the current runtime already has a home for the behavior.
 - **Universal runtime changes update instructions**: when `Component`, `Root`, rails, snippets, MQ, or shared utilities change in a public way, update the affected instruction files in the same pass.
 - **Auto-generation**: barrel exports generate during root dev/watch flows and dedicated barrel workflows; story generation runs through dedicated story workflows such as `pnpm watch` or `pnpm stories`.
@@ -118,8 +133,8 @@ export const mySync = new Proxy({}, {
 - `Component` is the public base component for normal authoring in `packages/ui`.
 - `Root` is the internal runtime owner for layout, snippets, rails, and base grid behavior.
 - Treat `Component`, `Root`, rails, layout snippets, and MQ as one connected runtime architecture rather than isolated helpers.
-- Keep only `component.svelte.ts` and `root.svelte.ts` in `src/lib/utils/component/` because they pair directly with `component.svelte` and `root.svelte`.
-- Move supporting utility-only `.svelte.ts` files such as `rails.svelte.ts` and `snippets.svelte.ts` into root `src/lib/utils/`, not `src/lib/utils/component/`.
+- Keep only `component.svelte.ts` and `root.svelte.ts` in `src/lib/base/` because they pair directly with `component.svelte` and `root.svelte`.
+- Keep supporting base-runtime helper modules and helper folders such as `rails.svelte.ts`, `snippets.svelte.ts`, `debug/`, and `mq/` in `src/lib/base/helpers/`.
 - Do not import `Root` directly for normal component authoring.
 - Preserve the existing `ComponentProps` extension and `Omit<ComponentProps, ...>` patterns instead of inventing wrapper-local base prop types.
 - Prefer direct wrapper authoring with `<Component tag="section">` and place wrapper children or named layout snippets directly inside `<Component>`.
@@ -177,7 +192,7 @@ export const mySync = new Proxy({}, {
 - Public query helpers currently include `useMediaQuery`, `useMinWidth`, `useMaxWidth`, `useBetween`, and `screens`.
 - Layout snippets may branch on `mq`, but do not push one-off media-query branching into the shared base runtime when app or component code can consume the public helper directly.
 - When editing `Component`, `Root`, rails, snippets, MQ, or shared utilities such as `classes`, `debug`, `draggable`, `observe`, `scroll`, `sync`, `text`, or `trackevent`, treat the change as architecture-level. Check downstream app assumptions and update the affected instruction files in the same pass when public behavior changes.
-- Preserve public exports through `@layerd/ui`; do not create hidden private imports when the helper is already exported through the barrel.
+- Preserve public exports through `@layerd/ui` and the generated public subpaths; do not create hidden private imports when the helper is already exported through a public barrel.
 
 ```svelte
 <script lang="ts">
@@ -226,12 +241,12 @@ export const mySync = new Proxy({}, {
 
 - Do not build route-local `matchMedia` systems when the shared `mq` utility already solves it.
 - Do not make each component initialize its own global MQ listeners.
-- Do not import MQ internals through deep relative paths when `mq` and `Mq` are already exported from `@layerd/ui`.
+- Do not import MQ internals through deep relative paths when `mq` and `Mq` are already exported from a public `@layerd/ui` entrypoint.
 
 ### Internal Package Import Exception
 
-- When a source file in `packages/ui` needs a private module that is not exported through `@layerd/ui`, do not use `$lib` because consumer-side Vite import analysis can resolve it against the app instead of the package.
-- In that narrow case, use the smallest safe package-local relative import until the module is promoted to a public `@layerd/ui` export.
+- When a source file in `packages/ui` needs a private module that is not exported through a public `@layerd/ui` entrypoint, do not use `$lib` because consumer-side Vite import analysis can resolve it against the app instead of the package.
+- In that narrow case, use the smallest safe package-local relative import until the module is promoted to a public `@layerd/ui` export surface.
 
 ### Utility Module Naming Convention
 
@@ -240,16 +255,16 @@ export const mySync = new Proxy({}, {
 - **Component naming**: `UtilityName` (PascalCase, matches folder name when there is a component).
 - **Prop naming**: align prop names to the helper name when the runtime exposes a prop surface, for example `observe`, `scroll`, or `debug`.
 - **Folder organization**:
-  - Utilities with ONLY `.svelte.ts` files stay in root `utils/`.
-  - Utilities with BOTH `.svelte.ts` AND `.svelte` files get a dedicated `utils/utilityname/` folder.
-  - Base runtime exception: only `utils/component/component.svelte.ts` and `utils/component/root.svelte.ts` stay in `utils/component/`; related helper-only files still belong in root `utils/`.
+  - Base runtime pairs stay in `base/`, specifically `base/component.svelte(.ts)` and `base/root.svelte(.ts)`.
+  - Base-runtime helper modules and helper folders stay in `base/helpers/`.
+  - Package-wide non-base utilities stay in root `utils/`.
 - **Import conventions**:
-  - Public helper components import as `import { UtilityName } from '@layerd/ui';`.
-  - Public helper state or classes import from `@layerd/ui`, for example `mq`, `DebugClass`, or `ObserveClass`.
+  - Public helper components import from `@layerd/ui` or a grouped helper surface such as `@layerd/ui/helpers`.
+  - Public helper state or classes import from `@layerd/ui`, `@layerd/ui/base`, or `@layerd/ui/helpers`, for example `mq`, `DebugClass`, or `ObserveClass`.
 - **Examples**:
-  - File: `utils/observe.svelte.ts` -> class: `ObserveClass` -> prop: `observe`.
-  - Folder: `utils/debug/` with `debug.svelte.ts` + `debug.svelte` -> class: `DebugClass` + component: `Debug`.
-  - Folder: `utils/mq/` with `mq.svelte.ts` + `mq.svelte` -> helper: `mq` + bootstrap component: `Mq`.
+  - File: `base/helpers/observe.svelte.ts` -> class: `ObserveClass` -> prop: `observe`.
+  - Folder: `base/helpers/debug/` with `debug.svelte.ts` + `debug.svelte` -> class: `DebugClass` + component: `Debug`.
+  - Folder: `base/helpers/mq/` with `mq.svelte.ts` + `mq.svelte` -> helper: `mq` + bootstrap component: `Mq`.
 
 ## Color System and Theming Architecture
 
@@ -334,8 +349,8 @@ html[style='color-scheme: dark;'] {
 
 ## Common Pitfalls
 
-1. **Don't edit barrel files manually**: `packages/ui/src/lib/index.ts` is generated.
-2. **Don't bypass `@layerd/ui`**: deep relative imports for public symbols create drift and circular-runtime risk.
+1. **Don't edit generated barrel files manually**: `packages/ui/src/lib/index.ts`, `packages/ui/src/lib/base/index.ts`, `packages/ui/src/lib/base/helpers/index.ts`, `packages/ui/src/lib/utils/index.ts`, and `packages/ui/src/lib/components/index.ts` are generated.
+2. **Don't bypass public `@layerd/ui` entrypoints**: deep relative imports for public symbols create drift and circular-runtime risk.
 3. **Don't call imported barrel helpers eagerly at module scope**: lazy-init them instead.
 4. **Don't build parallel runtime systems**: use `Component`, `Root`, rails, snippets, `mq`, and the existing helper layer before adding new systems.
 5. **Always use Svelte 5 syntax**: no `export let`; use `$props()`.
@@ -343,10 +358,10 @@ html[style='color-scheme: dark;'] {
 
 # Generated Barrel Rules
 
-- **Never manually edit** `packages/ui/src/lib/index.ts`.
+- **Never manually edit** `packages/ui/src/lib/index.ts`, `packages/ui/src/lib/base/index.ts`, `packages/ui/src/lib/base/helpers/index.ts`, `packages/ui/src/lib/utils/index.ts`, or `packages/ui/src/lib/components/index.ts`.
 - The barrel generator scans `src/lib` for `.svelte`, `.ts`, and `.svelte.ts` files and skips barrels, tests, backups, server entries, and config files.
-- Export ordering matters: `utils` exports are emitted before `components`.
+- The root barrel preserves the grouped public surfaces for `base`, `utils`, and `components`, and the generated subpath barrels back `@layerd/ui/base`, `@layerd/ui/base/helpers`, `@layerd/ui/helpers`, `@layerd/ui/utils`, and `@layerd/ui/components`.
 - Svelte component files export the default component plus detected interface types when present.
 - `.svelte.ts` modules that expose a default export are emitted as both default and named exports.
-- Keep `utils/mq/mq.svelte.ts` exported before `utils/mq/mq.svelte` so `Mq` can consume the shared MQ symbols through `@layerd/ui`.
+- Keep `base/helpers/mq/mq.svelte.ts` exported before `base/helpers/mq/mq.svelte` so `Mq` can consume the shared MQ symbols through the public UI entrypoints.
 - Do not create a second manual export system alongside the generated barrel.

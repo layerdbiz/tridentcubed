@@ -1,38 +1,24 @@
-/* UTILS */
-export * from "./utils/classes.svelte.ts";
-export * from "./utils/debug/debug.svelte.ts";
-export { default as Debug } from "./utils/debug/debug.svelte";
-export * from "./utils/draggable.svelte.ts";
-export * from "./utils/mq/mq.svelte.ts";
-export { default as Mq } from "./utils/mq/mq.svelte";
-export * from "./utils/observe.svelte.ts";
-export * from "./utils/rails.svelte.ts";
-export * from "./utils/scroll.svelte.ts";
-export * from "./utils/snippets.svelte.ts";
-export * from "./utils/sync.svelte.ts";
-export * from "./utils/text.ts";
-export * from "./utils/total.svelte.ts";
-export * from "./utils/trackevent.ts";
-
-/* ROOT */
-export * from "./base/utils/classes.svelte.ts";
+/* BASE */
 export * from "./base/component.svelte.ts";
 export { default as Component } from "./base/component.svelte";
-export * from "./base/utils/debug/debug.svelte.ts";
-export { default as Debug } from "./base/utils/debug/debug.svelte";
-export * from "./base/utils/draggable.svelte.ts";
-export * from "./base/utils/mq/mq.svelte.ts";
-export { default as Mq } from "./base/utils/mq/mq.svelte";
-export * from "./base/utils/observe.svelte.ts";
-export * from "./base/utils/rails.svelte.ts";
 export * from "./base/root.svelte.ts";
 export { default as Root } from "./base/root.svelte";
-export * from "./base/utils/scroll.svelte.ts";
-export * from "./base/utils/snippets.svelte.ts";
-export * from "./base/utils/sync.svelte.ts";
-export * from "./base/utils/text.ts";
-export * from "./base/utils/total.svelte.ts";
-export * from "./base/utils/trackevent.ts";
+export * from "./base/helpers/classes.svelte.ts";
+export * from "./base/helpers/debug/debug.svelte.ts";
+export { default as Debug } from "./base/helpers/debug/debug.svelte";
+export * from "./base/helpers/draggable.svelte.ts";
+export * from "./base/helpers/mq/mq.svelte.ts";
+export { default as Mq } from "./base/helpers/mq/mq.svelte";
+export * from "./base/helpers/observe.svelte.ts";
+export * from "./base/helpers/rails.svelte.ts";
+export * from "./base/helpers/scroll.svelte.ts";
+export * from "./base/helpers/snippets.svelte.ts";
+export * from "./base/helpers/sync.svelte.ts";
+export * from "./base/helpers/text.ts";
+export * from "./base/helpers/total.svelte.ts";
+
+/* UTILS */
+export * from "./utils/trackevent.ts";
 
 /* COMPONENTS */
 // atoms

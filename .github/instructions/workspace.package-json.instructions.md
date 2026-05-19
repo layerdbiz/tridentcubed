@@ -10,7 +10,7 @@ applyTo: '**/package.json'
 - Keep build tools in `devDependencies`, not `dependencies`.
 - Follow semver and show `^major.minor.patch` for external packages.
 - When package installation is required, use root-level ` pnpm --filter <package-name> add <dependency>` as described in `.github/copilot-instructions.md`.
-- In `packages/ui/package.json`, preserve exports for both `/src` development entry points and `/` built entry points.
+- In `packages/ui/package.json`, preserve exports for both `/src` development entry points and `/` built entry points, plus the additive public subpath exports for `./base`, `./base/helpers`, `./helpers`, `./utils`, and `./components`.
 - In the root `package.json`, keep `apps` as the default runtime app map for root `dev`, `build`, and `preview`; keys should match app package names discovered from `apps/*/package.json`.
 - Prefer a real-boolean `apps` object. The workspace launcher still accepts the legacy array shape for compatibility, but the object map is the preferred structure.
 - Keep the root runtime script surface minimal: `workspace`, `dev`, `watch`, `build`, and `preview` should remain the main entrypoints.
