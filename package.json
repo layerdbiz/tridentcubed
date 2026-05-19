@@ -1,7 +1,7 @@
 {
   "name": "template",
   "apps": {
-    "app": false,
+    "app": true,
     "play": true,
     "report": false,
     "site": false,
