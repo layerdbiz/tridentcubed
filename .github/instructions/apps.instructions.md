@@ -1,6 +1,6 @@
 ---
 name: App Rules
-description: 'Use when editing app source files under apps/**. Shared baseline for app imports, generated $lib barrels, and app-side Component authoring.'
+description: 'Use when editing or creating app source files and route pages under apps/**. Shared baseline for app imports, generated $lib barrels, Component-first route authoring, and app-side UI composition.'
 applyTo: 'apps/**/*.svelte,apps/**/*.ts,apps/**/*.js,apps/**/*.css'
 ---
 
@@ -130,6 +130,18 @@ More specific app instruction files should add only local workflow or product ru
 - Treat `inset` as a modifier on a rail, not as its own rail family.
 - When app wrappers compose child UI primitives and expose child-part class overrides, prefer a single `classes` object over many parallel class props.
 - When both a root `class` prop and a child-part override affect the same wrapper element, keep the root `class` last so it can win intentionally.
+
+## Route Page Authoring
+
+- For new or rewritten route entry files such as `+page.svelte`, `+layout.svelte`, and route-owned support components, start from `Component` plus rails and snippets before reaching for raw HTML layout wrappers.
+- Prefer `Component tag="main"`, `Component tag="article"`, `rails`, `rail`, named snippets, and existing shared UI primitives to express page structure. Do not default to nested `div` wrappers with `grid`, `flex`, `gap`, `justify-*`, or `items-*` Tailwind layout classes when the shared runtime can already own that structure.
+- Prefer existing shared UI components such as `Button`, `Text`, `Nav`, `Page`, `Panel`, and other exported app or UI wrappers over raw `button`, heading, input, and container markup when a suitable primitive already exists.
+- When a persisted route field fits the shared `Input` or `Textarea` primitives, keep the route on those components and pass `persist` through them. Do not drop to raw `Component tag="input"` or `Component tag="textarea"` just to make persistence work.
+- Use raw HTML elements only when no existing primitive or `Component tag=...` shape fits the job, or when a low-level semantic leaf is intentionally the point of the route.
+- Keep route entry files thin. When helper functions, control state, or demo wiring start to crowd the page, move them into route-colocated `*.utils.ts`, `*.state.ts`, or support components instead of letting `+page.svelte` become a long procedural file.
+- Prefer direct shared runtime surfaces in route code when a helper is meant to feel global or state-like, similar to `mq.sm`. Avoid normalizing route examples around top-level factory instances such as `const something = createSomething()` unless the API is intentionally per-instance and route-scoped.
+- When theming or appearance choices already exist in the shared UI system, prefer those props, variants, tokens, and wrappers over ad hoc raw color utility strings. One-off utility skinning is acceptable only when the route is intentionally proving a visual experiment or no shared primitive covers the case.
+- Treat demo and proof routes inside production apps the same as other app routes. Play-specific demo shortcuts belong only in `apps/play` and should not become the default route authoring pattern elsewhere.
 
 ## Route Component Naming
 

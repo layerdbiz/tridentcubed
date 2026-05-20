@@ -1,6 +1,6 @@
 ---
 name: Report Generator Rules
-description: 'Use when editing the report generator app in apps/app. Covers Sheetari and local mirror architecture, route-first structure, remote functions, and report-specific editor and preview rules.'
+description: 'Use when editing or creating report-generator routes and source files in apps/app. Covers Sheetari and local mirror architecture, route-first structure, remote functions, and app-specific route expectations on top of the shared apps baseline.'
 applyTo: 'apps/app/**/*.svelte,apps/app/**/*.ts,apps/app/**/*.js,apps/app/**/*.css'
 ---
 
@@ -51,6 +51,13 @@ These rules are specific to `apps/app`. Shared app import and component rules li
 - Baseline route files are `+page.svelte`, `*.remote.ts`, and `*.types.ts`.
 - Add `*.schema.ts`, `*.utils.ts`, `+page.server.ts`, or `*.server.ts` only when they are justified.
 - Remote functions are the primary data layer; prefer them over manual fetch patterns and keep them colocated with the route.
+
+## Demo And Proof Routes
+
+- Demo and proof routes inside `apps/app` still follow the shared route-authoring baseline from `apps.instructions.md`.
+- Keep `+page.svelte` focused on composing `Component`, existing app or UI primitives, and route-local support modules. Do not treat demos as permission to fall back to raw `div`, `grid`, `flex`, or raw `button` markup when the shared runtime or exported primitives already cover the same structure.
+- When a demo route needs extra wiring, move helpers into colocated modules or support components rather than expanding the entry page into a long procedural or styling-heavy file.
+- Keep report-generator data architecture concerns separate from generic route composition. A route can be a proof of concept without bypassing the app's established UI, rails, snippets, and theming systems.
 
 ## Details Workspace Behavior
 

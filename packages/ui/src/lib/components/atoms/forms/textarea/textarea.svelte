@@ -3,10 +3,12 @@
 	 * @tags forms, textarea, textfield, icon, label
 	 * @layout horizontal
 	 */
+	import { onMount } from 'svelte';
 	import type { HTMLTextareaAttributes } from 'svelte/elements';
 	import '../forms.css';
 	import { Component, type ComponentReturn, Icon } from '@layerd/ui';
 	import { createFormField, type TextFieldProps } from '../field.svelte.ts';
+	import { attachPersistTarget } from '../../../../base/helpers/persist/element-persist.svelte.ts';
 	import { TextareaAutosize } from 'runed';
 
 	const uid = $props.id();
@@ -42,6 +44,7 @@
 		autocomplete = undefined,
 		autocapitalize = 'off',
 		spellcheck = false,
+		persist = false,
 		'aria-describedby': ariaDescribedby = undefined,
 		'aria-invalid': ariaInvalid = undefined,
 		...props
@@ -68,6 +71,24 @@
 			iconEnd
 		})
 	);
+
+	function handleInput(event: Event): void {
+		value = (event.currentTarget as HTMLTextAreaElement).value;
+	}
+
+	onMount(() => {
+		if (!textareaNode) return;
+
+		const cleanup = attachPersistTarget(textareaNode, persist, {
+			fallbackScope: 'components',
+			defaultWriteMode: 'debounced',
+			defaultDebounceMs: 250,
+		});
+
+		value = textareaNode.value;
+
+		return cleanup;
+	});
 
 	$effect(() => {
 		if (!textareaNode) return;
@@ -106,7 +127,7 @@
 {#snippet textareaFieldEl()}
 	<textarea
 		bind:this={textareaNode}
-		bind:value
+		{value}
 		{placeholder}
 		name={fieldState.field.name}
 		id={fieldState.field.id}
@@ -124,6 +145,7 @@
 		{autocomplete}
 		{autocapitalize}
 		{spellcheck}
+		oninput={handleInput}
 	></textarea>
 {/snippet}
 

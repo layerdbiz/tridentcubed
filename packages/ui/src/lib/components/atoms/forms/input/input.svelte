@@ -3,6 +3,7 @@
 	 * @tags forms, input, textfield, icon, label
 	 * @layout horizontal
 	 */
+	import { onMount } from 'svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import '../forms.css';
 	import {
@@ -12,6 +13,7 @@
 		Icon,
 		type TextFieldProps
 	} from '@layerd/ui';
+	import { attachPersistTarget } from '../../../../base/helpers/persist/element-persist.svelte.ts';
 
 	const uid = $props.id();
 
@@ -53,10 +55,13 @@
 		autocorrect = 'off',
 		autocapitalize = 'off',
 		spellcheck = false,
+		persist = false,
 		'aria-describedby': ariaDescribedby = undefined,
 		'aria-invalid': ariaInvalid = undefined,
 		...props
 	}: InputProps = $props();
+
+	let inputNode = $state<HTMLInputElement | null>(null);
 
 	const fieldState = $derived.by(() =>
 		createFormField({
@@ -70,6 +75,24 @@
 			iconEnd
 		})
 	);
+
+	function handleInput(event: Event): void {
+		value = (event.currentTarget as HTMLInputElement).value;
+	}
+
+	onMount(() => {
+		if (!inputNode) return;
+
+		const cleanup = attachPersistTarget(inputNode, persist, {
+			fallbackScope: 'components',
+			defaultWriteMode: 'debounced',
+			defaultDebounceMs: 250,
+		});
+
+		value = inputNode.value;
+
+		return cleanup;
+	});
 </script>
 
 <!-- INPUT STATE EMOJIS
@@ -96,8 +119,9 @@ Use thse emojis for comments about the state of the input in the examples below.
 
 {#snippet inputEl()}
 	<input
+		bind:this={inputNode}
 		{type}
-		bind:value
+		{value}
 		{placeholder}
 		name={fieldState.field.name}
 		id={fieldState.field.id}
@@ -118,6 +142,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 		{autocorrect}
 		{autocapitalize}
 		{spellcheck}
+		oninput={handleInput}
 	/>
 {/snippet}
 

@@ -13,6 +13,11 @@ const config = {
 		}),
 		alias: {
 			"@layerd/ui": resolve("./src/lib"),
+			"@layerd/ui/base": resolve("./src/lib/base"),
+			"@layerd/ui/base/helpers": resolve("./src/lib/base/helpers"),
+			"@layerd/ui/helpers": resolve("./src/lib/base/helpers"),
+			"@layerd/ui/utils": resolve("./src/lib/utils"),
+			"@layerd/ui/components": resolve("./src/lib/components"),
 			"@layerd/ui/ui.css": resolve("./src/lib/ui.css"),
 		},
 	},

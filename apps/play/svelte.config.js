@@ -17,6 +17,13 @@ const config = {
 		alias: {
 			// Workspace packages - point to source for hot reloading in apps
 			"@layerd/ui": resolve("../../packages/ui/src/lib"),
+			"@layerd/ui/base": resolve("../../packages/ui/src/lib/base"),
+			"@layerd/ui/base/helpers": resolve(
+				"../../packages/ui/src/lib/base/helpers",
+			),
+			"@layerd/ui/helpers": resolve("../../packages/ui/src/lib/base/helpers"),
+			"@layerd/ui/utils": resolve("../../packages/ui/src/lib/utils"),
+			"@layerd/ui/components": resolve("../../packages/ui/src/lib/components"),
 			"@layerd/tools": resolve("../../packages/tools/src"),
 			"@layerd/config": resolve("../../packages/config"),
 

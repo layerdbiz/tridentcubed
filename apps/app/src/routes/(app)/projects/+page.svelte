@@ -116,7 +116,7 @@
 									<td class="rounded-l-2xl px-3 py-4 align-middle">
 										<div class="space-y-1">
 											<p class="text-sm font-semibold text-neutral-900">{row.title}</p>
-											<p class="text-xs uppercase tracking-[0.12em] text-neutral-500">{row.id}</p>
+											<!-- <p class="text-xs uppercase tracking-[0.12em] text-neutral-500">{row.id}</p> -->
 										</div>
 									</td>
 									<td class="px-3 py-4 text-sm text-neutral-700 align-middle">{row.client}</td>

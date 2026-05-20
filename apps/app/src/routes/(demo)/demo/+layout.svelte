@@ -1,0 +1,38 @@
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+	import { Component, Mq, mq } from '@layerd/ui';
+	import Nav from './nav.svelte';
+
+	type LayoutProps = { children: Snippet };
+	let { children }: LayoutProps = $props();
+</script>
+
+<Mq />
+
+{#snippet content()}
+	<Component tag="article" rails="gutter-lg" class="h-full overflow-y-scroll py-10">
+		{@render children()}
+	</Component>
+{/snippet}
+
+{#if mq.sm}
+	<Component tag="main" gap="0" class="h-svh">
+		{#snippet full()}
+			{@render content()}
+		{/snippet}
+
+		{#snippet fg()}
+			<Nav />
+		{/snippet}
+	</Component>
+{:else}
+	<Component tag="main" cols="auto 1fr auto" gap="0" class="h-svh">
+		{#snippet a1a3()}
+			<Nav />
+		{/snippet}
+
+		{#snippet b1c3()}
+			{@render content()}
+		{/snippet}
+	</Component>
+{/if}

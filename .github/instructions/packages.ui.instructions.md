@@ -125,6 +125,11 @@ export const mySync = new Proxy({}, {
 - **JSDoc tags required**: `@tags`, `@type`, and `@layout` comments drive current story metadata and generation assumptions.
 - **Tailwind layout first**: avoid ad hoc color utility patterns that bypass the shared theme tokens.
 - **Prefer Tailwind gap utilities**: for normal component and app spacing, use Tailwind `gap-*`, `row-gap-*`, or `col-gap-*` classes. Treat the runtime `gap` prop as opt-in for layout-runtime cases only; it should not inject a default gap.
+- **Route-facing runtime ergonomics**: when a new shared helper is meant for routine app-route consumption, prefer a public surface that minimizes route-local setup and reads more like shared runtime state, similar to `mq`, than repeated factory-boilerplate inside `+page.svelte` files.
+- **Persist helper split**: keep the legacy `persist.json()` and `persist.read()` sync helper separate from the path-based `createPersistNew()` controller exported through `@layerd/ui/helpers` and `@layerd/ui/base/helpers`.
+- **Persist v1 boundary**: the base-runtime `persist` prop is opt-in and currently only owns native form root-element state such as input, textarea, and select `value` plus checkbox or radio `checked`; broader UI-state registration stays out of scope until it is intentionally designed.
+- **Persist field parity**: shared field primitives that wrap native inputs or textareas, such as `Input` and `Textarea`, must preserve the public `persist` prop by attaching it to the underlying native control and syncing any restored DOM value back into the component's bindable field state.
+- **Persist route ergonomics**: treat `createPersistNew()` as the lower-level controller, not automatically as the preferred route-page shape. If persistence is expected to be used broadly in app routes, evolve or wrap it so app code can consume a simpler shared `persist.*` style surface instead of repeating route-local controller setup.
 - **Prop type naming**: use the `NameProps` convention for prop types and imported prop type names, for example `GridProps`, `InputProps`, and `FieldProps`.
 - **Document new universal helpers**: if a new runtime helper becomes public, document its purpose, public import path, and whether apps need a bootstrap component or layout-level setup.
 

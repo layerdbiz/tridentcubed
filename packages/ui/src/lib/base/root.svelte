@@ -1,13 +1,16 @@
 <!-- Root.svelte -->
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
+	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
 	import type { SvelteHTMLElements } from 'svelte/elements';
+	import { attachPersistTarget } from './helpers/persist/element-persist.svelte.ts';
 	import {
 		hasLayoutDebugValue,
 		normalizeDebugValue,
 		type DebugValueType
 	} from '@layerd/ui';
 	import * as engine from '@layerd/ui';
+	import type { PersistTargetValue } from '@layerd/ui';
 
 	type RootContent = Snippet | string | number | boolean | null | undefined;
 	type RootRenderArgs = {
@@ -23,6 +26,7 @@
 		style?: string;
 		tag?: keyof SvelteHTMLElements;
 		debug?: boolean | DebugValueType;
+		persist?: PersistTargetValue;
 		grid?: engine.GridValue;
 		rail?: string;
 		rails?: string;
@@ -47,6 +51,7 @@
 		style: styleName = undefined,
 		tag = 'div',
 		debug = false,
+		persist = false,
 		grid = undefined,
 		rail = '',
 		rails = '',
@@ -94,9 +99,19 @@
 		...props
 	}: RootProps = $props();
 
+	const persistAttachmentKey = createAttachmentKey();
 	let itemRefs = $state<Record<string, HTMLElement | undefined>>({});
+	let persistElement = $state<HTMLElement | null>(null);
 	let _overlayEl = $state<HTMLElement | null>(null);
 	let _debugLineEls = $state<Record<string, HTMLElement | null>>({});
+	const persistAttachment: Attachment = (element: Element) => {
+		persistElement = element as HTMLElement;
+		return () => {
+			if (persistElement === element) {
+				persistElement = null;
+			}
+		};
+	};
 	const resolvedDebug = $derived(normalizeDebugValue(debug));
 	const hasExplicitLayoutDebug = $derived(hasLayoutDebugValue(resolvedDebug));
 
@@ -403,6 +418,7 @@
 	);
 	const rootProps = $derived({
 		...props,
+		[persistAttachmentKey]: persist ? persistAttachment : undefined,
 		class: rootClassName,
 		style: shouldUseRootRuntime
 			? engine.mergeStyles(
@@ -568,6 +584,18 @@
 			obs.disconnect();
 			mutations.disconnect();
 		};
+	});
+
+	onMount(() => {
+		if (!persist || !persistElement) {
+			return;
+		}
+
+		return attachPersistTarget(persistElement, persist, {
+			fallbackScope: 'components',
+			defaultWriteMode: 'debounced',
+			defaultDebounceMs: 250,
+		});
 	});
 </script>
 

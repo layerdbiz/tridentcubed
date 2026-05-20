@@ -30,6 +30,7 @@
 		component = undefined,
 		debug = false,
 		observe = false,
+		persist = false,
 		scroll = false,
 		snippets = {},
 		tag = 'div',
@@ -269,6 +270,7 @@
 		return {
 			...componentLayoutProps,
 			...componentBaseProps,
+			persist,
 			[trackAttachmentKey]:
 				shouldShowBoxDebug || observe || scroll ? createTrackElement(index) : undefined,
 			class:
