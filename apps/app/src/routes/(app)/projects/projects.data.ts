@@ -5,6 +5,7 @@ import {
 	getPanelRenderer,
 	getPhotoPanelFields,
 } from "./projects.schema";
+import { getDemoProjectSeedByTitle } from "./projects.seed";
 import * as projectUtils from "./projects.utils";
 import type * as projectTypes from "./projects.types";
 
@@ -310,19 +311,28 @@ export function createProjectListRow(
 	const progress = projectUtils.getOverallPanelMetrics(state.sections);
 	const title = getProjectDataString(projectData, "project.title") ||
 		"Untitled Project";
+	const owner = getProjectDataString(projectData, "team.owner").trim();
+	const assigned = getProjectDataList(projectData, "team.assigned").filter(
+		(name) => name !== owner,
+	);
+	const demoSeed = getDemoProjectSeedByTitle(title);
+	const progressPercent = demoSeed?.progressPercent ?? progress.percent;
+	const status = demoSeed?.status ??
+		(progress.percent >= 100
+			? "Complete"
+			: progress.percent > 0
+			? "In Progress"
+			: "Draft");
 
 	return {
 		id: registryEntry.id,
 		title,
 		client: getProjectDataString(projectData, "client.company") || "—",
 		facility: getProjectDataString(projectData, "facility.name") || "—",
+		teamMembers: [owner, ...assigned].filter(Boolean),
 		updatedAt: registryEntry.updatedAt,
-		status: progress.percent >= 100
-			? "Complete"
-			: progress.percent > 0
-			? "In Progress"
-			: "Draft",
-		progress: `${progress.percent}%`,
-		progressPercent: progress.percent,
+		status,
+		progress: `${progressPercent}%`,
+		progressPercent,
 	};
 }

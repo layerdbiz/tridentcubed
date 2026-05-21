@@ -62,8 +62,8 @@
 		return section.groups.length > 0;
 	}
 
-	function handleFileRemove(group: projectTypes.PhotoGroupType, fileName: string) {
-		group.files = group.files.filter((item) => item !== fileName);
+	function handleFileRemove(group: projectTypes.PhotoGroupType, fileIndex: number) {
+		group.files = group.files.filter((_item, index) => index !== fileIndex);
 	}
 
 	const emptyPhotoItem = {
@@ -89,7 +89,7 @@
 		<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
 			<span>Variant</span>
 			<select class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15" bind:value={group.variant} disabled={!section.enabled}>
-				{#each variantOptions as option (option)}
+				{#each variantOptions as option, optionIndex (`${section.id}-${option}-${optionIndex}`)}
 					<option value={option}>{option}</option>
 				{/each}
 			</select>
@@ -108,10 +108,10 @@
 				</div>
 				{#if group.files.length}
 					<div class="space-y-2">
-						{#each group.files as fileName (`${group.id}-${fileName}`)}
+						{#each group.files as fileName, fileIndex (`${group.id}-${fileName}-${fileIndex}`)}
 							<div class="flex items-center justify-between gap-3 rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
 								<span class="min-w-0 flex-1 truncate">{fileName}</span>
-								<Button ghost secondary variant="icon" icon="close" onclick={() => handleFileRemove(group, fileName)} disabled={!section.enabled} />
+								<Button ghost secondary variant="icon" icon="close" onclick={() => handleFileRemove(group, fileIndex)} disabled={!section.enabled} />
 							</div>
 						{/each}
 					</div>

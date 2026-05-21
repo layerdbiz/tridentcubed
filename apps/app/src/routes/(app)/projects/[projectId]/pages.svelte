@@ -1,16 +1,18 @@
 <script lang="ts">
+	/*
 	import { pushState } from '$app/navigation';
 	import { page } from '$app/state';
+	*/
 	import { Logo, Button, Content, Text, Divider } from '@layerd/ui';
 	import * as projectAssets from '../projects.assets';
 	import * as projectConstants from '../projects.constants';
 	import * as projectUtils from '../projects.utils';
-	import JSON from './json.svelte';
+	/* import JSON from './json.svelte'; */
 	import PreviewPage from '../preview/preview-page.svelte';
 	import type * as projectTypes from '../projects.types';
 
 	type WorkspacePaneType = 'edit' | 'preview';
-	type ProjectViewType = 'pages' | 'json';
+	/* type ProjectViewType = 'pages' | 'json'; */
 
 	type TocEntryType = {
 		id: string;
@@ -75,22 +77,23 @@
 		projectDataJson
 	}: PagesProps = $props();
 
+	/*
 	function normalizeProjectView(value: string | null | undefined): ProjectViewType {
 		return value?.toLowerCase() === 'json' ? 'json' : 'pages';
 	}
 
-	let activeView = $state<ProjectViewType>(normalizeProjectView(page.url.searchParams.get('view')));
-
-	$effect(() => {
-		activeView = normalizeProjectView(page.url.searchParams.get('view'));
-	});
+	const activeView = $derived<ProjectViewType>(
+		normalizeProjectView(page.url.searchParams.get('view'))
+	);
 
 	function setProjectView(nextView: ProjectViewType) {
-		activeView = nextView;
 		const url = new URL(page.url);
 		url.searchParams.set('view', nextView);
 		pushState(`${url.pathname}${url.search}`, page.state);
 	}
+	*/
+
+	const activeView = 'pages';
 
 	function getPhotoPageDescription(pageItem: projectTypes.PreviewPageItemType): string {
 		if (pageItem.section?.type !== 'photos') return '';
@@ -115,54 +118,55 @@
 <section class:hidden={!isDesktop && activePane !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
 	<div class="relative flex h-full min-h-0 flex-col">
 		<div class="shrink-0 px-1 pb-3 md:px-0">
-			<div class="flex items-center justify-between gap-3 rounded-2xl border border-secondary-200 bg-white px-3 py-2 shadow-sm">
-				<div class="flex items-center gap-2">
+			<div class="flex flex-col gap-3 rounded-2xl border border-secondary-200 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+				<!--
+				<div class="flex w-full items-center gap-2 sm:w-auto">
 					<Button
 						{...(activeView === 'pages' ? { primary: true, heavy: true } : { outline: true, base: true })}
 						variant="text"
+						class="flex-1 sm:flex-none"
 						label="Pages"
 						onclick={() => setProjectView('pages')}
 					/>
 					<Button
 						{...(activeView === 'json' ? { primary: true, heavy: true } : { outline: true, base: true })}
 						variant="text"
+						class="flex-1 sm:flex-none"
 						label="JSON"
 						onclick={() => setProjectView('json')}
 					/>
 				</div>
+				-->
 
-				{#if activeView === 'pages'}
-					<div class="flex items-center gap-2">
-						<Button primary class="bg-primary" variant="icon text" icon="download" onclick={() => handleExport('PDF')} label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting} />
-						<div id="zoomer" class="flex h-12 rounded-full border border-neutral-300 bg-white shadow-sm">
-							<Button ghost xl variant="text" label="-" onclick={() => stepPreviewZoom('out')} class="px-4!" />
-							<Button ghost lg variant="text" class="w-18! rounded-none! border-x border-secondary-200 px-0! font-black!" onclick={resetPreviewZoom}>
-								{Math.round((previewZoom || 1) * 100)}%
-							</Button>
-							<Button ghost xl variant="text" label="+" onclick={() => stepPreviewZoom('in')} class="px-4!" />
-						</div>
+				<div class="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
+					<Button primary class="min-w-38 justify-center bg-primary sm:min-w-0" variant="icon text" icon="download" onclick={() => handleExport('PDF')} label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting} />
+					<div id="zoomer" class="flex h-11 shrink-0 rounded-full border border-neutral-300 bg-white shadow-sm sm:h-12">
+						<Button ghost xl variant="text" label="-" onclick={() => stepPreviewZoom('out')} class="px-4!" />
+						<Button ghost lg variant="text" class="w-18! rounded-none! border-x border-secondary-200 px-0! font-black!" onclick={resetPreviewZoom}>
+							{Math.round((previewZoom || 1) * 100)}%
+						</Button>
+						<Button ghost xl variant="text" label="+" onclick={() => stepPreviewZoom('in')} class="px-4!" />
 					</div>
-				{/if}
+				</div>
 			</div>
 		</div>
 
 		<div class="min-h-0 flex-1">
-			{#if activeView === 'pages'}
-				<div bind:this={previewViewport} role="region" aria-label="Preview pages" class="h-full w-full overflow-x-hidden overflow-y-auto bg-transparent" style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`} onwheel={handlePreviewWheel} ontouchstart={handlePreviewTouchStart} ontouchmove={handlePreviewTouchMove} ontouchend={handlePreviewTouchEnd}>
-					<div class="relative w-full px-1 pb-10 pt-0 md:px-0 md:pb-16 md:pt-2">
-						<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${projectConstants.previewPageWidth}px; --preview-page-height: ${projectConstants.previewPageHeight}px`}>
-							<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">
+			<div bind:this={previewViewport} role="region" aria-label="Preview pages" class="h-full w-full overflow-x-hidden overflow-y-auto bg-transparent" style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`} onwheel={handlePreviewWheel} ontouchstart={handlePreviewTouchStart} ontouchmove={handlePreviewTouchMove} ontouchend={handlePreviewTouchEnd}>
+				<div class="relative w-full px-1 pb-10 pt-0 md:px-0 md:pb-16 md:pt-2">
+					<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${projectConstants.previewPageWidth}px; --preview-page-height: ${projectConstants.previewPageHeight}px`}>
+						<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">
 								{#each previewPageItems as pageItem (pageItem.id)}
 									{#if pageItem.kind === 'cover'}
 										<PreviewPage innerClass="relative flex flex-col items-center justify-center gap-6">
 											<div id="topCoverPage" class="mb-50 flex flex-col items-center justify-center gap-6">
 												<Logo mode="light" class="size-42" />
-												<Text h1={reportTitle || 'Survey Report'} class="text-6xl font-black uppercase" />
+												<Text h1={reportTitle || 'Survey Report'} class="text-center text-6xl font-black uppercase" />
 												<Text h2={reportSubtitle || reportTitle || 'Survey Report'} class="text-center text-3xl font-semibold text-pretty text-secondary-500" />
 											</div>
 											<div id="bottomCoverPage" class="absolute bottom-0 left-0 right-0 z-1! grid w-full justify-center bg-secondary-200 pb-20">
 												<Divider class="absolute bottom-full" color="text-secondary-200" bleed={false} />
-												{#each coverMeta as item (item.label)}
+												{#each coverMeta as item, itemIndex (`cover-meta-${item.label}-${itemIndex}`)}
 													<div class="grid grid-cols-[100px_1fr] gap-3">
 														<span class="font-bold text-neutral-600">{item.label}:</span>
 														<span class="text-neutral-600">{item.value}</span>
@@ -186,7 +190,7 @@
 										<PreviewPage>
 											<Text h2={pageItem.title} class="mb-6 text-4xl" />
 											<div class="grid gap-3 md:grid-cols-2">
-												{#each projectSummaryItems as item (item.label)}
+												{#each projectSummaryItems as item, itemIndex (`summary-${item.label}-${itemIndex}`)}
 													<div class={`rounded-2xl border border-slate-200 p-4 ${item.emphasis ? 'bg-secondary-100' : 'bg-white'}`}>
 														<p class="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500">{item.label}</p>
 														<p class={`text-lg ${item.emphasis ? 'font-black text-neutral-900' : 'font-medium text-neutral-700'}`}>{item.value || '—'}</p>
@@ -199,7 +203,7 @@
 											<Text h2={pageItem.title} class="mb-6 text-4xl" />
 											{#if personnelEntries.length}
 												<div class="grid gap-4 md:grid-cols-2">
-													{#each personnelEntries as person (`${person.role}-${person.name}`)}
+													{#each personnelEntries as person, personIndex (`${person.role}-${person.name}-${personIndex}`)}
 														<div class={`rounded-3xl border p-5 ${person.isPrimary ? 'border-secondary-400 bg-secondary-100' : 'border-slate-200 bg-white'}`}>
 															<p class="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500">{person.role}</p>
 															<p class="text-2xl font-black text-neutral-900">{person.name}</p>
@@ -238,7 +242,7 @@
 												<div class="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
 													<p class="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500">Documents</p>
 													<ul class="space-y-2 text-sm text-neutral-700">
-														{#each pageItem.photoGroup?.files ?? [] as fileName (`${pageItem.id}-${fileName}`)}
+														{#each pageItem.photoGroup?.files ?? [] as fileName, fileIndex (`${pageItem.id}-${fileName}-${fileIndex}`)}
 															<li class="rounded-xl bg-neutral-50 px-3 py-2">{fileName}</li>
 														{/each}
 													</ul>
@@ -279,13 +283,11 @@
 										</PreviewPage>
 									{/if}
 								{/each}
-							</div>
 						</div>
 					</div>
 				</div>
-			{:else}
-				<JSON {projectDataJson} />
-			{/if}
+			</div>
+			<!-- <JSON {projectDataJson} /> -->
 		</div>
 	</div>
 </section>

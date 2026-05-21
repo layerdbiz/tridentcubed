@@ -118,6 +118,7 @@ export interface ProjectListRowType {
 	title: string;
 	client: string;
 	facility: string;
+	teamMembers: string[];
 	updatedAt: string;
 	status: string;
 	progress: string;

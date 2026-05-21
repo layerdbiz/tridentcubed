@@ -1,9 +1,15 @@
-import { persist } from "@layerd/ui";
 import {
 	getProjectStorageKey,
 	projectsRegistryKey,
 	storageKey,
 } from "./projects.constants";
+import {
+	type DemoPhotoGroupSeedType,
+	demoProjectSeeds,
+	type DemoProjectSeedType,
+	type DemoTimeLogDaySeedType,
+	legacyAutoSeedTitles,
+} from "./projects.seed";
 import * as projectSchemas from "./projects.schema";
 import type * as projectTypes from "./projects.types";
 
@@ -48,6 +54,18 @@ function writeStoredValue(key: string, value: unknown): void {
 function removeStoredValue(key: string): void {
 	if (typeof localStorage === "undefined") return;
 	localStorage.removeItem(key);
+}
+
+function readStoredValue<T>(key: string, fallback: T): T {
+	if (typeof localStorage === "undefined") return fallback;
+
+	try {
+		const rawValue = localStorage.getItem(key);
+		if (!rawValue) return fallback;
+		return JSON.parse(rawValue) as T;
+	} catch {
+		return fallback;
+	}
 }
 
 export const createTimeEntry = (): projectTypes.TimeEntryType => ({
@@ -120,8 +138,56 @@ function getPanelSectionId(
 	panel: projectTypes.PanelDefinitionType,
 	page: projectTypes.PageDefinitionType | undefined,
 ): string {
-	if (page) return getPageSectionId(page.id);
+	if (page) {
+		return `panel-${panel.id.toLowerCase()}-page-${page.id.toLowerCase()}`;
+	}
 	return `panel-${panel.id.toLowerCase()}`;
+}
+
+function migrateFixedPhotoSectionIds(
+	schema: projectTypes.ProjectSchemaType,
+	sections: unknown[],
+): unknown[] {
+	const seenIds = new Set<string>();
+
+	return sections.flatMap((value) => {
+		const section = value as Partial<projectTypes.PhotosSectionType>;
+
+		if (
+			section.type === "photos" &&
+			Boolean(section.locked) &&
+			typeof section.panelId === "string"
+		) {
+			const panel = schema.panels.find((item) => item.id === section.panelId);
+			if (panel) {
+				const page = typeof section.pageId === "string"
+					? schema.pages.find((item) => item.id === section.pageId) ||
+						projectSchemas.getPhotoPageForPanel(schema, panel)
+					: projectSchemas.getPhotoPageForPanel(schema, panel);
+				const canonicalId = getPanelSectionId(panel, page);
+				if (seenIds.has(canonicalId)) return [];
+				seenIds.add(canonicalId);
+
+				return [{
+					...section,
+					id: canonicalId,
+					panelId: panel.id,
+					pageId: page?.id || null,
+				}];
+			}
+		}
+
+		const sectionId = typeof (section as { id?: unknown }).id === "string"
+			? String((section as { id?: unknown }).id)
+			: "";
+
+		if (sectionId) {
+			if (seenIds.has(sectionId)) return [];
+			seenIds.add(sectionId);
+		}
+
+		return [value];
+	});
 }
 
 function getPanelPhotoVariant(
@@ -296,21 +362,36 @@ export function orderSections(
 	const fixedSectionIds = new Set(
 		fixedSectionTemplates.map((section) => section.id),
 	);
+	const fixedMiddleTemplates = fixedSectionTemplates.filter((section) =>
+		section.placement === "middle"
+	);
+	const fixedMiddleTemplateById = new Map(
+		fixedMiddleTemplates.map((section) => [section.id, section]),
+	);
 	const middleSections = items.filter((section) =>
 		!fixedSectionIds.has(section.id)
 	);
+	const orderedFixedMiddleSections: projectTypes.SectionType[] = [];
+	const seenFixedMiddleIds = new Set<string>();
+
+	for (const section of items) {
+		if (!fixedMiddleTemplateById.has(section.id)) continue;
+		if (seenFixedMiddleIds.has(section.id)) continue;
+
+		seenFixedMiddleIds.add(section.id);
+		orderedFixedMiddleSections.push(section);
+	}
 
 	return fixedSectionTemplates
 		.filter((section) => section.placement === "start")
 		.map((section) =>
 			items.find((item) => item.id === section.id) ?? section.create()
 		)
+		.concat(orderedFixedMiddleSections)
 		.concat(
-			fixedSectionTemplates
-				.filter((section) => section.placement === "middle")
-				.map((section) =>
-					items.find((item) => item.id === section.id) ?? section.create()
-				),
+			fixedMiddleTemplates
+				.filter((section) => !seenFixedMiddleIds.has(section.id))
+				.map((section) => section.create()),
 		)
 		.concat(middleSections);
 }
@@ -653,10 +734,10 @@ export function loadState(
 	const fixedSectionTemplateById = new Map(
 		fixedSectionTemplates.map((section) => [section.id, section]),
 	);
-	const parsed = persist.read<Partial<projectTypes.PersistedStateType>>({
-		key: storageKeyValue,
-		fallback: {},
-	});
+	const parsed = readStoredValue<Partial<projectTypes.PersistedStateType>>(
+		storageKeyValue,
+		{},
+	);
 
 	if (!parsed || typeof parsed !== "object" || !("sections" in parsed)) {
 		return defaults;
@@ -686,9 +767,13 @@ export function loadState(
 					),
 			)
 			: defaults.sections;
+		const migratedParsedSections = migrateFixedPhotoSectionIds(
+			schema,
+			parsedSections,
+		);
 
 		const normalizedSections = orderSections(
-			parsedSections.map((section, index) =>
+			migratedParsedSections.map((section, index) =>
 				normalizeSection(section, index, fixedSectionTemplateById)
 			),
 			fixedSectionTemplates,
@@ -747,10 +832,10 @@ export function loadState(
 }
 
 export function loadProjectsRegistry(): projectTypes.ProjectRegistryEntryType[] {
-	const parsed = persist.read<projectTypes.ProjectRegistryEntryType[]>({
-		key: projectsRegistryKey,
-		fallback: [],
-	});
+	const parsed = readStoredValue<projectTypes.ProjectRegistryEntryType[]>(
+		projectsRegistryKey,
+		[],
+	);
 
 	if (!Array.isArray(parsed)) return [];
 
@@ -822,9 +907,9 @@ export function touchProjectRecord(projectId: string): void {
 	const existingEntry = loadProjectsRegistry().find((item) =>
 		item.id === projectId
 	);
-	const entry = existingEntry
-		? { ...existingEntry, updatedAt: createTimestamp() }
-		: createProjectRegistryEntry(projectId);
+	if (!existingEntry) return;
+
+	const entry = { ...existingEntry, updatedAt: createTimestamp() };
 
 	upsertProjectRegistryEntry(entry);
 }
@@ -842,88 +927,320 @@ function setFieldValue(
 	}
 }
 
-function createSeedProjectState(
-	schema: projectTypes.ProjectSchemaType,
-	variant: "blank" | "in-progress" | "complete",
-): projectTypes.PersistedStateType {
-	const state = createDefaultState(schema);
+function setFieldValues(
+	sections: projectTypes.SectionType[],
+	values: Record<string, projectTypes.FieldStateValueType>,
+): void {
+	for (const [path, value] of Object.entries(values)) {
+		setFieldValue(sections, path, value);
+	}
+}
 
-	if (variant === "blank") {
-		return state;
+function createSeedTimeDays(
+	days: DemoTimeLogDaySeedType[],
+): projectTypes.TimeDayType[] {
+	if (!days.length) return [createTimeDay()];
+
+	return days.map((day) => ({
+		id: nextId("day"),
+		dateISO: day.dateISO,
+		entries: day.entries.length
+			? day.entries.map((entry) => ({
+				id: nextId("entry"),
+				time: entry.time,
+				text: entry.text,
+			}))
+			: [createTimeEntry()],
+	}));
+}
+
+function createSeedPhotoGroups(
+	groups: DemoPhotoGroupSeedType[],
+): projectTypes.PhotoGroupType[] {
+	return groups.map((group) => ({
+		id: nextId("group"),
+		title: group.title,
+		description: group.description,
+		variant: group.variant,
+		files: (group.files || []).map((fileName) => fileName.trim()).filter(
+			Boolean,
+		),
+		photos: group.photos.map((photo) => ({
+			id: nextId("photo"),
+			name: photo.name,
+			caption: photo.caption,
+			src: photo.src,
+			width: photo.width,
+			height: photo.height,
+		})),
+	}));
+}
+
+function getStateFieldString(
+	sections: projectTypes.SectionType[],
+	path: string,
+): string {
+	for (const section of sections) {
+		if (section.type !== "fields" && section.type !== "cover") continue;
+		if (!(path in section.fields)) continue;
+
+		const value = section.fields[path];
+		if (Array.isArray(value)) return value.join(", ").trim();
+		return String(value || "").trim();
 	}
 
-	setFieldValue(
-		state.sections,
+	return "";
+}
+
+function isPlaceholderPhotoSection(
+	section: projectTypes.PhotosSectionType,
+): boolean {
+	return section.groups.every((group) => {
+		const normalizedTitle = group.title.trim();
+		const usesDefaultTitle = !normalizedTitle ||
+			normalizedTitle === section.title ||
+			/^Section\s+\d+$/i.test(normalizedTitle);
+
+		return (
+			usesDefaultTitle &&
+			!group.description.trim() &&
+			!group.files.length &&
+			!group.photos.length
+		);
+	});
+}
+
+function isPlaceholderProjectState(
+	state: projectTypes.PersistedStateType,
+): boolean {
+	const seededFieldPaths = [
 		"project.title",
-		variant === "complete" ? "MV Ocean Survey" : "Draft Cargo Survey",
-	);
-	setFieldValue(
-		state.sections,
 		"project.subtitle",
-		variant === "complete"
-			? "Voyage Condition Assessment"
-			: "Initial Inspection",
-	);
-	setFieldValue(
-		state.sections,
 		"client.company",
-		variant === "complete" ? "Atlas Freight" : "Northwind Logistics",
-	);
-	setFieldValue(
-		state.sections,
 		"facility.name",
-		variant === "complete" ? "Pier 48 Terminal" : "East Harbor Berth",
-	);
-	setFieldValue(state.sections, "org.name", "Layerd Marine");
-	setFieldValue(
-		state.sections,
 		"carrier.name",
-		variant === "complete" ? "MV Horizon" : "TBD Carrier",
-	);
-	setFieldValue(
-		state.sections,
 		"items.title",
-		variant === "complete" ? "Steel Coil Shipment" : "Cargo Intake",
-	);
+		"team.owner",
+	];
+
+	if (
+		seededFieldPaths.some((path) =>
+			Boolean(getStateFieldString(state.sections, path))
+		)
+	) {
+		return false;
+	}
+
+	for (const section of state.sections) {
+		if (section.type === "time-log") {
+			const hasRealTimeLogData = section.days.some((day) =>
+				Boolean(day.dateISO.trim()) ||
+				day.entries.some((entry) =>
+					Boolean(entry.time.trim()) || Boolean(entry.text.trim())
+				)
+			);
+			if (hasRealTimeLogData) return false;
+			continue;
+		}
+
+		if (section.type === "photos" && !isPlaceholderPhotoSection(section)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function applySeedProjectState(
+	state: projectTypes.PersistedStateType,
+	seed: DemoProjectSeedType,
+): projectTypes.PersistedStateType {
+	setFieldValues(state.sections, seed.fields);
 
 	const timeLogSection = state.sections.find(
 		(section): section is projectTypes.TimeLogSectionType =>
 			section.type === "time-log",
 	);
 	if (timeLogSection) {
-		timeLogSection.days[0].dateISO = "2026-03-28";
-		timeLogSection.days[0].entries[0].time = "08:00";
-		timeLogSection.days[0].entries[0].text = variant === "complete"
-			? "Completed onboard survey walkthrough."
-			: "Started receiving intake notes.";
+		timeLogSection.days = createSeedTimeDays(seed.timeLogDays);
 	}
 
-	if (variant === "complete") {
-		setFieldValue(state.sections, "team.owner", "Jordan Blake");
-		setFieldValue(
-			state.sections,
-			"items.description",
-			"Coils inspected, documented, and staged for discharge review.",
-		);
-		setFieldValue(state.sections, "project.type", "Condition Survey");
+	for (const section of state.sections) {
+		if (section.type !== "photos") continue;
+
+		const configuredGroups = seed.photoSections[section.title] || [];
+		if (configuredGroups.length) {
+			section.enabled = true;
+			section.groups = createSeedPhotoGroups(configuredGroups);
+			continue;
+		}
+
+		if (!section.required) {
+			section.enabled = false;
+			section.open = false;
+			section.groups = [];
+		}
+	}
+
+	if (seed.openSections?.length) {
+		const openTitles = new Set(seed.openSections);
+		for (const section of state.sections) {
+			section.open = openTitles.has(section.title) && section.enabled;
+		}
 	}
 
 	return state;
+}
+
+function getSeedCompletionValue(path: string): string {
+	const fieldKey = path.split(".").filter(Boolean).at(-1) || "value";
+
+	if (fieldKey === "email") return "complete@tridentcubed.demo";
+	if (fieldKey === "url" || fieldKey === "website") {
+		return "https://example.com/complete-report";
+	}
+	if (fieldKey === "phone") return "+1 555 010 0000";
+	if (fieldKey.includes("date")) return "2026-05-01";
+
+	return `Completed ${fieldKey.replace(/[^a-z0-9]+/gi, " ").trim() || "value"}`;
+}
+
+function finalizeCompletedSeedState(
+	state: projectTypes.PersistedStateType,
+): projectTypes.PersistedStateType {
+	for (const [sectionIndex, section] of state.sections.entries()) {
+		if (section.type === "fields" || section.type === "cover") {
+			for (const [path, value] of Object.entries(section.fields)) {
+				if (Array.isArray(value)) {
+					if (!value.some((item) => String(item || "").trim())) {
+						section.fields[path] = [getSeedCompletionValue(path)];
+					}
+					continue;
+				}
+
+				if (!String(value || "").trim()) {
+					section.fields[path] = getSeedCompletionValue(path);
+				}
+			}
+			continue;
+		}
+
+		if (section.type === "time-log") {
+			if (!section.days.length) section.days = [createTimeDay()];
+
+			for (const [dayIndex, day] of section.days.entries()) {
+				if (!day.dateISO.trim()) {
+					day.dateISO = `2026-05-${String(dayIndex + 1).padStart(2, "0")}`;
+				}
+				if (!day.entries.length) day.entries = [createTimeEntry()];
+
+				for (const [entryIndex, entry] of day.entries.entries()) {
+					if (!entry.time.trim()) {
+						entry.time = `${String(8 + entryIndex).padStart(2, "0")}:00`;
+					}
+					if (!entry.text.trim()) {
+						entry.text = `Completed ${section.title.toLowerCase()} note ${
+							entryIndex + 1
+						}.`;
+					}
+				}
+			}
+			continue;
+		}
+
+		if (section.required) section.enabled = true;
+		if (!section.enabled) continue;
+
+		if (!section.groups.length) {
+			section.groups = [
+				createPhotoGroup(section.title, section.defaultVariant),
+			];
+		}
+
+		for (const [groupIndex, group] of section.groups.entries()) {
+			if (!group.title.trim()) {
+				group.title = `${section.title} ${groupIndex + 1}`;
+			}
+			if (!group.description.trim()) {
+				group.description = `Completed ${section.title.toLowerCase()} record.`;
+			}
+			if (!group.photos.length && !group.files.length) {
+				group.files = [
+					`${section.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${
+						groupIndex + 1
+					}.pdf`,
+				];
+			}
+		}
+
+		state.sections[sectionIndex] = section;
+	}
+
+	return state;
+}
+
+function createSeedProjectState(
+	schema: projectTypes.ProjectSchemaType,
+	seed: DemoProjectSeedType,
+): projectTypes.PersistedStateType {
+	const state = applySeedProjectState(createDefaultState(schema), seed);
+
+	if (seed.status === "Complete" || seed.status === "Archived") {
+		return finalizeCompletedSeedState(state);
+	}
+
+	return state;
+}
+
+function shouldRefreshLegacySeedProjects(
+	schema: projectTypes.ProjectSchemaType,
+	registry: projectTypes.ProjectRegistryEntryType[],
+): boolean {
+	if (!registry.length) return false;
+
+	const states = registry.map((entry) =>
+		loadState(schema, getProjectStorageKey(entry.id))
+	);
+
+	if (states.every(isPlaceholderProjectState)) {
+		return true;
+	}
+
+	if (registry.length !== legacyAutoSeedTitles.size) return false;
+
+	return states.every((state) => {
+		const title = getStateFieldString(state.sections, "project.title") ||
+			"Untitled Project";
+		return legacyAutoSeedTitles.has(title);
+	});
 }
 
 export function ensureSeedProjects(
 	schema: projectTypes.ProjectSchemaType,
 ): projectTypes.ProjectRegistryEntryType[] {
 	const existingRegistry = loadProjectsRegistry();
-	if (existingRegistry.length) return existingRegistry;
+	if (
+		existingRegistry.length &&
+		!shouldRefreshLegacySeedProjects(schema, existingRegistry)
+	) {
+		return existingRegistry;
+	}
 
-	const seedVariants: Array<"blank" | "in-progress" | "complete"> = [
-		"blank",
-		"in-progress",
-		"complete",
-	];
+	return resetSeedProjects(schema, existingRegistry);
+}
 
-	return seedVariants.map((variant) =>
-		createProjectRecord(schema, createSeedProjectState(schema, variant))
+export function resetSeedProjects(
+	schema: projectTypes.ProjectSchemaType,
+	existingRegistry = loadProjectsRegistry(),
+): projectTypes.ProjectRegistryEntryType[] {
+	if (existingRegistry.length) {
+		for (const entry of existingRegistry) {
+			removeStoredValue(getProjectStorageKey(entry.id));
+		}
+		saveProjectsRegistry([]);
+	}
+
+	return demoProjectSeeds.map((seed) =>
+		createProjectRecord(schema, createSeedProjectState(schema, seed))
 	);
 }

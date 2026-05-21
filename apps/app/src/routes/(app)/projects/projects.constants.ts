@@ -1,4 +1,4 @@
-export const storageKey = "survey-report-mvp-v3";
+export const storageKey = "survey-report-preview-v4";
 export const projectsRegistryKey = `${storageKey}-registry`;
 export const projectStorageKeyPrefix = `${storageKey}-project`;
 

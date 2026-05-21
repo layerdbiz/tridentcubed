@@ -31,6 +31,7 @@
 	export interface PanelsProps {
 		isDesktop: boolean;
 		activePane: WorkspacePaneType;
+		projectListHref: string;
 		sections: projectTypes.SectionType[];
 		schema: projectTypes.ProjectSchemaType;
 		draggedSectionId: string;
@@ -76,6 +77,7 @@
 	let {
 		isDesktop,
 		activePane,
+		projectListHref,
 		sections,
 		schema,
 		draggedSectionId,
@@ -133,6 +135,22 @@
 		event.preventDefault();
 		event.stopPropagation();
 		toggleSectionEnabled(sectionId);
+	}
+
+	function isPanelReorderable(
+		section: projectTypes.SectionType,
+		panelDefinition: projectTypes.PanelDefinitionType | undefined
+	): boolean {
+		return section.placement === 'middle' && Boolean(panelDefinition?.draggable);
+	}
+
+	function handleReorderHandlePointerDown(event: PointerEvent) {
+		event.stopPropagation();
+	}
+
+	function handleReorderHandleClick(event: MouseEvent) {
+		event.preventDefault();
+		event.stopPropagation();
 	}
 
 	function handleFieldInput(sectionId: string, path: string, event: Event) {
@@ -288,7 +306,18 @@
 			<div class="flex flex-col gap-4">
 				<div class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
 					<div class="min-w-0">
-						<Text h2="Edit" />
+						<div class="flex items-center gap-3 pl-1">
+							<Button
+								sm
+								outline
+								variant="icon"
+								icon="arrow-left"
+								class="shrink-0 border-secondary-300 bg-white text-neutral-700"
+								aria-label="Back to projects"
+								href={projectListHref}
+							/>
+							<Text h2="Edit" />
+						</div>
 						<Text xs class="text-neutral" p="Build the report structure, content, and photos section by section." />
 					</div>
 
@@ -340,6 +369,7 @@
 				{@const sectionStatusLabel = sectionDisabled ? 'DISABLED' : projectUtils.getPanelStatusLabel(metrics)}
 				{@const sectionStatusTextClass = sectionDisabled ? 'text-neutral-400' : projectUtils.getPanelStatusTextClass(metrics)}
 				{@const sectionProgressFillClass = sectionDisabled ? 'bg-secondary-300' : projectUtils.getPanelProgressFillClass(metrics)}
+				{@const sectionReorderable = isPanelReorderable(section, panelDefinition)}
 
 				<div
 					id={getAccordionAnchorId(section.id)}
@@ -347,7 +377,7 @@
 					class="relative"
 					class:dragging-item={draggedSectionId === section.id}
 					{@attach fromAction(measureAccordionLayout, () => ({ sectionId: section.id, index }))}
-					{@attach fromAction(sectionSort.item, () => (projectStates.isPanelMovable(section) ? section : null))}
+					{@attach fromAction(sectionSort.item, () => (sectionReorderable ? section : null))}
 				>
 					<Accordion class="relative" name="report-sections" open={section.open} ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}>
 						<AccordionTitle
@@ -355,10 +385,10 @@
 							onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
 						>
 							<div class="flex items-start gap-3">
-								{#if projectStates.isPanelMovable(section)}
-									<div class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing" {@attach fromAction(sectionSort.handle, () => true)} aria-label={`Reorder ${section.title}`}>
+								{#if sectionReorderable}
+										<button type="button" class="touch-reorder-handle touch-none select-none flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-neutral-50 text-2xl text-neutral-700 cursor-grab active:cursor-grabbing" {@attach fromAction(sectionSort.handle, () => true)} aria-label={`Reorder ${section.title}`} onpointerdown={handleReorderHandlePointerDown} onclick={handleReorderHandleClick}>
 										{section.icon}
-									</div>
+										</button>
 								{:else}
 									<div class="flex h-10 w-10 shrink-0 items-center justify-center text-3xl">{section.icon}</div>
 								{/if}
@@ -390,7 +420,7 @@
 											>
 												<span class={`block h-4.5 w-4.5 rounded-full ${section.enabled ? 'bg-white' : 'bg-neutral-400'}`}></span>
 											</button>
-										{:else if projectStates.isPanelMovable(section)}
+										{:else if sectionReorderable}
 									<Button variant="icon" icon="close" class="absolute! -top-2! -right-2! text-[8px]!" aria-label={`Delete ${section.title}`} onclick={(event: MouseEvent) => handleSectionActionClick(event, section.id)} />
 								{:else}
 									<Button variant="icon" icon="lock" class="absolute! -top-2! -right-2! text-[8px]! bg-secondary-200 text-secondary-400 opacity-100" aria-label={`${section.title} is locked`} onclick={handleSectionActionDisabledClick} disabled />
@@ -459,7 +489,7 @@
 															<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
 																<span>{field.label}</span>
 																<select class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15" multiple={field.input === 'multiselect'} disabled={!section.enabled || !field.editable} onchange={(event) => handleFieldSelect(section.id, field.path, event)}>
-																	{#each field.options as option (option)}
+																	{#each field.options as option, optionIndex (`${field.id}-${option}-${optionIndex}`)}
 																		<option selected={Array.isArray(section.fields[field.path]) ? section.fields[field.path].includes(option) : projectSchemas.getFieldStringValue(section.fields, field.path) === option} value={option}>{option}</option>
 																	{/each}
 																</select>

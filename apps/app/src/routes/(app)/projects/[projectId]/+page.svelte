@@ -614,8 +614,55 @@
 		return draggable.sort<projectTypes.PhotoGroupType>(getPhotoGroupSortType(sectionId));
 	}
 
+	function getReorderablePanelDefinition(
+		section: projectTypes.SectionType,
+	): projectTypes.PanelDefinitionType | undefined {
+		if (section.type === 'fields' || section.type === 'cover') {
+			return projectSchemas.getPanelDefinition(projectSchema, section.section);
+		}
+
+		if (section.type === 'photos' && section.panelId) {
+			return projectSchemas.getPanelDefinitionById(projectSchema, section.panelId);
+		}
+
+		if (section.type === 'time-log') {
+			return projectSchemas.getPanelDefinition(projectSchema, section.title);
+		}
+
+		return projectSchemas.getPanelDefinition(projectSchema, section.title);
+	}
+
+	function isSectionReorderable(section: projectTypes.SectionType): boolean {
+		const panelDefinition = getReorderablePanelDefinition(section);
+		return section.placement === 'middle' && Boolean(panelDefinition?.draggable);
+	}
+
 	function setSections(nextSections: unknown[]) {
-		sections = nextSections as projectTypes.SectionType[];
+		const candidates = nextSections as projectTypes.SectionType[];
+		const seenSectionIds = new Set<string>();
+		const reorderedSections: projectTypes.SectionType[] = [];
+
+		for (const candidate of candidates) {
+			if (!candidate?.id || seenSectionIds.has(candidate.id)) continue;
+			if (!isSectionReorderable(candidate)) continue;
+
+			seenSectionIds.add(candidate.id);
+			reorderedSections.push(candidate);
+		}
+
+		if (!reorderedSections.length) return;
+
+		const remainingSections = sections.filter((section) =>
+			isSectionReorderable(section) && !seenSectionIds.has(section.id)
+		);
+		const nextReorderableSections = [...reorderedSections, ...remainingSections];
+		let reorderableIndex = 0;
+
+		sections = sections.map((section) =>
+			isSectionReorderable(section)
+				? nextReorderableSections[reorderableIndex++] ?? section
+				: section
+		);
 	}
 
 	function setSectionGroups(section: projectTypes.PhotosSectionType, nextGroups: unknown[]) {
@@ -1258,29 +1305,31 @@
 
 <div class="page-shell h-svh overflow-hidden text-neutral-900">
 	<div class="flex h-full min-w-0 flex-col">
-		<div class="flex shrink-0 items-center gap-2 p-4 md:hidden">
-			<Button
-				{...(activePane === 'edit' ? { heavy: true, primary: true } : { outline: true, base: true })}
-				variant="text"
-				class="w-full flex-1"
-				onclick={() => setMobilePane('edit')}
-				label="Edit"
-				 {setSectionFieldValues}
-			/>
+		<div class="sticky top-0 z-10 shrink-0 bg-secondary-50/95 backdrop-blur">
+			<div class="flex items-center gap-2 px-4 pb-3 md:hidden">
+				<Button
+					{...(activePane === 'edit' ? { heavy: true, primary: true } : { outline: true, base: true })}
+					variant="text"
+					class="w-full flex-1"
+					onclick={() => setMobilePane('edit')}
+					label="Edit"
+				/>
 
-			<Button
-				{...(activePane === 'preview' ? { heavy: true, primary: true } : { outline: true, base: true })}
-				variant="text"
-				class="w-full flex-1"
-				onclick={() => setMobilePane('preview')}
-				label="Preview"
-			/>
+				<Button
+					{...(activePane === 'preview' ? { heavy: true, primary: true } : { outline: true, base: true })}
+					variant="text"
+					class="w-full flex-1"
+					onclick={() => setMobilePane('preview')}
+					label="Preview"
+				/>
+			</div>
 		</div>
 
-		<main class="grid min-h-0 flex-1 gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:px-6 md:pb-6 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
+		<main class="grid min-h-0 flex-1 gap-0 md:gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:px-6 md:pb-6 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
 			<Panels
 				{isDesktop}
 				{activePane}
+				projectListHref="/projects"
 				{sections}
 				schema={projectSchema}
 				{draggedSectionId}

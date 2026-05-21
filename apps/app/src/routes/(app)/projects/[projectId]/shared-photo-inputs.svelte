@@ -200,7 +200,7 @@
 		<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
 			<span>{variantField.label}</span>
 			<select class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15" disabled={!section.enabled || !variantField.editable} onchange={handleVariantChange}>
-				{#each variantField.options as option (option)}
+				{#each variantField.options as option, optionIndex (`${variantField.id}-${option}-${optionIndex}`)}
 					<option selected={getFieldValueList(section.fields[variantField.path])[0] === option} value={option}>{option}</option>
 				{/each}
 			</select>
