@@ -113,12 +113,18 @@ export interface ProjectRegistryEntryType {
 	updatedAt: string;
 }
 
+export interface ProjectTeamMemberType {
+	name: string;
+	avatarUrl: string;
+	isPrimary?: boolean;
+}
+
 export interface ProjectListRowType {
 	id: string;
 	title: string;
 	client: string;
 	facility: string;
-	teamMembers: string[];
+	teamMembers: ProjectTeamMemberType[];
 	updatedAt: string;
 	status: string;
 	progress: string;
@@ -308,6 +314,7 @@ export interface PreviewSummaryItemType {
 export interface PreviewPersonnelItemType {
 	name: string;
 	role: string;
+	avatarUrl: string;
 	isPrimary?: boolean;
 }
 

@@ -16,7 +16,7 @@
 		/** Logo display type */
 		type?: 'icon' | 'logo' | 'both';
 		/** Logo color mode - controls SVG colors/gradients */
-		mode?: 'light' | 'dark' | 'white' | 'black';
+		mode?: 'light' | 'dark' | 'white' | 'black' | 'current';
 
 		/** Boolean shortcuts for color schemes */
 		dark?: boolean;
@@ -149,6 +149,14 @@
 					centerFill: 'black',
 					centerGradient: null
 				};
+			case 'current':
+				return {
+					baseFill: 'currentColor',
+					baseGradient: null,
+					sideFill: 'currentColor',
+					centerFill: 'currentColor',
+					centerGradient: null
+				};
 			default:
 				return {
 					// Default to dark mode
@@ -237,7 +245,7 @@
 								gradientUnits={svgColors.baseGradient.gradientUnits}
 								gradientTransform={svgColors.baseGradient.gradientTransform}
 							>
-								{#each svgColors.baseGradient.stops as stop}
+								{#each svgColors.baseGradient.stops as stop (`${stop.offset}-${stop.color}`)}
 									<stop
 										offset={stop.offset}
 										stop-color={stop.color}
@@ -257,7 +265,7 @@
 							y2={svgColors.centerGradient.y2}
 							gradientUnits={svgColors.centerGradient.gradientUnits}
 						>
-							{#each svgColors.centerGradient.stops as stop}
+							{#each svgColors.centerGradient.stops as stop (`${stop.offset}-${stop.color}`)}
 								<stop
 									offset={stop.offset}
 									stop-color={stop.color}

@@ -65,13 +65,13 @@
 
 	<div class="grid grid-cols-2 gap-3" {@attach fromAction(photoSort.list, () => ({ items: { get: () => photos, set: onReorder }, accept: [photoSort.type] }))}>
 		{#each photos as photo, photoIndex (photo.id)}
-			<div animate:flip={{ duration: 180 }} class={cardClass} class:dragging-item={draggedPhotoId === photo.id} role="presentation" {@attach fromAction(photoSort.item, () => photo)}>
-				<div class="relative aspect-square rounded-xl bg-neutral-100">
+			<div animate:flip={{ duration: 180 }} class={`relative isolate overflow-hidden ${cardClass}`} class:dragging-item={draggedPhotoId === photo.id} role="presentation" {@attach fromAction(photoSort.item, () => photo)}>
+				<div class="relative aspect-square overflow-hidden rounded-xl bg-neutral-100">
 					<img alt={photo.caption || photo.name} class="h-full w-full rounded-lg object-cover" draggable="false" src={projectAssets.getRenderableAssetUrl(photo.src)} />
 					<div class="touch-reorder-handle absolute left-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs font-black text-neutral-700 shadow-sm cursor-grab active:cursor-grabbing" {@attach fromAction(photoSort.handle, () => true)} aria-label={`Reorder ${photo.caption || photo.name || 'photo'}`}>
 						::
 					</div>
-					<Button variant="icon" icon="close" class="absolute! -right-1.5 -top-1.5 z-100 text-[8px]!" aria-label="Remove Photo" onclick={() => onRemove(photo, photoIndex)} />
+					<Button variant="icon" icon="close" class="absolute! right-1.5! top-1.5! z-10 text-[8px]!" aria-label="Remove Photo" onclick={() => onRemove(photo, photoIndex)} />
 				</div>
 				{#if onCaptionInput}
 					<Input xs label={captionLabel} variant="text" type="text" value={photo.caption} oninput={(event: Event) => onCaptionInput(photo, photoIndex, event)} />

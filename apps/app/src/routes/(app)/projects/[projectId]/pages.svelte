@@ -115,45 +115,28 @@
 	}
 </script>
 
-<section class:hidden={!isDesktop && activePane !== 'preview'} class="min-h-0 min-w-0 md:block md:pt-6">
+<section class:hidden={!isDesktop && activePane !== 'preview'} class="min-h-0 min-w-0 pt-3 md:block md:pt-0">
 	<div class="relative flex h-full min-h-0 flex-col">
-		<div class="shrink-0 px-1 pb-3 md:px-0">
-			<div class="flex flex-col gap-3 rounded-2xl border border-secondary-200 bg-white px-3 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-				<!--
-				<div class="flex w-full items-center gap-2 sm:w-auto">
-					<Button
-						{...(activeView === 'pages' ? { primary: true, heavy: true } : { outline: true, base: true })}
-						variant="text"
-						class="flex-1 sm:flex-none"
-						label="Pages"
-						onclick={() => setProjectView('pages')}
-					/>
-					<Button
-						{...(activeView === 'json' ? { primary: true, heavy: true } : { outline: true, base: true })}
-						variant="text"
-						class="flex-1 sm:flex-none"
-						label="JSON"
-						onclick={() => setProjectView('json')}
-					/>
+	
+		<div class="pointer-events-none fixed bottom-4 right-4 z-40 md:bottom-6 md:right-6">
+			<div class="pointer-events-auto flex items-center gap-2 border border-secondary-200 bg-black rounded-full px-2 py-2 shadow-lg backdrop-blur">
+				
+				<Button primary class="min-w-0 justify-center bg-primary px-3!" variant="icon text" icon="download" onclick={() => handleExport('PDF')} label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting} />
+				
+				<div id="zoomer" class="flex h-11 shrink-0 rounded-full border border-neutral-300 bg-white shadow-sm sm:h-12">
+					<Button ghost xl variant="text" label="-" onclick={() => stepPreviewZoom('out')} class="px-4!" />
+					<Button ghost lg variant="text" class="w-18! rounded-none! border-x border-secondary-200 px-0! font-black!" onclick={resetPreviewZoom}>
+						{Math.round((previewZoom || 1) * 100)}%
+					</Button>
+					<Button ghost xl variant="text" label="+" onclick={() => stepPreviewZoom('in')} class="px-4!" />
 				</div>
-				-->
 
-				<div class="flex w-full items-center justify-between gap-2 sm:w-auto sm:justify-end">
-					<Button primary class="min-w-38 justify-center bg-primary sm:min-w-0" variant="icon text" icon="download" onclick={() => handleExport('PDF')} label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting} />
-					<div id="zoomer" class="flex h-11 shrink-0 rounded-full border border-neutral-300 bg-white shadow-sm sm:h-12">
-						<Button ghost xl variant="text" label="-" onclick={() => stepPreviewZoom('out')} class="px-4!" />
-						<Button ghost lg variant="text" class="w-18! rounded-none! border-x border-secondary-200 px-0! font-black!" onclick={resetPreviewZoom}>
-							{Math.round((previewZoom || 1) * 100)}%
-						</Button>
-						<Button ghost xl variant="text" label="+" onclick={() => stepPreviewZoom('in')} class="px-4!" />
-					</div>
-				</div>
 			</div>
 		</div>
 
 		<div class="min-h-0 flex-1">
 			<div bind:this={previewViewport} role="region" aria-label="Preview pages" class="h-full w-full overflow-x-hidden overflow-y-auto bg-transparent" style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`} onwheel={handlePreviewWheel} ontouchstart={handlePreviewTouchStart} ontouchmove={handlePreviewTouchMove} ontouchend={handlePreviewTouchEnd}>
-				<div class="relative w-full px-1 pb-10 pt-0 md:px-0 md:pb-16 md:pt-2">
+				<div class="relative w-full px-1 pb-30 pt-0 md:px-0 md:pb-32 md:pt-2">
 					<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${projectConstants.previewPageWidth}px; --preview-page-height: ${projectConstants.previewPageHeight}px`}>
 						<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">
 								{#each previewPageItems as pageItem (pageItem.id)}
@@ -205,8 +188,13 @@
 												<div class="grid gap-4 md:grid-cols-2">
 													{#each personnelEntries as person, personIndex (`${person.role}-${person.name}-${personIndex}`)}
 														<div class={`rounded-3xl border p-5 ${person.isPrimary ? 'border-secondary-400 bg-secondary-100' : 'border-slate-200 bg-white'}`}>
-															<p class="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500">{person.role}</p>
-															<p class="text-2xl font-black text-neutral-900">{person.name}</p>
+															<div class="flex items-center gap-4">
+																<img alt={person.name} class={`h-14 w-14 rounded-full object-cover ${person.isPrimary ? 'border-2 border-secondary-500 ring-2 ring-white' : 'border-2 border-white shadow-sm'}`} src={person.avatarUrl} />
+																<div>
+																	<p class="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-neutral-500">{person.role}</p>
+																	<p class="text-2xl font-black text-neutral-900">{person.name}</p>
+																</div>
+															</div>
 														</div>
 													{/each}
 												</div>

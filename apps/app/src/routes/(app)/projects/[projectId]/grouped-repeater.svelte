@@ -127,11 +127,11 @@
 			{@const itemSort = itemReorderEnabled ? getItemSort?.(group, groupIndex) : undefined}
 			<div
 				animate:flip={{ duration: 180 }}
-				class="relative"
+				class="relative isolate overflow-hidden rounded-2xl"
 				{@attach fromAction(groupSort.item, () => group)}
 			>
-				<Accordion name={`${id}-groups`} open={isGroupOpen(groupKey)} ontoggle={(event: Event) => handleGroupToggle(groupKey, event)}>
-					<AccordionTitle class={`block w-full rounded-t-2xl border border-b border-secondary-200 bg-secondary-50 p-4 text-left transition ${enabled ? 'cursor-pointer' : 'cursor-not-allowed grayscale opacity-70'} ${isGroupOpen(groupKey) ? '' : 'rounded-b-2xl'}`}>
+				<Accordion class="overflow-hidden rounded-2xl" name={`${id}-groups`} open={isGroupOpen(groupKey)} ontoggle={(event: Event) => handleGroupToggle(groupKey, event)}>
+					<AccordionTitle class={`relative z-10 block w-full rounded-t-2xl border border-b border-secondary-200 bg-secondary-50 p-4 text-left transition ${enabled ? 'cursor-pointer' : 'cursor-not-allowed grayscale opacity-70'} ${isGroupOpen(groupKey) ? '' : 'rounded-b-2xl'}`}>
 						<div class="flex items-start gap-3">
 							<div class="touch-reorder-handle flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-secondary-200 bg-white text-sm font-black text-neutral-700 cursor-grab active:cursor-grabbing" aria-label={`Reorder ${getGroupTitle(group, groupIndex)}`}>
 								::
@@ -152,8 +152,8 @@
 						</div>
 					</AccordionTitle>
 
-					<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-50 p-4">
-						<div class:grayscale={!enabled} class:opacity-60={!enabled} class:pointer-events-none={!enabled} class="space-y-4">
+					<AccordionContent class="relative z-0 rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-50 p-4">
+						<div class="relative z-0 overflow-hidden space-y-4" class:grayscale={!enabled} class:opacity-60={!enabled} class:pointer-events-none={!enabled}>
 							{@render renderGroupContent(group, groupIndex, () => addGroup(groupIndex), () => removeGroup(group, groupIndex), resolveCanRemoveGroup(group, groupIndex))}
 
 							{#if itemSort && setItems}
@@ -202,9 +202,9 @@
 			{@const groupKey = getGroupKey(group, groupIndex)}
 			{@const items = getItems(group)}
 			{@const itemSort = itemReorderEnabled ? getItemSort?.(group, groupIndex) : undefined}
-			<div animate:flip={{ duration: 180 }} class="relative">
-				<Accordion name={`${id}-groups`} open={isGroupOpen(groupKey)} ontoggle={(event: Event) => handleGroupToggle(groupKey, event)}>
-					<AccordionTitle class={`block w-full rounded-t-2xl border border-b border-secondary-200 bg-secondary-50 p-4 text-left transition ${enabled ? 'cursor-pointer' : 'cursor-not-allowed grayscale opacity-70'} ${isGroupOpen(groupKey) ? '' : 'rounded-b-2xl'}`}>
+			<div animate:flip={{ duration: 180 }} class="relative isolate overflow-hidden rounded-2xl">
+				<Accordion class="overflow-hidden rounded-2xl" name={`${id}-groups`} open={isGroupOpen(groupKey)} ontoggle={(event: Event) => handleGroupToggle(groupKey, event)}>
+					<AccordionTitle class={`relative z-10 block w-full rounded-t-2xl border border-b border-secondary-200 bg-secondary-50 p-4 text-left transition ${enabled ? 'cursor-pointer' : 'cursor-not-allowed grayscale opacity-70'} ${isGroupOpen(groupKey) ? '' : 'rounded-b-2xl'}`}>
 						<div class="min-w-0 flex-1">
 							<div class="flex items-start justify-between gap-3">
 								<div class="flex min-w-0 flex-wrap items-center gap-2">
@@ -220,8 +220,8 @@
 						</div>
 					</AccordionTitle>
 
-					<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-50 p-4">
-						<div class:grayscale={!enabled} class:opacity-60={!enabled} class:pointer-events-none={!enabled} class="space-y-4">
+					<AccordionContent class="relative z-0 rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-50 p-4">
+						<div class="relative z-0 overflow-hidden space-y-4" class:grayscale={!enabled} class:opacity-60={!enabled} class:pointer-events-none={!enabled}>
 							{@render renderGroupContent(group, groupIndex, () => addGroup(groupIndex), () => removeGroup(group, groupIndex), resolveCanRemoveGroup(group, groupIndex))}
 
 							{#if itemSort && itemReorderEnabled && setItems}

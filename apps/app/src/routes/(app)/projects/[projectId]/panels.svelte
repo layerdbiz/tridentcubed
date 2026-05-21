@@ -300,7 +300,7 @@
 	</Grid>
 {/snippet}
 
-<section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 md:px-0 md:pb-0 md:pt-6">
+<section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 pt-3 md:px-0 md:pb-0 md:pt-6">
 	<div class="flex h-full min-h-0 flex-col rounded-2xl border border-secondary-200 bg-white shadow-sm">
 		<div class="shrink-0 border-b border-secondary-200 px-4 py-3">
 			<div class="flex flex-col gap-4">
@@ -308,11 +308,10 @@
 					<div class="min-w-0">
 						<div class="flex items-center gap-3 pl-1">
 							<Button
-								sm
-								outline
+								ghost
 								variant="icon"
 								icon="arrow-left"
-								class="shrink-0 border-secondary-300 bg-white text-neutral-700"
+								class="shrink-0 border-transparent! bg-transparent! p-0! text-black shadow-none! hover:bg-transparent!"
 								aria-label="Back to projects"
 								href={projectListHref}
 							/>
@@ -353,7 +352,7 @@
 
 		<div
 			id="createContentPanels"
-			class="scroller mask-b-sm min-h-0 flex-1 space-y-3 p-4 pt-1.75"
+			class="scroller mask-b-sm min-h-0 flex-1 space-y-3 overflow-x-hidden overflow-y-auto p-4 pt-1.75"
 			{@attach fromAction(sectionSort.list, () => ({
 				items: { get: () => sections, set: (items: unknown[]) => setSections(items) },
 				accept: [sectionSort.type]
@@ -374,14 +373,14 @@
 				<div
 					id={getAccordionAnchorId(section.id)}
 					animate:flip={{ duration: 180 }}
-					class="relative"
+					class="relative isolate rounded-2xl"
 					class:dragging-item={draggedSectionId === section.id}
 					{@attach fromAction(measureAccordionLayout, () => ({ sectionId: section.id, index }))}
 					{@attach fromAction(sectionSort.item, () => (sectionReorderable ? section : null))}
 				>
-					<Accordion class="relative" name="report-sections" open={section.open} ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}>
+					<Accordion class="relative rounded-2xl" name="report-sections" open={section.open} ontoggle={(event: Event) => handleAccordionToggle(section.id, event)}>
 						<AccordionTitle
-							class="shadow-[-12px_-12px_0px_white] sticky top-0 z-1 block w-full rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 p-4 text-left transition {section.open ? '' : 'rounded-b-2xl'} {sectionDisabled ? 'cursor-not-allowed grayscale opacity-70' : 'cursor-pointer'}"
+							class="shadow-[-12px_-12px_0px_white] sticky top-0 z-10 block w-full rounded-t-2xl border border-b border-secondary-200 bg-secondary-100 p-4 text-left transition {section.open ? '' : 'rounded-b-2xl'} {sectionDisabled ? 'cursor-not-allowed grayscale opacity-70' : 'cursor-pointer'}"
 							onclick={(event: MouseEvent) => handleSectionTitleClick(section.id, event)}
 						>
 							<div class="flex items-start gap-3">
@@ -428,8 +427,8 @@
 							</div>
 						</AccordionTitle>
 
-						<AccordionContent class="rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
-							<div class:grayscale={sectionDisabled} class:opacity-60={sectionDisabled} class:pointer-events-none={sectionDisabled}>
+						<AccordionContent class="relative z-0 rounded-b-2xl border-x border-b border-secondary-200 bg-secondary-100 p-4 {section.open ? '' : 'rounded-b-2xl'}">
+							<div class="relative z-0 overflow-hidden" class:grayscale={sectionDisabled} class:opacity-60={sectionDisabled} class:pointer-events-none={sectionDisabled}>
 							{#if section.type === 'fields' || section.type === 'cover'}
 								<div class="relative z-0 grid gap-5">
 									<div class="space-y-3">

@@ -65,8 +65,17 @@
 .icon-arrow-outward {
 	@apply icon-[material-symbols--arrow-outward];
 }
+.icon-arrow-left {
+	@apply icon-[mdi--arrow-left];
+}
 .icon-arrow-right {
 	@apply icon-[material-symbols--arrow-right];
+}
+.icon-arrow-up {
+	@apply icon-[mdi--arrow-up];
+}
+.icon-arrow-down {
+	@apply icon-[mdi--arrow-down];
 }
 .icon-arrow-selector-tool {
 	@apply icon-[material-symbols--arrow-selector-tool];

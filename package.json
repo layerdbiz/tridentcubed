@@ -4,7 +4,7 @@
     "app": true,
     "play": false,
     "report": false,
-    "site": false,
+    "site": true,
     "storybook": false
   },
   "scripts": {

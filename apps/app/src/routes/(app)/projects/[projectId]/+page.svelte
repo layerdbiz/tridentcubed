@@ -96,13 +96,12 @@
 		{ label: 'Items', value: projectDataUtils.getProjectDataString(projectData, 'items.title') || '—' }
 	]);
 	const personnelEntries = $derived.by<projectTypes.PreviewPersonnelItemType[]>(() => {
-		const owner = projectDataUtils.getProjectDataString(projectData, 'team.owner').trim();
-		const assigned = projectDataUtils.getProjectDataList(projectData, 'team.assigned').filter((name) => name !== owner);
-
-		return [
-			...(owner ? [{ name: owner, role: 'Project Owner', isPrimary: true }] : []),
-			...assigned.map((name) => ({ name, role: 'Assigned Team Member' }))
-		];
+		return projectDataUtils.getProjectTeamMembers(projectData).map((member) => ({
+			name: member.name,
+			avatarUrl: member.avatarUrl,
+			role: member.isPrimary ? 'Project Owner' : 'Assigned Team Member',
+			isPrimary: member.isPrimary
+		}));
 	});
 	const previewPagesData = $derived.by<projectTypes.PreviewPageItemType[]>(() => {
 		const items: projectTypes.PreviewPageItemType[] = [];
@@ -1305,8 +1304,7 @@
 
 <div class="page-shell h-svh overflow-hidden text-neutral-900">
 	<div class="flex h-full min-w-0 flex-col">
-		<div class="sticky top-0 z-10 shrink-0 bg-secondary-50/95 backdrop-blur">
-			<div class="flex items-center gap-2 px-4 pb-3 md:hidden">
+			<div class="flex items-center gap-2 pt-4 px-4 md:hidden sticky top-0 z-10 shrink-0 md:none">
 				<Button
 					{...(activePane === 'edit' ? { heavy: true, primary: true } : { outline: true, base: true })}
 					variant="text"
@@ -1322,10 +1320,9 @@
 					onclick={() => setMobilePane('preview')}
 					label="Preview"
 				/>
-			</div>
 		</div>
 
-		<main class="grid min-h-0 flex-1 gap-0 md:gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:px-6 md:pb-6 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
+		<main class="grid min-h-0 flex-1 gap-0 md:gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:pb-6 md:pl-6 md:pr-0 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
 			<Panels
 				{isDesktop}
 				{activePane}

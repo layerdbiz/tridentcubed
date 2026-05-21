@@ -302,6 +302,64 @@ export function getProjectDataList(
 	return text ? [text] : [];
 }
 
+const demoTeamProfiles: Record<string, string> = {
+	'Myla Carter': 'https://randomuser.me/api/portraits/women/44.jpg',
+	'Devon Mills': 'https://randomuser.me/api/portraits/men/32.jpg',
+	'Noah Ellis': 'https://randomuser.me/api/portraits/men/41.jpg',
+	'Jordan Blake': 'https://randomuser.me/api/portraits/men/36.jpg',
+	'Mila Carter': 'https://randomuser.me/api/portraits/women/21.jpg',
+	'Riley Ford': 'https://randomuser.me/api/portraits/women/52.jpg',
+	'Avery Chen': 'https://randomuser.me/api/portraits/women/63.jpg',
+	'Sofia Reyes': 'https://randomuser.me/api/portraits/women/68.jpg',
+	'Kai Bennett': 'https://randomuser.me/api/portraits/men/53.jpg',
+	'Harper Lane': 'https://randomuser.me/api/portraits/women/58.jpg',
+	'Marcus Hale': 'https://randomuser.me/api/portraits/men/57.jpg',
+	'Layla Brooks': 'https://randomuser.me/api/portraits/women/33.jpg'
+};
+
+const fallbackPortraits = [
+	'https://randomuser.me/api/portraits/women/44.jpg',
+	'https://randomuser.me/api/portraits/men/32.jpg',
+	'https://randomuser.me/api/portraits/men/41.jpg',
+	'https://randomuser.me/api/portraits/women/21.jpg',
+	'https://randomuser.me/api/portraits/women/52.jpg',
+	'https://randomuser.me/api/portraits/men/36.jpg'
+];
+
+export function getTeamAvatarUrl(name: string): string {
+	const normalized = name.trim();
+	if (!normalized) return fallbackPortraits[0];
+	const directMatch = demoTeamProfiles[normalized];
+	if (directMatch) return directMatch;
+
+	const index = Array.from(normalized).reduce(
+		(total, character) => total + character.charCodeAt(0),
+		0,
+	) % fallbackPortraits.length;
+
+	return fallbackPortraits[index];
+}
+
+export function getProjectTeamMembers(
+	data: projectTypes.ProjectDataRecordType,
+): projectTypes.ProjectTeamMemberType[] {
+	const owner = getProjectDataString(data, 'team.owner').trim();
+	const assigned = getProjectDataList(data, 'team.assigned').filter(
+		(name) => name !== owner,
+	);
+
+	return [
+		...(owner
+			? [{ name: owner, avatarUrl: getTeamAvatarUrl(owner), isPrimary: true }]
+			: []),
+		...assigned.map((name) => ({
+			name,
+			avatarUrl: getTeamAvatarUrl(name),
+			isPrimary: false,
+		})),
+	];
+}
+
 export function createProjectListRow(
 	definitions: projectTypes.ProjectDefinitionsType,
 	state: projectTypes.PersistedStateType,
@@ -311,10 +369,7 @@ export function createProjectListRow(
 	const progress = projectUtils.getOverallPanelMetrics(state.sections);
 	const title = getProjectDataString(projectData, "project.title") ||
 		"Untitled Project";
-	const owner = getProjectDataString(projectData, "team.owner").trim();
-	const assigned = getProjectDataList(projectData, "team.assigned").filter(
-		(name) => name !== owner,
-	);
+	const teamMembers = getProjectTeamMembers(projectData);
 	const demoSeed = getDemoProjectSeedByTitle(title);
 	const progressPercent = demoSeed?.progressPercent ?? progress.percent;
 	const status = demoSeed?.status ??
@@ -329,7 +384,7 @@ export function createProjectListRow(
 		title,
 		client: getProjectDataString(projectData, "client.company") || "—",
 		facility: getProjectDataString(projectData, "facility.name") || "—",
-		teamMembers: [owner, ...assigned].filter(Boolean),
+		teamMembers,
 		updatedAt: registryEntry.updatedAt,
 		status,
 		progress: `${progressPercent}%`,
