@@ -32,6 +32,165 @@ function injectCssLinks(html: string, hrefs: string[]) {
 	return html.replace(/(<\/head>)/i, `${tags}$1`);
 }
 
+type InlineCssBlock = {
+	href: string;
+	cssText: string;
+};
+
+type InlineStylesheetResult = {
+	href: string;
+	normalizedHref: string;
+	ok: boolean;
+	status?: number;
+	contentType?: string | null;
+	bytes?: number;
+	error?: string;
+};
+
+function extractStylesheetHrefs(html: string) {
+	return Array.from(
+		html.matchAll(
+			/<link\b(?=[^>]*\brel=["'][^"']*stylesheet[^"']*["'])(?=[^>]*\bhref=["']([^"']+)["'])[^>]*>/gi,
+		),
+		(match) => match[1],
+	);
+}
+
+function normalizeAssetUrl(href: string, baseHref: string) {
+	const url = new URL(href, baseHref);
+	const baseUrl = new URL(baseHref);
+	const isSameAppAsset = url.pathname.startsWith("/_app/") ||
+		url.pathname === "/favicon.svg" ||
+		url.pathname.startsWith("/branding/") ||
+		url.pathname.startsWith("/data/") ||
+		url.pathname.startsWith("/dividers/") ||
+		url.pathname.startsWith("/emails/") ||
+		url.pathname.startsWith("/icons/") ||
+		url.pathname.startsWith("/images/") ||
+		url.pathname.startsWith("/masks/") ||
+		url.pathname.startsWith("/partners/") ||
+		url.pathname.startsWith("/photos/") ||
+		url.pathname.startsWith("/services/") ||
+		url.pathname.startsWith("/social/") ||
+		url.pathname.startsWith("/team/") ||
+		url.pathname.startsWith("/video/");
+
+	if (
+		url.origin !== baseUrl.origin &&
+		isSameAppAsset &&
+		(url.hostname.endsWith(".vercel.app") ||
+			baseUrl.hostname.endsWith(".vercel.app"))
+	) {
+		return new URL(`${url.pathname}${url.search}${url.hash}`, baseUrl).href;
+	}
+
+	return url.href;
+}
+
+function rebaseCssUrls(
+	cssText: string,
+	stylesheetHref: string,
+	baseHref: string,
+) {
+	return cssText.replace(/url\(([^)]+)\)/gi, (fullMatch, rawValue) => {
+		const value = String(rawValue).trim().replace(/^(['"])(.*)\1$/, "$2");
+
+		if (
+			!value ||
+			value.startsWith("data:") ||
+			value.startsWith("blob:") ||
+			value.startsWith("#") ||
+			value.startsWith("http:") ||
+			value.startsWith("https:")
+		) {
+			return fullMatch;
+		}
+
+		try {
+			const absoluteUrl = normalizeAssetUrl(
+				new URL(value, stylesheetHref).href,
+				baseHref,
+			);
+			return `url("${absoluteUrl}")`;
+		} catch {
+			return fullMatch;
+		}
+	});
+}
+
+function injectCssBlocks(html: string, blocks: InlineCssBlock[]) {
+	if (!blocks.length) return html;
+	const tags = blocks
+		.map(
+			(block, index) =>
+				`<style data-pdf-inline-css="${index}" data-pdf-source="${
+					block.href.replace(/"/g, "&quot;")
+				}">${block.cssText.replace(/<\/style/gi, "<\\/style")}</style>`,
+		)
+		.join("");
+	return html.replace(/(<\/head>)/i, `${tags}$1`);
+}
+
+async function inlineStylesheets({
+	hrefs,
+	fetch,
+	baseHref,
+}: {
+	hrefs: string[];
+	fetch: typeof globalThis.fetch;
+	baseHref: string;
+}) {
+	const uniqueHrefs = Array.from(
+		new Set(hrefs.map((href) => normalizeAssetUrl(href, baseHref))),
+	);
+	const blocks: InlineCssBlock[] = [];
+	const results: InlineStylesheetResult[] = [];
+
+	for (const href of uniqueHrefs) {
+		try {
+			const response = await fetch(href);
+			const cssText = await response.text();
+			const contentType = response.headers.get("content-type");
+			const rebasedCss = rebaseCssUrls(cssText, href, baseHref);
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}`);
+			}
+
+			if (!rebasedCss.trim()) {
+				throw new Error("Empty stylesheet response");
+			}
+
+			if (
+				contentType &&
+				!contentType.includes("text/css") &&
+				!href.toLowerCase().includes(".css")
+			) {
+				throw new Error(`Unexpected stylesheet content-type: ${contentType}`);
+			}
+
+			blocks.push({ href, cssText: rebasedCss });
+			results.push({
+				href,
+				normalizedHref: href,
+				ok: true,
+				status: response.status,
+				contentType,
+				bytes: rebasedCss.length,
+			});
+		} catch (error) {
+			results.push({
+				href,
+				normalizedHref: href,
+				ok: false,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	return { blocks, results };
+}
+
 const chromiumVersion = "143.0.4";
 const chromiumPackArch = process.arch === "arm64" ? "arm64" : "x64";
 const chromiumPackUrl =
@@ -158,6 +317,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
 	try {
 		const session = createExportSession({ markup, filename });
+		const exportId = session.token;
 		const baseHref = new URL("/", request.url).href;
 		const printUrl =
 			new URL(`/export/print/${session.token}`, request.url).href;
@@ -174,14 +334,71 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			);
 		}
 
+		const rawPrintHtml = stripScripts(await printResponse.text());
+		const printShellCssLinks = extractStylesheetHrefs(rawPrintHtml);
+		const { blocks: inlineCssBlocks, results: inlineCssResults } =
+			await inlineStylesheets({
+				hrefs: [...printShellCssLinks, ...cssLinks],
+				fetch,
+				baseHref,
+			});
+
+		console.info("[pdf-export] stylesheet-plan", {
+			exportId,
+			requestUrl: request.url,
+			printUrl,
+			baseHref,
+			clientCssLinkCount: cssLinks.length,
+			clientCssLinks: cssLinks,
+			printShellCssLinkCount: printShellCssLinks.length,
+			printShellCssLinks,
+			inlineCssCount: inlineCssBlocks.length,
+		});
+
+		console.info("[pdf-export] stylesheet-results", {
+			exportId,
+			results: inlineCssResults,
+		});
+
 		const printHtml = withDocumentBase(
-			injectCssLinks(stripScripts(await printResponse.text()), cssLinks),
+			injectCssBlocks(
+				injectCssLinks(rawPrintHtml, cssLinks),
+				inlineCssBlocks,
+			),
 			baseHref,
 		);
 
 		browser = await launchBrowser();
 
 		const page = await browser.newPage();
+		page.on("response", (response) => {
+			const resourceType = response.request().resourceType();
+			if (resourceType !== "stylesheet" && resourceType !== "font") return;
+
+			console.info("[pdf-export] asset-response", {
+				exportId,
+				resourceType,
+				url: response.url(),
+				status: response.status(),
+			});
+		});
+		page.on("requestfailed", (request) => {
+			const resourceType = request.resourceType();
+			if (resourceType !== "stylesheet" && resourceType !== "font") return;
+
+			console.error("[pdf-export] asset-failed", {
+				exportId,
+				resourceType,
+				url: request.url(),
+				error: request.failure()?.errorText ?? "Unknown request failure",
+			});
+		});
+		page.on("pageerror", (error) => {
+			console.error("[pdf-export] page-error", {
+				exportId,
+				error: getErrorMessage(error),
+			});
+		});
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
 		await page.emulateMediaType("screen");
 
@@ -210,6 +427,71 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 					}
 				}),
 			);
+		});
+
+		const documentDiagnostics = await page.evaluate(() => {
+			const previewPage = document.querySelector(".preview-page");
+			const title = document.querySelector("h1, h2");
+
+			return {
+				locationHref: location.href,
+				baseURI: document.baseURI,
+				headStyleCount: document.head.querySelectorAll("style").length,
+				headStylesheetLinkCount: document.head.querySelectorAll(
+					'link[rel="stylesheet"]',
+				).length,
+				stylesheetSummaries: Array.from(document.styleSheets).map(
+					(sheet, index) => {
+						let ruleCount: number | null = null;
+						let accessError = "";
+
+						try {
+							ruleCount = sheet.cssRules.length;
+						} catch (error) {
+							accessError = error instanceof Error
+								? error.message
+								: String(error);
+						}
+
+						const ownerNode = sheet.ownerNode;
+						const ownerTag =
+							ownerNode && ownerNode.nodeType === Node.ELEMENT_NODE
+								? (ownerNode as Element).tagName.toLowerCase()
+								: null;
+
+						return {
+							index,
+							href: sheet.href || "inline",
+							ownerTag,
+							ruleCount,
+							accessError,
+						};
+					},
+				),
+				previewPage: previewPage
+					? {
+						className: previewPage.className,
+						width: getComputedStyle(previewPage).width,
+						minHeight: getComputedStyle(previewPage).minHeight,
+						display: getComputedStyle(previewPage).display,
+						breakAfter: getComputedStyle(previewPage).breakAfter,
+						boxShadow: getComputedStyle(previewPage).boxShadow,
+					}
+					: null,
+				title: title
+					? {
+						text: title.textContent?.slice(0, 80) ?? "",
+						fontFamily: getComputedStyle(title).fontFamily,
+						fontSize: getComputedStyle(title).fontSize,
+						textTransform: getComputedStyle(title).textTransform,
+					}
+					: null,
+			};
+		});
+
+		console.info("[pdf-export] document-diagnostics", {
+			exportId,
+			documentDiagnostics,
 		});
 
 		const pdf = await page.pdf(pdfOptions);
