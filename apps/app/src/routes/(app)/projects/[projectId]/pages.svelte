@@ -77,7 +77,7 @@
 		</div>
 
 		<div class="min-h-0 flex-1">
-			<div bind:this={previewViewport} role="region" aria-label="Preview pages" class="h-full w-full overflow-x-hidden overflow-y-auto bg-transparent" style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`} onwheel={handlePreviewWheel} ontouchstart={handlePreviewTouchStart} ontouchmove={handlePreviewTouchMove} ontouchend={handlePreviewTouchEnd}>
+			<div bind:this={previewViewport} role="region" aria-label="Preview pages" class="py-4 h-full w-full overflow-x-hidden overflow-y-auto bg-transparent" style={`touch-action: ${isDesktop ? 'pan-y pinch-zoom' : 'pan-y'}`} onwheel={handlePreviewWheel} ontouchstart={handlePreviewTouchStart} ontouchmove={handlePreviewTouchMove} ontouchend={handlePreviewTouchEnd}>
 				<div class="relative w-full px-1 pb-30 pt-0 md:px-0 md:pb-32 md:pt-2">
 					<div class="w-full" style={`--preview-zoom: ${previewZoom || 1}; --preview-page-width: ${projectConstants.previewPageWidth}px; --preview-page-height: ${projectConstants.previewPageHeight}px`}>
 						<div bind:this={previewPages} class="flex flex-col items-center gap-4 md:gap-12">

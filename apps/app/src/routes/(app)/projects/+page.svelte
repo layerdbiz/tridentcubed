@@ -209,7 +209,7 @@
 								</Component>
 							{/snippet}
 							{#snippet center()}
-							<Text h1="This is beta software" class="max-w-3xl text-3xl text-warning-950 md:text-5xl" />
+							<Text h1="Report Generator" class="max-w-3xl text-3xl text-warning-950 md:text-5xl" />
 							{/snippet}
 							{#snippet bottom()}
 							<Text
@@ -252,11 +252,8 @@
 {:else}
 <div class="min-h-svh bg-secondary-50 px-4 pb-6 pt-6 md:px-6 md:pb-8 md:pt-8">
 	<div class="mx-auto flex max-w-7xl flex-col gap-6">
-		<div class="flex flex-col gap-4 rounded-4xl border border-secondary-200 bg-white p-6 shadow-sm md:flex-row md:items-end md:justify-between">
-			<div class="space-y-2">
-				<Text h1={mq.sm ? 'Projects (mobile view)' : 'Projects (desktop view)'} class="text-2xl" />
-				<Text p="Browse local project states, open an existing workspace, or create a new report from the same browser-only data model used by the editor." class="max-w-3xl text-neutral" />
-			</div>
+		<div class="flex flex-col gap-4 border-b-4 pb-4 border-black md:flex-row md:items-end md:justify-between">
+			<Text h1="Projects"/>
 			<div class="flex flex-nowrap items-center gap-2 sm:gap-3 md:justify-end">
 				<Button
 					sm

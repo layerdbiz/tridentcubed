@@ -1416,7 +1416,7 @@
 			</div>
 		{/if}
 
-		<main class="grid min-h-0 flex-1 gap-0 md:gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:pb-6 md:pl-6 md:pr-0 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
+		<main class="grid min-h-0 flex-1 gap-0 md:gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:pl-6 md:pr-0 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
 			<Panels
 				{isDesktop}
 				{activePane}

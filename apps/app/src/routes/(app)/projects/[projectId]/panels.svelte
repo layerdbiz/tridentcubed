@@ -300,7 +300,7 @@
 	</Grid>
 {/snippet}
 
-<section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 pt-3 md:px-0 md:pb-0 md:pt-6">
+<section class:hidden={!isDesktop && activePane !== 'edit'} class="min-h-0 px-4 pb-4 pt-3 md:px-0 md:pb-6 md:pt-6">
 	<div class="flex h-full min-h-0 flex-col rounded-2xl border border-secondary-200 bg-white shadow-sm">
 		<div class="shrink-0 border-b border-secondary-200 px-4 py-3">
 			<div class="flex flex-col gap-4">
