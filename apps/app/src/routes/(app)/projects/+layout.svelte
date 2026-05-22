@@ -1,15 +1,26 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { Component, Logo, Text } from '@layerd/ui';
+	import * as projectDialog from './projects.dialog.svelte';
+
 	let { children } = $props();
-	import { Component, Logo, Text, mq } from '@layerd/ui';
+
+	async function handleOpenBetaDialog() {
+		projectDialog.openPreviewIntro();
+
+		if (page.params.projectId) {
+			await goto('/projects');
+		}
+	}
 </script>
 
 {@render children()}
 
-<Component class="pointer-events-none fixed bottom-4 left-4 z-40 md:bottom-6 md:left-6 gap-1.5 bg-black rounded-full pl-1.5 pr-3 py-0.75">
+<Component id="openBetaDialog" tag="button" type="button" onclick={handleOpenBetaDialog} class="cursor-pointer pointer-events fixed bottom-4 left-4 z-40 md:bottom-6 md:left-6 gap-1.5 bg-black rounded-full pl-1.5 pr-3 py-0.75">
 	{#snippet leftCC()}
 		<Logo
 			mode="current"
-			href="/"
 			class="size-6 text-warning-400"
 		/>
 	{/snippet}

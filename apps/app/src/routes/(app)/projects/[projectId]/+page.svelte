@@ -60,6 +60,7 @@
 	let previewPages = $state<HTMLDivElement | null>(null);
 	let pinch = $state<{ startDist: number; startZoom: number; midY: number } | null>(null);
 	let isExporting = $state(false);
+	let exportErrorMessage = $state('');
 	let suppressSectionToggleId = '';
 	let suppressSectionToggleUntil = 0;
 	let accordionLayoutMetrics = $state<Record<string, AccordionLayoutMetricType>>({});
@@ -1047,14 +1048,39 @@
 		URL.revokeObjectURL(url);
 	}
 
+	async function getExportErrorMessage(response: Response) {
+		const fallbackMessage = `PDF export failed with status ${response.status}`;
+
+		try {
+			const payload = await response.json() as {
+				message?: unknown;
+				details?: unknown;
+			};
+			const message = typeof payload.message === 'string' ? payload.message : '';
+			const details = typeof payload.details === 'string' ? payload.details : '';
+
+			return [message, details].filter(Boolean).join(' ') || fallbackMessage;
+		} catch {
+			return fallbackMessage;
+		}
+	}
+
+	function toErrorMessage(error: unknown) {
+		return error instanceof Error ? error.message : 'PDF export failed.';
+	}
+
 	async function handleExport(format: ExportFormatType) {
 		if (format !== 'PDF' || !browser || !previewPages || isExporting) return;
 
 		isExporting = true;
+		exportErrorMessage = '';
 
 		try {
 			const markup = await getExportMarkup();
-			if (!markup) return;
+			if (!markup) {
+				exportErrorMessage = 'Nothing to export yet.';
+				return;
+			}
 
 			const response = await fetch('/api/export/pdf', {
 				method: 'POST',
@@ -1068,11 +1094,14 @@
 			});
 
 			if (!response.ok) {
-				throw new Error(`PDF export failed with status ${response.status}`);
+				throw new Error(await getExportErrorMessage(response));
 			}
 
 			const blob = await response.blob();
 			downloadBlob(blob, exportFileName);
+		} catch (error) {
+			exportErrorMessage = toErrorMessage(error);
+			console.error('PDF export failed', error);
 		} finally {
 			isExporting = false;
 		}
@@ -1321,6 +1350,14 @@
 					label="Preview"
 				/>
 		</div>
+
+		{#if exportErrorMessage}
+			<div class="px-4 pt-3 md:px-6">
+				<div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+					{exportErrorMessage}
+				</div>
+			</div>
+		{/if}
 
 		<main class="grid min-h-0 flex-1 gap-0 md:gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:pb-6 md:pl-6 md:pr-0 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
 			<Panels

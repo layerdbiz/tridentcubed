@@ -4,6 +4,7 @@
 	import { Logo, Button, mq, Table, Text, Component } from '@layerd/ui';
 	import type { TableColumn } from '@layerd/ui';
 	import * as projectAssets from './projects.assets';
+	import * as projectDialog from './projects.dialog.svelte';
 	import * as projectConstants from './projects.constants';
 	import * as projectDataUtils from './projects.data';
 	import { fetchProjectDefinitions } from './projects.remote';
@@ -25,7 +26,6 @@
 
 	let projectRows = $state<projectTypes.ProjectListRowType[]>([]);
 	let isLoaded = $state(false);
-	let isPreviewIntroOpen = $state(true);
 	let isResettingPreviewData = $state(false);
 
 	function formatTimestamp(value: string): string {
@@ -178,15 +178,16 @@
 	}
 
 	function dismissPreviewIntro() {
-		isPreviewIntroOpen = false;
+		projectDialog.dismissPreviewIntro();
 	}
 
 	onMount(() => {
+		projectDialog.initializePreviewIntro();
 		refreshProjectRows();
 	});
 </script>
 
-{#if isPreviewIntroOpen}
+{#if projectDialog.previewIntroState.isOpen}
 	<div class="fixed inset-0 z-60 overflow-y-auto bg-warning-500/20 px-4 py-6 md:px-6 md:py-10">
 		<div class="mx-auto flex min-h-full w-full max-w-4xl items-center">
 			<div class="w-full overflow-hidden rounded-4xl border-5 border-warning bg-linear-to-br from-warning-50 via-amber-50 to-warning-100 shadow-2xl shadow-warning-950/20">
@@ -323,7 +324,13 @@
 							</div>
 
 							<div class="mt-4 flex gap-2">
-								<Button sm variant="text" class={`flex-1 ${getOpenButtonClass(row.status)}`} label="Open" href={`/projects/${row.id}`} />
+								<Button
+									sm
+									variant="text"
+									class={`flex-1 ${getOpenButtonClass(row.status)}`}
+									label="Open"
+									onclick={() => handleOpenProject(row.id)}
+								/>
 								<Button sm outline variant="text" class={`flex-1 ${getDeleteButtonClass()}`} label="Delete" onclick={() => handleDeleteProject(row.id)} />
 							</div>
 						</article>
@@ -383,7 +390,16 @@
 										<td class={`px-3 py-4 align-middle text-right text-sm ${getProjectSecondaryTextClass(row.status)}`}>{formatTimestamp(row.updatedAt)}</td>
 										<td class="px-3 py-4 align-middle">
 											<div class="flex justify-end gap-2">
-												<Button sm variant="text" class={getOpenButtonClass(row.status)} label="Open" href={`/projects/${row.id}`} onclick={(event: MouseEvent) => event.stopPropagation()} />
+													<Button
+														sm
+														variant="text"
+														class={getOpenButtonClass(row.status)}
+														label="Open"
+														onclick={(event: MouseEvent) => {
+															event.stopPropagation();
+															void handleOpenProject(row.id);
+														}}
+													/>
 												<Button sm outline variant="text" class={getDeleteButtonClass()} label="Delete" onclick={(event: MouseEvent) => {
 													event.stopPropagation();
 													void handleDeleteProject(row.id);

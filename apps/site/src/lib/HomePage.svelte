@@ -27,8 +27,7 @@
 	import {
 		getGlobeLocations,
 		getGlobePolygons,
-		getGlobePorts,
-		getGlobeStatsData
+		getGlobePorts
 	} from '$lib/globe/globe.remote';
 
 	// ✅ READ REACTIVE STATE BEFORE ANY AWAITS - This prevents reactivity loss!
@@ -52,14 +51,27 @@
 	const globeLocationsQuery = browser ? getGlobeLocations() : null;
 	const globePolygonsQuery = browser ? getGlobePolygons() : null;
 	const globePortsQuery = browser ? getGlobePorts() : null;
-	const globeStatsQuery = browser ? getGlobeStatsData() : null;
 
 	// Derived values that safely handle loading state and null during prerender
 	let globeLocations = $derived(globeLocationsQuery?.current ?? []);
 	let globePolygons = $derived(globePolygonsQuery?.current ?? { features: [] });
 	let globePorts = $derived(globePortsQuery?.current ?? []);
-	let globeStatsData = $derived(globeStatsQuery?.current ?? { continents: 0, locations: 0, ports: 0 });
-	let globeLoading = $derived(!browser || globeLocationsQuery?.loading || globePolygonsQuery?.loading || globeStatsQuery?.loading);
+	let globeLoading = $derived(!browser || globeLocationsQuery?.loading || globePolygonsQuery?.loading || globePortsQuery?.loading);
+
+	function getUniqueCount(items: unknown[], key: string) {
+		return new Set(
+			items
+				.filter((item) => typeof item === 'object' && item !== null)
+				.map((item) => String((item as Record<string, unknown>)[key] ?? '').trim())
+				.filter(Boolean)
+		).size;
+	}
+
+	let globeStatsData = $derived({
+		continents: getUniqueCount(globeLocations, 'continent'),
+		locations: getUniqueCount(globeLocations, 'location'),
+		ports: getUniqueCount(globePorts, 'port')
+	});
 
 	// Hero content fade-in: starts hidden, fades in after hydration + stats data loads
 	let heroReady = $state(false);

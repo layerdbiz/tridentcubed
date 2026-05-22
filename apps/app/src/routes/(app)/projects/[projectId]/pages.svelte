@@ -118,7 +118,7 @@
 <section class:hidden={!isDesktop && activePane !== 'preview'} class="min-h-0 min-w-0 pt-3 md:block md:pt-0">
 	<div class="relative flex h-full min-h-0 flex-col">
 	
-		<div class="pointer-events-none fixed bottom-4 right-4 z-40 md:bottom-6 md:right-6">
+		<div class="pointer-events-none fixed bottom-4 right-4 z-40 md:bottom-6 md:right-6 scale-70 md:scale-100 origin-bottom-right">
 			<div class="pointer-events-auto flex items-center gap-2 border border-secondary-200 bg-black rounded-full px-2 py-2 shadow-lg backdrop-blur">
 				
 				<Button primary class="min-w-0 justify-center bg-primary px-3!" variant="icon text" icon="download" onclick={() => handleExport('PDF')} label={isExporting ? 'DOWNLOADING...' : 'DOWNLOAD'} disabled={isExporting} />
