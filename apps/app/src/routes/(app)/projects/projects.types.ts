@@ -318,6 +318,28 @@ export interface PreviewPersonnelItemType {
 	isPrimary?: boolean;
 }
 
+export interface PreviewTocEntryType {
+	id: string;
+	title: string;
+	page: number | string;
+}
+
+export interface PreviewCoverMetaItemType {
+	label: string;
+	value: string;
+}
+
+export interface ExportSnapshotType {
+	schema: ProjectSchemaType;
+	reportTitle: string;
+	reportSubtitle: string;
+	coverMeta: PreviewCoverMetaItemType[];
+	projectSummaryItems: PreviewSummaryItemType[];
+	personnelEntries: PreviewPersonnelItemType[];
+	tableOfContentsEntries: PreviewTocEntryType[];
+	previewPageItems: PreviewPageItemType[];
+}
+
 export type ProjectDataPrimitiveType = string | number | boolean | null;
 
 export interface ProjectDataArrayType extends Array<ProjectDataNodeType> {}

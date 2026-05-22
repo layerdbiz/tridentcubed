@@ -131,6 +131,14 @@ function injectCssBlocks(html: string, blocks: InlineCssBlock[]) {
 	return html.replace(/(<\/head>)/i, `${tags}$1`);
 }
 
+function ensureHtmlDocument(html: string) {
+	if (/<html[\s>]/i.test(html) && /<head[\s>]/i.test(html)) {
+		return html;
+	}
+
+	return `<!doctype html><html lang="en"><head></head><body>${html}</body></html>`;
+}
+
 async function inlineStylesheets({
 	hrefs,
 	fetch,
@@ -294,11 +302,11 @@ function getErrorMessage(error: unknown) {
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
 	const payload = (await request.json().catch(() => null)) as {
-		markup?: unknown;
+		snapshot?: unknown;
 		filename?: unknown;
 		cssLinks?: unknown;
 	} | null;
-	const markup = typeof payload?.markup === "string" ? payload.markup : "";
+	const snapshot = payload?.snapshot ?? null;
 	const filename =
 		typeof payload?.filename === "string" && payload.filename.trim()
 			? payload.filename.trim()
@@ -309,14 +317,14 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			typeof l === "string" && /^https?:\/\//.test(l)
 		);
 
-	if (!markup) {
-		return json({ message: "Missing export markup." }, { status: 400 });
+	if (!snapshot || typeof snapshot !== "object") {
+		return json({ message: "Missing export snapshot." }, { status: 400 });
 	}
 
 	let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
 	try {
-		const session = createExportSession({ markup, filename });
+		const session = createExportSession({ data: snapshot, filename });
 		const exportId = session.token;
 		const baseHref = new URL("/", request.url).href;
 		const printUrl =
@@ -325,7 +333,13 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		// SvelteKit's internal fetch short-circuits same-origin page routes in-process,
 		// so the session store is always in the same function instance — no cross-process loss.
 		// The [token] page has ssr=true;csr=false so the returned HTML contains the markup.
-		const printResponse = await fetch(printUrl);
+		const printResponse = await fetch(
+			new Request(printUrl, {
+				headers: {
+					accept: "text/html",
+				},
+			}),
+		);
 
 		if (!printResponse.ok) {
 			throw new Error(
@@ -334,7 +348,9 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			);
 		}
 
-		const rawPrintHtml = stripScripts(await printResponse.text());
+		const rawPrintHtml = ensureHtmlDocument(
+			stripScripts(await printResponse.text()),
+		);
 		const printShellCssLinks = extractStylesheetHrefs(rawPrintHtml);
 		const { blocks: inlineCssBlocks, results: inlineCssResults } =
 			await inlineStylesheets({
@@ -348,6 +364,8 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 			requestUrl: request.url,
 			printUrl,
 			baseHref,
+			printResponseContentType: printResponse.headers.get("content-type"),
+			hasDocumentHead: /<head[\s>]/i.test(rawPrintHtml),
 			clientCssLinkCount: cssLinks.length,
 			clientCssLinks: cssLinks,
 			printShellCssLinkCount: printShellCssLinks.length,

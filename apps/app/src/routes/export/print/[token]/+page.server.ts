@@ -5,10 +5,14 @@ import {
 	getExportSession,
 } from "$lib/server/export-session-store";
 
+import type * as projectTypes from "../../../(app)/projects/projects.types";
+
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = ({ params }) => {
-	const session = getExportSession(params.token);
+	const session = getExportSession<projectTypes.ExportSnapshotType>(
+		params.token,
+	);
 
 	if (!session) {
 		throw error(404, "Export session not found.");
@@ -18,7 +22,7 @@ export const load: PageServerLoad = ({ params }) => {
 
 	return {
 		token: params.token,
-		markup: session.markup,
+		snapshot: session.data,
 		filename: session.filename,
 	};
 };

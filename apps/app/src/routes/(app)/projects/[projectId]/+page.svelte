@@ -955,31 +955,83 @@
 		if (draggedPhotoId === photoId) draggedPhotoId = '';
 	}
 
-	async function getExportMarkup(): Promise<string> {
-		if (!previewPages) return '';
+	async function getExportableAssetUrl(value: string): Promise<string> {
+		if (!value) return value;
 
-		const clonedPages = previewPages.cloneNode(true) as HTMLDivElement;
-		const originalImages = Array.from(previewPages.querySelectorAll('img'));
-		const clonedImages = Array.from(clonedPages.querySelectorAll('img'));
+		const exportableValue = await projectAssets.getExportableImageSource(value);
+		return exportableValue || value;
+	}
 
-		await Promise.all(
-			originalImages.map(async (image, index) => {
-				const clonedImage = clonedImages[index];
-				if (!clonedImage) return;
+	function cloneExportSection(
+		section: projectTypes.PreviewPageItemType['section']
+	): projectTypes.PreviewPageItemType['section'] {
+		if (!section) return null;
 
-				const source = image.getAttribute('src') || '';
-				if (!source) return;
+		if (section.type === 'time-log') {
+			return {
+				...section,
+				days: section.days.map((day) => ({
+					...day,
+					entries: day.entries.map((entry) => ({ ...entry }))
+				}))
+			};
+		}
 
-				const exportableSource = await projectAssets.getExportableImageSource(source);
-				if (!exportableSource) return;
+		return {
+			...section,
+			groups: section.groups.map((group) => ({
+				...group,
+				files: [...group.files],
+				photos: group.photos.map((photo) => ({ ...photo }))
+			}))
+		};
+	}
 
-				clonedImage.setAttribute('src', exportableSource);
-			})
+	async function cloneExportPhotoGroup(
+		group: projectTypes.PhotoGroupType
+	): Promise<projectTypes.PhotoGroupType> {
+		return {
+			...group,
+			files: [...group.files],
+			photos: await Promise.all(
+				group.photos.map(async (photo) => ({
+					...photo,
+					src: await getExportableAssetUrl(photo.src)
+				}))
+			)
+		};
+	}
+
+	async function getExportSnapshot(): Promise<projectTypes.ExportSnapshotType | null> {
+		if (!previewPages) return null;
+
+		const exportPersonnelEntries = await Promise.all(
+			personnelEntries.map(async (person) => ({
+				...person,
+				avatarUrl: await getExportableAssetUrl(person.avatarUrl)
+			}))
 		);
 
-		return Array.from(clonedPages.querySelectorAll('.preview-page'))
-			.map((item) => item.outerHTML)
-			.join('');
+		const exportPreviewPageItems = await Promise.all(
+			previewPagesData.map(async (pageItem) => ({
+				...pageItem,
+				section: cloneExportSection(pageItem.section),
+				photoGroup: pageItem.photoGroup
+					? await cloneExportPhotoGroup(pageItem.photoGroup)
+					: null
+			}))
+		);
+
+		return {
+			schema: projectSchema,
+			reportTitle,
+			reportSubtitle,
+			coverMeta: coverMeta.map((item) => ({ ...item })),
+			projectSummaryItems: projectSummaryItems.map((item) => ({ ...item })),
+			personnelEntries: exportPersonnelEntries,
+			tableOfContentsEntries: tableOfContentsEntries.map((item) => ({ ...item })),
+			previewPageItems: exportPreviewPageItems
+		};
 	}
 
 	function getSortedEntries(day: projectTypes.TimeDayType) {
@@ -1076,18 +1128,22 @@
 		exportErrorMessage = '';
 
 		try {
-			const markup = await getExportMarkup();
-			if (!markup) {
+			const snapshot = await getExportSnapshot();
+			if (!snapshot || !snapshot.previewPageItems.length) {
 				exportErrorMessage = 'Nothing to export yet.';
 				return;
 			}
 
-			// Collect all stylesheet URLs currently loaded in the browser so the PDF gets
-			// the same CSS as the live preview — including Tailwind, app CSS, and all
-			// Svelte-scoped component CSS files for the preview page components.
 			const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
 				.map((l) => (l as HTMLLinkElement).href)
 				.filter((href) => href.startsWith(location.origin));
+
+			console.info('[pdf-export] client-export', {
+				filename: exportFileName,
+				previewPageCount: snapshot.previewPageItems.length,
+				cssLinksCount: cssLinks.length,
+				cssLinks
+			});
 
 			const response = await fetch('/api/export/pdf', {
 				method: 'POST',
@@ -1095,7 +1151,7 @@
 					'content-type': 'application/json'
 				},
 				body: JSON.stringify({
-					markup,
+					snapshot,
 					filename: exportFileName,
 					cssLinks,
 				})
@@ -1431,7 +1487,7 @@
 				{coverMeta}
 				projectSummaryItems={projectSummaryItems}
 				personnelEntries={personnelEntries}
-				tableOfContentsEntries={tableOfContentsEntries as unknown as Array<{ id: string; title: string; page: number }>}
+				tableOfContentsEntries={tableOfContentsEntries}
 				previewPageItems={previewPagesData}
 				{getSortedEntries}
 				{projectDataJson}

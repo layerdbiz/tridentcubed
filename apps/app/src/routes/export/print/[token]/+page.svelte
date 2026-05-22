@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ReportPreviewDocument from '../../../(app)/projects/preview/report-preview-document.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -9,8 +10,18 @@
 </svelte:head>
 
 <div class="print-root">
-	<div class="preview-pages">
-		{@html data.markup}
+	<div class="preview-pages" style="--preview-zoom: 1; --preview-page-width: 8.5in; --preview-page-height: 11in;">
+		<ReportPreviewDocument
+			mode="print"
+			schema={data.snapshot.schema}
+			reportTitle={data.snapshot.reportTitle}
+			reportSubtitle={data.snapshot.reportSubtitle}
+			coverMeta={data.snapshot.coverMeta}
+			projectSummaryItems={data.snapshot.projectSummaryItems}
+			personnelEntries={data.snapshot.personnelEntries}
+			tableOfContentsEntries={data.snapshot.tableOfContentsEntries}
+			previewPageItems={data.snapshot.previewPageItems}
+		/>
 	</div>
 </div>
 

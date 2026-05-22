@@ -1,6 +1,6 @@
-interface ExportSession {
+export interface ExportSession<DataType = unknown> {
 	token: string;
-	markup: string;
+	data: DataType;
 	filename: string;
 	createdAt: number;
 }
@@ -16,15 +16,15 @@ function cleanupExpiredSessions(now = Date.now()) {
 	}
 }
 
-export function createExportSession(
-	input: { markup: string; filename: string },
+export function createExportSession<DataType>(
+	input: { data: DataType; filename: string },
 ) {
 	cleanupExpiredSessions();
 
 	const token = crypto.randomUUID();
-	const session: ExportSession = {
+	const session: ExportSession<DataType> = {
 		token,
-		markup: input.markup,
+		data: input.data,
 		filename: input.filename,
 		createdAt: Date.now(),
 	};
@@ -33,9 +33,9 @@ export function createExportSession(
 	return session;
 }
 
-export function getExportSession(token: string) {
+export function getExportSession<DataType = unknown>(token: string) {
 	cleanupExpiredSessions();
-	return sessions.get(token) ?? null;
+	return (sessions.get(token) as ExportSession<DataType> | undefined) ?? null;
 }
 
 export function deleteExportSession(token: string) {
