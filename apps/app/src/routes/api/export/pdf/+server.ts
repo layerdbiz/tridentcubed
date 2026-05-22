@@ -69,7 +69,11 @@ function isServerlessChromiumRuntime() {
 // --disable-web-security is intentional: the PDF Chromium instance loads our own SSR HTML
 // via setContent (page URL = about:blank). Without this flag, CORS blocks CSS and font
 // requests from the null origin to the deployment's absolute asset URLs.
-const pdfChromiumArgs = ["--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox"];
+const pdfChromiumArgs = [
+	"--disable-web-security",
+	"--no-sandbox",
+	"--disable-setuid-sandbox",
+];
 
 async function launchBrowser() {
 	if (isServerlessChromiumRuntime()) {
@@ -134,7 +138,8 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 	try {
 		const session = createExportSession({ markup, filename });
 		const baseHref = new URL("/", request.url).href;
-		const printUrl = new URL(`/export/print/${session.token}`, request.url).href;
+		const printUrl =
+			new URL(`/export/print/${session.token}`, request.url).href;
 
 		// SvelteKit's internal fetch short-circuits same-origin page routes in-process,
 		// so the session store is always in the same function instance — no cross-process loss.
@@ -143,7 +148,8 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
 		if (!printResponse.ok) {
 			throw new Error(
-				`Print route returned ${printResponse.status}: ${await printResponse.text()}`,
+				`Print route returned ${printResponse.status}: ${await printResponse
+					.text()}`,
 			);
 		}
 
