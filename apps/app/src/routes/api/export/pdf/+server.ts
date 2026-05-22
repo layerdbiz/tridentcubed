@@ -7,6 +7,11 @@ import puppeteer from "puppeteer-core";
 import { createExportSession } from "$lib/server/export-session-store";
 import type { RequestHandler } from "./$types";
 
+/** Inject a `<base href>` so all relative CSS/font URLs resolve against the deployment origin. */
+function withDocumentBase(html: string, baseHref: string) {
+	return html.replace(/(<head[^>]*>)/i, `$1<base href="${baseHref}">`);
+}
+
 /** Strip all `<script>` tags — safety net for any residual client bootstrap code. */
 function stripScripts(html: string) {
 	return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
@@ -61,11 +66,16 @@ function isServerlessChromiumRuntime() {
 	);
 }
 
+// --disable-web-security is intentional: the PDF Chromium instance loads our own SSR HTML
+// via setContent (page URL = about:blank). Without this flag, CORS blocks CSS and font
+// requests from the null origin to the deployment's absolute asset URLs.
+const pdfChromiumArgs = ["--disable-web-security", "--no-sandbox", "--disable-setuid-sandbox"];
+
 async function launchBrowser() {
 	if (isServerlessChromiumRuntime()) {
 		return puppeteer.launch({
 			args: puppeteer.defaultArgs({
-				args: chromium.args,
+				args: [...chromium.args, ...pdfChromiumArgs],
 				headless: "shell",
 			}),
 			executablePath: await chromium.executablePath(chromiumPackUrl),
@@ -82,7 +92,7 @@ async function launchBrowser() {
 	}
 
 	return puppeteer.launch({
-		args: ["--no-sandbox", "--disable-setuid-sandbox"],
+		args: pdfChromiumArgs,
 		executablePath,
 		headless: true,
 	});
@@ -123,21 +133,24 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
 	try {
 		const session = createExportSession({ markup, filename });
-		const printUrl =
-			new URL(`/export/print/${session.token}`, request.url).href;
+		const baseHref = new URL("/", request.url).href;
+		const printUrl = new URL(`/export/print/${session.token}`, request.url).href;
 
-		// Fetch SSR HTML in-process. SvelteKit short-circuits same-origin requests so the
-		// session store is always in the same function instance — no cross-process loss.
+		// SvelteKit's internal fetch short-circuits same-origin page routes in-process,
+		// so the session store is always in the same function instance — no cross-process loss.
+		// The [token] page has ssr=true;csr=false so the returned HTML contains the markup.
 		const printResponse = await fetch(printUrl);
 
 		if (!printResponse.ok) {
 			throw new Error(
-				`Print route returned ${printResponse.status}: ${await printResponse
-					.text()}`,
+				`Print route returned ${printResponse.status}: ${await printResponse.text()}`,
 			);
 		}
 
-		const printHtml = stripScripts(await printResponse.text());
+		const printHtml = withDocumentBase(
+			stripScripts(await printResponse.text()),
+			baseHref,
+		);
 
 		browser = await launchBrowser();
 
@@ -145,26 +158,11 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
 		await page.emulateMediaType("screen");
 
-		// Intercept the initial document request and respond with our pre-rendered HTML.
-		// All subsequent requests (CSS, fonts, images) are allowed through to the real
-		// server/CDN. page.goto sets the correct page URL so relative asset paths resolve
-		// against the deployment origin — fonts load from the CDN, not about:blank.
-		await page.setRequestInterception(true);
-		let documentServed = false;
-		page.on("request", (req) => {
-			if (!documentServed && req.resourceType() === "document") {
-				documentServed = true;
-				req.respond({
-					status: 200,
-					contentType: "text/html; charset=utf-8",
-					body: printHtml,
-				});
-			} else {
-				req.continue();
-			}
-		});
-
-		await page.goto(printUrl, { waitUntil: "networkidle0" });
+		// setContent loads the pre-rendered HTML directly (no outbound document request).
+		// withDocumentBase injects <base href> so CSS/font URLs resolve against the
+		// deployment origin. --disable-web-security (in pdfChromiumArgs) lifts the CORS
+		// restriction that would otherwise block asset fetches from the null/about:blank origin.
+		await page.setContent(printHtml, { waitUntil: "networkidle0" });
 
 		// Markup is in the SSR HTML; safety assertion only.
 		await page.waitForFunction(
