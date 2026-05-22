@@ -17,6 +17,21 @@ function stripScripts(html: string) {
 	return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
 }
 
+/**
+ * Inject additional `<link rel="stylesheet">` tags before `</head>`.
+ * Used to include the client page's full CSS set (Tailwind, app CSS, all
+ * Svelte-scoped component files) so the PDF matches the live preview.
+ */
+function injectCssLinks(html: string, hrefs: string[]) {
+	if (!hrefs.length) return html;
+	const tags = hrefs
+		.map((href) =>
+			`<link rel="stylesheet" href="${href.replace(/"/g, "&quot;")}">`
+		)
+		.join("");
+	return html.replace(/(<\/head>)/i, `${tags}$1`);
+}
+
 const chromiumVersion = "143.0.4";
 const chromiumPackArch = process.arch === "arm64" ? "arm64" : "x64";
 const chromiumPackUrl =
@@ -122,12 +137,18 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 	const payload = (await request.json().catch(() => null)) as {
 		markup?: unknown;
 		filename?: unknown;
+		cssLinks?: unknown;
 	} | null;
 	const markup = typeof payload?.markup === "string" ? payload.markup : "";
 	const filename =
 		typeof payload?.filename === "string" && payload.filename.trim()
 			? payload.filename.trim()
 			: "survey-report.pdf";
+	// Only allow absolute http(s) URLs to prevent injection.
+	const cssLinks = (Array.isArray(payload?.cssLinks) ? payload.cssLinks : [])
+		.filter((l): l is string =>
+			typeof l === "string" && /^https?:\/\//.test(l)
+		);
 
 	if (!markup) {
 		return json({ message: "Missing export markup." }, { status: 400 });
@@ -154,7 +175,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		}
 
 		const printHtml = withDocumentBase(
-			stripScripts(await printResponse.text()),
+			injectCssLinks(stripScripts(await printResponse.text()), cssLinks),
 			baseHref,
 		);
 

@@ -1082,6 +1082,13 @@
 				return;
 			}
 
+			// Collect all stylesheet URLs currently loaded in the browser so the PDF gets
+			// the same CSS as the live preview — including Tailwind, app CSS, and all
+			// Svelte-scoped component CSS files for the preview page components.
+			const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+				.map((l) => (l as HTMLLinkElement).href)
+				.filter((href) => href.startsWith(location.origin));
+
 			const response = await fetch('/api/export/pdf', {
 				method: 'POST',
 				headers: {
@@ -1089,7 +1096,8 @@
 				},
 				body: JSON.stringify({
 					markup,
-					filename: exportFileName
+					filename: exportFileName,
+					cssLinks,
 				})
 			});
 
