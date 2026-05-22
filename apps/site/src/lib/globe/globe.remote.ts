@@ -31,8 +31,7 @@ async function fetchSheetariSheet(
 		}
 
 		return data.filter(
-			(item): item is GlobeRecord =>
-				typeof item === "object" && item !== null,
+			(item): item is GlobeRecord => typeof item === "object" && item !== null,
 		);
 	} catch (error) {
 		console.error(`Failed to fetch globe sheet \"${sheet}\"`, error);
