@@ -106,6 +106,24 @@ function getErrorMessage(error: unknown) {
 	return error instanceof Error ? error.message : "Unknown error";
 }
 
+function getForwardedNavigationHeaders(request: Request) {
+	const headerNames = [
+		"cookie",
+		"authorization",
+		"accept-language",
+		"x-vercel-protection-bypass",
+		"x-vercel-set-bypass-cookie",
+	];
+	const headers: Record<string, string> = {};
+
+	for (const headerName of headerNames) {
+		const value = request.headers.get(headerName);
+		if (value) headers[headerName] = value;
+	}
+
+	return headers;
+}
+
 export const POST: RequestHandler = async ({ request }) => {
 	const payload = (await request.json().catch(() => null)) as {
 		snapshot?: unknown;
@@ -128,10 +146,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		const exportId = session.token;
 		const printUrl =
 			new URL(`/export/print/${session.token}`, request.url).href;
+		const navigationHeaders = getForwardedNavigationHeaders(request);
 
 		browser = await launchBrowser();
 
 		const page = await browser.newPage();
+		if (Object.keys(navigationHeaders).length) {
+			await page.setExtraHTTPHeaders(navigationHeaders);
+		}
 		page.on("pageerror", (error) => {
 			console.error("[pdf-export] page-error", {
 				exportId,
@@ -159,11 +181,30 @@ export const POST: RequestHandler = async ({ request }) => {
 			finalUrl: page.url(),
 			status: printResponse.status(),
 			contentType: printResponse.headers()["content-type"] ?? null,
+			forwardedHeaderNames: Object.keys(navigationHeaders),
 		});
 
-		await page.waitForFunction(
-			() => document.querySelectorAll(".preview-page").length > 0,
-		);
+		const renderDiagnostics = await page.evaluate(() => ({
+			locationHref: location.href,
+			title: document.title,
+			previewPagesRootCount: document.querySelectorAll(".preview-pages").length,
+			previewPageCount: document.querySelectorAll(".preview-page").length,
+			bodyTextSnippet: document.body.textContent?.replace(/\s+/g, " ").trim()
+				.slice(0, 240) ?? "",
+		}));
+
+		if (!renderDiagnostics.previewPageCount) {
+			console.error("[pdf-export] print-target-mismatch", {
+				exportId,
+				printUrl,
+				finalUrl: page.url(),
+				renderDiagnostics,
+			});
+
+			throw new Error(
+				`Print route did not render preview pages. Final URL: ${page.url()}`,
+			);
+		}
 
 		await page.evaluate(async () => {
 			await document.fonts.ready;
