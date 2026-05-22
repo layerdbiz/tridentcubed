@@ -98,7 +98,7 @@ function getErrorMessage(error: unknown) {
 	return error instanceof Error ? error.message : "Unknown error";
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, url }) => {
 	const payload = (await request.json().catch(() => null)) as {
 		markup?: unknown;
 		filename?: unknown;
@@ -116,7 +116,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
 	try {
-		const printUrl = new URL("/export/print", request.url).href;
+		const printUrl = new URL("/export/print", url).href;
 
 		browser = await launchBrowser();
 
@@ -124,15 +124,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
 		await page.emulateMediaType("screen");
 
-		const printResponse = await page.goto(printUrl, {
-			waitUntil: "networkidle0",
-		});
+		const printShellResponse = await page.goto(printUrl, { waitUntil: "load" });
 
-		if (!printResponse || !printResponse.ok()) {
+		if (!printShellResponse?.ok()) {
 			throw new Error(
-				`Print shell failed with status ${
-					printResponse?.status() ?? "unknown"
-				}`,
+				`Print shell failed with status ${printShellResponse?.status()}`,
 			);
 		}
 
