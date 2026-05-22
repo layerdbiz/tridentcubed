@@ -10,6 +10,16 @@ const config = {
 	kit: {
 		adapter: adapter({
 			runtime: "nodejs22.x",
+			external: [
+				// Optional native deps that puppeteer-core / ws / debug try to
+				// require dynamically. Not needed for CDP-based PDF generation;
+				// excluding them prevents Vercel's NFT tracer from warning about
+				// unresolvable imports.
+				"bufferutil",
+				"utf-8-validate",
+				"supports-color",
+				"chromium-bidi",
+			],
 		}),
 		files: {
 			assets: "../../packages/ui/static",
