@@ -26,7 +26,6 @@
 	import { getTeamData, getFaqData, getPartnersData, getServicesData, getTestimonialsData, getAboutData, getSectionsData, submitContactData, validateField } from '$lib';
 	import {
 		getGlobeLocations,
-		getGlobePolygons,
 		getGlobePorts
 	} from '$lib/globe/globe.remote';
 
@@ -49,14 +48,13 @@
 	// ✅ Globe data uses query functions which only run in the browser (not during prerender)
 	// During prerender, these return null. In browser, they fetch dynamically.
 	const globeLocationsQuery = browser ? getGlobeLocations() : null;
-	const globePolygonsQuery = browser ? getGlobePolygons() : null;
 	const globePortsQuery = browser ? getGlobePorts() : null;
+	const globePolygons = '/data/countries.geojson';
 
 	// Derived values that safely handle loading state and null during prerender
 	let globeLocations = $derived(globeLocationsQuery?.current ?? []);
-	let globePolygons = $derived(globePolygonsQuery?.current ?? { features: [] });
 	let globePorts = $derived(globePortsQuery?.current ?? []);
-	let globeLoading = $derived(!browser || globeLocationsQuery?.loading || globePolygonsQuery?.loading || globePortsQuery?.loading);
+	let globeLoading = $derived(!browser || globeLocationsQuery?.loading || globePortsQuery?.loading);
 
 	function getUniqueCount(items: unknown[], key: string) {
 		return new Set(

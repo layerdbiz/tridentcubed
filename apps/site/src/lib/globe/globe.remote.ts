@@ -1,13 +1,80 @@
-import { getRequestEvent, query } from "$app/server";
+import { query } from "$app/server";
+import type { Location, Port } from "@layerd/ui";
 import * as v from "valibot";
 
 type GlobeRecord = Record<string, unknown>;
 type GlobeCollection = GlobeRecord[];
 
-const emptyGeoJson = {
-	type: "FeatureCollection",
-	features: [],
-};
+function isCoordinateValue(value: unknown): value is string | number {
+	return typeof value === "string" || typeof value === "number";
+}
+
+function getTextValue(value: unknown) {
+	if (typeof value === "string") return value.trim();
+	if (typeof value === "number") return String(value);
+	return "";
+}
+
+function getOptionalTextValue(value: unknown) {
+	const text = getTextValue(value);
+	return text || undefined;
+}
+
+function toLocation(record: GlobeRecord): Location | null {
+	const location = getTextValue(record.location);
+	const { lat, lng } = record;
+
+	if (!location || !isCoordinateValue(lat) || !isCoordinateValue(lng)) {
+		return null;
+	}
+
+	return {
+		...(typeof record.id === "string" || typeof record.id === "number"
+			? { id: record.id }
+			: {}),
+		location,
+		lat,
+		lng,
+		...(getOptionalTextValue(record.phone)
+			? { phone: getOptionalTextValue(record.phone) }
+			: {}),
+		...(getOptionalTextValue(record.email)
+			? { email: getOptionalTextValue(record.email) }
+			: {}),
+	};
+}
+
+function toPort(record: GlobeRecord, index: number): Port | null {
+	const location = getTextValue(record.location);
+	const port = getTextValue(record.port);
+	const city = getTextValue(record.city);
+	const country = getTextValue(record.country);
+	const { lat, lng } = record;
+
+	if (
+		!location ||
+		!port ||
+		!city ||
+		!country ||
+		!isCoordinateValue(lat) ||
+		!isCoordinateValue(lng)
+	) {
+		return null;
+	}
+
+	return {
+		id: getTextValue(record.id) || `port-${index}`,
+		location,
+		port,
+		city,
+		country,
+		lat,
+		lng,
+		...(getOptionalTextValue(record.admin_division)
+			? { admin_division: getOptionalTextValue(record.admin_division) }
+			: {}),
+	};
+}
 
 async function fetchSheetariSheet(
 	baseUrl: string,
@@ -54,35 +121,13 @@ const getSheetariData = query.batch(v.string(), async (sheets) => {
 
 // Query functions that use the batched data fetcher
 export const getGlobeLocations = query(async () => {
-	return getSheetariData("locations");
+	const rows = await getSheetariData("locations");
+	return rows.map(toLocation).filter((row): row is Location => Boolean(row));
 });
 
 export const getGlobePorts = query(async () => {
-	return getSheetariData("ports");
-});
-
-export const getGlobePolygons = query(async () => {
-	try {
-		const event = getRequestEvent();
-		const response = await event.fetch("/data/countries.geojson");
-
-		if (!response.ok) {
-			console.error(
-				`Failed to fetch globe polygons: ${response.status}`,
-			);
-			return emptyGeoJson;
-		}
-
-		const data = await response.json();
-
-		if (!data || !Array.isArray(data.features)) {
-			console.error("Globe polygons returned invalid GeoJSON.");
-			return emptyGeoJson;
-		}
-
-		return data;
-	} catch (error) {
-		console.error("Failed to fetch globe polygons", error);
-		return emptyGeoJson;
-	}
+	const rows = await getSheetariData("ports");
+	return rows
+		.map((row, index) => toPort(row, index))
+		.filter((row): row is Port => Boolean(row));
 });

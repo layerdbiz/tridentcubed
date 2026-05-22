@@ -1795,7 +1795,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 			@apply relative;
 		}
 		.globe-marker.active {
-			@apply !isolate !z-10;
+			@apply isolate! z-10!;
 		}
 
 		/* svg marker */
@@ -1821,7 +1821,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 
 		/* location label */
 		.location-label {
-			@apply pointer-events-none absolute top-full flex items-center justify-center gap-2 whitespace-nowrap rounded bg-black/60 p-2 text-xs font-normal font-semibold uppercase text-white md:text-sm;
+			@apply pointer-events-none absolute top-full flex items-center justify-center gap-2 whitespace-nowrap rounded bg-black/60 p-2 text-xs font-semibold uppercase text-white md:text-sm;
 		}
 	}
 	/* ---------------------------------------- */
