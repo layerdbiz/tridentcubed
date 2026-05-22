@@ -4,6 +4,7 @@ import chromium from "@sparticuz/chromium-min";
 import { json } from "@sveltejs/kit";
 import puppeteer from "puppeteer-core";
 
+import { createExportSession } from "$lib/server/export-session-store";
 import type { RequestHandler } from "./$types";
 
 const chromiumVersion = "143.0.4";
@@ -98,7 +99,7 @@ function getErrorMessage(error: unknown) {
 	return error instanceof Error ? error.message : "Unknown error";
 }
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request }) => {
 	const payload = (await request.json().catch(() => null)) as {
 		markup?: unknown;
 		filename?: unknown;
@@ -116,7 +117,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
 	try {
-		const printUrl = new URL("/export/print", url).href;
+		const session = createExportSession({ markup, filename });
+		const printUrl =
+			new URL(`/export/print/${session.token}`, request.url).href;
 
 		browser = await launchBrowser();
 
@@ -124,29 +127,17 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
 		await page.emulateMediaType("screen");
 
-		const printShellResponse = await page.goto(printUrl, { waitUntil: "load" });
+		const printResponse = await page.goto(printUrl, {
+			waitUntil: "networkidle0",
+		});
 
-		if (!printShellResponse?.ok()) {
+		if (!printResponse || !printResponse.ok()) {
 			throw new Error(
-				`Print shell failed with status ${printShellResponse?.status()}`,
+				`Print route failed with status ${
+					printResponse?.status() ?? "unknown"
+				}`,
 			);
 		}
-
-		await page.waitForSelector(".preview-pages");
-		await page.evaluate(
-			(input) => {
-				document.title = input.filename;
-
-				const previewPages = document.querySelector(".preview-pages");
-
-				if (!(previewPages instanceof HTMLElement)) {
-					throw new Error("Print root not found.");
-				}
-
-				previewPages.innerHTML = input.markup;
-			},
-			{ markup, filename },
-		);
 
 		await page.waitForFunction(
 			() => document.querySelectorAll(".preview-page").length > 0,
