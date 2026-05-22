@@ -7,6 +7,11 @@ import puppeteer from "puppeteer-core";
 import { createExportSession } from "$lib/server/export-session-store";
 import type { RequestHandler } from "./$types";
 
+/** Strip all `<script>` tags — safety net for any residual client bootstrap code. */
+function stripScripts(html: string) {
+	return html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
+}
+
 const chromiumVersion = "143.0.4";
 const chromiumPackArch = process.arch === "arm64" ? "arm64" : "x64";
 const chromiumPackUrl =
@@ -99,7 +104,7 @@ function getErrorMessage(error: unknown) {
 	return error instanceof Error ? error.message : "Unknown error";
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, fetch }) => {
 	const payload = (await request.json().catch(() => null)) as {
 		markup?: unknown;
 		filename?: unknown;
@@ -121,24 +126,47 @@ export const POST: RequestHandler = async ({ request }) => {
 		const printUrl =
 			new URL(`/export/print/${session.token}`, request.url).href;
 
+		// Fetch SSR HTML in-process. SvelteKit short-circuits same-origin requests so the
+		// session store is always in the same function instance — no cross-process loss.
+		const printResponse = await fetch(printUrl);
+
+		if (!printResponse.ok) {
+			throw new Error(
+				`Print route returned ${printResponse.status}: ${await printResponse
+					.text()}`,
+			);
+		}
+
+		const printHtml = stripScripts(await printResponse.text());
+
 		browser = await launchBrowser();
 
 		const page = await browser.newPage();
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
 		await page.emulateMediaType("screen");
 
-		const printResponse = await page.goto(printUrl, {
-			waitUntil: "networkidle0",
+		// Intercept the initial document request and respond with our pre-rendered HTML.
+		// All subsequent requests (CSS, fonts, images) are allowed through to the real
+		// server/CDN. page.goto sets the correct page URL so relative asset paths resolve
+		// against the deployment origin — fonts load from the CDN, not about:blank.
+		await page.setRequestInterception(true);
+		let documentServed = false;
+		page.on("request", (req) => {
+			if (!documentServed && req.resourceType() === "document") {
+				documentServed = true;
+				req.respond({
+					status: 200,
+					contentType: "text/html; charset=utf-8",
+					body: printHtml,
+				});
+			} else {
+				req.continue();
+			}
 		});
 
-		if (!printResponse || !printResponse.ok()) {
-			throw new Error(
-				`Print route failed with status ${
-					printResponse?.status() ?? "unknown"
-				}`,
-			);
-		}
+		await page.goto(printUrl, { waitUntil: "networkidle0" });
 
+		// Markup is in the SSR HTML; safety assertion only.
 		await page.waitForFunction(
 			() => document.querySelectorAll(".preview-page").length > 0,
 		);
