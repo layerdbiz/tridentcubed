@@ -57,13 +57,8 @@
 	}
 
 	function getProgressClass(status: string): string {
-		if (status === 'Draft') return 'bg-slate-400';
-		if (status === 'In Progress') return 'bg-blue-500';
-		if (status === 'Review' || status === 'Ready for Review') return 'bg-warning-500';
-		if (status === 'Sent') return 'bg-violet-500';
-		if (status === 'Complete') return 'bg-green-500';
-		if (status === 'Archived') return 'bg-neutral-400';
-		return 'bg-primary';
+		void status;
+		return 'bg-green-500';
 	}
 
 	function getProgressTrackClass(status: string): string {
@@ -111,15 +106,8 @@
 	}
 
 	function getOpenButtonClass(status: string): string {
-		if (status === 'Draft') return 'bg-slate-400 text-white hover:bg-slate-500';
-		if (status === 'In Progress') return 'bg-blue-500 text-white hover:bg-blue-600';
-		if (status === 'Review' || status === 'Ready for Review') {
-			return 'bg-warning-500 text-white hover:bg-warning-600';
-		}
-		if (status === 'Sent') return 'bg-violet-500 text-white hover:bg-violet-600';
-		if (status === 'Complete') return 'bg-green-500 text-white hover:bg-green-600';
-		if (status === 'Archived') return 'bg-neutral-400 text-white hover:bg-neutral-500';
-		return 'bg-primary text-white';
+		void status;
+		return 'bg-blue-500 text-white hover:bg-blue-600';
 	}
 
 	function getDeleteButtonClass(): string {

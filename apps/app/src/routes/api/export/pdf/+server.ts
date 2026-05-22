@@ -143,7 +143,6 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	try {
 		const session = createExportSession({ data: snapshot, filename });
-		const exportId = session.token;
 		const printUrl =
 			new URL(`/export/print/${session.token}`, request.url).href;
 		const navigationHeaders = getForwardedNavigationHeaders(request);
@@ -154,12 +153,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (Object.keys(navigationHeaders).length) {
 			await page.setExtraHTTPHeaders(navigationHeaders);
 		}
-		page.on("pageerror", (error) => {
-			console.error("[pdf-export] page-error", {
-				exportId,
-				error: getErrorMessage(error),
-			});
-		});
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
 		await page.emulateMediaType("screen");
 		const printResponse = await page.goto(printUrl, {
@@ -174,16 +167,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		console.info("[pdf-export] navigation", {
-			exportId,
-			requestUrl: request.url,
-			printUrl,
-			finalUrl: page.url(),
-			status: printResponse.status(),
-			contentType: printResponse.headers()["content-type"] ?? null,
-			forwardedHeaderNames: Object.keys(navigationHeaders),
-		});
-
 		const renderDiagnostics = await page.evaluate(() => ({
 			locationHref: location.href,
 			title: document.title,
@@ -194,15 +177,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		}));
 
 		if (!renderDiagnostics.previewPageCount) {
-			console.error("[pdf-export] print-target-mismatch", {
-				exportId,
-				printUrl,
-				finalUrl: page.url(),
-				renderDiagnostics,
-			});
-
 			throw new Error(
-				`Print route did not render preview pages. Final URL: ${page.url()}`,
+				`Print route did not render preview pages. Final URL: ${page.url()}. Snippet: ${renderDiagnostics.bodyTextSnippet}`,
 			);
 		}
 
@@ -222,71 +198,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		});
 
-		const documentDiagnostics = await page.evaluate(() => {
-			const previewPage = document.querySelector(".preview-page");
-			const title = document.querySelector("h1, h2");
-
-			return {
-				locationHref: location.href,
-				baseURI: document.baseURI,
-				headStyleCount: document.head.querySelectorAll("style").length,
-				headStylesheetLinkCount: document.head.querySelectorAll(
-					'link[rel="stylesheet"]',
-				).length,
-				stylesheetSummaries: Array.from(document.styleSheets).map(
-					(sheet, index) => {
-						let ruleCount: number | null = null;
-						let accessError = "";
-
-						try {
-							ruleCount = sheet.cssRules.length;
-						} catch (error) {
-							accessError = error instanceof Error
-								? error.message
-								: String(error);
-						}
-
-						const ownerNode = sheet.ownerNode;
-						const ownerTag =
-							ownerNode && ownerNode.nodeType === Node.ELEMENT_NODE
-								? (ownerNode as Element).tagName.toLowerCase()
-								: null;
-
-						return {
-							index,
-							href: sheet.href || "inline",
-							ownerTag,
-							ruleCount,
-							accessError,
-						};
-					},
-				),
-				previewPage: previewPage
-					? {
-						className: previewPage.className,
-						width: getComputedStyle(previewPage).width,
-						minHeight: getComputedStyle(previewPage).minHeight,
-						display: getComputedStyle(previewPage).display,
-						breakAfter: getComputedStyle(previewPage).breakAfter,
-						boxShadow: getComputedStyle(previewPage).boxShadow,
-					}
-					: null,
-				title: title
-					? {
-						text: title.textContent?.slice(0, 80) ?? "",
-						fontFamily: getComputedStyle(title).fontFamily,
-						fontSize: getComputedStyle(title).fontSize,
-						textTransform: getComputedStyle(title).textTransform,
-					}
-					: null,
-			};
-		});
-
-		console.info("[pdf-export] document-diagnostics", {
-			exportId,
-			documentDiagnostics,
-		});
-
 		const pdf = await page.pdf(pdfOptions);
 
 		return new Response(Buffer.from(pdf), {
@@ -299,7 +210,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 		});
 	} catch (error) {
-		console.error("PDF export failed", error);
 		return json(
 			{
 				message: "PDF export failed.",

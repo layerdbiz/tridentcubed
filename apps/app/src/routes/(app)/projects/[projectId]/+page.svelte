@@ -1134,11 +1134,6 @@
 				return;
 			}
 
-			console.info('[pdf-export] client-export', {
-				filename: exportFileName,
-				previewPageCount: snapshot.previewPageItems.length
-			});
-
 			const response = await fetch('/api/export/pdf', {
 				method: 'POST',
 				headers: {
@@ -1158,7 +1153,6 @@
 			downloadBlob(blob, exportFileName);
 		} catch (error) {
 			exportErrorMessage = toErrorMessage(error);
-			console.error('PDF export failed', error);
 		} finally {
 			isExporting = false;
 		}

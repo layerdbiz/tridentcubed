@@ -159,16 +159,12 @@ async function fetchSheetariArray(url: string): Promise<unknown[]> {
 	try {
 		const response = await fetch(url);
 		if (!response.ok) {
-			console.warn(
-				`Failed to fetch project definitions from ${url}: ${response.status}`,
-			);
 			return [];
 		}
 
 		const data = await response.json();
 		return asArray(data);
-	} catch (error) {
-		console.warn(`Project definitions fetch error for ${url}:`, error);
+	} catch {
 		return [];
 	}
 }
