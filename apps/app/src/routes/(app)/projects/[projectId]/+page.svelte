@@ -1134,15 +1134,9 @@
 				return;
 			}
 
-			const cssLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
-				.map((l) => (l as HTMLLinkElement).href)
-				.filter((href) => href.startsWith(location.origin));
-
 			console.info('[pdf-export] client-export', {
 				filename: exportFileName,
-				previewPageCount: snapshot.previewPageItems.length,
-				cssLinksCount: cssLinks.length,
-				cssLinks
+				previewPageCount: snapshot.previewPageItems.length
 			});
 
 			const response = await fetch('/api/export/pdf', {
@@ -1152,8 +1146,7 @@
 				},
 				body: JSON.stringify({
 					snapshot,
-					filename: exportFileName,
-					cssLinks,
+					filename: exportFileName
 				})
 			});
 
