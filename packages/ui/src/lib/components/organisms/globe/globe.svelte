@@ -1471,7 +1471,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 									</svg>
 							</i>
 							<h4 class="location-label transition-all duration-300 mt-6 lg:mt-4 ${isActiveLocation ? 'opacity-100' : 'translate-y-full opacity-0'}">
-								<i class="text-sm md:text-xl icon-${d.flag}"></i>
+								${d.flag ? `<i class="text-sm md:text-xl icon-${String(d.flag).toLowerCase()}"></i>` : ''}
 								<span>${d.location || 'Unknown Location'}</span>
 							</h4>
 						</div>
