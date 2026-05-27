@@ -3,12 +3,10 @@
 	 * @tags forms, textarea, textfield, icon, label
 	 * @layout horizontal
 	 */
-	import { onMount } from 'svelte';
 	import type { HTMLTextareaAttributes } from 'svelte/elements';
 	import '../forms.css';
 	import { Component, type ComponentReturn, Icon } from '@layerd/ui';
 	import { createFormField, type TextFieldProps } from '../field.svelte.ts';
-	import { attachPersistTarget } from '../../../../base/helpers/persist/element-persist.svelte.ts';
 	import { TextareaAutosize } from 'runed';
 
 	const uid = $props.id();
@@ -76,19 +74,12 @@
 		value = (event.currentTarget as HTMLTextAreaElement).value;
 	}
 
-	onMount(() => {
-		if (!textareaNode) return;
-
-		const cleanup = attachPersistTarget(textareaNode, persist, {
-			fallbackScope: 'components',
-			defaultWriteMode: 'debounced',
-			defaultDebounceMs: 250,
-		});
-
-		value = textareaNode.value;
-
-		return cleanup;
-	});
+	function setPersistedValue(nextValue: unknown): void {
+		value =
+			nextValue === null || nextValue === undefined
+				? ''
+				: String(nextValue);
+	}
 
 	$effect(() => {
 		if (!textareaNode) return;
@@ -169,7 +160,13 @@
 	{@render iconEndEl()}
 {/snippet}
 
-<Component {...props}>
+<Component
+	{...props}
+	persist={persist}
+	persistContext={{ tag: 'textarea' }}
+	persistGetValue={() => value}
+	persistSetValue={setPersistedValue}
+>
 	{#snippet component({ props }: { props: ComponentReturn })}
 		<fieldset bind:this={fieldsetNode} {...props} class={`${props.class} ${fieldState.className} textarea`.trim()}>
 			<legend>{fieldState.labelText}</legend>

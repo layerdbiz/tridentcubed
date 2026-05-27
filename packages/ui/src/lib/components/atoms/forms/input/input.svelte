@@ -3,7 +3,6 @@
 	 * @tags forms, input, textfield, icon, label
 	 * @layout horizontal
 	 */
-	import { onMount } from 'svelte';
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import '../forms.css';
 	import {
@@ -13,7 +12,6 @@
 		Icon,
 		type TextFieldProps
 	} from '@layerd/ui';
-	import { attachPersistTarget } from '../../../../base/helpers/persist/element-persist.svelte.ts';
 
 	const uid = $props.id();
 
@@ -80,19 +78,12 @@
 		value = (event.currentTarget as HTMLInputElement).value;
 	}
 
-	onMount(() => {
-		if (!inputNode) return;
-
-		const cleanup = attachPersistTarget(inputNode, persist, {
-			fallbackScope: 'components',
-			defaultWriteMode: 'debounced',
-			defaultDebounceMs: 250,
-		});
-
-		value = inputNode.value;
-
-		return cleanup;
-	});
+	function setPersistedValue(nextValue: unknown): void {
+		value =
+			nextValue === null || nextValue === undefined
+				? ''
+				: (nextValue as HTMLInputAttributes['value']);
+	}
 </script>
 
 <!-- INPUT STATE EMOJIS
@@ -166,7 +157,13 @@ Use thse emojis for comments about the state of the input in the examples below.
 	{@render iconEndEl()}
 {/snippet}
 
-<Component {...props}>
+<Component
+	{...props}
+	persist={persist}
+	persistContext={{ tag: 'input', type }}
+	persistGetValue={() => value}
+	persistSetValue={setPersistedValue}
+>
 	{#snippet component({ props }: { props: ComponentReturn })}
 		<fieldset {...props} class={`${props.class} ${fieldState.className}`.trim()}>
 			<legend>{fieldState.labelText}</legend>

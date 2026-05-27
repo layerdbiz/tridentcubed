@@ -1,11 +1,11 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { Button, Component, Input, Text, Textarea, mq } from '@layerd/ui';
+	import { Button, Component, Input, persist as persistUtility, Text, Textarea, mq } from '@layerd/ui';
 	import pageSource from './+page.svelte?raw';
 	import * as demoNav from './nav.svelte.ts';
 	import { createDemoModel } from './demo.model';
-	import { persist } from './demo.persist';
 	import { getCachedDemoData, readDemoDataCache } from './demo.seed';
 	import type { DemoSeedType } from './demo.remote';
 
@@ -24,10 +24,11 @@
 
 	let recordDraft = $state<string | null>(null);
 	let explicitDraft = $state<string | null>(null);
+	let persistedDraftSignature = $state<string | null>(null);
 
 	const recordValue = $derived(recordDraft ?? recordInput?.value ?? '');
 	const explicitValue = $derived(explicitDraft ?? explicitInput?.value ?? '');
-	const recordHeading = 'persist={input}';
+	const recordHeading = "persist={{ key: input.persistPath }}";
 	const explicitHeading = 'persist="inputs.input_2"';
 	const desktopMqHeading = $derived.by(() => {
 		if (mq.lg) return 'Desktop View (lg)';
@@ -92,18 +93,22 @@
 
 	function resetRecordOverlay(): void {
 		if (!recordInput) return;
-		persist.remove(recordInput.persistPath);
+		void persistUtility.remove(recordInput.persistPath, {
+			prop: 'value',
+		});
 		recordDraft = recordInput.seedValue;
 	}
 
 	function resetExplicitOverlay(): void {
 		if (!explicitInput) return;
-		persist.remove(explicitInput.persistPath);
+		void persistUtility.remove(explicitInput.persistPath, {
+			prop: 'value',
+		});
 		explicitDraft = explicitInput.seedValue;
 	}
 
 	function clearInputsScope(): void {
-		persist.clear();
+		void persistUtility.clear('inputs');
 		if (recordInput) {
 			recordDraft = recordInput.seedValue;
 		}
@@ -113,6 +118,40 @@
 	}
 
 	onMount(() => {
+
+	$effect(() => {
+		if (!browser || !recordInput || !explicitInput) {
+			return;
+		}
+
+		const nextSignature = [recordInput.persistPath, explicitInput.persistPath].join('::');
+		if (persistedDraftSignature === nextSignature) {
+			return;
+		}
+
+		persistedDraftSignature = nextSignature;
+		let isCancelled = false;
+
+		void (async () => {
+			const [nextRecordDraft, nextExplicitDraft] = await Promise.all([
+				persistUtility.load<string>(recordInput.persistPath, recordInput.seedValue, {
+					prop: 'value',
+				}),
+				persistUtility.load<string>(explicitInput.persistPath, explicitInput.seedValue, {
+					prop: 'value',
+				}),
+			]);
+
+			if (isCancelled) return;
+
+			recordDraft = nextRecordDraft;
+			explicitDraft = nextExplicitDraft;
+		})();
+
+		return () => {
+			isCancelled = true;
+		};
+	});
 		if (demoSeed) {
 			isSeedLoading = false;
 			return;
@@ -195,10 +234,10 @@
 
 		<Component tag="section" rail="full" base lite class="py-6">
 			<Component rail="content">
-				<Text small="Record target" class="uppercase text-neutral" />
+				<Text small="Object config" class="uppercase text-neutral" />
 				<Text h2={recordHeading} class="mt-2" />
 				<Text
-					p={`Uses the record metadata to resolve ${(recordInput?.persistPath || 'inputs.input_1')}.value.`}
+					p={`Uses an explicit key object to resolve ${(recordInput?.persistPath || 'inputs.input_1')}.value.`}
 					class="mt-2 text-neutral"
 				/>
 
@@ -209,7 +248,9 @@
 						label={recordInput.label}
 						value={recordValue}
 						placeholder={recordInput.placeholder || ' '}
-						persist={recordInput}
+						persist={{
+							key: recordInput.persistPath,
+						}}
 						oninput={handleRecordInput}
 						class="mt-4"
 					/>

@@ -12,7 +12,7 @@
 		AccordionTitle,
 		AccordionContent,
 		Draggable,
-		persist
+		persistJson as persist
 	} from '@layerd/ui';
 	import { browser } from '$app/environment';
 	import { page } from '$app/state';

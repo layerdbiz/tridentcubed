@@ -1,6 +1,7 @@
 import type { Snippet } from "svelte";
 import type { SvelteHTMLElements } from "svelte/elements";
-import type { DebugValueType, PersistTargetValue } from "@layerd/ui";
+import type { DebugValueType } from "@layerd/ui";
+import type { PersistContext, PersistInput } from "./helpers/persist/persist.svelte.ts";
 import {
 	createClasses,
 	type GridValue,
@@ -136,7 +137,12 @@ export interface ComponentProps extends ComponentItemProps {
 
 	// 📜 SCROLL
 	scroll?: boolean;
-	persist?: PersistTargetValue;
+	persist?: PersistInput;
+	persistContext?: PersistContext;
+	persistGetValue?: () => unknown;
+	persistSetValue?: (value: unknown) => void;
+	value?: unknown;
+	checked?: boolean;
 
 	// 🧱 LAYOUT
 	tag?: ComponentTag;

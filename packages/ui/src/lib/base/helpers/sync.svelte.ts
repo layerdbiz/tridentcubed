@@ -235,7 +235,7 @@ export class PersistJson<T> {
 	}
 }
 
-export const persist = {
+export const persistJson = {
 	json<T>(options: PersistJsonOptions<T>) {
 		return new PersistJson(options);
 	},

@@ -35,6 +35,9 @@ function toLocation(record: GlobeRecord): Location | null {
 		location,
 		lat,
 		lng,
+		...(getOptionalTextValue(record.continent)
+			? { continent: getOptionalTextValue(record.continent) }
+			: {}),
 		...(getOptionalTextValue(record.phone)
 			? { phone: getOptionalTextValue(record.phone) }
 			: {}),

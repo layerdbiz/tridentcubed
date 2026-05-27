@@ -15,6 +15,7 @@ export interface Location {
 	location: string;
 	lat: number | string;
 	lng: number | string;
+	continent?: string;
 	phone?: string;
 	email?: string;
 }

@@ -1,4 +1,3 @@
-import { persist } from "./demo.persist";
 import type { DemoSeedType } from "./demo.remote";
 
 export interface DemoInputType {
@@ -48,14 +47,13 @@ function createDemoInput(
 	description = "",
 ): DemoInputType {
 	const persistPath = `inputs.${id}`;
-	const persistedValue = persist.read(persistPath, seedValue);
 
 	return {
 		id,
 		collection: "inputs",
 		_source: "inputs",
 		label,
-		value: persistedValue,
+		value: seedValue,
 		seedValue,
 		placeholder,
 		input,
@@ -92,7 +90,7 @@ function getFallbackInputs(): DemoInputType[] {
 			"Trident Cubed",
 			"Type a client name",
 			"text",
-			"Record-target persistence using the input object metadata.",
+			"Object-config persistence using an explicit key.",
 		),
 		createDemoInput(
 			"input_2",
@@ -100,7 +98,7 @@ function getFallbackInputs(): DemoInputType[] {
 			"Persistence proof of concept",
 			"Type a project title",
 			"text",
-			"Explicit string-path persistence using inputs.input_2.",
+			"String-key persistence using inputs.input_2.",
 		),
 		createDemoInput(
 			"input_3",

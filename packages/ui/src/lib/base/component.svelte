@@ -3,6 +3,8 @@
 	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
 	import {
 		createComponentWithStyles,
+		persist as persistUtility,
+		resolvePersistConfig,
 		createTotalIndexes,
 		type ComponentProps,
 		type ComponentRenderProps,
@@ -18,6 +20,11 @@
 		Root,
 		ScrollClass,
 	} from '@layerd/ui';
+	import {
+		attachPersistTarget,
+		type PersistContext,
+		type PersistInput,
+	} from './helpers/persist/persist.svelte.ts';
 
 	// Constants
 	const COMPONENT_DEFAULT_TEXT = 'Component';
@@ -31,7 +38,12 @@
 		debug = false,
 		observe = false,
 		persist = false,
+		persistContext = undefined,
+		persistGetValue = undefined,
+		persistSetValue = undefined,
 		scroll = false,
+		value = $bindable(),
+		checked = $bindable(false),
 		snippets = {},
 		tag = 'div',
 		total = undefined,
@@ -137,6 +149,10 @@
 	const componentItemSources = $derived(pickItemSources(componentLayoutProps));
 	const componentRootGrid = $derived(
 		getRootGrid(componentLayoutProps.grid, componentLayoutProps.rails)
+	);
+	const isCheckableTag = $derived(
+		normalizedTag === 'input' &&
+			['checkbox', 'radio'].includes(String(props.type ?? '').trim().toLowerCase())
 	);
 	const componentHasLayoutRuntimeRequest = $derived.by(() => {
 		if (Object.keys(componentItemSources).length > 0) {
@@ -265,12 +281,158 @@
 			(_, i) => new ScrollClass(() => elementRefs[i], { enabled: scroll })
 		)
 	);
+	let persistAutoSaveSignature = $state<string | null>(null);
+
+	function applyBoundPersistValue(nextValue: unknown): void {
+		if (isCheckableTag) {
+			checked = Boolean(nextValue);
+			return;
+		}
+
+		value = nextValue;
+	}
+
+	function syncBoundValueFromEvent(event: Event): void {
+		const currentTarget = event.currentTarget;
+		if (!(currentTarget instanceof Element)) return;
+
+		if (currentTarget instanceof HTMLInputElement) {
+			if (currentTarget.type === 'checkbox' || currentTarget.type === 'radio') {
+				checked = currentTarget.checked;
+				return;
+			}
+
+			value = currentTarget.value;
+			return;
+		}
+
+		if (
+			currentTarget instanceof HTMLTextAreaElement ||
+			currentTarget instanceof HTMLSelectElement
+		) {
+			value = currentTarget.value;
+		}
+	}
+
+	function getBindableRootProps(): Record<string, unknown> {
+		if (normalizedTag === 'input') {
+			return isCheckableTag ? { checked } : { value };
+		}
+
+		if (normalizedTag === 'textarea' || normalizedTag === 'select') {
+			return { value };
+		}
+
+		return {};
+	}
+
+	function getPersistSetValue(): ((value: unknown) => void) | undefined {
+		if (!persist) return undefined;
+
+		return persistSetValue ?? applyBoundPersistValue;
+	}
+
+	function getPersistGetValue(): (() => unknown) | undefined {
+		if (!persist) return undefined;
+
+		return persistGetValue ?? (() => (isCheckableTag ? checked : value));
+	}
+
+	function getPersistContext(): PersistContext {
+		return {
+			...persistContext,
+			tag: persistContext?.tag ?? normalizedTag,
+			type:
+				persistContext?.type ??
+				String(props.type ?? '').trim().toLowerCase(),
+		};
+	}
+
+	$effect(() => {
+		if (!browser || !persist) return;
+
+		const resolvedPersist = resolvePersistConfig(persist, {
+			context: getPersistContext(),
+		});
+
+		if (!resolvedPersist.enabled || !resolvedPersist.automatic) {
+			return;
+		}
+
+		const persistSignature = [
+			resolvedPersist.namespace,
+			resolvedPersist.storage,
+			resolvedPersist.key ?? '',
+			resolvedPersist.props.join(','),
+		].join('::');
+
+		if (persistAutoSaveSignature !== persistSignature) {
+			persistAutoSaveSignature = persistSignature;
+			return;
+		}
+
+		const nextValue = getPersistGetValue()?.();
+		if (nextValue === undefined) {
+			return;
+		}
+
+		for (const entry of resolvedPersist.entries) {
+			if (entry.prop === 'checked' && !isCheckableTag) continue;
+			if (
+				entry.prop !== 'value' &&
+				entry.prop !== 'checked' &&
+				normalizedTag !== 'input' &&
+				normalizedTag !== 'textarea' &&
+				normalizedTag !== 'select'
+			) {
+				continue;
+			}
+			if (entry.prop === 'value' && isCheckableTag) continue;
+
+			void persistUtility.save(entry.key, nextValue, {
+				storage: resolvedPersist.storage,
+				namespace: resolvedPersist.namespace,
+				prop: entry.prop,
+			});
+		}
+	});
+
+	$effect(() => {
+		if (component || !persist) {
+			return;
+		}
+
+		const cleanups: Array<() => void> = [];
+
+		for (const element of elementRefs) {
+			if (!element) continue;
+
+			const cleanup = attachPersistTarget(element, persist, {
+				fallbackScope: 'components',
+				setValue: getPersistSetValue(),
+			});
+
+			if (cleanup) {
+				cleanups.push(cleanup);
+			}
+		}
+
+		return () => {
+			for (const cleanup of cleanups) {
+				cleanup();
+			}
+		};
+	});
 
 	function getComponentRootProps(index: number) {
 		return {
 			...componentLayoutProps,
 			...componentBaseProps,
-			persist,
+			...getBindableRootProps(),
+			persist: component ? persist : false,
+			persistContext: component ? getPersistContext() : undefined,
+			persistGetValue: component ? getPersistGetValue() : undefined,
+			persistSetValue: component ? getPersistSetValue() : undefined,
 			[trackAttachmentKey]:
 				shouldShowBoxDebug || observe || scroll ? createTrackElement(index) : undefined,
 			class:
@@ -305,6 +467,8 @@
 			<svelte:element
 				this={normalizedTag}
 				{...args.props}
+				oninput={syncBoundValueFromEvent}
+				onchange={syncBoundValueFromEvent}
 				bind:this={elementRefs[componentOffset]}
 			>
 				{@render args.layout()}

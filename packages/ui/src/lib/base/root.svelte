@@ -1,16 +1,19 @@
 <!-- Root.svelte -->
 <script lang="ts">
-	import { onMount, type Snippet } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
 	import type { SvelteHTMLElements } from 'svelte/elements';
-	import { attachPersistTarget } from './helpers/persist/element-persist.svelte.ts';
+	import {
+		attachPersistTarget,
+		type PersistContext,
+		type PersistInput,
+	} from './helpers/persist/persist.svelte.ts';
 	import {
 		hasLayoutDebugValue,
 		normalizeDebugValue,
 		type DebugValueType
 	} from '@layerd/ui';
 	import * as engine from '@layerd/ui';
-	import type { PersistTargetValue } from '@layerd/ui';
 
 	type RootContent = Snippet | string | number | boolean | null | undefined;
 	type RootRenderArgs = {
@@ -26,7 +29,10 @@
 		style?: string;
 		tag?: keyof SvelteHTMLElements;
 		debug?: boolean | DebugValueType;
-		persist?: PersistTargetValue;
+		persist?: PersistInput;
+		persistContext?: PersistContext;
+		persistGetValue?: () => unknown;
+		persistSetValue?: (value: unknown) => void;
 		grid?: engine.GridValue;
 		rail?: string;
 		rails?: string;
@@ -52,6 +58,9 @@
 		tag = 'div',
 		debug = false,
 		persist = false,
+		persistContext = undefined,
+		persistGetValue = undefined,
+		persistSetValue = undefined,
 		grid = undefined,
 		rail = '',
 		rails = '',
@@ -527,6 +536,24 @@
 		return !hasMeaningfulContent(itemElement);
 	}
 
+	function getPersistContext(): PersistContext | undefined {
+		if (persistContext) {
+			return persistContext;
+		}
+
+		const nextTag = String(tag ?? '').trim().toLowerCase();
+		const nextType = String(props.type ?? '').trim().toLowerCase();
+
+		if (!nextTag && !nextType) {
+			return undefined;
+		}
+
+		return {
+			tag: nextTag || undefined,
+			type: nextType || undefined,
+		};
+	}
+
 	$effect(() => {
 		if (!isRailsDebugEnabled || !_overlayEl) return;
 		const parent = _overlayEl.parentElement;
@@ -586,15 +613,16 @@
 		};
 	});
 
-	onMount(() => {
+	$effect(() => {
 		if (!persist || !persistElement) {
 			return;
 		}
 
 		return attachPersistTarget(persistElement, persist, {
 			fallbackScope: 'components',
-			defaultWriteMode: 'debounced',
-			defaultDebounceMs: 250,
+			context: getPersistContext(),
+			getValue: persistGetValue,
+			setValue: persistSetValue,
 		});
 	});
 </script>

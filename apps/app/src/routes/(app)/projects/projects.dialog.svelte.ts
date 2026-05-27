@@ -1,4 +1,4 @@
-import { persist } from "@layerd/ui";
+import { persistJson as persist } from "@layerd/ui";
 
 const previewIntroDismissPersist = persist.json<boolean>({
 	key: "projects.preview-intro-dismissed",
