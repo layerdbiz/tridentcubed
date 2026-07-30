@@ -205,9 +205,9 @@ Emails
 
  We will need to write a remote function `query` #apps/site/src/lib/email/email.svelte to retrieve the data dynamically for display. The pages should fetch email content from an external API based on the `slug` parameter and render the email content dynamically. Please create the SvelteKit code needed to implement this functionality in #apps/site/src/routes/(company)/[emails]/+page.svelte , including the remote function to fetch the email content and the Svelte component to display it using `query` and update the navigation based on it's current structure. there's 3 json urls that are need for this:
 
-- person (team email signatures): https://sheetari.deno.dev/1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs/person
-- group (company email signature): https://sheetari.deno.dev/1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs/group
-- social (company social links and icons): https://sheetari.deno.dev/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/social
+- person (team email signatures): https://sheetari.oneezy.deno.net/1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs/person
+- group (company email signature): https://sheetari.oneezy.deno.net/1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs/group
+- social (company social links and icons): https://sheetari.oneezy.deno.net/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/social
 
 person json example:
 

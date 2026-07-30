@@ -14,9 +14,9 @@ export interface AboutSection {
 
 export const getAboutData = prerender(async () => {
 	try {
-		// Sheetari URL structure: https://sheetari.deno.dev/{sheetId}/{sheetName}
+		// Sheetari URL structure: https://sheetari.oneezy.deno.net/{sheetId}/{sheetName}
 		const response = await fetch(
-			"https://sheetari.deno.dev/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/about",
+			"https://sheetari.oneezy.deno.net/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/about",
 		);
 
 		if (!response.ok) {

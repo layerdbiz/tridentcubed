@@ -1,7 +1,7 @@
 import { query } from "$app/server";
 import type * as simpleTypes from "./simple.types";
 
-const API_BASE = "https://sheetari.deno.dev";
+const API_BASE = "https://sheetari.oneezy.deno.net";
 const SIMPLE_SHEET_ID = "168y62pKEigKGX2ZQTCv6_STAdGN8chLRBV26OczVFhE";
 const PANEL_DEFINITIONS_URL = `${API_BASE}/${SIMPLE_SHEET_ID}/panels`;
 const INPUT_DEFINITIONS_URL = `${API_BASE}/${SIMPLE_SHEET_ID}/inputs`;

@@ -3,7 +3,7 @@ import * as v from "valibot";
 
 // Sheetari API base URL
 const SHEETARI_BASE_URL =
-	"https://sheetari.deno.dev/1I9-LggRPtxWwfGMWAMT6zum03o_VsnruW7hofE1wGg0";
+	"https://sheetari.oneezy.deno.net/1I9-LggRPtxWwfGMWAMT6zum03o_VsnruW7hofE1wGg0";
 
 // Master slides sheet
 const SLIDES_URL = `${SHEETARI_BASE_URL}/slides`;

@@ -53,7 +53,7 @@ export const TOOLS_CONFIG: ToolsConfig = {
 		app: {
 			dataPath: "apps/app/src/lib/data",
 			sheetari: {
-				baseUrl: "https://sheetari.deno.dev",
+				baseUrl: "https://sheetari.oneezy.deno.net",
 				sheetId: "1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k",
 				endpoints: {
 					inputs: "inputs?range=b1:u",

@@ -8,7 +8,7 @@ interface IconData {
 export const getIcons = prerender(async () => {
 	try {
 		const response = await fetch(
-			"https://sheetari.deno.dev/1F6j_yQLz6ozaa9HzeOp_6leCZCaIIZNCK1LbZCdxnBE/+icons",
+			"https://sheetari.oneezy.deno.net/1F6j_yQLz6ozaa9HzeOp_6leCZCaIIZNCK1LbZCdxnBE/+icons",
 		);
 
 		if (!response.ok) {

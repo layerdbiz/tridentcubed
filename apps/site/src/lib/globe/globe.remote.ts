@@ -115,7 +115,7 @@ async function fetchSheetariSheet(
 // Batch fetch multiple sheets from the same Sheetari spreadsheet
 const getSheetariData = query.batch(v.string(), async (sheets) => {
 	const baseUrl =
-		"https://sheetari.deno.dev/1_BNtsJr9TaSYRPFAKcAd9pa_TUQyYBfqEZiDvDvkPTw";
+		"https://sheetari.oneezy.deno.net/1_BNtsJr9TaSYRPFAKcAd9pa_TUQyYBfqEZiDvDvkPTw";
 
 	const responses = await Promise.all(
 		sheets.map((sheet) => fetchSheetariSheet(baseUrl, sheet)),

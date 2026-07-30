@@ -22,7 +22,7 @@ The user must provide these things:
 2. **Data Source**: Either:
    - Sheet name (e.g., `team`, `faq`, `partners`) - uses default project sheet
    - Full Google Sheets URL - automatically converted to Sheetari URL
-   - Direct Sheetari URL (e.g., `https://sheetari.deno.dev/sheetId/sheetName`)
+   - Direct Sheetari URL (e.g., `https://sheetari.oneezy.deno.net/sheetId/sheetName`)
 3. **Data Sample**: Example of the expected JSON structure (optional - can be discovered)
 4. **Target File**: Component file where the remote function will be used (e.g., `+page.svelte`)
 
@@ -31,19 +31,19 @@ The user must provide these things:
 This project uses **Sheetari** to convert Google Sheets to JSON APIs:
 
 ```
-https://sheetari.deno.dev/{sheetId}/{sheetName}
+https://sheetari.oneezy.deno.net/{sheetId}/{sheetName}
 ```
 
 ### Default Project Sheet
 - **Sheet ID**: `1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4`
-- **Base URL**: `https://sheetari.deno.dev/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/`
+- **Base URL**: `https://sheetari.oneezy.deno.net/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/`
 
 ### Smart URL Conversion
 
 **When user provides just a sheet name:**
 ```
 Input: "team"
-Output: https://sheetari.deno.dev/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/team
+Output: https://sheetari.oneezy.deno.net/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/team
 ```
 
 **When user provides Google Sheets URL:**
@@ -51,12 +51,12 @@ Output: https://sheetari.deno.dev/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/t
 Input: https://docs.google.com/spreadsheets/d/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/edit?gid=2076326602#gid=2076326602
 Extract: sheetId = "1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4"
 Guess: sheetName from context (e.g., "team" if creating team remote function)
-Output: https://sheetari.deno.dev/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/team
+Output: https://sheetari.oneezy.deno.net/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/team
 ```
 
 **When user provides direct Sheetari URL:**
 ```
-Input: https://sheetari.deno.dev/someSheetId/someSheetName
+Input: https://sheetari.oneezy.deno.net/someSheetId/someSheetName
 Output: Use as-is
 ```
 
@@ -98,8 +98,8 @@ export const getItemData = prerender(async () => {
 	console.log("🔥 Fetching data items during prerender...");
 
 	try {
-		// Sheetari URL structure: https://sheetari.deno.dev/{sheetId}/{sheetName}
-		const response = await fetch("https://sheetari.deno.dev/YOUR_SHEET_ID/YOUR_SHEET_NAME");
+		// Sheetari URL structure: https://sheetari.oneezy.deno.net/{sheetId}/{sheetName}
+		const response = await fetch("https://sheetari.oneezy.deno.net/YOUR_SHEET_ID/YOUR_SHEET_NAME");
 
 		if (!response.ok) {
 			throw new Error(`Failed to fetch data: ${response.status}`);
@@ -422,7 +422,7 @@ export default {
 export const getItemData = prerender(async () => {
 	try {
 		// Use Sheetari URL structure
-		const response = await fetch("https://sheetari.deno.dev/SHEET_ID/SHEET_NAME");
+		const response = await fetch("https://sheetari.oneezy.deno.net/SHEET_ID/SHEET_NAME");
 		if (!response.ok) throw new Error(`HTTP ${response.status}`);
 		
 		const data = await response.json();

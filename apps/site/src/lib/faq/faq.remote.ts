@@ -10,7 +10,7 @@ export interface FaqItem {
 export const getFaqData = prerender(async () => {
 	try {
 		const response = await fetch(
-			"https://sheetari.deno.dev/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/faq",
+			"https://sheetari.oneezy.deno.net/1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4/faq",
 		);
 
 		if (!response.ok) {

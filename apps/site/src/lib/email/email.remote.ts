@@ -2,7 +2,7 @@ import { query } from "$app/server";
 import * as v from "valibot";
 
 // Base API URL
-const API_BASE = "https://sheetari.deno.dev";
+const API_BASE = "https://sheetari.oneezy.deno.net";
 const PERSON_SHEET_ID = "1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs";
 const GROUP_SHEET_ID = "1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs";
 const SOCIAL_SHEET_ID = "1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4";
@@ -84,6 +84,50 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
 }
 
+// Matches a Google Drive file id from any of the common share/embed URL shapes:
+// - https://drive.google.com/thumbnail?id={id}&sz=w2000
+// - https://drive.google.com/open?id={id}
+// - https://drive.google.com/uc?id={id}
+// - https://drive.google.com/file/d/{id}/view
+// - https://lh3.googleusercontent.com/d/{id}=w2000
+const DRIVE_ID_PATTERNS = [
+	/[?&]id=([\w-]{10,})/,
+	/\/file\/d\/([\w-]{10,})/,
+	/\/d\/([\w-]{10,})/,
+];
+
+function extractDriveFileId(url: string): string | null {
+	for (const pattern of DRIVE_ID_PATTERNS) {
+		const match = url.match(pattern);
+		if (match) return match[1];
+	}
+	return null;
+}
+
+/**
+ * Normalize any Google Drive share/thumbnail URL to the direct googleusercontent
+ * CDN form. `drive.google.com/thumbnail` and `/uc` URLs 302-redirect through an
+ * authenticated Google endpoint before landing on lh3.googleusercontent.com, and
+ * that extra redirect hop is what most email clients (Outlook Safe Links, Gmail's
+ * image proxy) fail to follow, showing a broken image instead. Requesting the
+ * lh3 URL directly skips that hop. This still requires the Drive file to be
+ * shared as "Anyone with the link", not just "Anyone in the organization".
+ */
+function normalizeImageSrc(value: unknown): string {
+	const url = toText(value);
+	if (!url || !/drive\.google\.com|googleusercontent\.com/.test(url)) {
+		return url;
+	}
+
+	const fileId = extractDriveFileId(url);
+	if (!fileId) return url;
+
+	const sizeMatch = url.match(/[?&]sz=w(\d+)|=w(\d+)/);
+	const width = sizeMatch ? (sizeMatch[1] ?? sizeMatch[2]) : "2000";
+
+	return `https://lh3.googleusercontent.com/d/${fileId}=w${width}`;
+}
+
 function getRankValue(rank: string | undefined): number {
 	const parsedRank = Number.parseInt(rank ?? "", 10);
 	return Number.isFinite(parsedRank) ? parsedRank : DEFAULT_RANK;
@@ -108,7 +152,7 @@ function normalizePerson(value: unknown): PersonAPIResponse | null {
 		email: toText(value.email),
 		group: toText(value.group),
 		href: toText(value.href),
-		src: toText(value.src),
+		src: normalizeImageSrc(value.src),
 		slug,
 		rank: toOptionalText(value.rank),
 		location: toOptionalText(value.location),
@@ -136,7 +180,7 @@ function normalizeGroup(value: unknown): GroupAPIResponse | null {
 		title: toText(value.title),
 		phone: toText(value.phone),
 		href: toText(value.href),
-		src: toText(value.src),
+		src: normalizeImageSrc(value.src),
 		slug,
 		banner: toOptionalText(value.banner),
 	};
@@ -174,7 +218,7 @@ function normalizeBanner(value: unknown): BannerAPIResponse | null {
 		id: toText(value.id) || banner,
 		banner,
 		href: toText(value.href),
-		src,
+		src: normalizeImageSrc(src),
 	};
 }
 

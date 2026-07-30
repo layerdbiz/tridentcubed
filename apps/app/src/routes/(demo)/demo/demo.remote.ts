@@ -1,6 +1,6 @@
 import { query } from "$app/server";
 
-const API_BASE = "https://sheetari.deno.dev";
+const API_BASE = "https://sheetari.oneezy.deno.net";
 const DEMO_SHEET_ID = "168y62pKEigKGX2ZQTCv6_STAdGN8chLRBV26OczVFhE";
 const DEMO_INPUTS_URL = `${API_BASE}/${DEMO_SHEET_ID}/inputs`;
 

@@ -1,5 +1,5 @@
 {
-  "baseUrl": "https://sheetari.deno.dev",
+  "baseUrl": "https://sheetari.oneezy.deno.net",
   "sheetId": "1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k",
   "fetchedAt": "2026-04-04T21:56:22.365Z",
   "outputDirectory": "apps/app/src/lib/data",
@@ -13,25 +13,25 @@
   "sources": {
     "inputs": {
       "file": "inputs.json",
-      "url": "https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/inputs?range=b1:u",
+      "url": "https://sheetari.oneezy.deno.net/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/inputs?range=b1:u",
       "type": "array",
       "itemCount": 75
     },
     "panels": {
       "file": "panels.json",
-      "url": "https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/panels",
+      "url": "https://sheetari.oneezy.deno.net/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/panels",
       "type": "array",
       "itemCount": 12
     },
     "pages": {
       "file": "pages.json",
-      "url": "https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/pages",
+      "url": "https://sheetari.oneezy.deno.net/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/pages",
       "type": "array",
       "itemCount": 20
     },
     "instructions": {
       "file": "instructions.json",
-      "url": "https://sheetari.deno.dev/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/instructions",
+      "url": "https://sheetari.oneezy.deno.net/1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k/instructions",
       "type": "array",
       "itemCount": 36
     }

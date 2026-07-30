@@ -1,7 +1,7 @@
 import { query } from "$app/server";
 import type * as projectTypes from "./projects.types";
 
-const API_BASE = "https://sheetari.deno.dev";
+const API_BASE = "https://sheetari.oneezy.deno.net";
 const REPORT_SHEET_ID = "1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k";
 const INPUT_DEFINITIONS_URL =
 	`${API_BASE}/${REPORT_SHEET_ID}/inputs?range=b1:u`;
