@@ -4,7 +4,7 @@ description: Land a finished wayfinder ticket: commit, PR to dev, previews, merg
 disable-model-invocation: true
 ---
 
-A wayfinder ticket has been resolved in this session: the decision is recorded and the artifact (glossary, doc, findings) sits uncommitted on this branch. `/wayfinder` got the ticket **found**; this skill gets it **landed**: onto `dev`, off the working tree, and handed to whoever takes the next ticket. Invoking it is Justin's word to commit, push and open the PR for this ticket. Every deletion still gets its own OK.
+A wayfinder ticket has been resolved in this session: the decision is recorded and the artifact (glossary, doc, findings) sits uncommitted on this branch. `/wayfinder` got the ticket **found**; this skill gets it **landed**: onto `dev`, off the working tree, and handed to whoever takes the next ticket. Invoking it is Justin's word to commit, push, open the PR, and delete the landed branch and its worktree once merged. Nothing outside that scope is deleted.
 
 Walk the steps in order. Each ends on a check; a failed check stops the walk and is reported, never worked around.
 
@@ -26,13 +26,17 @@ Done when `git log -1 dev` in the main checkout is the squash commit.
 
 ## 3. Clean up
 
-The branch model keeps `main`, `dev`, `persist`, `research/*` and `prototype/*` forever; everything else is a feature branch that leaves once merged. Propose the whole list, then act only on what Justin OKs:
+Scope is exactly what step 2 landed: the **landed branch** (the head branch of the merged PR) and the worktree that held it. Nothing else is deleted, ever; invoking this skill is the OK for this scope and no question is asked. Other stale branches or worktrees are only named in the report for Justin.
 
-- **Branches**: the merged feature branch, remote then local. `origin/mq` and `sheetari-fix` are on the standing approved-for-deletion list; still ask.
-- **Pull requests**: any open PR from that branch that is not the merged one gets closed with a one-line comment pointing at the merged PR.
-- **Worktrees**: every worktree under `.claude/worktrees/` whose branch is merged into `dev` and is not the one this session runs in: remove it, then `git worktree prune`. A **locked** worktree belongs to a live session; leave it and name it in the report. The session's own worktree is left for the desktop app, which drops unchanged worktrees itself; name it too.
+1. Verify first: the PR reports `MERGED` with a merge commit, and `origin/dev` contains that commit. Either missing stops the walk.
+2. Close any other open PR from the landed branch with a one-line comment pointing at the merged PR.
+3. Delete the remote branch.
+4. If this session runs in the worktree holding the branch, detach it onto `origin/dev` first; then delete the local branch from the main checkout.
+5. The worktree: another session's is never touched. This session's own, now detached and clean, cannot remove itself; say so in the report. The desktop app drops an unchanged worktree when the session ends, and the next `/wayfound` run removes any worktree left detached, clean and unlocked by an earlier run, then prunes.
 
-Done when `git worktree list` and `git branch -a` show nothing merged-and-unowned except what Justin declined.
+Done when `git branch -a` no longer lists the landed branch anywhere and the report names every worktree left behind.
+
+Requires the harness to allow `git push --delete`, `git branch -D`, `git worktree unlock`, `git worktree remove` and `git worktree prune`; in Claude Code auto mode those need allow rules in `.claude/settings.json`, or the classifier blocks them.
 
 ## 4. Remember
 
