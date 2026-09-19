@@ -1,3 +1,26 @@
+/**
+ * Barrels generator: writes every committed src/lib index.ts in the workspace.
+ *
+ * Contract (ticket #9, 2026-09-18; see ../../README.md for the invariants).
+ * Do not change this generator from a toolchain ticket. Prove toolchain
+ * changes by running `pnpm barrels` on a clean checkout and getting no diff.
+ *
+ * Targets: the five UI barrels in ../config.ts (root, base, helpers, utils,
+ * components) plus one per app that has src/lib, discovered at run time.
+ * Sources: .svelte, .ts and .svelte.ts under each lib path. Excluded: tests,
+ * index.ts, backup files, `server` dirs and `.server.` files, css/json/config.
+ * `.remote.ts` files are included, so app barrels export remote functions.
+ * Output: TS modules as `export *`; Svelte files as a PascalCase default plus
+ *   every `export interface` found in the file; a .svelte.ts with a default
+ *   export gets both forms. Section and category order is deterministic.
+ * Safety: skips the write when content is unchanged; atomic write with a
+ *   direct-write fallback on Windows EPERM; per-file lock files under
+ *   .turbo/barrels-locks so concurrent Turbo tasks do not race.
+ * Modes: `--workspace` writes all targets (root `pnpm barrels`, `//#barrels`);
+ *   `--watch` adds a chokidar watcher with a 50 ms debounce that ignores
+ *   index.ts, .tmp and .lock; no flag writes only the UI root barrel.
+ */
+
 import { promises as fs } from "fs";
 import chokidar from "chokidar";
 import { TOOLS_CONFIG, type UiBarrelTargetConfig } from "../config.ts";

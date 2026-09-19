@@ -1,3 +1,18 @@
+/**
+ * Symlinks generator: apps/<app>/static -> packages/ui/static.
+ *
+ * Contract (ticket #9, 2026-09-18; see ../../README.md).
+ * Status: reserved, currently no effect. No app has a static folder; every
+ * app serves packages/ui/static through `kit.files.assets`, Storybook through
+ * `staticDirs`. This generator is the first attempt at a shared static-assets
+ * package with per-app override, an open question on the map. Keep it intact
+ * until that question resolves.
+ * Behaviour when run: creates a directory symlink per app (absolute target on
+ * Windows, relative elsewhere), replaces an existing symlink, skips a real
+ * directory, tolerates EEXIST from deploy environments. `checkSymlinks` is
+ * read-only; `cleanSymlinks` removes symlinks only, never real directories.
+ */
+
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { TOOLS_CONFIG } from "../config.ts";

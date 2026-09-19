@@ -1,3 +1,26 @@
+/**
+ * Stories generator: one .stories.svelte per UI component.
+ *
+ * Contract (ticket #9, 2026-09-18; see ../../README.md). Storybook is frozen
+ * on the map: keep this working, do not extend it, expect a rework later.
+ *
+ * Input: packages/ui/src/lib/components/**\/*.svelte (not .svelte.ts).
+ * Output: apps/storybook/src/stories/<category>/<name>.stories.svelte, with
+ *   `button/button.svelte` collapsing to `atoms/button.stories.svelte` and a
+ *   title of Components/Atoms/Button. Files are generator-owned: every story
+ *   under the stories folder that maps to no current component is deleted,
+ *   and matching files are overwritten. Hand edits belong in the component's
+ *   JSDoc, never in the story file.
+ * JSDoc tags read from the component: @tags, @story, @props, @ignore, @enable,
+ *   @type single|multi, @layout vertical|horizontal, @dev true|false.
+ *   Parsing lives in ./stories/jsdoc-parser.ts; prop analysis (including
+ *   ComponentProps inheritance) in ./stories/typescript-analyzer.ts; argTypes
+ *   defaults in ./stories/defaults.ts.
+ * Runs from `pnpm stories` (turbo storybook#story) and inside `pnpm watch`.
+ *   Heuristic: one component modified in the last five seconds regenerates
+ *   one story; otherwise everything. The `watch` option is a stub.
+ */
+
 import { dirname, join } from "path";
 import { promises as fs } from "fs";
 import {
