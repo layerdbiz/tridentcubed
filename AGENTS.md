@@ -10,6 +10,10 @@ Use the five agreed default labels. See docs/agents/triage-labels.md.
 Keep Trident business vocabulary and reusable UI vocabulary separate.
 See docs/agents/domain.md.
 
+### Landing a ticket
+`/wayfinder` resolves one map ticket per session; `/wayfound` then lands it
+(commit, PR to dev, previews, merge, cleanup) and briefs the next agent.
+
 ## Task coordination
 
 In Codex, use separate tasks in the saved Trident project for substantial,
