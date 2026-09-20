@@ -84,6 +84,13 @@ the UI package build. Committed barrels are the only barrels Vercel sees.
 Ticket [#12](https://github.com/layerdbiz/tridentcubed/issues/12) must keep
 every one of these true. Each is checkable.
 
+Decided 2026-09-19 on that ticket; the decision lives in its resolution
+comment, not here. It keeps all thirteen. Invariants 1 and 7 are gate steps
+on every upgrade PR; 3 is met by ignoring generated paths in the formatter
+config; 4 is met by an `engines` field of `24.x` in the root and every app
+plus the adapter runtime `nodejs24.x`; 5 is why Turborepo stays the
+orchestrator and Vite Task is not adopted.
+
 1. **Generated files are committed and current.** Barrels, stories and the
    Sheetari snapshot live in git. Vercel trusts them. Proof for any toolchain
    change: on a clean checkout run `pnpm barrels`; `git status` shows no diff.
