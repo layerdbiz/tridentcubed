@@ -17,9 +17,9 @@ Done when the ticket is closed and the map names it.
 ## 2. Land on dev
 
 1. Commit on the current branch. Subject in conventional form with the ticket number, `docs(ui): ... (#6)`; trailer per the harness's attribution rule.
-2. Push the branch and open the PR against `dev` with the body from `/pr`. Title matches the commit subject.
-3. Wait for both Vercel checks, site and app. Report both preview URLs to Justin.
-4. Merge gate. **Docs or comments only** in the diff and **both previews green**: squash-merge now, subject = PR title with the PR number. Anything touching code: stop here with the URLs and wait for Justin's word; merge on it.
+2. Push the branch and open the PR against `dev` with the body from `/pr`. Title matches the commit subject. The body's summary is the **snapshot**: at most five bullets of what landed, written once here and reused verbatim in the closeout.
+3. Wait for both Vercel checks, site and app. Collect, for the closeout: each preview URL, each build's Vercel dashboard URL, and each build log's errors and warnings (deduplicated by message, with a count and the file). Nothing is reported to Justin yet; the closeout in step 5 is the one message.
+4. Merge gate: **both Vercel builds green**, site and app, whatever the diff touches. Green: squash-merge now, subject = PR title with the PR number. Either build red: leave the PR open and the branch in place, skip steps 3 and 4, and go straight to step 5's blocked variant; nothing is merged or deleted on a red build. The gate widens to type checks and the full gate from "Settle the toolchain" (#12) once the svelte-check baseline is zero; until then the builds are the gate.
 5. Fast-forward the main checkout's `dev` from origin.
 
 Done when `git log -1 dev` in the main checkout is the squash commit.
@@ -42,14 +42,10 @@ Requires the harness to allow `git push --delete`, `git branch -D`, `git worktre
 
 If the harness keeps persistent memory, update the map-status note: ticket closed, PR number, `dev` tip, and the frontier from step 5. Codex has no memory; skip.
 
-## 5. Brief the next agent
+## 5. Close out
 
-Query the map's frontier: open child tickets, unblocked, unassigned. Rank by critical path: what blocks the final gate, what blocks the most tickets, what a milestone date makes urgent. Tasks Justin must do by hand (authorizations, sign-ups) are named separately; they are not agent work.
+One message ends the session, built from [CLOSEOUT.md](CLOSEOUT.md): the template is exact, the rules under it are not optional, and the landed and blocked variants are both there. Fill it from the tracker and the checks collected in step 2, never from memory.
 
-Report the frontier as a short table (ticket, type, one-line why), give one recommendation and, if a second session can run in parallel, one more. Then write the next agent's prompt in a single code block, using this shape:
+**Next Up** is chosen, not copied. Read the frontier (open child tickets of the map, unblocked, unassigned) and, when the task board has a `Next Up` column, its cards. Rank by critical path: what blocks the final gate, what blocks the most tickets, what the milestone date makes urgent. Tasks only Justin can do (authorizations, sign-ups) are ranked with the rest and marked *by hand*; they are not left out. When the ranking differs from the column, say so in the recommendation line and, once the column exists, move the card. The code block always targets item 1.
 
-```text
-/wayfinder Work through map #<map> in <owner>/<repo>. Take ticket #<n> "<title>". Claim it by assigning me (<login>) first. Read <settled artifacts the ticket must not redefine> before anything else. Then read <sources named on the ticket and by the handover comments>. <Type-specific instruction: grill in rounds, Matt's round format, whole frontier per round / research against primary sources / build a throwaway prototype>. Output is <the ticket's stated output>, not <what it must not produce>. Do not touch main or persist. Commit only when I say so, then run /wayfound.
-```
-
-Done when the prompt is on screen and every placeholder is filled from the tracker, none guessed.
+Done when the message is on screen, within the line cap, with every placeholder filled from the tracker and every link a real URL.
