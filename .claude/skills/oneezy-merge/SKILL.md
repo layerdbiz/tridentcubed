@@ -26,6 +26,6 @@ Each step names its calls. Nothing exploratory runs between them; one schema loa
 2. **Open the PR**, one call, against the base. Body: `## Summary` holding `Closes #<n>` and the **snapshot** (at most five bullets of what landed; the status report reuses them verbatim), `## Evidence` (before and after, one line each), `## Merge Danger` (door: one-way or two-way; blast radius: one word, one line why). Done when the PR number is returned.
 3. **Wait for the builds**: read the PR's combined status; while any `Vercel – *` status is pending, sleep 90 seconds in the background and read again, nothing else. Done when every Vercel status is success or failure. Any failure: skip step 4.
 4. **Land** (land mode, all builds green): squash-merge with the expected head SHA, title = PR title plus `(#<pr>)`. Then one shell call: fetch, verify `origin/<base>` contains the squash commit (stop if not), check out the base, fast-forward, delete the remote branch and the local branch once. A refused delete is left for the report, not retried. Another session's worktree is never touched; this session's own cannot remove itself.
-5. **Report**: call the Skill tool with `oneezy-status`. It reads the state (open, blocked or closeout) and renders the message.
+5. **Report**: call the Skill tool with `oneezy-status`. It reads the state and renders the message, Next Up and the next session's prompt included.
 
 Budget: open mode at most four calls before the report, land mode at most six, not counting the background sleeps.
