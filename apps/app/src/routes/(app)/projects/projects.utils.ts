@@ -92,19 +92,6 @@ export function getSectionMetrics(
 		return { done: 0, total: 0, percent: 0 };
 	}
 
-	if (section.type === "fields" || section.type === "cover") {
-		const values = Object.values(section.fields);
-		const done = values.reduce((count, value) => {
-			if (Array.isArray(value)) {
-				return count + Number(value.some((item) => String(item || "").trim()));
-			}
-
-			return count + Number(String(value || "").trim().length > 0);
-		}, 0);
-		const total = Math.max(1, values.length);
-		return { done, total, percent: toPercent(done, total) };
-	}
-
 	if (section.type === "time-log") {
 		let done = 0;
 		let total = 0;
@@ -124,13 +111,28 @@ export function getSectionMetrics(
 		return { done, total: safeTotal, percent: toPercent(done, safeTotal) };
 	}
 
-	const done = section.groups.reduce((count, group) => {
-		return count +
-			Number(Boolean(group.title.trim())) +
-			Number(Boolean(group.description.trim())) +
-			Number(group.photos.length > 0 || group.files.length > 0);
+	if (section.type === "photos") {
+		const done = section.groups.reduce((count, group) => {
+			return count +
+				Number(Boolean(group.title.trim())) +
+				Number(Boolean(group.description.trim())) +
+				Number(group.photos.length > 0 || group.files.length > 0);
+		}, 0);
+		const total = Math.max(1, section.groups.length) * 3;
+		return { done, total, percent: toPercent(done, total) };
+	}
+
+	// "fields" and "cover" share one panel type. Checking the two unit
+	// discriminants first is what lets TypeScript narrow to it here.
+	const values = Object.values(section.fields);
+	const done = values.reduce((count, value) => {
+		if (Array.isArray(value)) {
+			return count + Number(value.some((item) => String(item || "").trim()));
+		}
+
+		return count + Number(String(value || "").trim().length > 0);
 	}, 0);
-	const total = Math.max(1, section.groups.length) * 3;
+	const total = Math.max(1, values.length);
 	return { done, total, percent: toPercent(done, total) };
 }
 

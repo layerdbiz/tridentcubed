@@ -9,7 +9,7 @@
 		right?: string | Snippet;
 	}
 
-	let { children = null, ...props }: FooterProps = $props();
+	let { children, ...props }: FooterProps = $props();
 </script>
 
 <Component

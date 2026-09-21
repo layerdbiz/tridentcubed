@@ -3,7 +3,7 @@ import type {
 	ItemSnippet,
 	RootItemSource,
 	RootItemValue,
-} from "./component/root.svelte.ts";
+} from "../root.svelte.ts";
 
 export const cellNames = [
 	"a1",

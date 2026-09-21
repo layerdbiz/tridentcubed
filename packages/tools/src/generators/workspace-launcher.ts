@@ -5,7 +5,9 @@
  * - Reads the root package.json `apps` map (object of booleans, or array).
  *   Enabled apps are the default selection; positional app names on the
  *   command line replace that selection; anything after `--` goes to Turbo.
- * - Validates every selected name against apps/*/package.json `name` fields.
+ * - Validates every selected name against the `name` field of each
+ *   package.json under apps/. (Do not write that path as a glob here:
+ *   star-slash would close this comment and break type stripping.)
  * - Spawns Turbo resolved from node_modules (`turbo/bin/turbo`) with the
  *   current Node binary. Replacing Turbo means rewriting buildTurboArgs and
  *   getTurboSpawnConfig.

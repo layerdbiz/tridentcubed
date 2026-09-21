@@ -160,7 +160,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 <Component
 	{...props}
 	persist={persist}
-	persistContext={{ tag: 'input', type }}
+	persistContext={{ tag: 'input', type: type ?? undefined }}
 	persistGetValue={() => value}
 	persistSetValue={setPersistedValue}
 >

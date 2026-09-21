@@ -654,9 +654,8 @@ export function normalizeSection(
 		};
 	}
 
-	const legacyPhotos = Array.isArray((section as { photos?: unknown[] }).photos)
-		? (section as { photos?: unknown[] }).photos
-		: [];
+	const rawPhotos = (section as { photos?: unknown[] }).photos;
+	const legacyPhotos = Array.isArray(rawPhotos) ? rawPhotos : [];
 	const groups =
 		Array.isArray((section as projectTypes.PhotosSectionType)?.groups)
 			? (section as projectTypes.PhotosSectionType).groups
@@ -1147,6 +1146,10 @@ function finalizeCompletedSeedState(
 			}
 			continue;
 		}
+
+		// Two checks on the "fields" | "cover" discriminant above do not narrow
+		// the panel union; this positive check does.
+		if (section.type !== "photos") continue;
 
 		if (section.required) section.enabled = true;
 		if (!section.enabled) continue;
