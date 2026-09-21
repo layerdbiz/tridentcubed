@@ -10,9 +10,13 @@ Use the five agreed default labels. See docs/agents/triage-labels.md.
 Keep Trident business vocabulary and reusable UI vocabulary separate.
 See docs/agents/domain.md.
 
-### Landing a ticket
-`/wayfinder` resolves one map ticket per session; `/wayfound` then lands it
-(commit, PR to dev, previews, merge, cleanup) and briefs the next agent.
+### Branch status and landing
+`/oneezy-status` renders the read-only status report for the branch, its PR
+and its builds. `/oneezy-merge` commits, pushes and opens the PR;
+`/oneezy-merge into dev` also squash-merges on green builds and cleans up;
+both end with that report, which briefs the next agent when a wayfinder map
+is in play. Skills prefixed `oneezy-` are Justin's; the rest are installed
+from `skills-lock.json` and are never edited here.
 
 ## Task coordination
 
