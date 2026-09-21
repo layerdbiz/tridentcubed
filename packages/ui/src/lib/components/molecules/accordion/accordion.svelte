@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Component, type ComponentProps } from '@layerd/ui';
+	import { Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
 
 	export interface AccordionProps extends ComponentProps {
 		children?: Snippet;
@@ -15,7 +15,7 @@
 	{...props}
 	class={`accordion select-none ${props.class ?? ''}`.trim()}
 >
-	{#snippet component({ props: componentProps })}
+	{#snippet component({ props: componentProps }: { props: ComponentReturn })}
 		<details {...componentProps}>
 			{#if children}
 				{@render children()}

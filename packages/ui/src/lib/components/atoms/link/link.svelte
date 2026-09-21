@@ -37,6 +37,8 @@
 		toggled?: boolean;
 		/** Callback when toggle state changes (when button=true) */
 		onToggle?: (toggled: boolean) => void;
+		/** Value attribute, forwarded to the button (when button=true) */
+		value?: string;
 
 		/** Navigation state props - passed from parent to prevent reactivity loss */
 		currentHash?: string;
