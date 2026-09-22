@@ -37,3 +37,8 @@ port and run the servers in the background, for example
 4174 inside `apps/app`. Preview needs a `vite build` first. A localhost-only
 run that is fetched with curl and then killed does not count as running the
 app.
+
+### Protected branches
+`main` is promoted by hand; never merge into, push to, or modify it.
+Never touch the branch named `persist`. Its rule lives here because it is
+specific to this repo; it is not in any global agent config.
