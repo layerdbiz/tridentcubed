@@ -206,10 +206,11 @@
 			resize: none;
 		}
 
-		fieldset.textarea .icon.start,
-		fieldset.textarea .icon.end {
+		/* One selector, not a list: a nested list flattens to :is(:global ...),
+		   which Svelte rejects. */
+		fieldset.textarea :is(.icon.start, .icon.end) {
 			@apply self-start;
 			margin-top: var(--textarea-icon-offset);
-		} 
+		}
 	}
 </style>

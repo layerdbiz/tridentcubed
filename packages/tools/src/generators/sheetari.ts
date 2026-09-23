@@ -1,3 +1,15 @@
+/**
+ * Sheetari snapshot: fetches four endpoints of one Google Sheet to JSON.
+ *
+ * Contract (ticket #9, 2026-09-18; see ../../README.md).
+ * Status: unused output. Writes inputs, panels, pages, instructions and a
+ * config manifest into apps/app/src/lib/data, but nothing reads that folder.
+ * Runtime data comes from live Sheetari reads in each app's *.remote.ts
+ * files, one sheet id per app. Never part of a build; network-bound; manual
+ * via `pnpm sheetari`. Removal candidate once the platform map picks the
+ * app's database. Base URL and sheet id live in ../config.ts.
+ */
+
 import { resolve as resolveFilePath } from "node:path";
 import { TOOLS_CONFIG } from "../config.ts";
 import { Logger, resolvePath, writeFileAtomic } from "../utils.ts";

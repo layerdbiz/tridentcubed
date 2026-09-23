@@ -1,3 +1,24 @@
+/**
+ * Workspace launcher: the `pnpm dev|watch|build|preview` front door.
+ *
+ * Contract (ticket #9, 2026-09-18; see ../../README.md for the full model):
+ * - Reads the root package.json `apps` map (object of booleans, or array).
+ *   Enabled apps are the default selection; positional app names on the
+ *   command line replace that selection; anything after `--` goes to Turbo.
+ * - Validates every selected name against the `name` field of each
+ *   package.json under apps/. (Do not write that path as a glob here:
+ *   star-slash would close this comment and break type stripping.)
+ * - Spawns Turbo resolved from node_modules (`turbo/bin/turbo`) with the
+ *   current Node binary. Replacing Turbo means rewriting buildTurboArgs and
+ *   getTurboSpawnConfig.
+ * - dev = turbo watch //#barrels:watch <app>#dev
+ *   watch = dev + storybook#story
+ *   build/preview = turbo run <app>#build|preview
+ * - The map is a developer convenience. It never limits which barrels,
+ *   stories or symlinks the generators produce, and Vercel does not use it:
+ *   Vercel runs `pnpm build` inside apps/site and apps/app directly.
+ */
+
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
 import { createRequire } from "module";

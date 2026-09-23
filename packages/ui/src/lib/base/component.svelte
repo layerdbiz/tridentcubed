@@ -341,7 +341,7 @@
 	function getPersistContext(): PersistContext {
 		return {
 			...persistContext,
-			tag: persistContext?.tag ?? normalizedTag,
+			tag: persistContext?.tag ?? String(normalizedTag),
 			type:
 				persistContext?.type ??
 				String(props.type ?? '').trim().toLowerCase(),

@@ -5,7 +5,7 @@
 
 <div style:height="400px">
 	<LineChart
-		{lineData}
+		data={lineData}
 		x="date"
 		y="value"
 	/>

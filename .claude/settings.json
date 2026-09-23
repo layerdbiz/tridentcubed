@@ -1,5 +1,14 @@
 {
   "worktree": {
     "baseRef": "head"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git push origin --delete *)",
+      "Bash(git branch -D *)",
+      "Bash(git worktree unlock *)",
+      "Bash(git worktree remove *)",
+      "Bash(git worktree prune*)"
+    ]
   }
 }
