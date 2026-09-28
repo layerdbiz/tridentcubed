@@ -42,3 +42,33 @@ app.
 `main` is promoted by hand; never merge into, push to, or modify it.
 Never touch the branch named `persist`. Its rule lives here because it is
 specific to this repo; it is not in any global agent config.
+
+## Authoring conventions
+
+Decided on "Codify authoring conventions" (#7). Scoped `AGENTS.md` files
+hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
+`apps/play`; read the one for the folder you are editing. Shared by all:
+
+- **Barrels are generated.** Every `src/lib/index.ts` and the UI package's
+  four sub-barrels are written by the barrels generator. Edit the source
+  file; the generator rewrites the barrel. A hand edit is overwritten.
+- **Names.** Files and folders are one lowercase word (`panel.svelte`),
+  kebab-case only when a second word is unavoidable (`photo-grid.svelte`).
+  Props the same, with camelCase as the fallback. Values camelCase,
+  constants SCREAMING_SNAKE, types `<Name>Props` and `<Name>Type`, booleans
+  `is`/`has`/`should`, converters `to*`, factories `create*`.
+- **Functions.** Named `function` declarations for anything exported or
+  reused; arrows for callbacks and SvelteKit handlers; `for...of` loops.
+  Named imports; `import * as` only for a namespace by design (`valibot as v`).
+- **Current JavaScript.** The browser floor is Vite's default target, with
+  iPhone Safari first-class; leave `build.target` alone. Modernise the lines
+  a change already touches, using the retire-when-touched pairs in
+  `docs/research/2026-09-28-svelte-state-and-remote-functions.md`; record
+  anything wider on "UI library cleanup after Report Generator V1" (#33).
+- **State.** A class with `$state` fields for per-instance state; private
+  module `$state` behind exported functions for a singleton; `createContext`
+  for anything server rendering may mutate. A `.svelte.ts` suffix means the
+  file uses runes.
+- **Tests** sit beside the file they test as `<name>.test.ts`, written with
+  `/tdd` once Vitest lands with `vp`. Lint takes over from this prose where
+  Oxlint can express a rule.
