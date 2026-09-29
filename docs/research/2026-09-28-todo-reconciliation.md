@@ -270,6 +270,16 @@ No UI-package row is marked live: every unbuilt library idea is either already o
 
 All 28 resolved in one pass. Video (43, 47, 48, 105, 126), effects (35, 62, 63, 64, 66, 114, 117), sections and content (79, 82, 87, 89, 124) and the mobile rows (106, 108, 110, 111) are **later**, Phase 16 Website Expansion. Row 109, the mobile menu jump, is a real bug and the first pick when website work reopens. Rows 52, 67, 74, 98 and 116 are **superseded** by the shipped design. Row 96 is **live** and a priority: a form molecule built on the existing `forms/field.svelte.ts` base, which the Report Generator needs.
 
+
+### Issues created (2026-09-28)
+
+- Parent: [Website follow-ups after Report Generator V1](https://github.com/layerdbiz/tridentcubed/issues/51)
+- 119 → [Create the privacy policy page](https://github.com/layerdbiz/tridentcubed/issues/52)
+- 120 → [Create the terms and conditions page from the client's document](https://github.com/layerdbiz/tridentcubed/issues/53)
+- 121 → [Open the legal pages from the site footer in a dialog](https://github.com/layerdbiz/tridentcubed/issues/55), blocked by 52, 53 and the new [Dialog component for the UI package](https://github.com/layerdbiz/tridentcubed/issues/54)
+- 109 → [Fix the mobile menu jump on the site](https://github.com/layerdbiz/tridentcubed/issues/56), a bug, deferred but tracked
+- 96 → [Form molecule on the shared field base](https://github.com/layerdbiz/tridentcubed/issues/57), standalone: a Report Generator priority, not #33 cleanup
+
 ## `TODO.txt` items not in the CSV
 
 The transcript is one line; everything below is what the CSV generator dropped or folded.
