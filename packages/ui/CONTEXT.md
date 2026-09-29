@@ -30,6 +30,9 @@ _Avoid_: takeover, legacy snippet, custom renderer, render override
 **Base props**:
 The behaviors any component gets by being built on the base component: debug, observe, scroll, persist, total. Spoken forms: base helpers, base utilities, base component props.
 
+**Omitted base prop**:
+A base prop a component removes from its own props because it owns that word itself: a divider without color, a toggle without position, a form field without disabled. Spoken form: omit.
+
 **Content**:
 What fills a component: its children, else its label, else a default text. Bare "content" without "snippet" means the content rail.
 
@@ -58,6 +61,10 @@ The plain, uncolored theme pairing. Say "base color" when you mean the color; ba
 **Appearance**:
 One of heavy, lite, outline, ghost, glass, gradient. How strongly the color is applied. Heavy is the default when a color is set.
 _Avoid_: variant (as a base prop; variant is a component-specific word)
+
+**Variant**:
+A component's own set of named looks, declared on that component and never on the base component: a button's text, icon, icon text, text icon, icon text icon; a toggle's panel, tooltip, menu, dialog, sheet, toast; the form fields' shared set. Appearance is the base-level counterpart.
+_Avoid_: layout (for a variant), type (renamed to variant on toggle)
 
 **Invert**:
 Flips the light and dark sides of the current appearance.

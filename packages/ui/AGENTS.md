@@ -21,6 +21,10 @@ unfinished and stay unused.
   at every tier (ADR 0001); `Root` is imported only by the base component.
 - Props type `<Name>Props extends ComponentProps`; base props never change
   a component's own layout. Canonical rail names and `icon=` in new code.
+- `variant` is the component's own union of looks (button, toggle and
+  `forms/field.svelte.ts` are the references); `color`, `appearance` and
+  `size` stay base props. A base prop the component redefines is dropped
+  with `Omit<ComponentProps, 'x'>` (divider, toggle, slider).
 - Styling in the markup with Tailwind; a `<style lang="postcss">` block
   with `@reference "#ui.css"` when raw CSS is needed. Palette utilities stay
   out; white and black are allowed.
