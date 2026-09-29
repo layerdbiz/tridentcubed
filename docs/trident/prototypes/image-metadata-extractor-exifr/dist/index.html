@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Photo Data Extractor</title>
+		<link rel="stylesheet" href="./style.css" />
+	</head>
+
+	<body>
+		<main class="app" id="app">
+			<section class="stage" aria-label="Photo preview area">
+				<div class="empty-state" id="emptyState">
+					<p>
+						<svg class="tip-icon" viewBox="0 0 24 24" aria-hidden="true">
+							<path
+								d="M1 11h3v2H1zm18.1-7.5L17 5.6L18.4 7l2.1-2.1zM11 1h2v3h-2zM4.9 3.5L3.5 4.9L5.6 7L7 5.6zM10 22c0 .6.4 1 1 1h2c.6 0 1-.4 1-1v-1h-4zm2-16c-3.3 0-6 2.7-6 6c0 2.2 1.2 4.2 3 5.2V19c0 .6.4 1 1 1h4c.6 0 1-.4 1-1v-1.8c1.8-1 3-3 3-5.2c0-3.3-2.7-6-6-6m1 9.9V17h-2v-1.1c-1.7-.4-3-2-3-3.9c0-2.2 1.8-4 4-4s4 1.8 4 4c0 1.9-1.3 3.4-3 3.9m7-4.9h3v2h-3z"
+							/>
+						</svg>
+
+						<span>Browse photo or take picture from device</span>
+					</p>
+				</div>
+
+				<img id="preview" class="preview-image" alt="Selected image preview" hidden />
+
+				<video
+					id="cameraPreview"
+					class="camera-preview"
+					autoplay
+					muted
+					playsinline
+					hidden
+				></video>
+
+				<canvas id="cameraCanvas" hidden></canvas>
+
+				<section class="summary-panel" id="summary" hidden>
+					<dl>
+						<div>
+							<dt>File name</dt>
+							<dd id="fileName">—</dd>
+						</div>
+
+						<div>
+							<dt>Date taken</dt>
+							<dd id="dateTaken">—</dd>
+						</div>
+
+						<div>
+							<dt>GPS coordinates</dt>
+							<dd id="location">—</dd>
+						</div>
+					</dl>
+				</section>
+			</section>
+
+			<header class="top-bar">
+				<img
+					class="logo"
+					src="https://www.tridentcubed.com/branding/logo-dark.svg"
+					alt="Trident Cubed logo"
+				/>
+
+				<div>
+					<p class="eyebrow">Trident Cubed</p>
+					<h1>Photo Data Extractor</h1>
+				</div>
+			</header>
+
+			<button id="metadataButton" class="metadata-chip" type="button" hidden disabled>
+				<svg class="metadata-icon" viewBox="0 0 24 24" aria-hidden="true">
+					<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z" />
+					<path d="M8 8h8" />
+					<path d="M8 12h8" />
+					<path d="M8 16h5" />
+				</svg>
+
+				<span>Metadata</span>
+			</button>
+
+			<p class="status" id="status" role="status" aria-live="polite"></p>
+
+			<div class="camera-tools" id="cameraTools" hidden>
+				<button id="captureButton" type="button">Capture</button>
+				<button id="switchCameraButton" type="button">Switch</button>
+				<button id="closeCameraButton" type="button">Close</button>
+			</div>
+
+			<footer class="bottom-bar">
+				<label class="button" for="fileInput">
+					<svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+						<path
+							d="M4 5.5A2.5 2.5 0 0 1 6.5 3h4.2c.7 0 1.36.33 1.78.9L13.6 5.4c.23.3.59.48.97.48H18A2.5 2.5 0 0 1 20.5 8.4v8.1A2.5 2.5 0 0 1 18 19H6.5A2.5 2.5 0 0 1 4 16.5v-11Z"
+						/>
+						<path d="m7.5 15.75 2.6-3.2 2.05 2.35 1.25-1.5 3.1 3.75h-9Z" />
+					</svg>
+
+					<span>Browse</span>
+				</label>
+
+				<button id="cameraButton" type="button">
+					<svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true">
+						<path
+							d="M8.75 5.25 10 3.5h4l1.25 1.75H18A3 3 0 0 1 21 8.25v8A3 3 0 0 1 18 19.25H6a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3h2.75Z"
+						/>
+						<path d="M12 16.4a3.65 3.65 0 1 0 0-7.3 3.65 3.65 0 0 0 0 7.3Z" />
+						<path d="M18.1 8.45h.02" />
+					</svg>
+
+					<span>Camera</span>
+				</button>
+			</footer>
+
+			<input id="fileInput" class="visually-hidden" type="file" />
+
+			<input
+				id="cameraInput"
+				class="visually-hidden"
+				type="file"
+				accept="image/*"
+				capture="environment"
+			/>
+
+			<dialog class="metadata-dialog" id="metadataOverlay" aria-label="All photo metadata">
+				<button
+					id="closeMetadataButton"
+					class="icon-button"
+					type="button"
+					aria-label="Close metadata"
+				>
+					×
+				</button>
+
+				<pre id="output">Pick an image to inspect its metadata.</pre>
+			</dialog>
+		</main>
+
+		<script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+		<script src="./script.js"></script>
+	</body>
+</html>
