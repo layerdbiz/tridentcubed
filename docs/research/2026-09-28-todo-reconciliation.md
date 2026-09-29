@@ -13,11 +13,11 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 | Bucket | CSV rows | Other sources |
 | --- | --- | --- |
 | done | 46 | 0 |
-| live | 3 | 0 |
-| later | 20 | 0 |
-| superseded | 7 | 1 (`tailwind-grid-breakout.md`) |
+| live | 4 | 0 |
+| later | 42 | 0 |
+| superseded | 12 | 1 (`tailwind-grid-breakout.md`) |
 | duplicate | 2 | 2 (`TODO.md`, `ICONS.md`) |
-| unclear | 28 | 0 |
+| unclear | 0 | 0 |
 | **Total** | **106** | **3** |
 
 ## `.todo/TODO.csv`
@@ -36,19 +36,19 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 | 58 | Create blue gradient effect | done | `HomePage` 455-476: radial primary gradients plus a `to-black` band | Dep 55 dropped (done). |
 | 55 | Add trusted by logos section | done | `HomePage` 481-525 `Section id="Partners"`, `apps/site/src/lib/partners/partners.remote.ts` | |
 | 34 | Create typewriter text animation | done | `HomePage` 245-253 `typewriter=` on `Text`; `ui/components/atoms/text/text.svelte` 29-35 | Dep 31 dropped (done). |
-| 47 | Change background image to video | unclear | No `<video>` or video component in `apps/site` or `packages/ui`; hero background is `Image bg` (`HomePage` 450) | Dep 43 dropped (unclear). |
-| 48 | Make learn more button play video | unclear | `HomePage` 295-309: Learn More is `href="#About"`; no video | Deps 43, 39 dropped. |
-| 35 | Add count up animation for stats | unclear | `ui/components/atoms/number/number.svelte` has no animation; `HomePage` 268-271 only sets `data-target`; `globe.svelte.ts` `animateCounter` has no call site | |
+| 47 | Change background image to video | later | No `<video>` or video component in `apps/site` or `packages/ui`; hero background is `Image bg` (`HomePage` 450) | Dep 43 dropped (unclear). Phase 16 Website Expansion. Justin 2026-09-28: video |
+| 48 | Make learn more button play video | later | `HomePage` 295-309: Learn More is `href="#About"`; no video | Deps 43, 39 dropped. Phase 16 Website Expansion. Justin 2026-09-28: video |
+| 35 | Add count up animation for stats | later | `ui/components/atoms/number/number.svelte` has no animation; `HomePage` 268-271 only sets `data-target`; `globe.svelte.ts` `animateCounter` has no call site | Phase 16 Website Expansion. Justin 2026-09-28: wanted, draws attention to the stats; not now |
 
 ### About Section
 
 | ID | Task | Bucket | Citation | Note |
 | --- | --- | --- | --- | --- |
 | 51 | Create profile/contact card variant | done | `ui/components/molecules/card/card.svelte` `profile` snippet | Dep 50 dropped (done). |
-| 52 | Set image ratio to 9:16 vertical | unclear | `card.svelte` profile snippet uses `aspect-square` | Not built as written; the square may be the current design. Dep 51 dropped. |
+| 52 | Set image ratio to 9:16 vertical | superseded | `card.svelte` profile snippet uses `aspect-square` | Not built as written; the square may be the current design. Dep 51 dropped. Justin 2026-09-28: design moved on; profile cards ship square (card.svelte) |
 | 53 | Add LinkedIn icon functionality | done | `card.svelte` profile: `Link href={icon} external` with `icon-[devicon--linkedin]` | Dep 51 dropped. |
 | 54 | Add team member detail pages | later | Roadmap Phase 16 Website Expansion + Port SEO Page System | Dep 51 dropped. |
-| 62 | Add scroll visual effects to about | unclear | No parallax; only the hero fade-in (`HomePage` 1025-1044) and the `observe` helper exist | Dep 61 dropped (done). |
+| 62 | Add scroll visual effects to about | later | No parallax; only the hero fade-in (`HomePage` 1025-1044) and the `observe` helper exist | Dep 61 dropped (done). Phase 16 Website Expansion. Justin 2026-09-28: effects |
 | 61 | Fix mobile image ratios | done | `HomePage` 601 `aspect-video lg:aspect-square` | |
 
 ### Components
@@ -67,14 +67,14 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 | 36 | Add icons to buttons | done | `ui/components/atoms/button/button.svelte` `icon` prop; e.g. `(site)/+layout.svelte` `icon="icon-[mdi--phone]"` | Dep 31 dropped. |
 | 38 | Edit icon component | done | `ui/components/atoms/icon/icon.svelte` resolves `icon-[theme--name]` classes for `@iconify/tailwind4` | Dep 37 dropped. |
 | 42 | Create image component | done | `ui/components/atoms/image/image.svelte` | Built on the base component, not a media component (row 41). Dep 41 dropped. |
-| 43 | Create video component | unclear | No `video*.svelte` under `packages/ui/src` or `apps/site/src` | Dep 41 dropped. |
+| 43 | Create video component | later | No `video*.svelte` under `packages/ui/src` or `apps/site/src` | Dep 41 dropped. Phase 16 Website Expansion. Justin 2026-09-28: video component: useful, not needed now |
 | 45 | Create divider component | done | `ui/components/atoms/divider/divider.svelte` | Dep 41 dropped. |
 | 46 | Create pattern component | done | `image.svelte` `pattern?: string \| boolean` prop | As an Image prop, not a component. Dep 41 dropped. |
-| 96 | Create form molecule component | unclear | No `form.svelte` in `packages/ui`; the site form is inline (`HomePage` 814-928) | Adjacent map fog line: "Organism authoring for non-static sections". Dep 95 dropped. |
+| 96 | Create form molecule component | live | No `form.svelte` in `packages/ui`; the site form is inline (`HomePage` 814-928) | Adjacent map fog line: "Organism authoring for non-static sections". Dep 95 dropped. Justin 2026-09-28: PRIORITY: form molecule on the existing forms/field.svelte.ts base (input, textarea, checkbox, radio, select, switch already extend FieldProps); needed by the Report Generator |
 | 97 | Create contact form organism | done | `HomePage` 814-928 with `apps/site/src/lib/contact/contact.remote.ts` `submitContactData` | Shipped inline in the page, not as a library organism. Dep 96 dropped. |
-| 98 | Add Google contact form integration | unclear | `contact.remote.ts` 57 posts to a Zapier webhook; no Google Form | Dep 97 dropped. |
+| 98 | Add Google contact form integration | superseded | `contact.remote.ts` 57 posts to a Zapier webhook; no Google Form | Dep 97 dropped. Justin 2026-09-28: design moved on; Zapier webhook shipped instead (contact.remote.ts) |
 | 113 | Add infinite scroll animation | done | `slider.svelte` `autoscroll` (embla-carousel-auto-scroll); `HomePage` 500 `autoscroll={0.5}` | Dep 112 dropped. |
-| 114 | Add scroll-triggered movement | unclear | Nothing scroll-driven in `slider.svelte` or `ui/base/helpers/scroll.svelte.ts` | Dep 112 dropped. |
+| 114 | Add scroll-triggered movement | later | Nothing scroll-driven in `slider.svelte` or `ui/base/helpers/scroll.svelte.ts` | Dep 112 dropped. Phase 16 Website Expansion. Justin 2026-09-28: effects |
 | 39 | Edit button component | done | `button.svelte` `icon`, `iconToggle`, `iconHover`, `variant` | Deps 36, 37 dropped. |
 | 44 | Update icon component for media | superseded | `packages/ui/CONTEXT.md` "Base component system"; `packages/ui/docs/adr/0001-default-renderer-is-the-authoring-path.md` | Every component builds on the base component; there is no media layer. Deps 41, 37 dropped. |
 | 76 | Move toggle functionality to button | done | `button.svelte` 43-64, 141-220: `toggled`, `iconToggle`, `onToggle` | Deps 75, 39 dropped. |
@@ -110,16 +110,16 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 | 104 | Generate videos from images | later | Roadmap Phase 20 AI-Assisted Workflows + Automation | Dep 103 dropped. |
 | 60 | Get content and images for about | done | `about.remote.ts`; rendered at `HomePage` 582-607 | |
 | 122 | Grab original images from current site | done | `packages/ui/static/photos/trident-cubed-*.webp`, `*.png` | Needs Justin's confirmation that these are the originals. |
-| 124 | Review extended services | unclear | `services.remote.ts` reads the services sheet; the review itself is not verifiable in code | |
+| 124 | Review extended services | later | `services.remote.ts` reads the services sheet; the review itself is not verifiable in code | Phase 16 Website Expansion. Justin 2026-09-28: content review |
 | 125 | Consider LinkedIn newsfeed integration | later | Roadmap Phase 16 Website Expansion + Port SEO Page System | |
-| 126 | Review video section content | unclear | No video anywhere in the site; nothing records the review | |
+| 126 | Review video section content | later | No video anywhere in the site; nothing records the review | Phase 16 Website Expansion. Justin 2026-09-28: video |
 
 ### CTA Section
 
 | ID | Task | Bucket | Citation | Note |
 | --- | --- | --- | --- | --- |
 | 77 | Create CTA section | done | `HomePage` 966-992 `Section class="dark"` with Contact Sales | Dep 74 dropped (unclear). |
-| 79 | Add careers variant to CTA | unclear | `HomePage` 966-992 has one Contact Sales button; no careers variant | Dep 77 dropped. |
+| 79 | Add careers variant to CTA | later | `HomePage` 966-992 has one Contact Sales button; no careers variant | Dep 77 dropped. Phase 16 Website Expansion. Justin 2026-09-28: future |
 
 ### Data
 
@@ -133,7 +133,7 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 
 | ID | Task | Bucket | Citation | Note |
 | --- | --- | --- | --- | --- |
-| 74 | Update FAQ section background | unclear | `HomePage` 935: FAQ is `bg-base-200-700`; Contact is the base background; they do not match as the row asks | Dep 69 dropped. |
+| 74 | Update FAQ section background | superseded | `HomePage` 935: FAQ is `bg-base-200-700`; Contact is the base background; they do not match as the row asks | Dep 69 dropped. Justin 2026-09-28: design moved on; shipped tint stands (HomePage) |
 
 ### Footer
 
@@ -141,9 +141,9 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 | --- | --- | --- | --- | --- |
 | 84 | Add footer copyright | done | `(site)/+layout.svelte` `<Copyright year="2020" ...>`; `ui/components/molecules/copyright/copyright.svelte` | Dep 83 dropped. |
 | 85 | Add footer link categories | later | Roadmap Phase 16 Website Expansion + Port SEO Page System (link categories need pages to link) | Dep 83 dropped. |
-| 87 | Add trust/award icons | unclear | Footer in `(site)/+layout.svelte` holds logo, copyright and three social buttons only | Dep 83 dropped. |
+| 87 | Add trust/award icons | later | Footer in `(site)/+layout.svelte` holds logo, copyright and three social buttons only | Dep 83 dropped. Phase 16 Website Expansion. Justin 2026-09-28: future |
 | 88 | Add logo to footer | done | `(site)/+layout.svelte` Footer `<Logo class="size-11" />` | Dep 83 dropped. |
-| 89 | Show company accolades | unclear | Not in the footer or any section | Dep 83 dropped. |
+| 89 | Show company accolades | later | Not in the footer or any section | Dep 83 dropped. Phase 16 Website Expansion. Justin 2026-09-28: future |
 | 86 | Add social media icons | done | `(site)/+layout.svelte` Footer: Facebook, LinkedIn, WhatsApp buttons | Deps 83, 37 dropped. |
 | 83 | Create footer component | done | `ui/components/organisms/footer/footer.svelte`; used in `(site)/+layout.svelte` | |
 
@@ -174,23 +174,23 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 | ID | Task | Bucket | Citation | Note |
 | --- | --- | --- | --- | --- |
 | 107 | Reduce Trident Cubed font size mobile | done | `ui/components/molecules/logo/logo.svelte` 285 `text-lg ... lg:text-xl` | Dep 106 dropped. |
-| 108 | Center mobile header layout | unclear | `(site)/+layout.svelte` Header: logo in column 1, nav toggle right (`nav.svelte` 84); Call Us sits inside the nav, not left of the logo | Not built as written. Dep 106 dropped. |
-| 109 | Fix mobile menu jump issue | unclear | Not verifiable from code; needs an eye check | Dep 106 dropped. |
-| 110 | Fix mobile sun icon position | unclear | `Theme` toggle carries `justify-self-start lg:justify-self-center` in `(site)/+layout.svelte`; whether that fixed it needs an eye check | Dep 106 dropped. |
-| 111 | Fix mobile divider height | unclear | `divider.svelte` default `height = '120px'`, no mobile override | Dep 106 dropped. |
-| 106 | Reduce mobile header size | unclear | `ui/components/organisms/header/header.svelte` `px-4 py-6` with no mobile variant | |
-| 116 | Reorganize mobile content layout | unclear | `HomePage` 583-606: about `Container` is `flex-col` with `Content` before `Image`, no `order-` classes | Not built. |
-| 117 | Make services swipeable on mobile | unclear | `HomePage` 628, 998-1000: services are a CSS grid, no `Slider` | Not built. |
+| 108 | Center mobile header layout | later | `(site)/+layout.svelte` Header: logo in column 1, nav toggle right (`nav.svelte` 84); Call Us sits inside the nav, not left of the logo | Not built as written. Dep 106 dropped. Phase 16 Website Expansion. Justin 2026-09-28: eye check with #15 |
+| 109 | Fix mobile menu jump issue | later | Not verifiable from code; needs an eye check | Dep 106 dropped. Phase 16 Website Expansion. Justin 2026-09-28: REAL BUG, first pick when website work reopens |
+| 110 | Fix mobile sun icon position | later | `Theme` toggle carries `justify-self-start lg:justify-self-center` in `(site)/+layout.svelte`; whether that fixed it needs an eye check | Dep 106 dropped. Phase 16 Website Expansion. Justin 2026-09-28: eye check with #15 |
+| 111 | Fix mobile divider height | later | `divider.svelte` default `height = '120px'`, no mobile override | Dep 106 dropped. Phase 16 Website Expansion. Justin 2026-09-28: eye check with #15 |
+| 106 | Reduce mobile header size | later | `ui/components/organisms/header/header.svelte` `px-4 py-6` with no mobile variant | Phase 16 Website Expansion. Justin 2026-09-28: eye check with #15 |
+| 116 | Reorganize mobile content layout | superseded | `HomePage` 583-606: about `Container` is `flex-col` with `Content` before `Image`, no `order-` classes | Not built. Justin 2026-09-28: design moved on; shipped mobile order stands (HomePage) |
+| 117 | Make services swipeable on mobile | later | `HomePage` 628, 998-1000: services are a CSS grid, no `Slider` | Not built. Phase 16 Website Expansion. Justin 2026-09-28: could be good; not now |
 
 ### Services Section
 
 | ID | Task | Bucket | Citation | Note |
 | --- | --- | --- | --- | --- |
-| 67 | Replace label with add icon | unclear | `card.svelte` service snippet: the label is commented out (78-83); no add icon | Dep 66 dropped. |
+| 67 | Replace label with add icon | superseded | `card.svelte` service snippet: the label is commented out (78-83); no add icon | Dep 66 dropped. Justin 2026-09-28: design moved on; label removed instead (card.svelte) |
 | 68 | Create shopping cart functionality | later | Roadmap Phase 16 Website Expansion + Port SEO Page System (a quote-request flow) | Dep 67 dropped. |
-| 63 | Add light pattern background to services | unclear | `HomePage` 622: Services is `bg-base-200-700`, no pattern | |
-| 64 | Add light gradient to services | unclear | No gradient in the Services section | |
-| 66 | Add mouse follow border effect | unclear | Nothing pointer-driven in `card.svelte` | |
+| 63 | Add light pattern background to services | later | `HomePage` 622: Services is `bg-base-200-700`, no pattern | Phase 16 Website Expansion. Justin 2026-09-28: effects |
+| 64 | Add light gradient to services | later | No gradient in the Services section | Phase 16 Website Expansion. Justin 2026-09-28: effects |
+| 66 | Add mouse follow border effect | later | Nothing pointer-driven in `card.svelte` | Phase 16 Website Expansion. Justin 2026-09-28: wanted at some point; not now |
 | 65 | Add wavy icon separator | done | `ui/components/atoms/title/title.svelte` `water-swoosh` SVG between h1 and subtitle (`icon = true`); `Title` used at `HomePage` 624-627 | |
 
 ### Testimonials
@@ -198,13 +198,13 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 | ID | Task | Bucket | Citation | Note |
 | --- | --- | --- | --- | --- |
 | 80 | Create testimonial section | done | `HomePage` 527-544 testimonials `Slider`; `testimonials.remote.ts` | |
-| 82 | Cover all client types | unclear | Coverage lives in the testimonials sheet, not verifiable in code | Dep 81 dropped. |
+| 82 | Cover all client types | later | Coverage lives in the testimonials sheet, not verifiable in code | Dep 81 dropped. Phase 16 Website Expansion. Justin 2026-09-28: content, important later |
 
 ### Visual Effects
 
 | ID | Task | Bucket | Citation | Note |
 | --- | --- | --- | --- | --- |
-| 105 | Add scroll-triggered video playback | unclear | No video in the site | Deps 104, 43 dropped. |
+| 105 | Add scroll-triggered video playback | later | No video in the site | Deps 104, 43 dropped. Phase 16 Website Expansion. Justin 2026-09-28: video |
 
 ### Apps Tools
 
@@ -256,7 +256,7 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 | --- | --- | --- | --- |
 | Convert the vanilla CSS content/popout/feature/full breakout grid to Tailwind `@apply` | superseded | Rails: `packages/ui/CONTEXT.md` "Rails" (rails container, content, full, gutter and directional rails, `popout` kept as an alias); `ui/base/helpers/rails.svelte.ts` | Same idea as CSV rows 90 and 91. |
 
-## Live rows for Justin
+## Live rows (approved by Justin, 2026-09-28)
 
 | ID | Task | Home if approved |
 | --- | --- | --- |
@@ -266,40 +266,9 @@ A dependency edge is kept only between two live rows. Every other edge is noted 
 
 No UI-package row is marked live: every unbuilt library idea is either already on #33, in a map fog line, or unclear below.
 
-## Unclear rows for Justin
+## Decisions on the formerly unclear rows (Justin, 2026-09-28)
 
-| ID | Task | Why unclear |
-| --- | --- | --- |
-| 35 | Add count up animation for stats | Not built; hero polish nobody has re-asked for |
-| 43 | Create video component | Not built; only matters if 47/48/105 are wanted |
-| 47 | Change background image to video | Not built |
-| 48 | Make learn more button play video | Not built; button links to About today |
-| 52 | Set image ratio to 9:16 vertical | Profile cards ship square |
-| 62 | Add scroll visual effects to about | Not built |
-| 63 | Add light pattern background to services | Not built |
-| 64 | Add light gradient to services | Not built |
-| 66 | Add mouse follow border effect | Not built |
-| 67 | Replace label with add icon | Label was commented out instead |
-| 74 | Update FAQ section background | FAQ is tinted, Contact is not; design moved on |
-| 79 | Add careers variant to CTA | Not built |
-| 82 | Cover all client types | Content question, lives in the sheet |
-| 87 | Add trust/award icons | Not built |
-| 89 | Show company accolades | Not built |
-| 96 | Create form molecule component | Not built; site form is inline |
-| 98 | Add Google contact form integration | Zapier webhook shipped instead |
-| 105 | Add scroll-triggered video playback | Not built |
-| 106 | Reduce mobile header size | Needs an eye check on the preview |
-| 108 | Center mobile header layout | Header is logo left, menu right; phone button inside the nav |
-| 109 | Fix mobile menu jump issue | Needs an eye check |
-| 110 | Fix mobile sun icon position | Needs an eye check |
-| 111 | Fix mobile divider height | Needs an eye check |
-| 114 | Add scroll-triggered movement | Not built |
-| 116 | Reorganize mobile content layout | Content still precedes images on mobile |
-| 117 | Make services swipeable on mobile | Services are a grid, not a slider |
-| 124 | Review extended services | Content review, not verifiable |
-| 126 | Review video section content | Content review, not verifiable |
-
-The five mobile eye-check rows (106, 109, 110, 111 and 108) can be settled in one pass against the site preview, which "Verify the tridentcubed site preview renders correctly" (#15) already asks for.
+All 28 resolved in one pass. Video (43, 47, 48, 105, 126), effects (35, 62, 63, 64, 66, 114, 117), sections and content (79, 82, 87, 89, 124) and the mobile rows (106, 108, 110, 111) are **later**, Phase 16 Website Expansion. Row 109, the mobile menu jump, is a real bug and the first pick when website work reopens. Rows 52, 67, 74, 98 and 116 are **superseded** by the shipped design. Row 96 is **live** and a priority: a form molecule built on the existing `forms/field.svelte.ts` base, which the Report Generator needs.
 
 ## `TODO.txt` items not in the CSV
 
