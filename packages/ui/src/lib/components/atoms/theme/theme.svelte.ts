@@ -3,20 +3,15 @@
  */
 
 // Default themes that are always available
-export const DEFAULT_THEMES = ["default"] as const;
+export const DEFAULT_THEMES = ['default'] as const;
 
 // Extended theme options (can be customized)
-export const EXTENDED_THEMES = [
-	"dracula",
-	"retro",
-	"corporate",
-	"cyberpunk",
-] as const;
+export const EXTENDED_THEMES = ['dracula', 'retro', 'corporate', 'cyberpunk'] as const;
 
 // All available themes
 export const ALL_THEMES = [...DEFAULT_THEMES, ...EXTENDED_THEMES] as const;
 
-export type ThemeName = typeof ALL_THEMES[number];
+export type ThemeName = (typeof ALL_THEMES)[number];
 
 /**
  * Parse themes from various input formats
@@ -26,10 +21,10 @@ export type ThemeName = typeof ALL_THEMES[number];
 export function parseThemes(themes?: string | string[]): string[] {
 	let themeList: string[] = [];
 
-	if (typeof themes === "string") {
+	if (typeof themes === 'string') {
 		// Parse comma-separated string
 		themeList = themes
-			.split(",")
+			.split(',')
 			.map((theme) => theme.trim())
 			.filter(Boolean);
 	} else if (Array.isArray(themes)) {
@@ -37,7 +32,7 @@ export function parseThemes(themes?: string | string[]): string[] {
 	}
 
 	// Always ensure 'default' is included and is first
-	const uniqueThemes = new Set(["default", ...themeList]);
+	const uniqueThemes = new Set(['default', ...themeList]);
 	return Array.from(uniqueThemes);
 }
 
@@ -49,8 +44,8 @@ export function getStorybookThemeItems(themes?: string | string[]) {
 
 	return themeList.map((theme) => ({
 		value: theme,
-		icon: "paintbrush",
-		title: theme.charAt(0).toUpperCase() + theme.slice(1),
+		icon: 'paintbrush',
+		title: theme.charAt(0).toUpperCase() + theme.slice(1)
 	}));
 }
 
@@ -59,9 +54,9 @@ export function getStorybookThemeItems(themes?: string | string[]) {
  * @param themeName - Name of the theme to apply
  */
 export function applyTheme(themeName: string) {
-	if (typeof window !== "undefined" && window.document) {
+	if (typeof window !== 'undefined' && window.document) {
 		const html = window.document.documentElement;
-		html.setAttribute("data-theme", themeName);
+		html.setAttribute('data-theme', themeName);
 	}
 }
 
@@ -69,11 +64,10 @@ export function applyTheme(themeName: string) {
  * Get current theme from document
  */
 export function getCurrentTheme(): string {
-	if (typeof window !== "undefined" && window.document) {
-		return window.document.documentElement.getAttribute("data-theme") ||
-			"default";
+	if (typeof window !== 'undefined' && window.document) {
+		return window.document.documentElement.getAttribute('data-theme') || 'default';
 	}
-	return "default";
+	return 'default';
 }
 
 /**
@@ -90,34 +84,28 @@ export interface ThemeConfig {
  */
 export function createThemeConfig(
 	themes?: string | string[],
-	defaultTheme: string = "default",
+	defaultTheme: string = 'default'
 ): ThemeConfig {
 	const themeList = parseThemes(themes);
 
 	return {
 		themes: themeList,
 		defaultTheme,
-		currentTheme: getCurrentTheme(),
+		currentTheme: getCurrentTheme()
 	};
 }
 
 /**
  * Validate if a theme name is valid
  */
-export function isValidTheme(
-	themeName: string,
-	availableThemes: string[],
-): boolean {
+export function isValidTheme(themeName: string, availableThemes: string[]): boolean {
 	return availableThemes.includes(themeName);
 }
 
 /**
  * Get the next theme in the list (useful for cycling)
  */
-export function getNextTheme(
-	currentTheme: string,
-	availableThemes: string[],
-): string {
+export function getNextTheme(currentTheme: string, availableThemes: string[]): string {
 	const currentIndex = availableThemes.indexOf(currentTheme);
 	const nextIndex = (currentIndex + 1) % availableThemes.length;
 	return availableThemes[nextIndex];
@@ -128,9 +116,9 @@ export function getNextTheme(
  */
 export class ThemeManager {
 	private themes: string[];
-	private currentTheme = $state("default");
+	private currentTheme = $state('default');
 
-	constructor(themes?: string | string[], defaultTheme: string = "default") {
+	constructor(themes?: string | string[], defaultTheme: string = 'default') {
 		this.themes = parseThemes(themes);
 		this.currentTheme = defaultTheme;
 	}

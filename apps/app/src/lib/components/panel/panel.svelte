@@ -76,10 +76,14 @@
 
 <Accordion
 	{...props}
-	class="panel rounded-xl border py-2 {props.class || classes.accordion ? '' : 'bg-neutral-200/40 border-neutral-200'} {classes.accordion ? classes.accordion : ''} {props.class ? props.class : ''}"
+	class="panel rounded-xl border py-2 {props.class || classes.accordion
+		? ''
+		: 'border-neutral-200 bg-neutral-200/40'} {classes.accordion
+		? classes.accordion
+		: ''} {props.class ? props.class : ''}"
 >
-	<AccordionTitle	class="px-4 py-2 font-medium {classes.title}">{label}</AccordionTitle>
-	<AccordionContent class="py-2 pt-4 px-4 border-neutral-200 border-t {classes.content}">
+	<AccordionTitle class="px-4 py-2 font-medium {classes.title}">{label}</AccordionTitle>
+	<AccordionContent class="border-t border-neutral-200 px-4 py-2 pt-4 {classes.content}">
 		{#if layout === 'default'}
 			{@render panelDefault()}
 		{:else if layout === 'list'}

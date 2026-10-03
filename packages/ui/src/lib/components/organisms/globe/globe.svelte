@@ -1085,8 +1085,8 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 	// Handle window resize - update globe dimensions
 	$effect(() => {
 		// Track window dimensions
-		windowWidth;
-		windowHeight;
+		void windowWidth;
+		void windowHeight;
 
 		if (!globeInstance) return;
 
@@ -1113,7 +1113,10 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 	function isWebGLAvailable(): boolean {
 		try {
 			const canvas = document.createElement('canvas');
-			const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+			const gl =
+				canvas.getContext('webgl2') ||
+				canvas.getContext('webgl') ||
+				canvas.getContext('experimental-webgl');
 			if (!gl) {
 				console.warn('⚠️ WebGL is not available');
 				return false;
@@ -1162,7 +1165,9 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 
 		// Check retry limit before attempting initialization
 		if (initializationAttempts >= MAX_INITIALIZATION_ATTEMPTS) {
-			console.error(`❌ Globe initialization failed after ${MAX_INITIALIZATION_ATTEMPTS} attempts. Giving up.`);
+			console.error(
+				`❌ Globe initialization failed after ${MAX_INITIALIZATION_ATTEMPTS} attempts. Giving up.`
+			);
 			webGLFailed = true;
 			// Show fallback UI
 			if (globeContainer) {
@@ -1576,17 +1581,18 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 				}, 100);
 			} catch (error) {
 				console.error('❌ GLOBE ERROR: Failed to initialize Globe.gl:', error);
-				
+
 				// Check if this is a WebGL context error
 				const errorMessage = error instanceof Error ? error.message : String(error);
-				const isWebGLError = errorMessage.toLowerCase().includes('webgl') || 
-				                     errorMessage.toLowerCase().includes('context');
-				
+				const isWebGLError =
+					errorMessage.toLowerCase().includes('webgl') ||
+					errorMessage.toLowerCase().includes('context');
+
 				// If we've hit the retry limit or it's definitely a WebGL issue, give up
 				if (initializationAttempts >= MAX_INITIALIZATION_ATTEMPTS || isWebGLError) {
 					webGLFailed = true;
 					console.error(`❌ Globe permanently disabled after ${initializationAttempts} attempts`);
-					
+
 					// Display user-friendly error message
 					if (globeContainer) {
 						globeContainer.innerHTML = `
@@ -1601,7 +1607,9 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 				} else {
 					// Allow retry with exponential backoff
 					const retryDelay = Math.min(1000 * Math.pow(2, initializationAttempts), 10000);
-					console.warn(`⚠️ Globe initialization failed, retrying in ${retryDelay}ms (attempt ${initializationAttempts}/${MAX_INITIALIZATION_ATTEMPTS})`);
+					console.warn(
+						`⚠️ Globe initialization failed, retrying in ${retryDelay}ms (attempt ${initializationAttempts}/${MAX_INITIALIZATION_ATTEMPTS})`
+					);
 					setTimeout(() => {
 						initializationStarted = false;
 					}, retryDelay);
@@ -1750,7 +1758,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 	>
 		<Image
 			bg
-			class="globe-atmosphere -z-1 pointer-events-none h-svh w-svw overflow-clip"
+			class="globe-atmosphere pointer-events-none -z-1 h-svh w-svw overflow-clip"
 			overlay="bg-radial from-primary to-transparent from-30% to-60% translate-y-1/2 scale-x-250 scale-y-95 md:scale-y-100 md:scale-x-125 absolute bottom-0 origin-bottom opacity-60 block"
 		/>
 		<div
@@ -1783,10 +1791,10 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 	:global {
 		/* wind blast */
 		.wind-blast {
-			@apply mask-y aspect-2/3 -z-1 scale-x-200 lg:scale-x-175 absolute w-8 origin-bottom translate-y-4 scale-y-0 overflow-clip opacity-0 transition-all duration-300 lg:w-14 lg:translate-y-0;
+			@apply absolute -z-1 aspect-2/3 w-8 origin-bottom translate-y-4 scale-x-200 scale-y-0 overflow-clip mask-y opacity-0 transition-all duration-300 lg:w-14 lg:translate-y-0 lg:scale-x-175;
 		}
 		.wind-blast.active {
-			@apply scale-y-200 lg:scale-y-200 opacity-70;
+			@apply scale-y-200 opacity-70 lg:scale-y-200;
 		}
 		.wind-blast.active img {
 			@apply hue-rotate-110;
@@ -1821,7 +1829,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 
 		/* location label */
 		.location-label {
-			@apply pointer-events-none absolute top-full flex items-center justify-center gap-2 whitespace-nowrap rounded bg-black/60 p-2 text-xs font-semibold uppercase text-white md:text-sm;
+			@apply pointer-events-none absolute top-full flex items-center justify-center gap-2 rounded bg-black/60 p-2 text-xs font-semibold whitespace-nowrap text-white uppercase md:text-sm;
 		}
 	}
 	/* ---------------------------------------- */

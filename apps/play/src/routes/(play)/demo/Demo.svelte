@@ -212,8 +212,7 @@
 	const propsKey = $derived(JSON.stringify(mergedProps));
 	const shouldShowLog = $derived(inspect && normalizedLogMode !== 'hide');
 	const shouldOpenLog = $derived(
-		normalizedLogMode === 'open' ||
-			(normalizedLogMode === 'failed' && getTotalIssues().length > 0)
+		normalizedLogMode === 'open' || (normalizedLogMode === 'failed' && getTotalIssues().length > 0)
 	);
 
 	function normalizeModeViews(values: Array<DemoMode | string>): DemoMode[] {
@@ -257,7 +256,8 @@
 		const classNames: string[] = [];
 
 		if (typeof cleanLocal.class === 'string' && cleanLocal.class) classNames.push(cleanLocal.class);
-		if (typeof cleanGlobal.class === 'string' && cleanGlobal.class) classNames.push(cleanGlobal.class);
+		if (typeof cleanGlobal.class === 'string' && cleanGlobal.class)
+			classNames.push(cleanGlobal.class);
 
 		return {
 			...cleanLocal,
@@ -557,11 +557,19 @@
 			nextIssues.push(`cols expected [${expectedValue.cols}] but got [${activeStats.cols}]`);
 		}
 
-		if (typeof expectedValue.itemCount === 'number' && actualItems.length !== expectedValue.itemCount) {
-			nextIssues.push(`itemCount expected ${expectedValue.itemCount} but got ${actualItems.length}`);
+		if (
+			typeof expectedValue.itemCount === 'number' &&
+			actualItems.length !== expectedValue.itemCount
+		) {
+			nextIssues.push(
+				`itemCount expected ${expectedValue.itemCount} but got ${actualItems.length}`
+			);
 		}
 
-		if (expectedValue.items && toComparableList(actualItems) !== toComparableList(expectedValue.items)) {
+		if (
+			expectedValue.items &&
+			toComparableList(actualItems) !== toComparableList(expectedValue.items)
+		) {
 			nextIssues.push(`items expected [${expectedValue.items}] but got [${actualItems}]`);
 		}
 
@@ -622,32 +630,37 @@
 	}
 
 	$effect(() => {
-		panelRefs;
-		propsKey;
-		snippetsKey;
-		modeViews;
-		debugView;
-		normalizedDebugView;
-		viewCols;
-		placeModifier;
-		inspect;
-		logMode;
-		normalizedLogMode;
-		children;
+		void panelRefs;
+		void propsKey;
+		void snippetsKey;
+		void modeViews;
+		void debugView;
+		void normalizedDebugView;
+		void viewCols;
+		void placeModifier;
+		void inspect;
+		void logMode;
+		void normalizedLogMode;
+		void children;
 
 		refreshStats();
 	});
 </script>
 
 <article class="demo-card">
-	<section class="demo-card-grid" style:grid-template-columns="repeat({resolvedViewCols}, minmax(0, 1fr))">
+	<section
+		class="demo-card-grid"
+		style:grid-template-columns="repeat({resolvedViewCols}, minmax(0, 1fr))"
+	>
 		{#each flatViews as panel (panel.key)}
 			<section class="demo-panel">
 				<header class="demo-panel-header">
 					<strong>{label}</strong>
 
 					<span class="demo-pills">
-						<span class="demo-pill {getModeClass(panel.mode)}">{getAutoModeLabel(panel.mode, panel.view.key)}</span>
+						<span class="demo-pill {getModeClass(panel.mode)}"
+							>{getAutoModeLabel(panel.mode, panel.view.key)}</span
+						>
 
 						{#if panel.view.debug}
 							<span class="demo-pill is-debug">DEBUG</span>
@@ -655,14 +668,23 @@
 					</span>
 				</header>
 
-				<div class="demo-panel-body" bind:this={panelRefs[panel.key]}>
+				<div
+					class="demo-panel-body"
+					bind:this={panelRefs[panel.key]}
+				>
 					{#key `${panel.mode}:${panel.view.key}:${propsKey}:${snippetsKey}`}
 						{#if children}
-							<Component {...createProps(panel.mode, panel.view.debug)} {...modifiedSnippets}>
+							<Component
+								{...createProps(panel.mode, panel.view.debug)}
+								{...modifiedSnippets}
+							>
 								{@render children()}
 							</Component>
 						{:else}
-							<Component {...createProps(panel.mode, panel.view.debug)} {...modifiedSnippets} />
+							<Component
+								{...createProps(panel.mode, panel.view.debug)}
+								{...modifiedSnippets}
+							/>
 						{/if}
 					{/key}
 				</div>
@@ -671,13 +693,22 @@
 	</section>
 
 	{#if shouldShowLog}
-		<details class="demo-log" open={shouldOpenLog}>
-			<summary class="{getStatusClass()}">
-				{getStatusLabel()} - {expect ? `${getTotalIssues().length} issue${getTotalIssues().length === 1 ? '' : 's'}` : 'actual output'}
+		<details
+			class="demo-log"
+			open={shouldOpenLog}
+		>
+			<summary class={getStatusClass()}>
+				{getStatusLabel()} - {expect
+					? `${getTotalIssues().length} issue${getTotalIssues().length === 1 ? '' : 's'}`
+					: 'actual output'}
 			</summary>
 
 			<div class="demo-log-body">
-				<button class="copy-all-button" type="button" onclick={() => copyLog(createLogPayload())}>
+				<button
+					class="copy-all-button"
+					type="button"
+					onclick={() => copyLog(createLogPayload())}
+				>
 					Copy all JSON
 				</button>
 
@@ -702,7 +733,10 @@
 								<section class="json-card">
 									<header>
 										<strong>{view.label}</strong>
-										<button type="button" onclick={() => copyLog(getStats(mode, view.key))}>Copy</button>
+										<button
+											type="button"
+											onclick={() => copyLog(getStats(mode, view.key))}>Copy</button
+										>
 									</header>
 									<pre>{JSON.stringify(getStats(mode, view.key), null, 2)}</pre>
 								</section>

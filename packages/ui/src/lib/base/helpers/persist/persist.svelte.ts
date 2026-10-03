@@ -161,12 +161,12 @@ export const persistPropMap = {
 	draggable: ['position'],
 	scroll: ['scroll'],
 	theme: ['theme'],
-	accordion: ['open'],
+	accordion: ['open']
 } satisfies Record<string, ResolvedPersistProp[]>;
 
 const persist_prop_aliases = {
 	resize: 'size',
-	draggable: 'position',
+	draggable: 'position'
 } as const satisfies Record<'resize' | 'draggable', ResolvedPersistProp>;
 
 const persist_adapter_factories: Record<PersistStorage, () => PersistAdapter> = {
@@ -174,7 +174,7 @@ const persist_adapter_factories: Record<PersistStorage, () => PersistAdapter> = 
 	local: () => createLocalPersistAdapter(),
 	session: () => createSessionPersistAdapter(),
 	memory: () => createMemoryPersistAdapter(),
-	noop: () => createNoopPersistAdapter(),
+	noop: () => createNoopPersistAdapter()
 };
 
 const persist_state: {
@@ -182,7 +182,7 @@ const persist_state: {
 	namespace: string;
 } = {
 	storage: DEFAULT_PERSIST_STORAGE,
-	namespace: DEFAULT_PERSIST_NAMESPACE,
+	namespace: DEFAULT_PERSIST_NAMESPACE
 };
 
 const persist_adapters = new Map<PersistStorage, PersistAdapter>();
@@ -208,7 +208,7 @@ function isPersistConfig(value: unknown): value is PersistConfig {
 		'value',
 		'getValue',
 		'setValue',
-		'fallback',
+		'fallback'
 	]) {
 		if (key in value) return true;
 	}
@@ -243,19 +243,19 @@ function normalizePersistKey(value: unknown): string {
 }
 
 function normalizePersistTag(value: unknown): string {
-	return String(value ?? '').trim().toLowerCase();
+	return String(value ?? '')
+		.trim()
+		.toLowerCase();
 }
 
 function normalizePersistPropValue(
-	value: PersistProp | ResolvedPersistProp | undefined,
+	value: PersistProp | ResolvedPersistProp | undefined
 ): ResolvedPersistProp | null {
 	if (!value) return null;
 
 	const normalizedValue = String(value).trim().toLowerCase();
 	if (normalizedValue in persist_prop_aliases) {
-		return persist_prop_aliases[
-			normalizedValue as keyof typeof persist_prop_aliases
-		];
+		return persist_prop_aliases[normalizedValue as keyof typeof persist_prop_aliases];
 	}
 
 	if (
@@ -273,7 +273,9 @@ function normalizePersistPropValue(
 	return null;
 }
 
-function uniquePersistProps(values: Array<ResolvedPersistProp | null | undefined>): ResolvedPersistProp[] {
+function uniquePersistProps(
+	values: Array<ResolvedPersistProp | null | undefined>
+): ResolvedPersistProp[] {
 	const nextValues: ResolvedPersistProp[] = [];
 
 	for (const value of values) {
@@ -332,7 +334,7 @@ function inferPersistProps(context: PersistContext = {}): ResolvedPersistProp[] 
 
 function normalizePersistProps(
 	value: PersistPropInput | undefined,
-	context: PersistContext = {},
+	context: PersistContext = {}
 ): ResolvedPersistProp[] {
 	const explicitProps = Array.isArray(value)
 		? value.map((item) => normalizePersistPropValue(item))
@@ -357,7 +359,7 @@ function hasPersistAction(config: PersistConfig): boolean {
 
 function createAutoPersistKey(context: PersistContext = {}): string | null {
 	const componentId = normalizePersistSegment(
-		context.componentId || createPersistComponentId(context),
+		context.componentId || createPersistComponentId(context)
 	);
 
 	if (!componentId) return null;
@@ -379,7 +381,7 @@ function getPersistSource(input: PersistInput): PersistResolvedConfig['source'] 
 function resolvePersistLogicalKey(
 	input: PersistInput,
 	config: PersistConfig,
-	options: PersistResolveOptions,
+	options: PersistResolveOptions
 ): string | null {
 	if (!input) return null;
 
@@ -414,7 +416,7 @@ export function createPersistComponentId(
 		name?: string;
 		label?: string;
 		placeholder?: string;
-	} = {},
+	} = {}
 ): string {
 	persist_component_counter += 1;
 
@@ -423,16 +425,13 @@ export function createPersistComponentId(
 		normalizePersistSegment(value.name),
 		normalizePersistSegment(value.label),
 		normalizePersistSegment(value.placeholder),
-		normalizePersistSegment(value.tag),
+		normalizePersistSegment(value.tag)
 	].find(Boolean);
 
 	return `${semanticPart || 'component'}-${persist_component_counter}`;
 }
 
-export function resolvePersistStorageKey(
-	key: string,
-	options: PersistMethodOptions = {},
-): string {
+export function resolvePersistStorageKey(key: string, options: PersistMethodOptions = {}): string {
 	const namespace = normalizePersistNamespace(options.namespace);
 	const logicalKey = normalizePersistKey(key);
 	const prop = Array.isArray(options.prop) ? options.prop[0] : options.prop;
@@ -447,7 +446,7 @@ export function resolvePersistStorageKey(
 
 export function resolvePersistClearPrefix(
 	prefix: string | undefined,
-	options: Pick<PersistMethodOptions, 'namespace'> = {},
+	options: Pick<PersistMethodOptions, 'namespace'> = {}
 ): string {
 	const namespace = normalizePersistNamespace(options.namespace);
 	const logicalPrefix = normalizePersistKey(prefix);
@@ -457,7 +456,7 @@ export function resolvePersistClearPrefix(
 
 export function resolvePersistConfig(
 	input: PersistInput,
-	options: PersistResolveOptions = {},
+	options: PersistResolveOptions = {}
 ): PersistResolvedConfig {
 	const config = getPersistConfig(input);
 	const storage = config.storage ?? options.storage ?? persist_state.storage;
@@ -466,13 +465,13 @@ export function resolvePersistConfig(
 	const props = normalizePersistProps(config.prop ?? options.prop, options.context);
 	const entries = key
 		? props.map((prop) => ({
-			key,
-			prop,
-			storageKey: resolvePersistStorageKey(key, {
-				namespace,
+				key,
 				prop,
-			}),
-		}))
+				storageKey: resolvePersistStorageKey(key, {
+					namespace,
+					prop
+				})
+			}))
 		: [];
 	const automatic = !hasPersistAction(config);
 
@@ -493,13 +492,13 @@ export function resolvePersistConfig(
 		setValue: config.setValue,
 		fallback: config.fallback,
 		clearPrefix: resolvePersistClearPrefix(key ?? undefined, { namespace }),
-		source: getPersistSource(input),
+		source: getPersistSource(input)
 	};
 }
 
 export function resolvePersistEntries(
 	input: PersistInput,
-	options: PersistResolveOptions = {},
+	options: PersistResolveOptions = {}
 ): PersistResolvedEntry[] {
 	return resolvePersistConfig(input, options).entries;
 }
@@ -507,14 +506,14 @@ export function resolvePersistEntries(
 async function savePersistEntry<T>(
 	entry: PersistResolvedEntry,
 	value: T,
-	storage: PersistStorage,
+	storage: PersistStorage
 ): Promise<void> {
 	await getPersistAdapter(storage).save(entry.storageKey, value);
 }
 
 async function removePersistEntry(
 	entry: PersistResolvedEntry,
-	storage: PersistStorage,
+	storage: PersistStorage
 ): Promise<void> {
 	await getPersistAdapter(storage).remove(entry.storageKey);
 }
@@ -533,13 +532,12 @@ function normalizePersistElementType(element: Element): string {
 
 function createPersistElementContext(
 	element: Element,
-	options: PersistElementOptionsType,
+	options: PersistElementOptionsType
 ): PersistContext {
 	const contextTag = options.context?.tag ?? normalizePersistElementTag(element);
 	const contextType = options.context?.type ?? normalizePersistElementType(element);
 	const contextName = element.getAttribute('name') ?? options.context?.name;
-	const contextPlaceholder =
-		element.getAttribute('placeholder') ?? options.context?.placeholder;
+	const contextPlaceholder = element.getAttribute('placeholder') ?? options.context?.placeholder;
 
 	return {
 		...options.context,
@@ -551,19 +549,19 @@ function createPersistElementContext(
 				id: element.id || options.context?.id,
 				name: contextName,
 				label: options.context?.label,
-				placeholder: contextPlaceholder,
+				placeholder: contextPlaceholder
 			}),
 		tag: contextTag,
 		type: contextType,
 		id: element.id || options.context?.id,
 		name: contextName,
-		placeholder: contextPlaceholder,
+		placeholder: contextPlaceholder
 	};
 }
 
 function getPersistFallbackKey(
 	context: PersistContext,
-	fallbackScope: string | undefined,
+	fallbackScope: string | undefined
 ): string | undefined {
 	const componentId = context.componentId;
 	const scope = String(fallbackScope ?? '').trim();
@@ -575,7 +573,7 @@ function getPersistFallbackKey(
 
 function chainPersistSetter(
 	primary?: (value: unknown) => void,
-	secondary?: (value: unknown) => void,
+	secondary?: (value: unknown) => void
 ): ((value: unknown) => void) | undefined {
 	if (!primary) return secondary;
 	if (!secondary || primary === secondary) return primary;
@@ -590,7 +588,7 @@ function applyPersistedValue(
 	element: PersistableElementType,
 	entry: PersistResolvedEntry,
 	value: unknown,
-	config: PersistResolvedConfig,
+	config: PersistResolvedConfig
 ): boolean {
 	let applied = false;
 
@@ -613,7 +611,7 @@ function applyPersistedValue(
 
 		element.scrollTo({
 			left: Number(nextValue.left ?? 0),
-			top: Number(nextValue.top ?? 0),
+			top: Number(nextValue.top ?? 0)
 		});
 		applied = true;
 	} else if (entry.prop === 'open' && 'open' in element) {
@@ -639,7 +637,7 @@ function applyPersistedValue(
 function readPersistedValue(
 	element: PersistableElementType,
 	entry: PersistResolvedEntry,
-	config: PersistResolvedConfig,
+	config: PersistResolvedConfig
 ): unknown {
 	if (config.getValue) {
 		return config.getValue();
@@ -665,7 +663,7 @@ function readPersistedValue(
 	if (entry.prop === 'scroll') {
 		return {
 			left: element.scrollLeft,
-			top: element.scrollTop,
+			top: element.scrollTop
 		};
 	}
 
@@ -682,12 +680,12 @@ function readPersistedValue(
 
 function getPersistBinding(
 	element: PersistableElementType,
-	entry: PersistResolvedEntry,
+	entry: PersistResolvedEntry
 ): PersistElementBinding | null {
 	if (entry.prop === 'checked' && element instanceof HTMLInputElement) {
 		return {
 			entry,
-			eventName: 'change',
+			eventName: 'change'
 		};
 	}
 
@@ -695,17 +693,14 @@ function getPersistBinding(
 		if (element instanceof HTMLSelectElement) {
 			return {
 				entry,
-				eventName: 'change',
+				eventName: 'change'
 			};
 		}
 
-		if (
-			element instanceof HTMLInputElement ||
-			element instanceof HTMLTextAreaElement
-		) {
+		if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
 			return {
 				entry,
-				eventName: 'input',
+				eventName: 'input'
 			};
 		}
 	}
@@ -713,14 +708,14 @@ function getPersistBinding(
 	if (entry.prop === 'scroll') {
 		return {
 			entry,
-			eventName: 'scroll',
+			eventName: 'scroll'
 		};
 	}
 
 	if (entry.prop === 'open' && 'open' in element) {
 		return {
 			entry,
-			eventName: 'toggle',
+			eventName: 'toggle'
 		};
 	}
 
@@ -730,14 +725,14 @@ function getPersistBinding(
 async function loadPersistedEntries(
 	element: PersistableElementType,
 	config: PersistResolvedConfig,
-	isDisposed: () => boolean,
+	isDisposed: () => boolean
 ): Promise<void> {
 	for (const entry of config.entries) {
 		const fallbackValue = config.fallback ?? config.value;
 		const nextValue = await persist.load(entry.key, fallbackValue, {
 			storage: config.storage,
 			namespace: config.namespace,
-			prop: entry.prop,
+			prop: entry.prop
 		});
 
 		if (isDisposed()) return;
@@ -749,7 +744,7 @@ async function loadPersistedEntries(
 
 async function savePersistedEntries(
 	element: PersistableElementType,
-	config: PersistResolvedConfig,
+	config: PersistResolvedConfig
 ): Promise<void> {
 	for (const entry of config.entries) {
 		const nextValue = readPersistedValue(element, entry, config);
@@ -758,7 +753,7 @@ async function savePersistedEntries(
 		await persist.save(entry.key, nextValue, {
 			storage: config.storage,
 			namespace: config.namespace,
-			prop: entry.prop,
+			prop: entry.prop
 		});
 	}
 }
@@ -768,7 +763,7 @@ async function removePersistedEntries(config: PersistResolvedConfig): Promise<vo
 		await persist.remove(entry.key, {
 			storage: config.storage,
 			namespace: config.namespace,
-			prop: entry.prop,
+			prop: entry.prop
 		});
 	}
 }
@@ -776,7 +771,7 @@ async function removePersistedEntries(config: PersistResolvedConfig): Promise<vo
 export function attachPersistTarget(
 	element: Element,
 	persistInput: PersistInput,
-	options: PersistElementOptionsType = {},
+	options: PersistElementOptionsType = {}
 ): (() => void) | undefined {
 	if (!persistInput || !(element instanceof HTMLElement)) {
 		return;
@@ -785,17 +780,14 @@ export function attachPersistTarget(
 	const context = createPersistElementContext(element, options);
 	const resolvedPersist = resolvePersistConfig(persistInput, {
 		context,
-		fallbackKey: getPersistFallbackKey(context, options.fallbackScope),
+		fallbackKey: getPersistFallbackKey(context, options.fallbackScope)
 	});
 	const mergedPersist: PersistResolvedConfig = {
 		...resolvedPersist,
 		value: resolvedPersist.value !== undefined ? resolvedPersist.value : options.value,
 		getValue: resolvedPersist.getValue ?? options.getValue,
 		setValue: chainPersistSetter(options.setValue, resolvedPersist.setValue),
-		fallback:
-			resolvedPersist.fallback !== undefined
-				? resolvedPersist.fallback
-				: options.fallback,
+		fallback: resolvedPersist.fallback !== undefined ? resolvedPersist.fallback : options.fallback
 	};
 
 	if (!mergedPersist.enabled) {
@@ -822,7 +814,7 @@ export function attachPersistTarget(
 				void persist.save(entry.key, nextValue, {
 					storage: mergedPersist.storage,
 					namespace: mergedPersist.namespace,
-					prop: entry.prop,
+					prop: entry.prop
 				});
 			};
 
@@ -850,7 +842,7 @@ export function attachPersistTarget(
 					if (mergedPersist.clear && mergedPersist.key) {
 						await persist.clear(mergedPersist.key, {
 							storage: mergedPersist.storage,
-							namespace: mergedPersist.namespace,
+							namespace: mergedPersist.namespace
 						});
 					}
 				})();
@@ -878,12 +870,12 @@ function resolvePersistSyncInput(input: PersistSyncInput): PersistInput {
 
 function createPersistSyncSignature(
 	input: PersistInput,
-	options: PersistMethodOptions = {},
+	options: PersistMethodOptions = {}
 ): string | null {
 	const resolved = resolvePersistConfig(input, {
 		storage: options.storage,
 		namespace: options.namespace,
-		prop: options.prop,
+		prop: options.prop
 	});
 
 	if (!resolved.enabled || !resolved.key || !resolved.entries.length) {
@@ -893,7 +885,7 @@ function createPersistSyncSignature(
 	return [
 		resolved.storage,
 		resolved.namespace,
-		...resolved.entries.map((entry) => entry.storageKey),
+		...resolved.entries.map((entry) => entry.storageKey)
 	].join('|');
 }
 
@@ -907,7 +899,7 @@ function snapshotPersistValue<T>(value: T): T {
 
 export function syncPersist<T>(
 	input: PersistSyncInput,
-	options: PersistSyncOptions<T>,
+	options: PersistSyncOptions<T>
 ): PersistSyncHandle<T> {
 	let isReady = $state(false);
 	let currentSignature = $state<string | null>(null);
@@ -917,7 +909,7 @@ export function syncPersist<T>(
 		const resolved = resolvePersistConfig(resolvedInput, {
 			storage: options.storage,
 			namespace: options.namespace,
-			prop: options.prop,
+			prop: options.prop
 		});
 
 		const fallbackValue = options.fallback as T;
@@ -929,7 +921,7 @@ export function syncPersist<T>(
 
 		const nextValue = await getPersistAdapter(resolved.storage).load<T>(
 			resolved.entries[0].storageKey,
-			fallbackValue,
+			fallbackValue
 		);
 
 		options.setValue(nextValue);
@@ -941,7 +933,7 @@ export function syncPersist<T>(
 		const resolved = resolvePersistConfig(resolvedInput, {
 			storage: options.storage,
 			namespace: options.namespace,
-			prop: options.prop,
+			prop: options.prop
 		});
 
 		if (!resolved.enabled || !resolved.entries.length) {
@@ -964,7 +956,7 @@ export function syncPersist<T>(
 		const resolved = resolvePersistConfig(resolvedInput, {
 			storage: options.storage,
 			namespace: options.namespace,
-			prop: options.prop,
+			prop: options.prop
 		});
 
 		for (const entry of resolved.entries) {
@@ -977,7 +969,7 @@ export function syncPersist<T>(
 		const resolved = resolvePersistConfig(resolvedInput, {
 			storage: options.storage,
 			namespace: options.namespace,
-			prop: options.prop,
+			prop: options.prop
 		});
 		const nextPrefix = prefix ?? resolved.key ?? undefined;
 
@@ -987,7 +979,7 @@ export function syncPersist<T>(
 
 		await persist.clear(nextPrefix, {
 			storage: resolved.storage,
-			namespace: resolved.namespace,
+			namespace: resolved.namespace
 		});
 	}
 
@@ -1040,7 +1032,7 @@ export function syncPersist<T>(
 		load,
 		save,
 		remove,
-		clear,
+		clear
 	};
 }
 
@@ -1082,7 +1074,10 @@ export const persist = {
 		return resolvePersistStorageKey(key, options);
 	},
 
-	resolvePrefix(prefix: string | undefined, options: Pick<PersistMethodOptions, 'namespace'> = {}): string {
+	resolvePrefix(
+		prefix: string | undefined,
+		options: Pick<PersistMethodOptions, 'namespace'> = {}
+	): string {
 		return resolvePersistClearPrefix(prefix, options);
 	},
 
@@ -1093,7 +1088,7 @@ export const persist = {
 		const entries = resolvePersistEntries(key, {
 			storage,
 			namespace: options.namespace,
-			prop: options.prop,
+			prop: options.prop
 		});
 
 		for (const entry of entries) {
@@ -1112,7 +1107,7 @@ export const persist = {
 		const entries = resolvePersistEntries(key, {
 			storage,
 			namespace: options.namespace,
-			prop: options.prop,
+			prop: options.prop
 		});
 
 		for (const entry of entries) {
@@ -1120,9 +1115,12 @@ export const persist = {
 		}
 	},
 
-	async clear(prefix: string | undefined, options: Pick<PersistMethodOptions, 'storage' | 'namespace'> = {}): Promise<void> {
+	async clear(
+		prefix: string | undefined,
+		options: Pick<PersistMethodOptions, 'storage' | 'namespace'> = {}
+	): Promise<void> {
 		const storage = options.storage ?? persist_state.storage;
 		const resolvedPrefix = resolvePersistClearPrefix(prefix, options);
 		await getPersistAdapter(storage).clear(resolvedPrefix);
-	},
-	};
+	}
+};

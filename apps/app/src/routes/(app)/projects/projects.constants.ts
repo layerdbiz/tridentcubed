@@ -1,4 +1,4 @@
-export const storageKey = "survey-report-preview-v4";
+export const storageKey = 'survey-report-preview-v4';
 export const projectsRegistryKey = `${storageKey}-registry`;
 export const projectStorageKeyPrefix = `${storageKey}-project`;
 
@@ -6,12 +6,11 @@ export function getProjectStorageKey(projectId: string): string {
 	return `${projectStorageKeyPrefix}-${projectId}`;
 }
 
-export const exportFormats = ["PDF", "DOCX", "HTML", "MD"] as const;
+export const exportFormats = ['PDF', 'DOCX', 'HTML', 'MD'] as const;
 export type ExportFormatType = (typeof exportFormats)[number];
 
 export const overallProgressRingRadius = 38;
-export const overallProgressRingCircumference = 2 * Math.PI *
-	overallProgressRingRadius;
+export const overallProgressRingCircumference = 2 * Math.PI * overallProgressRingRadius;
 
 export const previewPageWidth = 8.5 * 96;
 export const previewPageHeight = 11 * 96;
@@ -24,5 +23,4 @@ export const previewMobilePadding = 32;
 export const previewMobileGap = 16;
 export const previewMobileVisiblePages = 1.5;
 
-export const metricStatusCaptionClass =
-	"text-[11px] uppercase tracking-[0.16em]";
+export const metricStatusCaptionClass = 'text-[11px] uppercase tracking-[0.16em]';

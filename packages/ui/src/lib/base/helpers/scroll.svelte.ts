@@ -1,4 +1,4 @@
-import { ScrollState } from "runed";
+import { ScrollState } from 'runed';
 
 export interface ScrollOptions {
 	enabled?: boolean;
@@ -153,16 +153,16 @@ export class ScrollClass {
 
 	constructor(
 		elementGetter: () => HTMLElement | Window | Document | null | undefined,
-		options: ScrollOptions = {},
+		options: ScrollOptions = {}
 	) {
 		const {
 			enabled = true,
 			idle = 200,
 			offset = {},
-			behavior = "auto",
+			behavior = 'auto',
 			onScroll,
 			onStop,
-			onError,
+			onError
 		} = options;
 
 		// Create scroll state instance
@@ -173,7 +173,7 @@ export class ScrollClass {
 			behavior,
 			onScroll: enabled ? onScroll : undefined,
 			onStop: enabled ? onStop : undefined,
-			onError,
+			onError
 		});
 	}
 
@@ -212,7 +212,7 @@ class GlobalScrollState {
 
 	constructor() {
 		// Initialize only in browser
-		if (typeof window !== "undefined") {
+		if (typeof window !== 'undefined') {
 			this.initializeScrollTracking();
 		}
 	}
@@ -239,7 +239,7 @@ class GlobalScrollState {
 		};
 
 		// Listen to scroll events
-		window.addEventListener("scroll", handleScroll, { passive: true });
+		window.addEventListener('scroll', handleScroll, { passive: true });
 
 		// Initialize current values
 		this._x = window.scrollX;
@@ -273,26 +273,19 @@ class GlobalScrollState {
 	}
 
 	get bottom() {
-		if (typeof window === "undefined") return false;
-		return Math.ceil(this._y + window.innerHeight) >=
-			document.documentElement.scrollHeight;
+		if (typeof window === 'undefined') return false;
+		return Math.ceil(this._y + window.innerHeight) >= document.documentElement.scrollHeight;
 	}
 
 	get progress() {
-		if (typeof window === "undefined") return { x: 0, y: 0 };
+		if (typeof window === 'undefined') return { x: 0, y: 0 };
 
-		const maxX = Math.max(
-			0,
-			document.documentElement.scrollWidth - window.innerWidth,
-		);
-		const maxY = Math.max(
-			0,
-			document.documentElement.scrollHeight - window.innerHeight,
-		);
+		const maxX = Math.max(0, document.documentElement.scrollWidth - window.innerWidth);
+		const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
 
 		return {
 			x: maxX > 0 ? this._x / maxX : 0,
-			y: maxY > 0 ? this._y / maxY : 0,
+			y: maxY > 0 ? this._y / maxY : 0
 		};
 	}
 
@@ -303,7 +296,7 @@ class GlobalScrollState {
 			top: false,
 			bottom: false,
 			left: false,
-			right: false,
+			right: false
 		};
 	}
 }

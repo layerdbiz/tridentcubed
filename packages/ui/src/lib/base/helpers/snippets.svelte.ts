@@ -1,252 +1,194 @@
-import type {
-	ItemFamily,
-	ItemSnippet,
-	RootItemSource,
-	RootItemValue,
-} from "../root.svelte.ts";
+import type { ItemFamily, ItemSnippet, RootItemSource, RootItemValue } from '../root.svelte.ts';
 
-export const cellNames = [
-	"a1",
-	"b1",
-	"c1",
-	"a2",
-	"b2",
-	"c2",
-	"a3",
-	"b3",
-	"c3",
-] as const;
-export const rowNames = ["row1", "row2", "row3"] as const;
-export const colNames = ["col1", "col2", "col3"] as const;
-export const halfNames = [
-	"topHalf",
-	"bottomHalf",
-	"leftHalf",
-	"rightHalf",
-] as const;
-export const specialNames = ["full", "bg", "fg"] as const;
+export const cellNames = ['a1', 'b1', 'c1', 'a2', 'b2', 'c2', 'a3', 'b3', 'c3'] as const;
+export const rowNames = ['row1', 'row2', 'row3'] as const;
+export const colNames = ['col1', 'col2', 'col3'] as const;
+export const halfNames = ['topHalf', 'bottomHalf', 'leftHalf', 'rightHalf'] as const;
+export const specialNames = ['full', 'bg', 'fg'] as const;
 
 export const aliases = {
 	cells: {
-		a1: ["topleft", "lefttop", "topLeft", "leftTop", "tl", "lt"],
-		b1: ["topcenter", "centertop", "top", "topCenter", "centerTop", "tc", "ct"],
-		c1: ["topright", "righttop", "topRight", "rightTop", "tr", "rt"],
-		a2: [
-			"leftcenter",
-			"centerleft",
-			"left",
-			"leftCenter",
-			"centerLeft",
-			"lc",
-			"cl",
-		],
-		b2: ["center", "centercenter", "centerCenter", "cc", "c"],
-		c2: [
-			"rightcenter",
-			"centerright",
-			"right",
-			"centerRight",
-			"rightCenter",
-			"rc",
-			"cr",
-		],
-		a3: ["bottomleft", "leftbottom", "bottomLeft", "leftBottom", "bl", "lb"],
-		b3: [
-			"bottomcenter",
-			"centerbottom",
-			"bottom",
-			"bottomCenter",
-			"centerBottom",
-			"bc",
-			"cb",
-		],
-		c3: [
-			"bottomright",
-			"rightbottom",
-			"bottomRight",
-			"rightBottom",
-			"br",
-			"rb",
-		],
+		a1: ['topleft', 'lefttop', 'topLeft', 'leftTop', 'tl', 'lt'],
+		b1: ['topcenter', 'centertop', 'top', 'topCenter', 'centerTop', 'tc', 'ct'],
+		c1: ['topright', 'righttop', 'topRight', 'rightTop', 'tr', 'rt'],
+		a2: ['leftcenter', 'centerleft', 'left', 'leftCenter', 'centerLeft', 'lc', 'cl'],
+		b2: ['center', 'centercenter', 'centerCenter', 'cc', 'c'],
+		c2: ['rightcenter', 'centerright', 'right', 'centerRight', 'rightCenter', 'rc', 'cr'],
+		a3: ['bottomleft', 'leftbottom', 'bottomLeft', 'leftBottom', 'bl', 'lb'],
+		b3: ['bottomcenter', 'centerbottom', 'bottom', 'bottomCenter', 'centerBottom', 'bc', 'cb'],
+		c3: ['bottomright', 'rightbottom', 'bottomRight', 'rightBottom', 'br', 'rb']
 	},
 	rows: {
-		row1: ["toprow", "rowtop", "topRow", "rowTop"],
+		row1: ['toprow', 'rowtop', 'topRow', 'rowTop'],
 		row2: [
-			"row",
-			"middlerow",
-			"centerrow",
-			"rowmiddle",
-			"rowcenter",
-			"middleRow",
-			"centerRow",
-			"rowMiddle",
-			"rowCenter",
+			'row',
+			'middlerow',
+			'centerrow',
+			'rowmiddle',
+			'rowcenter',
+			'middleRow',
+			'centerRow',
+			'rowMiddle',
+			'rowCenter'
 		],
-		row3: ["bottomrow", "rowbottom", "bottomRow", "rowBottom"],
+		row3: ['bottomrow', 'rowbottom', 'bottomRow', 'rowBottom']
 	},
 	cols: {
-		col1: ["leftcol", "colleft", "leftCol", "colLeft"],
+		col1: ['leftcol', 'colleft', 'leftCol', 'colLeft'],
 		col2: [
-			"col",
-			"centercol",
-			"middlecol",
-			"colcenter",
-			"colmiddle",
-			"centerCol",
-			"middleCol",
-			"colCenter",
-			"colMiddle",
+			'col',
+			'centercol',
+			'middlecol',
+			'colcenter',
+			'colmiddle',
+			'centerCol',
+			'middleCol',
+			'colCenter',
+			'colMiddle'
 		],
-		col3: ["rightcol", "colright", "rightCol", "colRight"],
+		col3: ['rightcol', 'colright', 'rightCol', 'colRight']
 	},
 	halves: {
-		topHalf: ["tophalf", "top-half", "top_half", "top half"],
-		bottomHalf: ["bottomhalf", "bottom-half", "bottom_half", "bottom half"],
-		leftHalf: ["lefthalf", "left-half", "left_half", "left half"],
-		rightHalf: ["righthalf", "right-half", "right_half", "right half"],
+		topHalf: ['tophalf', 'top-half', 'top_half', 'top half'],
+		bottomHalf: ['bottomhalf', 'bottom-half', 'bottom_half', 'bottom half'],
+		leftHalf: ['lefthalf', 'left-half', 'left_half', 'left half'],
+		rightHalf: ['righthalf', 'right-half', 'right_half', 'right half']
 	},
 	special: {
 		full: [],
 		bg: [],
-		fg: [],
+		fg: []
 	},
 	placeModifiers: {
-		TL: ["TL", "LT", "TOPLEFT", "LEFTTOP"],
-		TC: ["TC", "CT", "T", "TOPCENTER", "CENTERTOP", "TOP"],
-		TR: ["TR", "RT", "TOPRIGHT", "RIGHTTOP"],
-		LC: ["LC", "CL", "L", "LEFTCENTER", "CENTERLEFT", "LEFT"],
-		CC: ["CC", "C", "CENTERCENTER", "CENTER"],
-		RC: ["RC", "CR", "R", "RIGHTCENTER", "CENTERRIGHT", "RIGHT"],
-		BL: ["BL", "LB", "BOTTOMLEFT", "LEFTBOTTOM"],
-		BC: ["BC", "CB", "B", "BOTTOMCENTER", "CENTERBOTTOM", "BOTTOM"],
-		BR: ["BR", "RB", "BOTTOMRIGHT", "RIGHTBOTTOM"],
+		TL: ['TL', 'LT', 'TOPLEFT', 'LEFTTOP'],
+		TC: ['TC', 'CT', 'T', 'TOPCENTER', 'CENTERTOP', 'TOP'],
+		TR: ['TR', 'RT', 'TOPRIGHT', 'RIGHTTOP'],
+		LC: ['LC', 'CL', 'L', 'LEFTCENTER', 'CENTERLEFT', 'LEFT'],
+		CC: ['CC', 'C', 'CENTERCENTER', 'CENTER'],
+		RC: ['RC', 'CR', 'R', 'RIGHTCENTER', 'CENTERRIGHT', 'RIGHT'],
+		BL: ['BL', 'LB', 'BOTTOMLEFT', 'LEFTBOTTOM'],
+		BC: ['BC', 'CB', 'B', 'BOTTOMCENTER', 'CENTERBOTTOM', 'BOTTOM'],
+		BR: ['BR', 'RB', 'BOTTOMRIGHT', 'RIGHTBOTTOM']
 	},
 	layoutProps: {
-		start: ["start"],
-		end: ["end"],
-		stretch: ["stretch"],
-		full: ["stretch", "full"],
-		center: ["center center", "center", "middle"],
-		top: ["start center", "top"],
-		right: ["center end", "right"],
-		bottom: ["end center", "bottom"],
-		left: ["center start", "left"],
-		between: ["space-between", "between"],
-		around: ["space-around", "around"],
-		evenly: ["space-evenly", "evenly"],
+		start: ['start'],
+		end: ['end'],
+		stretch: ['stretch'],
+		full: ['stretch', 'full'],
+		center: ['center center', 'center', 'middle'],
+		top: ['start center', 'top'],
+		right: ['center end', 'right'],
+		bottom: ['end center', 'bottom'],
+		left: ['center start', 'left'],
+		between: ['space-between', 'between'],
+		around: ['space-around', 'around'],
+		evenly: ['space-evenly', 'evenly'],
 		topleft: [
-			"start start",
-			"topleft",
-			"lefttop",
-			"top left",
-			"left top",
-			"topLeft",
-			"leftTop",
-			"tl",
-			"lt",
+			'start start',
+			'topleft',
+			'lefttop',
+			'top left',
+			'left top',
+			'topLeft',
+			'leftTop',
+			'tl',
+			'lt'
 		],
 		topcenter: [
-			"start center",
-			"topcenter",
-			"centertop",
-			"top center",
-			"center top",
-			"topCenter",
-			"centerTop",
-			"tc",
-			"ct",
-			"t",
+			'start center',
+			'topcenter',
+			'centertop',
+			'top center',
+			'center top',
+			'topCenter',
+			'centerTop',
+			'tc',
+			'ct',
+			't'
 		],
 		topright: [
-			"start end",
-			"topright",
-			"righttop",
-			"top right",
-			"right top",
-			"topRight",
-			"rightTop",
-			"tr",
-			"rt",
+			'start end',
+			'topright',
+			'righttop',
+			'top right',
+			'right top',
+			'topRight',
+			'rightTop',
+			'tr',
+			'rt'
 		],
 		leftcenter: [
-			"center start",
-			"leftcenter",
-			"centerleft",
-			"left center",
-			"center left",
-			"leftCenter",
-			"centerLeft",
-			"lc",
-			"cl",
-			"l",
+			'center start',
+			'leftcenter',
+			'centerleft',
+			'left center',
+			'center left',
+			'leftCenter',
+			'centerLeft',
+			'lc',
+			'cl',
+			'l'
 		],
-		centercenter: [
-			"center center",
-			"centercenter",
-			"center center",
-			"centerCenter",
-			"cc",
-			"c",
-		],
+		centercenter: ['center center', 'centercenter', 'center center', 'centerCenter', 'cc', 'c'],
 		rightcenter: [
-			"center end",
-			"rightcenter",
-			"centerright",
-			"right center",
-			"center right",
-			"centerRight",
-			"rightCenter",
-			"rc",
-			"cr",
-			"r",
+			'center end',
+			'rightcenter',
+			'centerright',
+			'right center',
+			'center right',
+			'centerRight',
+			'rightCenter',
+			'rc',
+			'cr',
+			'r'
 		],
 		bottomleft: [
-			"end start",
-			"bottomleft",
-			"leftbottom",
-			"bottom left",
-			"left bottom",
-			"bottomLeft",
-			"leftBottom",
-			"bl",
-			"lb",
+			'end start',
+			'bottomleft',
+			'leftbottom',
+			'bottom left',
+			'left bottom',
+			'bottomLeft',
+			'leftBottom',
+			'bl',
+			'lb'
 		],
 		bottomcenter: [
-			"end center",
-			"bottomcenter",
-			"centerbottom",
-			"bottom center",
-			"center bottom",
-			"centerBottom",
-			"bottomCenter",
-			"bc",
-			"cb",
-			"b",
+			'end center',
+			'bottomcenter',
+			'centerbottom',
+			'bottom center',
+			'center bottom',
+			'centerBottom',
+			'bottomCenter',
+			'bc',
+			'cb',
+			'b'
 		],
 		bottomright: [
-			"end end",
-			"bottomright",
-			"rightbottom",
-			"bottom right",
-			"right bottom",
-			"rightBottom",
-			"bottomRight",
-			"br",
-			"rb",
+			'end end',
+			'bottomright',
+			'rightbottom',
+			'bottom right',
+			'right bottom',
+			'rightBottom',
+			'bottomRight',
+			'br',
+			'rb'
 		],
-		topfull: ["start stretch", "top full", "full top"],
-		centerfull: ["center stretch", "center full", "full center"],
-		bottomfull: ["end stretch", "bottom full", "full bottom"],
-		leftfull: ["stretch start", "left full", "full left"],
-		rightfull: ["stretch end", "right full", "full right"],
-	},
+		topfull: ['start stretch', 'top full', 'full top'],
+		centerfull: ['center stretch', 'center full', 'full center'],
+		bottomfull: ['end stretch', 'bottom full', 'full bottom'],
+		leftfull: ['stretch start', 'left full', 'full left'],
+		rightfull: ['stretch end', 'right full', 'full right']
+	}
 };
 
 export const placeModifiers = Object.keys(aliases.placeModifiers);
 
 export function createRangeNames(): string[] {
-	const columns = ["a", "b", "c"];
-	const rowIds = ["1", "2", "3"];
+	const columns = ['a', 'b', 'c'];
+	const rowIds = ['1', '2', '3'];
 	const ranges: string[] = [];
 
 	for (const rowStart of rowIds) {
@@ -273,57 +215,57 @@ export const baseSnippetNames: string[] = [
 	...colNames,
 	...rangeNames,
 	...halfNames,
-	...specialNames,
+	...specialNames
 ];
 
 export function hasSnippet(value: unknown): value is ItemSnippet {
-	return typeof value === "function";
+	return typeof value === 'function';
 }
 
-export function hasRenderableValue(
-	value: unknown,
-): value is Exclude<RootItemValue, ItemSnippet> {
-	return value !== null && value !== undefined && value !== false &&
-		value !== true && value !== "" && !hasSnippet(value);
+export function hasRenderableValue(value: unknown): value is Exclude<RootItemValue, ItemSnippet> {
+	return (
+		value !== null &&
+		value !== undefined &&
+		value !== false &&
+		value !== true &&
+		value !== '' &&
+		!hasSnippet(value)
+	);
 }
 
 export function getFamily(base: string): ItemFamily {
-	if ((cellNames as readonly string[]).includes(base)) return "cell";
-	if ((rowNames as readonly string[]).includes(base)) return "row";
-	if ((colNames as readonly string[]).includes(base)) return "col";
-	if (rangeNames.includes(base)) return "range";
-	if ((halfNames as readonly string[]).includes(base)) return "half";
-	if (base === "full") return "full";
-	if (base === "bg") return "bg";
-	if (base === "fg") return "fg";
-	return "";
+	if ((cellNames as readonly string[]).includes(base)) return 'cell';
+	if ((rowNames as readonly string[]).includes(base)) return 'row';
+	if ((colNames as readonly string[]).includes(base)) return 'col';
+	if (rangeNames.includes(base)) return 'range';
+	if ((halfNames as readonly string[]).includes(base)) return 'half';
+	if (base === 'full') return 'full';
+	if (base === 'bg') return 'bg';
+	if (base === 'fg') return 'fg';
+	return '';
 }
 
 export function isLayerFamily(family: string): boolean {
-	return family === "full" || family === "bg" || family === "fg";
+	return family === 'full' || family === 'bg' || family === 'fg';
 }
 
 export function getAliases(base: string): string[] {
 	return (
 		(aliases.cells as Record<string, string[]>)[base] ??
-			(aliases.rows as Record<string, string[]>)[base] ??
-			(aliases.cols as Record<string, string[]>)[base] ??
-			(aliases.halves as Record<string, string[]>)[base] ??
-			(aliases.special as Record<string, string[]>)[base] ??
-			[]
+		(aliases.rows as Record<string, string[]>)[base] ??
+		(aliases.cols as Record<string, string[]>)[base] ??
+		(aliases.halves as Record<string, string[]>)[base] ??
+		(aliases.special as Record<string, string[]>)[base] ??
+		[]
 	);
 }
 
-export function toClassName(
-	placeModifier = "",
-	family = "",
-	placementMode = "",
-): string {
+export function toClassName(placeModifier = '', family = '', placementMode = ''): string {
 	const classes: string[] = [];
 	if (family) classes.push(`is-${family}`);
 	if (placeModifier) classes.push(`is-${placeModifier.toLowerCase()}`);
 	if (placementMode) classes.push(`is-mode-${placementMode}`);
-	return classes.join(" ");
+	return classes.join(' ');
 }
 
 export function getBaseCandidates(base: string) {
@@ -335,25 +277,20 @@ export function getBaseCandidates(base: string) {
 }
 
 export function getPlaceModifierCandidates(base: string) {
-	const candidates: Array<
-		{ key: string; place_modifier: string; is_canonical: boolean }
-	> = [];
+	const candidates: Array<{ key: string; place_modifier: string; is_canonical: boolean }> = [];
 	for (const baseCandidate of getBaseCandidates(base)) {
 		for (const placeModifier of placeModifiers) {
 			candidates.push({
 				key: baseCandidate.key + placeModifier,
 				place_modifier: placeModifier,
-				is_canonical: baseCandidate.is_canonical,
+				is_canonical: baseCandidate.is_canonical
 			});
-			for (
-				const alias
-					of (aliases.placeModifiers as Record<string, string[]>)[placeModifier]
-			) {
+			for (const alias of (aliases.placeModifiers as Record<string, string[]>)[placeModifier]) {
 				if (alias === placeModifier) continue;
 				candidates.push({
 					key: baseCandidate.key + alias,
 					place_modifier: placeModifier,
-					is_canonical: baseCandidate.is_canonical,
+					is_canonical: baseCandidate.is_canonical
 				});
 			}
 		}
@@ -366,8 +303,8 @@ export function getSnippetCandidates(base: string) {
 	for (const baseCandidate of getBaseCandidates(base)) {
 		candidates.push({
 			key: baseCandidate.key,
-			place_modifier: "",
-			is_canonical: baseCandidate.is_canonical,
+			place_modifier: '',
+			is_canonical: baseCandidate.is_canonical
 		});
 	}
 	return candidates;
@@ -387,9 +324,7 @@ export function createResolvableSourceKeySet(): Set<string> {
 
 export const resolvableSourceKeys = createResolvableSourceKeySet();
 
-export function pickItemSources(
-	source: Record<string, unknown>,
-): RootItemSource {
+export function pickItemSources(source: Record<string, unknown>): RootItemSource {
 	const picked: RootItemSource = {};
 
 	for (const [key, value] of Object.entries(source)) {

@@ -241,15 +241,15 @@
 	<!-- hero content
 	------------------------------------------>
 	<section
-		class="z-1 pointer-events-none relative flex select-none flex-col items-center justify-start gap-4 pt-16 lg:pt-10"
+		class="pointer-events-none relative z-1 flex flex-col items-center justify-start gap-4 pt-16 select-none lg:pt-10"
 		class:hero-visible={heroReady}
 		class:hero-hidden={!heroReady}
 	>
 		<!-- title -->
-		<div class="text-base-50 flex flex-col gap-2 text-center">
+		<div class="flex flex-col gap-2 text-center text-base-50">
 			<Text
 				observe
-				class="bleed order-2 text-balance text-2xl font-black uppercase leading-tight tracking-tight text-white lg:text-[5vw]"
+				class="bleed order-2 text-2xl leading-tight font-black tracking-tight text-balance text-white uppercase lg:text-[5vw]"
 				h1={getSection('Home')?.title ?? 'Hero Title'}
 				typewriter={{
 					type: 'reveal',
@@ -261,7 +261,7 @@
 					delete: false
 				}}
 			/>
-			<h2 class="text-base-200 order-1 text-[x-small] uppercase tracking-widest lg:text-sm">
+			<h2 class="order-1 text-[x-small] tracking-widest text-base-200 uppercase lg:text-sm">
 				{getSection('Home')?.subtitle ?? 'Hero Subtitle'}
 			</h2>
 
@@ -275,11 +275,11 @@
 				{#each stats as stat}
 					<section class="flex flex-col gap-1 md:gap-2">
 						<Number
-							class="text-base-50 font-mono text-2xl font-bold md:text-4xl"
+							class="font-mono text-2xl font-bold text-base-50 md:text-4xl"
 							data-target={stat.value}>{stat.value}</Number
 						>
 						<Text
-							class="text-base-200 text-[xx-small] uppercase lg:text-xs"
+							class="text-[xx-small] text-base-200 uppercase lg:text-xs"
 							h4={stat.label}
 						/>
 					</section>
@@ -335,110 +335,110 @@
 
 	<!-- globe -->
 	<Globe
-			startLocationId="4"
-			data={{
-				locations: globeLocations,
-				polygons: globePolygons
-				// ports: globePorts
-			}}
-			globe={{
-				width: typeof window !== 'undefined' ? window.innerWidth : 1920,
-				height: typeof window !== 'undefined' ? window.innerHeight : 1080,
-				left: 0,
-				top: mq.sm
-					? typeof window !== 'undefined'
-						? window.innerHeight * 0.95
-						: 972
-					: typeof window !== 'undefined'
-						? window.innerHeight * 2.2
-						: 1856,
-				altitude: mq.sm ? altitudes.small.globe : altitudes.large.globe,
-				latitude: mq.sm ? 36 : 21
-			}}
-			atmosphere={{
-				show: false,
-				color: '#155dfc',
-				altitude: mq.sm ? altitudes.small.atmosphere : altitudes.large.atmosphere
-			}}
-			hexPolygon={{
-				enabled: true,
-				resolution: mq.sm ? 3 : 4,
-				margin: 0.15,
-				altitude: mq.sm ? altitudes.small.hexPolygon : altitudes.large.hexPolygon,
-				color: '#1a1a2e',
-				transitionDuration: 0
-			}}
-			polygon={{
-				enabled: false,
-				capColor: 'rgba(26,26,46,1)',
-				sideColor: 'rgba(21, 93, 252, 0.6)',
-				strokeColor: 'rgba(0,0,0,0)',
-				altitude: mq.sm ? altitudes.small.polygon : altitudes.large.polygon,
-				transitionDuration: 0
-			}}
-			points={{
-				layers: [
-					{
-						base: mq.sm ? altitudes.small.points.blueDot.base : altitudes.large.points.blueDot.base,
-						altitude: mq.sm
-							? altitudes.small.points.blueDot.altitude
-							: altitudes.large.points.blueDot.altitude,
-						color: '#155dfc',
-						radius: mq.sm ? 1.2 : 0.3,
-						zOffset: 0
-					},
-					{
-						base: mq.sm ? altitudes.small.points.whiteDot.base : altitudes.large.points.whiteDot.base,
-						altitude: mq.sm
-							? altitudes.small.points.whiteDot.altitude
-							: altitudes.large.points.whiteDot.altitude,
-						color: '#ffffff',
-						radius: mq.sm ? 0.5 : 0.15,
-						zOffset: 0.001
-					}
-				]
-			}}
-			html={{
-				altitude: mq.sm ? altitudes.small.html : altitudes.large.html
-			}}
-			labels={{
-				size: mq.sm ? 0.75 : 0.15,
-				dotRadius: mq.sm ? 0.3 : 0.1,
-				textColor: '#ffffff',
-				dotColor: '#ffffff',
-				altitude: mq.sm ? altitudes.small.labels : altitudes.large.labels
-			}}
-			arcs={{
-				color: '#ffffff',
-				stroke: mq.sm ? 0.2 : 0.04,
-				duration: 2000,
-				dashRelativeLength: 0.4,
-				dashLength: 0.6,
-				dashGap: 2,
-				dashInitialGap: 1,
-				altitude: null,
-				altitudeAutoscale: mq.sm ? altitudes.small.arcs.autoscale : altitudes.large.arcs.autoscale,
-				startAltitude: mq.sm ? altitudes.small.arcs.start : altitudes.large.arcs.start,
-				endAltitude: mq.sm ? altitudes.small.arcs.end : altitudes.large.arcs.end
-			}}
-			rings={{
-				color: '#ffffff',
-				rings: 4,
-				radius: mq.sm ? 5 : 2,
-				speed: mq.sm ? 4 : 2,
-				altitude: mq.sm ? altitudes.small.rings : altitudes.large.rings,
-				duration: 700
-			}}
-			animation={{
-				duration: 1000
-			}}
-			autoplay={{
-				enabled: activeSection === 'Home',
-				interval: 5000,
-				pauseOnInteraction: true,
-				startDelay: 3000,
-				resumeDelay: 30000
-			}}
+		startLocationId="4"
+		data={{
+			locations: globeLocations,
+			polygons: globePolygons
+			// ports: globePorts
+		}}
+		globe={{
+			width: typeof window !== 'undefined' ? window.innerWidth : 1920,
+			height: typeof window !== 'undefined' ? window.innerHeight : 1080,
+			left: 0,
+			top: mq.sm
+				? typeof window !== 'undefined'
+					? window.innerHeight * 0.95
+					: 972
+				: typeof window !== 'undefined'
+					? window.innerHeight * 2.2
+					: 1856,
+			altitude: mq.sm ? altitudes.small.globe : altitudes.large.globe,
+			latitude: mq.sm ? 36 : 21
+		}}
+		atmosphere={{
+			show: false,
+			color: '#155dfc',
+			altitude: mq.sm ? altitudes.small.atmosphere : altitudes.large.atmosphere
+		}}
+		hexPolygon={{
+			enabled: true,
+			resolution: mq.sm ? 3 : 4,
+			margin: 0.15,
+			altitude: mq.sm ? altitudes.small.hexPolygon : altitudes.large.hexPolygon,
+			color: '#1a1a2e',
+			transitionDuration: 0
+		}}
+		polygon={{
+			enabled: false,
+			capColor: 'rgba(26,26,46,1)',
+			sideColor: 'rgba(21, 93, 252, 0.6)',
+			strokeColor: 'rgba(0,0,0,0)',
+			altitude: mq.sm ? altitudes.small.polygon : altitudes.large.polygon,
+			transitionDuration: 0
+		}}
+		points={{
+			layers: [
+				{
+					base: mq.sm ? altitudes.small.points.blueDot.base : altitudes.large.points.blueDot.base,
+					altitude: mq.sm
+						? altitudes.small.points.blueDot.altitude
+						: altitudes.large.points.blueDot.altitude,
+					color: '#155dfc',
+					radius: mq.sm ? 1.2 : 0.3,
+					zOffset: 0
+				},
+				{
+					base: mq.sm ? altitudes.small.points.whiteDot.base : altitudes.large.points.whiteDot.base,
+					altitude: mq.sm
+						? altitudes.small.points.whiteDot.altitude
+						: altitudes.large.points.whiteDot.altitude,
+					color: '#ffffff',
+					radius: mq.sm ? 0.5 : 0.15,
+					zOffset: 0.001
+				}
+			]
+		}}
+		html={{
+			altitude: mq.sm ? altitudes.small.html : altitudes.large.html
+		}}
+		labels={{
+			size: mq.sm ? 0.75 : 0.15,
+			dotRadius: mq.sm ? 0.3 : 0.1,
+			textColor: '#ffffff',
+			dotColor: '#ffffff',
+			altitude: mq.sm ? altitudes.small.labels : altitudes.large.labels
+		}}
+		arcs={{
+			color: '#ffffff',
+			stroke: mq.sm ? 0.2 : 0.04,
+			duration: 2000,
+			dashRelativeLength: 0.4,
+			dashLength: 0.6,
+			dashGap: 2,
+			dashInitialGap: 1,
+			altitude: null,
+			altitudeAutoscale: mq.sm ? altitudes.small.arcs.autoscale : altitudes.large.arcs.autoscale,
+			startAltitude: mq.sm ? altitudes.small.arcs.start : altitudes.large.arcs.start,
+			endAltitude: mq.sm ? altitudes.small.arcs.end : altitudes.large.arcs.end
+		}}
+		rings={{
+			color: '#ffffff',
+			rings: 4,
+			radius: mq.sm ? 5 : 2,
+			speed: mq.sm ? 4 : 2,
+			altitude: mq.sm ? altitudes.small.rings : altitudes.large.rings,
+			duration: 700
+		}}
+		animation={{
+			duration: 1000
+		}}
+		autoplay={{
+			enabled: activeSection === 'Home',
+			interval: 5000,
+			pauseOnInteraction: true,
+			startDelay: 3000,
+			resumeDelay: 30000
+		}}
 	/>
 
 	<!-- photo vignette 
@@ -446,14 +446,14 @@
 	<Image
 		src="/photos/houston-night.webp"
 		bg="fixed"
-		class="-z-3 pointer-events-none"
+		class="pointer-events-none -z-3"
 		overlay="bg-radial -from-black to-black to-85%"
 	/>
 	<!-- bottom black radial 
 	------------------------------------------>
 	<Image
 		bg
-		class="mask-t-from-0% mask-t-to-50% pointer-events-none origin-bottom overflow-clip"
+		class="pointer-events-none origin-bottom overflow-clip mask-t-from-0% mask-t-to-50%"
 		overlay="bg-radial from-transparent to-black from-0% to-100% scale-x-125"
 	/>
 	<Image
@@ -464,19 +464,19 @@
 	<!-- GRADIENT WRAPPER
 	------------------------------------------>
 	<div
-		class="z-1 scale-y-30 lg:scale-y-60 pointer-events-none absolute inset-0 top-auto isolate size-full origin-bottom opacity-100 blur-xl"
+		class="pointer-events-none absolute inset-0 top-auto isolate z-1 size-full origin-bottom scale-y-30 opacity-100 blur-xl lg:scale-y-60"
 	>
 		<!-- top blue radial -->
 		<Image
 			bg
-			class="mask-t-from-0% mask-t-to-70% absolute top-0 size-full overflow-hidden"
+			class="absolute top-0 size-full overflow-hidden mask-t-from-0% mask-t-to-70%"
 			overlay="bg-radial from-transparent to-primary from-20% to-100% "
 		/>
 
 		<!-- bottom blue radial -->
 		<Image
 			bg
-			class="mask-b-from-0% mask-b-to-70% top-full size-full overflow-hidden"
+			class="top-full size-full overflow-hidden mask-b-from-0% mask-b-to-70%"
 			overlay="bg-radial from-transparent to-primary from-20% to-100% "
 		/>
 	</div>
@@ -489,13 +489,13 @@
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
 <Section
 	id="Partners"
-	class="bg-dark-dark text-light-dark z-0 flex flex-col overflow-clip pt-20"
+	class="z-0 flex flex-col overflow-clip bg-dark-dark pt-20 text-light-dark"
 	container="!gap-10 p-0!"
 	divider="bottom"
 	dividerBottom={{ svg: 'text-base-50-950' }}
 >
 	<Text
-		class="text-base-300 text-center"
+		class="text-center text-base-300"
 		h4={getSection('Partners')?.subtitle ?? 'Partners Subtitle'}
 		icon={false}
 	/>
@@ -503,7 +503,7 @@
 	<!-- partners -->
 	{#if mq.sm}
 		<Slider
-			class="mask-x-lg bleed overflow-hidden"
+			class="bleed overflow-hidden mask-x-lg"
 			show={3}
 			loop={true}
 			autoscroll={0.5}
@@ -521,7 +521,7 @@
 	{:else}
 		<!-- Desktop: 8 cols x 2 rows grid -->
 		<div
-			class="mask-x-lg lg:mask-[unset] flex items-center justify-center gap-12 px-10 pb-20 invert"
+			class="flex items-center justify-center gap-12 mask-x-lg px-10 pb-20 invert lg:mask-[unset]"
 		>
 			{#each partnersData as partner (partner.id)}
 				<img
@@ -535,7 +535,7 @@
 
 	<!-- testimonials -->
 	<Slider
-		class="mask-x-md lg:mask-x-lg bleed overflow-x-clip pb-20"
+		class="bleed overflow-x-clip mask-x-md pb-20 lg:mask-x-lg"
 		variant="autoplay"
 		show={3}
 		loop={true}
@@ -568,7 +568,7 @@
 	<!-- team 
 	------------------------------------------>
 	<Slider
-		class="bleed-container mask-x-sm lg:mask-[unset] pb-10 lg:cursor-auto"
+		class="bleed-container mask-x-sm pb-10 lg:cursor-auto lg:mask-[unset]"
 		variant="autoplay"
 		show={4}
 		loop={true}
@@ -628,7 +628,7 @@
 		svg: 'text-base-200-700',
 		negative: false
 	}}
-	class="bg-base-200-700 flex flex-col"
+	class="flex flex-col bg-base-200-700"
 >
 	<Title
 		title={getSection('Services')?.title ?? 'Services Title'}
@@ -679,12 +679,12 @@
 			<div>
 				<Text
 					h3="Phone"
-					class="bar-outside relative font-bold uppercase tracking-wider"
+					class="bar-outside relative font-bold tracking-wider uppercase"
 				/>
 				<Button
 					appearance="ghost"
 					variant="icon text"
-					class="text-base-600-300 text-md rounded-none! p-0!"
+					class="rounded-none! p-0! text-md text-base-600-300"
 					icon="icon-[flagpack--us]"
 					label="+1 (409) 543-2725"
 					href="tel:+14095432725"
@@ -699,7 +699,7 @@
 				<Button
 					appearance="ghost"
 					variant="icon text"
-					class="text-base-600-300 text-md rounded-none! p-0!"
+					class="rounded-none! p-0! text-md text-base-600-300"
 					icon="icon-[flagpack--mx]"
 					label="+1 (832) 477-6974"
 					href="tel:+18324776974"
@@ -716,22 +716,22 @@
 			<div>
 				<Text
 					h3="Email"
-					class="bar-outside relative font-bold uppercase tracking-wider"
+					class="bar-outside relative font-bold tracking-wider uppercase"
 				/>
 				<Text
-					class="text-base-600-300 text-md"
+					class="text-md text-base-600-300"
 					p="operations@tridentcubed.com"
 				/>
 				<Text
-					class="text-base-600-300 text-md"
+					class="text-md text-base-600-300"
 					p="ops.sa@tridentcubed.com"
 				/>
 				<Text
-					class="text-base-600-300 text-md"
+					class="text-md text-base-600-300"
 					p="ops.carib@tridentcubed.com"
 				/>
 				<Text
-					class="text-base-600-300 text-md"
+					class="text-md text-base-600-300"
 					p="ops.eu@tridentcubed.com"
 				/>
 			</div>
@@ -740,14 +740,14 @@
 			<div>
 				<Text
 					h3="Locations"
-					class="bar-outside relative font-bold uppercase tracking-wider"
+					class="bar-outside relative font-bold tracking-wider uppercase"
 				/>
 				<Text
-					class="text-base-600-300 text-md"
+					class="text-md text-base-600-300"
 					p="800 Town and Country, Ste 500"
 				/>
 				<Text
-					class="text-base-600-300 text-md"
+					class="text-md text-base-600-300"
 					p="Houston, TX 77024"
 				/>
 			</div>
@@ -756,10 +756,10 @@
 			<div>
 				<Text
 					h3="Hours"
-					class="bar-outside relative font-bold uppercase tracking-wider"
+					class="bar-outside relative font-bold tracking-wider uppercase"
 				/>
 				<Text
-					class="text-base-600-300 text-md"
+					class="text-md text-base-600-300"
 					p="Monday - Friday | 7:30am to 6:00pm"
 				/>
 			</div>
@@ -767,7 +767,7 @@
 			<div>
 				<Text
 					h3="Social"
-					class="bar-outside relative font-bold uppercase tracking-wider"
+					class="bar-outside relative font-bold tracking-wider uppercase"
 				/>
 				<!-- Web -->
 				<div class="-ml-3 flex items-start justify-start">
@@ -784,7 +784,7 @@
 						})}
 						ghost
 						external
-						class="text-primary -mx-2"
+						class="-mx-2 text-primary"
 					/>
 					<Button
 						lg
@@ -799,7 +799,7 @@
 						})}
 						ghost
 						external
-						class="text-primary -mx-2"
+						class="-mx-2 text-primary"
 					/>
 					<Button
 						lg
@@ -814,7 +814,7 @@
 						})}
 						ghost
 						external
-						class="text-primary -mx-2"
+						class="-mx-2 text-primary"
 					/>
 				</div>
 			</div>
@@ -824,7 +824,7 @@
 		---------------------------------------------------->
 		<form
 			bind:this={formElement}
-			class="grid gap-3 contact-form w-xs sticky order-1 max-w-xs lg:top-32 lg:order-2"
+			class="contact-form sticky order-1 grid w-xs max-w-xs gap-3 lg:top-32 lg:order-2"
 			{...submitContactData.enhance(async ({ submit }) => {
 				try {
 					// HTML5 validation will prevent submission if fields are invalid
@@ -852,7 +852,7 @@
 				icon="icon-[mdi--account]"
 				variant="icon text"
 				label="Name"
-				name={submitContactData.fields.name.as("text").name}
+				name={submitContactData.fields.name.as('text').name}
 				required={true}
 				minlength={2}
 				maxlength={50}
@@ -866,7 +866,7 @@
 				icon="icon-[mdi--phone]"
 				variant="icon text"
 				label="Phone"
-				name={submitContactData.fields.phone.as("tel").name}
+				name={submitContactData.fields.phone.as('tel').name}
 				required={true}
 				minlength={7}
 				maxlength={25}
@@ -880,7 +880,7 @@
 				icon="icon-[mdi--email]"
 				variant="icon text"
 				label="Email"
-				name={submitContactData.fields.email.as("email").name}
+				name={submitContactData.fields.email.as('email').name}
 				required={true}
 				maxlength={254}
 				error={emailError}
@@ -892,7 +892,7 @@
 				icon="icon-[mdi--pencil]"
 				variant="icon text"
 				label="Message"
-				name={submitContactData.fields.message.as("text").name}
+				name={submitContactData.fields.message.as('text').name}
 				required={true}
 				minlength={10}
 				maxlength={500}
@@ -945,7 +945,7 @@
 	id="FAQ"
 	divider
 	dividerBottom={{ svg: 'text-base-950' }}
-	class="bg-base-200-700 flex flex-col gap-5"
+	class="flex flex-col gap-5 bg-base-200-700"
 >
 	<Title
 		title={getSection('FAQ')?.title ?? 'FAQ Title'}
@@ -956,7 +956,7 @@
 			<Toggle
 				variant="panel"
 				label={faq.label}
-				class="border-base-300-700 border-b last:border-0"
+				class="border-b border-base-300-700 last:border-0"
 				button={{
 					icon: 'icon-[mdi--chevron-right] transition-transform duration-200 rotate-0 text-2xl',
 					iconToggle:
@@ -981,7 +981,7 @@
 	container="!gap-6 !pt-0 lg:!gap-6 flex w-full flex-col items-center lg:grid lg:grid-flow-col lg:grid-rows-2"
 >
 	<Text
-		class="text-balance text-4xl md:text-pretty md:text-6xl"
+		class="text-4xl text-balance md:text-6xl md:text-pretty"
 		h1={getSection('CTA')?.title ?? 'CTA Title'}
 	/>
 	<Text

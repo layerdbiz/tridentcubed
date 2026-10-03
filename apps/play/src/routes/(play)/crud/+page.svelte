@@ -10,7 +10,7 @@
 		getValue: () => items,
 		setValue: (value) => {
 			items = Array.isArray(value) ? value : [];
-		},
+		}
 	});
 
 	function addItem(): void {
@@ -31,14 +31,22 @@
 		item = '';
 
 		void persistUtility.clear('crud', {
-			storage: 'indexeddb',
+			storage: 'indexeddb'
 		});
 	}
 </script>
 
-<Text h1="CRUD" class="mb-5"/>
+<Text
+	h1="CRUD"
+	class="mb-5"
+/>
 
-<Component class="gap-4" cols="1fr 1fr 1fr" rail="gutter-lg" mode="compact">
+<Component
+	class="gap-4"
+	cols="1fr 1fr 1fr"
+	rail="gutter-lg"
+	mode="compact"
+>
 	{#snippet left()}
 		<Input
 			bind:value={item}
@@ -46,7 +54,7 @@
 			persist={{
 				key: 'crud.input',
 				prop: 'value',
-				storage: 'indexeddb',
+				storage: 'indexeddb'
 			}}
 		/>
 	{/snippet}
@@ -73,14 +81,9 @@
 				<li>
 					{itemLabel}
 
-					<Button
-						onclick={() => removeItem(index)}
-					>
-						Remove
-					</Button>
+					<Button onclick={() => removeItem(index)}>Remove</Button>
 				</li>
 			{/each}
 		</Component>
 	{/snippet}
-
 </Component>

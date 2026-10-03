@@ -1,31 +1,30 @@
-import { access } from "node:fs/promises";
+import { access } from 'node:fs/promises';
 
-import chromium from "@sparticuz/chromium-min";
-import puppeteer from "puppeteer-core";
+import chromium from '@sparticuz/chromium-min';
+import puppeteer from 'puppeteer-core';
 
-import { createExportSession } from "#lib/server/export-session-store.js";
-import type { RequestHandler } from "./$types";
+import { createExportSession } from '#lib/server/export-session-store.js';
+import type { RequestHandler } from './$types';
 
-const chromiumVersion = "143.0.4";
-const chromiumPackArch = process.arch === "arm64" ? "arm64" : "x64";
-const chromiumPackUrl =
-	`https://github.com/Sparticuz/chromium/releases/download/v${chromiumVersion}/chromium-v${chromiumVersion}-pack.${chromiumPackArch}.tar`;
+const chromiumVersion = '143.0.4';
+const chromiumPackArch = process.arch === 'arm64' ? 'arm64' : 'x64';
+const chromiumPackUrl = `https://github.com/Sparticuz/chromium/releases/download/v${chromiumVersion}/chromium-v${chromiumVersion}-pack.${chromiumPackArch}.tar`;
 
 const localExecutableCandidates = [
 	process.env.PUPPETEER_EXECUTABLE_PATH,
 	process.env.CHROME_EXECUTABLE_PATH,
 	process.env.GOOGLE_CHROME_BIN,
 	process.env.CHROMIUM_PATH,
-	"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-	"C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-	"C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
-	"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-	"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-	"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-	"/usr/bin/google-chrome-stable",
-	"/usr/bin/google-chrome",
-	"/usr/bin/chromium-browser",
-	"/usr/bin/chromium",
+	'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+	'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+	'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+	'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+	'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+	'/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+	'/usr/bin/google-chrome-stable',
+	'/usr/bin/google-chrome',
+	'/usr/bin/chromium-browser',
+	'/usr/bin/chromium'
 ].filter((value): value is string => Boolean(value));
 
 async function fileExists(filePath: string) {
@@ -49,28 +48,23 @@ async function resolveLocalExecutablePath() {
 
 function isServerlessChromiumRuntime() {
 	return Boolean(
-		process.env.VERCEL ||
-			process.env.AWS_EXECUTION_ENV ||
-			process.env.LAMBDA_TASK_ROOT,
+		process.env.VERCEL || process.env.AWS_EXECUTION_ENV || process.env.LAMBDA_TASK_ROOT
 	);
 }
 
 // The PDF browser now navigates directly to the SSR print route, so normal same-origin
 // stylesheet loading should work without the earlier about:blank/setContent workaround.
-const pdfChromiumArgs = [
-	"--no-sandbox",
-	"--disable-setuid-sandbox",
-];
+const pdfChromiumArgs = ['--no-sandbox', '--disable-setuid-sandbox'];
 
 async function launchBrowser() {
 	if (isServerlessChromiumRuntime()) {
 		return puppeteer.launch({
 			args: puppeteer.defaultArgs({
 				args: [...chromium.args, ...pdfChromiumArgs],
-				headless: "shell",
+				headless: 'shell'
 			}),
 			executablePath: await chromium.executablePath(chromiumPackUrl),
-			headless: "shell",
+			headless: 'shell'
 		});
 	}
 
@@ -78,40 +72,40 @@ async function launchBrowser() {
 
 	if (!executablePath) {
 		throw new Error(
-			"No local Chrome/Edge executable found. Set PUPPETEER_EXECUTABLE_PATH before exporting PDFs.",
+			'No local Chrome/Edge executable found. Set PUPPETEER_EXECUTABLE_PATH before exporting PDFs.'
 		);
 	}
 
 	return puppeteer.launch({
 		args: pdfChromiumArgs,
 		executablePath,
-		headless: true,
+		headless: true
 	});
 }
 
 const pdfOptions = {
-	format: "Letter",
+	format: 'Letter',
 	margin: {
-		top: "0",
-		right: "0",
-		bottom: "0",
-		left: "0",
+		top: '0',
+		right: '0',
+		bottom: '0',
+		left: '0'
 	},
 	printBackground: true,
-	preferCSSPageSize: true,
+	preferCSSPageSize: true
 } as const;
 
 function getErrorMessage(error: unknown) {
-	return error instanceof Error ? error.message : "Unknown error";
+	return error instanceof Error ? error.message : 'Unknown error';
 }
 
 function getForwardedNavigationHeaders(request: Request) {
 	const headerNames = [
-		"cookie",
-		"authorization",
-		"accept-language",
-		"x-vercel-protection-bypass",
-		"x-vercel-set-bypass-cookie",
+		'cookie',
+		'authorization',
+		'accept-language',
+		'x-vercel-protection-bypass',
+		'x-vercel-set-bypass-cookie'
 	];
 	const headers: Record<string, string> = {};
 
@@ -130,20 +124,19 @@ export const POST: RequestHandler = async ({ request }) => {
 	} | null;
 	const snapshot = payload?.snapshot ?? null;
 	const filename =
-		typeof payload?.filename === "string" && payload.filename.trim()
+		typeof payload?.filename === 'string' && payload.filename.trim()
 			? payload.filename.trim()
-			: "survey-report.pdf";
+			: 'survey-report.pdf';
 
-	if (!snapshot || typeof snapshot !== "object") {
-		return Response.json({ message: "Missing export snapshot." }, { status: 400 });
+	if (!snapshot || typeof snapshot !== 'object') {
+		return Response.json({ message: 'Missing export snapshot.' }, { status: 400 });
 	}
 
 	let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
 	try {
 		const session = createExportSession({ data: snapshot, filename });
-		const printUrl =
-			new URL(`/export/print/${session.token}`, request.url).href;
+		const printUrl = new URL(`/export/print/${session.token}`, request.url).href;
 		const navigationHeaders = getForwardedNavigationHeaders(request);
 
 		browser = await launchBrowser();
@@ -153,31 +146,26 @@ export const POST: RequestHandler = async ({ request }) => {
 			await page.setExtraHTTPHeaders(navigationHeaders);
 		}
 		await page.setViewport({ width: 816, height: 1056, deviceScaleFactor: 1 });
-		await page.emulateMediaType("screen");
+		await page.emulateMediaType('screen');
 		const printResponse = await page.goto(printUrl, {
-			waitUntil: "networkidle0",
+			waitUntil: 'networkidle0'
 		});
 
 		if (!printResponse || !printResponse.ok()) {
-			throw new Error(
-				`Print route failed with status ${
-					printResponse?.status() ?? "unknown"
-				}`,
-			);
+			throw new Error(`Print route failed with status ${printResponse?.status() ?? 'unknown'}`);
 		}
 
 		const renderDiagnostics = await page.evaluate(() => ({
 			locationHref: location.href,
 			title: document.title,
-			previewPagesRootCount: document.querySelectorAll(".preview-pages").length,
-			previewPageCount: document.querySelectorAll(".preview-page").length,
-			bodyTextSnippet: document.body.textContent?.replace(/\s+/g, " ").trim()
-				.slice(0, 240) ?? "",
+			previewPagesRootCount: document.querySelectorAll('.preview-pages').length,
+			previewPageCount: document.querySelectorAll('.preview-page').length,
+			bodyTextSnippet: document.body.textContent?.replace(/\s+/g, ' ').trim().slice(0, 240) ?? ''
 		}));
 
 		if (!renderDiagnostics.previewPageCount) {
 			throw new Error(
-				`Print route did not render preview pages. Final URL: ${page.url()}. Snippet: ${renderDiagnostics.bodyTextSnippet}`,
+				`Print route did not render preview pages. Final URL: ${page.url()}. Snippet: ${renderDiagnostics.bodyTextSnippet}`
 			);
 		}
 
@@ -186,14 +174,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			await Promise.all(
 				Array.from(document.images).map(async (image) => {
-					if ("decode" in image) {
+					if ('decode' in image) {
 						try {
 							await image.decode();
 						} catch {
 							return;
 						}
 					}
-				}),
+				})
 			);
 		});
 
@@ -202,19 +190,17 @@ export const POST: RequestHandler = async ({ request }) => {
 		return new Response(Buffer.from(pdf), {
 			status: 200,
 			headers: {
-				"content-type": "application/pdf",
-				"content-disposition": `attachment; filename="${
-					filename.replace(/"/g, "")
-				}"`,
-			},
+				'content-type': 'application/pdf',
+				'content-disposition': `attachment; filename="${filename.replace(/"/g, '')}"`
+			}
 		});
 	} catch (error) {
 		return Response.json(
 			{
-				message: "PDF export failed.",
-				details: getErrorMessage(error),
+				message: 'PDF export failed.',
+				details: getErrorMessage(error)
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	} finally {
 		if (browser) await browser.close();

@@ -4,30 +4,30 @@
 
 export const sampleSections = [
 	{
-		title: "About Our Company",
+		title: 'About Our Company',
 		tagline: "We're passionate about creating amazing digital experiences",
-		id: "about-section",
+		id: 'about-section'
 	},
 	{
-		title: "Our Services",
-		tagline: "Comprehensive solutions tailored to your needs",
-		id: "services-section",
+		title: 'Our Services',
+		tagline: 'Comprehensive solutions tailored to your needs',
+		id: 'services-section'
 	},
 	{
-		title: "Featured Products",
-		tagline: "Discover our most popular offerings",
-		id: "products-section",
+		title: 'Featured Products',
+		tagline: 'Discover our most popular offerings',
+		id: 'products-section'
 	},
 	{
-		title: "Customer Testimonials",
-		tagline: "What our clients say about working with us",
-		id: "testimonials-section",
+		title: 'Customer Testimonials',
+		tagline: 'What our clients say about working with us',
+		id: 'testimonials-section'
 	},
 	{
-		title: "Get Started Today",
+		title: 'Get Started Today',
 		tagline: "Ready to transform your business? Let's talk.",
-		id: "cta-section",
-	},
+		id: 'cta-section'
+	}
 ];
 
 export const kitchenSinkContent = `
@@ -122,5 +122,5 @@ export const sampleIntersectionHandlers = {
 			// Trigger lazy loading of section content
 			console.log(`Lazy loading content for section: ${entry.target.id}`);
 		}
-	},
+	}
 };

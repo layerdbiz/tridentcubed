@@ -16,6 +16,6 @@ export function createNoopPersistAdapter(): PersistAdapter {
 
 		async clear(_prefix: string): Promise<void> {
 			return;
-		},
+		}
 	};
 }

@@ -1,16 +1,15 @@
-import { query } from "$app/server";
-import * as v from "valibot";
+import { query } from '$app/server';
+import * as v from 'valibot';
 
 // Base API URL
-const API_BASE = "https://sheetari.oneezy.deno.net";
-const PERSON_SHEET_ID = "1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs";
-const GROUP_SHEET_ID = "1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs";
-const SOCIAL_SHEET_ID = "1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4";
+const API_BASE = 'https://sheetari.oneezy.deno.net';
+const PERSON_SHEET_ID = '1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs';
+const SOCIAL_SHEET_ID = '1BT2OPDOA-sEIF-JkyikVrB3StvsfdJNAnP4ih9bHhj4';
 
 // Type definitions for raw API responses
 interface PersonAPIResponse {
 	id: string;
-	type: "person";
+	type: 'person';
 	name: string;
 	title: string;
 	phone: string;
@@ -26,7 +25,7 @@ interface PersonAPIResponse {
 
 interface GroupAPIResponse {
 	id: string;
-	type: "group";
+	type: 'group';
 	shortname: string;
 	email: string;
 	name: string;
@@ -72,7 +71,7 @@ function asArray<T>(value: T[] | unknown): T[] {
 }
 
 function toText(value: unknown): string {
-	return typeof value === "string" ? value.trim() : "";
+	return typeof value === 'string' ? value.trim() : '';
 }
 
 function toOptionalText(value: unknown): string | undefined {
@@ -81,7 +80,7 @@ function toOptionalText(value: unknown): string | undefined {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
+	return typeof value === 'object' && value !== null;
 }
 
 // Matches a Google Drive file id from any of the common share/embed URL shapes:
@@ -90,11 +89,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 // - https://drive.google.com/uc?id={id}
 // - https://drive.google.com/file/d/{id}/view
 // - https://lh3.googleusercontent.com/d/{id}=w2000
-const DRIVE_ID_PATTERNS = [
-	/[?&]id=([\w-]{10,})/,
-	/\/file\/d\/([\w-]{10,})/,
-	/\/d\/([\w-]{10,})/,
-];
+const DRIVE_ID_PATTERNS = [/[?&]id=([\w-]{10,})/, /\/file\/d\/([\w-]{10,})/, /\/d\/([\w-]{10,})/];
 
 function extractDriveFileId(url: string): string | null {
 	for (const pattern of DRIVE_ID_PATTERNS) {
@@ -123,13 +118,13 @@ function normalizeImageSrc(value: unknown): string {
 	if (!fileId) return url;
 
 	const sizeMatch = url.match(/[?&]sz=w(\d+)|=w(\d+)/);
-	const width = sizeMatch ? (sizeMatch[1] ?? sizeMatch[2]) : "2000";
+	const width = sizeMatch ? (sizeMatch[1] ?? sizeMatch[2]) : '2000';
 
 	return `https://lh3.googleusercontent.com/d/${fileId}=w${width}`;
 }
 
 function getRankValue(rank: string | undefined): number {
-	const parsedRank = Number.parseInt(rank ?? "", 10);
+	const parsedRank = Number.parseInt(rank ?? '', 10);
 	return Number.isFinite(parsedRank) ? parsedRank : DEFAULT_RANK;
 }
 
@@ -145,7 +140,7 @@ function normalizePerson(value: unknown): PersonAPIResponse | null {
 
 	return {
 		id: toText(value.id) || slug,
-		type: "person",
+		type: 'person',
 		name,
 		title: toText(value.title),
 		phone: toText(value.phone),
@@ -156,7 +151,7 @@ function normalizePerson(value: unknown): PersonAPIResponse | null {
 		slug,
 		rank: toOptionalText(value.rank),
 		location: toOptionalText(value.location),
-		banner: toOptionalText(value.banner),
+		banner: toOptionalText(value.banner)
 	};
 }
 
@@ -173,7 +168,7 @@ function normalizeGroup(value: unknown): GroupAPIResponse | null {
 
 	return {
 		id: toText(value.id) || slug,
-		type: "group",
+		type: 'group',
 		shortname,
 		email: toText(value.email),
 		name,
@@ -182,7 +177,7 @@ function normalizeGroup(value: unknown): GroupAPIResponse | null {
 		href: toText(value.href),
 		src: normalizeImageSrc(value.src),
 		slug,
-		banner: toOptionalText(value.banner),
+		banner: toOptionalText(value.banner)
 	};
 }
 
@@ -200,7 +195,7 @@ function normalizeSocial(value: unknown): SocialAPIResponse | null {
 		id: toText(value.id) || name.toLowerCase(),
 		name,
 		href,
-		src: toText(value.src),
+		src: toText(value.src)
 	};
 }
 
@@ -218,23 +213,24 @@ function normalizeBanner(value: unknown): BannerAPIResponse | null {
 		id: toText(value.id) || banner,
 		banner,
 		href: toText(value.href),
-		src: normalizeImageSrc(src),
+		src: normalizeImageSrc(src)
 	};
 }
 
 function compareText(left: string, right: string): number {
-	return left.localeCompare(right, undefined, { sensitivity: "base" });
+	return left.localeCompare(right, undefined, { sensitivity: 'base' });
 }
 
 // Batch fetch multiple sheets using the same pattern as globe.remote.ts
 const getSheetariEmailData = query.batch(v.string(), async (sheets) => {
 	const responses = await Promise.all(
 		sheets.map((sheet) => {
-			const url = sheet === "social"
-				? `${API_BASE}/${SOCIAL_SHEET_ID}/${sheet}`
-				: `${API_BASE}/${PERSON_SHEET_ID}/${sheet}`;
+			const url =
+				sheet === 'social'
+					? `${API_BASE}/${SOCIAL_SHEET_ID}/${sheet}`
+					: `${API_BASE}/${PERSON_SHEET_ID}/${sheet}`;
 			return fetch(url).then((r) => r.json());
-		}),
+		})
 	);
 
 	// Return a function that maps sheet name to its data
@@ -245,26 +241,30 @@ const getSheetariEmailData = query.batch(v.string(), async (sheets) => {
  * Fetch all person email signatures
  */
 export const fetchPersons = query(async () => {
-	const data = await getSheetariEmailData("person");
-	return asArray(data).map(normalizePerson).filter((person) => person !== null);
+	const data = await getSheetariEmailData('person');
+	return asArray(data)
+		.map(normalizePerson)
+		.filter((person) => person !== null);
 });
 
 /**
  * Fetch all group email signatures
  */
 export const fetchGroups = query(async () => {
-	const data = await getSheetariEmailData("group");
-	return asArray(data).map(normalizeGroup).filter((group) => group !== null);
+	const data = await getSheetariEmailData('group');
+	return asArray(data)
+		.map(normalizeGroup)
+		.filter((group) => group !== null);
 });
 
 /**
  * Fetch social links
  */
 export const fetchSocials = query(async () => {
-	const data = await getSheetariEmailData("social");
-	const socialData = asArray(data).map(normalizeSocial).filter((social) =>
-		social !== null
-	);
+	const data = await getSheetariEmailData('social');
+	const socialData = asArray(data)
+		.map(normalizeSocial)
+		.filter((social) => social !== null);
 
 	// Convert array to object with lowercase keys
 	const socialLinks: SocialLinks = {};
@@ -280,8 +280,10 @@ export const fetchSocials = query(async () => {
  * Fetch banner images
  */
 export const fetchBanners = query(async () => {
-	const data = await getSheetariEmailData("banner");
-	return asArray(data).map(normalizeBanner).filter((banner) => banner !== null);
+	const data = await getSheetariEmailData('banner');
+	return asArray(data)
+		.map(normalizeBanner)
+		.filter((banner) => banner !== null);
 });
 
 /**
@@ -298,6 +300,6 @@ export const fetchAllEmails = query(async () => {
 			if (rankA !== rankB) return rankA - rankB;
 			return compareText(a.name, b.name);
 		}),
-		groups: [...groups].sort((a, b) => compareText(a.shortname, b.shortname)),
+		groups: [...groups].sort((a, b) => compareText(a.shortname, b.shortname))
 	};
 });

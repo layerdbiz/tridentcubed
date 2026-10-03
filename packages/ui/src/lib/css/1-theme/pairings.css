@@ -1008,7 +1008,7 @@
 	--color-success-950-800: light-dark(var(--color-success-950), var(--color-success-800));
 	--color-success-950-900: light-dark(var(--color-success-950), var(--color-success-900));
 	--color-success-950-950: light-dark(var(--color-success-950), var(--color-success-950));
-	
+
 	/* danger */
 	--color-danger-50-50: light-dark(var(--color-danger-50), var(--color-danger-50));
 	--color-danger-50-100: light-dark(var(--color-danger-50), var(--color-danger-100));

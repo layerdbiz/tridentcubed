@@ -1,18 +1,18 @@
-import { query } from "$app/server";
-import type { Location, Port } from "@layerd/ui";
-import * as v from "valibot";
+import { query } from '$app/server';
+import type { Location, Port } from '@layerd/ui';
+import * as v from 'valibot';
 
 type GlobeRecord = Record<string, unknown>;
 type GlobeCollection = GlobeRecord[];
 
 function isCoordinateValue(value: unknown): value is string | number {
-	return typeof value === "string" || typeof value === "number";
+	return typeof value === 'string' || typeof value === 'number';
 }
 
 function getTextValue(value: unknown) {
-	if (typeof value === "string") return value.trim();
-	if (typeof value === "number") return String(value);
-	return "";
+	if (typeof value === 'string') return value.trim();
+	if (typeof value === 'number') return String(value);
+	return '';
 }
 
 function getOptionalTextValue(value: unknown) {
@@ -29,24 +29,16 @@ function toLocation(record: GlobeRecord): Location | null {
 	}
 
 	return {
-		...(typeof record.id === "string" || typeof record.id === "number"
-			? { id: record.id }
-			: {}),
+		...(typeof record.id === 'string' || typeof record.id === 'number' ? { id: record.id } : {}),
 		location,
 		lat,
 		lng,
-		...(getOptionalTextValue(record.flag)
-			? { flag: getOptionalTextValue(record.flag) }
-			: {}),
+		...(getOptionalTextValue(record.flag) ? { flag: getOptionalTextValue(record.flag) } : {}),
 		...(getOptionalTextValue(record.continent)
 			? { continent: getOptionalTextValue(record.continent) }
 			: {}),
-		...(getOptionalTextValue(record.phone)
-			? { phone: getOptionalTextValue(record.phone) }
-			: {}),
-		...(getOptionalTextValue(record.email)
-			? { email: getOptionalTextValue(record.email) }
-			: {}),
+		...(getOptionalTextValue(record.phone) ? { phone: getOptionalTextValue(record.phone) } : {}),
+		...(getOptionalTextValue(record.email) ? { email: getOptionalTextValue(record.email) } : {})
 	};
 }
 
@@ -78,48 +70,38 @@ function toPort(record: GlobeRecord, index: number): Port | null {
 		lng,
 		...(getOptionalTextValue(record.admin_division)
 			? { admin_division: getOptionalTextValue(record.admin_division) }
-			: {}),
+			: {})
 	};
 }
 
-async function fetchSheetariSheet(
-	baseUrl: string,
-	sheet: string,
-): Promise<GlobeCollection> {
+async function fetchSheetariSheet(baseUrl: string, sheet: string): Promise<GlobeCollection> {
 	try {
 		const response = await fetch(`${baseUrl}/${sheet}`);
 
 		if (!response.ok) {
-			console.error(
-				`Failed to fetch globe sheet \"${sheet}\": ${response.status}`,
-			);
+			console.error(`Failed to fetch globe sheet "${sheet}": ${response.status}`);
 			return [];
 		}
 
 		const data = await response.json();
 
 		if (!Array.isArray(data)) {
-			console.error(`Globe sheet \"${sheet}\" returned non-array data.`);
+			console.error(`Globe sheet "${sheet}" returned non-array data.`);
 			return [];
 		}
 
-		return data.filter(
-			(item): item is GlobeRecord => typeof item === "object" && item !== null,
-		);
+		return data.filter((item): item is GlobeRecord => typeof item === 'object' && item !== null);
 	} catch (error) {
-		console.error(`Failed to fetch globe sheet \"${sheet}\"`, error);
+		console.error(`Failed to fetch globe sheet "${sheet}"`, error);
 		return [];
 	}
 }
 
 // Batch fetch multiple sheets from the same Sheetari spreadsheet
 const getSheetariData = query.batch(v.string(), async (sheets) => {
-	const baseUrl =
-		"https://sheetari.oneezy.deno.net/1_BNtsJr9TaSYRPFAKcAd9pa_TUQyYBfqEZiDvDvkPTw";
+	const baseUrl = 'https://sheetari.oneezy.deno.net/1_BNtsJr9TaSYRPFAKcAd9pa_TUQyYBfqEZiDvDvkPTw';
 
-	const responses = await Promise.all(
-		sheets.map((sheet) => fetchSheetariSheet(baseUrl, sheet)),
-	);
+	const responses = await Promise.all(sheets.map((sheet) => fetchSheetariSheet(baseUrl, sheet)));
 
 	// Return a function that maps sheet name to its data
 	return (sheet) => responses[sheets.indexOf(sheet)] ?? [];
@@ -127,13 +109,11 @@ const getSheetariData = query.batch(v.string(), async (sheets) => {
 
 // Query functions that use the batched data fetcher
 export const getGlobeLocations = query(async () => {
-	const rows = await getSheetariData("locations");
+	const rows = await getSheetariData('locations');
 	return rows.map(toLocation).filter((row): row is Location => Boolean(row));
 });
 
 export const getGlobePorts = query(async () => {
-	const rows = await getSheetariData("ports");
-	return rows
-		.map((row, index) => toPort(row, index))
-		.filter((row): row is Port => Boolean(row));
+	const rows = await getSheetariData('ports');
+	return rows.map((row, index) => toPort(row, index)).filter((row): row is Port => Boolean(row));
 });

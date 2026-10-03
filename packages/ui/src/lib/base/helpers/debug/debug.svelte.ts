@@ -1,5 +1,5 @@
-import { useEventListener } from "runed";
-import { browser } from "$app/env";
+import { useEventListener } from 'runed';
+import { browser } from '$app/env';
 
 export interface DebugValueType {
 	auto?: boolean;
@@ -33,7 +33,7 @@ export interface DebugPosition {
 }
 
 export function isDebugValueType(value: unknown): value is DebugValueType {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function normalizeDebugValue(value: unknown): NormalizedDebugValue {
@@ -42,7 +42,7 @@ export function normalizeDebugValue(value: unknown): NormalizedDebugValue {
 			auto: true,
 			box: false,
 			grid: false,
-			rails: false,
+			rails: false
 		};
 	}
 
@@ -51,7 +51,7 @@ export function normalizeDebugValue(value: unknown): NormalizedDebugValue {
 			auto: false,
 			box: false,
 			grid: false,
-			rails: false,
+			rails: false
 		};
 	}
 
@@ -59,13 +59,11 @@ export function normalizeDebugValue(value: unknown): NormalizedDebugValue {
 		auto: Boolean(value.auto),
 		box: Boolean(value.box),
 		grid: Boolean(value.grid),
-		rails: Boolean(value.rails),
+		rails: Boolean(value.rails)
 	};
 }
 
-export function hasLayoutDebugValue(
-	value: Pick<NormalizedDebugValue, "grid" | "rails">,
-): boolean {
+export function hasLayoutDebugValue(value: Pick<NormalizedDebugValue, 'grid' | 'rails'>): boolean {
 	return value.grid || value.rails;
 }
 
@@ -75,11 +73,11 @@ export class DebugClass {
 
 	constructor(
 		private elementGetter: () => HTMLElement | null | undefined,
-		options: DebugOptions = {},
+		options: DebugOptions = {}
 	) {
 		this.options = {
 			enabled: true,
-			...options,
+			...options
 		};
 
 		// Set up event listeners for scroll/resize to trigger position updates
@@ -89,21 +87,21 @@ export class DebugClass {
 	private setupEventListeners() {
 		// Use runed event listeners for scroll/resize with SSR guard
 		useEventListener(
-			() => browser && this.options.enabled ? window : null,
-			"scroll",
+			() => (browser && this.options.enabled ? window : null),
+			'scroll',
 			() => {
 				this.positionTrigger++;
 			},
-			{ passive: true },
+			{ passive: true }
 		);
 
 		useEventListener(
-			() => browser && this.options.enabled ? window : null,
-			"resize",
+			() => (browser && this.options.enabled ? window : null),
+			'resize',
 			() => {
 				this.positionTrigger++;
 			},
-			{ passive: true },
+			{ passive: true }
 		);
 	}
 
@@ -118,7 +116,7 @@ export class DebugClass {
 		}
 
 		// Access positionTrigger to ensure reactivity on scroll/resize
-		this.positionTrigger;
+		void this.positionTrigger;
 
 		const rect = element.getBoundingClientRect();
 		const centerX = rect.left + rect.width / 2;
@@ -130,7 +128,7 @@ export class DebugClass {
 			centerX,
 			centerY,
 			width: rect.width,
-			height: rect.height,
+			height: rect.height
 		};
 	}
 

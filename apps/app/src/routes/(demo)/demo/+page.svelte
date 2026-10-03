@@ -2,7 +2,15 @@
 	import { browser } from '$app/env';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { Button, Component, Input, persist as persistUtility, Text, Textarea, mq } from '@layerd/ui';
+	import {
+		Button,
+		Component,
+		Input,
+		persist as persistUtility,
+		Text,
+		Textarea,
+		mq
+	} from '@layerd/ui';
 	import pageSource from './+page.svelte?raw';
 	import * as demoNav from './nav.svelte.ts';
 	import { createDemoModel } from './demo.model';
@@ -15,7 +23,7 @@
 	let isSeedLoading = $state(initialDemoSeed === null);
 
 	const currentView = $derived(
-		demoNav.getDemoView(page.url.searchParams.get(demoNav.DEMO_VIEW_PARAM)),
+		demoNav.getDemoView(page.url.searchParams.get(demoNav.DEMO_VIEW_PARAM))
 	);
 	const model = $derived(createDemoModel(demoSeed));
 	const recordInput = $derived(model.currentInput ?? null);
@@ -28,7 +36,7 @@
 
 	const recordValue = $derived(recordDraft ?? recordInput?.value ?? '');
 	const explicitValue = $derived(explicitDraft ?? explicitInput?.value ?? '');
-	const recordHeading = "persist={{ key: input.persistPath }}";
+	const recordHeading = 'persist={{ key: input.persistPath }}';
 	const explicitHeading = 'persist="inputs.input_2"';
 	const desktopMqHeading = $derived.by(() => {
 		if (mq.lg) return 'Desktop View (lg)';
@@ -94,7 +102,7 @@
 	function resetRecordOverlay(): void {
 		if (!recordInput) return;
 		void persistUtility.remove(recordInput.persistPath, {
-			prop: 'value',
+			prop: 'value'
 		});
 		recordDraft = recordInput.seedValue;
 	}
@@ -102,7 +110,7 @@
 	function resetExplicitOverlay(): void {
 		if (!explicitInput) return;
 		void persistUtility.remove(explicitInput.persistPath, {
-			prop: 'value',
+			prop: 'value'
 		});
 		explicitDraft = explicitInput.seedValue;
 	}
@@ -118,7 +126,6 @@
 	}
 
 	onMount(() => {
-
 		$effect(() => {
 			if (!browser || !recordInput || !explicitInput) {
 				return;
@@ -134,12 +141,12 @@
 
 			void (async () => {
 				const [nextRecordDraft, nextExplicitDraft] = await Promise.all([
-				persistUtility.load<string>(recordInput.persistPath, recordInput.seedValue, {
-					prop: 'value',
-				}),
-				persistUtility.load<string>(explicitInput.persistPath, explicitInput.seedValue, {
-					prop: 'value',
-				}),
+					persistUtility.load<string>(recordInput.persistPath, recordInput.seedValue, {
+						prop: 'value'
+					}),
+					persistUtility.load<string>(explicitInput.persistPath, explicitInput.seedValue, {
+						prop: 'value'
+					})
 				]);
 
 				if (isCancelled) return;
@@ -169,9 +176,7 @@
 			.catch((error: unknown) => {
 				if (isCancelled) return;
 
-				demoError = error instanceof Error
-					? error.message
-					: 'Unable to load the remote demo seed.';
+				demoError = error instanceof Error ? error.message : 'Unable to load the remote demo seed.';
 			})
 			.finally(() => {
 				if (!isCancelled) {
@@ -193,7 +198,13 @@
 />
 
 {#if currentView === 'code'}
-	<Component tag="section" rail="full" base lite class="py-6">
+	<Component
+		tag="section"
+		rail="full"
+		base
+		lite
+		class="py-6"
+	>
 		<Component rail="content">
 			<Text h2="+page.svelte" />
 			<Text
@@ -213,29 +224,67 @@
 		</Component>
 	</Component>
 {:else}
-	<Component tag="section" gap="1.5rem" class="pt-6">
-		<Component tag="section" rail="full" secondary lite class="py-6">
-			<Component rail="content" items="start stretch" gap="1rem">
+	<Component
+		tag="section"
+		gap="1.5rem"
+		class="pt-6"
+	>
+		<Component
+			tag="section"
+			rail="full"
+			secondary
+			lite
+			class="py-6"
+		>
+			<Component
+				rail="content"
+				items="start stretch"
+				gap="1rem"
+			>
 				{#snippet left()}
 					<Text h2={mqHeading} />
-					<Text p={mqCopy} class="mt-2 text-neutral" />
+					<Text
+						p={mqCopy}
+						class="mt-2 text-neutral"
+					/>
 				{/snippet}
 
 				{#snippet right()}
-					<Text small={`Source: ${seedSource}`} class="text-neutral" />
-					<Text small={seedStatus} class="mt-1 text-neutral" />
+					<Text
+						small={`Source: ${seedSource}`}
+						class="text-neutral"
+					/>
+					<Text
+						small={seedStatus}
+						class="mt-1 text-neutral"
+					/>
 
 					{#if demoError}
-						<Text small={demoError} class="mt-1 text-neutral" />
+						<Text
+							small={demoError}
+							class="mt-1 text-neutral"
+						/>
 					{/if}
 				{/snippet}
 			</Component>
 		</Component>
 
-		<Component tag="section" rail="full" base lite class="py-6">
+		<Component
+			tag="section"
+			rail="full"
+			base
+			lite
+			class="py-6"
+		>
 			<Component rail="content">
-				<Text small="Object config" class="uppercase text-neutral" />
-				<Text h2={recordHeading} class="mt-2" />
+				<Text
+					small="Object config"
+					class="text-neutral uppercase"
+				/>
+				<Text
+					h2={recordHeading}
+					class="mt-2"
+				/>
 				<Text
 					p={`Uses an explicit key object to resolve ${recordInput?.persistPath || 'inputs.input_1'}.value.`}
 					class="mt-2 text-neutral"
@@ -249,7 +298,7 @@
 						value={recordValue}
 						placeholder={recordInput.placeholder || ' '}
 						persist={{
-							key: recordInput.persistPath,
+							key: recordInput.persistPath
 						}}
 						oninput={handleRecordInput}
 						class="mt-4"
@@ -282,10 +331,22 @@
 			</Component>
 		</Component>
 
-		<Component tag="section" rail="full" base lite class="py-6">
+		<Component
+			tag="section"
+			rail="full"
+			base
+			lite
+			class="py-6"
+		>
 			<Component rail="content">
-				<Text small="String path" class="uppercase text-neutral" />
-				<Text h2={explicitHeading} class="mt-2" />
+				<Text
+					small="String path"
+					class="text-neutral uppercase"
+				/>
+				<Text
+					h2={explicitHeading}
+					class="mt-2"
+				/>
 				<Text
 					p="Explicit base-path mode still lets the form field choose the final path segment."
 					class="mt-2 text-neutral"
@@ -330,10 +391,23 @@
 			</Component>
 		</Component>
 
-		<Component tag="section" rail="full" neutral heavy invert class="py-6">
+		<Component
+			tag="section"
+			rail="full"
+			neutral
+			heavy
+			invert
+			class="py-6"
+		>
 			<Component rail="content">
-				<Text small="Boolean mode" class="uppercase" />
-				<Text h2="persist" class="mt-2" />
+				<Text
+					small="Boolean mode"
+					class="uppercase"
+				/>
+				<Text
+					h2="persist"
+					class="mt-2"
+				/>
 				<Text
 					p="This field uses generated component-scope persistence. Type, leave the route, and come back to the same route state."
 					class="mt-2"

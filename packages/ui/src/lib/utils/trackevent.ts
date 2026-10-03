@@ -9,7 +9,7 @@ export interface TrackEventOptions {
 type GtagFunction = (
 	command: string,
 	target: string | Date,
-	params?: Record<string, unknown>,
+	params?: Record<string, unknown>
 ) => void;
 
 type TrackEventHandler = (event?: MouseEvent) => void;
@@ -19,21 +19,21 @@ export function trackEvent({
 	location,
 	label,
 	href,
-	debug = false,
+	debug = false
 }: TrackEventOptions): TrackEventHandler {
 	return () => {
-		if (typeof window === "undefined") {
+		if (typeof window === 'undefined') {
 			return;
 		}
 
 		const resolvedGtag = (window as Window & { gtag?: GtagFunction }).gtag;
 
-		if (typeof resolvedGtag !== "function") {
+		if (typeof resolvedGtag !== 'function') {
 			return;
 		}
 
 		const params: Record<string, unknown> = {
-			transport_type: "beacon",
+			transport_type: 'beacon'
 		};
 
 		if (location) {
@@ -52,6 +52,6 @@ export function trackEvent({
 			params.debug_mode = true;
 		}
 
-		resolvedGtag("event", name, params);
+		resolvedGtag('event', name, params);
 	};
 }

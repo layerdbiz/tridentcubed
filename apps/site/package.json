@@ -12,10 +12,10 @@
 		"#ui.css": "@layerd/ui/theme.css"
 	},
 	"scripts": {
-		"dev": "vite dev --open",
-		"dev:host": "vite dev --host --open",
-		"build": "vite build",
-		"preview": "vite preview --host --open",
+		"dev": "vp dev --open",
+		"dev:host": "vp dev --host --open",
+		"build": "vp build",
+		"preview": "vp preview --host --open",
 		"sync": "svelte-kit sync",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -35,8 +35,9 @@
 		"svelte-check": "^4.7.5",
 		"tailwindcss": "4.3.3",
 		"typescript": "^6.0.0",
-		"vite": "^8.0.12",
-		"vite-plugin-devtools-json": "^1.1.0"
+		"vite": "catalog:",
+		"vite-plugin-devtools-json": "^1.1.0",
+		"vite-plus": "catalog:"
 	},
 	"dependencies": {
 		"@iconify-json/devicon": "^1.2.58",

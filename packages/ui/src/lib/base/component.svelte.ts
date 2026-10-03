@@ -1,7 +1,7 @@
-import type { Snippet } from "svelte";
-import type { SvelteHTMLElements } from "svelte/elements";
-import type { DebugValueType } from "@layerd/ui";
-import type { PersistContext, PersistInput } from "./helpers/persist/persist.svelte.ts";
+import type { Snippet } from 'svelte';
+import type { SvelteHTMLElements } from 'svelte/elements';
+import type { DebugValueType } from '@layerd/ui';
+import type { PersistContext, PersistInput } from './helpers/persist/persist.svelte.ts';
 import {
 	createClasses,
 	type GridValue,
@@ -11,8 +11,8 @@ import {
 	type PlacementValue,
 	type RootRendererProps,
 	type RootSnippetConfig,
-	type RootSnippetValue,
-} from "@layerd/ui";
+	type RootSnippetValue
+} from '@layerd/ui';
 
 /**
  * Creates base styling attributes that can be spread onto HTML elements
@@ -73,20 +73,9 @@ export interface ComponentProps extends ComponentItemProps {
 	children?: Snippet;
 
 	// 🎨 STYLES
-	color?:
-		| "base"
-		| "neutral"
-		| "primary"
-		| "secondary"
-		| "accent";
+	color?: 'base' | 'neutral' | 'primary' | 'secondary' | 'accent';
 
-	appearance?:
-		| "heavy"
-		| "lite"
-		| "outline"
-		| "ghost"
-		| "glass"
-		| "gradient";
+	appearance?: 'heavy' | 'lite' | 'outline' | 'ghost' | 'glass' | 'gradient';
 
 	// INVERT
 	invert?: boolean;
@@ -110,7 +99,7 @@ export interface ComponentProps extends ComponentItemProps {
 	total?: string;
 
 	// 📏 SIZE
-	size?: "xxs" | "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
+	size?: 'xxs' | 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
 	xxs?: boolean;
 	xs?: boolean;
 	sm?: boolean;
@@ -120,7 +109,7 @@ export interface ComponentProps extends ComponentItemProps {
 	xxl?: boolean;
 
 	// 📍 POSITION
-	position?: "left" | "center" | "right";
+	position?: 'left' | 'center' | 'right';
 
 	// ⚡ STATE
 	disabled?: boolean;
@@ -196,18 +185,13 @@ export interface ComponentReturn {
  * Props interface for the Component wrapper that extends ComponentProps
  * with snippet-specific functionality
  */
-export interface ComponentWrapperProps extends ComponentProps {
+export interface ComponentWrapperProps extends ComponentProps {}
+
+export function normalizeComponentTag(tag: ComponentTag | undefined): ComponentTag {
+	return tag ?? 'div';
 }
 
-export function normalizeComponentTag(
-	tag: ComponentTag | undefined,
-): ComponentTag {
-	return tag ?? "div";
-}
-
-export function createComponent(
-	props: Partial<ComponentProps> = {},
-): ComponentReturn {
+export function createComponent(props: Partial<ComponentProps> = {}): ComponentReturn {
 	const {
 		// states
 		disabled = false,
@@ -217,14 +201,14 @@ export function createComponent(
 		// unstyled
 		unstyled = false,
 		// color
-		color = undefined,
+		color,
 		base = false,
 		neutral = false,
 		primary = false,
 		secondary = false,
 		accent = false,
 		// appearance
-		appearance = undefined,
+		appearance,
 		heavy = false,
 		lite = false,
 		outline = false,
@@ -234,9 +218,9 @@ export function createComponent(
 		// controls
 		invert = false,
 		// position
-		position = undefined,
+		position,
 		// size
-		size = undefined,
+		size,
 		xxs = false,
 		xs = false,
 		sm = false,
@@ -245,7 +229,7 @@ export function createComponent(
 		xl = false,
 		xxl = false,
 		// user class
-		class: userClass = "",
+		class: userClass = '',
 		children,
 		total,
 		// Keep HTML attributes like href, type, etc. in ...rest
@@ -260,44 +244,40 @@ export function createComponent(
 	if (unstyled) {
 		return {
 			class: userClass,
-			...rest,
+			...rest
 		};
 	} else {
 		/* STATES
 		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
-		classes
-			.is(
-				disabled,
-				"opacity-50 cursor-not-allowed pointer-events-none select-none",
-			);
+		classes.is(disabled, 'opacity-50 cursor-not-allowed pointer-events-none select-none');
 
 		/* STYLES
 		:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
 		// color
-		const isBase = color === "base" || base;
-		const isNeutral = color === "neutral" || neutral;
-		const isPrimary = color === "primary" || primary;
-		const isSecondary = color === "secondary" || secondary;
-		const isAccent = color === "accent" || accent;
+		const isBase = color === 'base' || base;
+		const isNeutral = color === 'neutral' || neutral;
+		const isPrimary = color === 'primary' || primary;
+		const isSecondary = color === 'secondary' || secondary;
+		const isAccent = color === 'accent' || accent;
 		// variants
-		const isHeavy = appearance === "heavy" || heavy;
-		const isLite = appearance === "lite" || lite;
-		const isOutline = appearance === "outline" || outline;
-		const isGhost = appearance === "ghost" || ghost;
-		const isGlass = appearance === "glass" || glass;
-		const isGradient = appearance === "gradient" || gradient;
+		const isHeavy = appearance === 'heavy' || heavy;
+		const isLite = appearance === 'lite' || lite;
+		const isOutline = appearance === 'outline' || outline;
+		const isGhost = appearance === 'ghost' || ghost;
+		const isGlass = appearance === 'glass' || glass;
+		const isGradient = appearance === 'gradient' || gradient;
 		// position
-		const isLeft = position === "left";
-		const isCenter = position === "center";
-		const isRight = position === "right";
+		const isLeft = position === 'left';
+		const isCenter = position === 'center';
+		const isRight = position === 'right';
 		// size
-		const isXxs = size === "xxs" || xxs;
-		const isXs = size === "xs" || xs;
-		const isSm = size === "sm" || sm;
-		const isMd = size === "md" || md;
-		const isLg = size === "lg" || lg;
-		const isXl = size === "xl" || xl;
-		const isXxl = size === "xxl" || xxl;
+		const isXxs = size === 'xxs' || xxs;
+		const isXs = size === 'xs' || xs;
+		const isSm = size === 'sm' || sm;
+		const isMd = size === 'md' || md;
+		const isLg = size === 'lg' || lg;
+		const isXl = size === 'xl' || xl;
+		const isXxl = size === 'xxl' || xxl;
 
 		// Helper function to apply theme preset classes for a color
 		const colorThemes = (colorName: string) => {
@@ -312,54 +292,47 @@ export function createComponent(
 				.is(isGhost && !invert, `theme-ghost-${colorName}`)
 				.is(
 					!isHeavy && !isLite && !isOutline && !isGhost && !isGlass && invert,
-					`theme-heavy-${colorName}-invert`,
+					`theme-heavy-${colorName}-invert`
 				)
 				.is(
 					!isHeavy && !isLite && !isOutline && !isGhost && !isGlass && !invert,
-					`theme-heavy-${colorName}`,
+					`theme-heavy-${colorName}`
 				);
 		};
 
 		// Apply color theme presets with mutual exclusivity
-		if (isPrimary) colorThemes("primary");
-		else if (isSecondary) colorThemes("secondary");
-		else if (isAccent) colorThemes("accent");
-		else if (isNeutral) colorThemes("neutral");
-		else if (isBase) colorThemes("base");
+		if (isPrimary) colorThemes('primary');
+		else if (isSecondary) colorThemes('secondary');
+		else if (isAccent) colorThemes('accent');
+		else if (isNeutral) colorThemes('neutral');
+		else if (isBase) colorThemes('base');
 		// If no color specified but we have heavy/lite/outline variants, default to "base"
-		else if (isHeavy || isLite || isOutline) colorThemes("base");
+		else if (isHeavy || isLite || isOutline) colorThemes('base');
 
 		// Always apply base invert class when invert is used
-		classes.is(invert, "theme-invert");
+		classes.is(invert, 'theme-invert');
 
 		// Apply ghost theme preset independently (can work without color)
-		classes
-			.is(isGhost && invert, "theme-ghost-invert")
-			.is(isGhost && !invert, "theme-ghost");
+		classes.is(isGhost && invert, 'theme-ghost-invert').is(isGhost && !invert, 'theme-ghost');
 
 		// Apply glass theme preset independently (not tied to color)
-		classes
-			.is(isGlass && invert, "theme-glass-invert")
-			.is(isGlass && !invert, "theme-glass");
+		classes.is(isGlass && invert, 'theme-glass-invert').is(isGlass && !invert, 'theme-glass');
 
 		// Apply gradient theme preset independently (not tied to color)
-		classes.is(isGradient, "theme-gradient");
+		classes.is(isGradient, 'theme-gradient');
 
 		// Position styles
-		classes
-			.is(isLeft, "text-left")
-			.is(isCenter, "text-center")
-			.is(isRight, "text-right");
+		classes.is(isLeft, 'text-left').is(isCenter, 'text-center').is(isRight, 'text-right');
 
 		// Size styles
 		classes
-			.is(isXxs, "xxs")
-			.is(isXs, "xs")
-			.is(isSm, "sm")
-			.is(isMd, "md")
-			.is(isLg, "lg")
-			.is(isXl, "xl")
-			.is(isXxl, "xxl");
+			.is(isXxs, 'xxs')
+			.is(isXs, 'xs')
+			.is(isSm, 'sm')
+			.is(isMd, 'md')
+			.is(isLg, 'lg')
+			.is(isXl, 'xl')
+			.is(isXxl, 'xxl');
 	}
 
 	// Combine base classes with user classes
@@ -369,7 +342,7 @@ export function createComponent(
 	// Include disabled in the returned props if it's true
 	const returnProps: ComponentReturn = {
 		class: finalClasses,
-		...rest,
+		...rest
 	};
 
 	// Add disabled attribute for buttons (but not for links with disabled styling)
@@ -386,33 +359,32 @@ export function createComponentWithStyles(
 		defaults?: Partial<ComponentProps>;
 		componentClass?: string;
 		getComponentClasses?: (props: any) => string[];
-	} = {},
+	} = {}
 ) {
-	const { defaults = {}, componentClass = "", getComponentClasses } = options;
+	const { defaults = {}, componentClass = '', getComponentClasses } = options;
 
 	// Extract user class from props to handle separately
-	const { class: userClass = "", ...propsWithoutClass } = props;
+	const { class: userClass = '', ...propsWithoutClass } = props;
 
 	// Merge defaults with props (without user class)
 	const base = createComponent({ ...defaults, ...propsWithoutClass });
 
 	// Generate component-specific classes
 	const componentClasses = getComponentClasses
-		? getComponentClasses(props).filter(Boolean).join(" ")
-		: "";
+		? getComponentClasses(props).filter(Boolean).join(' ')
+		: '';
 
 	// Combine classes with user class LAST for proper CSS cascade
 	const allClasses = [base.class, componentClass, componentClasses, userClass]
-		.filter(
-			Boolean,
-		).join(" ");
+		.filter(Boolean)
+		.join(' ');
 
 	// Extract class from base to avoid duplication, then add final classes
 	const { class: baseClass, ...componentProps } = base;
 
 	return {
 		base: componentProps,
-		classes: allClasses,
+		classes: allClasses
 	};
 }
 
@@ -423,11 +395,10 @@ export function createComponentWithStyles(
  * Usage in component:
  * let { componentSpecificProp, children, ...props } = createProps<{ componentSpecificProp?: string }>();
  */
-export function createProps<T = {}>(): ComponentProps & T & {
-	children?: import("svelte").Snippet;
-} {
+export function createProps<T = {}>(): ComponentProps &
+	T & {
+		children?: import('svelte').Snippet;
+	} {
 	// This function never actually runs - it's purely for TypeScript inference
-	throw new Error(
-		"createProps() is for TypeScript inference only - use $props() instead",
-	);
+	throw new Error('createProps() is for TypeScript inference only - use $props() instead');
 }

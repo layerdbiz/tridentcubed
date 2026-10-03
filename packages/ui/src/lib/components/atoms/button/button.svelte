@@ -444,11 +444,11 @@
 		--btn-py: var(--btn-p);
 		--btn-icon: 2cap;
 
-		@apply rounded-button relative isolate inline-flex w-auto cursor-pointer items-center justify-center overflow-hidden whitespace-nowrap text-center font-medium leading-none transition-colors ease-in-out;
+		@apply relative isolate inline-flex w-auto cursor-pointer items-center justify-center overflow-hidden rounded-button text-center leading-none font-medium whitespace-nowrap transition-colors ease-in-out;
 		@apply gap-(--btn-gap) px-(--btn-px) py-(--btn-py);
 
 		@variant before {
-			@apply -z-1 bg-dark-light absolute inset-0 opacity-0 transition content-[''];
+			@apply absolute inset-0 -z-1 bg-dark-light opacity-0 transition content-[''];
 		}
 
 		&:is(:hover, :focus-visible, :active) {

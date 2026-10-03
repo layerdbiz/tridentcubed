@@ -196,7 +196,7 @@
 									onclick={() => handleModeChange('system')}
 									class="rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'system'
-										? 'bg-primary text-primary-foreground'
+										? 'text-primary-foreground bg-primary'
 										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
 								>
 									System
@@ -205,7 +205,7 @@
 									onclick={() => handleModeChange('light')}
 									class="rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'light'
-										? 'bg-primary text-primary-foreground'
+										? 'text-primary-foreground bg-primary'
 										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
 								>
 									Light
@@ -214,7 +214,7 @@
 									onclick={() => handleModeChange('dark')}
 									class="rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'dark'
-										? 'bg-primary text-primary-foreground'
+										? 'text-primary-foreground bg-primary'
 										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
 								>
 									Dark
@@ -232,7 +232,7 @@
 										onclick={() => handleThemeChange(themeOption)}
 										class="rounded border px-3 py-2 capitalize transition-colors {currentTheme ===
 										themeOption
-											? 'bg-primary text-primary-foreground'
+											? 'text-primary-foreground bg-primary'
 											: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
 									>
 										{themeOption}
@@ -271,7 +271,7 @@
 									onclick={() => handleModeChange('system')}
 									class="flex-1 rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'system'
-										? 'bg-primary text-primary-foreground'
+										? 'text-primary-foreground bg-primary'
 										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
 								>
 									🖥️ System
@@ -280,7 +280,7 @@
 									onclick={() => handleModeChange('light')}
 									class="flex-1 rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'light'
-										? 'bg-primary text-primary-foreground'
+										? 'text-primary-foreground bg-primary'
 										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
 								>
 									☀️ Light
@@ -289,7 +289,7 @@
 									onclick={() => handleModeChange('dark')}
 									class="flex-1 rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'dark'
-										? 'bg-primary text-primary-foreground'
+										? 'text-primary-foreground bg-primary'
 										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
 								>
 									🌙 Dark
@@ -312,7 +312,7 @@
 										onclick={() => handleThemeChange(themeOption)}
 										class="rounded border px-3 py-2 capitalize transition-colors {currentTheme ===
 										themeOption
-											? 'bg-primary text-primary-foreground'
+											? 'text-primary-foreground bg-primary'
 											: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
 									>
 										{themeOption}

@@ -34,7 +34,7 @@
 				class="text-center text-6xl font-black tracking-tight md:text-[14vw] lg:text-[12vw] xl:text-[8vw]"
 			> -->
 			<h1
-				class="text-center text-4xl font-black uppercase tracking-tight md:text-6xl lg:text-7xl xl:text-8xl"
+				class="text-center text-4xl font-black tracking-tight uppercase md:text-6xl lg:text-7xl xl:text-8xl"
 			>
 				{title}
 			</h1>
@@ -42,7 +42,7 @@
 
 		{#if icon}
 			<svg
-				class="current-color text-primary fill-primary w-18 my-4 h-5"
+				class="current-color my-4 h-5 w-18 fill-primary text-primary"
 				preserveAspectRatio="none"
 				id="water-swoosh"
 				xmlns="http://www.w3.org/2000/svg"
@@ -59,7 +59,7 @@
 
 		<!-- Subtitle -->
 		{#if subtitle}
-			<h2 class="mt-4 text-pretty text-center text-lg font-medium opacity-50 md:text-xl">
+			<h2 class="mt-4 text-center text-lg font-medium text-pretty opacity-50 md:text-xl">
 				{subtitle}
 			</h2>
 		{/if}

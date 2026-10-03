@@ -371,7 +371,7 @@
 <Component
 	observe
 	{...props}
-	class="slider embla select-none overflow-hidden {isAutoscroll ? '' : 'cursor-grab'} {props.class}"
+	class="slider embla overflow-hidden select-none {isAutoscroll ? '' : 'cursor-grab'} {props.class}"
 >
 	{#snippet component({
 		props: componentProps,

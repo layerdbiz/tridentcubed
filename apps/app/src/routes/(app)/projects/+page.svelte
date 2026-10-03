@@ -119,7 +119,8 @@
 	}
 
 	function refreshProjectRows() {
-		const registry = projectStates.ensureSeedProjects(projectSchema)
+		const registry = projectStates
+			.ensureSeedProjects(projectSchema)
 			.slice()
 			.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
@@ -178,12 +179,14 @@
 {#if projectDialog.previewIntroState.isOpen}
 	<div class="fixed inset-0 z-60 overflow-y-auto bg-warning-500/20 px-4 py-6 md:px-6 md:py-10">
 		<div class="mx-auto flex min-h-full w-full max-w-4xl items-center">
-			<div class="w-full overflow-hidden rounded-4xl border-5 border-warning bg-linear-to-br from-warning-50 via-amber-50 to-warning-100 shadow-2xl shadow-warning-950/20">
+			<div
+				class="w-full overflow-hidden rounded-4xl border-5 border-warning bg-linear-to-br from-warning-50 via-amber-50 to-warning-100 shadow-2xl shadow-warning-950/20"
+			>
 				<div class="grid gap-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
 					<div class="space-y-5 p-6 md:p-10">
 						<Component class="gap-2">
 							{#snippet topLC()}
-								<Component class="gap-2" >
+								<Component class="gap-2">
 									{#snippet leftCC()}
 										<Logo
 											mode="current"
@@ -192,44 +195,64 @@
 										/>
 									{/snippet}
 									{#snippet centerCC()}
-										<Text p="BETA PREVIEW" class="text-xs font-black uppercase tracking-[0.24em] text-warning-600"/>
+										<Text
+											p="BETA PREVIEW"
+											class="text-xs font-black tracking-[0.24em] text-warning-600 uppercase"
+										/>
 									{/snippet}
 								</Component>
 							{/snippet}
 							{#snippet center()}
-							<Text h1="Report Generator" class="max-w-3xl text-3xl text-warning-950 md:text-5xl" />
+								<Text
+									h1="Report Generator"
+									class="max-w-3xl text-3xl text-warning-950 md:text-5xl"
+								/>
 							{/snippet}
 							{#snippet bottom()}
-							<Text
-								p="Use this build for demo testing only. It is still in progress, and changes stay in this browser for now."
-								class="max-w-2xl leading-7 text-warning-950/85 md:text-lg"
-							/>
+								<Text
+									p="Use this build for demo testing only. It is still in progress, and changes stay in this browser for now."
+									class="max-w-2xl leading-7 text-warning-950/85 md:text-lg"
+								/>
 							{/snippet}
 						</Component>
 
 						<div class="flex flex-nowrap items-center gap-2 sm:gap-3">
 							<Button
-								size={mq.sm ? 'sm' : 'xl'} 
+								size={mq.sm ? 'sm' : 'xl'}
 								outline
 								variant="text"
-								class="min-w-0 flex-1 justify-center whitespace-nowrap border-secondary-300 bg-white text-neutral-700 hover:bg-secondary-100 sm:flex-none"
+								class="min-w-0 flex-1 justify-center border-secondary-300 bg-white whitespace-nowrap text-neutral-700 hover:bg-secondary-100 sm:flex-none"
 								label={isResettingPreviewData ? 'Resetting...' : 'Reset Data'}
 								onclick={handleResetData}
 								disabled={isResettingPreviewData}
 							/>
-							<Button size={mq.sm ? 'sm' : 'xl'} primary variant="text" class="min-w-0 flex-1 justify-center whitespace-nowrap sm:flex-none" label="Test App" onclick={dismissPreviewIntro} />
+							<Button
+								size={mq.sm ? 'sm' : 'xl'}
+								primary
+								variant="text"
+								class="min-w-0 flex-1 justify-center whitespace-nowrap sm:flex-none"
+								label="Test App"
+								onclick={dismissPreviewIntro}
+							/>
 						</div>
 					</div>
 
-					<div class="border-t border-warning-300/60 bg-warning-950/5 p-6 md:p-8 lg:border-l lg:border-t-0">
-						<p class="text-sm font-black uppercase tracking-[0.16em] text-warning-600">Try This</p>
-						<ul class="mt-4 list-disc space-y-2 pl-5 text-sm leading-6 text-warning-950/85 marker:text-warning-500">
+					<div
+						class="border-t border-warning-300/60 bg-warning-950/5 p-6 md:p-8 lg:border-t-0 lg:border-l"
+					>
+						<p class="text-sm font-black tracking-[0.16em] text-warning-600 uppercase">Try This</p>
+						<ul
+							class="mt-4 list-disc space-y-2 pl-5 text-sm leading-6 text-warning-950/85 marker:text-warning-500"
+						>
 							<li>Open a project.</li>
 							<li>Edit panels, pages, and form inputs.</li>
 							<li>Drag multiple photos from your computer straight into a panel.</li>
 							<li>Use your camera to capture photos on-site or upload from your phone.</li>
 							<li>Drag and drop photos or supported panels to reorder them.</li>
-							<li>Watch the live preview, download a PDF, and zoom with controls or pinch to zoom on mobile.</li>
+							<li>
+								Watch the live preview, download a PDF, and zoom with controls or pinch to zoom on
+								mobile.
+							</li>
 							<li>Test the app on phone, tablet, laptop, iPhone, and Android.</li>
 						</ul>
 					</div>
@@ -238,143 +261,235 @@
 		</div>
 	</div>
 {:else}
-<div class="min-h-svh bg-secondary-50 px-4 pb-6 pt-6 md:px-6 md:pb-8 md:pt-8">
-	<div class="mx-auto flex max-w-7xl flex-col gap-6">
-		<div class="flex flex-col gap-4 border-b-4 pb-4 border-black md:flex-row md:items-end md:justify-between">
-			<Text h1="Projects"/>
-			<div class="flex flex-nowrap items-center gap-2 sm:gap-3 md:justify-end">
-				<Button
-					sm
-					outline
-					variant="text"
-					class="min-w-0 flex-1 justify-center whitespace-nowrap border-secondary-300 bg-white text-neutral-700 hover:bg-secondary-100 md:flex-none"
-					label={isResettingPreviewData ? 'Resetting...' : 'Reset Data'}
-					onclick={handleResetData}
-					disabled={isResettingPreviewData}
-				/>
-				<Button sm primary variant="text" class="min-w-0 flex-1 justify-center whitespace-nowrap md:flex-none" label="Add Project" onclick={handleCreateProject} />
-			</div>
-		</div>
-
-		<div class=" bg-white ">
-			{#if isLoaded && !projectRows.length}
-				<div class="rounded-3xl border border-dashed border-secondary-300 bg-secondary-50 p-10 text-center">
-					<Text h3="No Projects Yet" />
-					<Text p="Create the first project to start building reports in the editor workspace." class="mt-2 text-neutral" />
+	<div class="min-h-svh bg-secondary-50 px-4 pt-6 pb-6 md:px-6 md:pt-8 md:pb-8">
+		<div class="mx-auto flex max-w-7xl flex-col gap-6">
+			<div
+				class="flex flex-col gap-4 border-b-4 border-black pb-4 md:flex-row md:items-end md:justify-between"
+			>
+				<Text h1="Projects" />
+				<div class="flex flex-nowrap items-center gap-2 sm:gap-3 md:justify-end">
+					<Button
+						sm
+						outline
+						variant="text"
+						class="min-w-0 flex-1 justify-center border-secondary-300 bg-white whitespace-nowrap text-neutral-700 hover:bg-secondary-100 md:flex-none"
+						label={isResettingPreviewData ? 'Resetting...' : 'Reset Data'}
+						onclick={handleResetData}
+						disabled={isResettingPreviewData}
+					/>
+					<Button
+						sm
+						primary
+						variant="text"
+						class="min-w-0 flex-1 justify-center whitespace-nowrap md:flex-none"
+						label="Add Project"
+						onclick={handleCreateProject}
+					/>
 				</div>
-			{:else}
-				<div class="grid gap-3 md:hidden">
-					{#each projectRows as row (row.id)}
-						<article class="rounded-3xl border p-4 {getProjectCardClass(row.status)}">
-							<div class="flex items-start justify-between gap-3">
-								<div class="min-w-0 space-y-1">
-									<p class={`text-base font-semibold ${getProjectPrimaryTextClass(row.status)}`}>{row.title}</p>
-									<p class={`text-sm ${getProjectSecondaryTextClass(row.status)}`}>{row.client}</p>
-								</div>
-								<span class="inline-flex shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] {getStatusClass(row.status)}">{getStatusLabel(row.status)}</span>
-							</div>
+			</div>
 
-							<div class="mt-4 grid grid-cols-2 gap-3 rounded-2xl p-3 text-sm {getProjectCardPanelClass(row.status)}">
-								<div>
-									<p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">Facility</p>
-									<p class={`mt-1 ${getProjectStrongTextClass(row.status)}`}>{row.facility}</p>
+			<div class=" bg-white">
+				{#if isLoaded && !projectRows.length}
+					<div
+						class="rounded-3xl border border-dashed border-secondary-300 bg-secondary-50 p-10 text-center"
+					>
+						<Text h3="No Projects Yet" />
+						<Text
+							p="Create the first project to start building reports in the editor workspace."
+							class="mt-2 text-neutral"
+						/>
+					</div>
+				{:else}
+					<div class="grid gap-3 md:hidden">
+						{#each projectRows as row (row.id)}
+							<article class="rounded-3xl border p-4 {getProjectCardClass(row.status)}">
+								<div class="flex items-start justify-between gap-3">
+									<div class="min-w-0 space-y-1">
+										<p class={`font-semibold text-base ${getProjectPrimaryTextClass(row.status)}`}>
+											{row.title}
+										</p>
+										<p class={`text-sm ${getProjectSecondaryTextClass(row.status)}`}>
+											{row.client}
+										</p>
+									</div>
+									<span
+										class="inline-flex shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.12em] whitespace-nowrap uppercase {getStatusClass(
+											row.status
+										)}">{getStatusLabel(row.status)}</span
+									>
 								</div>
-								<div>
-									<p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">Updated</p>
-									<p class={`mt-1 ${getProjectStrongTextClass(row.status)}`}>{formatTimestamp(row.updatedAt)}</p>
-								</div>
-								<div class="col-span-2">
-									<p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500">Team</p>
-									<div class="mt-2 flex items-center -space-x-2">
-										{#each row.teamMembers.slice(0, 4) as member, index (`${row.id}-mobile-${member.name}`)}
-											<img
-												alt={member.name}
-												class={getTeamAvatarClass(member.isPrimary)}
-												src={member.avatarUrl}
-												style={getTeamAvatarStyle(index, row.teamMembers.length)}
-											/>
-										{/each}
+
+								<div
+									class="mt-4 grid grid-cols-2 gap-3 rounded-2xl p-3 text-sm {getProjectCardPanelClass(
+										row.status
+									)}"
+								>
+									<div>
+										<p
+											class="text-[11px] font-semibold tracking-[0.16em] text-neutral-500 uppercase"
+										>
+											Facility
+										</p>
+										<p class={`mt-1 ${getProjectStrongTextClass(row.status)}`}>{row.facility}</p>
+									</div>
+									<div>
+										<p
+											class="text-[11px] font-semibold tracking-[0.16em] text-neutral-500 uppercase"
+										>
+											Updated
+										</p>
+										<p class={`mt-1 ${getProjectStrongTextClass(row.status)}`}>
+											{formatTimestamp(row.updatedAt)}
+										</p>
+									</div>
+									<div class="col-span-2">
+										<p
+											class="text-[11px] font-semibold tracking-[0.16em] text-neutral-500 uppercase"
+										>
+											Team
+										</p>
+										<div class="mt-2 flex items-center -space-x-2">
+											{#each row.teamMembers.slice(0, 4) as member, index (`${row.id}-mobile-${member.name}`)}
+												<img
+													alt={member.name}
+													class={getTeamAvatarClass(member.isPrimary)}
+													src={member.avatarUrl}
+													style={getTeamAvatarStyle(index, row.teamMembers.length)}
+												/>
+											{/each}
+										</div>
 									</div>
 								</div>
-							</div>
 
-							<div class="mt-4 space-y-2">
-								<div class={`flex items-center justify-between gap-3 text-sm font-medium ${getProjectSecondaryTextClass(row.status)}`}>
-									<span>Progress</span>
-									<span class="shrink-0 text-xs font-semibold uppercase tracking-[0.12em]">{row.progress}</span>
+								<div class="mt-4 space-y-2">
+									<div
+										class={`flex items-center justify-between gap-3 text-sm font-medium ${getProjectSecondaryTextClass(row.status)}`}
+									>
+										<span>Progress</span>
+										<span class="shrink-0 text-xs font-semibold tracking-[0.12em] uppercase"
+											>{row.progress}</span
+										>
+									</div>
+									<div
+										class={`h-2.5 overflow-hidden rounded-full ${getProgressTrackClass(row.status)}`}
+									>
+										<div
+											class="h-full rounded-full transition-[width] {getProgressClass(row.status)}"
+											style={`width: ${row.progressPercent}%`}
+										></div>
+									</div>
 								</div>
-								<div class={`h-2.5 overflow-hidden rounded-full ${getProgressTrackClass(row.status)}`}>
-									<div class="h-full rounded-full transition-[width] {getProgressClass(row.status)}" style={`width: ${row.progressPercent}%`}></div>
+
+								<div class="mt-4 flex gap-2">
+									<Button
+										sm
+										variant="text"
+										class={`flex-1 ${getOpenButtonClass(row.status)}`}
+										label="Open"
+										onclick={() => handleOpenProject(row.id)}
+									/>
+									<Button
+										sm
+										outline
+										variant="text"
+										class={`flex-1 ${getDeleteButtonClass()}`}
+										label="Delete"
+										onclick={() => handleDeleteProject(row.id)}
+									/>
 								</div>
-							</div>
+							</article>
+						{/each}
+					</div>
 
-							<div class="mt-4 flex gap-2">
-								<Button
-									sm
-									variant="text"
-									class={`flex-1 ${getOpenButtonClass(row.status)}`}
-									label="Open"
-									onclick={() => handleOpenProject(row.id)}
-								/>
-								<Button sm outline variant="text" class={`flex-1 ${getDeleteButtonClass()}`} label="Delete" onclick={() => handleDeleteProject(row.id)} />
-							</div>
-						</article>
-					{/each}
-				</div>
-
-				<div class="hidden md:block">
-					<Table columns={tableColumns} data={projectRows} hoverable>
-						<table class="w-full table-fixed border-collapse">
-							<thead>
-								<tr>
-									{#each tableColumns as column (column.key)}
-										<th class={`px-3 pb-2 text-xs font-semibold uppercase tracking-[0.16em] text-neutral-500 ${column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left'}`} style={column.width ? `width: ${column.width}` : ''}>
-											{column.label}
-										</th>
-									{/each}
-								</tr>
-							</thead>
-							<tbody>
-								{#each projectRows as row (row.id)}
-									<tr class="{getProjectRowClass(row.status)}" role="link" tabindex="0" onclick={() => handleOpenProject(row.id)} onkeydown={(event) => {
-										if (event.key === 'Enter' || event.key === ' ') {
-											event.preventDefault();
-											void handleOpenProject(row.id);
-										}
-									}}>
-										<td class="px-3 py-4 align-middle">
-											<div class="space-y-1">
-												<p class={`text-sm font-semibold ${getProjectPrimaryTextClass(row.status)}`}>{row.title}</p>
-												<!-- <p class="text-xs uppercase tracking-[0.12em] text-neutral-500">{row.id}</p> -->
-											</div>
-										</td>
-										<td class={`px-3 py-4 align-middle text-sm ${getProjectSecondaryTextClass(row.status)}`}>{row.client}</td>
-										<td class="px-3 py-4 align-middle">
-											<div class="flex items-center justify-center -space-x-2">
-												{#each row.teamMembers.slice(0, 4) as member, index (`${row.id}-${member.name}`)}
-													<img
-														alt={member.name}
-														class={getTeamAvatarClass(member.isPrimary)}
-														src={member.avatarUrl}
-														style={getTeamAvatarStyle(index, row.teamMembers.length)}
-													/>
-												{/each}
-											</div>
-										</td>
-										<td class="px-3 py-4 text-center align-middle">
-											<span class={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${getStatusClass(row.status)}`}>{getStatusLabel(row.status)}</span>
-										</td>
-										<td class="px-3 py-4 align-middle">
-											<div class="mx-auto flex w-full max-w-36 items-center gap-3">
-												<div class={`h-2.5 flex-1 overflow-hidden rounded-full ${getProgressTrackClass(row.status)}`}>
-													<div class="h-full rounded-full transition-[width] {getProgressClass(row.status)}" style={`width: ${row.progressPercent}%`}></div>
+					<div class="hidden md:block">
+						<Table
+							columns={tableColumns}
+							data={projectRows}
+							hoverable
+						>
+							<table class="w-full table-fixed border-collapse">
+								<thead>
+									<tr>
+										{#each tableColumns as column (column.key)}
+											<th
+												class={`px-3 pb-2 text-xs font-semibold tracking-[0.16em] text-neutral-500 uppercase ${column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left'}`}
+												style={column.width ? `width: ${column.width}` : ''}
+											>
+												{column.label}
+											</th>
+										{/each}
+									</tr>
+								</thead>
+								<tbody>
+									{#each projectRows as row (row.id)}
+										<tr
+											class={getProjectRowClass(row.status)}
+											role="link"
+											tabindex="0"
+											onclick={() => handleOpenProject(row.id)}
+											onkeydown={(event) => {
+												if (event.key === 'Enter' || event.key === ' ') {
+													event.preventDefault();
+													void handleOpenProject(row.id);
+												}
+											}}
+										>
+											<td class="px-3 py-4 align-middle">
+												<div class="space-y-1">
+													<p
+														class={`text-sm font-semibold ${getProjectPrimaryTextClass(row.status)}`}
+													>
+														{row.title}
+													</p>
+													<!-- <p class="text-xs uppercase tracking-[0.12em] text-neutral-500">{row.id}</p> -->
 												</div>
-												<span class={`shrink-0 text-xs font-semibold uppercase tracking-[0.12em] ${getProjectSecondaryTextClass(row.status)}`}>{row.progress}</span>
-											</div>
-										</td>
-										<td class={`px-3 py-4 align-middle text-right text-sm ${getProjectSecondaryTextClass(row.status)}`}>{formatTimestamp(row.updatedAt)}</td>
-										<td class="px-3 py-4 align-middle">
-											<div class="flex justify-end gap-2">
+											</td>
+											<td
+												class={`px-3 py-4 align-middle text-sm ${getProjectSecondaryTextClass(row.status)}`}
+												>{row.client}</td
+											>
+											<td class="px-3 py-4 align-middle">
+												<div class="flex items-center justify-center -space-x-2">
+													{#each row.teamMembers.slice(0, 4) as member, index (`${row.id}-${member.name}`)}
+														<img
+															alt={member.name}
+															class={getTeamAvatarClass(member.isPrimary)}
+															src={member.avatarUrl}
+															style={getTeamAvatarStyle(index, row.teamMembers.length)}
+														/>
+													{/each}
+												</div>
+											</td>
+											<td class="px-3 py-4 text-center align-middle">
+												<span
+													class={`inline-flex rounded-full px-3 py-1 text-xs font-semibold tracking-[0.12em] whitespace-nowrap uppercase ${getStatusClass(row.status)}`}
+													>{getStatusLabel(row.status)}</span
+												>
+											</td>
+											<td class="px-3 py-4 align-middle">
+												<div class="mx-auto flex w-full max-w-36 items-center gap-3">
+													<div
+														class={`h-2.5 flex-1 overflow-hidden rounded-full ${getProgressTrackClass(row.status)}`}
+													>
+														<div
+															class="h-full rounded-full transition-[width] {getProgressClass(
+																row.status
+															)}"
+															style={`width: ${row.progressPercent}%`}
+														></div>
+													</div>
+													<span
+														class={`shrink-0 text-xs font-semibold tracking-[0.12em] uppercase ${getProjectSecondaryTextClass(row.status)}`}
+														>{row.progress}</span
+													>
+												</div>
+											</td>
+											<td
+												class={`px-3 py-4 text-right align-middle text-sm ${getProjectSecondaryTextClass(row.status)}`}
+												>{formatTimestamp(row.updatedAt)}</td
+											>
+											<td class="px-3 py-4 align-middle">
+												<div class="flex justify-end gap-2">
 													<Button
 														sm
 														variant="text"
@@ -385,22 +500,29 @@
 															void handleOpenProject(row.id);
 														}}
 													/>
-												<Button sm outline variant="text" class={getDeleteButtonClass()} label="Delete" onclick={(event: MouseEvent) => {
-													event.stopPropagation();
-													void handleDeleteProject(row.id);
-												}} />
-											</div>
-										</td>
-									</tr>
-								{/each}
-							</tbody>
-						</table>
-					</Table>
-				</div>
-			{/if}
+													<Button
+														sm
+														outline
+														variant="text"
+														class={getDeleteButtonClass()}
+														label="Delete"
+														onclick={(event: MouseEvent) => {
+															event.stopPropagation();
+															void handleDeleteProject(row.id);
+														}}
+													/>
+												</div>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</Table>
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
-</div>
 {/if}
 
 <style lang="postcss">

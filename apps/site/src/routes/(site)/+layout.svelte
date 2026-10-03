@@ -63,13 +63,14 @@
 
 		return `click_${normalizedLabel}_link`;
 	}
-
-	export {};
 </script>
 
 <svelte:head>
 	<!-- Google tag (gtag.js) -->
-	<script async src="https://www.googletagmanager.com/gtag/js?id=G-RZC3M03LR7"></script>
+	<script
+		async
+		src="https://www.googletagmanager.com/gtag/js?id=G-RZC3M03LR7"
+	></script>
 
 	<script>
 		window.dataLayer = window.dataLayer || [];
@@ -154,7 +155,7 @@
 	fixed
 	appearance={navOpen ? 'glass' : scroll.top ? 'ghost' : 'glass'}
 	invert
-	class="rounded-4xl relative grid grid-cols-[auto_minmax(0,1fr)] grid-rows-1 gap-4 p-2 lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:p-2 {navOpen
+	class="relative grid grid-cols-[auto_minmax(0,1fr)] grid-rows-1 gap-4 rounded-4xl p-2 lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:p-2 {navOpen
 		? 'grid-rows-[auto_auto]'
 		: ''}"
 >
@@ -213,7 +214,7 @@
 				year="2020"
 				name="Trident Cubed Solutions"
 				type="llc"
-				class="text-primary-50 py-0! text-sm"
+				class="py-0! text-sm text-primary-50"
 			/>
 		</div>
 		<div class="mt-2 flex lg:mt-0">
@@ -230,7 +231,7 @@
 				})}
 				ghost
 				external
-				class="text-primary-50 hover:text-primary-200 -mx-2"
+				class="-mx-2 text-primary-50 hover:text-primary-200"
 			/>
 			<Button
 				lg
@@ -245,7 +246,7 @@
 				})}
 				ghost
 				external
-				class="text-primary-50 hover:text-primary-200 -mx-2"
+				class="-mx-2 text-primary-50 hover:text-primary-200"
 			/>
 			<Button
 				lg
@@ -260,7 +261,7 @@
 				})}
 				ghost
 				external
-				class="text-primary-50 hover:text-primary-200 -mx-2"
+				class="-mx-2 text-primary-50 hover:text-primary-200"
 			/>
 		</div>
 	</Container>
@@ -268,7 +269,7 @@
 	<!-- blue radial gradient -->
 	<Image
 		bg
-		class="mask-t-from-0% mask-t-to-100% absolute bottom-0 mx-auto size-full"
+		class="absolute bottom-0 mx-auto size-full mask-t-from-0% mask-t-to-100%"
 		overlay="bg-radial from-primary to-transparent from-0% to-80% bg-black scale-y-200 translate-y-1/2"
 	/>
 </Footer>

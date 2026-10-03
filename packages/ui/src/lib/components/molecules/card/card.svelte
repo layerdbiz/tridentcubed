@@ -58,7 +58,7 @@
 <!-- Service -->
 {#snippet service()}
 	<!-- Header section with label -->
-	<div class="min-h-50 relative overflow-hidden px-4 py-3">
+	<div class="relative min-h-50 overflow-hidden px-4 py-3">
 		<Image
 			bg
 			src={imageSrc}
@@ -87,16 +87,16 @@
 	<div class="card-content space-y-2 px-6 py-6">
 		<div class="inline-flex items-center gap-1.5">
 			<Text
-				class="card-title text-base-950-50 group-hover:text-primary text-balance text-xl font-semibold"
+				class="card-title text-xl font-semibold text-balance text-base-950-50 group-hover:text-primary"
 				h3={title}
 			/>
 			<Icon
 				icon="icon-[mdi--arrow-right]"
-				class="text-primary text-xl"
+				class="text-xl text-primary"
 			/>
 		</div>
 		<Text
-			class="card-description text-base-600-300 text-balance text-sm leading-relaxed"
+			class="card-description text-sm leading-relaxed text-balance text-base-600-300"
 			p={description}
 		/>
 
@@ -111,7 +111,7 @@
 	<div
 		class="image relative flex aspect-square flex-col items-center justify-end rounded-lg pb-2 md:pb-6 lg:pb-4"
 	>
-		<figure class="-z-1 reflect absolute -bottom-px">
+		<figure class="absolute -bottom-px -z-1 reflect">
 			<img
 				class="w-full"
 				src={imageSrc}
@@ -119,11 +119,11 @@
 			/>
 
 			<div
-				class="bg-linear-to-b pointer-events-none absolute inset-0 from-transparent from-60% to-black to-100%"
+				class="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-60% to-black to-100%"
 				style={maskStyle}
 			></div>
 			<div
-				class="bg-linear-to-b to-primary/50 pointer-events-none absolute inset-0 from-transparent from-60% to-100% opacity-0 transition duration-200 will-change-auto group-hover:opacity-100"
+				class="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-60% to-primary/50 to-100% opacity-0 transition duration-200 will-change-auto group-hover:opacity-100"
 				style={maskStyle}
 			></div>
 		</figure>
@@ -142,12 +142,12 @@
 
 			<Text
 				h4={title}
-				class="text-light-light text-xl"
+				class="text-xl text-light-light"
 			/>
 
 			{#if subtitle}
 				<Text
-					class="text-base-300 group-hover:text-primary-100 text-sm"
+					class="text-sm text-base-300 group-hover:text-primary-100"
 					p={subtitle}
 				/>
 			{/if}
@@ -160,12 +160,12 @@
 	<!-- Quote content -->
 	{#if description}
 		<blockquote
-			class="relative mb-6 inline-block text-pretty font-serif text-lg leading-[1.2] before:absolute before:-left-[1.25ch] before:content-['❝'] after:content-['❞'] md:text-xl lg:text-3xl"
+			class="relative mb-6 inline-block font-serif text-lg leading-[1.2] text-pretty before:absolute before:-left-[1.25ch] before:content-['❝'] after:content-['❞'] md:text-xl lg:text-3xl"
 		>
 			{description}
 
 			<b
-				class="border-primary absolute -left-6 bottom-0 top-0 inline-block border-l-4 lg:-left-12 lg:bottom-2 lg:top-2"
+				class="absolute top-0 bottom-0 -left-6 inline-block border-l-4 border-primary lg:top-2 lg:bottom-2 lg:-left-12"
 			></b>
 		</blockquote>
 	{/if}
@@ -173,11 +173,11 @@
 	<!-- Attribution section -->
 	<div class="pt-4">
 		{#if title}
-			<p class="text-base-950-50 text-sm font-medium uppercase lg:text-lg">{title}</p>
+			<p class="text-sm font-medium text-base-950-50 uppercase lg:text-lg">{title}</p>
 		{/if}
 
 		{#if subtitle}
-			<p class="text-primary-500 text-sm uppercase lg:text-lg">{subtitle}</p>
+			<p class="text-sm text-primary-500 uppercase lg:text-lg">{subtitle}</p>
 		{/if}
 	</div>
 

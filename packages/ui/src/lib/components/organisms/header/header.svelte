@@ -35,7 +35,10 @@
 </script>
 
 <header class="header {positionClasses} px-4 py-6">
-	<Container {...props} class={props.class}>
+	<Container
+		{...props}
+		class={props.class}
+	>
 		{#if children}
 			{@render children()}
 		{/if}

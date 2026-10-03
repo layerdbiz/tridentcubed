@@ -10,7 +10,12 @@
 		variant?: 'base' | 'variant1' | 'variant2';
 	}
 
-	let { text = undefined, variant = 'base', children = undefined, ...props }: ExampleProps = $props();
+	let {
+		text = undefined,
+		variant = 'base',
+		children = undefined,
+		...props
+	}: ExampleProps = $props();
 </script>
 
 <!-- ⬜ default ⬛ prop 🟪 snippet 🟦 children -->

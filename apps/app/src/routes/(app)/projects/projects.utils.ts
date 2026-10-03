@@ -1,8 +1,8 @@
-import { browser } from "$app/env";
+import { browser } from '$app/env';
 
-import { overallProgressRingCircumference } from "./projects.constants";
-import * as projectAssets from "./projects.assets";
-import type * as projectTypes from "./projects.types";
+import { overallProgressRingCircumference } from './projects.constants';
+import * as projectAssets from './projects.assets';
+import type * as projectTypes from './projects.types';
 
 let idCounter = 0;
 
@@ -11,14 +11,12 @@ export function nextId(prefix: string): string {
 	return `${prefix}-${idCounter}`;
 }
 
-export function syncIdCounterFromSections(
-	items: projectTypes.SectionType[],
-): void {
+export function syncIdCounterFromSections(items: projectTypes.SectionType[]): void {
 	let maxId = idCounter;
 
 	for (const section of items) {
 		const ids = [section.id];
-		if (section.type === "photos") {
+		if (section.type === 'photos') {
 			for (const group of section.groups) {
 				ids.push(group.id);
 				ids.push(...group.photos.map((photo) => photo.id));
@@ -30,7 +28,7 @@ export function syncIdCounterFromSections(
 			if (match) maxId = Math.max(maxId, Number(match[1]));
 		}
 
-		if (section.type === "time-log") {
+		if (section.type === 'time-log') {
 			const timeLog = section as projectTypes.TimeLogSectionType;
 			for (const day of timeLog.days) {
 				const dayMatch = day.id.match(/(\d+)$/);
@@ -52,52 +50,57 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 export function toPercent(value: number, total: number): number {
-	return total ? Math.round(value / total * 100) : 0;
+	return total ? Math.round((value / total) * 100) : 0;
 }
 
 export function slugify(value: string): string {
-	return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "survey-report";
+	return (
+		value
+			.toLowerCase()
+			.trim()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '') || 'survey-report'
+	);
 }
 
 export function formatDayDate(dateISO: string): string {
-	if (!dateISO) return "";
+	if (!dateISO) return '';
 
 	const [year, month, day] = String(dateISO)
-		.split("-")
+		.split('-')
 		.map((value) => Number(value));
-	if (!year || !month || !day) return "";
+	if (!year || !month || !day) return '';
 
 	const date = new Date(year, month - 1, day);
-	const weekday = new Intl.DateTimeFormat(undefined, { weekday: "long" })
-		.format(date);
+	const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'long' }).format(date);
 	const numeric = new Intl.DateTimeFormat(undefined, {
-		month: "numeric",
-		day: "numeric",
-		year: "numeric",
+		month: 'numeric',
+		day: 'numeric',
+		year: 'numeric'
 	}).format(date);
 
 	return `${weekday}, ${numeric}`;
 }
 
 export function getSectionMetrics(
-	section: projectTypes.SectionType,
+	section: projectTypes.SectionType
 ): projectTypes.SectionMetricsType {
 	if (!section.enabled) {
 		return { done: 0, total: 0, percent: 0 };
 	}
 
-	if (section.type === "time-log") {
+	if (section.type === 'time-log') {
 		let done = 0;
 		let total = 0;
 
 		for (const day of section.days) {
 			total += 1;
-			if (String(day.dateISO || "").trim()) done += 1;
+			if (String(day.dateISO || '').trim()) done += 1;
 
 			for (const entry of day.entries) {
 				total += 2;
-				if (String(entry.time || "").trim()) done += 1;
-				if (String(entry.text || "").trim()) done += 1;
+				if (String(entry.time || '').trim()) done += 1;
+				if (String(entry.text || '').trim()) done += 1;
 			}
 		}
 
@@ -105,12 +108,14 @@ export function getSectionMetrics(
 		return { done, total: safeTotal, percent: toPercent(done, safeTotal) };
 	}
 
-	if (section.type === "photos") {
+	if (section.type === 'photos') {
 		const done = section.groups.reduce((count, group) => {
-			return count +
+			return (
+				count +
 				Number(Boolean(group.title.trim())) +
 				Number(Boolean(group.description.trim())) +
-				Number(group.photos.length > 0 || group.files.length > 0);
+				Number(group.photos.length > 0 || group.files.length > 0)
+			);
 		}, 0);
 		const total = Math.max(1, section.groups.length) * 3;
 		return { done, total, percent: toPercent(done, total) };
@@ -120,11 +125,11 @@ export function getSectionMetrics(
 	// discriminants first is what lets TypeScript narrow to it here.
 	const values = Object.values(section.fields);
 	const done = values.reduce((count, value) => {
-			if (Array.isArray(value)) {
-				return count + Number(value.some((item) => String(item || "").trim()));
-			}
+		if (Array.isArray(value)) {
+			return count + Number(value.some((item) => String(item || '').trim()));
+		}
 
-			return count + Number(String(value || "").trim().length > 0);
+		return count + Number(String(value || '').trim().length > 0);
 	}, 0);
 	const total = Math.max(1, values.length);
 	return { done, total, percent: toPercent(done, total) };
@@ -133,7 +138,7 @@ export function getSectionMetrics(
 export const getPanelMetrics = getSectionMetrics;
 
 export function getOverallMetrics(
-	items: projectTypes.SectionType[],
+	items: projectTypes.SectionType[]
 ): projectTypes.SectionMetricsType {
 	let done = 0;
 	let total = 0;
@@ -150,44 +155,38 @@ export function getOverallMetrics(
 export const getOverallPanelMetrics = getOverallMetrics;
 
 export function getSectionStatus(
-	metrics: projectTypes.SectionMetricsType,
+	metrics: projectTypes.SectionMetricsType
 ): projectTypes.SectionStatusType {
-	if (metrics.percent <= 0) return "todo";
-	if (metrics.percent >= 100) return "complete";
-	return "in-progress";
+	if (metrics.percent <= 0) return 'todo';
+	if (metrics.percent >= 100) return 'complete';
+	return 'in-progress';
 }
 
 export const getPanelStatus = getSectionStatus;
 
-export function getSectionStatusLabel(
-	metrics: projectTypes.SectionMetricsType,
-): string {
+export function getSectionStatusLabel(metrics: projectTypes.SectionMetricsType): string {
 	const status = getSectionStatus(metrics);
-	if (status === "todo") return "TO DO";
-	if (status === "complete") return "COMPLETE";
-	return "IN PROGRESS";
+	if (status === 'todo') return 'TO DO';
+	if (status === 'complete') return 'COMPLETE';
+	return 'IN PROGRESS';
 }
 
 export const getPanelStatusLabel = getSectionStatusLabel;
 
-export function getSectionStatusTextClass(
-	metrics: projectTypes.SectionMetricsType,
-): string {
+export function getSectionStatusTextClass(metrics: projectTypes.SectionMetricsType): string {
 	const status = getSectionStatus(metrics);
-	if (status === "todo") return "text-neutral-400";
-	if (status === "complete") return "text-success-600";
-	return "text-info";
+	if (status === 'todo') return 'text-neutral-400';
+	if (status === 'complete') return 'text-success-600';
+	return 'text-info';
 }
 
 export const getPanelStatusTextClass = getSectionStatusTextClass;
 
-export function getSectionProgressFillClass(
-	metrics: projectTypes.SectionMetricsType,
-): string {
+export function getSectionProgressFillClass(metrics: projectTypes.SectionMetricsType): string {
 	const status = getSectionStatus(metrics);
-	if (status === "todo") return "bg-secondary-300";
-	if (status === "complete") return "bg-accent-500";
-	return "bg-info";
+	if (status === 'todo') return 'bg-secondary-300';
+	if (status === 'complete') return 'bg-accent-500';
+	return 'bg-info';
 }
 
 export const getPanelProgressFillClass = getSectionProgressFillClass;
@@ -198,52 +197,49 @@ export function getProgressRingOffset(percent: number): number {
 }
 
 export function getPhotoOrientation(
-	photo: projectTypes.PhotoItemType,
+	photo: projectTypes.PhotoItemType
 ): projectTypes.PhotoOrientationType {
-	if (!photo.width || !photo.height) return "square";
-	if (photo.width / photo.height >= 1.1) return "landscape";
-	if (photo.height / photo.width >= 1.1) return "portrait";
-	return "square";
+	if (!photo.width || !photo.height) return 'square';
+	if (photo.width / photo.height >= 1.1) return 'landscape';
+	if (photo.height / photo.width >= 1.1) return 'portrait';
+	return 'square';
 }
 
 export function getPreviewPhotoGridClass(
-	group: Pick<projectTypes.PhotoGroupType, "variant" | "photos">,
+	group: Pick<projectTypes.PhotoGroupType, 'variant' | 'photos'>
 ): string {
 	const slots = getPhotoVariantCount(group.variant, group.photos.length);
-	if (slots <= 1) return "grid gap-3";
-	if (slots <= 2) return "grid grid-cols-2 gap-3";
-	return "grid grid-cols-2 gap-3";
+	if (slots <= 1) return 'grid gap-3';
+	if (slots <= 2) return 'grid grid-cols-2 gap-3';
+	return 'grid grid-cols-2 gap-3';
 }
 
 export function getPreviewPhotoCardClass(
-	_group: Pick<projectTypes.PhotoGroupType, "variant" | "photos">,
-	_photo: projectTypes.PhotoItemType,
+	_group: Pick<projectTypes.PhotoGroupType, 'variant' | 'photos'>,
+	_photo: projectTypes.PhotoItemType
 ): string {
-	return "flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white";
+	return 'flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white';
 }
 
 export function getPreviewPhotoFrameHeight(
-	group: Pick<projectTypes.PhotoGroupType, "variant" | "photos">,
-	photo: projectTypes.PhotoItemType,
+	group: Pick<projectTypes.PhotoGroupType, 'variant' | 'photos'>,
+	photo: projectTypes.PhotoItemType
 ): string {
 	const orientation = getPhotoOrientation(photo);
 	const slots = getPhotoVariantCount(group.variant, group.photos.length);
 
 	if (slots === 1) {
-		return orientation === "portrait" ? "5.6in" : "4.7in";
+		return orientation === 'portrait' ? '5.6in' : '4.7in';
 	}
 
 	if (slots === 2) {
-		return orientation === "portrait" ? "3.55in" : "2.45in";
+		return orientation === 'portrait' ? '3.55in' : '2.45in';
 	}
 
-	return orientation === "portrait" ? "2.7in" : "1.9in";
+	return orientation === 'portrait' ? '2.7in' : '1.9in';
 }
 
-export function getPhotoVariantCount(
-	variant: string,
-	fallback: number,
-): number {
+export function getPhotoVariantCount(variant: string, fallback: number): number {
 	const match = variant.match(/(\d+)$/);
 	const count = match ? Number(match[1]) : fallback;
 	return Number.isFinite(count) && count > 0 ? count : Math.max(1, fallback);
@@ -252,61 +248,49 @@ export function getPhotoVariantCount(
 export function fileToDataUrl(file: File): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		const reader = new FileReader();
-		reader.onload = () => resolve(String(reader.result || ""));
+		reader.onload = () => resolve(String(reader.result || ''));
 		reader.onerror = () => reject(reader.error);
 		reader.readAsDataURL(file);
 	});
 }
 
-export function loadImageDimensions(
-	src: string,
-): Promise<{ width: number; height: number }> {
-	return new Promise<{ width: number; height: number }>(async (resolve) => {
-		if (!browser || !src) {
-			resolve({ width: 0, height: 0 });
-			return;
-		}
+export async function loadImageDimensions(src: string): Promise<{ width: number; height: number }> {
+	if (!browser || !src) return { width: 0, height: 0 };
 
-		const resolvedSrc = await projectAssets.resolveAssetUrl(src);
-		if (!resolvedSrc) {
-			resolve({ width: 0, height: 0 });
-			return;
-		}
+	const resolvedSrc = await projectAssets.resolveAssetUrl(src);
+	if (!resolvedSrc) return { width: 0, height: 0 };
 
+	return new Promise<{ width: number; height: number }>((resolve) => {
 		const image = new Image();
 		image.onload = () =>
 			resolve({
 				width: image.naturalWidth || 0,
-				height: image.naturalHeight || 0,
+				height: image.naturalHeight || 0
 			});
 		image.onerror = () => resolve({ width: 0, height: 0 });
 		image.src = resolvedSrc;
 	});
 }
 
-export async function createPhotoItem(
-	file: File,
-): Promise<projectTypes.PhotoItemType> {
+export async function createPhotoItem(file: File): Promise<projectTypes.PhotoItemType> {
 	const src = await projectAssets.saveImageFile(file);
 	const { width, height } = await loadImageDimensions(src);
 
 	return {
-		id: nextId("photo"),
-		name: file.name || "Photo",
-		caption: file.name ? file.name.replace(/\.[^.]+$/, "") : "Photo",
+		id: nextId('photo'),
+		name: file.name || 'Photo',
+		caption: file.name ? file.name.replace(/\.[^.]+$/, '') : 'Photo',
 		src,
 		width,
-		height,
+		height
 	};
 }
 
-export async function hydratePhotoDimensions(
-	items: projectTypes.SectionType[],
-): Promise<boolean> {
+export async function hydratePhotoDimensions(items: projectTypes.SectionType[]): Promise<boolean> {
 	let changed = false;
 
 	for (const section of items) {
-		if (section.type !== "photos") continue;
+		if (section.type !== 'photos') continue;
 
 		for (const group of section.groups) {
 			for (const photo of group.photos) {

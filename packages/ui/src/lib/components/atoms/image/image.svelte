@@ -164,7 +164,7 @@
 {#snippet divContainer(containerProps: any)}
 	<div
 		{...containerProps}
-		class="{bg ? '-z-1 absolute inset-0 size-full' : 'relative w-full'} {containerProps.class}"
+		class="{bg ? 'absolute inset-0 -z-1 size-full' : 'relative w-full'} {containerProps.class}"
 		style={maskStyle}
 	>
 		{@render backgroundLayer()}
@@ -179,7 +179,7 @@
 {#snippet figureContainer(containerProps: any)}
 	<figure
 		{...containerProps}
-		class="{bg ? '-z-1 absolute inset-0 size-full' : 'relative w-full'} {containerProps.class}"
+		class="{bg ? 'absolute inset-0 -z-1 size-full' : 'relative w-full'} {containerProps.class}"
 		style={maskStyle}
 	>
 		{@render backgroundLayer()}
