@@ -2,6 +2,7 @@ packages:
   - "apps/*"
   - "packages/*"
   - "packages/config/*"
-allowBuilds:
-  esbuild: true
-  '@parcel/watcher': false
+onlyBuiltDependencies:
+  - esbuild
+ignoredBuiltDependencies:
+  - '@parcel/watcher'
