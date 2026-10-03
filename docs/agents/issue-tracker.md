@@ -1,12 +1,27 @@
 # Issue tracker: GitHub
 
 Engineering issues and specs live in layerdbiz/tridentcubed.
-Use gh from the repository. Trello holds visible project summaries.
+Use gh api against the REST endpoints from the repository. Trello holds
+visible project summaries.
 
-Read tickets and comments with gh issue view <number> --comments.
-Use gh issue list with appropriate state and label filters.
-Use gh issue create, comment, edit and close for authorized operations.
-For multiline issue bodies and comments, use --body-file.
+Cloud sessions block GitHub GraphQL, so gh issue and gh pr fail there;
+gh api with a REST path works everywhere. The GitHub MCP tools are an
+equal alternative where a session has them. Below, R stands for
+repos/layerdbiz/tridentcubed.
+
+- Read a ticket: gh api R/issues/<n>, then gh api R/issues/<n>/comments.
+- List: gh api 'R/issues?state=open&labels=<label>&per_page=100'. The
+  endpoint also returns PRs; drop them with
+  --jq '.[] | select(.pull_request == null)'.
+- Create: gh api R/issues -f title='...' -F body=@body.md
+  -f 'labels[]=<label>'.
+- Comment: gh api R/issues/<n>/comments -F body=@body.md.
+- Labels: gh api R/issues/<n>/labels -f 'labels[]=<label>' to add,
+  gh api -X DELETE R/issues/<n>/labels/<label> to remove.
+- Close: gh api -X PATCH R/issues/<n> -f state=closed
+  -f state_reason=completed.
+
+Write multiline bodies to a file and pass them with -F body=@<file>.
 
 PRs as a request surface: no.
 
@@ -26,3 +41,12 @@ with no open blockers. Claim it by assigning the driving developer.
 
 On resolution, record the answer, close the ticket and add its conclusion
 and link to the map's Decisions-so-far.
+
+Sub-issue and dependency calls take the issue's id (the .id field from
+gh api R/issues/<n>), not its number:
+
+- Children: gh api R/issues/<map>/sub_issues to list,
+  gh api R/issues/<map>/sub_issues -F sub_issue_id=<id> to link.
+- Blockers: gh api R/issues/<n>/dependencies/blocked_by to list,
+  gh api R/issues/<n>/dependencies/blocked_by -F issue_id=<id> to add.
+- Claim: gh api R/issues/<n>/assignees -f 'assignees[]=<login>'.
