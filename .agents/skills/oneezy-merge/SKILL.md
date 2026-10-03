@@ -1,7 +1,6 @@
 ---
 name: oneezy-merge
 description: Land the current branch and end with one status report. Bare, or "this pr": commit, push, open the PR, wait for the Vercel builds. "into <branch>": the same, then squash-merge on green builds and delete the landed branch.
-disable-model-invocation: true
 argument-hint: "empty or 'this pr' to open for review; 'into dev' to merge"
 ---
 
