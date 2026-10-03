@@ -1,7 +1,7 @@
 <!-- Demo.svelte -->
 <script lang="ts">
 	import { Component } from '@layerd/ui';
-	import type { PlacementMode } from '#lib';
+	import type { PlacementMode } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 	import { tick } from 'svelte';
 

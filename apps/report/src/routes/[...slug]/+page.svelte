@@ -12,7 +12,7 @@
 	const currentSlug = $derived(slug);
 
 	// Get all slides from load function
-	const allSlides = data.slides ?? [];
+	const allSlides = $derived(data.slides ?? []);
 
 	// Get unique types with their first slide (for outline view)
 	const uniqueTypes = $derived.by(() => {
