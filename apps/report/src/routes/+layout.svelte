@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../app.css';
 	import { Template, Logo, Toggle, Link } from '@layerd/ui';
-	import { getChapterNavigationData, getSlidesData } from '$lib/slides/slides.remote';
+	import { getChapterNavigationData, getSlidesData } from '#lib/slides/slides.remote.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 

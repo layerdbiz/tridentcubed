@@ -1,4 +1,4 @@
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 
 import { overallProgressRingCircumference } from "./projects.constants";
 import * as projectAssets from "./projects.assets";
@@ -52,17 +52,11 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 export function toPercent(value: number, total: number): number {
-	return total ? Math.round((value / total) * 100) : 0;
+	return total ? Math.round(value / total * 100) : 0;
 }
 
 export function slugify(value: string): string {
-	return (
-		value
-			.toLowerCase()
-			.trim()
-			.replace(/[^a-z0-9]+/g, "-")
-			.replace(/^-+|-+$/g, "") || "survey-report"
-	);
+	return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "survey-report";
 }
 
 export function formatDayDate(dateISO: string): string {
@@ -126,11 +120,11 @@ export function getSectionMetrics(
 	// discriminants first is what lets TypeScript narrow to it here.
 	const values = Object.values(section.fields);
 	const done = values.reduce((count, value) => {
-		if (Array.isArray(value)) {
-			return count + Number(value.some((item) => String(item || "").trim()));
-		}
+			if (Array.isArray(value)) {
+				return count + Number(value.some((item) => String(item || "").trim()));
+			}
 
-		return count + Number(String(value || "").trim().length > 0);
+			return count + Number(String(value || "").trim().length > 0);
 	}, 0);
 	const total = Math.max(1, values.length);
 	return { done, total, percent: toPercent(done, total) };

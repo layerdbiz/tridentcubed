@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
 	import {
 		createComponentWithStyles,
@@ -177,9 +177,9 @@
 
 		return false;
 	});
-	const shouldShowBoxDebug = $derived(
-		resolvedDebug.box || (resolvedDebug.auto && !componentHasLayoutRuntimeRequest)
-	);
+
+	const shouldShowBoxDebug = $derived(resolvedDebug.box || resolvedDebug.auto && !componentHasLayoutRuntimeRequest);
+
 	const componentPropsWithoutRuntime = $derived.by(() => {
 		const {
 			topLeft: _topLeft,
@@ -246,13 +246,13 @@
 	const createTrackElement =
 		(index: number): Attachment =>
 		(element: Element) => {
-			elementRefs[index] = element as HTMLElement;
-			return () => {
-				if (elementRefs[index] === element) {
-					elementRefs[index] = null;
-				}
-			};
+		elementRefs[index] = element as HTMLElement;
+		return () => {
+			if (elementRefs[index] === element) {
+				elementRefs[index] = null;
+			}
 		};
+	};
 
 	// Handle multiplication
 	const componentTotals = $derived(createTotalIndexes(total));
@@ -268,10 +268,10 @@
 
 	const observeInstances = $derived(
 		Array.from({ length: componentTotal }, (_, i) => {
-			// Handle both boolean and ObserveOptions
+		// Handle both boolean and ObserveOptions
 			const observeOptions =
 				typeof observe === 'object' ? { enabled: true, ...observe } : { enabled: observe };
-			return new ObserveClass(() => elementRefs[i], observeOptions);
+		return new ObserveClass(() => elementRefs[i], observeOptions);
 		})
 	);
 
@@ -335,7 +335,7 @@
 	function getPersistGetValue(): (() => unknown) | undefined {
 		if (!persist) return undefined;
 
-		return persistGetValue ?? (() => (isCheckableTag ? checked : value));
+		return persistGetValue ?? (() => isCheckableTag ? checked : value);
 	}
 
 	function getPersistContext(): PersistContext {
@@ -478,10 +478,10 @@
 
 	<Root
 		{...getComponentRootProps(componentOffset)}
-		{children}
+		children={children}
 		debug={resolvedDebug}
 		label={componentLabel}
-		{snippets}
+		snippets={snippets}
 		tag={normalizedTag}
 		root={rootRenderer}
 	/>

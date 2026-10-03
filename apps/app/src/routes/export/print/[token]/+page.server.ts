@@ -3,7 +3,7 @@ import { error } from "@sveltejs/kit";
 import {
 	deleteExportSession,
 	getExportSession,
-} from "$lib/server/export-session-store";
+} from "#lib/server/export-session-store.js";
 
 import type * as projectTypes from "../../../(app)/projects/projects.types";
 

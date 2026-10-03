@@ -1,7 +1,7 @@
 <script lang="ts">
 	import '../../app.css';
 	import { Logo, Toggle, Link } from '@layerd/ui';
-	import { fetchAllEmails } from '$lib/email/email.remote';
+	import { fetchAllEmails } from '#lib/email/email.remote.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 

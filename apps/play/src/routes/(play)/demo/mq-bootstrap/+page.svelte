@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import {
@@ -30,7 +30,12 @@
 		bootstrapMatchesRuntime ? 'Bootstrap matches runtime' : 'Head bootstrap active'
 	);
 	const breakpointStates = $derived([
-		{ label: 'mq.sm', range: `< ${BREAKPOINTS.md}px`, active: currentMq === 'sm' },
+		{
+			label: 'mq.sm',
+			range: `< ${BREAKPOINTS.md}px`,
+			active: currentMq === 'sm'
+		},
+
 		{
 			label: 'mq.md',
 			range: `${BREAKPOINTS.md}-${BREAKPOINTS.lg - 1}px`,
@@ -129,9 +134,19 @@
 </svelte:head>
 
 <div class="grid gap-4 py-4 md:py-5">
-	<h1 class="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">MQ Bootstrap</h1>
-	<p class="max-w-3xl text-sm leading-6 text-slate-700 md:text-base">
-		The <code>Mq</code> utility now writes <code>data-mq</code> from <code>&lt;svelte:head&gt;</code>
+	<h1
+		class="text-3xl font-black tracking-tight text-slate-950 md:text-4xl"
+	>MQ Bootstrap</h1>
+
+	<p
+		class="max-w-3xl text-sm leading-6 text-slate-700 md:text-base"
+	>
+		The 
+		<code>Mq</code>
+		utility now writes 
+		<code>data-mq</code>
+		from 
+		<code>&lt;svelte:head&gt;</code>
 		before hydration, then keeps that html attribute synced as the viewport changes.
 	</p>
 
@@ -144,21 +159,35 @@
 		<Component rail="content" class="grid gap-3 md:grid-cols-3">
 			<div class={gridCardClass}>
 				<p class={eyebrowClass}>HTML Bootstrap</p>
-				<p class="mt-3 min-h-10 text-3xl font-black tracking-tight text-slate-950">
-					{bootstrapMq ?? ''}
-				</p>
-				<p class="mt-2 wrap-break-word text-sm leading-6 text-slate-600">
-					Read straight from <code>document.documentElement.getAttribute('data-mq')</code>.
+
+				<p
+					class="mt-3 min-h-10 text-3xl font-black tracking-tight text-slate-950"
+				>{bootstrapMq ?? ''}</p>
+
+				<p
+					class="mt-2 wrap-break-word text-sm leading-6 text-slate-600"
+				>
+					Read straight from 
+					<code>document.documentElement.getAttribute('data-mq')</code>
+					.
 				</p>
 			</div>
 
 			<div class={gridDarkCardClass}>
-				<p class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Runtime MQ</p>
-				<p class="mt-3 min-h-10 text-3xl font-black tracking-tight">
-					{currentMq ?? ''}
-				</p>
-				<p class="mt-2 wrap-break-word text-sm leading-6 text-slate-300">
-					Resolved from the live <code>mq</code> getters after mount.
+				<p
+					class="text-xs font-black uppercase tracking-[0.18em] text-slate-400"
+				>Runtime MQ</p>
+
+				<p
+					class="mt-3 min-h-10 text-3xl font-black tracking-tight"
+				>{currentMq ?? ''}</p>
+
+				<p
+					class="mt-2 wrap-break-word text-sm leading-6 text-slate-300"
+				>
+					Resolved from the live 
+					<code>mq</code>
+					getters after mount.
 				</p>
 			</div>
 

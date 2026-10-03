@@ -1,4 +1,4 @@
-import { getSlidesData, getChapterNavigationData } from '$lib/slides/slides.remote';
+import { getSlidesData, getChapterNavigationData } from '#lib/slides/slides.remote.js';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async () => {

@@ -1,5 +1,5 @@
 import { redirect } from "@sveltejs/kit";
-import { getSlidesData } from "$lib/slides/slides.remote";
+import { getSlidesData } from "#lib/slides/slides.remote.js";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async () => {

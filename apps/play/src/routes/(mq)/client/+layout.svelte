@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Component, Mq, mq } from '@layerd/ui';
-	import { Nav } from '$lib';
+	import { Nav } from '#lib';
 
 	type LayoutProps = { children: Snippet };
 	let { children }: LayoutProps = $props();

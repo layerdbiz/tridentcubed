@@ -25,9 +25,8 @@
 	function selectView(view: demoNav.DemoViewType): void {
 		if (mq.sm) closeNav();
 
-		void goto(demoNav.getDemoViewHref(page.url, view), {
-			keepFocus: true,
-			noScroll: true,
+		void goto(demoNav.getDemoViewHref(new URL(page.url.href), view), {
+			reset: false,
 			replaceState: true,
 		});
 	}

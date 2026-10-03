@@ -1,3 +1,6 @@
+import { resolve } from "path";
+import adapter from "@sveltejs/adapter-vercel";
+import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import devtoolsJson from "vite-plugin-devtools-json";
 import tailwindcss from "@tailwindcss/vite";
 import { sveltekit } from "@sveltejs/kit/vite";
@@ -10,8 +13,30 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
-		sveltekit(),
-		devtoolsJson(),
+		sveltekit({
+			// Consult https://svelte.dev/docs/kit/integrations
+			// for more information about preprocessors
+			preprocess: vitePreprocess(),
+			compilerOptions: { experimental: { async: true } },
+			inspector: true,
+			adapter: adapter({ runtime: "nodejs24.x" }),
+			files: { assets: "../../packages/ui/static" },
+			alias: {
+				// Workspace packages - point to source for hot reloading in apps
+				"@layerd/ui": resolve("../../packages/ui/src/lib"),
+				"@layerd/tools": resolve("../../packages/tools/src"),
+				"@layerd/config": resolve("../../packages/config"),
+				// Root
+				$root: resolve("../../../"),
+
+				// Apps (plop added)
+				$site: resolve("../../apps/site/src"),
+				$storybook: resolve("../../apps/storybook/src")
+			},
+			experimental: { remoteFunctions: true },
+			prerender: { handleMissingId: "ignore" }
+		}),
+		devtoolsJson()
 	],
 	server: {
 		fs: {

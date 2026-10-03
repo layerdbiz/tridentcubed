@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Grid, Item, Input, Select, Text, Textarea } from '@layerd/ui';
-	import { Page, Panel } from '$lib';
+	import { Page, Panel } from '#lib';
 	import { fetchSimpleDefinitions } from './simple.remote';
 	import type * as simpleTypes from './simple.types';
 

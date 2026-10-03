@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import '../../app.css';
 	import { Component, mq } from '@layerd/ui';
-	import { Nav } from '$lib';
+	import { Nav } from '#lib';
 
 	type LayoutProps = { children: Snippet };
 	let { children }: LayoutProps = $props();

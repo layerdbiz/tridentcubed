@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import type { SlideData } from '$lib/slides/slides.remote';
+	import type { SlideData } from '#lib/slides/slides.remote.js';
 	import { Text, Image, Logo, Tree, Table, Toggle, Link } from '@layerd/ui';
 	import { treeData, orgChartData } from '@layerd/ui/components/molecules/chart/data/data.js';
 

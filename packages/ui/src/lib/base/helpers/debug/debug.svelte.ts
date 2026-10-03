@@ -1,5 +1,5 @@
 import { useEventListener } from "runed";
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 
 export interface DebugValueType {
 	auto?: boolean;
@@ -89,7 +89,7 @@ export class DebugClass {
 	private setupEventListeners() {
 		// Use runed event listeners for scroll/resize with SSR guard
 		useEventListener(
-			() => (browser && this.options.enabled ? window : null),
+			() => browser && this.options.enabled ? window : null,
 			"scroll",
 			() => {
 				this.positionTrigger++;
@@ -98,7 +98,7 @@ export class DebugClass {
 		);
 
 		useEventListener(
-			() => (browser && this.options.enabled ? window : null),
+			() => browser && this.options.enabled ? window : null,
 			"resize",
 			() => {
 				this.positionTrigger++;
