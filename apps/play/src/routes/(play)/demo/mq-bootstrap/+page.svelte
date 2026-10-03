@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import {
@@ -9,7 +9,7 @@
 		MQ_STORAGE_KEY,
 		type MqBucketType,
 		useBetween,
-		useMinWidth,
+		useMinWidth
 	} from '@layerd/ui';
 
 	const surfaceClass = 'gap-4 rounded-2xl bg-slate-50 p-4';
@@ -30,7 +30,12 @@
 		bootstrapMatchesRuntime ? 'Bootstrap matches runtime' : 'Head bootstrap active'
 	);
 	const breakpointStates = $derived([
-		{ label: 'mq.sm', range: `< ${BREAKPOINTS.md}px`, active: currentMq === 'sm' },
+		{
+			label: 'mq.sm',
+			range: `< ${BREAKPOINTS.md}px`,
+			active: currentMq === 'sm'
+		},
+
 		{
 			label: 'mq.md',
 			range: `${BREAKPOINTS.md}-${BREAKPOINTS.lg - 1}px`,
@@ -130,8 +135,14 @@
 
 <div class="grid gap-4 py-4 md:py-5">
 	<h1 class="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">MQ Bootstrap</h1>
+
 	<p class="max-w-3xl text-sm leading-6 text-slate-700 md:text-base">
-		The <code>Mq</code> utility now writes <code>data-mq</code> from <code>&lt;svelte:head&gt;</code>
+		The
+		<code>Mq</code>
+		utility now writes
+		<code>data-mq</code>
+		from
+		<code>&lt;svelte:head&gt;</code>
 		before hydration, then keeps that html attribute synced as the viewport changes.
 	</p>
 
@@ -141,24 +152,33 @@
 		debug={showRailsDebug ? { rails: true } : false}
 		class={surfaceClass}
 	>
-		<Component rail="content" class="grid gap-3 md:grid-cols-3">
+		<Component
+			rail="content"
+			class="grid gap-3 md:grid-cols-3"
+		>
 			<div class={gridCardClass}>
 				<p class={eyebrowClass}>HTML Bootstrap</p>
+
 				<p class="mt-3 min-h-10 text-3xl font-black tracking-tight text-slate-950">
 					{bootstrapMq ?? ''}
 				</p>
-				<p class="mt-2 wrap-break-word text-sm leading-6 text-slate-600">
-					Read straight from <code>document.documentElement.getAttribute('data-mq')</code>.
+
+				<p class="mt-2 text-sm leading-6 wrap-break-word text-slate-600">
+					Read straight from
+					<code>document.documentElement.getAttribute('data-mq')</code>
+					.
 				</p>
 			</div>
 
 			<div class={gridDarkCardClass}>
-				<p class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Runtime MQ</p>
-				<p class="mt-3 min-h-10 text-3xl font-black tracking-tight">
-					{currentMq ?? ''}
-				</p>
-				<p class="mt-2 wrap-break-word text-sm leading-6 text-slate-300">
-					Resolved from the live <code>mq</code> getters after mount.
+				<p class="text-xs font-black tracking-[0.18em] text-slate-400 uppercase">Runtime MQ</p>
+
+				<p class="mt-3 min-h-10 text-3xl font-black tracking-tight">{currentMq ?? ''}</p>
+
+				<p class="mt-2 text-sm leading-6 wrap-break-word text-slate-300">
+					Resolved from the live
+					<code>mq</code>
+					getters after mount.
 				</p>
 			</div>
 
@@ -166,7 +186,8 @@
 				<p class={eyebrowClass}>Status</p>
 				<p class="mt-3 min-h-14 text-lg font-black tracking-tight text-slate-950">{statusText}</p>
 				<p class="mt-2 text-sm leading-6 text-slate-600">
-					The head script seeds the document state early, and the reactive helpers confirm it once the page is live.
+					The head script seeds the document state early, and the reactive helpers confirm it once
+					the page is live.
 				</p>
 			</div>
 		</Component>
@@ -178,13 +199,20 @@
 		debug={showRailsDebug ? { rails: true } : false}
 		class={surfaceClass}
 	>
-		<Component rail="content" class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+		<Component
+			rail="content"
+			class="grid gap-3 md:grid-cols-2 xl:grid-cols-5"
+		>
 			{#each breakpointStates as state (state.label)}
 				<div class={getStateClass(state.active)}>
-					<p class="text-xs font-black uppercase tracking-[0.18em] {state.active ? 'text-slate-300' : 'text-slate-500'}">
+					<p
+						class="text-xs font-black tracking-[0.18em] uppercase {state.active
+							? 'text-slate-300'
+							: 'text-slate-500'}"
+					>
 						{state.label}
 					</p>
-					<p class="mt-2 text-base font-black tracking-tight">{state.range}</p>
+					<p class="mt-2 font-black tracking-tight text-base">{state.range}</p>
 				</div>
 			{/each}
 		</Component>
@@ -196,10 +224,17 @@
 		debug={showRailsDebug ? { rails: true } : false}
 		class={surfaceClass}
 	>
-		<Component rail="content" class="grid gap-3 md:grid-cols-2">
+		<Component
+			rail="content"
+			class="grid gap-3 md:grid-cols-2"
+		>
 			{#each helperStates as state (state.label)}
 				<div class={getStateClass(state.active)}>
-					<p class="text-xs font-black uppercase tracking-[0.18em] {state.active ? 'text-slate-300' : 'text-slate-500'}">
+					<p
+						class="text-xs font-black tracking-[0.18em] uppercase {state.active
+							? 'text-slate-300'
+							: 'text-slate-500'}"
+					>
 						{state.label}
 					</p>
 					<p class="mt-2 text-sm leading-6 {state.active ? 'text-slate-200' : 'text-slate-600'}">

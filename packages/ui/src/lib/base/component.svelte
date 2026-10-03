@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { createAttachmentKey, type Attachment } from 'svelte/attachments';
 	import {
 		createComponentWithStyles,
@@ -18,12 +18,12 @@
 		ObserveClass,
 		pickItemSources,
 		Root,
-		ScrollClass,
+		ScrollClass
 	} from '@layerd/ui';
 	import {
 		attachPersistTarget,
 		type PersistContext,
-		type PersistInput,
+		type PersistInput
 	} from './helpers/persist/persist.svelte.ts';
 
 	// Constants
@@ -152,7 +152,11 @@
 	);
 	const isCheckableTag = $derived(
 		normalizedTag === 'input' &&
-			['checkbox', 'radio'].includes(String(props.type ?? '').trim().toLowerCase())
+			['checkbox', 'radio'].includes(
+				String(props.type ?? '')
+					.trim()
+					.toLowerCase()
+			)
 	);
 	const componentHasLayoutRuntimeRequest = $derived.by(() => {
 		if (Object.keys(componentItemSources).length > 0) {
@@ -177,9 +181,11 @@
 
 		return false;
 	});
+
 	const shouldShowBoxDebug = $derived(
 		resolvedDebug.box || (resolvedDebug.auto && !componentHasLayoutRuntimeRequest)
 	);
+
 	const componentPropsWithoutRuntime = $derived.by(() => {
 		const {
 			topLeft: _topLeft,
@@ -344,7 +350,9 @@
 			tag: persistContext?.tag ?? String(normalizedTag),
 			type:
 				persistContext?.type ??
-				String(props.type ?? '').trim().toLowerCase(),
+				String(props.type ?? '')
+					.trim()
+					.toLowerCase()
 		};
 	}
 
@@ -352,7 +360,7 @@
 		if (!browser || !persist) return;
 
 		const resolvedPersist = resolvePersistConfig(persist, {
-			context: getPersistContext(),
+			context: getPersistContext()
 		});
 
 		if (!resolvedPersist.enabled || !resolvedPersist.automatic) {
@@ -363,7 +371,7 @@
 			resolvedPersist.namespace,
 			resolvedPersist.storage,
 			resolvedPersist.key ?? '',
-			resolvedPersist.props.join(','),
+			resolvedPersist.props.join(',')
 		].join('::');
 
 		if (persistAutoSaveSignature !== persistSignature) {
@@ -392,7 +400,7 @@
 			void persistUtility.save(entry.key, nextValue, {
 				storage: resolvedPersist.storage,
 				namespace: resolvedPersist.namespace,
-				prop: entry.prop,
+				prop: entry.prop
 			});
 		}
 	});
@@ -409,7 +417,7 @@
 
 			const cleanup = attachPersistTarget(element, persist, {
 				fallbackScope: 'components',
-				setValue: getPersistSetValue(),
+				setValue: getPersistSetValue()
 			});
 
 			if (cleanup) {
@@ -436,7 +444,7 @@
 			[trackAttachmentKey]:
 				shouldShowBoxDebug || observe || scroll ? createTrackElement(index) : undefined,
 			class:
-				`${componentClasses} ${observe && observeInstances[index]?.isIntersecting ? 'active' : ''} ${scroll && scrollInstances[index]?.hasScrolledDown ? 'scrolled' : ''}`.trim(),
+				`${componentClasses} ${observe && observeInstances[index]?.isIntersecting ? 'active' : ''} ${scroll && scrollInstances[index]?.hasScrolledDown ? 'scrolled' : ''}`.trim()
 		};
 	}
 </script>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import type { SlideData } from '$lib/slides/slides.remote';
+	import type { SlideData } from '#lib/slides/slides.remote.js';
 	import { Text, Image, Logo, Tree, Table, Toggle, Link } from '@layerd/ui';
 	import { treeData, orgChartData } from '@layerd/ui/components/molecules/chart/data/data.js';
 
@@ -12,7 +12,7 @@
 	const currentSlug = $derived(slug);
 
 	// Get all slides from load function
-	const allSlides = data.slides ?? [];
+	const allSlides = $derived(data.slides ?? []);
 
 	// Get unique types with their first slide (for outline view)
 	const uniqueTypes = $derived.by(() => {
@@ -113,7 +113,7 @@
 			href="/"
 		/>
 
-		<div class="ml-2 mt-8">
+		<div class="mt-8 ml-2">
 			<Toggle
 				open
 				variant="panel"
@@ -182,18 +182,18 @@
 				<img
 					src="/photos/globe.png"
 					alt="Going Global"
-					class="lg:scale-85 pointer-events-none fixed scale-150 md:scale-100"
+					class="pointer-events-none fixed scale-150 md:scale-100 lg:scale-85"
 				/>
 				<div class="relative z-10 flex flex-col items-center justify-center gap-6 text-center">
 					<Logo class="size-48" />
 					<Text
 						h1={currentSlide.name}
-						class="text-5xl uppercase text-white md:text-7xl lg:text-8xl"
+						class="text-5xl text-white uppercase md:text-7xl lg:text-8xl"
 					/>
 					{#if currentSlide.description}
 						<Text
 							h2={currentSlide.description}
-							class="md:text-md text-xs font-normal uppercase tracking-widest text-white lg:text-2xl"
+							class="text-xs font-normal tracking-widest text-white uppercase md:text-md lg:text-2xl"
 						/>
 					{/if}
 				</div>
@@ -220,7 +220,7 @@
 								</span>
 								<a
 									href="/{typeSlide.slug}"
-									class="text-primary-600 hover:text-primary-700 text-2xl font-semibold"
+									class="text-2xl font-semibold text-primary-600 hover:text-primary-700"
 								>
 									{typeSlide.type}
 								</a>
@@ -236,7 +236,7 @@
 				<div class="bg-accent">
 					<Text
 						h2={currentSlide.type}
-						class="text-xl font-semibold uppercase text-neutral-500"
+						class="text-xl font-semibold text-neutral-500 uppercase"
 					/>
 					<Text
 						h1={currentSlide.name}
@@ -289,7 +289,7 @@
 			{/if}
 
 			<!-- Progress indicator -->
-			<div class="absolute bottom-4 right-4 text-sm text-neutral-500">
+			<div class="absolute right-4 bottom-4 text-sm text-neutral-500">
 				{currentIndex + 1} / {allSlides.length}
 			</div>
 		</div>

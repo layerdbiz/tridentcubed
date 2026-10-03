@@ -11,13 +11,14 @@
 <div class="grid gap-4 p-4 md:p-5">
 	<h2 class="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">Rail Widths + MQ</h2>
 	<p class="max-w-3xl text-sm leading-6 text-slate-700 md:text-base">
-		One component, one changing <code>rail</code> prop. The active mq bucket selects the current rail width.
+		One component, one changing <code>rail</code> prop. The active mq bucket selects the current rail
+		width.
 	</p>
 
 	<Component
 		rails="full"
 		debug={showRailsDebug ? { rails: true } : false}
-		class="rounded-2xl bg-slate-50 gap-4"
+		class="gap-4 rounded-2xl bg-slate-50"
 	>
 		<Component
 			rail={mq.base

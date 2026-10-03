@@ -54,7 +54,12 @@
 </script>
 
 <!-- ModeWatcher setup -->
-<ModeWatcher {defaultMode} {defaultTheme} darkClassNames={['dark']} lightClassNames={[]} />
+<ModeWatcher
+	{defaultMode}
+	{defaultTheme}
+	darkClassNames={['dark']}
+	lightClassNames={[]}
+/>
 
 <Component
 	{...props}
@@ -62,7 +67,11 @@
 	class="{props.class} inline-flex items-center gap-2 rounded border px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
 >
 	{#snippet component({ props, content })}
-		<button {...props} onclick={toggleMode} title="Toggle theme">
+		<button
+			{...props}
+			onclick={toggleMode}
+			title="Toggle theme"
+		>
 			{#if showIcon}
 				{#if currentMode === 'dark'}
 					🌙

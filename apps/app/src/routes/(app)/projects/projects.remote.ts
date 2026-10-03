@@ -1,42 +1,41 @@
-import { query } from "$app/server";
-import type * as projectTypes from "./projects.types";
+import { query } from '$app/server';
+import type * as projectTypes from './projects.types';
 
-const API_BASE = "https://sheetari.oneezy.deno.net";
-const REPORT_SHEET_ID = "1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k";
-const INPUT_DEFINITIONS_URL =
-	`${API_BASE}/${REPORT_SHEET_ID}/inputs?range=b1:u`;
+const API_BASE = 'https://sheetari.oneezy.deno.net';
+const REPORT_SHEET_ID = '1oLakDXDeEINBs0B3KSkcyM1131YnuHtAKEk6l7ClT8k';
+const INPUT_DEFINITIONS_URL = `${API_BASE}/${REPORT_SHEET_ID}/inputs?range=b1:u`;
 const PANEL_DEFINITIONS_URL = `${API_BASE}/${REPORT_SHEET_ID}/panels`;
 const PAGE_DEFINITIONS_URL = `${API_BASE}/${REPORT_SHEET_ID}/pages`;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
+	return typeof value === 'object' && value !== null;
 }
 
 function asArray<T>(value: unknown): T[] {
-	return Array.isArray(value) ? value as T[] : [];
+	return Array.isArray(value) ? (value as T[]) : [];
 }
 
 function toText(value: unknown): string {
-	return typeof value === "string" ? value.trim() : "";
+	return typeof value === 'string' ? value.trim() : '';
 }
 
 function toIdText(value: unknown): string {
-	return toText(value).replace(/\s+/g, "");
+	return toText(value).replace(/\s+/g, '');
 }
 
 function toList(value: unknown): string[] {
 	return toText(value)
-		.split(",")
+		.split(',')
 		.map((item) => item.trim())
 		.filter(Boolean);
 }
 
 function toBoolean(value: unknown, fallback = false): boolean {
-	if (typeof value === "boolean") return value;
+	if (typeof value === 'boolean') return value;
 
 	const text = toText(value).toLowerCase();
-	if (text === "true") return true;
-	if (text === "false") return false;
+	if (text === 'true') return true;
+	if (text === 'false') return false;
 
 	return fallback;
 }
@@ -47,16 +46,12 @@ function toNumber(value: unknown, fallback = 0): number {
 }
 
 function toPageSections(value: unknown): projectTypes.OutputPageSectionType[] {
-	return toList(value).filter(
-		(item): item is projectTypes.OutputPageSectionType => {
-			return item === "header" || item === "main" || item === "footer";
-		},
-	);
+	return toList(value).filter((item): item is projectTypes.OutputPageSectionType => {
+		return item === 'header' || item === 'main' || item === 'footer';
+	});
 }
 
-function normalizeFieldDefinition(
-	value: unknown,
-): projectTypes.InputDefinitionType | null {
+function normalizeFieldDefinition(value: unknown): projectTypes.InputDefinitionType | null {
 	if (!isRecord(value)) return null;
 
 	const id = toIdText(value.id);
@@ -75,15 +70,13 @@ function normalizeFieldDefinition(
 
 	return {
 		id,
-		visibility: visibility
-			? visibility as projectTypes.FieldVisibilityType
-			: null,
+		visibility: visibility ? (visibility as projectTypes.FieldVisibilityType) : null,
 		panel,
 		label,
 		path,
-		source: source ? source as projectTypes.FieldSourceType : null,
-		type: type ? type as projectTypes.FieldValueType : null,
-		input: input ? input as projectTypes.FieldInputType : null,
+		source: source ? (source as projectTypes.FieldSourceType) : null,
+		type: type ? (type as projectTypes.FieldValueType) : null,
+		input: input ? (input as projectTypes.FieldInputType) : null,
 		options: toList(value.options),
 		placeholder: toText(value.placeholder),
 		value: toText(value.value),
@@ -95,13 +88,11 @@ function normalizeFieldDefinition(
 		outputToPageSection: toPageSections(value.outputToPageSection),
 		example: toText(value.example),
 		notes: toText(value.notes),
-		reference: toList(value.reference),
+		reference: toList(value.reference)
 	};
 }
 
-function normalizePanelDefinition(
-	value: unknown,
-): projectTypes.PanelDefinitionType | null {
+function normalizePanelDefinition(value: unknown): projectTypes.PanelDefinitionType | null {
 	if (!isRecord(value)) return null;
 
 	const id = toIdText(value.id);
@@ -115,12 +106,10 @@ function normalizePanelDefinition(
 	return {
 		id,
 		order: toNumber(value.order),
-		visibility: visibility
-			? visibility as projectTypes.FieldVisibilityType
-			: null,
+		visibility: visibility ? (visibility as projectTypes.FieldVisibilityType) : null,
 		icon: toText(value.icon),
 		title,
-		type: type ? type as projectTypes.PanelRendererType : null,
+		type: type ? (type as projectTypes.PanelRendererType) : null,
 		description: toText(value.description),
 		required: toBoolean(value.required, false),
 		readonly: toBoolean(value.readonly, false),
@@ -130,13 +119,11 @@ function normalizePanelDefinition(
 		reference: toList(value.reference),
 		photo: toText(value.photo),
 		iconClass: toText(value.iconClass),
-		iconUrl: toText(value.iconUrl),
+		iconUrl: toText(value.iconUrl)
 	};
 }
 
-function normalizePageDefinition(
-	value: unknown,
-): projectTypes.PageDefinitionType | null {
+function normalizePageDefinition(value: unknown): projectTypes.PageDefinitionType | null {
 	if (!isRecord(value)) return null;
 
 	const id = toIdText(value.id);
@@ -151,7 +138,7 @@ function normalizePageDefinition(
 		variant: toText(value.variant || value.type),
 		section: toPageSections(value.section),
 		notes: toText(value.notes),
-		reference: toIdText(value.reference),
+		reference: toIdText(value.reference)
 	};
 }
 
@@ -169,27 +156,21 @@ async function fetchSheetariArray(url: string): Promise<unknown[]> {
 	}
 }
 
-async function getFieldDefinitions(): Promise<
-	projectTypes.InputDefinitionType[]
-> {
+async function getFieldDefinitions(): Promise<projectTypes.InputDefinitionType[]> {
 	const data = await fetchSheetariArray(INPUT_DEFINITIONS_URL);
 	return data
 		.map(normalizeFieldDefinition)
 		.filter((item): item is projectTypes.InputDefinitionType => item !== null);
 }
 
-async function getPanelDefinitions(): Promise<
-	projectTypes.PanelDefinitionType[]
-> {
+async function getPanelDefinitions(): Promise<projectTypes.PanelDefinitionType[]> {
 	const data = await fetchSheetariArray(PANEL_DEFINITIONS_URL);
 	return data
 		.map(normalizePanelDefinition)
 		.filter((item): item is projectTypes.PanelDefinitionType => item !== null);
 }
 
-async function getPageDefinitions(): Promise<
-	projectTypes.PageDefinitionType[]
-> {
+async function getPageDefinitions(): Promise<projectTypes.PageDefinitionType[]> {
 	const data = await fetchSheetariArray(PAGE_DEFINITIONS_URL);
 	return data
 		.map(normalizePageDefinition)
@@ -214,12 +195,12 @@ export const fetchProjectDefinitions = query(async () => {
 	const [inputs, panels, pages] = await Promise.all([
 		getFieldDefinitions(),
 		getPanelDefinitions(),
-		getPageDefinitions(),
+		getPageDefinitions()
 	]);
 
 	return {
 		inputs,
 		panels,
-		pages,
+		pages
 	} satisfies projectTypes.ProjectDefinitionsType;
 });

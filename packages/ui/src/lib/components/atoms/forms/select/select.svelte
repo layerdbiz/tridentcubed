@@ -81,9 +81,9 @@
 				continue;
 			}
 
-		if (!item.placeholder) {
-			flattened.push(item);
-		}
+			if (!item.placeholder) {
+				flattened.push(item);
+			}
 		}
 
 		return flattened;
@@ -211,34 +211,57 @@
 	}
 </script>
 
-<svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
+<svelte:window
+	onclick={handleWindowClick}
+	onkeydown={handleWindowKeydown}
+/>
 
 {#snippet iconStartEl()}
 	{#if icon}
-		<Icon icon={icon} class="icon start" />
+		<Icon
+			{icon}
+			class="icon start"
+		/>
 	{/if}
 {/snippet}
 
 {#snippet iconEndEl()}
 	{#if fieldState.trailingIcon}
-		<Icon icon={fieldState.trailingIcon} class="icon end" />
+		<Icon
+			icon={fieldState.trailingIcon}
+			class="icon end"
+		/>
 	{/if}
 {/snippet}
 
 {#snippet optionItems()}
 	{#if placeholder && !multiple}
-		<option value="" disabled={required} hidden={required}></option>
+		<option
+			value=""
+			disabled={required}
+			hidden={required}
+		></option>
 	{/if}
 
 	{#each options as item, index (getItemKey(item, index))}
 		{#if item.type === 'group'}
-			<optgroup label={item.label} disabled={item.disabled}>
+			<optgroup
+				label={item.label}
+				disabled={item.disabled}
+			>
 				{#each item.options as option, optionIndex (getOptionKey(option, optionIndex))}
-					<option value={option.value} disabled={option.disabled}>{option.label}</option>
+					<option
+						value={option.value}
+						disabled={option.disabled}>{option.label}</option
+					>
 				{/each}
 			</optgroup>
 		{:else}
-			<option value={item.value} disabled={item.disabled || item.placeholder} hidden={item.placeholder}>
+			<option
+				value={item.value}
+				disabled={item.disabled || item.placeholder}
+				hidden={item.placeholder}
+			>
 				{item.label}
 			</option>
 		{/if}
@@ -335,7 +358,12 @@
 		</button>
 
 		{#if isOpen}
-			<div id={`${fieldState.field.id}-picker`} class="select-panel" role="listbox" aria-multiselectable={multiple || undefined}>
+			<div
+				id={`${fieldState.field.id}-picker`}
+				class="select-panel"
+				role="listbox"
+				aria-multiselectable={multiple || undefined}
+			>
 				{#each options as item, index (getItemKey(item, index))}
 					{#if item.type === 'group'}
 						<div class="select-group">
@@ -393,8 +421,14 @@
 
 <Component {...props}>
 	{#snippet component({ props }: { props: ComponentReturn })}
-		<div bind:this={rootNode} class="select-root">
-			<fieldset {...props} class={`${props.class} ${fieldState.className}`.trim()}>
+		<div
+			bind:this={rootNode}
+			class="select-root"
+		>
+			<fieldset
+				{...props}
+				class={`${props.class} ${fieldState.className}`.trim()}
+			>
 				<legend>{fieldState.labelText}</legend>
 				<label for={fieldState.field.id}>
 					{#if variant === 'icon text'}
@@ -433,7 +467,7 @@
 	}
 
 	.select-native {
-		@apply absolute size-px overflow-hidden opacity-0 pointer-events-none;
+		@apply pointer-events-none absolute size-px overflow-hidden opacity-0;
 		clip: rect(0 0 0 0);
 		clip-path: inset(50%);
 		white-space: nowrap;
@@ -469,7 +503,7 @@
 	}
 
 	fieldset .select-group-label {
-		@apply px-3 py-2 text-xs font-semibold uppercase tracking-wide text-base-500;
+		@apply px-3 py-2 text-xs font-semibold tracking-wide text-base-500 uppercase;
 	}
 
 	fieldset .select-option {
@@ -477,7 +511,7 @@
 	}
 
 	fieldset .select-option:hover:not(:disabled),
-		fieldset .select-option:focus-visible {
+	fieldset .select-option:focus-visible {
 		@apply bg-base-50 outline-0;
 	}
 

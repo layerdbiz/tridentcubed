@@ -64,6 +64,6 @@ export function createSessionPersistAdapter(): PersistAdapter {
 			for (const key of keys) {
 				storage.removeItem(key);
 			}
-		},
+		}
 	};
 }

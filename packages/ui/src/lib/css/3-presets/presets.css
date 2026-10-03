@@ -53,73 +53,73 @@
 
 /* outline */
 .theme-outline {
-	@apply text-base-950-50 border-base-900-100 border-sm;
+	@apply border-sm border-base-900-100 text-base-950-50;
 }
 .theme-outline-base {
-	@apply text-base-950-50 border-base-950-50 border-sm;
+	@apply border-sm border-base-950-50 text-base-950-50;
 }
 .theme-outline-neutral {
-	@apply text-neutral-950-50 border-neutral-950-50 border-sm;
+	@apply border-sm border-neutral-950-50 text-neutral-950-50;
 }
 
 .theme-outline-primary {
-	@apply text-primary-500-500 border-primary-500-500 border-sm;
+	@apply border-sm border-primary-500-500 text-primary-500-500;
 }
 .theme-outline-secondary {
-	@apply text-secondary-500-500 border-secondary-500-500 border-sm;
+	@apply border-sm border-secondary-500-500 text-secondary-500-500;
 }
 .theme-outline-accent {
-	@apply text-accent-500-500 border-accent-500-500 border-sm;
+	@apply border-sm border-accent-500-500 text-accent-500-500;
 }
 
 /* ghost */
 .theme-ghost {
-	@apply text-base-950-50 bg-[unset];
+	@apply bg-[unset] text-base-950-50;
 }
 .theme-ghost-base {
-	@apply text-base-950-50 bg-[unset];
+	@apply bg-[unset] text-base-950-50;
 }
 .theme-ghost-base-invert {
-	@apply text-base-50-950 bg-[unset];
+	@apply bg-[unset] text-base-50-950;
 }
 .theme-ghost-invert {
 	@apply bg-[unset] text-white;
 }
 .theme-ghost-primary {
-	@apply text-primary-500 bg-[unset];
+	@apply bg-[unset] text-primary-500;
 }
 .theme-ghost-secondary {
-	@apply text-secondary-500 bg-[unset];
+	@apply bg-[unset] text-secondary-500;
 }
 .theme-ghost-accent {
-	@apply text-accent-500 bg-[unset];
+	@apply bg-[unset] text-accent-500;
 }
 
 /* glass */
 .theme-glass {
-	@apply text-base-950-950/90 isolate bg-white/50 shadow backdrop-blur-2xl transition-all duration-200;
+	@apply isolate bg-white/50 text-base-950-950/90 shadow backdrop-blur-2xl transition-all duration-200;
 
 	&:is(.card) {
-		@apply rounded-box bg-base-50-950/80 shadow-base-950-50/10 shadow-2xs;
+		@apply rounded-box bg-base-50-950/80 shadow-2xs shadow-base-950-50/10;
 	}
 	&:is(.card:hover, .card:active) {
-		@apply text-base-950-950 border-white/50;
+		@apply border-white/50 text-base-950-950;
 	}
 }
 .theme-glass-invert {
-	@apply text-base-50-50/90 isolate bg-black/70 bg-linear-to-b from-black to-transparent shadow backdrop-blur-2xl;
+	@apply isolate bg-black/70 bg-linear-to-b from-black to-transparent text-base-50-50/90 shadow backdrop-blur-2xl;
 
 	&:is(.card) {
 		@apply rounded-box;
 	}
 	&:is(.card:hover, .card:active) {
-		@apply text-base-50-50 border-black/80 bg-black/50;
+		@apply border-black/80 bg-black/50 text-base-50-50;
 	}
 }
 
 /* gradient */
 .theme-gradient {
-	@apply from-primary-500 to-secondary-500 bg-linear-to-br;
+	@apply bg-linear-to-br from-primary-500 to-secondary-500;
 }
 
 /* Section Layout Variants */

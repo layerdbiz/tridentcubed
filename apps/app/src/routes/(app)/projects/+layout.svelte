@@ -17,7 +17,13 @@
 
 {@render children()}
 
-<Component id="openBetaDialog" tag="button" type="button" onclick={handleOpenBetaDialog} class="cursor-pointer pointer-events fixed bottom-4 left-4 z-40 md:bottom-6 md:left-6 gap-1.5 bg-black rounded-full pl-1.5 pr-3 py-0.75">
+<Component
+	id="openBetaDialog"
+	tag="button"
+	type="button"
+	onclick={handleOpenBetaDialog}
+	class="pointer-events fixed bottom-4 left-4 z-40 cursor-pointer gap-1.5 rounded-full bg-black py-0.75 pr-3 pl-1.5 md:bottom-6 md:left-6"
+>
 	{#snippet leftCC()}
 		<Logo
 			mode="current"
@@ -26,6 +32,9 @@
 	{/snippet}
 
 	{#snippet centerCC()}
-		<Text p="BETA" class="text-[11px] font-black uppercase tracking-[0.24em] text-white"/>
+		<Text
+			p="BETA"
+			class="text-[11px] font-black tracking-[0.24em] text-white uppercase"
+		/>
 	{/snippet}
 </Component>

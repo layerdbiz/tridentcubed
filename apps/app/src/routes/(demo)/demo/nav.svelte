@@ -7,7 +7,7 @@
 	let navOpen = $state(false);
 
 	const currentView = $derived(
-		demoNav.getDemoView(page.url.searchParams.get(demoNav.DEMO_VIEW_PARAM)),
+		demoNav.getDemoView(page.url.searchParams.get(demoNav.DEMO_VIEW_PARAM))
 	);
 
 	function isActiveView(view: demoNav.DemoViewType): boolean {
@@ -25,10 +25,9 @@
 	function selectView(view: demoNav.DemoViewType): void {
 		if (mq.sm) closeNav();
 
-		void goto(demoNav.getDemoViewHref(page.url, view), {
-			keepFocus: true,
-			noScroll: true,
-			replaceState: true,
+		void goto(demoNav.getDemoViewHref(new URL(page.url.href), view), {
+			reset: false,
+			replaceState: true
 		});
 	}
 
@@ -47,7 +46,7 @@
 		icon="menu"
 		aria-expanded={navOpen}
 		onclick={openNav}
-		class="fixed! left-3 top-3 z-40 {navOpen ? 'hidden' : ''}"
+		class="fixed! top-3 left-3 z-40 {navOpen ? 'hidden' : ''}"
 	/>
 {/snippet}
 
@@ -61,8 +60,18 @@
 {/snippet}
 
 {#snippet navBody()}
-	<Component tag="nav" rail="full" rails="gutter-lg" secondary lite class="h-full py-6">
-		<Component rail="content" gap="1rem">
+	<Component
+		tag="nav"
+		rail="full"
+		rails="gutter-lg"
+		secondary
+		lite
+		class="h-full py-6"
+	>
+		<Component
+			rail="content"
+			gap="1rem"
+		>
 			<Text h2="Demo" />
 			<Text
 				p="Use the route nav to switch between the live demo and the page source without forcing a fresh page experience."
@@ -80,7 +89,10 @@
 					onclick={() => selectView(item.view)}
 				/>
 
-				<Text small={item.description} class="text-neutral" />
+				<Text
+					small={item.description}
+					class="text-neutral"
+				/>
 			{/each}
 		</Component>
 	</Component>
@@ -99,15 +111,28 @@
 	{/if}
 
 	<Component
-		class="fixed! inset-y-0 left-0 z-50 h-full w-72 transition-transform duration-200 {navOpen ? 'translate-x-0' : '-translate-x-full'}"
+		class="fixed! inset-y-0 left-0 z-50 h-full w-72 transition-transform duration-200 {navOpen
+			? 'translate-x-0'
+			: '-translate-x-full'}"
 		aria-hidden={!navOpen}
 	>
-		<Component tag="section" base lite class="h-full">
-			<Component rail="content" class="py-4">
+		<Component
+			tag="section"
+			base
+			lite
+			class="h-full"
+		>
+			<Component
+				rail="content"
+				class="py-4"
+			>
 				{@render closeButton()}
 			</Component>
 
-			<Component tag="section" class="h-full overflow-y-auto pb-20">
+			<Component
+				tag="section"
+				class="h-full overflow-y-auto pb-20"
+			>
 				{@render navBody()}
 			</Component>
 		</Component>

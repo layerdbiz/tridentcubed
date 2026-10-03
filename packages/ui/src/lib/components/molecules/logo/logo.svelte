@@ -282,7 +282,7 @@
 		<Text
 			disabled
 			h1={name}
-			class="text-lg font-black uppercase tracking-tight lg:text-xl"
+			class="text-lg font-black tracking-tight uppercase lg:text-xl"
 		/>
 	{/if}
 

@@ -63,10 +63,10 @@
 	--theme-radius-box: 1.5rem;
 	--theme-radius-button: 10em;
 
-  /* borders, outlines, rings, strokes */
-  --theme-edge: 1px; 
-  
- 	--theme-edge-xs: 1px;
+	/* borders, outlines, rings, strokes */
+	--theme-edge: 1px;
+
+	--theme-edge-xs: 1px;
 	--theme-edge-sm: 2px;
 	--theme-edge-md: 3px;
 	--theme-edge-lg: 4px;
@@ -79,27 +79,27 @@
 
 @layer utilities {
 	.container {
-		@apply mx-auto max-w-7xl pl-(--spacing-container-mobile) pr-(--spacing-container-mobile) md:pl-(--spacing-container-desktop) md:pr-(--spacing-container-desktop);
+		@apply mx-auto max-w-7xl pr-(--spacing-container-mobile) pl-(--spacing-container-mobile) md:pr-(--spacing-container-desktop) md:pl-(--spacing-container-desktop);
 	}
 
 	/* Full viewport bleed */
 	.bleed {
-		@apply relative end-[calc(50%-50svw)] start-[calc(50%-50svw)] w-svw max-w-[unset];
+		@apply relative start-[calc(50%-50svw)] end-[calc(50%-50svw)] w-svw max-w-[unset];
 	}
 
 	/* Container-aware bleed - always bleeds to container edges */
 	.bleed-container {
-		@apply relative left-[calc(-1*var(--spacing-container-mobile))] right-[calc(-1*var(--spacing-container-mobile))] w-[calc(100%+2*var(--spacing-container-mobile))] max-w-[unset] md:left-[calc(-1*var(--spacing-container-desktop))] md:right-[calc(-1*var(--spacing-container-desktop))] md:w-[calc(100%+2*var(--spacing-container-desktop))];
+		@apply relative right-[calc(-1*var(--spacing-container-mobile))] left-[calc(-1*var(--spacing-container-mobile))] w-[calc(100%+2*var(--spacing-container-mobile))] max-w-[unset] md:right-[calc(-1*var(--spacing-container-desktop))] md:left-[calc(-1*var(--spacing-container-desktop))] md:w-[calc(100%+2*var(--spacing-container-desktop))];
 	}
 
 	/* Mobile-only container bleed - resets to normal on desktop */
 	.bleed-mobile {
-		@apply relative left-[calc(-1*var(--spacing-container-mobile))] right-[calc(-1*var(--spacing-container-mobile))] w-[calc(100%+2*var(--spacing-container-mobile))] max-w-[unset] lg:static lg:left-auto lg:right-auto lg:w-auto lg:max-w-none;
+		@apply relative right-[calc(-1*var(--spacing-container-mobile))] left-[calc(-1*var(--spacing-container-mobile))] w-[calc(100%+2*var(--spacing-container-mobile))] max-w-[unset] lg:static lg:right-auto lg:left-auto lg:w-auto lg:max-w-none;
 	}
 
 	/* Reset bleed back to contained */
 	.bleed-unset {
-		@apply relative end-full start-full w-full max-w-full;
+		@apply relative start-full end-full w-full max-w-full;
 	}
 }
 
@@ -109,15 +109,15 @@
 }
 
 @utility bar-outside {
-	@apply before:bg-primary before:absolute before:-left-4 before:bottom-2 before:top-2 before:w-2;
+	@apply before:absolute before:top-2 before:bottom-2 before:-left-4 before:w-2 before:bg-primary;
 }
 @utility bar-outside-0 {
-	@apply before:absolute before:-left-2 before:bottom-1 before:top-1 before:w-0.5 before:bg-black;
+	@apply before:absolute before:top-1 before:bottom-1 before:-left-2 before:w-0.5 before:bg-black;
 }
 
 /* mask: left to right */
 @utility mask-lr {
-	@apply mask-alpha mask-r-from-black mask-r-to-transparent mask-l-from-black mask-l-to-transparent;
+	@apply mask-r-from-black mask-r-to-transparent mask-l-from-black mask-l-to-transparent mask-alpha;
 }
 
 @utility mask-x-xs {
@@ -142,7 +142,7 @@
 
 /* mask: bottom */
 @utility mask-b {
-	@apply mask-alpha mask-b-from-black mask-b-to-transparent;
+	@apply mask-b-from-black mask-b-to-transparent mask-alpha;
 }
 @utility mask-b-sm {
 	@apply mask-b mask-b-from-90% mask-b-to-100%;
@@ -159,7 +159,7 @@
 
 /* mask: top */
 @utility mask-t {
-	@apply mask-alpha mask-t-from-black mask-t-to-transparent;
+	@apply mask-t-from-black mask-t-to-transparent mask-alpha;
 }
 @utility mask-t-sm {
 	@apply mask-t mask-t-from-90% mask-t-to-100%;
@@ -176,7 +176,7 @@
 
 /* mask: y */
 @utility mask-y {
-	@apply mask-alpha mask-b-from-black mask-b-to-transparent mask-t-from-black mask-t-to-transparent;
+	@apply mask-t-from-black mask-t-to-transparent mask-b-from-black mask-b-to-transparent mask-alpha;
 }
 @utility mask-y-sm {
 	@apply mask-y mask-t-from-90% mask-t-to-100% mask-b-from-90% mask-b-to-100%;

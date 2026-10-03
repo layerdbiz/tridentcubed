@@ -1,4 +1,4 @@
-import { type DemoSeedType, getDemoData } from "./demo.remote";
+import { type DemoSeedType, getDemoData } from './demo.remote';
 
 let demo_seed_cache: DemoSeedType | null = null;
 let demo_seed_request: Promise<DemoSeedType> | null = null;

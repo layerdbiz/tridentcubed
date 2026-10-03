@@ -60,7 +60,11 @@ function openPersistDatabase(): Promise<IDBDatabase | null> {
 
 async function withStore<T>(
 	mode: IDBTransactionMode,
-	runner: (store: IDBObjectStore, resolve: (value: T) => void, reject: (error?: unknown) => void) => void,
+	runner: (
+		store: IDBObjectStore,
+		resolve: (value: T) => void,
+		reject: (error?: unknown) => void
+	) => void
 ): Promise<T> {
 	const database = await openPersistDatabase();
 	if (!database) {
@@ -81,17 +85,20 @@ export function createIndexedDbPersistAdapter(): PersistAdapter {
 	return {
 		async load<T>(key: string, fallback?: T): Promise<T> {
 			try {
-				const result = await withStore<T | PersistRecord | undefined>('readonly', (store, resolve, reject) => {
-					const request = store.get(key);
+				const result = await withStore<T | PersistRecord | undefined>(
+					'readonly',
+					(store, resolve, reject) => {
+						const request = store.get(key);
 
-					request.onsuccess = () => {
-						resolve(request.result as T | PersistRecord | undefined);
-					};
+						request.onsuccess = () => {
+							resolve(request.result as T | PersistRecord | undefined);
+						};
 
-					request.onerror = () => {
-						reject(request.error ?? new Error(`Failed to load persisted key "${key}".`));
-					};
-				});
+						request.onerror = () => {
+							reject(request.error ?? new Error(`Failed to load persisted key "${key}".`));
+						};
+					}
+				);
 
 				if (result && typeof result === 'object' && 'value' in result) {
 					return (result as PersistRecord).value as T;
@@ -113,7 +120,7 @@ export function createIndexedDbPersistAdapter(): PersistAdapter {
 					const request = store.put({
 						key,
 						value,
-						updatedAt: Date.now(),
+						updatedAt: Date.now()
 					} satisfies PersistRecord);
 
 					request.onsuccess = () => {
@@ -166,7 +173,9 @@ export function createIndexedDbPersistAdapter(): PersistAdapter {
 								cursor.continue();
 							};
 							deleteRequest.onerror = () => {
-								reject(deleteRequest.error ?? new Error(`Failed to clear persisted prefix "${prefix}".`));
+								reject(
+									deleteRequest.error ?? new Error(`Failed to clear persisted prefix "${prefix}".`)
+								);
 							};
 							return;
 						}
@@ -181,6 +190,6 @@ export function createIndexedDbPersistAdapter(): PersistAdapter {
 			} catch (error) {
 				console.warn(`[persist] Failed to clear IndexedDB prefix "${prefix}".`, error);
 			}
-		},
+		}
 	};
 }

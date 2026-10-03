@@ -50,3 +50,20 @@ gh api R/issues/<n>), not its number:
 - Blockers: gh api R/issues/<n>/dependencies/blocked_by to list,
   gh api R/issues/<n>/dependencies/blocked_by -F issue_id=<id> to add.
 - Claim: gh api R/issues/<n>/assignees -f 'assignees[]=<login>'.
+
+## Project board
+
+The client watches the GitHub Project's Status column, and the
+task-manager workflow moves it from git events (rules in
+oneezy/tools packages/task-manager/scripts/status.sh). A branch named
+<type>/<n>-<slug> moves #n to In Progress on its own; cloud threads work on
+claude/... branches that name no issue, so they must say it themselves:
+
+- Starting a ticket: dispatch the workflow with start=<n> (moves #n from
+  Todo, Next Up or no Status to In Progress):
+  gh api -X POST R/actions/workflows/task-manager.yml/dispatches
+  -f ref=dev -f 'inputs[start]=<n>'
+- Every PR body carries Closes #<n> for each ticket it finishes. That
+  link moves the ticket to Review when the PR is ready, back to In
+  Progress on a draft or changes requested, and closes it as Done when
+  the PR merges into dev. A PR without it moves nothing.

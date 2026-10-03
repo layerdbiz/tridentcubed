@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Grid, Item, Input, Select, Text, Textarea } from '@layerd/ui';
-	import { Page, Panel } from '$lib';
+	import { Page, Panel } from '#lib';
 	import { fetchSimpleDefinitions } from './simple.remote';
 	import type * as simpleTypes from './simple.types';
 
@@ -85,8 +85,10 @@
 					inputDefinition.input !== 'hidden'
 			)
 			.sort(
-				(left: simpleTypes.SimpleInputDefinitionType, right: simpleTypes.SimpleInputDefinitionType) =>
-					left.order - right.order
+				(
+					left: simpleTypes.SimpleInputDefinitionType,
+					right: simpleTypes.SimpleInputDefinitionType
+				) => left.order - right.order
 			)
 	);
 
@@ -96,12 +98,12 @@
 				(panelDefinition: simpleTypes.SimplePanelDefinitionType) =>
 					!isRemoved(panelDefinition.visibility)
 			)
-			.filter(
-				(panelDefinition: simpleTypes.SimplePanelDefinitionType) => panelDefinition.enabled
-			)
+			.filter((panelDefinition: simpleTypes.SimplePanelDefinitionType) => panelDefinition.enabled)
 			.sort(
-				(left: simpleTypes.SimplePanelDefinitionType, right: simpleTypes.SimplePanelDefinitionType) =>
-					left.order - right.order
+				(
+					left: simpleTypes.SimplePanelDefinitionType,
+					right: simpleTypes.SimplePanelDefinitionType
+				) => left.order - right.order
 			)
 			.map((panelDefinition: simpleTypes.SimplePanelDefinitionType) => ({
 				panel: panelDefinition,
@@ -132,24 +134,37 @@
 				)
 			}))
 			.filter(
-				(entry: simpleTypes.SimpleRenderedPageType) =>
-					entry.page.include || entry.inputs.length > 0
+				(entry: simpleTypes.SimpleRenderedPageType) => entry.page.include || entry.inputs.length > 0
 			)
 	);
 </script>
 
 <div class="h-svh overflow-hidden">
-	<Grid items="a1:b1" class="h-full gap-4 p-4">
-
+	<Grid
+		items="a1:b1"
+		class="h-full gap-4 p-4"
+	>
 		<!-- Panels
 		------------------------------------------------------------------------->
-		<Item range="a1:a1" col="420px" class="grid auto-rows-min gap-4 border-r border-neutral-300 p-4">
+		<Item
+			range="a1:a1"
+			col="420px"
+			class="grid auto-rows-min gap-4 border-r border-neutral-300 p-4"
+		>
 			<Text h2="Panels" />
 
 			{#if renderedPanels.length}
 				{#each renderedPanels as entry (entry.panel.id)}
-					<Panel name="group1" label={entry.panel.title} layout={entry.panel.layout} open>
-						<div class="grid gap-3" class:grid-cols-2={entry.panel.layout === 'list'}>
+					<Panel
+						name="group1"
+						label={entry.panel.title}
+						layout={entry.panel.layout}
+						open
+					>
+						<div
+							class="grid gap-3"
+							class:grid-cols-2={entry.panel.layout === 'list'}
+						>
 							{#each entry.inputs as inputDefinition (inputDefinition.id)}
 								{#if inputDefinition.input === 'textarea' || inputDefinition.input === 'richtext'}
 									<Textarea
@@ -194,13 +209,22 @@
 
 		<!-- Pages 
 		------------------------------------------------------------------------->
-		<Item range="b1:b1" class="min-w-0 overflow-y-auto overflow-x-hidden p-4">
+		<Item
+			range="b1:b1"
+			class="min-w-0 overflow-x-hidden overflow-y-auto p-4"
+		>
 			<Text h2="Pages" />
 
 			{#if renderedPages.length}
-				<div class="origin-top-left flex flex-wrap gap-20 pt-4" style="zoom: 0.35;">
+				<div
+					class="flex origin-top-left flex-wrap gap-20 pt-4"
+					style="zoom: 0.35;"
+				>
 					{#each renderedPages as entry (entry.page.id)}
-						<Page layout={entry.page.layout} label={entry.page.page}>
+						<Page
+							layout={entry.page.layout}
+							label={entry.page.page}
+						>
 							<Text h4={entry.page.page} />
 							{#each entry.inputs as inputDefinition (inputDefinition.id)}
 								<div>

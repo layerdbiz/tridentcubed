@@ -26,18 +26,32 @@ fieldset {
 	--legend-initial-offset-x: calc(var(--prefix-width) + var(--legend-float-pad-start));
 	--legend-float-y: calc((var(--input-height) - 1em) / 1.1);
 
-	@apply relative block w-full border-0 bg-white outline-0 pointer-events-none;
+	@apply pointer-events-none relative block w-full border-0 bg-white outline-0;
 	@apply select-none;
 	@apply h-(--input-height) rounded-(--field-radius);
 }
 
-fieldset.xxs { font-size: 0.625rem; }
-fieldset.xs { font-size: 0.75rem; }
-fieldset.sm { font-size: 0.875rem; }
-fieldset.md { font-size: 1rem; }
-fieldset.lg { font-size: 1.125rem; }
-fieldset.xl { font-size: 1.25rem; }
-fieldset.xxl { font-size: 1.375rem; }
+fieldset.xxs {
+	font-size: 0.625rem;
+}
+fieldset.xs {
+	font-size: 0.75rem;
+}
+fieldset.sm {
+	font-size: 0.875rem;
+}
+fieldset.md {
+	font-size: 1rem;
+}
+fieldset.lg {
+	font-size: 1.125rem;
+}
+fieldset.xl {
+	font-size: 1.25rem;
+}
+fieldset.xxl {
+	font-size: 1.375rem;
+}
 
 fieldset:has(.start) {
 	--prefix-width: calc(var(--icon-size) + var(--icon-gap));
@@ -50,7 +64,7 @@ fieldset:has(.end) {
 }
 
 fieldset legend {
-	@apply relative z-2 grid items-center whitespace-nowrap bg-transparent font-semibold leading-0 origin-top-left transition-transform pointer-events-none;
+	@apply pointer-events-none relative z-2 grid origin-top-left items-center bg-transparent leading-0 font-semibold whitespace-nowrap transition-transform;
 	@apply ml-(--legend-start) text-base-400/50;
 	@apply ps-(--legend-pad-start) pe-(--legend-pad-end);
 
@@ -58,28 +72,28 @@ fieldset legend {
 }
 
 fieldset label {
-	@apply absolute inset-0 z-0 grid items-center justify-center pointer-events-auto;
+	@apply pointer-events-auto absolute inset-0 z-0 grid items-center justify-center;
 	@apply grid-cols-[calc(var(--content-start)+var(--prefix-width))_minmax(0,1fr)_calc(var(--content-end)+var(--suffix-width))];
 }
 
 fieldset .icon.start,
 fieldset .icon.end {
-	@apply z-2 block shrink-0 overflow-clip text-base-400 bg-base-400 transition-colors;
+	@apply z-2 block shrink-0 overflow-clip bg-base-400 text-base-400 transition-colors;
 	@apply size-(--icon-size);
 }
 
 fieldset .icon.start {
-	@apply col-start-1 row-start-1 self-center ml-(--content-start);
+	@apply col-start-1 row-start-1 ml-(--content-start) self-center;
 }
 
 fieldset .icon.end {
-	@apply col-start-3 row-start-1 self-center justify-self-end mr-(--content-end);
+	@apply col-start-3 row-start-1 mr-(--content-end) self-center justify-self-end;
 }
 
 fieldset :is(input, select, textarea) {
 	@apply relative z-0 col-span-full row-start-1 size-full border-0 bg-transparent text-base-900 outline-0 transition-colors;
 	@apply select-text;
-	@apply rounded-(--field-radius) text-[1em] ps-(--input-pad-start) pe-(--input-pad-end);
+	@apply rounded-(--field-radius) ps-(--input-pad-start) pe-(--input-pad-end) text-[1em];
 }
 
 fieldset input::placeholder,
@@ -95,7 +109,7 @@ fieldset.field-empty {
 	--legend-pad-start: calc(var(--notch-padding) + var(--legend-float-pad-start));
 	--legend-pad-end: calc(var(--notch-padding) + var(--legend-float-pad-end));
 
-	@apply -outline-offset-1 outline-1 outline-base-200;
+	@apply outline-1 -outline-offset-1 outline-base-200;
 }
 
 fieldset.field-empty legend {
@@ -111,7 +125,6 @@ fieldset.field-empty:hover:not(:focus-within) {
 fieldset.field-empty:hover:not(:focus-within) legend {
 	@apply opacity-70;
 }
-
 
 fieldset:is(.field-filled, :focus-within) {
 	--legend-pad-start: var(--notch-padding);
@@ -142,7 +155,7 @@ fieldset:focus-within legend {
 
 fieldset:focus-within legend,
 fieldset:focus-within .icon {
-	@apply text-info-500 bg-info-500;
+	@apply bg-info-500 text-info-500;
 }
 
 fieldset:focus-within legend {
@@ -160,11 +173,11 @@ fieldset.field-filled:not(:focus-within) legend {
 }
 
 fieldset.field-filled:not(:focus-within) label {
-	@apply -left-px -right-px;
+	@apply -right-px -left-px;
 }
 
 fieldset.field-filled:not(:focus-within) label .icon {
-	@apply text-base-500 bg-base-500;
+	@apply bg-base-500 text-base-500;
 }
 
 fieldset.field-filled:not(:focus-within) label :is(input, select, textarea) {

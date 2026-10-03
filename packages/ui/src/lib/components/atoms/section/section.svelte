@@ -105,7 +105,7 @@
 <Component
 	observe={{ sectionId }}
 	{...props}
-	class="section z-1 relative w-full {bleed ? 'bleed' : ''} {props.class}"
+	class="section relative z-1 w-full {bleed ? 'bleed' : ''} {props.class}"
 >
 	{#snippet component({ props, content })}
 		{@const divProps = dividerProps()}
@@ -120,7 +120,7 @@
 				negative={true}
 			/>
 
-			<Container class="not-last:py-20 flex flex-col gap-20 {layout} {container}">
+			<Container class="flex flex-col gap-20 not-last:py-20 {layout} {container}">
 				{#if children}
 					{@render children()}
 				{:else}

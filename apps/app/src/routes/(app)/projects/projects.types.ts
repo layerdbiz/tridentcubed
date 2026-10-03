@@ -1,13 +1,13 @@
-export type ProjectsRouteModeType = "edit" | "preview";
+export type ProjectsRouteModeType = 'edit' | 'preview';
 
-export type TabType = "create" | "preview";
-export type PanelKindType = "fields" | "cover" | "time-log" | "photos";
+export type TabType = 'create' | 'preview';
+export type PanelKindType = 'fields' | 'cover' | 'time-log' | 'photos';
 export type SectionKindType = PanelKindType;
-export type PanelPlacementType = "start" | "middle" | "end";
+export type PanelPlacementType = 'start' | 'middle' | 'end';
 export type SectionPlacementType = PanelPlacementType;
-export type PanelStatusType = "todo" | "in-progress" | "complete";
+export type PanelStatusType = 'todo' | 'in-progress' | 'complete';
 export type SectionStatusType = PanelStatusType;
-export type PhotoOrientationType = "portrait" | "landscape" | "square";
+export type PhotoOrientationType = 'portrait' | 'landscape' | 'square';
 
 export interface PhotoItemType {
 	id: string;
@@ -68,7 +68,7 @@ export interface PanelBaseType {
 export type SectionBaseType = PanelBaseType;
 
 export interface FieldPanelType extends PanelBaseType {
-	type: "fields" | "cover";
+	type: 'fields' | 'cover';
 	section: string;
 	fields: DetailsFieldsType;
 }
@@ -76,14 +76,14 @@ export interface FieldPanelType extends PanelBaseType {
 export type FieldSectionType = FieldPanelType;
 
 export interface TimeLogPanelType extends PanelBaseType {
-	type: "time-log";
+	type: 'time-log';
 	days: TimeDayType[];
 }
 
 export type TimeLogSectionType = TimeLogPanelType;
 
 export interface PhotosPanelType extends PanelBaseType {
-	type: "photos";
+	type: 'photos';
 	defaultVariant: string;
 	groups: PhotoGroupType[];
 	panelId: string | null;
@@ -93,10 +93,7 @@ export interface PhotosPanelType extends PanelBaseType {
 
 export type PhotosSectionType = PhotosPanelType;
 
-export type PanelType =
-	| FieldPanelType
-	| TimeLogPanelType
-	| PhotosPanelType;
+export type PanelType = FieldPanelType | TimeLogPanelType | PhotosPanelType;
 
 export type SectionType = PanelType;
 
@@ -141,67 +138,60 @@ export type SectionMetricsType = PanelMetricsType;
 
 export interface PanelTemplateType<T extends PanelType = PanelType> {
 	id: string;
-	type: T["type"];
+	type: T['type'];
 	title: string;
 	icon: string;
 	placement: PanelPlacementType;
 	create: () => T;
 }
 
-export type SectionTemplateType<T extends SectionType = SectionType> =
-	PanelTemplateType<T>;
+export type SectionTemplateType<T extends SectionType = SectionType> = PanelTemplateType<T>;
 
-export type FieldSourceType =
-	| "user"
-	| "system"
-	| "prefilled"
-	| "derived"
-	| "template"
-	| "external";
+export type FieldSourceType = 'user' | 'system' | 'prefilled' | 'derived' | 'template' | 'external';
 
 export type FieldValueType =
-	| "string"
-	| "number"
-	| "boolean"
-	| "date"
-	| "datetime"
-	| "enum"
-	| "object"
-	| "array"
-	| "file"
-	| "image"
-	| "richtext";
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'date'
+	| 'datetime'
+	| 'enum'
+	| 'object'
+	| 'array'
+	| 'file'
+	| 'image'
+	| 'richtext';
 
 export type FieldInputType =
-	| "text"
-	| "textarea"
-	| "select"
-	| "multiselect"
-	| "date"
-	| "datetime"
-	| "number"
-	| "email"
-	| "tel"
-	| "url"
-	| "file"
-	| "image"
-	| "checkbox"
-	| "radio"
-	| "repeater"
-	| "richtext"
-	| "hidden";
+	| 'text'
+	| 'textarea'
+	| 'select'
+	| 'multiselect'
+	| 'date'
+	| 'datetime'
+	| 'number'
+	| 'email'
+	| 'tel'
+	| 'url'
+	| 'file'
+	| 'image'
+	| 'checkbox'
+	| 'radio'
+	| 'repeater'
+	| 'richtext'
+	| 'hidden';
 
-export type FieldVisibilityType = "visible" | "hidden" | "conditional";
-export type PanelRendererType = "fields" | "time-log" | "photos" | "custom";
-export type OutputPageSectionType = "header" | "main" | "footer";
+export type FieldVisibilityType = 'visible' | 'hidden' | 'conditional';
+export type PanelRendererType = 'fields' | 'time-log' | 'photos' | 'custom';
+export type OutputPageSectionType = 'header' | 'main' | 'footer';
 export type PreviewPageVariantType =
-	| "full"
-	| "toc"
-	| "list"
-	| "template"
-	| "team"
-	| "table"
-	| "photo";
+	| 'full'
+	| 'toc'
+	| 'list'
+	| 'template'
+	| 'team'
+	| 'table'
+	| 'photo';
 
 export interface InputDefinitionType {
 	id: string;
@@ -288,13 +278,13 @@ export interface ProjectSchemaType {
 }
 
 export type PreviewPageKindType =
-	| "cover"
-	| "toc"
-	| "template"
-	| "team"
-	| "time-log"
-	| "photo"
-	| "disclaimer";
+	| 'cover'
+	| 'toc'
+	| 'template'
+	| 'team'
+	| 'time-log'
+	| 'photo'
+	| 'disclaimer';
 
 export interface PreviewPageItemType {
 	id: string;

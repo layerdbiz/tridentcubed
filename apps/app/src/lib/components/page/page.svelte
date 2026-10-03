@@ -9,14 +9,11 @@
 		open?: boolean;
 	}
 
-	let {
-		children = undefined,
-		label = 'Page',
-		layout = 'default',
-		...props
-	}: PageProps = $props();
+	let { children = undefined, label = 'Page', layout = 'default', ...props }: PageProps = $props();
 
-	const defaultClass = $state('page aspect-[8.5/11] origin-top-left w-204 h-264 overflow-hidden outline-4 p-4');
+	const defaultClass = $state(
+		'page aspect-[8.5/11] origin-top-left w-204 h-264 overflow-hidden outline-4 p-4'
+	);
 </script>
 
 <Component
@@ -24,7 +21,6 @@
 	class="page {props.class}"
 >
 	{#snippet component({ props })}
-
 		<!-- Content
 		::::::::::::::::::::::::::::::::::::::::::::: -->
 		{#snippet content()}
@@ -39,29 +35,55 @@
 		::::::::::::::::::::::::::::::::::::::::::::: -->
 		<!-- Default -->
 		{#snippet pageDefault()}
-		<Grid items="A1:C3" {...props} class="gap-10! {defaultClass} {props.class}">
-			<Item row="1in" range="a1:c1" class="bg-blue-200">
-				header
-			</Item>
-			<Item row="1fr" range="a2:c2" class="bg-gray-200">
-				{@render content()}
-			</Item>
-			<Item row="1in" range="a3:c3" class="bg-red-200">
-				footer
-			</Item>
-		</Grid>
+			<Grid
+				items="A1:C3"
+				{...props}
+				class="gap-10! {defaultClass} {props.class}"
+			>
+				<Item
+					row="1in"
+					range="a1:c1"
+					class="bg-blue-200"
+				>
+					header
+				</Item>
+				<Item
+					row="1fr"
+					range="a2:c2"
+					class="bg-gray-200"
+				>
+					{@render content()}
+				</Item>
+				<Item
+					row="1in"
+					range="a3:c3"
+					class="bg-red-200"
+				>
+					footer
+				</Item>
+			</Grid>
 		{/snippet}
 
 		<!-- Cover -->
 		{#snippet pageCover()}
-		<Grid items="a1:c2" {...props} class="gap-10! {defaultClass} {props.class}">
-			<Item range="a1:c1" class="bg-blue-200">
-				top
-			</Item>
-			<Item range="a2:c2" class="bg-gray-200">
-				bottom
-			</Item>
-		</Grid>
+			<Grid
+				items="a1:c2"
+				{...props}
+				class="gap-10! {defaultClass} {props.class}"
+			>
+				<Item
+					range="a1:c1"
+					class="bg-blue-200"
+				>
+					top
+				</Item>
+				<Item
+					range="a2:c2"
+					class="bg-gray-200"
+				>
+					bottom
+				</Item>
+			</Grid>
 		{/snippet}
 
 		{#if layout === 'default'}

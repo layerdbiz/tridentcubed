@@ -43,7 +43,7 @@ class CreateClasses {
 	 * @returns Space-separated class string
 	 */
 	toString(): string {
-		return this.classes.join(" ");
+		return this.classes.join(' ');
 	}
 
 	/**

@@ -1,17 +1,13 @@
-import {
-	DragDropManager,
-	Draggable as DndDraggable,
-	Droppable,
-} from "@dnd-kit/dom";
+import { DragDropManager, Draggable as DndDraggable, Droppable } from '@dnd-kit/dom';
 
 type ItemAccessor<T> = T | (() => T);
 type ArrayAccessors<T> =
 	| T[]
 	| (() => T[])
 	| {
-		get: () => T[];
-		set: (items: T[]) => void;
-	};
+			get: () => T[];
+			set: (items: T[]) => void;
+	  };
 
 type ManagedCleanup = {
 	destroy: () => void;
@@ -21,15 +17,9 @@ type DndOptions = Record<string, unknown> & {
 	data?: Record<string, unknown>;
 };
 
-type DragMonitorEventName =
-	| "beforedragstart"
-	| "dragstart"
-	| "dragover"
-	| "dragend";
+type DragMonitorEventName = 'beforedragstart' | 'dragstart' | 'dragover' | 'dragend';
 
-type DragMonitorHandlers = Partial<
-	Record<DragMonitorEventName, (event: unknown) => void>
->;
+type DragMonitorHandlers = Partial<Record<DragMonitorEventName, (event: unknown) => void>>;
 
 function move<T>(items: T[], from: number, to: number) {
 	items.splice(to, 0, items.splice(from, 1)[0]);
@@ -39,16 +29,13 @@ function move<T>(items: T[], from: number, to: number) {
 function hasValue(value: unknown, target: unknown): boolean {
 	if (value === target) return true;
 	if (Array.isArray(value)) return value.some((item) => hasValue(item, target));
-	if (value && typeof value === "object") {
+	if (value && typeof value === 'object') {
 		return Object.values(value).some((item) => hasValue(item, target));
 	}
 	return false;
 }
 
-function getNearestParentElementFromMap<T>(
-	element: HTMLElement,
-	map: WeakMap<HTMLElement, T>,
-) {
+function getNearestParentElementFromMap<T>(element: HTMLElement, map: WeakMap<HTMLElement, T>) {
 	let parent = element.parentElement;
 	while (parent) {
 		if (map.has(parent)) return map.get(parent) ?? null;
@@ -61,14 +48,14 @@ function toArrayAccessors<T>(items: ArrayAccessors<T>) {
 	if (Array.isArray(items)) {
 		return {
 			get: () => items,
-			set: (nextItems: T[]) => items.splice(0, items.length, ...nextItems),
+			set: (nextItems: T[]) => items.splice(0, items.length, ...nextItems)
 		};
 	}
 
-	if (typeof items === "function") {
+	if (typeof items === 'function') {
 		return {
 			get: items,
-			set: (nextItems: T[]) => items().splice(0, items().length, ...nextItems),
+			set: (nextItems: T[]) => items().splice(0, items().length, ...nextItems)
 		};
 	}
 
@@ -76,7 +63,7 @@ function toArrayAccessors<T>(items: ArrayAccessors<T>) {
 }
 
 function toItemAccessor<T>(item: ItemAccessor<T>): () => T {
-	if (typeof item === "function") {
+	if (typeof item === 'function') {
 		return item as () => T;
 	}
 
@@ -97,11 +84,11 @@ type SortableItemParams<T> =
 	| undefined
 	| ItemAccessor<T>
 	| {
-		item: ItemAccessor<T>;
-		accept?: string[];
-		draggableOptions?: DndOptions;
-		droppableOptions?: DndOptions;
-	};
+			item: ItemAccessor<T>;
+			accept?: string[];
+			draggableOptions?: DndOptions;
+			droppableOptions?: DndOptions;
+	  };
 
 export type DroppableParams<T = unknown> = {
 	items: ArrayAccessors<T>;
@@ -113,10 +100,7 @@ export type DroppableParams<T = unknown> = {
 export type SortableApi<T> = {
 	type: string;
 	list: (element: HTMLElement, options: DroppableParams<T>) => ManagedCleanup;
-	item: (
-		element: HTMLElement,
-		options: SortableItemParams<T>,
-	) => ManagedCleanup | void;
+	item: (element: HTMLElement, options: SortableItemParams<T>) => ManagedCleanup | void;
 	handle: (element: HTMLElement, enabled?: boolean) => void;
 };
 
@@ -127,7 +111,7 @@ type DraggableInstanceOptions = {
 };
 
 const defaultOptions = {
-	autoAttach: true,
+	autoAttach: true
 } satisfies DraggableInstanceOptions;
 
 let lastDroppable: { disabled?: boolean } | null = null;
@@ -137,10 +121,7 @@ const containerMap = new WeakMap<
 	HTMLElement,
 	{ items: { get: () => unknown[]; set: (items: unknown[]) => void } }
 >();
-const itemMap = new WeakMap<
-	HTMLElement,
-	{ draggable: DndDraggable<any> }
->();
+const itemMap = new WeakMap<HTMLElement, { draggable: DndDraggable<any> }>();
 
 export class Draggable {
 	manager: DragDropManager;
@@ -149,8 +130,7 @@ export class Draggable {
 
 	constructor(options: DraggableInstanceOptions = {}) {
 		this.options = { ...defaultOptions, ...options };
-		this.manager = options.manager ||
-			new DragDropManager(options.managerOptions);
+		this.manager = options.manager || new DragDropManager(options.managerOptions);
 		this.addDraggable = this.addDraggable.bind(this);
 		this.addDroppable = this.addDroppable.bind(this);
 		this.addHandle = this.addHandle.bind(this);
@@ -175,7 +155,7 @@ export class Draggable {
 				for (const [eventName, handler] of entries) {
 					this.manager.monitor.removeEventListener(eventName, handler as any);
 				}
-			},
+			}
 		};
 	}
 
@@ -188,13 +168,13 @@ export class Draggable {
 			list: (element, options) =>
 				this.addDroppable(element, {
 					...options,
-					accept: options.accept || [type],
+					accept: options.accept || [type]
 				}),
 			item: (element, options) => {
 				if (!options) return;
 
 				const normalizedOptions =
-					typeof options === "object" && options && "item" in options
+					typeof options === 'object' && options && 'item' in options
 						? options
 						: { item: options as ItemAccessor<T> };
 
@@ -203,13 +183,13 @@ export class Draggable {
 					type,
 					accept: normalizedOptions.accept || [type],
 					draggableOptions: normalizedOptions.draggableOptions,
-					droppableOptions: normalizedOptions.droppableOptions,
+					droppableOptions: normalizedOptions.droppableOptions
 				});
 			},
 			handle: (element, enabled = true) => {
 				if (!enabled) return;
 				this.addHandle(element);
-			},
+			}
 		};
 
 		this.sortMap.set(type, sortable as SortableApi<unknown>);
@@ -217,22 +197,13 @@ export class Draggable {
 	}
 
 	attach() {
-		this.manager.monitor.addEventListener(
-			"dragover",
-			this._onDragOver as any,
-		);
-		this.manager.monitor.addEventListener(
-			"dragover",
-			this._disableOwnDroppable as any,
-		);
-		this.manager.monitor.addEventListener(
-			"beforedragstart",
-			this._disableOwnDroppable as any,
-		);
-		this.manager.monitor.addEventListener(
-			"dragend",
-			this._restoreLastDroppable as any,
-		);
+		// The handlers are bound in the constructor
+		/* oxlint-disable typescript/unbound-method */
+		this.manager.monitor.addEventListener('dragover', this._onDragOver as any);
+		this.manager.monitor.addEventListener('dragover', this._disableOwnDroppable as any);
+		this.manager.monitor.addEventListener('beforedragstart', this._disableOwnDroppable as any);
+		this.manager.monitor.addEventListener('dragend', this._restoreLastDroppable as any);
+		/* oxlint-enable typescript/unbound-method */
 	}
 
 	_disableOwnDroppable(event: any) {
@@ -273,7 +244,7 @@ export class Draggable {
 		};
 
 		if (!dragEvent.operation?.target) return;
-		dragEvent.operation.source.element.removeAttribute("popover");
+		dragEvent.operation.source.element.removeAttribute('popover');
 
 		if (dragEvent.operation.target.data?.isContainer) {
 			return this.handleMove(event);
@@ -294,10 +265,7 @@ export class Draggable {
 			};
 		};
 
-		const source = getNearestParentElementFromMap(
-			dragEvent.operation.source.element,
-			containerMap,
-		);
+		const source = getNearestParentElementFromMap(dragEvent.operation.source.element, containerMap);
 		if (!source) return;
 
 		const sourceItem = dragEvent.operation.source.data.item();
@@ -318,14 +286,8 @@ export class Draggable {
 			};
 		};
 
-		const source = getNearestParentElementFromMap(
-			dragEvent.operation.source.element,
-			containerMap,
-		);
-		const target = getNearestParentElementFromMap(
-			dragEvent.operation.target.element,
-			containerMap,
-		);
+		const source = getNearestParentElementFromMap(dragEvent.operation.source.element, containerMap);
+		const target = getNearestParentElementFromMap(dragEvent.operation.target.element, containerMap);
 		if (!source || !target) return;
 
 		const sourceItem = dragEvent.operation.source.data.item();
@@ -351,19 +313,17 @@ export class Draggable {
 		}
 	}
 
-	addDraggable<T>(
-		element: HTMLElement,
-		options: DraggableOptions<T>,
-	): ManagedCleanup {
+	addDraggable<T>(element: HTMLElement, options: DraggableOptions<T>): ManagedCleanup {
 		const item = toItemAccessor(options.item);
 		const normalizedOptions = {
 			...options,
-			item,
+			item
 		};
 
 		const droppable = new Droppable(
 			{
-				accept: normalizedOptions.accept ||
+				accept:
+					normalizedOptions.accept ||
 					(normalizedOptions.type ? [normalizedOptions.type] : undefined),
 				...normalizedOptions.droppableOptions,
 				id: item() as any,
@@ -371,10 +331,10 @@ export class Draggable {
 				data: {
 					...normalizedOptions,
 					...normalizedOptions.droppableOptions?.data,
-					isContainer: false,
-				},
+					isContainer: false
+				}
 			},
-			this.manager,
+			this.manager
 		);
 
 		const draggable = new DndDraggable(
@@ -387,10 +347,10 @@ export class Draggable {
 					...normalizedOptions,
 					...normalizedOptions.draggableOptions?.data,
 					droppable,
-					isContainer: false,
-				},
+					isContainer: false
+				}
 			},
-			this.manager,
+			this.manager
 		);
 
 		itemMap.set(element, { draggable });
@@ -399,21 +359,18 @@ export class Draggable {
 			destroy() {
 				draggable.destroy();
 				droppable.destroy();
-			},
+			}
 		};
 	}
 
-	addDroppable<T>(
-		element: HTMLElement,
-		options: DroppableParams<T>,
-	): ManagedCleanup {
+	addDroppable<T>(element: HTMLElement, options: DroppableParams<T>): ManagedCleanup {
 		const items = toArrayAccessors(options.items);
 		const normalizedOptions = {
 			...options,
 			items: {
 				get: items.get,
-				set: options.setItems || items.set,
-			},
+				set: options.setItems || items.set
+			}
 		};
 
 		const droppable = new Droppable(
@@ -425,23 +382,23 @@ export class Draggable {
 				data: {
 					...normalizedOptions,
 					...normalizedOptions.droppableOptions?.data,
-					isContainer: true,
-				},
+					isContainer: true
+				}
 			},
-			this.manager,
+			this.manager
 		);
 
 		containerMap.set(
 			element,
 			normalizedOptions as {
 				items: { get: () => unknown[]; set: (items: unknown[]) => void };
-			},
+			}
 		);
 
 		return {
 			destroy() {
 				droppable.destroy();
-			},
+			}
 		};
 	}
 

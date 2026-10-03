@@ -10,12 +10,28 @@
 		{ rail: 'gutter-xxl', className: 'rounded-xl bg-sky-500 px-4 py-5 font-black text-white' }
 	];
 	const contentInsets = [
-		{ inset: '1', label: 'rail="content" inset="1"', className: 'rounded-xl bg-violet-200 px-4 py-5 text-slate-950' },
-		{ inset: 'lg', label: 'rail="content" inset="lg"', className: 'rounded-xl bg-violet-300 px-4 py-5 text-slate-950' }
+		{
+			inset: '1',
+			label: 'rail="content" inset="1"',
+			className: 'rounded-xl bg-violet-200 px-4 py-5 text-slate-950'
+		},
+		{
+			inset: 'lg',
+			label: 'rail="content" inset="lg"',
+			className: 'rounded-xl bg-violet-300 px-4 py-5 text-slate-950'
+		}
 	];
 	const fullInsets = [
-		{ inset: '4', label: 'rail="full" inset="4"', className: 'rounded-xl bg-amber-200 px-4 py-5 text-slate-950' },
-		{ inset: 'clamp(2rem, 8vw, 5rem)', label: 'rail="full" inset="clamp(...)"', className: 'rounded-xl bg-amber-300 px-4 py-5 text-slate-950' }
+		{
+			inset: '4',
+			label: 'rail="full" inset="4"',
+			className: 'rounded-xl bg-amber-200 px-4 py-5 text-slate-950'
+		},
+		{
+			inset: 'clamp(2rem, 8vw, 5rem)',
+			label: 'rail="full" inset="clamp(...)"',
+			className: 'rounded-xl bg-amber-300 px-4 py-5 text-slate-950'
+		}
 	];
 </script>
 
@@ -24,7 +40,9 @@
 </svelte:head>
 
 <div class="grid gap-4 p-4 md:p-5">
-	<h1 class="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">Rails Gutters + Insets</h1>
+	<h1 class="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">
+		Rails Gutters + Insets
+	</h1>
 
 	<h2 class="text-2xl font-black tracking-tight text-slate-950">1. gutter rails</h2>
 	{#each gutterRails as entry (entry.rail)}
@@ -35,7 +53,10 @@
 			debug={showRailsDebug ? { rails: true } : false}
 			class={surfaceClass}
 		>
-			<Component rail={entry.rail} class={entry.className} />
+			<Component
+				rail={entry.rail}
+				class={entry.className}
+			/>
 		</Component>
 	{/each}
 
@@ -48,7 +69,11 @@
 			debug={showRailsDebug ? { rails: true } : false}
 			class={surfaceClass}
 		>
-			<Component rail="content" inset={entry.inset} class={entry.className} />
+			<Component
+				rail="content"
+				inset={entry.inset}
+				class={entry.className}
+			/>
 		</Component>
 	{/each}
 
@@ -61,7 +86,11 @@
 			debug={showRailsDebug ? { rails: true } : false}
 			class={surfaceClass}
 		>
-			<Component rail="full" inset={entry.inset} class={entry.className} />
+			<Component
+				rail="full"
+				inset={entry.inset}
+				class={entry.className}
+			/>
 		</Component>
 	{/each}
 </div>

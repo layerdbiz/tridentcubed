@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Item, setGridCtx, parseDims, numToCol } from "@layerd/ui";
-	import { tick, untrack } from "svelte";
-	import type { Snippet } from "svelte";
+	import { Item, setGridCtx, parseDims, numToCol } from '@layerd/ui';
+	import { tick, untrack } from 'svelte';
+	import type { Snippet } from 'svelte';
 
 	export interface GridProps {
 		class?: string;
@@ -15,12 +15,12 @@
 	}
 
 	let {
-		items = "",
+		items = '',
 		rows,
 		cols,
-		class: userClass = "",
-		gap = "1rem",
-		pad = "0",
+		class: userClass = '',
+		gap = '1rem',
+		pad = '0',
 		debug = false,
 		children
 	}: GridProps = $props();
@@ -29,7 +29,7 @@
 	// This is necessary because children (Items) register row/col sizes AFTER
 	// the parent Grid has already rendered its template
 	let ready = $state(false);
-	
+
 	// Use untrack to avoid creating a dependency, and tick to wait for children
 	$effect(() => {
 		untrack(() => {
@@ -41,12 +41,12 @@
 
 	function materializeTrackParts(count: number, definition?: string) {
 		const def = definition?.trim();
-		if (!def) return Array.from({ length: count }, () => "minmax(0, 1fr)");
+		if (!def) return Array.from({ length: count }, () => 'minmax(0, 1fr)');
 
 		const parts = def.split(/\s+/);
 		if (parts.length === count) return parts;
 
-		const last = parts[parts.length - 1] ?? "1fr";
+		const last = parts[parts.length - 1] ?? '1fr';
 		const out: string[] = [];
 		for (const i of Array.from({ length: count }, (_, idx) => idx)) out.push(parts[i] ?? last);
 		return out;
@@ -78,7 +78,7 @@
 	// React to items changes after initial render
 	$effect(() => {
 		const currentItems = items.trim();
-		
+
 		// Skip if items hasn't changed
 		if (currentItems === prevItemsRef) return;
 		prevItemsRef = currentItems;
@@ -156,13 +156,15 @@
 
 	// Set context at component initialization
 	// Pass dims as a getter so context consumers get reactive updates
-	setGridCtx({ 
-		get dims() { return dims; }, 
-		setRowTrack, 
+	setGridCtx({
+		get dims() {
+			return dims;
+		},
+		setRowTrack,
 		setColTrack,
 		clearRowTrack,
 		clearColTrack,
-		claimAutoCell 
+		claimAutoCell
 	});
 
 	const gridTemplateRows = $derived.by(() => {
@@ -172,7 +174,7 @@
 			const v = rowTracks[i];
 			if (v) base[i] = v;
 		}
-		return base.join(" ");
+		return base.join(' ');
 	});
 
 	const gridTemplateCols = $derived.by(() => {
@@ -182,7 +184,7 @@
 			const v = colTracks[i];
 			if (v) base[i] = v;
 		}
-		return base.join(" ");
+		return base.join(' ');
 	});
 
 	const fauxRanges = $derived.by(() => buildFauxRanges(dims.rows, dims.cols));
@@ -197,14 +199,17 @@
 	);
 </script>
 
-<div 
-	class={"" + userClass} 
+<div
+	class={'' + userClass}
 	class:invisible={!ready}
 	style={gridStyle}
 >
 	{#if debug}
 		{#each fauxRanges as r (r)}
-			<Item range={r} class="bg-black/10 text-black/50 font-black">
+			<Item
+				range={r}
+				class="bg-black/10 font-black text-black/50"
+			>
 				{r}
 			</Item>
 		{/each}

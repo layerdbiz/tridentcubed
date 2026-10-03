@@ -29,6 +29,6 @@ export function createMemoryPersistAdapter(): PersistAdapter {
 				if (!matchesPersistPrefix(key, prefix)) continue;
 				persist_memory_store.delete(key);
 			}
-		},
+		}
 	};
 }

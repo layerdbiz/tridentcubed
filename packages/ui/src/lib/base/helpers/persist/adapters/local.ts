@@ -64,6 +64,6 @@ export function createLocalPersistAdapter(): PersistAdapter {
 			for (const key of keys) {
 				storage.removeItem(key);
 			}
-		},
+		}
 	};
 }

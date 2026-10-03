@@ -762,7 +762,7 @@
 
 	/* Type-specific styles */
 	.toggle-content--tooltip {
-		@apply bg-base-300 text-base-700 max-w-xs rounded-md px-3 py-2 text-sm shadow-lg;
+		@apply max-w-xs rounded-md bg-base-300 px-3 py-2 text-sm text-base-700 shadow-lg;
 	}
 
 	.toggle-content--menu {
@@ -872,7 +872,7 @@
 
 	/* Nested menus inside menu content should position to the right */
 	:global(.toggle-content--menu .toggle .toggle-content--menu) {
-		@apply left-full top-0 ml-1 pt-0;
+		@apply top-0 left-full ml-1 pt-0;
 		@apply translate-x-0 translate-y-0;
 	}
 
@@ -893,7 +893,7 @@
 
 	/* Panel-specific button styling - allow text wrapping and top alignment */
 	:global(.toggle--panel .btn) {
-		@apply items-start whitespace-normal rounded-none! py-4! leading-normal;
+		@apply items-start rounded-none! py-4! leading-normal whitespace-normal;
 	}
 
 	:global(.toggle--panel .btn .btn-label),

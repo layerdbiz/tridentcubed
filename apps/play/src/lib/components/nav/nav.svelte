@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { Component, Button, mq } from '@layerd/ui';
-	import { navSections, type NavLink } from '$lib';
+	import { navSections, type NavLink } from '#lib';
 
 	let navOpen = $state(false);
 
@@ -17,7 +17,7 @@
 	}
 
 	function getNavHref(href: string): string {
-		const nextUrl = new URL(href, page.url);
+		const nextUrl = new URL(href, page.url.href);
 
 		if (showRailsDebug) {
 			nextUrl.searchParams.set('railsDebug', '1');
@@ -46,7 +46,7 @@
 
 		if (mq.sm) closeNav();
 
-		const nextUrl = new URL(page.url);
+		const nextUrl = new URL(page.url.href);
 
 		if (target.checked) {
 			nextUrl.searchParams.set('railsDebug', '1');
@@ -55,8 +55,7 @@
 		}
 
 		void goto(nextUrl, {
-			keepFocus: true,
-			noScroll: true,
+			reset: false,
 			replaceState: true
 		});
 	}
@@ -85,18 +84,27 @@
 		icon="menu"
 		aria-expanded={navOpen}
 		onclick={openNav}
-		class="fixed! left-3 top-3 z-40 {navOpen ? 'hidden' : ''}"
+		class="fixed! top-3 left-3 z-40 {navOpen ? 'hidden' : ''}"
 	/>
 {/snippet}
 
 {#snippet closeButton()}
-	<Button label="Close" icon="close" aria-label="Close navigation" onclick={closeNav} />
+	<Button
+		label="Close"
+		icon="close"
+		aria-label="Close navigation"
+		onclick={closeNav}
+	/>
 {/snippet}
 
 {#snippet navBody()}
-	<Component tag="nav" rails="gutter" class="h-full bg-neutral-200 py-5">
+	<Component
+		tag="nav"
+		rails="gutter"
+		class="h-full bg-neutral-200 py-5"
+	>
 		{#each navSections as section (section.label)}
-			<h2 class="mt-4 text-xs font-black uppercase tracking-widest text-primary">
+			<h2 class="mt-4 text-xs font-black tracking-widest text-primary uppercase">
 				{section.label}
 			</h2>
 
@@ -119,7 +127,9 @@
 			</ul>
 		{/each}
 
-		<label class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-slate-700 outline-1 outline-slate-300">
+		<label
+			class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black tracking-widest text-slate-700 uppercase outline-1 outline-slate-300"
+		>
 			<input
 				type="checkbox"
 				class="size-4 accent-slate-950"
@@ -144,7 +154,9 @@
 	{/if}
 
 	<Component
-		class="fixed! inset-y-0 left-0 z-50 h-full w-64 bg-neutral-200 transition-transform duration-200 {navOpen ? 'translate-x-0' : '-translate-x-full'}"
+		class="fixed! inset-y-0 left-0 z-50 h-full w-64 bg-neutral-200 transition-transform duration-200 {navOpen
+			? 'translate-x-0'
+			: '-translate-x-full'}"
 		aria-hidden={!navOpen}
 	>
 		<div class="p-3">

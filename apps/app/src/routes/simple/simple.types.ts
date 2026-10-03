@@ -1,57 +1,48 @@
-export type SimpleVisibilityType =
-	| "visible"
-	| "hidden"
-	| "conditional"
-	| "none";
+export type SimpleVisibilityType = 'visible' | 'hidden' | 'conditional' | 'none';
 
 export type SimpleInputType =
-	| "text"
-	| "textarea"
-	| "select"
-	| "select multiple"
-	| "date"
-	| "datetime"
-	| "number"
-	| "email"
-	| "tel"
-	| "url"
-	| "file"
-	| "image"
-	| "checkbox"
-	| "radio"
-	| "repeater"
-	| "richtext"
-	| "hidden";
+	| 'text'
+	| 'textarea'
+	| 'select'
+	| 'select multiple'
+	| 'date'
+	| 'datetime'
+	| 'number'
+	| 'email'
+	| 'tel'
+	| 'url'
+	| 'file'
+	| 'image'
+	| 'checkbox'
+	| 'radio'
+	| 'repeater'
+	| 'richtext'
+	| 'hidden';
 
 export type SimpleFieldType =
-	| "string"
-	| "number"
-	| "boolean"
-	| "date"
-	| "datetime"
-	| "enum"
-	| "object"
-	| "array"
-	| "file"
-	| "image"
-	| "richtext";
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'date'
+	| 'datetime'
+	| 'enum'
+	| 'object'
+	| 'array'
+	| 'file'
+	| 'image'
+	| 'richtext';
 
 export type SimplePageSectionType =
-	| "header"
-	| "main"
-	| "footer"
-	| "top"
-	| "right"
-	| "bottom"
-	| "left"
-	| "center";
+	| 'header'
+	| 'main'
+	| 'footer'
+	| 'top'
+	| 'right'
+	| 'bottom'
+	| 'left'
+	| 'center';
 
-export type SimplePanelLayoutType =
-	| "default"
-	| "list"
-	| "photo"
-	| "timelog"
-	| "page";
+export type SimplePanelLayoutType = 'default' | 'list' | 'photo' | 'timelog' | 'page';
 
 export interface SimplePanelDefinitionType {
 	id: string;

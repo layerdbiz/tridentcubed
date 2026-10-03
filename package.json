@@ -1,46 +1,46 @@
 {
-  "name": "template",
-  "apps": {
-    "app": false,
-    "play": true,
-    "report": false,
-    "site": false,
-    "storybook": false
-  },
-  "scripts": {
-    "workspace": "node ./packages/tools/bin/workspace.js",
-    "dev": "pnpm run workspace -- dev",
-    "watch": "pnpm run workspace -- watch",
-    "build": "pnpm run workspace -- build",
-    "preview": "pnpm run workspace -- preview",
-    "preview:all": "turbo preview",
-    "barrels": "pnpm --filter @layerd/tools run barrels:run --workspace",
-    "barrels:watch": "pnpm --filter @layerd/tools run barrels:run --workspace --watch",
-    "sheetari": "pnpm --filter @layerd/tools sheetari",
-    "stories": "turbo storybook#story",
-    "symlinks": "turbo symlinks",
-    "symlinks:clean": "turbo symlinks:clean",
-    "symlinks:check": "turbo symlinks:check",
-    "update": "pnpm up --latest -r",
-    "reset": "git clean -fdx",
-    "clean": "git clean -fdX",
-    "clear": "git clean -fd"
-  },
-  "devDependencies": {
-    "@csstools/postcss-light-dark-function": "^3.0.1",
-    "@iconify-json/carbon": "^1.2.21",
-    "@iconify-json/devicon": "^1.2.62",
-    "@iconify-json/mdi": "^1.2.3",
-    "@iconify-json/svg-spinners": "^1.2.4",
-    "@tailwindcss/postcss": "4.1.18",
-    "postcss": "^8.5.15",
-    "turbo": "2.8.3",
-    "unplugin-icons": "^23.0.1"
-  },
-  "packageManager": "pnpm@9.15.4",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  }
+	"name": "template",
+	"engines": {
+		"node": "24.x"
+	},
+	"apps": {
+		"app": false,
+		"play": true,
+		"report": false,
+		"site": false,
+		"storybook": false
+	},
+	"scripts": {
+		"workspace": "node ./packages/tools/bin/workspace.js",
+		"dev": "pnpm run workspace -- dev",
+		"watch": "pnpm run workspace -- watch",
+		"build": "pnpm run workspace -- build",
+		"preview": "pnpm run workspace -- preview",
+		"preview:all": "turbo preview",
+		"test": "turbo run test --filter=app --filter=@layerd/ui",
+		"barrels": "pnpm --filter @layerd/tools run barrels:run --workspace",
+		"barrels:watch": "pnpm --filter @layerd/tools run barrels:run --workspace --watch",
+		"sheetari": "pnpm --filter @layerd/tools sheetari",
+		"stories": "turbo storybook#story",
+		"symlinks": "turbo symlinks",
+		"symlinks:clean": "turbo symlinks:clean",
+		"symlinks:check": "turbo symlinks:check",
+		"update": "pnpm up --latest -r",
+		"reset": "git clean -fdx",
+		"clean": "git clean -fdX",
+		"clear": "git clean -fd"
+	},
+	"devDependencies": {
+		"@csstools/postcss-light-dark-function": "^3.0.1",
+		"@iconify-json/carbon": "^1.2.21",
+		"@iconify-json/devicon": "^1.2.62",
+		"@iconify-json/mdi": "^1.2.3",
+		"@iconify-json/svg-spinners": "^1.2.4",
+		"@tailwindcss/postcss": "4.3.3",
+		"postcss": "^8.5.15",
+		"turbo": "2.11.6",
+		"unplugin-icons": "^23.0.1",
+		"vite-plus": "catalog:"
+	},
+	"packageManager": "pnpm@12.8.1"
 }

@@ -1,4 +1,4 @@
-import { createContext } from "svelte";
+import { createContext } from 'svelte';
 
 export type GridDims = { rows: number; cols: number };
 
@@ -22,7 +22,7 @@ export const [getGridCtx, setGridCtx] = createContext<GridCtx>();
  */
 export function colToNum(label: string): number {
 	let n = 0;
-	for (const ch of (label ?? "").trim().toUpperCase()) {
+	for (const ch of (label ?? '').trim().toUpperCase()) {
 		const code = ch.charCodeAt(0);
 		if (code < 65 || code > 90) continue;
 		n = n * 26 + (code - 64);
@@ -35,13 +35,13 @@ export function colToNum(label: string): number {
  */
 export function numToCol(n: number): string {
 	let x = n;
-	let out = "";
+	let out = '';
 	while (x > 0) {
 		x -= 1;
 		out = String.fromCharCode(65 + (x % 26)) + out;
 		x = Math.floor(x / 26);
 	}
-	return out || "A";
+	return out || 'A';
 }
 
 /**
@@ -56,11 +56,9 @@ export function numToCol(n: number): string {
  * @returns { startRow, endRow, startCol, endCol } or null if invalid
  */
 export function parseRange(
-	spec?: string,
-):
-	| { startRow: number; endRow: number; startCol: number; endCol: number }
-	| null {
-	const s = (spec ?? "").trim().toUpperCase();
+	spec?: string
+): { startRow: number; endRow: number; startCol: number; endCol: number } | null {
+	const s = (spec ?? '').trim().toUpperCase();
 	if (!s) return null;
 
 	// Format: "5" → single row at col 1
@@ -87,9 +85,7 @@ export function parseRange(
 	}
 
 	// Format: "1:3x2:4" → row range 1-3, col range 2-4
-	const mNumericRange = s.match(
-		/^(\d+)\s*:\s*(\d+)\s*[X×]\s*(\d+)\s*:\s*(\d+)$/,
-	);
+	const mNumericRange = s.match(/^(\d+)\s*:\s*(\d+)\s*[X×]\s*(\d+)\s*:\s*(\d+)$/);
 	if (mNumericRange) {
 		const r1 = Math.max(1, Number(mNumericRange[1]) || 1);
 		const r2 = Math.max(1, Number(mNumericRange[2]) || 1);
@@ -99,7 +95,7 @@ export function parseRange(
 			startRow: Math.min(r1, r2),
 			endRow: Math.max(r1, r2),
 			startCol: Math.min(c1, c2),
-			endCol: Math.max(c1, c2),
+			endCol: Math.max(c1, c2)
 		};
 	}
 
@@ -114,7 +110,7 @@ export function parseRange(
 			startRow: Math.min(r1, r2),
 			endRow: Math.max(r1, r2),
 			startCol: Math.min(c1, c2),
-			endCol: Math.max(c1, c2),
+			endCol: Math.max(c1, c2)
 		};
 	}
 
@@ -132,7 +128,7 @@ export function parseRange(
  * @returns { rows, cols }
  */
 export function parseDims(spec?: string): GridDims {
-	const s = (spec ?? "").trim().toUpperCase();
+	const s = (spec ?? '').trim().toUpperCase();
 	if (!s) return { rows: 1, cols: 1 };
 
 	// Format: "10" → 10 rows, 1 col

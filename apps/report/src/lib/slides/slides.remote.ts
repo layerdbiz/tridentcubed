@@ -1,9 +1,9 @@
-import { query } from "$app/server";
-import * as v from "valibot";
+import { query } from '$app/server';
+import * as v from 'valibot';
 
 // Sheetari API base URL
 const SHEETARI_BASE_URL =
-	"https://sheetari.oneezy.deno.net/1I9-LggRPtxWwfGMWAMT6zum03o_VsnruW7hofE1wGg0";
+	'https://sheetari.oneezy.deno.net/1I9-LggRPtxWwfGMWAMT6zum03o_VsnruW7hofE1wGg0';
 
 // Master slides sheet
 const SLIDES_URL = `${SHEETARI_BASE_URL}/slides`;
@@ -51,7 +51,7 @@ async function fetchSheetData(sheetName: string): Promise<any[]> {
 			return [];
 		}
 
-		console.log(`✅ Fetched ${sheetName}:`, data.length, "rows");
+		console.log(`✅ Fetched ${sheetName}:`, data.length, 'rows');
 		return data;
 	} catch (error) {
 		console.error(`❌ Error fetching ${sheetName}:`, error);
@@ -72,7 +72,7 @@ export interface ChapterNavigation {
  * Fetch all slides data
  */
 export const getSlidesData = query(async () => {
-	console.log("🔥 Fetching slides data...");
+	console.log('🔥 Fetching slides data...');
 
 	try {
 		const response = await fetch(SLIDES_URL);
@@ -85,7 +85,7 @@ export const getSlidesData = query(async () => {
 
 		// Validate data is an array
 		if (!Array.isArray(data)) {
-			console.error("❌ API returned non-array data:", data);
+			console.error('❌ API returned non-array data:', data);
 			return [];
 		}
 
@@ -98,8 +98,8 @@ export const getSlidesData = query(async () => {
 				order: slide.order || null,
 				photo: slide.photo || null,
 				src: slide.src || null,
-				type: slide.type || "",
-				name: slide.name || "",
+				type: slide.type || '',
+				name: slide.name || '',
 				description: slide.description || null,
 				bullets: slide.bullets || null,
 				tags: slide.tags || null,
@@ -110,7 +110,7 @@ export const getSlidesData = query(async () => {
 				url: slide.url || null,
 				featured: slide.featured || null,
 				show: slide.show || null,
-				slug: slide.slug || "",
+				slug: slide.slug || ''
 			}));
 
 		// Load additional sheet data where needed
@@ -122,13 +122,13 @@ export const getSlidesData = query(async () => {
 					return { ...slide, sheetData };
 				}
 				return slide;
-			}),
+			})
 		);
 
-		console.log("✅ Slides fetched:", slidesWithData.length, "slides");
+		console.log('✅ Slides fetched:', slidesWithData.length, 'slides');
 		return slidesWithData;
 	} catch (error) {
-		console.error("❌ Error fetching slides:", error);
+		console.error('❌ Error fetching slides:', error);
 		return [];
 	}
 });
@@ -137,7 +137,7 @@ export const getSlidesData = query(async () => {
  * Get navigation structure organized by chapters
  */
 export const getChapterNavigationData = query(async () => {
-	console.log("🔥 Building chapter navigation...");
+	console.log('🔥 Building chapter navigation...');
 
 	try {
 		const slides = await getSlidesData();
@@ -148,26 +148,22 @@ export const getChapterNavigationData = query(async () => {
 			if (!chapters.has(slide.type)) {
 				chapters.set(slide.type, {
 					type: slide.type,
-					sections: [],
+					sections: []
 				});
 			}
 
 			const chapter = chapters.get(slide.type)!;
 			chapter.sections.push({
 				slug: slide.slug,
-				name: slide.name,
+				name: slide.name
 			});
 		});
 
 		const navigationData = Array.from(chapters.values());
-		console.log(
-			"✅ Chapter navigation built:",
-			navigationData.length,
-			"chapters",
-		);
+		console.log('✅ Chapter navigation built:', navigationData.length, 'chapters');
 		return navigationData;
 	} catch (error) {
-		console.error("❌ Error building navigation:", error);
+		console.error('❌ Error building navigation:', error);
 		return [];
 	}
 });
@@ -175,10 +171,7 @@ export const getChapterNavigationData = query(async () => {
 /**
  * Get a single slide by slug
  */
-export const getSlideBySlugData = query(
-	v.string(),
-	async (slug: string) => {
-		const slides = await getSlidesData();
-		return slides.find((slide) => slide.slug === slug) || null;
-	},
-);
+export const getSlideBySlugData = query(v.string(), async (slug: string) => {
+	const slides = await getSlidesData();
+	return slides.find((slide) => slide.slug === slug) || null;
+});

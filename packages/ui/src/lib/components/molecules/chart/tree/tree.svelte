@@ -148,7 +148,7 @@
 
 			<!-- Zoom Controls -->
 			<div
-				class="bg-surface-100/90 absolute right-4 top-4 z-10 flex gap-2 rounded-full p-1 backdrop-blur"
+				class="bg-surface-100/90 absolute top-4 right-4 z-10 flex gap-2 rounded-full p-1 backdrop-blur"
 			>
 				<button
 					onclick={() => context.transform.zoomIn()}
@@ -270,7 +270,7 @@
 													class="size-12 rounded-full bg-white object-cover"
 												/>
 												<div
-													class="text-primary w-full overflow-hidden text-ellipsis text-center text-[10px] leading-tight"
+													class="w-full overflow-hidden text-center text-[10px] leading-tight text-ellipsis text-primary"
 													style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;"
 												>
 													{node.data.name}

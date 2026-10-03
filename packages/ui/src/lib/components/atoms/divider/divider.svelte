@@ -121,7 +121,15 @@
 
 	// Remove color props from being passed to Component to prevent theme application on outer container
 	let componentProps = $derived(() => {
-		const { primary: _, secondary: __, accent: ___, base: ____, neutral: _____, color: ______, ...rest } = props;
+		const {
+			primary: _,
+			secondary: __,
+			accent: ___,
+			base: ____,
+			neutral: _____,
+			color: ______,
+			...rest
+		} = props;
 		return rest;
 	});
 
@@ -214,7 +222,8 @@
 	<div class="{dividerClass} {props.class}">
 		<svg
 			class="h-(--divider-height) w-full fill-current {svg ||
-				colorClass() || 'text-base-50-950'} {svgClasses} {isFlipped ? 'rotate-180' : ''}"
+				colorClass() ||
+				'text-base-50-950'} {svgClasses} {isFlipped ? 'rotate-180' : ''}"
 			viewBox="0 0 1200 120"
 			preserveAspectRatio="none"
 			xmlns="http://www.w3.org/2000/svg"

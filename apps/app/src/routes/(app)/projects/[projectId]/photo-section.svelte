@@ -22,10 +22,7 @@
 		onDragOver: (groupId: string, event: DragEvent) => void;
 		onDragLeave: (groupId: string) => void;
 		onDrop: (groupId: string, event: DragEvent) => void | Promise<void>;
-		onRemove: (
-			group: projectTypes.PhotoGroupType,
-			photo: projectTypes.PhotoItemType
-		) => void;
+		onRemove: (group: projectTypes.PhotoGroupType, photo: projectTypes.PhotoItemType) => void;
 	}
 
 	let {
@@ -84,34 +81,70 @@
 	canDeleteGroup: boolean
 )}
 	<div class="space-y-3">
-		<Input xs bind:value={group.title} label="Title" variant="text" type="text" disabled={!section.enabled} />
+		<Input
+			xs
+			bind:value={group.title}
+			label="Title"
+			variant="text"
+			type="text"
+			disabled={!section.enabled}
+		/>
 
-		<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+		<label class="grid gap-1 text-xs font-semibold tracking-[0.12em] text-neutral-500 uppercase">
 			<span>Variant</span>
-			<select class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15" bind:value={group.variant} disabled={!section.enabled}>
+			<select
+				class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15"
+				bind:value={group.variant}
+				disabled={!section.enabled}
+			>
 				{#each variantOptions as option, optionIndex (`${section.id}-${option}-${optionIndex}`)}
 					<option value={option}>{option}</option>
 				{/each}
 			</select>
 		</label>
 
-		<Input xs bind:value={group.description} textarea label="Description" variant="text" type="text" disabled={!section.enabled} />
+		<Input
+			xs
+			bind:value={group.description}
+			textarea
+			label="Description"
+			variant="text"
+			type="text"
+			disabled={!section.enabled}
+		/>
 
 		{#if showFiles}
 			<div class="space-y-2 rounded-2xl border border-secondary-200 bg-white p-3">
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<p class="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">Files</p>
-					<label class={`inline-flex rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}>
+					<p class="text-xs font-semibold tracking-[0.12em] text-neutral-500 uppercase">Files</p>
+					<label
+						class={`inline-flex rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}
+					>
 						<span>{group.files.length ? 'Replace Files' : 'Upload Files'}</span>
-						<input class="hidden" type="file" multiple disabled={!section.enabled} onchange={(event) => onFilesInput(group.id, event)} />
+						<input
+							class="hidden"
+							type="file"
+							multiple
+							disabled={!section.enabled}
+							onchange={(event) => onFilesInput(group.id, event)}
+						/>
 					</label>
 				</div>
 				{#if group.files.length}
 					<div class="space-y-2">
 						{#each group.files as fileName, fileIndex (`${group.id}-${fileName}-${fileIndex}`)}
-							<div class="flex items-center justify-between gap-3 rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+							<div
+								class="flex items-center justify-between gap-3 rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-700"
+							>
 								<span class="min-w-0 flex-1 truncate">{fileName}</span>
-								<Button ghost secondary variant="icon" icon="close" onclick={() => handleFileRemove(group, fileIndex)} disabled={!section.enabled} />
+								<Button
+									ghost
+									secondary
+									variant="icon"
+									icon="close"
+									onclick={() => handleFileRemove(group, fileIndex)}
+									disabled={!section.enabled}
+								/>
 							</div>
 						{/each}
 					</div>
@@ -138,8 +171,21 @@
 		/>
 
 		<div class="flex flex-wrap gap-2">
-			<Button primary xs variant="text" label="Add Group" onclick={addGroupAfter} />
-			<Button outline xs variant="text" label="Delete Group" onclick={removeGroupAt} disabled={!canDeleteGroup} />
+			<Button
+				primary
+				xs
+				variant="text"
+				label="Add Group"
+				onclick={addGroupAfter}
+			/>
+			<Button
+				outline
+				xs
+				variant="text"
+				label="Delete Group"
+				onclick={removeGroupAt}
+				disabled={!canDeleteGroup}
+			/>
 		</div>
 	</div>
 {/snippet}
@@ -161,10 +207,10 @@
 		enabled={section.enabled}
 		groupReorderEnabled={true}
 		itemReorderEnabled={false}
-		groupSort={groupSort}
+		{groupSort}
 		setGroups={onSetGroups}
 		getGroupKey={(group) => group.id}
-		getGroupTitle={getGroupTitle}
+		{getGroupTitle}
 		getGroupMeta={(group) => getGroupMeta(group)}
 		getItems={() => [emptyPhotoItem]}
 		getItemKey={() => 'empty-photo-item'}
@@ -172,14 +218,23 @@
 		removeGroup={(group) => onRemoveGroup(group.id)}
 		addItem={() => undefined}
 		removeItem={() => undefined}
-		canRemoveGroup={canRemoveGroup}
+		{canRemoveGroup}
 		renderGroupContent={groupContent}
 		renderItem={emptyItem}
 		itemShellClass="hidden"
 	/>
 {:else}
-	<div class="space-y-3 rounded-2xl border border-dashed border-secondary-300 bg-white/70 p-4 text-sm text-neutral-500">
+	<div
+		class="space-y-3 rounded-2xl border border-dashed border-secondary-300 bg-white/70 p-4 text-sm text-neutral-500"
+	>
 		<p>No groups added yet.</p>
-		<Button primary xs variant="text" label="Add Group" onclick={() => onAddGroup(-1)} disabled={!section.enabled} />
+		<Button
+			primary
+			xs
+			variant="text"
+			label="Add Group"
+			onclick={() => onAddGroup(-1)}
+			disabled={!section.enabled}
+		/>
 	</div>
 {/if}

@@ -352,10 +352,7 @@
 	{children}
 >
 	{#snippet typewriterContent()}
-		<span
-			class="typewriter-screen-reader"
-			>{finalContent}</span
-		>
+		<span class="typewriter-screen-reader">{finalContent}</span>
 		<span
 			bind:this={typewriterEl}
 			class="typewriter-text"

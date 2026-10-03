@@ -1,128 +1,88 @@
 {
-  "$schema": "https://turborepo.com/schema.json",
-  "tasks": {
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "build": {
-      "dependsOn": [
-        "//#barrels",
-        "^build"
-      ],
-      "outputs": [
-        "dist/**",
-        ".svelte-kit/**",
-        "!**/.svelte-kit/cache/**"
-      ]
-    },
-    "styles": {
-      "cache": true,
-      "outputs": [
-        "dist/ui.css"
-      ]
-    },
-    "//#barrels:watch": {
-      "cache": false,
-      "persistent": true,
-      "interruptible": true,
-      "inputs": [
-        "packages/ui/src/lib/**",
-        "!packages/ui/src/lib/index.ts",
-        "apps/*/src/lib/**",
-        "!apps/*/src/lib/index.ts"
-      ],
-      "outputs": [
-        "packages/ui/src/lib/index.ts",
-        "apps/*/src/lib/index.ts"
-      ]
-    },
-    "//#barrels": {
-      "cache": false,
-      "inputs": [
-        "packages/ui/src/lib/**",
-        "!packages/ui/src/lib/index.ts",
-        "apps/*/src/lib/**",
-        "!apps/*/src/lib/index.ts"
-      ],
-      "outputs": [
-        "packages/ui/src/lib/index.ts",
-        "apps/*/src/lib/index.ts"
-      ]
-    },
-    "barrel": {
-      "inputs": [
-        "src/lib/**/*.{svelte,ts}",
-        "!src/lib/index.ts"
-      ],
-      "cache": true,
-      "outputs": [
-        "src/lib/index.ts"
-      ]
-    },
-    "components": {
-      "dependsOn": [
-        "//#barrels"
-      ],
-      "cache": true,
-      "outputs": [
-        "dist/**",
-        "!dist/**/*.css"
-      ]
-    },
-    "storybook#story": {
-      "dependsOn": [
-        "//#barrels"
-      ],
-      "inputs": [
-        "../ui/src/lib/components/**/*.svelte"
-      ],
-      "cache": false,
-      "outputs": [
-        "src/stories/**/*.stories.svelte"
-      ]
-    },
-    "preview": {
-      "cache": false,
-      "persistent": true
-    },
-    "lint": {
-      "dependsOn": [
-        "^lint"
-      ]
-    },
-    "storybook": {
-      "dependsOn": [
-        "^build"
-      ],
-      "cache": false,
-      "persistent": true
-    },
-    "build-storybook": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "storybook-static/**"
-      ]
-    },
-    "sync": {
-      "cache": false
-    },
-    "symlinks": {
-      "inputs": [
-        "packages/ui/static/**"
-      ],
-      "cache": false,
-      "outputs": [
-        "apps/*/static"
-      ]
-    },
-    "symlinks:clean": {
-      "cache": false
-    },
-    "symlinks:check": {
-      "cache": false
-    }
-  }
+	"$schema": "https://v2-11-6.turborepo.dev/schema.json",
+	"tasks": {
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"build": {
+			"dependsOn": ["//#barrels", "^build"],
+			"outputs": ["dist/**", ".svelte-kit/**", "!**/.svelte-kit/cache/**"]
+		},
+		"styles": {
+			"cache": true,
+			"outputs": ["dist/ui.css"]
+		},
+		"//#barrels:watch": {
+			"cache": false,
+			"persistent": true,
+			"interruptible": true,
+			"inputs": [
+				"packages/ui/src/lib/**",
+				"!packages/ui/src/lib/index.ts",
+				"apps/*/src/lib/**",
+				"!apps/*/src/lib/index.ts"
+			],
+			"outputs": ["packages/ui/src/lib/index.ts", "apps/*/src/lib/index.ts"]
+		},
+		"//#barrels": {
+			"cache": false,
+			"inputs": [
+				"packages/ui/src/lib/**",
+				"!packages/ui/src/lib/index.ts",
+				"apps/*/src/lib/**",
+				"!apps/*/src/lib/index.ts"
+			],
+			"outputs": ["packages/ui/src/lib/index.ts", "apps/*/src/lib/index.ts"]
+		},
+		"barrel": {
+			"inputs": ["src/lib/**/*.{svelte,ts}", "!src/lib/index.ts"],
+			"cache": true,
+			"outputs": ["src/lib/index.ts"]
+		},
+		"components": {
+			"dependsOn": ["//#barrels"],
+			"cache": true,
+			"outputs": ["dist/**", "!dist/**/*.css"]
+		},
+		"storybook#story": {
+			"dependsOn": ["//#barrels"],
+			"inputs": ["../ui/src/lib/components/**/*.svelte"],
+			"cache": false,
+			"outputs": ["src/stories/**/*.stories.svelte"]
+		},
+		"preview": {
+			"cache": false,
+			"persistent": true
+		},
+		"lint": {
+			"dependsOn": ["^lint"]
+		},
+		"test": {
+			"outputs": []
+		},
+		"storybook": {
+			"dependsOn": ["^build"],
+			"cache": false,
+			"persistent": true
+		},
+		"build-storybook": {
+			"dependsOn": ["^build"],
+			"outputs": ["storybook-static/**"]
+		},
+		"sync": {
+			"cache": false
+		},
+		"symlinks": {
+			"inputs": ["packages/ui/static/**"],
+			"cache": false,
+			"outputs": ["apps/*/static"]
+		},
+		"symlinks:clean": {
+			"cache": false
+		},
+		"symlinks:check": {
+			"cache": false
+		}
+	}
 }

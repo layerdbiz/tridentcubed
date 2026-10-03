@@ -1,25 +1,37 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Component, Mq, mq } from '@layerd/ui';
-	import { Nav } from '$lib';
+	import { Nav } from '#lib';
 
 	type LayoutProps = { children: Snippet };
 	let { children }: LayoutProps = $props();
 </script>
 
-<Mq loading="zoom" delay={2000} duration={300}>
+<Mq
+	loading="zoom"
+	delay={2000}
+	duration={300}
+>
 	Loading...
 </Mq>
 
 {#snippet content()}
-	<Component tag="article" rails="gutter-lg" class="py-10 h-full overflow-y-scroll">
+	<Component
+		tag="article"
+		rails="gutter-lg"
+		class="h-full overflow-y-scroll py-10"
+	>
 		{@render children()}
 	</Component>
 {/snippet}
 
 <!-- Main -->
 {#if mq.sm}
-	<Component tag="main" gap="0" class="h-svh">
+	<Component
+		tag="main"
+		gap="0"
+		class="h-svh"
+	>
 		{#snippet full()}
 			{@render content()}
 		{/snippet}
@@ -29,7 +41,12 @@
 		{/snippet}
 	</Component>
 {:else}
-	<Component tag="main" cols="auto 1fr auto" gap="0" class="h-svh">
+	<Component
+		tag="main"
+		cols="auto 1fr auto"
+		gap="0"
+		class="h-svh"
+	>
 		{#snippet a1a3()}
 			<Nav />
 		{/snippet}

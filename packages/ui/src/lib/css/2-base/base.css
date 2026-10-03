@@ -41,7 +41,7 @@ html[style='color-scheme: dark;'] .theme-invert {
 
 body {
 	scroll-behavior: smooth;
-	@apply bg-base-50-800 text-base-950-50 font-base min-h-svh overflow-x-hidden;
+	@apply min-h-svh overflow-x-hidden bg-base-50-800 font-base text-base-950-50;
 }
 
 h1,

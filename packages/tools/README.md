@@ -70,12 +70,26 @@ live through remote functions. Contract: `src/generators/sheetari.ts`.
   2026-03-05): still supported, soft-deprecated in the types only. Upgrading Kit
   removes the warning. Kit 3 prereleases remove `files.lib`, not `files.assets`.
 
+## Verified by running (2026-10-03, Kit 3, Vite+ 1.0, Node 24, pnpm 12)
+
+- Kit 3 moved the Kit config into the `sveltekit()` plugin and deprecated its
+  `alias` option, so each app's `vite.config.ts` now aliases `@layerd/ui` to
+  `packages/ui/src/lib` with Vite's `resolve.alias`. That one alias covers
+  `@layerd/ui/ui.css` too. The `dist/ui.css` alias is gone: resolving the
+  stylesheet to `dist` broke both Vercel builds, which have no UI `dist` and
+  need the source `@theme` for Tailwind.
+- Invariant 5 under Vite Task (#85 experiment): a root `run.tasks` entry that a
+  package `build` lists in `dependsOn`, and a persistent watch run beside
+  `vp dev` with `vp run --parallel`, both work with the untouched generator.
+  Vite Task loads every package's Vite config to build its task graph, so the
+  frozen Storybook config stops it until Storybook moves to Kit 3. Turbo stays.
+
 ## Vercel
 
-Two projects, `tridentcubed` (site, Node 22.x) and `tridentcubed-app` (app,
-Node 24.x), both deploy every push to `dev`. Root directory is `apps/site` or
+Two projects, `tridentcubed` (site) and `tridentcubed-app` (app), both on
+Node 24.x through the `engines` field, both deploy every push to `dev`. Root directory is `apps/site` or
 `apps/app`; build command `pnpm build` in that directory, which is the app's
-own `vite build`; install command `pnpm install`; "include files outside the
+own `vp build`; install command `pnpm install`; "include files outside the
 root directory" on. Vercel therefore never runs Turbo, the barrels generator or
 the UI package build. Committed barrels are the only barrels Vercel sees.
 
@@ -127,11 +141,11 @@ orchestrator and Vite Task is not adopted.
     (`kit.experimental.remoteFunctions`, `compilerOptions.experimental.async`),
     with Storybook forcing `async` off under Storybook.
 12. **`packages/config/ts` stays where it is.** Every `tsconfig.json` extends
-    it by relative path. The per-app `svelte.config.js` and `vite.config` copies
-    are canonical today; `@layerd/config-svelte` and `@layerd/config-vite` are
+    it by relative path. The per-app `vite.config` files, which carry the Kit
+    config since Kit 3, are canonical today; `@layerd/config-svelte` and `@layerd/config-vite` are
     reference copies, imported only by Storybook's Vite config.
 13. **One build path per app, identical locally and on Vercel:** the app's own
-    `vite build` with committed generated files, or a deliberate move of Vercel
+    `vp build` with committed generated files, or a deliberate move of Vercel
     onto the workspace build path. Not a silent drift between the two.
 
 ## Known dead pieces

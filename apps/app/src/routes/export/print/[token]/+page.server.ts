@@ -1,21 +1,16 @@
-import { error } from "@sveltejs/kit";
+import { error } from '@sveltejs/kit';
 
-import {
-	deleteExportSession,
-	getExportSession,
-} from "$lib/server/export-session-store";
+import { deleteExportSession, getExportSession } from '#lib/server/export-session-store.js';
 
-import type * as projectTypes from "../../../(app)/projects/projects.types";
+import type * as projectTypes from '../../../(app)/projects/projects.types';
 
-import type { PageServerLoad } from "./$types";
+import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ params }) => {
-	const session = getExportSession<projectTypes.ExportSnapshotType>(
-		params.token,
-	);
+	const session = getExportSession<projectTypes.ExportSnapshotType>(params.token);
 
 	if (!session) {
-		throw error(404, "Export session not found.");
+		throw error(404, 'Export session not found.');
 	}
 
 	deleteExportSession(params.token);
@@ -23,6 +18,6 @@ export const load: PageServerLoad = ({ params }) => {
 	return {
 		token: params.token,
 		snapshot: session.data,
-		filename: session.filename,
+		filename: session.filename
 	};
 };

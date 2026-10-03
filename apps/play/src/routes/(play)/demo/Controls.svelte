@@ -41,10 +41,12 @@
 		onReset = () => {}
 	} = $props();
 
+	/** @param {string} value */
 	function hasModeView(value) {
 		return modeViews.includes(value);
 	}
 
+	/** @param {string} value */
 	function toggleModeView(value) {
 		if (hasModeView(value) && modeViews.length === 1) return;
 
@@ -56,43 +58,80 @@
 	}
 </script>
 
-<section class="demo-controls" aria-label="Demo controls">
+<section
+	class="demo-controls"
+	aria-label="Demo controls"
+>
 	<div class="top-control-row">
 		<div class="control-intro">
 			<strong>Interactive Controls</strong>
-			<span>Switch modes, debug views, placement, rails, and root props without leaving this route.</span>
+			<span
+				>Switch modes, debug views, placement, rails, and root props without leaving this route.</span
+			>
 		</div>
 
-		<button class="reset-button" type="button" onclick={onReset}>Reset</button>
+		<button
+			class="reset-button"
+			type="button"
+			onclick={() => onReset()}>Reset</button
+		>
 	</div>
 
 	<div class="control-body">
 		<div class="control-row">
-			<section class="pill-group" aria-label="Mode views">
+			<section
+				class="pill-group"
+				aria-label="Mode views"
+			>
 				<span>Modes</span>
 				{#each modeOptions as option}
-					<button type="button" class:active={hasModeView(option)} onclick={() => toggleModeView(option)}>{option}</button>
+					<button
+						type="button"
+						class:active={hasModeView(option)}
+						onclick={() => toggleModeView(option)}>{option}</button
+					>
 				{/each}
 			</section>
 
-			<section class="pill-group" aria-label="View columns">
+			<section
+				class="pill-group"
+				aria-label="View columns"
+			>
 				<span>Cols</span>
 				{#each viewColOptions as option}
-					<button type="button" class:active={viewCols === option} onclick={() => (viewCols = option)}>{option}</button>
+					<button
+						type="button"
+						class:active={viewCols === option}
+						onclick={() => (viewCols = option)}>{option}</button
+					>
 				{/each}
 			</section>
 
-			<section class="pill-group" aria-label="Debug view">
+			<section
+				class="pill-group"
+				aria-label="Debug view"
+			>
 				<span>Debug</span>
 				{#each debugViewOptions as option}
-					<button type="button" class:active={debugView === option} onclick={() => (debugView = option)}>{option}</button>
+					<button
+						type="button"
+						class:active={debugView === option}
+						onclick={() => (debugView = option)}>{option}</button
+					>
 				{/each}
 			</section>
 
-			<section class="pill-group" aria-label="Log mode">
+			<section
+				class="pill-group"
+				aria-label="Log mode"
+			>
 				<span>Logs</span>
 				{#each logOptions as option}
-					<button type="button" class:active={logMode === option} onclick={() => (logMode = option)}>{option}</button>
+					<button
+						type="button"
+						class:active={logMode === option}
+						onclick={() => (logMode = option)}>{option}</button
+					>
 				{/each}
 			</section>
 		</div>
@@ -100,7 +139,11 @@
 		<details class="prop-panel">
 			<summary>
 				Prop overrides
-				<span>{Object.keys(componentProps).length ? `${Object.keys(componentProps).length} active` : 'default'}</span>
+				<span
+					>{Object.keys(componentProps).length
+						? `${Object.keys(componentProps).length} active`
+						: 'default'}</span
+				>
 			</summary>
 
 			<div class="prop-panel-body">
@@ -110,21 +153,33 @@
 						<span class="prop-label">grid</span>
 						<div class="prop-buttons">
 							{#each gridOptions as option}
-								<button type="button" class:active={grid === option} onclick={() => (grid = option)}>{option || 'default'}</button>
+								<button
+									type="button"
+									class:active={grid === option}
+									onclick={() => (grid = option)}>{option || 'default'}</button
+								>
 							{/each}
 						</div>
 
 						<span class="prop-label">rail</span>
 						<div class="prop-buttons">
 							{#each railOptions as option}
-								<button type="button" class:active={rail === option.value} onclick={() => (rail = option.value)}>{option.label}</button>
+								<button
+									type="button"
+									class:active={rail === option.value}
+									onclick={() => (rail = option.value)}>{option.label}</button
+								>
 							{/each}
 						</div>
 
 						<span class="prop-label">tag</span>
 						<div class="prop-buttons">
 							{#each tagOptions as option}
-								<button type="button" class:active={tag === option} onclick={() => (tag = option)}>{option || 'default'}</button>
+								<button
+									type="button"
+									class:active={tag === option}
+									onclick={() => (tag = option)}>{option || 'default'}</button
+								>
 							{/each}
 						</div>
 					</div>
@@ -136,13 +191,21 @@
 						<span class="prop-label">preset</span>
 						<div class="prop-buttons">
 							{#each ratioOptions as option}
-								<button type="button" class:active={ratio === option.value} onclick={() => (ratio = option.value)}>{option.label}</button>
+								<button
+									type="button"
+									class:active={ratio === option.value}
+									onclick={() => (ratio = option.value)}>{option.label}</button
+								>
 							{/each}
 						</div>
 
 						<span class="prop-label">custom</span>
 						<label class="ratio-field">
-							<input type="text" placeholder="24:7, 24/7, 24 / 7" bind:value={ratio} />
+							<input
+								type="text"
+								placeholder="24:7, 24/7, 24 / 7"
+								bind:value={ratio}
+							/>
 						</label>
 					</div>
 				</section>
@@ -151,7 +214,11 @@
 					<div>3. Size</div>
 					<div>
 						{#each sizeOptions as option}
-							<button type="button" class:active={size === option.value} onclick={() => (size = option.value)}>{option.label}</button>
+							<button
+								type="button"
+								class:active={size === option.value}
+								onclick={() => (size = option.value)}>{option.label}</button
+							>
 						{/each}
 					</div>
 				</section>
@@ -162,7 +229,11 @@
 						<span class="prop-label">gap</span>
 						<div class="prop-buttons">
 							{#each gapOptions as option}
-								<button type="button" class:active={gap === option.value} onclick={() => (gap = option.value)}>{option.label}</button>
+								<button
+									type="button"
+									class:active={gap === option.value}
+									onclick={() => (gap = option.value)}>{option.label}</button
+								>
 							{/each}
 						</div>
 					</div>
@@ -174,14 +245,22 @@
 						<span class="prop-label">cols</span>
 						<div class="prop-buttons">
 							{#each colOptions as option}
-								<button type="button" class:active={cols === option.value} onclick={() => (cols = option.value)}>{option.label}</button>
+								<button
+									type="button"
+									class:active={cols === option.value}
+									onclick={() => (cols = option.value)}>{option.label}</button
+								>
 							{/each}
 						</div>
 
 						<span class="prop-label">rows</span>
 						<div class="prop-buttons">
 							{#each rowOptions as option}
-								<button type="button" class:active={rows === option.value} onclick={() => (rows = option.value)}>{option.label}</button>
+								<button
+									type="button"
+									class:active={rows === option.value}
+									onclick={() => (rows = option.value)}>{option.label}</button
+								>
 							{/each}
 						</div>
 					</div>
@@ -191,7 +270,11 @@
 					<div>6. Content</div>
 					<div>
 						{#each contentPlacementOptions as option}
-							<button type="button" class:active={content === option.value} onclick={() => (content = option.value)}>{option.label}</button>
+							<button
+								type="button"
+								class:active={content === option.value}
+								onclick={() => (content = option.value)}>{option.label}</button
+							>
 						{/each}
 					</div>
 				</section>
@@ -200,7 +283,11 @@
 					<div>7. Items</div>
 					<div>
 						{#each itemPlacementOptions as option}
-							<button type="button" class:active={items === option.value} onclick={() => (items = option.value)}>{option.label}</button>
+							<button
+								type="button"
+								class:active={items === option.value}
+								onclick={() => (items = option.value)}>{option.label}</button
+							>
 						{/each}
 					</div>
 				</section>
@@ -209,7 +296,11 @@
 					<div>8. Self</div>
 					<div>
 						{#each placeModifierOptions as option}
-							<button type="button" class:active={placeModifier === option} onclick={() => (placeModifier = option)}>{option || 'none'}</button>
+							<button
+								type="button"
+								class:active={placeModifier === option}
+								onclick={() => (placeModifier = option)}>{option || 'none'}</button
+							>
 						{/each}
 					</div>
 				</section>
@@ -218,7 +309,11 @@
 					<div>9. Style</div>
 					<div>
 						{#each classPresets as option}
-							<button type="button" class:active={className === option.value} onclick={() => (className = option.value)}>{option.label}</button>
+							<button
+								type="button"
+								class:active={className === option.value}
+								onclick={() => (className = option.value)}>{option.label}</button
+							>
 						{/each}
 					</div>
 				</section>

@@ -1,4 +1,4 @@
-import { useIntersectionObserver } from "runed";
+import { useIntersectionObserver } from 'runed';
 
 export interface ObserveOptions {
 	/**
@@ -43,7 +43,7 @@ class NavigationState {
 	>();
 	private intersectingElements = new Map<string, number>(); // elementId -> intersectionRatio
 	private _activeSection = $state<string | null>(null);
-	private _currentHash = $state<string>("");
+	private _currentHash = $state<string>('');
 	private _stickyActiveSection = $state<string | null>(null);
 	private registeredLinks = new Set<string>(); // Track which element IDs have corresponding links
 	private isNavigating = false; // Flag to prevent intersection updates during navigation
@@ -52,7 +52,7 @@ class NavigationState {
 
 	constructor() {
 		// Monitor URL hash changes
-		if (typeof window !== "undefined") {
+		if (typeof window !== 'undefined') {
 			this._currentHash = window.location.hash.slice(1);
 
 			const updateHash = () => {
@@ -89,8 +89,8 @@ class NavigationState {
 				}
 			};
 
-			window.addEventListener("hashchange", updateHash);
-			window.addEventListener("popstate", updateHash);
+			window.addEventListener('hashchange', updateHash);
+			window.addEventListener('popstate', updateHash);
 		}
 	}
 
@@ -112,7 +112,7 @@ class NavigationState {
 		this.registeredLinks.add(targetId);
 
 		// Find and observe the target element only if it exists
-		if (typeof window !== "undefined") {
+		if (typeof window !== 'undefined') {
 			const targetElement = document.getElementById(targetId);
 			if (targetElement && !this.elementObservers.has(targetId)) {
 				this.observeElement(targetId, targetElement);
@@ -148,28 +148,20 @@ class NavigationState {
 			(entries) => {
 				const entry = entries[0];
 				if (entry) {
-					this.updateElementVisibility(
-						elementId,
-						entry.isIntersecting,
-						entry.intersectionRatio,
-					);
+					this.updateElementVisibility(elementId, entry.isIntersecting, entry.intersectionRatio);
 				}
 			},
 			{
 				threshold: 0.1,
-				rootMargin: "0px 0px -50px 0px",
-			},
+				rootMargin: '0px 0px -50px 0px'
+			}
 		);
 
 		this.elementObservers.set(elementId, { observer, element });
 	}
 
 	// Update visibility state for an element
-	updateElementVisibility(
-		elementId: string,
-		isIntersecting: boolean,
-		intersectionRatio: number,
-	) {
+	updateElementVisibility(elementId: string, isIntersecting: boolean, intersectionRatio: number) {
 		// Only track elements that are actually intersecting AND have a meaningful ratio
 		if (isIntersecting && intersectionRatio > 0) {
 			this.intersectingElements.set(elementId, intersectionRatio);
@@ -201,7 +193,8 @@ class NavigationState {
 			// This maintains the indicator position during scroll transitions
 			// Only clear sticky active if we have a hash without target element
 			if (
-				this._currentHash && this.registeredLinks.has(this._currentHash) &&
+				this._currentHash &&
+				this.registeredLinks.has(this._currentHash) &&
 				!this.hasTargetElement(this._currentHash)
 			) {
 				this._stickyActiveSection = this._currentHash;
@@ -235,10 +228,7 @@ class NavigationState {
 
 		// Handle initial case: if we have a hash but no sticky active yet,
 		// and the hash element becomes visible, then set it
-		if (
-			!this._stickyActiveSection && this._currentHash &&
-			mostVisibleId === this._currentHash
-		) {
+		if (!this._stickyActiveSection && this._currentHash && mostVisibleId === this._currentHash) {
 			this._stickyActiveSection = this._currentHash;
 		}
 	}
@@ -250,7 +240,7 @@ class NavigationState {
 
 	// Check if a link has a valid target element
 	hasTargetElement(targetId: string): boolean {
-		if (typeof window === "undefined") return false;
+		if (typeof window === 'undefined') return false;
 		return document.getElementById(targetId) !== null;
 	}
 
@@ -293,16 +283,13 @@ export class ObserveClass {
 	 */
 	public entry = $state<IntersectionObserverEntry | null>(null);
 
-	constructor(
-		elementGetter: () => HTMLElement | null | undefined,
-		options: ObserveOptions = {},
-	) {
+	constructor(elementGetter: () => HTMLElement | null | undefined, options: ObserveOptions = {}) {
 		const {
 			enabled = true,
 			threshold = 0.1,
-			rootMargin = "0px 0px -50px 0px",
+			rootMargin = '0px 0px -50px 0px',
 			root = null,
-			sectionId,
+			sectionId
 		} = options;
 
 		this.sectionId = sectionId;
@@ -329,12 +316,12 @@ export class ObserveClass {
 						navigationState.updateElementVisibility(
 							this.sectionId,
 							currentEntry.isIntersecting,
-							currentEntry.intersectionRatio,
+							currentEntry.intersectionRatio
 						);
 					}
 				}
 			},
-			{ threshold, rootMargin, root },
+			{ threshold, rootMargin, root }
 		);
 	}
 
