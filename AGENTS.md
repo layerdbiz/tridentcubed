@@ -59,9 +59,9 @@ it running, and report every Network URL it prints, without being asked, in
 every kind of session (local, cloud, remote, SSH). For Trident that is four
 URLs: app dev, app preview, site dev, site preview. Give each app its own
 port and run the servers in the background, for example
-`pnpm exec vite dev --host --port 5173` and
-`pnpm exec vite preview --host --port 4173` inside `apps/site`, and 5174 and
-4174 inside `apps/app`. Preview needs a `vite build` first. A localhost-only
+`pnpm exec vp dev --host --port 5173` and
+`pnpm exec vp preview --host --port 4173` inside `apps/site`, and 5174 and
+4174 inside `apps/app`. Preview needs a `vp build` first. A localhost-only
 run that is fetched with curl and then killed does not count as running the
 app.
 
