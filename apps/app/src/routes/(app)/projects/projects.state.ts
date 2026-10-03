@@ -56,7 +56,10 @@ function readStoredValue<T>(key: string, fallback: T): T {
 	try {
 		const rawValue = localStorage.getItem(key);
 		if (!rawValue) return fallback;
-		return JSON.parse(rawValue) as T;
+		const parsed: unknown = JSON.parse(rawValue);
+		// The project page saves through persistJson, whose storage adapter stores the
+		// serialized state as a JSON string, so a saved project is parsed twice.
+		return (typeof parsed === 'string' ? JSON.parse(parsed) : parsed) as T;
 	} catch {
 		return fallback;
 	}
