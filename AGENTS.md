@@ -96,9 +96,14 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   module `$state` behind exported functions for a singleton; `createContext`
   for anything server rendering may mutate. A `.svelte.ts` suffix means the
   file uses runes.
-- **Tests** sit beside the file they test as `<name>.test.ts`, written with
-  `/tdd` once Vitest lands with `vp`. Lint takes over from this prose where
-  Oxlint can express a rule.
+- **Tests** sit beside the file they test as `<name>.test.ts` (rune tests as
+  `<name>.svelte.test.ts`), written with `/tdd` and imported from
+  `vite-plus/test`. Lint takes over from this prose where Oxlint can express a
+  rule.
+- **Checks before a PR.** `pnpm exec vp check` (Oxfmt and Oxlint, config in
+  the root `vite.config.ts`), `pnpm test`, and `svelte-check` with zero errors
+  on app, site and `packages/ui` (`pnpm --filter <name> check`). `vp check
+  --fix` formats and applies safe lint fixes.
 
 <!-- BEGIN:turborepo-agent-rules -->
 
