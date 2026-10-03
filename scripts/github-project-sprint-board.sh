@@ -248,8 +248,8 @@ missing_status_options() {
 
 # repo_issues prints "<number> <OPEN|CLOSED>" per issue in the repo (no PRs).
 repo_issues() {
-  gh issue list --repo "$REPO" --state all --limit 1000 --json number,state \
-    --jq '.[] | "\(.number) \(.state)"'
+  gh api "repos/$REPO/issues?state=all&per_page=100" --paginate \
+    --jq '.[] | select(.pull_request | not) | "\(.number) \(.state | ascii_upcase)"'
 }
 
 # project_issue_numbers prints the numbers of this repo's issues already in the Project.

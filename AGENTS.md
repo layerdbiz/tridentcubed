@@ -1,5 +1,29 @@
 ## Agent skills
 
+### Skills library
+Justin's skills come from his library `oneezy/skills`, linked into
+`~/.claude/skills` by `npx @oneezy/skills-sync`; this repo also commits
+copies in `.claude/skills`. A cloud session (`CLAUDE_CODE_REMOTE=true`) gets
+the library from the environment's setup script or this repo's SessionStart
+hook. If a skill Justin asks for is not in your skill list, run this first,
+then carry on:
+
+```
+npx --yes @oneezy/skills-sync -y --agents claude-code --global --no-projects --no-wsl --quiet
+```
+
+Claude Code lists the new skills about a minute later; until then, Read the
+SKILL.md.
+
+A message that starts with `/<name>` runs that skill, even in a project
+thread, where it reaches you as plain text rather than a command. If the
+skill is in your list, invoke it. If it is not, which is always the case for
+skills marked `disable-model-invocation` (`/wayfinder`, `/grill-me`,
+`/to-tickets`, `/oneezy-merge` and others), Read
+`.claude/skills/<name>/SKILL.md`, or `~/.claude/skills/<name>/SKILL.md` when
+the repo has no copy, and follow it, with the rest of the message as its
+arguments.
+
 ### Issue tracker
 Engineering issues and specs live in GitHub. See docs/agents/issue-tracker.md.
 
@@ -16,11 +40,7 @@ and its builds. `/oneezy-merge` commits, pushes and opens the PR;
 `/oneezy-merge into dev` also squash-merges on green builds and cleans up;
 both end with that report, which briefs the next agent when a wayfinder map
 is in play. Skills prefixed `oneezy-` are Justin's; the rest are installed
-from `skills-lock.json` and are never edited here, with one exception:
-oneezy-merge, wayfinder, grill-me, to-spec, to-tickets, triage and handoff
-have `disable-model-invocation` removed so they can start in Claude project
-threads, which have no slash commands. A skills update restores the flag,
-so strip it again afterwards. Run these only when Justin names one.
+from `skills-lock.json` and are never edited here.
 
 ## Task coordination
 

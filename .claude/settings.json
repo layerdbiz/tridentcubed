@@ -10,5 +10,19 @@
       "Bash(git worktree remove *)",
       "Bash(git worktree prune*)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$CLAUDE_CODE_REMOTE\" != true ] || npx --yes @oneezy/skills-sync -y --agents claude-code --global --no-projects --no-wsl --quiet >/dev/null 2>&1 || true",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
   }
 }
