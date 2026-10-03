@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { Component, Button, mq } from '@layerd/ui';
-	import { navSections, type NavLink } from '$lib';
+	import { navSections, type NavLink } from '#lib';
 
 	let navOpen = $state(false);
 
@@ -17,7 +17,7 @@
 	}
 
 	function getNavHref(href: string): string {
-		const nextUrl = new URL(href, page.url);
+		const nextUrl = new URL(href, page.url.href);
 
 		if (showRailsDebug) {
 			nextUrl.searchParams.set('railsDebug', '1');
@@ -46,7 +46,7 @@
 
 		if (mq.sm) closeNav();
 
-		const nextUrl = new URL(page.url);
+		const nextUrl = new URL(page.url.href);
 
 		if (target.checked) {
 			nextUrl.searchParams.set('railsDebug', '1');
@@ -55,8 +55,7 @@
 		}
 
 		void goto(nextUrl, {
-			keepFocus: true,
-			noScroll: true,
+			reset: false,
 			replaceState: true
 		});
 	}

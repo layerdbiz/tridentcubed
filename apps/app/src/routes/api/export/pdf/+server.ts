@@ -1,10 +1,9 @@
 import { access } from "node:fs/promises";
 
 import chromium from "@sparticuz/chromium-min";
-import { json } from "@sveltejs/kit";
 import puppeteer from "puppeteer-core";
 
-import { createExportSession } from "$lib/server/export-session-store";
+import { createExportSession } from "#lib/server/export-session-store.js";
 import type { RequestHandler } from "./$types";
 
 const chromiumVersion = "143.0.4";
@@ -136,7 +135,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			: "survey-report.pdf";
 
 	if (!snapshot || typeof snapshot !== "object") {
-		return json({ message: "Missing export snapshot." }, { status: 400 });
+		return Response.json({ message: "Missing export snapshot." }, { status: 400 });
 	}
 
 	let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
@@ -210,7 +209,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 		});
 	} catch (error) {
-		return json(
+		return Response.json(
 			{
 				message: "PDF export failed.",
 				details: getErrorMessage(error),

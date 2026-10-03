@@ -1,4 +1,4 @@
-import { browser } from "$app/environment";
+import { browser } from "$app/env";
 
 import { storageKey } from "./projects.constants";
 import type * as projectTypes from "./projects.types";
@@ -79,7 +79,7 @@ async function storeBlob(key: string, blob: Blob): Promise<void> {
 }
 
 async function readBlob(key: string): Promise<Blob | null> {
-	return (await withStore("readonly", (store) => store.get(key))) ?? null;
+	return await withStore("readonly", (store) => store.get(key)) ?? null;
 }
 
 async function deleteBlob(key: string): Promise<void> {

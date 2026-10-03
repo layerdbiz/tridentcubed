@@ -2,7 +2,7 @@
 	import { Email, Preview } from '@layerd/ui';
 	import type { EmailSignatureData } from '@layerd/ui';
 	import { page } from '$app/state';
-	import { fetchAllEmails, fetchSocials, fetchBanners } from '$lib/email/email.remote';
+	import { fetchAllEmails, fetchSocials, fetchBanners } from '#lib/email/email.remote.js';
 
 	// Get slug from URL parameter
 	const slug = $derived(page.params.slug);

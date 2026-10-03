@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { Button, Component, Input, persist as persistUtility, Text, Textarea, mq } from '@layerd/ui';
@@ -119,39 +119,39 @@
 
 	onMount(() => {
 
-	$effect(() => {
-		if (!browser || !recordInput || !explicitInput) {
-			return;
-		}
+		$effect(() => {
+			if (!browser || !recordInput || !explicitInput) {
+				return;
+			}
 
-		const nextSignature = [recordInput.persistPath, explicitInput.persistPath].join('::');
-		if (persistedDraftSignature === nextSignature) {
-			return;
-		}
+			const nextSignature = [recordInput.persistPath, explicitInput.persistPath].join('::');
+			if (persistedDraftSignature === nextSignature) {
+				return;
+			}
 
-		persistedDraftSignature = nextSignature;
-		let isCancelled = false;
+			persistedDraftSignature = nextSignature;
+			let isCancelled = false;
 
-		void (async () => {
-			const [nextRecordDraft, nextExplicitDraft] = await Promise.all([
+			void (async () => {
+				const [nextRecordDraft, nextExplicitDraft] = await Promise.all([
 				persistUtility.load<string>(recordInput.persistPath, recordInput.seedValue, {
 					prop: 'value',
 				}),
 				persistUtility.load<string>(explicitInput.persistPath, explicitInput.seedValue, {
 					prop: 'value',
 				}),
-			]);
+				]);
 
-			if (isCancelled) return;
+				if (isCancelled) return;
 
-			recordDraft = nextRecordDraft;
-			explicitDraft = nextExplicitDraft;
-		})();
+				recordDraft = nextRecordDraft;
+				explicitDraft = nextExplicitDraft;
+			})();
 
-		return () => {
-			isCancelled = true;
-		};
-	});
+			return () => {
+				isCancelled = true;
+			};
+		});
 		if (demoSeed) {
 			isSeedLoading = false;
 			return;
@@ -237,7 +237,7 @@
 				<Text small="Object config" class="uppercase text-neutral" />
 				<Text h2={recordHeading} class="mt-2" />
 				<Text
-					p={`Uses an explicit key object to resolve ${(recordInput?.persistPath || 'inputs.input_1')}.value.`}
+					p={`Uses an explicit key object to resolve ${recordInput?.persistPath || 'inputs.input_1'}.value.`}
 					class="mt-2 text-neutral"
 				/>
 
@@ -255,9 +255,20 @@
 						class="mt-4"
 					/>
 
-					<Text small={`Seed: ${recordInput.seedValue || 'empty'}`} class="mt-4 text-neutral" />
-					<Text small={`Current: ${recordValue || 'empty'}`} class="mt-1 text-neutral" />
-					<Text small={`Path: ${recordInput.persistPath}.value`} class="mt-1 text-neutral" />
+					<Text
+						small={`Seed: ${recordInput.seedValue || 'empty'}`}
+						class="mt-4 text-neutral"
+					/>
+
+					<Text
+						small={`Current: ${recordValue || 'empty'}`}
+						class="mt-1 text-neutral"
+					/>
+
+					<Text
+						small={`Path: ${recordInput.persistPath}.value`}
+						class="mt-1 text-neutral"
+					/>
 
 					<Button
 						sm
@@ -292,9 +303,20 @@
 						class="mt-4"
 					/>
 
-					<Text small={`Seed: ${explicitInput.seedValue || 'empty'}`} class="mt-4 text-neutral" />
-					<Text small={`Current: ${explicitValue || 'empty'}`} class="mt-1 text-neutral" />
-					<Text small={`Path: ${explicitInput.persistPath}.value`} class="mt-1 text-neutral" />
+					<Text
+						small={`Seed: ${explicitInput.seedValue || 'empty'}`}
+						class="mt-4 text-neutral"
+					/>
+
+					<Text
+						small={`Current: ${explicitValue || 'empty'}`}
+						class="mt-1 text-neutral"
+					/>
+
+					<Text
+						small={`Path: ${explicitInput.persistPath}.value`}
+						class="mt-1 text-neutral"
+					/>
 
 					<Button
 						sm

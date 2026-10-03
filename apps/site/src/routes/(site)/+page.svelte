@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { HomePage } from '$lib';
+	import { HomePage } from '#lib';
 </script>
 
 <HomePage />

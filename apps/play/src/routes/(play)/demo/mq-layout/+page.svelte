@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { page } from '$app/state';
 	import { BREAKPOINTS, Component, mq, MQ_STORAGE_KEY, type MqBucketType } from '@layerd/ui';
 
@@ -91,11 +91,17 @@
 		<Component rail="content" class="grid gap-3 md:grid-cols-3">
 			<div class={gridCardClass}>
 				<p class={eyebrowClass}>Current Bucket</p>
-				<p class="mt-3 min-h-10 text-3xl font-black tracking-tight text-slate-950">
-					{currentMq ?? ''}
-				</p>
-				<p class="mt-2 wrap-break-word text-sm leading-6 text-slate-600">
-					The public <code>mq</code> object stays the runtime source of truth.
+
+				<p
+					class="mt-3 min-h-10 text-3xl font-black tracking-tight text-slate-950"
+				>{currentMq ?? ''}</p>
+
+				<p
+					class="mt-2 wrap-break-word text-sm leading-6 text-slate-600"
+				>
+					The public 
+					<code>mq</code>
+					object stays the runtime source of truth.
 				</p>
 			</div>
 

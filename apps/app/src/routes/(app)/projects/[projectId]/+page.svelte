@@ -14,9 +14,9 @@
 		Draggable,
 		persistJson as persist
 	} from '@layerd/ui';
-	import { browser } from '$app/environment';
+	import { browser } from '$app/env';
 	import { page } from '$app/state';
-	import { pushState } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
 	import * as projectConstants from '../projects.constants';
 	import type { ExportFormatType } from '../projects.constants';
@@ -250,7 +250,11 @@
 		}));
 	});
 	const coverMeta = $derived([
-		{ label: 'Facility', value: projectDataUtils.getProjectDataString(projectData, 'facility.name') || '—' },
+		{
+			label: 'Facility',
+			value: projectDataUtils.getProjectDataString(projectData, 'facility.name') || '—'
+		},
+
 		{
 			label: 'Dates',
 			value: (() => {
@@ -291,37 +295,37 @@
 
 		return value
 			.map((day, dayIndex) => {
-				if (typeof day !== 'object' || day === null || Array.isArray(day)) return null;
+			if (typeof day !== 'object' || day === null || Array.isArray(day)) return null;
 				const dayRecord = day as Record<string, unknown>;
 
-				const entriesValue = Array.isArray(dayRecord.entries) ? dayRecord.entries : [];
+			const entriesValue = Array.isArray(dayRecord.entries) ? dayRecord.entries : [];
 				const entries = entriesValue
 					.map((entry: unknown, entryIndex: number) => {
-						if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return null;
-						const entryRecord = entry as Record<string, unknown>;
+				if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return null;
+				const entryRecord = entry as Record<string, unknown>;
 
-						return {
-							id: `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
-							time: typeof entryRecord.time === 'string' ? entryRecord.time : '',
+				return {
+					id: `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
+					time: typeof entryRecord.time === 'string' ? entryRecord.time : '',
 							text:
 								typeof entryRecord.text === 'string'
-									? entryRecord.text
-									: typeof entryRecord.description === 'string'
-										? entryRecord.description
+						? entryRecord.text
+						: typeof entryRecord.description === 'string'
+							? entryRecord.description
 										: typeof entryRecord.activity === 'string'
 											? entryRecord.activity
 											: ''
-						};
+				};
 					})
 					.filter(Boolean) as projectTypes.TimeEntryType[];
 
-				return {
-					id: `derived-day-${dayIndex + 1}`,
-					dateISO: typeof dayRecord.date === 'string' ? dayRecord.date : '',
-					entries: entries.length
-						? entries
+			return {
+				id: `derived-day-${dayIndex + 1}`,
+				dateISO: typeof dayRecord.date === 'string' ? dayRecord.date : '',
+				entries: entries.length
+					? entries
 						: [{ id: `derived-entry-${dayIndex + 1}-1`, time: '', text: '' }]
-				};
+			};
 			})
 			.filter(Boolean) as projectTypes.TimeDayType[];
 	}
@@ -584,14 +588,17 @@
 	}
 
 	function setMobilePane(nextPane: WorkspacePaneType) {
-		const url = new URL(page.url);
+		const url = new URL(page.url.href);
 		if (nextPane === 'preview') {
 			url.searchParams.set('pane', 'preview');
 		} else {
 			url.searchParams.delete('pane');
 		}
 
-		pushState(`${url.pathname}${url.search}`, { ...page.state, projectPane: nextPane });
+		goto(`${url.pathname}${url.search}`, {
+			shallow: true,
+			state: { ...page.state, projectPane: nextPane }
+		});
 	}
 
 	function getPhotoSortType(sectionId: string) {
@@ -1174,9 +1181,8 @@
 	}
 
 	async function handlePaste(event: ClipboardEvent) {
-		const activeSection =
-			(sections.find((section) => section.open && section.type === 'photos') as projectTypes.PhotosSectionType | undefined) ||
-			(sections.find((section) => section.type === 'photos') as projectTypes.PhotosSectionType | undefined);
+		const activeSection = sections.find((section) => section.open && section.type === 'photos') as projectTypes.PhotosSectionType | undefined || sections.find((section) => section.type === 'photos') as projectTypes.PhotosSectionType | undefined;
+
 		if (!activeSection) return;
 		const activeGroup = activeSection.groups[activeSection.groups.length - 1];
 		if (!activeGroup) return;
@@ -1216,15 +1222,11 @@
 			};
 		}
 
-		const availableWidth = Math.max(
-			200,
-			previewViewport.clientWidth - (isDesktop ? projectConstants.previewDesktopPadding : projectConstants.previewMobilePadding)
-		);
-		const fitWidthZoom = projectUtils.clamp(
-			availableWidth / projectConstants.previewPageWidth,
-			projectConstants.previewZoomMin,
-			projectConstants.previewZoomMax
-		);
+		const availableWidth = Math.max(200, previewViewport.clientWidth - (isDesktop
+			? projectConstants.previewDesktopPadding
+			: projectConstants.previewMobilePadding));
+
+		const fitWidthZoom = projectUtils.clamp(availableWidth / projectConstants.previewPageWidth, projectConstants.previewZoomMin, projectConstants.previewZoomMax);
 
 		if (isDesktop) {
 			return {
@@ -1380,26 +1382,30 @@
 	});
 </script>
 
-<svelte:window onpaste={handlePaste} />
+<svelte:window onpaste={handlePaste}></svelte:window>
 
 <div class="page-shell h-svh overflow-hidden text-neutral-900">
 	<div class="flex h-full min-w-0 flex-col">
 			<div class="flex items-center gap-2 pt-4 px-4 md:hidden sticky top-0 z-10 shrink-0 md:none">
-				<Button
-					{...(activePane === 'edit' ? { heavy: true, primary: true } : { outline: true, base: true })}
-					variant="text"
-					class="w-full flex-1"
-					onclick={() => setMobilePane('edit')}
-					label="Edit"
-				/>
+			<Button
+				{...activePane === 'edit'
+					? { heavy: true, primary: true }
+					: { outline: true, base: true }}
+				variant="text"
+				class="w-full flex-1"
+				onclick={() => setMobilePane('edit')}
+				label="Edit"
+			/>
 
-				<Button
-					{...(activePane === 'preview' ? { heavy: true, primary: true } : { outline: true, base: true })}
-					variant="text"
-					class="w-full flex-1"
-					onclick={() => setMobilePane('preview')}
-					label="Preview"
-				/>
+			<Button
+				{...activePane === 'preview'
+					? { heavy: true, primary: true }
+					: { outline: true, base: true }}
+				variant="text"
+				class="w-full flex-1"
+				onclick={() => setMobilePane('preview')}
+				label="Preview"
+			/>
 		</div>
 
 		{#if exportErrorMessage}
@@ -1412,72 +1418,72 @@
 
 		<main class="grid min-h-0 flex-1 gap-0 md:gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:pl-6 md:pr-0 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
 			<Panels
-				{isDesktop}
-				{activePane}
+				isDesktop={isDesktop}
+				activePane={activePane}
 				projectListHref="/projects"
-				{sections}
+				sections={sections}
 				schema={projectSchema}
-				{draggedSectionId}
-				{draggedPhotoId}
-				{photoDropId}
-				{overallMetrics}
-				{sectionSort}
-				{getPhotoSort}
-				{getPhotoGroupSort}
-				{setSections}
-				{setSectionGroups}
-				{setPhotoGroupPhotos}
-				{getAccordionAnchorId}
-				{measureAccordionLayout}
-				{handleAccordionToggle}
-				{handleSectionTitleClick}
-				{handleSectionActionClick}
-				{handleSectionActionDisabledClick}
-				{addSection}
-				{addPhotoGroup}
-				{removePhotoGroup}
-				{resetReport}
+				draggedSectionId={draggedSectionId}
+				draggedPhotoId={draggedPhotoId}
+				photoDropId={photoDropId}
+				overallMetrics={overallMetrics}
+				sectionSort={sectionSort}
+				getPhotoSort={getPhotoSort}
+				getPhotoGroupSort={getPhotoGroupSort}
+				setSections={setSections}
+				setSectionGroups={setSectionGroups}
+				setPhotoGroupPhotos={setPhotoGroupPhotos}
+				getAccordionAnchorId={getAccordionAnchorId}
+				measureAccordionLayout={measureAccordionLayout}
+				handleAccordionToggle={handleAccordionToggle}
+				handleSectionTitleClick={handleSectionTitleClick}
+				handleSectionActionClick={handleSectionActionClick}
+				handleSectionActionDisabledClick={handleSectionActionDisabledClick}
+				addSection={addSection}
+				addPhotoGroup={addPhotoGroup}
+				removePhotoGroup={removePhotoGroup}
+				resetReport={resetReport}
 				toggleSectionEnabled={toggleSectionEnabled}
-				{removeDay}
-				{addDay}
-				{removeEntry}
-				{addEntry}
-				{maybeAddEntry}
-				{handleActivityKeyup}
-				{handlePhotoInput}
-				{handlePhotoFilesInput}
-				{handlePhotoZoneDragOver}
-				{handlePhotoZoneDragLeave}
-				{handlePhotoZoneDrop}
-				{removePhoto}
+				removeDay={removeDay}
+				addDay={addDay}
+				removeEntry={removeEntry}
+				addEntry={addEntry}
+				maybeAddEntry={maybeAddEntry}
+				handleActivityKeyup={handleActivityKeyup}
+				handlePhotoInput={handlePhotoInput}
+				handlePhotoFilesInput={handlePhotoFilesInput}
+				handlePhotoZoneDragOver={handlePhotoZoneDragOver}
+				handlePhotoZoneDragLeave={handlePhotoZoneDragLeave}
+				handlePhotoZoneDrop={handlePhotoZoneDrop}
+				removePhoto={removePhoto}
 				setSectionFieldValues={setSectionFieldValues}
 				setSectionFieldValue={setSectionFieldValue}
 			/>
 
 			<Pages
-				{isDesktop}
-				{activePane}
-				{isExporting}
-				{handleExport}
-				{stepPreviewZoom}
-				{resetPreviewZoom}
-				{previewZoom}
+				isDesktop={isDesktop}
+				activePane={activePane}
+				isExporting={isExporting}
+				handleExport={handleExport}
+				stepPreviewZoom={stepPreviewZoom}
+				resetPreviewZoom={resetPreviewZoom}
+				previewZoom={previewZoom}
 				bind:previewViewport
 				bind:previewPages
 				schema={projectSchema}
-				{reportTitle}
-				{reportSubtitle}
-				{handlePreviewWheel}
-				{handlePreviewTouchStart}
-				{handlePreviewTouchMove}
-				{handlePreviewTouchEnd}
-				{coverMeta}
+				reportTitle={reportTitle}
+				reportSubtitle={reportSubtitle}
+				handlePreviewWheel={handlePreviewWheel}
+				handlePreviewTouchStart={handlePreviewTouchStart}
+				handlePreviewTouchMove={handlePreviewTouchMove}
+				handlePreviewTouchEnd={handlePreviewTouchEnd}
+				coverMeta={coverMeta}
 				projectSummaryItems={projectSummaryItems}
 				personnelEntries={personnelEntries}
 				tableOfContentsEntries={tableOfContentsEntries}
 				previewPageItems={previewPagesData}
-				{getSortedEntries}
-				{projectDataJson}
+				getSortedEntries={getSortedEntries}
+				projectDataJson={projectDataJson}
 			/>
 		</main>
 	</div>

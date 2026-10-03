@@ -1,5 +1,5 @@
 import { redirect } from "@sveltejs/kit";
-import { fetchAllEmails } from "$lib/email/email.remote";
+import { fetchAllEmails } from "#lib/email/email.remote.js";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async () => {

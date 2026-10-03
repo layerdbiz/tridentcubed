@@ -286,7 +286,8 @@ const loadingExitClass = $derived(isOverlayExiting ? 'mq-loading-exit' : '');
 </script>
 
 <svelte:head>
-	{@html `<script>${mqBootstrapScript}</script>`}
+	<!-- Split the tag so Vite 8's dependency scanner does not read it as a script block -->
+	{@html '<scr' + `ipt>${mqBootstrapScript}</scr` + 'ipt>'}
 </svelte:head>
 
 {#if hasLoading && showOverlay}
