@@ -1,4 +1,3 @@
-import { resolve } from "path";
 import adapter from "@sveltejs/adapter-vercel";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import devtoolsJson from "vite-plugin-devtools-json";
@@ -21,23 +20,6 @@ export default defineConfig({
 			inspector: true,
 			adapter: adapter({ runtime: "nodejs24.x" }),
 			files: { assets: "../../packages/ui/static" },
-			alias: {
-				// Workspace packages - point to source for hot reloading in apps
-				"@layerd/ui": resolve("../../packages/ui/src/lib"),
-				"@layerd/ui/base": resolve("../../packages/ui/src/lib/base"),
-				"@layerd/ui/base/helpers": resolve("../../packages/ui/src/lib/base/helpers"),
-				"@layerd/ui/helpers": resolve("../../packages/ui/src/lib/base/helpers"),
-				"@layerd/ui/utils": resolve("../../packages/ui/src/lib/utils"),
-				"@layerd/ui/components": resolve("../../packages/ui/src/lib/components"),
-				"@layerd/tools": resolve("../../packages/tools/src"),
-				"@layerd/config": resolve("../../packages/config"),
-				// Root
-				$root: resolve("../../../"),
-
-				// Apps (plop added)
-				$site: resolve("../../apps/site/src"),
-				$storybook: resolve("../../apps/storybook/src")
-			},
 			experimental: { remoteFunctions: true },
 			prerender: { handleMissingId: "ignore" }
 		}),
@@ -59,11 +41,9 @@ export default defineConfig({
 		// Preserve symlinks for better HMR
 		preserveSymlinks: false,
 		alias: {
-			// Force using the built CSS with PostCSS transformations during development
-			"@layerd/ui/ui.css": path.resolve(
-				__dirname,
-				"../../packages/ui/dist/ui.css",
-			),
+			// Workspace packages - point to source for hot reloading in apps.
+			// Covers @layerd/ui/ui.css too, so Tailwind sees the source @theme.
+			"@layerd/ui": path.resolve(__dirname, "../../packages/ui/src/lib"),
 		},
 	},
 });

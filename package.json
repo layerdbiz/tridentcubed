@@ -37,8 +37,8 @@
     "@iconify-json/svg-spinners": "^1.2.4",
     "@tailwindcss/postcss": "4.3.3",
     "postcss": "^8.5.15",
-    "turbo": "2.8.3",
+    "turbo": "2.11.6",
     "unplugin-icons": "^23.0.1"
   },
-  "packageManager": "pnpm@10.34.6"
+  "packageManager": "pnpm@12.8.1"
 }
