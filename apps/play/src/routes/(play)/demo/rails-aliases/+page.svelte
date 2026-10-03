@@ -41,7 +41,10 @@
 				debug={showRailsDebug ? { rails: true } : false}
 				class={surfaceClass}
 			>
-				<Component rail={value} class={railClass} />
+				<Component
+					rail={value}
+					class={railClass}
+				/>
 			</Component>
 		{/each}
 	{/each}

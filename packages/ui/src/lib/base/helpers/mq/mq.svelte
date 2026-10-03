@@ -1,4 +1,7 @@
-<script module lang="ts">
+<script
+	module
+	lang="ts"
+>
 	let hasMountedMqRuntime = false;
 </script>
 
@@ -33,16 +36,16 @@
 
 	let { loading = false, delay = 1000, duration = 300, children }: MqProps = $props();
 
-const hasLoading = $derived(loading !== false || Boolean(children));
-const loadingEffect = $derived(toLoadingEffect(loading));
-const delayMs = $derived(toMs(delay, 0));
-const durationMs = $derived(toMs(duration, 300));
+	const hasLoading = $derived(loading !== false || Boolean(children));
+	const loadingEffect = $derived(toLoadingEffect(loading));
+	const delayMs = $derived(toMs(delay, 0));
+	const durationMs = $derived(toMs(duration, 300));
 
-let showOverlay = $state(hasInitialOverlay());
-let isOverlayExiting = $state(false);
+	let showOverlay = $state(hasInitialOverlay());
+	let isOverlayExiting = $state(false);
 
-const loadingEffectClass = $derived(`mq-loading-${loadingEffect}`);
-const loadingExitClass = $derived(isOverlayExiting ? 'mq-loading-exit' : '');
+	const loadingEffectClass = $derived(`mq-loading-${loadingEffect}`);
+	const loadingExitClass = $derived(isOverlayExiting ? 'mq-loading-exit' : '');
 
 	let delayTimer: ReturnType<typeof setTimeout> | null = null;
 	let exitTimer: ReturnType<typeof setTimeout> | null = null;
@@ -293,7 +296,7 @@ const loadingExitClass = $derived(isOverlayExiting ? 'mq-loading-exit' : '');
 {#if hasLoading && showOverlay}
 	<Component
 		tag="div"
-		class="mq-loading {loadingEffectClass} {loadingExitClass} fixed! inset-0 z-50 h-dvh w-dvw bg-white pointer-events-auto"
+		class="mq-loading {loadingEffectClass} {loadingExitClass} pointer-events-auto fixed! inset-0 z-50 h-dvh w-dvw bg-white"
 		style="--mq-loading-duration: {durationMs}ms;"
 		items="center"
 		aria-live="polite"

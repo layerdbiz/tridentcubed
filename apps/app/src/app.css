@@ -1,9 +1,8 @@
-@import "tailwindcss";
-@import "@layerd/ui/ui.css";
+@import 'tailwindcss';
+@import '@layerd/ui/ui.css';
 
 /* Cyberpunk Theme */
 [data-theme] {
-	
 	/* default */
 	--theme-color: var(--color-slate-500);
 	--theme-color-primary: var(--color-blue-600);
@@ -33,10 +32,9 @@
 	--theme-radius-box: 1.5rem;
 	--theme-radius-button: 10em;
 
-
-  /* borders, outlines, rings, strokes */
-  --theme-edge: 1px; 
- 	--theme-edge-xs: 1px;
+	/* borders, outlines, rings, strokes */
+	--theme-edge: 1px;
+	--theme-edge-xs: 1px;
 	--theme-edge-sm: 2px;
 	--theme-edge-md: 3px;
 	--theme-edge-lg: 4px;

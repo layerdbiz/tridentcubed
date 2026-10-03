@@ -703,16 +703,16 @@ export const minimalSample = `
 
 // Image samples for different contexts
 export const imageSamples = {
-	landscape: "https://picsum.photos/800/400",
-	portrait: "https://picsum.photos/400/600",
-	square: "https://picsum.photos/500/500",
-	wide: "https://picsum.photos/1200/300",
-	article: "https://picsum.photos/600/300",
+	landscape: 'https://picsum.photos/800/400',
+	portrait: 'https://picsum.photos/400/600',
+	square: 'https://picsum.photos/500/500',
+	wide: 'https://picsum.photos/1200/300',
+	article: 'https://picsum.photos/600/300'
 };
 
 export const sampleCaptions = [
-	"A beautiful example of responsive image handling",
-	"This image demonstrates proper figure and caption styling",
-	"Images integrate seamlessly with content flow",
-	"Professional image presentation with accessibility in mind",
+	'A beautiful example of responsive image handling',
+	'This image demonstrates proper figure and caption styling',
+	'Images integrate seamlessly with content flow',
+	'Professional image presentation with accessibility in mind'
 ];

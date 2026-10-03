@@ -196,7 +196,7 @@
 						? 'bg-white'
 						: 'bg-neutral-900'}"
 				>
-					<div class="absolute right-2 top-2 flex gap-1">
+					<div class="absolute top-2 right-2 flex gap-1">
 						<!-- EDIT -->
 						<Button
 							variant="icon text"
@@ -254,7 +254,7 @@
 	@reference "#ui.css";
 
 	.preview {
-		@apply border-neutral-200-600 rounded-lg border bg-white p-8;
+		@apply rounded-lg border border-neutral-200-600 bg-white p-8;
 
 		background-image: repeating-linear-gradient(
 			45deg,

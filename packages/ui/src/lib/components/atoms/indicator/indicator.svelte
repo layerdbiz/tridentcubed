@@ -74,7 +74,7 @@
 	bind:this={indicatorElement}
 	{...props}
 	primary
-	class="duration-250 absolute left-0 top-full hidden h-[3.5px] rounded-full transition-all ease-in-out lg:block {props.class ||
+	class="absolute top-full left-0 hidden h-[3.5px] rounded-full transition-all duration-250 ease-in-out lg:block {props.class ||
 		''}"
 	style="transform: translateX({currentPosition.translateX}px); width: {currentPosition.width}px; opacity: {currentPosition.width >
 	0

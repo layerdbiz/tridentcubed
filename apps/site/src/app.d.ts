@@ -6,11 +6,7 @@
 declare global {
 	interface Window {
 		dataLayer: unknown[];
-		gtag: (
-			command: string,
-			target: string | Date,
-			params?: Record<string, unknown>,
-		) => void;
+		gtag: (command: string, target: string | Date, params?: Record<string, unknown>) => void;
 	}
 
 	namespace App {
@@ -23,8 +19,3 @@ declare global {
 }
 
 export {};
-
-function googleEvent() {
-	// This is a dummy function to ensure this file is treated as a module.
-	// The actual content of the file is the global declarations above.
-}

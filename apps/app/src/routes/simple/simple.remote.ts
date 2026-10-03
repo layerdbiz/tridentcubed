@@ -1,14 +1,14 @@
-import { query } from "$app/server";
-import type * as simpleTypes from "./simple.types";
+import { query } from '$app/server';
+import type * as simpleTypes from './simple.types';
 
-const API_BASE = "https://sheetari.oneezy.deno.net";
-const SIMPLE_SHEET_ID = "168y62pKEigKGX2ZQTCv6_STAdGN8chLRBV26OczVFhE";
+const API_BASE = 'https://sheetari.oneezy.deno.net';
+const SIMPLE_SHEET_ID = '168y62pKEigKGX2ZQTCv6_STAdGN8chLRBV26OczVFhE';
 const PANEL_DEFINITIONS_URL = `${API_BASE}/${SIMPLE_SHEET_ID}/panels`;
 const INPUT_DEFINITIONS_URL = `${API_BASE}/${SIMPLE_SHEET_ID}/inputs`;
 const PAGE_DEFINITIONS_URL = `${API_BASE}/${SIMPLE_SHEET_ID}/pages`;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
+	return typeof value === 'object' && value !== null;
 }
 
 function asArray<T>(value: unknown): T[] {
@@ -16,26 +16,26 @@ function asArray<T>(value: unknown): T[] {
 }
 
 function toText(value: unknown): string {
-	return typeof value === "string" ? value.trim() : "";
+	return typeof value === 'string' ? value.trim() : '';
 }
 
 function toIdText(value: unknown): string {
-	return toText(value).replace(/\s+/g, "");
+	return toText(value).replace(/\s+/g, '');
 }
 
 function toList(value: unknown): string[] {
 	return toText(value)
-		.split(",")
+		.split(',')
 		.map((item) => item.trim())
 		.filter(Boolean);
 }
 
 function toBoolean(value: unknown, fallback = false): boolean {
-	if (typeof value === "boolean") return value;
+	if (typeof value === 'boolean') return value;
 
 	const text = toText(value).toLowerCase();
-	if (text === "true") return true;
-	if (text === "false") return false;
+	if (text === 'true') return true;
+	if (text === 'false') return false;
 
 	return fallback;
 }
@@ -49,12 +49,7 @@ function toVisibility(value: unknown): simpleTypes.SimpleVisibilityType | null {
 	const text = toText(value);
 	if (!text) return null;
 
-	if (
-		text === "visible" ||
-		text === "hidden" ||
-		text === "conditional" ||
-		text === "none"
-	) {
+	if (text === 'visible' || text === 'hidden' || text === 'conditional' || text === 'none') {
 		return text;
 	}
 
@@ -62,20 +57,18 @@ function toVisibility(value: unknown): simpleTypes.SimpleVisibilityType | null {
 }
 
 function toSections(value: unknown): simpleTypes.SimplePageSectionType[] {
-	return toList(value).filter(
-		(item): item is simpleTypes.SimplePageSectionType => {
-			return (
-				item === "header" ||
-				item === "main" ||
-				item === "footer" ||
-				item === "top" ||
-				item === "right" ||
-				item === "bottom" ||
-				item === "left" ||
-				item === "center"
-			);
-		},
-	);
+	return toList(value).filter((item): item is simpleTypes.SimplePageSectionType => {
+		return (
+			item === 'header' ||
+			item === 'main' ||
+			item === 'footer' ||
+			item === 'top' ||
+			item === 'right' ||
+			item === 'bottom' ||
+			item === 'left' ||
+			item === 'center'
+		);
+	});
 }
 
 function toInputType(value: unknown): simpleTypes.SimpleInputType | null {
@@ -95,17 +88,15 @@ function toFieldType(value: unknown): simpleTypes.SimpleFieldType | null {
 function toPanelLayout(value: unknown): simpleTypes.SimplePanelLayoutType {
 	const text = toText(value).toLowerCase();
 
-	if (text === "list") return "list";
-	if (text === "photo") return "photo";
-	if (text === "timelog") return "timelog";
-	if (text === "page") return "page";
+	if (text === 'list') return 'list';
+	if (text === 'photo') return 'photo';
+	if (text === 'timelog') return 'timelog';
+	if (text === 'page') return 'page';
 
-	return "default";
+	return 'default';
 }
 
-function normalizePanelDefinition(
-	value: unknown,
-): simpleTypes.SimplePanelDefinitionType | null {
+function normalizePanelDefinition(value: unknown): simpleTypes.SimplePanelDefinitionType | null {
 	if (!isRecord(value)) return null;
 
 	const id = toIdText(value.id);
@@ -125,13 +116,11 @@ function normalizePanelDefinition(
 		enabled: toBoolean(value.enabled, true),
 		readonly: toBoolean(value.readonly, false),
 		draggable: toBoolean(value.draggable, false),
-		notes: toText(value.notes),
+		notes: toText(value.notes)
 	};
 }
 
-function normalizeInputDefinition(
-	value: unknown,
-): simpleTypes.SimpleInputDefinitionType | null {
+function normalizeInputDefinition(value: unknown): simpleTypes.SimpleInputDefinitionType | null {
 	if (!isRecord(value)) return null;
 
 	const id = toIdText(value.id);
@@ -160,13 +149,11 @@ function normalizeInputDefinition(
 		readonly: toBoolean(value.readonly, false),
 		repeatable: toBoolean(value.repeatable, false),
 		notes: toText(value.notes),
-		example: toText(value.example),
+		example: toText(value.example)
 	};
 }
 
-function normalizePageDefinition(
-	value: unknown,
-): simpleTypes.SimplePageDefinitionType | null {
+function normalizePageDefinition(value: unknown): simpleTypes.SimplePageDefinitionType | null {
 	if (!isRecord(value)) return null;
 
 	const id = toIdText(value.id);
@@ -180,10 +167,10 @@ function normalizePageDefinition(
 		visibility: toVisibility(value.visibility),
 		required: toBoolean(value.required, false),
 		page,
-		layout: toText(value.layout || value.variant) || "page-a",
+		layout: toText(value.layout || value.variant) || 'page-a',
 		section: toSections(value.section),
 		include: toBoolean(value.include, toBoolean(value.show, false)),
-		notes: toText(value.notes),
+		notes: toText(value.notes)
 	};
 }
 
@@ -194,9 +181,7 @@ async function fetchSheetariArray(urls: string | string[]): Promise<unknown[]> {
 		try {
 			const response = await fetch(url);
 			if (!response.ok) {
-				console.warn(
-					`Failed to fetch simple route definitions from ${url}: ${response.status}`,
-				);
+				console.warn(`Failed to fetch simple route definitions from ${url}: ${response.status}`);
 				continue;
 			}
 
@@ -210,32 +195,23 @@ async function fetchSheetariArray(urls: string | string[]): Promise<unknown[]> {
 	return [];
 }
 
-async function getSimpleDefinitions(): Promise<
-	simpleTypes.SimpleDefinitionsType
-> {
-	const [panelsData, inputsData, pagesData] = await Promise
-		.all([
-			fetchSheetariArray(PANEL_DEFINITIONS_URL),
-			fetchSheetariArray(INPUT_DEFINITIONS_URL),
-			fetchSheetariArray(PAGE_DEFINITIONS_URL),
-		]);
+async function getSimpleDefinitions(): Promise<simpleTypes.SimpleDefinitionsType> {
+	const [panelsData, inputsData, pagesData] = await Promise.all([
+		fetchSheetariArray(PANEL_DEFINITIONS_URL),
+		fetchSheetariArray(INPUT_DEFINITIONS_URL),
+		fetchSheetariArray(PAGE_DEFINITIONS_URL)
+	]);
 
 	return {
 		panels: panelsData
 			.map(normalizePanelDefinition)
-			.filter((item): item is simpleTypes.SimplePanelDefinitionType =>
-				item !== null
-			),
+			.filter((item): item is simpleTypes.SimplePanelDefinitionType => item !== null),
 		inputs: inputsData
 			.map(normalizeInputDefinition)
-			.filter((item): item is simpleTypes.SimpleInputDefinitionType =>
-				item !== null
-			),
+			.filter((item): item is simpleTypes.SimpleInputDefinitionType => item !== null),
 		pages: pagesData
 			.map(normalizePageDefinition)
-			.filter((item): item is simpleTypes.SimplePageDefinitionType =>
-				item !== null
-			),
+			.filter((item): item is simpleTypes.SimplePageDefinitionType => item !== null)
 	};
 }
 

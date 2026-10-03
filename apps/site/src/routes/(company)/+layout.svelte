@@ -44,7 +44,7 @@
 			href="/company/emails"
 		/>
 
-		<div class="ml-2 mt-8">
+		<div class="mt-8 ml-2">
 			<Toggle
 				open
 				variant="panel"
@@ -108,8 +108,13 @@
 			{/snippet}
 			{#snippet failed(error, retry)}
 				<div class="flex min-h-[50vh] flex-col items-center justify-center gap-4">
-					<p class="text-red-600">Error: {error instanceof Error ? error.message : 'Something went wrong'}</p>
-					<button onclick={retry} class="rounded bg-primary-600 px-4 py-2 text-white hover:bg-primary-700">Retry</button>
+					<p class="text-red-600">
+						Error: {error instanceof Error ? error.message : 'Something went wrong'}
+					</p>
+					<button
+						onclick={retry}
+						class="rounded bg-primary-600 px-4 py-2 text-white hover:bg-primary-700">Retry</button
+					>
 				</div>
 			{/snippet}
 		</svelte:boundary>

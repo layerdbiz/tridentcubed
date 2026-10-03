@@ -75,10 +75,7 @@
 	}
 
 	function setPersistedValue(nextValue: unknown): void {
-		value =
-			nextValue === null || nextValue === undefined
-				? ''
-				: String(nextValue);
+		value = nextValue === null || nextValue === undefined ? '' : String(nextValue);
 	}
 
 	$effect(() => {
@@ -105,13 +102,19 @@
 
 {#snippet iconStartEl()}
 	{#if icon}
-		<Icon icon={icon} class="icon start" />
+		<Icon
+			{icon}
+			class="icon start"
+		/>
 	{/if}
 {/snippet}
 
 {#snippet iconEndEl()}
 	{#if fieldState.trailingIcon}
-		<Icon icon={fieldState.trailingIcon} class="icon end" />
+		<Icon
+			icon={fieldState.trailingIcon}
+			class="icon end"
+		/>
 	{/if}
 {/snippet}
 
@@ -136,8 +139,7 @@
 		{autocomplete}
 		{autocapitalize}
 		{spellcheck}
-		oninput={handleInput}
-	></textarea>
+		oninput={handleInput}></textarea>
 {/snippet}
 
 {#snippet textVariant()}
@@ -162,13 +164,17 @@
 
 <Component
 	{...props}
-	persist={persist}
+	{persist}
 	persistContext={{ tag: 'textarea' }}
 	persistGetValue={() => value}
 	persistSetValue={setPersistedValue}
 >
 	{#snippet component({ props }: { props: ComponentReturn })}
-		<fieldset bind:this={fieldsetNode} {...props} class={`${props.class} ${fieldState.className} textarea`.trim()}>
+		<fieldset
+			bind:this={fieldsetNode}
+			{...props}
+			class={`${props.class} ${fieldState.className} textarea`.trim()}
+		>
 			<legend>{fieldState.labelText}</legend>
 			<label for={fieldState.field.id}>
 				{#if variant === 'icon text'}

@@ -1,63 +1,55 @@
-import { MediaQuery } from "svelte/reactivity";
+import { MediaQuery } from 'svelte/reactivity';
 
 export const BREAKPOINTS = {
 	sm: 640,
 	md: 768,
 	lg: 1024,
 	xl: 1280,
-	xxl: 1536,
+	xxl: 1536
 } as const;
 
 export type MqBucketType = keyof typeof BREAKPOINTS;
-export type MqOrientationType = "portrait" | "landscape";
+export type MqOrientationType = 'portrait' | 'landscape';
 
-export const MQ_STORAGE_KEY = "layerd:mq";
-export const MQ_ORIENTATION_STORAGE_KEY = "layerd:mq:orientation";
+export const MQ_STORAGE_KEY = 'layerd:mq';
+export const MQ_ORIENTATION_STORAGE_KEY = 'layerd:mq:orientation';
 
-export const MQ_DEFAULT_BUCKET: MqBucketType = "sm";
-export const MQ_DEFAULT_ORIENTATION: MqOrientationType = "landscape";
+export const MQ_DEFAULT_BUCKET: MqBucketType = 'sm';
+export const MQ_DEFAULT_ORIENTATION: MqOrientationType = 'landscape';
 
 export const MQ_QUERY_MAP = {
 	sm: `(max-width: ${BREAKPOINTS.md - 1}px)`,
-	md: `(min-width: ${BREAKPOINTS.md}px) and (max-width: ${
-		BREAKPOINTS.lg - 1
-	}px)`,
-	lg: `(min-width: ${BREAKPOINTS.lg}px) and (max-width: ${
-		BREAKPOINTS.xl - 1
-	}px)`,
-	xl: `(min-width: ${BREAKPOINTS.xl}px) and (max-width: ${
-		BREAKPOINTS.xxl - 1
-	}px)`,
-	xxl: `(min-width: ${BREAKPOINTS.xxl}px)`,
+	md: `(min-width: ${BREAKPOINTS.md}px) and (max-width: ${BREAKPOINTS.lg - 1}px)`,
+	lg: `(min-width: ${BREAKPOINTS.lg}px) and (max-width: ${BREAKPOINTS.xl - 1}px)`,
+	xl: `(min-width: ${BREAKPOINTS.xl}px) and (max-width: ${BREAKPOINTS.xxl - 1}px)`,
+	xxl: `(min-width: ${BREAKPOINTS.xxl}px)`
 } as const satisfies Record<MqBucketType, string>;
 
 export const MQ_ORIENTATION_QUERY_MAP = {
-	portrait: "(orientation: portrait)",
-	landscape: "(orientation: landscape)",
+	portrait: '(orientation: portrait)',
+	landscape: '(orientation: landscape)'
 } as const satisfies Record<MqOrientationType, string>;
 
 export const MQ_BUCKET_PRIORITY = [
-	"xxl",
-	"xl",
-	"lg",
-	"md",
-	"sm",
+	'xxl',
+	'xl',
+	'lg',
+	'md',
+	'sm'
 ] as const satisfies readonly MqBucketType[];
 
 export const MQ_ORIENTATION_PRIORITY = [
-	"portrait",
-	"landscape",
+	'portrait',
+	'landscape'
 ] as const satisfies readonly MqOrientationType[];
 
-const _isBrowser = typeof window !== "undefined";
+const _isBrowser = typeof window !== 'undefined';
 
 let _updateHtmlAttributes = true;
 let _isMqRuntimeReady = false;
 let _resizeFrame = 0;
 
-export function configureMqUtility(
-	options: { updateHtmlAttributes?: boolean } = {},
-): void {
+export function configureMqUtility(options: { updateHtmlAttributes?: boolean } = {}): void {
 	if (options.updateHtmlAttributes !== undefined) {
 		_updateHtmlAttributes = options.updateHtmlAttributes;
 	}
@@ -67,17 +59,14 @@ export function isMqBucket(value: string | null): value is MqBucketType {
 	return value !== null && MQ_BUCKET_PRIORITY.includes(value as MqBucketType);
 }
 
-export function isMqOrientation(
-	value: string | null,
-): value is MqOrientationType {
-	return value !== null &&
-		MQ_ORIENTATION_PRIORITY.includes(value as MqOrientationType);
+export function isMqOrientation(value: string | null): value is MqOrientationType {
+	return value !== null && MQ_ORIENTATION_PRIORITY.includes(value as MqOrientationType);
 }
 
 export function readHtmlMqBucket(): MqBucketType | null {
 	if (!_isBrowser) return null;
 
-	const attr = document.documentElement.getAttribute("data-mq");
+	const attr = document.documentElement.getAttribute('data-mq');
 
 	return isMqBucket(attr) ? attr : null;
 }
@@ -85,7 +74,7 @@ export function readHtmlMqBucket(): MqBucketType | null {
 export function readHtmlMqOrientation(): MqOrientationType | null {
 	if (!_isBrowser) return null;
 
-	const attr = document.documentElement.getAttribute("data-orientation");
+	const attr = document.documentElement.getAttribute('data-orientation');
 
 	return isMqOrientation(attr) ? attr : null;
 }
@@ -125,7 +114,7 @@ export function readBootstrapMqOrientation(): MqOrientationType | null {
 export function resolveMqBucket(): MqBucketType {
 	if (!_isBrowser) return MQ_DEFAULT_BUCKET;
 
-	if (typeof window.matchMedia === "function") {
+	if (typeof window.matchMedia === 'function') {
 		for (const bucket of MQ_BUCKET_PRIORITY) {
 			if (window.matchMedia(MQ_QUERY_MAP[bucket]).matches) {
 				return bucket;
@@ -135,10 +124,10 @@ export function resolveMqBucket(): MqBucketType {
 
 	const width = window.innerWidth || document.documentElement.clientWidth || 0;
 
-	if (width >= BREAKPOINTS.xxl) return "xxl";
-	if (width >= BREAKPOINTS.xl) return "xl";
-	if (width >= BREAKPOINTS.lg) return "lg";
-	if (width >= BREAKPOINTS.md) return "md";
+	if (width >= BREAKPOINTS.xxl) return 'xxl';
+	if (width >= BREAKPOINTS.xl) return 'xl';
+	if (width >= BREAKPOINTS.lg) return 'lg';
+	if (width >= BREAKPOINTS.md) return 'md';
 
 	return MQ_DEFAULT_BUCKET;
 }
@@ -146,7 +135,7 @@ export function resolveMqBucket(): MqBucketType {
 export function resolveMqOrientation(): MqOrientationType {
 	if (!_isBrowser) return MQ_DEFAULT_ORIENTATION;
 
-	if (typeof window.matchMedia === "function") {
+	if (typeof window.matchMedia === 'function') {
 		for (const orientation of MQ_ORIENTATION_PRIORITY) {
 			if (window.matchMedia(MQ_ORIENTATION_QUERY_MAP[orientation]).matches) {
 				return orientation;
@@ -155,10 +144,9 @@ export function resolveMqOrientation(): MqOrientationType {
 	}
 
 	const width = window.innerWidth || document.documentElement.clientWidth || 0;
-	const height = window.innerHeight || document.documentElement.clientHeight ||
-		0;
+	const height = window.innerHeight || document.documentElement.clientHeight || 0;
 
-	return height >= width ? "portrait" : "landscape";
+	return height >= width ? 'portrait' : 'landscape';
 }
 
 function readInitialMqBucket(): MqBucketType {
@@ -180,8 +168,8 @@ export function _setMqBucket(bucket: MqBucketType): void {
 	}
 
 	if (_isBrowser && _updateHtmlAttributes) {
-		document.documentElement.setAttribute("data-mq", bucket);
-		document.documentElement.setAttribute("data-mq-init", "1");
+		document.documentElement.setAttribute('data-mq', bucket);
+		document.documentElement.setAttribute('data-mq-init', '1');
 
 		try {
 			localStorage.setItem(MQ_STORAGE_KEY, bucket);
@@ -197,8 +185,8 @@ export function _setMqOrientation(orientation: MqOrientationType): void {
 	}
 
 	if (_isBrowser && _updateHtmlAttributes) {
-		document.documentElement.setAttribute("data-orientation", orientation);
-		document.documentElement.setAttribute("data-orientation-init", "1");
+		document.documentElement.setAttribute('data-orientation', orientation);
+		document.documentElement.setAttribute('data-orientation-init', '1');
 
 		try {
 			localStorage.setItem(MQ_ORIENTATION_STORAGE_KEY, orientation);
@@ -238,7 +226,7 @@ export function syncMqState(): {
 } {
 	return {
 		bucket: syncMqBucket(),
-		orientation: syncMqOrientation(),
+		orientation: syncMqOrientation()
 	};
 }
 
@@ -267,12 +255,12 @@ export function initMqRuntime(): void {
 
 	syncMqState();
 
-	window.addEventListener("resize", handleMqResize, { passive: true });
-	window.addEventListener("orientationchange", handleMqResize, {
-		passive: true,
+	window.addEventListener('resize', handleMqResize, { passive: true });
+	window.addEventListener('orientationchange', handleMqResize, {
+		passive: true
 	});
 
-	if (typeof window.requestAnimationFrame === "function") {
+	if (typeof window.requestAnimationFrame === 'function') {
 		window.requestAnimationFrame(completeMqRuntimeInit);
 		return;
 	}
@@ -321,40 +309,40 @@ export const mq = {
 	},
 
 	get sm() {
-		return _mqBucket === "sm";
+		return _mqBucket === 'sm';
 	},
 
 	get md() {
-		return _mqBucket === "md";
+		return _mqBucket === 'md';
 	},
 
 	get lg() {
-		return _mqBucket === "lg";
+		return _mqBucket === 'lg';
 	},
 
 	get xl() {
-		return _mqBucket === "xl";
+		return _mqBucket === 'xl';
 	},
 
 	get xxl() {
-		return _mqBucket === "xxl";
+		return _mqBucket === 'xxl';
 	},
 
 	get portrait() {
-		return _mqOrientation === "portrait";
+		return _mqOrientation === 'portrait';
 	},
 
 	get vertical() {
-		return _mqOrientation === "portrait";
+		return _mqOrientation === 'portrait';
 	},
 
 	get landscape() {
-		return _mqOrientation === "landscape";
+		return _mqOrientation === 'landscape';
 	},
 
 	get horizontal() {
-		return _mqOrientation === "landscape";
-	},
+		return _mqOrientation === 'landscape';
+	}
 };
 
 export function useMediaQuery(query: string) {
@@ -369,25 +357,13 @@ export function useMaxWidth(breakpoint: keyof typeof BREAKPOINTS) {
 	return useMediaQuery(`(max-width: ${BREAKPOINTS[breakpoint] - 1}px)`);
 }
 
-export function useBetween(
-	min: keyof typeof BREAKPOINTS,
-	max: keyof typeof BREAKPOINTS,
-) {
+export function useBetween(min: keyof typeof BREAKPOINTS, max: keyof typeof BREAKPOINTS) {
 	return useMediaQuery(
-		`(min-width: ${BREAKPOINTS[min]}px) and (max-width: ${
-			BREAKPOINTS[max] - 1
-		}px)`,
+		`(min-width: ${BREAKPOINTS[min]}px) and (max-width: ${BREAKPOINTS[max] - 1}px)`
 	);
 }
 
-export function screens<T>(
-	base: T,
-	sm?: T,
-	md?: T,
-	lg?: T,
-	xl?: T,
-	xxl?: T,
-): T {
+export function screens<T>(base: T, sm?: T, md?: T, lg?: T, xl?: T, xxl?: T): T {
 	if (mq.xxl && xxl !== undefined) return xxl;
 	if (mq.xl && xl !== undefined) return xl;
 	if (mq.lg && lg !== undefined) return lg;

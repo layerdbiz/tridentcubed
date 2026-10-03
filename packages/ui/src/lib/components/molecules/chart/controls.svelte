@@ -40,7 +40,7 @@
 </script>
 
 <!-- Controls -->
-<div class="absolute left-4 right-4 top-4 z-10 flex flex-wrap gap-4">
+<div class="absolute top-4 right-4 left-4 z-10 flex flex-wrap gap-4">
 	<!-- Orientation -->
 	<div class="min-w-[200px] flex-1">
 		<div class="text-surface-content/60 mb-2 text-sm">Orientation</div>
@@ -50,7 +50,7 @@
 				class={cls(
 					'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
 					config.orientation === 'horizontal'
-						? 'bg-primary/20 text-primary border-primary border-2'
+						? 'border-2 border-primary bg-primary/20 text-primary'
 						: 'bg-surface-100 text-surface-content/60 hover:border-surface-content/20 border-2 border-transparent'
 				)}
 			>
@@ -61,7 +61,7 @@
 				class={cls(
 					'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
 					config.orientation === 'vertical'
-						? 'bg-primary/20 text-primary border-primary border-2'
+						? 'border-2 border-primary bg-primary/20 text-primary'
 						: 'bg-surface-100 text-surface-content/60 hover:border-surface-content/20 border-2 border-transparent'
 				)}
 			>
@@ -79,7 +79,7 @@
 				class={cls(
 					'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
 					config.layout === 'chart'
-						? 'bg-primary/20 text-primary border-primary border-2'
+						? 'border-2 border-primary bg-primary/20 text-primary'
 						: 'bg-surface-100 text-surface-content/60 hover:border-surface-content/20 border-2 border-transparent'
 				)}
 			>
@@ -90,7 +90,7 @@
 				class={cls(
 					'flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors',
 					config.layout === 'node'
-						? 'bg-primary/20 text-primary border-primary border-2'
+						? 'border-2 border-primary bg-primary/20 text-primary'
 						: 'bg-surface-100 text-surface-content/60 hover:border-surface-content/20 border-2 border-transparent'
 				)}
 			>
@@ -100,7 +100,7 @@
 	</div>
 </div>
 
-<div class="absolute left-4 top-28 z-10 flex gap-4">
+<div class="absolute top-28 left-4 z-10 flex gap-4">
 	<!-- Connector Type -->
 	<div class="bg-surface-100 border-surface-content/10 rounded-lg border-2 px-4 py-2">
 		<div class="text-surface-content/60 mb-1 text-xs">Connector Type</div>

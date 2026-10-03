@@ -41,7 +41,21 @@
 	const placeModifierOptions = ['', 'TL', 'TC', 'TR', 'LC', 'CC', 'RC', 'BL', 'BC', 'BR'];
 	const logOptions: LogModeType[] = ['open', 'failed', 'closed', 'hide'];
 	const gridOptions = ['', 'full', 'inline', 'rails'];
-	const tagOptions = ['', 'div', 'main', 'section', 'article', 'header', 'footer', 'aside', 'button', 'a', 'label', 'ul', 'ol'];
+	const tagOptions = [
+		'',
+		'div',
+		'main',
+		'section',
+		'article',
+		'header',
+		'footer',
+		'aside',
+		'button',
+		'a',
+		'label',
+		'ul',
+		'ol'
+	];
 
 	const railOptions = [
 		{ label: 'default', value: '' },
@@ -154,7 +168,10 @@
 		{ label: 'default', value: '' },
 		{ label: 'skin', value: skinClass },
 		{ label: 'bare', value: 'rounded-xl p-4' },
-		{ label: 'card', value: 'rounded-2xl outline outline-1 outline-slate-300 bg-white p-4 shadow-lg' },
+		{
+			label: 'card',
+			value: 'rounded-2xl outline outline-1 outline-slate-300 bg-white p-4 shadow-lg'
+		},
 		{ label: 'panel', value: 'rounded-xl outline outline-1 outline-slate-300 bg-slate-50 p-3' }
 	];
 
@@ -184,7 +201,9 @@
 	const debugView = $derived(activeControls.debugView);
 	const logMode = $derived(activeControls.logMode);
 
-	const componentProps = $derived(cleanProps({ tag, grid, rail, ratio, size, rows, cols, items, content, gap, class: className }));
+	const componentProps = $derived(
+		cleanProps({ tag, grid, rail, ratio, size, rows, cols, items, content, gap, class: className })
+	);
 	const railsComponentProps = $derived({ ...componentProps, grid: 'rails' });
 	const currentSettings = $derived({
 		activeTab,
@@ -241,10 +260,19 @@
 
 	function normalizeControls(value: unknown): ControlsStateType {
 		const defaults = getDefaultSettings().controls;
-		const source = value && typeof value === 'object' ? (value as PartialControlsStateType) : defaults;
+		const source =
+			value && typeof value === 'object' ? (value as PartialControlsStateType) : defaults;
 		return {
-			snippets: { ...defaults.snippets, ...(source.snippets ?? {}), modeViews: normalizeModeViews(source.snippets?.modeViews) },
-			rails: { ...defaults.rails, ...(source.rails ?? {}), modeViews: normalizeModeViews(source.rails?.modeViews) }
+			snippets: {
+				...defaults.snippets,
+				...source.snippets,
+				modeViews: normalizeModeViews(source.snippets?.modeViews)
+			},
+			rails: {
+				...defaults.rails,
+				...source.rails,
+				modeViews: normalizeModeViews(source.rails?.modeViews)
+			}
 		};
 	}
 
@@ -255,7 +283,9 @@
 			return {
 				...getDefaultSettings(),
 				...parsed,
-				activeTab: tabs.includes(parsed.activeTab as TabType) ? (parsed.activeTab as TabType) : 'snippets',
+				activeTab: tabs.includes(parsed.activeTab as TabType)
+					? (parsed.activeTab as TabType)
+					: 'snippets',
 				controls: normalizeControls(parsed.controls)
 			};
 		} catch {
@@ -313,12 +343,22 @@
 		<div class="demo-route-copy">
 			<p class="demo-route-eyebrow">Playground Route</p>
 			<h1 class="demo-route-title">Interactive Grid Demos</h1>
-			<p class="demo-route-text">This route brings the old merge demo controls back into the app as a dedicated sandbox, without moving any demo plumbing into <code>$lib</code>.</p>
+			<p class="demo-route-text">
+				This route brings the old merge demo controls back into the app as a dedicated sandbox,
+				without moving any demo plumbing into <code>$lib</code>.
+			</p>
 		</div>
 
-		<nav class="demo-route-tabs" aria-label="Demo groups">
+		<nav
+			class="demo-route-tabs"
+			aria-label="Demo groups"
+		>
 			{#each tabs as tab (tab)}
-				<button type="button" class:active={activeTab === tab} onclick={() => (activeTab = tab)}>{tab}</button>
+				<button
+					type="button"
+					class:active={activeTab === tab}
+					onclick={() => (activeTab = tab)}>{tab}</button
+				>
 			{/each}
 		</nav>
 	</header>
@@ -362,9 +402,23 @@
 
 	<section class="demo-route-stage">
 		{#if activeTab === 'snippets'}
-			<SnippetsDemos {componentProps} {modeViews} {debugView} {viewCols} {placeModifier} {logMode} />
+			<SnippetsDemos
+				{componentProps}
+				{modeViews}
+				{debugView}
+				{viewCols}
+				{placeModifier}
+				{logMode}
+			/>
 		{:else}
-			<RailsDemos componentProps={railsComponentProps} {modeViews} {debugView} {viewCols} {placeModifier} {logMode} />
+			<RailsDemos
+				componentProps={railsComponentProps}
+				{modeViews}
+				{debugView}
+				{viewCols}
+				{placeModifier}
+				{logMode}
+			/>
 		{/if}
 	</section>
 </main>
@@ -372,45 +426,90 @@
 <style lang="postcss">
 	@reference '#app.css';
 
-	.demo-route-page { @apply grid gap-4 p-4; }
-	.demo-route-header { @apply grid gap-3 rounded-2xl bg-linear-to-br outline-1 outline-slate-200 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:p-5; }
-	.demo-route-copy { @apply grid gap-2; }
-	.demo-route-eyebrow { @apply text-xs font-black uppercase tracking-[0.24em] text-amber-700; }
-	.demo-route-title { @apply text-2xl font-black tracking-tight text-slate-950 md:text-3xl; }
-	.demo-route-text { @apply text-sm leading-6 text-slate-600; }
-	.demo-route-tabs { @apply inline-flex flex-wrap gap-2; }
-	.demo-route-tabs button { @apply rounded-full bg-white px-4 py-2 text-sm font-black capitalize text-slate-500 outline-1 outline-slate-300 transition-colors; }
-	.demo-route-tabs button.active { @apply bg-slate-950 text-white outline-slate-950; }
-	.demo-route-stage { @apply grid gap-4; }
+	.demo-route-page {
+		@apply grid gap-4 p-4;
+	}
+	.demo-route-header {
+		@apply grid gap-3 rounded-2xl bg-linear-to-br outline-1 outline-slate-200 md:grid-cols-[minmax(0,1fr)_auto] md:items-end md:p-5;
+	}
+	.demo-route-copy {
+		@apply grid gap-2;
+	}
+	.demo-route-eyebrow {
+		@apply text-xs font-black tracking-[0.24em] text-amber-700 uppercase;
+	}
+	.demo-route-title {
+		@apply text-2xl font-black tracking-tight text-slate-950 md:text-3xl;
+	}
+	.demo-route-text {
+		@apply text-sm leading-6 text-slate-600;
+	}
+	.demo-route-tabs {
+		@apply inline-flex flex-wrap gap-2;
+	}
+	.demo-route-tabs button {
+		@apply rounded-full bg-white px-4 py-2 text-sm font-black text-slate-500 capitalize outline-1 outline-slate-300 transition-colors;
+	}
+	.demo-route-tabs button.active {
+		@apply bg-slate-950 text-white outline-slate-950;
+	}
+	.demo-route-stage {
+		@apply grid gap-4;
+	}
 
 	:global {
 		.snippet-demos,
-		.rails-demos { @apply grid gap-2; }
-		.demo-section-content { @apply grid gap-3 p-3; }
-		.demo.root-grid { @apply min-h-16 rounded-xl p-3 outline-1 outline-sky-300; }
-		.demo.root-grid > :where(:not(.root-grid):not(.is-debug):not(.slot-fallback):not(.is-snippet-zone)),
-		.demo.root-grid > .is-snippet-zone > :where(:not(.root-grid):not(.is-debug):not(.slot-fallback)) {
+		.rails-demos {
+			@apply grid gap-2;
+		}
+		.demo-section-content {
+			@apply grid gap-3 p-3;
+		}
+		.demo.root-grid {
+			@apply min-h-16 rounded-xl p-3 outline-1 outline-sky-300;
+		}
+		.demo.root-grid
+			> :where(:not(.root-grid):not(.is-debug):not(.slot-fallback):not(.is-snippet-zone)),
+		.demo.root-grid
+			> .is-snippet-zone
+			> :where(:not(.root-grid):not(.is-debug):not(.slot-fallback)) {
 			@apply relative box-border block min-h-0 min-w-0 rounded-lg bg-white p-3 font-extrabold text-slate-950 shadow-sm outline-1 outline-slate-400/45;
 		}
 		.demo.root-grid > .is-cell:not(.is-debug),
-		.demo.root-grid > .is-snippet-zone > .is-cell:not(.is-debug) { @apply bg-sky-50 outline-sky-400; }
+		.demo.root-grid > .is-snippet-zone > .is-cell:not(.is-debug) {
+			@apply bg-sky-50 outline-sky-400;
+		}
 		.demo.root-grid > .is-row:not(.is-debug),
-		.demo.root-grid > .is-snippet-zone > .is-row:not(.is-debug) { @apply bg-violet-50 outline-violet-400; }
+		.demo.root-grid > .is-snippet-zone > .is-row:not(.is-debug) {
+			@apply bg-violet-50 outline-violet-400;
+		}
 		.demo.root-grid > .is-col:not(.is-debug),
-		.demo.root-grid > .is-snippet-zone > .is-col:not(.is-debug) { @apply bg-indigo-50 outline-indigo-400; }
+		.demo.root-grid > .is-snippet-zone > .is-col:not(.is-debug) {
+			@apply bg-indigo-50 outline-indigo-400;
+		}
 		.demo.root-grid > .is-range:not(.is-debug),
-		.demo.root-grid > .is-snippet-zone > .is-range:not(.is-debug) { @apply bg-emerald-50 outline-emerald-400; }
+		.demo.root-grid > .is-snippet-zone > .is-range:not(.is-debug) {
+			@apply bg-emerald-50 outline-emerald-400;
+		}
 		.demo.root-grid > .is-half:not(.is-debug),
-		.demo.root-grid > .is-snippet-zone > .is-half:not(.is-debug) { @apply bg-orange-50 outline-orange-400; }
+		.demo.root-grid > .is-snippet-zone > .is-half:not(.is-debug) {
+			@apply bg-orange-50 outline-orange-400;
+		}
 		.demo.root-grid > .is-bg:not(.is-debug),
-		.demo.root-grid > .is-snippet-zone > .is-bg:not(.is-debug) { @apply bg-cyan-100/70 outline-cyan-400; }
+		.demo.root-grid > .is-snippet-zone > .is-bg:not(.is-debug) {
+			@apply bg-cyan-100/70 outline-cyan-400;
+		}
 		.demo.root-grid > .is-full:not(.is-debug),
-		.demo.root-grid > .is-snippet-zone > .is-full:not(.is-debug) { @apply bg-amber-100/70 outline-amber-400; }
+		.demo.root-grid > .is-snippet-zone > .is-full:not(.is-debug) {
+			@apply bg-amber-100/70 outline-amber-400;
+		}
 		.demo.root-grid > .is-fg:not(.is-debug),
-		.demo.root-grid > .is-snippet-zone > .is-fg:not(.is-debug) { @apply bg-pink-100/70 outline-pink-400; }
+		.demo.root-grid > .is-snippet-zone > .is-fg:not(.is-debug) {
+			@apply bg-pink-100/70 outline-pink-400;
+		}
 		.demo.root-grid > .is-debug,
 		.demo.root-grid > .is-snippet-zone > .is-debug {
-			@apply relative z-0 min-h-0 min-w-0 overflow-visible bg-slate-400/15 p-0 text-slate-500 outline-1 outline-dashed outline-slate-400;
+			@apply relative z-0 min-h-0 min-w-0 overflow-visible bg-slate-400/15 p-0 text-slate-500 outline-1 outline-slate-400 outline-dashed;
 			pointer-events: none;
 			box-shadow: none;
 			border: 0;
@@ -430,7 +529,11 @@
 			@apply inline-block rounded bg-white/70 px-2 py-1 font-extrabold;
 			color: inherit;
 		}
-		.demo-section { @apply overflow-hidden rounded-2xl bg-white outline-1 outline-slate-200; }
-		.demo-summary { @apply cursor-pointer px-4 py-3 text-sm font-black text-slate-900; }
+		.demo-section {
+			@apply overflow-hidden rounded-2xl bg-white outline-1 outline-slate-200;
+		}
+		.demo-summary {
+			@apply cursor-pointer px-4 py-3 text-sm font-black text-slate-900;
+		}
 	}
 </style>

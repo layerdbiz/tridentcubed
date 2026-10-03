@@ -98,13 +98,19 @@ Use thse emojis for comments about the state of the input in the examples below.
 
 {#snippet iconStartEl()}
 	{#if icon}
-		<Icon icon={icon} class="icon start" />
+		<Icon
+			{icon}
+			class="icon start"
+		/>
 	{/if}
 {/snippet}
 
 {#snippet iconEndEl()}
 	{#if fieldState.trailingIcon}
-		<Icon icon={fieldState.trailingIcon} class="icon end" />
+		<Icon
+			icon={fieldState.trailingIcon}
+			class="icon end"
+		/>
 	{/if}
 {/snippet}
 
@@ -159,13 +165,16 @@ Use thse emojis for comments about the state of the input in the examples below.
 
 <Component
 	{...props}
-	persist={persist}
+	{persist}
 	persistContext={{ tag: 'input', type: type ?? undefined }}
 	persistGetValue={() => value}
 	persistSetValue={setPersistedValue}
 >
 	{#snippet component({ props }: { props: ComponentReturn })}
-		<fieldset {...props} class={`${props.class} ${fieldState.className}`.trim()}>
+		<fieldset
+			{...props}
+			class={`${props.class} ${fieldState.className}`.trim()}
+		>
 			<legend>{fieldState.labelText}</legend>
 			<label for={fieldState.field.id}>
 				{#if variant === 'icon text'}

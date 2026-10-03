@@ -1,29 +1,29 @@
 <!-- Item.svelte -->
 <!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
-	import type { Snippet } from "svelte";
-	import { getGridCtx, parseRange } from "@layerd/ui";
+	import type { Snippet } from 'svelte';
+	import { getGridCtx, parseRange } from '@layerd/ui';
 
 	export interface ItemProps {
 		class?: string;
 		range?: string; // "A1" | "A1:C3" | "1x2" | "1:3x1:3"
 		row?: string;
 		col?: string;
-		items?: string;   // place-items (enables grid)
+		items?: string; // place-items (enables grid)
 		content?: string; // place-content (enables grid)
-		self?: string;    // place-self (disables grid, natural sizing)
+		self?: string; // place-self (disables grid, natural sizing)
 		children?: Snippet;
 	}
 
-	let { 
-		class: userClass = "", 
-		range, 
-		row, 
-		col, 
+	let {
+		class: userClass = '',
+		range,
+		row,
+		col,
 		items,
 		content,
 		self,
-		children 
+		children
 	}: ItemProps = $props();
 
 	const ctx = (() => {
@@ -46,10 +46,15 @@
 	const initialClaimed = ctx && !initialParsed ? ctx.claimAutoCell() : null;
 
 	// Compute initial placement synchronously for track registration
-	const initialPlacement = initialParsed 
-		? initialParsed 
-		: initialClaimed 
-			? { startRow: initialClaimed.row, endRow: initialClaimed.row, startCol: initialClaimed.col, endCol: initialClaimed.col }
+	const initialPlacement = initialParsed
+		? initialParsed
+		: initialClaimed
+			? {
+					startRow: initialClaimed.row,
+					endRow: initialClaimed.row,
+					startCol: initialClaimed.col,
+					endCol: initialClaimed.col
+				}
 			: null;
 
 	// Register track overrides SYNCHRONOUSLY during initialization
@@ -65,7 +70,13 @@
 
 	const placement = $derived.by(() => {
 		if (parsed) return parsed;
-		if (claimed) return { startRow: claimed.row, endRow: claimed.row, startCol: claimed.col, endCol: claimed.col };
+		if (claimed)
+			return {
+				startRow: claimed.row,
+				endRow: claimed.row,
+				startCol: claimed.col,
+				endCol: claimed.col
+			};
 		return null;
 	});
 
@@ -73,16 +84,16 @@
 	let prevPlacement = initialPlacement;
 	let prevRow = _initialRow;
 	let prevCol = _initialCol;
-	
+
 	// Handle reactive updates when placement or row/col props change
 	$effect(() => {
 		if (!ctx) return;
 		if (!placement) return;
 
-		const placementChanged = 
-			prevPlacement?.startRow !== placement.startRow || 
+		const placementChanged =
+			prevPlacement?.startRow !== placement.startRow ||
 			prevPlacement?.startCol !== placement.startCol;
-		
+
 		// If placement changed, clear old tracks and set new ones
 		if (placementChanged && prevPlacement) {
 			// Clear old track overrides
@@ -109,25 +120,27 @@
 
 	const style = $derived.by(() => {
 		const parts: string[] = [];
-		
+
 		// Display mode: grid if items/content used (unless self is used)
 		if (useGrid) {
 			parts.push('display:grid');
 		}
-		
+
 		// Grid placement
 		if (placement) {
-			parts.push(`grid-area:${placement.startRow} / ${placement.startCol} / ${placement.endRow + 1} / ${placement.endCol + 1}`);
+			parts.push(
+				`grid-area:${placement.startRow} / ${placement.startCol} / ${placement.endRow + 1} / ${placement.endCol + 1}`
+			);
 		}
-		
+
 		// Place properties (raw CSS values)
 		if (items) parts.push(`place-items:${items}`);
 		if (content) parts.push(`place-content:${content}`);
 		if (self) parts.push(`place-self:${self}`);
-		
+
 		// Prevent overflow
 		parts.push('min-width:0px', 'min-height:0px');
-		
+
 		return parts.join(';') + ';';
 	});
 
@@ -135,6 +148,9 @@
 	const sizeClass = $derived(self ? '' : 'h-full w-full');
 </script>
 
-<div class={`min-h-0 min-w-0 ${sizeClass} ${userClass}`} style={style}>
+<div
+	class={`min-h-0 min-w-0 ${sizeClass} ${userClass}`}
+	{style}
+>
 	{@render children?.()}
 </div>

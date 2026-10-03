@@ -6,13 +6,9 @@
 	import {
 		attachPersistTarget,
 		type PersistContext,
-		type PersistInput,
+		type PersistInput
 	} from './helpers/persist/persist.svelte.ts';
-	import {
-		hasLayoutDebugValue,
-		normalizeDebugValue,
-		type DebugValueType
-	} from '@layerd/ui';
+	import { hasLayoutDebugValue, normalizeDebugValue, type DebugValueType } from '@layerd/ui';
 	import * as engine from '@layerd/ui';
 
 	type RootContent = Snippet | string | number | boolean | null | undefined;
@@ -194,9 +190,14 @@
 		})
 	);
 	const hasRailsDebugImplementation = true;
-	const isAutoGridDebug = $derived(resolvedDebug.auto && shouldUseRootRuntime && rootGrid !== 'rails');
+	const isAutoGridDebug = $derived(
+		resolvedDebug.auto && shouldUseRootRuntime && rootGrid !== 'rails'
+	);
 	const isAutoRailsDebug = $derived(
-		hasRailsDebugImplementation && resolvedDebug.auto && shouldUseRootRuntime && rootGrid === 'rails'
+		hasRailsDebugImplementation &&
+			resolvedDebug.auto &&
+			shouldUseRootRuntime &&
+			rootGrid === 'rails'
 	);
 	const isGridDebugEnabled = $derived(resolvedDebug.grid || isAutoGridDebug);
 	const isRailsDebugEnabled = $derived(
@@ -205,10 +206,7 @@
 	const isLayoutDebugEnabled = $derived(isGridDebugEnabled || isRailsDebugEnabled);
 	const railDebugLines = $derived(
 		isRailsDebugEnabled
-			? [
-				...engine.getCanonicalRailDebugLines(),
-				...engine.getRailInsetDebugLines(rootRails, inset)
-			]
+			? [...engine.getCanonicalRailDebugLines(), ...engine.getRailInsetDebugLines(rootRails, inset)]
 			: []
 	);
 	const shouldShowRailFallback = $derived(shouldUseRootRuntime && Boolean(rootRail && !children));
@@ -236,7 +234,9 @@
 				}
 			: usageEnvelope
 	);
-	const rootPlacementTracks = $derived(isGridDebugEnabled && hasRatio ? usageEnvelope : activeTracks);
+	const rootPlacementTracks = $derived(
+		isGridDebugEnabled && hasRatio ? usageEnvelope : activeTracks
+	);
 	const colTrackConfig = $derived(
 		cols.trim()
 			? engine.getResolvedTrackConfig(
@@ -311,12 +311,20 @@
 						kind: 'default'
 					}
 	);
-	const rootCols = $derived((colTrackConfig.tracks.length ? colTrackConfig.tracks : ['auto']).join(' '));
-	const rootRows = $derived((rowTrackConfig.tracks.length ? rowTrackConfig.tracks : ['auto']).join(' '));
+	const rootCols = $derived(
+		(colTrackConfig.tracks.length ? colTrackConfig.tracks : ['auto']).join(' ')
+	);
+	const rootRows = $derived(
+		(rowTrackConfig.tracks.length ? rowTrackConfig.tracks : ['auto']).join(' ')
+	);
 	const shouldUseSnippetZone = $derived(rootGrid === 'rails' && hasResolvedItems);
 	const snippetZoneRailColumn = $derived(rootRailsColumn ?? defaultSnippetZoneRailColumn);
-	const rootTemplateCols = $derived(rootGrid === 'rails' ? undefined : shouldEmitCols ? rootCols : undefined);
-	const rootTemplateRows = $derived(shouldUseSnippetZone ? undefined : shouldEmitRows ? rootRows : undefined);
+	const rootTemplateCols = $derived(
+		rootGrid === 'rails' ? undefined : shouldEmitCols ? rootCols : undefined
+	);
+	const rootTemplateRows = $derived(
+		shouldUseSnippetZone ? undefined : shouldEmitRows ? rootRows : undefined
+	);
 	const rootGap = $derived(
 		shouldUseRootRuntime ? String(gap ?? '').trim() || undefined : undefined
 	);
@@ -341,24 +349,24 @@
 			Boolean(userContent)
 	);
 	const rootItems = $derived(
-		shouldUsePackedFriendlySnippetZone
-			? userItems ?? 'center'
-			: userItems
+		shouldUsePackedFriendlySnippetZone ? (userItems ?? 'center') : userItems
 	);
 	const rootContent = $derived(
 		userContent ||
-			engine.getAutoRatioRootContent(rootPlacementTracks.rows, rootPlacementTracks.cols, hasRatio, usesCompactMode, usesFillPlacement) ||
+			engine.getAutoRatioRootContent(
+				rootPlacementTracks.rows,
+				rootPlacementTracks.cols,
+				hasRatio,
+				usesCompactMode,
+				usesFillPlacement
+			) ||
 			engine.getAutoRootContent(activeTracks.cols, isGridDebugEnabled)
 	);
 	const packedFriendlyCols = $derived(
-		friendlyRailPackAxis === 'horizontal'
-			? 'max-content max-content max-content'
-			: 'max-content'
+		friendlyRailPackAxis === 'horizontal' ? 'max-content max-content max-content' : 'max-content'
 	);
 	const packedFriendlyRows = $derived(
-		friendlyRailPackAxis === 'horizontal'
-			? 'max-content'
-			: 'max-content max-content max-content'
+		friendlyRailPackAxis === 'horizontal' ? 'max-content' : 'max-content max-content max-content'
 	);
 	const debugItems = $derived(
 		engine.addPlacement(
@@ -368,7 +376,7 @@
 			activeTracks,
 			rootGrid,
 			shouldUseSnippetZone,
-			shouldUsePackedFriendlySnippetZone ? friendlyRailPackAxis ?? undefined : undefined
+			shouldUsePackedFriendlySnippetZone ? (friendlyRailPackAxis ?? undefined) : undefined
 		)
 	);
 	const positionedItems = $derived(
@@ -379,7 +387,7 @@
 			activeTracks,
 			rootGrid,
 			shouldUseSnippetZone,
-			shouldUsePackedFriendlySnippetZone ? friendlyRailPackAxis ?? undefined : undefined
+			shouldUsePackedFriendlySnippetZone ? (friendlyRailPackAxis ?? undefined) : undefined
 		)
 	);
 	const shouldUsePlainRailsAutoFlow = $derived(
@@ -404,7 +412,9 @@
 				: className,
 			!shouldUseRootRuntime ? rootRailClassName : undefined,
 			rootRailInset ? 'has-rail-inset' : undefined,
-			rootRailInset && rootRail !== 'full' && !rootRailDefinition?.inset ? 'has-rail-safe-inset' : undefined,
+			rootRailInset && rootRail !== 'full' && !rootRailDefinition?.inset
+				? 'has-rail-safe-inset'
+				: undefined,
 			shouldUsePlainRailsAutoFlow ? 'is-plain-rails-flow' : undefined,
 			shouldUseRootRuntime ? engine.getRailClassNames(rootRails, 'is-rails') : undefined,
 			rootRailsInset ? 'has-rails-inset' : undefined,
@@ -431,25 +441,25 @@
 		class: rootClassName,
 		style: shouldUseRootRuntime
 			? engine.mergeStyles(
-				styleName,
-				rootRatio !== 'auto' ? `--grid-ratio: ${rootRatio}` : undefined,
-				rootRailColumn ? `--grid-column: ${rootRailColumn}` : undefined,
-				rootRailInset ? `--rail-inset: ${rootRailInset}` : undefined,
-				rootRailsInset ? `--rails-inset: ${rootRailsInset}` : undefined,
-				rootTemplateCols ? `--grid-template-columns: ${rootTemplateCols}` : undefined,
-				rootTemplateRows ? `--grid-template-rows: ${rootTemplateRows}` : undefined,
-				rootGap ? `gap: ${rootGap}` : undefined,
-				`--grid-row-gap: ${rootRowGap}`,
-				`--grid-col-gap: ${rootColGap}`,
-				!shouldUseSnippetZone && rootItems ? `--grid-place-items: ${rootItems}` : undefined,
-				!shouldUseSnippetZone && rootContent ? `--grid-place-content: ${rootContent}` : undefined
-			)
+					styleName,
+					rootRatio !== 'auto' ? `--grid-ratio: ${rootRatio}` : undefined,
+					rootRailColumn ? `--grid-column: ${rootRailColumn}` : undefined,
+					rootRailInset ? `--rail-inset: ${rootRailInset}` : undefined,
+					rootRailsInset ? `--rails-inset: ${rootRailsInset}` : undefined,
+					rootTemplateCols ? `--grid-template-columns: ${rootTemplateCols}` : undefined,
+					rootTemplateRows ? `--grid-template-rows: ${rootTemplateRows}` : undefined,
+					rootGap ? `gap: ${rootGap}` : undefined,
+					`--grid-row-gap: ${rootRowGap}`,
+					`--grid-col-gap: ${rootColGap}`,
+					!shouldUseSnippetZone && rootItems ? `--grid-place-items: ${rootItems}` : undefined,
+					!shouldUseSnippetZone && rootContent ? `--grid-place-content: ${rootContent}` : undefined
+				)
 			: engine.mergeStyles(
-				styleName,
-				rootRailColumn ? `grid-column: ${rootRailColumn}` : undefined,
-				rootRailInset ? `--rail-inset: ${rootRailInset}` : undefined,
-				rootRailsInset ? `--rails-inset: ${rootRailsInset}` : undefined
-			),
+					styleName,
+					rootRailColumn ? `grid-column: ${rootRailColumn}` : undefined,
+					rootRailInset ? `--rail-inset: ${rootRailInset}` : undefined,
+					rootRailsInset ? `--rails-inset: ${rootRailsInset}` : undefined
+				),
 		...rootDebugAttributes
 	} satisfies engine.RootRendererProps);
 
@@ -541,8 +551,12 @@
 			return persistContext;
 		}
 
-		const nextTag = String(tag ?? '').trim().toLowerCase();
-		const nextType = String(props.type ?? '').trim().toLowerCase();
+		const nextTag = String(tag ?? '')
+			.trim()
+			.toLowerCase();
+		const nextType = String(props.type ?? '')
+			.trim()
+			.toLowerCase();
 
 		if (!nextTag && !nextType) {
 			return undefined;
@@ -550,7 +564,7 @@
 
 		return {
 			tag: nextTag || undefined,
-			type: nextType || undefined,
+			type: nextType || undefined
 		};
 	}
 
@@ -592,7 +606,9 @@
 			console.log(
 				`parent x=${Math.round(pRect.x)} w=${Math.round(pRect.width)} pl=${Math.round(pl)} pr=${Math.round(pr)} | content x=${contentLeft}..${contentRight} w=${contentRight - contentLeft}`
 			);
-			console.log('Lines relative to content-full-start (full-start=0, full-end=contentW expected):');
+			console.log(
+				'Lines relative to content-full-start (full-start=0, full-end=contentW expected):'
+			);
 			console.table(lines);
 			console.groupEnd();
 		}
@@ -622,13 +638,16 @@
 			fallbackScope: 'components',
 			context: getPersistContext(),
 			getValue: persistGetValue,
-			setValue: persistSetValue,
+			setValue: persistSetValue
 		});
 	});
 </script>
 
 {#snippet defaultRootRenderer(args: RootRenderArgs)}
-	<svelte:element this={resolvedTag} {...args.props}>
+	<svelte:element
+		this={resolvedTag}
+		{...args.props}
+	>
 		{@render args.layout()}
 	</svelte:element>
 {/snippet}
@@ -673,19 +692,17 @@
 			line.side === 'end'
 				? 'is-debug-rail-line-end'
 				: line.side === 'center'
-				? 'is-debug-rail-line-center'
-				: 'is-debug-rail-line-start'
+					? 'is-debug-rail-line-center'
+					: 'is-debug-rail-line-start'
 		)}
-		style={
-			line.kind === 'named'
-				? engine.mergeStyles(
-						line.side === 'end'
-							? `--grid-column: content-full-start / ${line.line}`
-							: `--grid-column: ${line.line} / ${line.line}`,
-						'--grid-row: 1 / -1'
-				  )
-				: engine.mergeStyles(`--rail-debug-inset: ${line.inset}`)
-		}
+		style={line.kind === 'named'
+			? engine.mergeStyles(
+					line.side === 'end'
+						? `--grid-column: content-full-start / ${line.line}`
+						: `--grid-column: ${line.line} / ${line.line}`,
+					'--grid-row: 1 / -1'
+				)
+			: engine.mergeStyles(`--rail-debug-inset: ${line.inset}`)}
 		data-rail-debug-key={getRailDebugLineRailKey(line)}
 		data-rail-debug-side={line.side}
 		aria-hidden="true"
@@ -698,11 +715,18 @@
 {/snippet}
 
 {#snippet renderRailDebugSurface()}
-	<div class="is-debug is-debug-rail-surface" aria-hidden="true"></div>
+	<div
+		class="is-debug is-debug-rail-surface"
+		aria-hidden="true"
+	></div>
 {/snippet}
 
 {#snippet renderRailDebugOverlay()}
-	<div class="is-debug-rail-overlay" aria-hidden="true" bind:this={_overlayEl}>
+	<div
+		class="is-debug-rail-overlay"
+		aria-hidden="true"
+		bind:this={_overlayEl}
+	>
 		{@render renderRailDebugSurface()}
 
 		{#each railDebugLines as line (line.key)}
@@ -737,8 +761,8 @@
 					shouldUsePackedFriendlySnippetZone && packedFriendlyContent
 						? `--grid-place-content: ${packedFriendlyContent}`
 						: !shouldUsePackedFriendlySnippetZone && rootContent
-						? `--grid-place-content: ${rootContent}`
-						: undefined
+							? `--grid-place-content: ${rootContent}`
+							: undefined
 				)}
 			>
 				{#each debugItems as item (item.key)}
@@ -853,33 +877,33 @@
 			--track-xxl: minmax(0, calc((var(--size-xxl) - var(--size-xl)) / 2));
 			grid-template-columns:
 				[content-full-start]
-					var(--edge)
-					[content-xxl-start]
-						var(--track-xxl)
-						[content-xl-start]
-							var(--track-xl)
-							[content-lg-start]
-								var(--track-lg)
-								[content-md-start]
-									var(--track-content)
-									[content-sm-start]
-										var(--track-sm)
-										[content-xs-start]
-											var(--track-xs-half)
-											[content-center]
-											var(--track-xs-half)
-										[content-xs-end]
-										var(--track-sm)
-									[content-sm-end]
-									var(--track-content)
-								[content-md-end]
-								var(--track-lg)
-							[content-lg-end]
-							var(--track-xl)
-						[content-xl-end]
-						var(--track-xxl)
-					[content-xxl-end]
-					var(--edge)
+				var(--edge)
+				[content-xxl-start]
+				var(--track-xxl)
+				[content-xl-start]
+				var(--track-xl)
+				[content-lg-start]
+				var(--track-lg)
+				[content-md-start]
+				var(--track-content)
+				[content-sm-start]
+				var(--track-sm)
+				[content-xs-start]
+				var(--track-xs-half)
+				[content-center]
+				var(--track-xs-half)
+				[content-xs-end]
+				var(--track-sm)
+				[content-sm-end]
+				var(--track-content)
+				[content-md-end]
+				var(--track-lg)
+				[content-lg-end]
+				var(--track-xl)
+				[content-xl-end]
+				var(--track-xxl)
+				[content-xxl-end]
+				var(--edge)
 				[content-full-end];
 		}
 
@@ -905,8 +929,31 @@
 		}
 
 		:where(
-			.root-grid > :where(.is-cell, .is-row, .is-col, .is-range, .is-half, .is-full, .is-bg, .is-fg, .is-debug),
-			.root-grid > .is-snippet-zone > :where(.is-cell, .is-row, .is-col, .is-range, .is-half, .is-full, .is-bg, .is-fg, .is-debug)
+			.root-grid
+				> :where(
+					.is-cell,
+					.is-row,
+					.is-col,
+					.is-range,
+					.is-half,
+					.is-full,
+					.is-bg,
+					.is-fg,
+					.is-debug
+				),
+			.root-grid
+				> .is-snippet-zone
+				> :where(
+					.is-cell,
+					.is-row,
+					.is-col,
+					.is-range,
+					.is-half,
+					.is-full,
+					.is-bg,
+					.is-fg,
+					.is-debug
+				)
 		) {
 			box-sizing: border-box;
 			position: relative;
@@ -921,7 +968,8 @@
 			place-self: start;
 		}
 
-		.root-grid.is-grid-rails > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
+		.root-grid.is-grid-rails
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
 			grid-column: content-md-start / content-md-end;
 		}
 
@@ -938,43 +986,90 @@
 			column-gap: inherit;
 		}
 
-		.root-grid.is-grid-rails > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
+		.root-grid.is-grid-rails
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
 			grid-column: content-md-start / content-md-end;
 		}
 
-		.root-grid.is-grid-rails.is-rails-content-xs > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-content-xs > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
+		.root-grid.is-grid-rails.is-rails-content-xs
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-content-xs
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
 			grid-column: content-xs-start / content-xs-end;
 		}
 
-		.root-grid.is-grid-rails.is-rails-content-sm > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-content-sm > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
+		.root-grid.is-grid-rails.is-rails-content-sm
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-content-sm
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
 			grid-column: content-sm-start / content-sm-end;
 		}
 
-		.root-grid.is-grid-rails.is-rails-content > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-content-md > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-content > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)),
-		.root-grid.is-grid-rails.is-rails-content-md > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
+		.root-grid.is-grid-rails.is-rails-content
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-content-md
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-content
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)),
+		.root-grid.is-grid-rails.is-rails-content-md
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
 			grid-column: content-md-start / content-md-end;
 		}
 
-		.root-grid.is-grid-rails.is-rails-content-lg > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-popout > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-content-lg > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)),
-		.root-grid.is-grid-rails.is-rails-popout > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
+		.root-grid.is-grid-rails.is-rails-content-lg
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-popout
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-content-lg
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)),
+		.root-grid.is-grid-rails.is-rails-popout
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
 			grid-column: content-lg-start / content-lg-end;
 		}
 
-		.root-grid.is-grid-rails.is-rails-content-xl > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-content-xl > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
+		.root-grid.is-grid-rails.is-rails-content-xl
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-content-xl
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
 			grid-column: content-xl-start / content-xl-end;
 		}
 
-		.root-grid.is-grid-rails.is-rails-xxl > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-content-xxl > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-xxl > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)),
-		.root-grid.is-grid-rails.is-rails-content-xxl > .is-rail-zone > :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
+		.root-grid.is-grid-rails.is-rails-xxl
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-content-xxl
+			> :where(
+				:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface):not(.is-rail-zone)
+			),
+		.root-grid.is-grid-rails.is-rails-xxl
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)),
+		.root-grid.is-grid-rails.is-rails-content-xxl
+			> .is-rail-zone
+			> :where(:not(.is-debug):not(.is-debug-rail-line):not(.is-debug-rail-surface)) {
 			grid-column: content-xxl-start / content-xxl-end;
 		}
 
@@ -1042,36 +1137,40 @@
 		}
 
 		.root-grid.is-grid-rails:is(
-			.is-rails-full.has-rails-inset,
-			.is-rails-gutter-xs,
-			.is-rails-gutter-sm,
-			.is-rails-gutter-md,
-			.is-rails-gutter-lg,
-			.is-rails-gutter-xl,
-			.is-rails-gutter-xxl,
-			.is-rails-full-inset-sm,
-			.is-rails-full-inset-md,
-			.is-rails-full-inset-lg
-		) > :where(:not(.is-debug):not(.is-rail-zone)),
+				.is-rails-full.has-rails-inset,
+				.is-rails-gutter-xs,
+				.is-rails-gutter-sm,
+				.is-rails-gutter-md,
+				.is-rails-gutter-lg,
+				.is-rails-gutter-xl,
+				.is-rails-gutter-xxl,
+				.is-rails-full-inset-sm,
+				.is-rails-full-inset-md,
+				.is-rails-full-inset-lg
+			)
+			> :where(:not(.is-debug):not(.is-rail-zone)),
 		.root-grid.is-grid-rails:is(
-			.is-rails-full.has-rails-inset,
-			.is-rails-gutter-xs,
-			.is-rails-gutter-sm,
-			.is-rails-gutter-md,
-			.is-rails-gutter-lg,
-			.is-rails-gutter-xl,
-			.is-rails-gutter-xxl,
-			.is-rails-full-inset-sm,
-			.is-rails-full-inset-md,
-			.is-rails-full-inset-lg
-		) > .is-rail-zone > :where(:not(.is-debug)) {
+				.is-rails-full.has-rails-inset,
+				.is-rails-gutter-xs,
+				.is-rails-gutter-sm,
+				.is-rails-gutter-md,
+				.is-rails-gutter-lg,
+				.is-rails-gutter-xl,
+				.is-rails-gutter-xxl,
+				.is-rails-full-inset-sm,
+				.is-rails-full-inset-md,
+				.is-rails-full-inset-lg
+			)
+			> .is-rail-zone
+			> :where(:not(.is-debug)) {
 			justify-self: center;
 			width: calc(100% - (var(--rails-inset) * 2));
 			max-width: calc(100% - (var(--rails-inset) * 2));
 		}
 
 		.root-grid.is-grid-rails.is-rails-bleed-left > :where(:not(.is-debug):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-bleed-left-center > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-left-center
+			> :where(:not(.is-debug):not(.is-rail-zone)),
 		.root-grid.is-grid-rails.is-rails-bleed-left-half > :where(:not(.is-debug):not(.is-rail-zone)),
 		.root-grid.is-grid-rails.is-rails-bleed-left > .is-rail-zone > :where(:not(.is-debug)),
 		.root-grid.is-grid-rails.is-rails-bleed-left-center > .is-rail-zone > :where(:not(.is-debug)),
@@ -1080,7 +1179,8 @@
 		}
 
 		.root-grid.is-grid-rails.is-rails-bleed-right > :where(:not(.is-debug):not(.is-rail-zone)),
-		.root-grid.is-grid-rails.is-rails-bleed-right-center > :where(:not(.is-debug):not(.is-rail-zone)),
+		.root-grid.is-grid-rails.is-rails-bleed-right-center
+			> :where(:not(.is-debug):not(.is-rail-zone)),
 		.root-grid.is-grid-rails.is-rails-bleed-right-half > :where(:not(.is-debug):not(.is-rail-zone)),
 		.root-grid.is-grid-rails.is-rails-bleed-right > .is-rail-zone > :where(:not(.is-debug)),
 		.root-grid.is-grid-rails.is-rails-bleed-right-center > .is-rail-zone > :where(:not(.is-debug)),
@@ -1149,12 +1249,16 @@
 		}
 
 		.root-grid.is-grid-rails > :is(.content, .content-md, .is-rail-content, .is-rail-content-md),
-		.root-grid.is-grid-rails > .is-rail-zone > :is(.content, .content-md, .is-rail-content, .is-rail-content-md) {
+		.root-grid.is-grid-rails
+			> .is-rail-zone
+			> :is(.content, .content-md, .is-rail-content, .is-rail-content-md) {
 			grid-column: content-md-start / content-md-end;
 		}
 
 		.root-grid.is-grid-rails > :is(.content-lg, .popout, .is-rail-content-lg, .is-rail-popout),
-		.root-grid.is-grid-rails > .is-rail-zone > :is(.content-lg, .popout, .is-rail-content-lg, .is-rail-popout) {
+		.root-grid.is-grid-rails
+			> .is-rail-zone
+			> :is(.content-lg, .popout, .is-rail-content-lg, .is-rail-popout) {
 			grid-column: content-lg-start / content-lg-end;
 		}
 
@@ -1164,12 +1268,75 @@
 		}
 
 		.root-grid.is-grid-rails > :is(.xxl, .content-xxl, .is-rail-xxl, .is-rail-content-xxl),
-		.root-grid.is-grid-rails > .is-rail-zone > :is(.xxl, .content-xxl, .is-rail-xxl, .is-rail-content-xxl) {
+		.root-grid.is-grid-rails
+			> .is-rail-zone
+			> :is(.xxl, .content-xxl, .is-rail-xxl, .is-rail-content-xxl) {
 			grid-column: content-xxl-start / content-xxl-end;
 		}
 
-		.root-grid.is-grid-rails > :is(.content-full, .full, .gutter-xs, .gutter-sm, .gutter-md, .gutter-lg, .gutter-xl, .gutter-xxl, .full-inset-sm, .full-inset-md, .full-inset-lg, .full-inset-xl, .full-inset-xxl, .bleed, .is-rail-content-full, .is-rail-full, .is-rail-gutter-xs, .is-rail-gutter-sm, .is-rail-gutter-md, .is-rail-gutter-lg, .is-rail-gutter-xl, .is-rail-gutter-xxl, .is-rail-full-inset-sm, .is-rail-full-inset-md, .is-rail-full-inset-lg, .is-rail-full-inset-xl, .is-rail-full-inset-xxl, .is-rail-bleed),
-		.root-grid.is-grid-rails > .is-rail-zone > :is(.content-full, .full, .gutter-xs, .gutter-sm, .gutter-md, .gutter-lg, .gutter-xl, .gutter-xxl, .full-inset-sm, .full-inset-md, .full-inset-lg, .full-inset-xl, .full-inset-xxl, .bleed, .is-rail-content-full, .is-rail-full, .is-rail-gutter-xs, .is-rail-gutter-sm, .is-rail-gutter-md, .is-rail-gutter-lg, .is-rail-gutter-xl, .is-rail-gutter-xxl, .is-rail-full-inset-sm, .is-rail-full-inset-md, .is-rail-full-inset-lg, .is-rail-full-inset-xl, .is-rail-full-inset-xxl, .is-rail-bleed) {
+		.root-grid.is-grid-rails
+			> :is(
+				.content-full,
+				.full,
+				.gutter-xs,
+				.gutter-sm,
+				.gutter-md,
+				.gutter-lg,
+				.gutter-xl,
+				.gutter-xxl,
+				.full-inset-sm,
+				.full-inset-md,
+				.full-inset-lg,
+				.full-inset-xl,
+				.full-inset-xxl,
+				.bleed,
+				.is-rail-content-full,
+				.is-rail-full,
+				.is-rail-gutter-xs,
+				.is-rail-gutter-sm,
+				.is-rail-gutter-md,
+				.is-rail-gutter-lg,
+				.is-rail-gutter-xl,
+				.is-rail-gutter-xxl,
+				.is-rail-full-inset-sm,
+				.is-rail-full-inset-md,
+				.is-rail-full-inset-lg,
+				.is-rail-full-inset-xl,
+				.is-rail-full-inset-xxl,
+				.is-rail-bleed
+			),
+		.root-grid.is-grid-rails
+			> .is-rail-zone
+			> :is(
+				.content-full,
+				.full,
+				.gutter-xs,
+				.gutter-sm,
+				.gutter-md,
+				.gutter-lg,
+				.gutter-xl,
+				.gutter-xxl,
+				.full-inset-sm,
+				.full-inset-md,
+				.full-inset-lg,
+				.full-inset-xl,
+				.full-inset-xxl,
+				.bleed,
+				.is-rail-content-full,
+				.is-rail-full,
+				.is-rail-gutter-xs,
+				.is-rail-gutter-sm,
+				.is-rail-gutter-md,
+				.is-rail-gutter-lg,
+				.is-rail-gutter-xl,
+				.is-rail-gutter-xxl,
+				.is-rail-full-inset-sm,
+				.is-rail-full-inset-md,
+				.is-rail-full-inset-lg,
+				.is-rail-full-inset-xl,
+				.is-rail-full-inset-xxl,
+				.is-rail-bleed
+			) {
 			grid-column: content-full-start / content-full-end;
 		}
 
@@ -1228,20 +1395,107 @@
 			--rail-inset: var(--rail-inset-xxl);
 		}
 
-		.root-grid.is-grid-rails > :is(.full.has-rail-inset, .is-rail-full.has-rail-inset, .gutter-xs, .gutter-sm, .gutter-md, .gutter-lg, .gutter-xl, .gutter-xxl, .full-inset-sm, .full-inset-md, .full-inset-lg, .full-inset-xl, .full-inset-xxl, .is-rail-gutter-xs, .is-rail-gutter-sm, .is-rail-gutter-md, .is-rail-gutter-lg, .is-rail-gutter-xl, .is-rail-gutter-xxl, .is-rail-full-inset-sm, .is-rail-full-inset-md, .is-rail-full-inset-lg, .is-rail-full-inset-xl, .is-rail-full-inset-xxl),
-		.root-grid.is-grid-rails > .is-rail-zone > :is(.full.has-rail-inset, .is-rail-full.has-rail-inset, .gutter-xs, .gutter-sm, .gutter-md, .gutter-lg, .gutter-xl, .gutter-xxl, .full-inset-sm, .full-inset-md, .full-inset-lg, .full-inset-xl, .full-inset-xxl, .is-rail-gutter-xs, .is-rail-gutter-sm, .is-rail-gutter-md, .is-rail-gutter-lg, .is-rail-gutter-xl, .is-rail-gutter-xxl, .is-rail-full-inset-sm, .is-rail-full-inset-md, .is-rail-full-inset-lg, .is-rail-full-inset-xl, .is-rail-full-inset-xxl) {
+		.root-grid.is-grid-rails
+			> :is(
+				.full.has-rail-inset,
+				.is-rail-full.has-rail-inset,
+				.gutter-xs,
+				.gutter-sm,
+				.gutter-md,
+				.gutter-lg,
+				.gutter-xl,
+				.gutter-xxl,
+				.full-inset-sm,
+				.full-inset-md,
+				.full-inset-lg,
+				.full-inset-xl,
+				.full-inset-xxl,
+				.is-rail-gutter-xs,
+				.is-rail-gutter-sm,
+				.is-rail-gutter-md,
+				.is-rail-gutter-lg,
+				.is-rail-gutter-xl,
+				.is-rail-gutter-xxl,
+				.is-rail-full-inset-sm,
+				.is-rail-full-inset-md,
+				.is-rail-full-inset-lg,
+				.is-rail-full-inset-xl,
+				.is-rail-full-inset-xxl
+			),
+		.root-grid.is-grid-rails
+			> .is-rail-zone
+			> :is(
+				.full.has-rail-inset,
+				.is-rail-full.has-rail-inset,
+				.gutter-xs,
+				.gutter-sm,
+				.gutter-md,
+				.gutter-lg,
+				.gutter-xl,
+				.gutter-xxl,
+				.full-inset-sm,
+				.full-inset-md,
+				.full-inset-lg,
+				.full-inset-xl,
+				.full-inset-xxl,
+				.is-rail-gutter-xs,
+				.is-rail-gutter-sm,
+				.is-rail-gutter-md,
+				.is-rail-gutter-lg,
+				.is-rail-gutter-xl,
+				.is-rail-gutter-xxl,
+				.is-rail-full-inset-sm,
+				.is-rail-full-inset-md,
+				.is-rail-full-inset-lg,
+				.is-rail-full-inset-xl,
+				.is-rail-full-inset-xxl
+			) {
 			justify-self: center;
 			width: calc(100% - (var(--rail-inset) * 2));
 			max-width: calc(100% - (var(--rail-inset) * 2));
 		}
 
-		.root-grid.is-grid-rails > :is(.bleed-left, .bleed-left-center, .bleed-left-half, .is-rail-bleed-left, .is-rail-bleed-left-center, .is-rail-bleed-left-half),
-		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-left, .bleed-left-center, .bleed-left-half, .is-rail-bleed-left, .is-rail-bleed-left-center, .is-rail-bleed-left-half) {
+		.root-grid.is-grid-rails
+			> :is(
+				.bleed-left,
+				.bleed-left-center,
+				.bleed-left-half,
+				.is-rail-bleed-left,
+				.is-rail-bleed-left-center,
+				.is-rail-bleed-left-half
+			),
+		.root-grid.is-grid-rails
+			> .is-rail-zone
+			> :is(
+				.bleed-left,
+				.bleed-left-center,
+				.bleed-left-half,
+				.is-rail-bleed-left,
+				.is-rail-bleed-left-center,
+				.is-rail-bleed-left-half
+			) {
 			grid-column: content-full-start / content-center;
 		}
 
-		.root-grid.is-grid-rails > :is(.bleed-right, .bleed-right-center, .bleed-right-half, .is-rail-bleed-right, .is-rail-bleed-right-center, .is-rail-bleed-right-half),
-		.root-grid.is-grid-rails > .is-rail-zone > :is(.bleed-right, .bleed-right-center, .bleed-right-half, .is-rail-bleed-right, .is-rail-bleed-right-center, .is-rail-bleed-right-half) {
+		.root-grid.is-grid-rails
+			> :is(
+				.bleed-right,
+				.bleed-right-center,
+				.bleed-right-half,
+				.is-rail-bleed-right,
+				.is-rail-bleed-right-center,
+				.is-rail-bleed-right-half
+			),
+		.root-grid.is-grid-rails
+			> .is-rail-zone
+			> :is(
+				.bleed-right,
+				.bleed-right-center,
+				.bleed-right-half,
+				.is-rail-bleed-right,
+				.is-rail-bleed-right-center,
+				.is-rail-bleed-right-half
+			) {
 			grid-column: content-center / content-full-end;
 		}
 
@@ -1325,7 +1579,9 @@
 			overflow: visible;
 		}
 
-		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line.is-debug-rail-line-active {
+		.root-grid.is-grid-rails
+			> .is-debug-rail-overlay
+			> .is-debug-rail-line.is-debug-rail-line-active {
 			z-index: 7;
 			background: var(--rail-debug-active-line-color);
 		}
@@ -1335,7 +1591,9 @@
 			justify-self: start;
 		}
 
-		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line-named.is-debug-rail-line-end {
+		.root-grid.is-grid-rails
+			> .is-debug-rail-overlay
+			> .is-debug-rail-line-named.is-debug-rail-line-end {
 			justify-self: end;
 			left: auto;
 			right: 0;
@@ -1346,7 +1604,9 @@
 			left: var(--rail-debug-inset);
 		}
 
-		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line-inset.is-debug-rail-line-end {
+		.root-grid.is-grid-rails
+			> .is-debug-rail-overlay
+			> .is-debug-rail-line-inset.is-debug-rail-line-end {
 			left: auto;
 			right: var(--rail-debug-inset);
 		}
@@ -1367,7 +1627,10 @@
 			white-space: nowrap;
 		}
 
-		.root-grid.is-grid-rails > .is-debug-rail-overlay > .is-debug-rail-line.is-debug-rail-line-active .slot-fallback {
+		.root-grid.is-grid-rails
+			> .is-debug-rail-overlay
+			> .is-debug-rail-line.is-debug-rail-line-active
+			.slot-fallback {
 			z-index: 8;
 			background: var(--rail-debug-active-line-color);
 		}
@@ -1397,8 +1660,13 @@
 
 		.root-grid > .is-debug :where(*, *::before, *::after),
 		.root-grid > .is-snippet-zone > .is-debug :where(*, *::before, *::after),
-		.root-grid.is-grid-rails > .is-debug-rail-overlay > :where(.is-debug-rail-surface, .is-debug-rail-line),
-		.root-grid.is-grid-rails > .is-debug-rail-overlay > :where(.is-debug-rail-surface, .is-debug-rail-line) :where(*, *::before, *::after) {
+		.root-grid.is-grid-rails
+			> .is-debug-rail-overlay
+			> :where(.is-debug-rail-surface, .is-debug-rail-line),
+		.root-grid.is-grid-rails
+			> .is-debug-rail-overlay
+			> :where(.is-debug-rail-surface, .is-debug-rail-line)
+			:where(*, *::before, *::after) {
 			pointer-events: none;
 			user-select: none;
 			-webkit-user-select: none;
@@ -1449,14 +1717,32 @@
 			z-index: 4;
 		}
 
-		.is-tl { place-self: var(--tl); }
-		.is-tc { place-self: var(--tc); }
-		.is-tr { place-self: var(--tr); }
-		.is-lc { place-self: var(--lc); }
-		.is-cc { place-self: var(--cc); }
-		.is-rc { place-self: var(--rc); }
-		.is-bl { place-self: var(--bl); }
-		.is-bc { place-self: var(--bc); }
-		.is-br { place-self: var(--br); }
+		.is-tl {
+			place-self: var(--tl);
+		}
+		.is-tc {
+			place-self: var(--tc);
+		}
+		.is-tr {
+			place-self: var(--tr);
+		}
+		.is-lc {
+			place-self: var(--lc);
+		}
+		.is-cc {
+			place-self: var(--cc);
+		}
+		.is-rc {
+			place-self: var(--rc);
+		}
+		.is-bl {
+			place-self: var(--bl);
+		}
+		.is-bc {
+			place-self: var(--bc);
+		}
+		.is-br {
+			place-self: var(--br);
+		}
 	}
 </style>

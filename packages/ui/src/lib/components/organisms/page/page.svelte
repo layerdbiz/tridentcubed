@@ -5,23 +5,21 @@
 		variant?: string;
 	}
 
-	let {
-		children = undefined,
-		...props
-	}: PreviewPageProps = $props();
+	let { children = undefined, ...props }: PreviewPageProps = $props();
 </script>
 
 <Component {...props}>
 	{#snippet component({ props })}
-		<div {...props} 
-					class="
-						bg-white 
-						outline-black 
-						outline-2 
-						aspect-[8.5/11] 
-						w-full h-full
-						origin-top-left 
-						overflow-hidden 
+		<div
+			{...props}
+			class="
+						aspect-[8.5/11]
+						h-full
+						w-full
+						origin-top-left
+						overflow-hidden bg-white
+						outline-2
+						outline-black
 						{props.class ?? ''}"
 		>
 			{@render children?.()}

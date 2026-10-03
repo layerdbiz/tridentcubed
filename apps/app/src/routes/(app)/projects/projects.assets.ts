@@ -1,15 +1,15 @@
-import { browser } from "$app/env";
+import { browser } from '$app/env';
 
-import { storageKey } from "./projects.constants";
-import type * as projectTypes from "./projects.types";
+import { storageKey } from './projects.constants';
+import type * as projectTypes from './projects.types';
 
 const databaseName = `${storageKey}-assets`;
-const storeName = "photos";
-const assetReferencePrefix = "photo-store://";
+const storeName = 'photos';
+const assetReferencePrefix = 'photo-store://';
 const assetUrlCache = new Map<string, string>();
 
 function createAssetKey(): string {
-	if (browser && typeof crypto.randomUUID === "function") {
+	if (browser && typeof crypto.randomUUID === 'function') {
 		return `photo-${crypto.randomUUID()}`;
 	}
 
@@ -18,8 +18,8 @@ function createAssetKey(): string {
 
 function openDatabase(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
-		if (!browser || !("indexedDB" in window)) {
-			reject(new Error("IndexedDB is not available in this browser context."));
+		if (!browser || !('indexedDB' in window)) {
+			reject(new Error('IndexedDB is not available in this browser context.'));
 			return;
 		}
 
@@ -39,7 +39,7 @@ function openDatabase(): Promise<IDBDatabase> {
 
 async function withStore<T>(
 	mode: IDBTransactionMode,
-	handler: (store: IDBObjectStore) => IDBRequest<T>,
+	handler: (store: IDBObjectStore) => IDBRequest<T>
 ): Promise<T> {
 	const database = await openDatabase();
 
@@ -75,15 +75,15 @@ function createAssetReference(key: string): string {
 }
 
 async function storeBlob(key: string, blob: Blob): Promise<void> {
-	await withStore("readwrite", (store) => store.put(blob, key));
+	await withStore('readwrite', (store) => store.put(blob, key));
 }
 
 async function readBlob(key: string): Promise<Blob | null> {
-	return await withStore("readonly", (store) => store.get(key)) ?? null;
+	return (await withStore('readonly', (store) => store.get(key))) ?? null;
 }
 
 async function deleteBlob(key: string): Promise<void> {
-	await withStore("readwrite", (store) => store.delete(key));
+	await withStore('readwrite', (store) => store.delete(key));
 }
 
 async function cacheObjectUrl(reference: string, blob: Blob): Promise<string> {
@@ -94,7 +94,7 @@ async function cacheObjectUrl(reference: string, blob: Blob): Promise<string> {
 }
 
 function collectFieldValueAssetReferences(
-	value: projectTypes.FieldStateValueType | undefined,
+	value: projectTypes.FieldStateValueType | undefined
 ): string[] {
 	if (Array.isArray(value)) {
 		return value.filter((item) => isStoredAssetReference(item));
@@ -103,22 +103,18 @@ function collectFieldValueAssetReferences(
 	return isStoredAssetReference(value) ? [value] : [];
 }
 
-export function isStoredAssetReference(
-	value: string | null | undefined,
-): value is string {
+export function isStoredAssetReference(value: string | null | undefined): value is string {
 	return Boolean(value?.startsWith(assetReferencePrefix));
 }
 
-export function getStoredAssetKey(
-	value: string | null | undefined,
-): string | null {
+export function getStoredAssetKey(value: string | null | undefined): string | null {
 	if (!isStoredAssetReference(value)) return null;
 	return value.slice(assetReferencePrefix.length) || null;
 }
 
 export function getRenderableAssetUrl(value: string): string {
 	if (!isStoredAssetReference(value)) return value;
-	return assetUrlCache.get(value) ?? "";
+	return assetUrlCache.get(value) ?? '';
 }
 
 export async function saveImageFile(file: File): Promise<string> {
@@ -138,21 +134,19 @@ export async function resolveAssetUrl(value: string): Promise<string> {
 	if (cachedUrl) return cachedUrl;
 
 	const assetKey = getStoredAssetKey(value);
-	if (!assetKey) return "";
+	if (!assetKey) return '';
 
 	const blob = await readBlob(assetKey);
-	if (!blob) return "";
+	if (!blob) return '';
 
 	return cacheObjectUrl(value, blob);
 }
 
-export async function preloadSectionAssetUrls(
-	sections: projectTypes.SectionType[],
-): Promise<void> {
+export async function preloadSectionAssetUrls(sections: projectTypes.SectionType[]): Promise<void> {
 	const references = new Set<string>();
 
 	for (const section of sections) {
-		if (section.type === "fields" || section.type === "cover") {
+		if (section.type === 'fields' || section.type === 'cover') {
 			for (const value of Object.values(section.fields)) {
 				for (const reference of collectFieldValueAssetReferences(value)) {
 					references.add(reference);
@@ -160,7 +154,7 @@ export async function preloadSectionAssetUrls(
 			}
 		}
 
-		if (section.type !== "photos") continue;
+		if (section.type !== 'photos') continue;
 
 		for (const group of section.groups) {
 			for (const photo of group.photos) {
@@ -169,9 +163,7 @@ export async function preloadSectionAssetUrls(
 		}
 	}
 
-	await Promise.all(
-		Array.from(references).map((reference) => resolveAssetUrl(reference)),
-	);
+	await Promise.all(Array.from(references).map((reference) => resolveAssetUrl(reference)));
 }
 
 export async function removeStoredAsset(value: string): Promise<void> {
@@ -182,13 +174,11 @@ export async function removeStoredAsset(value: string): Promise<void> {
 	await deleteBlob(assetKey);
 }
 
-export async function removeSectionAssets(
-	sections: projectTypes.SectionType[],
-): Promise<void> {
+export async function removeSectionAssets(sections: projectTypes.SectionType[]): Promise<void> {
 	const references = new Set<string>();
 
 	for (const section of sections) {
-		if (section.type === "fields" || section.type === "cover") {
+		if (section.type === 'fields' || section.type === 'cover') {
 			for (const value of Object.values(section.fields)) {
 				for (const reference of collectFieldValueAssetReferences(value)) {
 					references.add(reference);
@@ -196,7 +186,7 @@ export async function removeSectionAssets(
 			}
 		}
 
-		if (section.type !== "photos") continue;
+		if (section.type !== 'photos') continue;
 
 		for (const group of section.groups) {
 			for (const photo of group.photos) {
@@ -205,32 +195,30 @@ export async function removeSectionAssets(
 		}
 	}
 
-	await Promise.all(
-		Array.from(references).map((reference) => removeStoredAsset(reference)),
-	);
+	await Promise.all(Array.from(references).map((reference) => removeStoredAsset(reference)));
 }
 
 export async function clearStoredAssets(): Promise<void> {
-	if (!browser || !("indexedDB" in window)) return;
+	if (!browser || !('indexedDB' in window)) return;
 
 	for (const reference of assetUrlCache.keys()) {
 		revokeCachedUrl(reference);
 	}
 
-	await withStore("readwrite", (store) => store.clear());
+	await withStore('readwrite', (store) => store.clear());
 }
 
 export async function getExportableImageSource(value: string): Promise<string> {
 	const resolvedValue = await resolveAssetUrl(value);
-	if (!resolvedValue || resolvedValue.startsWith("data:")) return resolvedValue;
-	if (!resolvedValue.startsWith("blob:")) return resolvedValue;
+	if (!resolvedValue || resolvedValue.startsWith('data:')) return resolvedValue;
+	if (!resolvedValue.startsWith('blob:')) return resolvedValue;
 
 	const response = await fetch(resolvedValue);
 	const blob = await response.blob();
 
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
-		reader.onload = () => resolve(String(reader.result || ""));
+		reader.onload = () => resolve(String(reader.result || ''));
 		reader.onerror = () => reject(reader.error);
 		reader.readAsDataURL(blob);
 	});

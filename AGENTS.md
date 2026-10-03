@@ -59,9 +59,9 @@ it running, and report every Network URL it prints, without being asked, in
 every kind of session (local, cloud, remote, SSH). For Trident that is four
 URLs: app dev, app preview, site dev, site preview. Give each app its own
 port and run the servers in the background, for example
-`pnpm exec vite dev --host --port 5173` and
-`pnpm exec vite preview --host --port 4173` inside `apps/site`, and 5174 and
-4174 inside `apps/app`. Preview needs a `vite build` first. A localhost-only
+`pnpm exec vp dev --host --port 5173` and
+`pnpm exec vp preview --host --port 4173` inside `apps/site`, and 5174 and
+4174 inside `apps/app`. Preview needs a `vp build` first. A localhost-only
 run that is fetched with curl and then killed does not count as running the
 app.
 
@@ -96,9 +96,14 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   module `$state` behind exported functions for a singleton; `createContext`
   for anything server rendering may mutate. A `.svelte.ts` suffix means the
   file uses runes.
-- **Tests** sit beside the file they test as `<name>.test.ts`, written with
-  `/tdd` once Vitest lands with `vp`. Lint takes over from this prose where
-  Oxlint can express a rule.
+- **Tests** sit beside the file they test as `<name>.test.ts` (rune tests as
+  `<name>.svelte.test.ts`), written with `/tdd` and imported from
+  `vite-plus/test`. Lint takes over from this prose where Oxlint can express a
+  rule.
+- **Checks before a PR.** `pnpm exec vp check` (Oxfmt and Oxlint, config in
+  the root `vite.config.ts`), `pnpm test`, and `svelte-check` with zero errors
+  on app, site and `packages/ui` (`pnpm --filter <name> check`). `vp check
+  --fix` formats and applies safe lint fixes.
 
 <!-- BEGIN:turborepo-agent-rules -->
 

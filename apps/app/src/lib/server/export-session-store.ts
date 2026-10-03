@@ -16,9 +16,7 @@ function cleanupExpiredSessions(now = Date.now()) {
 	}
 }
 
-export function createExportSession<DataType>(
-	input: { data: DataType; filename: string },
-) {
+export function createExportSession<DataType>(input: { data: DataType; filename: string }) {
 	cleanupExpiredSessions();
 
 	const token = crypto.randomUUID();
@@ -26,7 +24,7 @@ export function createExportSession<DataType>(
 		token,
 		data: input.data,
 		filename: input.filename,
-		createdAt: Date.now(),
+		createdAt: Date.now()
 	};
 
 	sessions.set(token, session);

@@ -10,10 +10,10 @@
 
 		void (async () => {
 			const persistedItem = await persist.load('crudVanilla.input', '', {
-				storage: 'indexeddb',
+				storage: 'indexeddb'
 			});
 			const persistedItems = await persist.load<string[]>('crudVanilla.items', [], {
-				storage: 'indexeddb',
+				storage: 'indexeddb'
 			});
 
 			if (isCancelled) return;
@@ -34,7 +34,7 @@
 	bind:value={item}
 	oninput={() => {
 		void persist.save('crudVanilla.input', item, {
-			storage: 'indexeddb',
+			storage: 'indexeddb'
 		});
 	}}
 />
@@ -50,11 +50,11 @@
 			item = '';
 
 			await persist.save('crudVanilla.items', items, {
-				storage: 'indexeddb',
+				storage: 'indexeddb'
 			});
 
 			await persist.remove('crudVanilla.input', {
-				storage: 'indexeddb',
+				storage: 'indexeddb'
 			});
 		})();
 	}}
@@ -69,7 +69,7 @@
 			item = '';
 
 			await persist.clear('crudVanilla', {
-				storage: 'indexeddb',
+				storage: 'indexeddb'
 			});
 		})();
 	}}
@@ -88,7 +88,7 @@
 						items = items.filter((_, itemIndex) => itemIndex !== index);
 
 						await persist.save('crudVanilla.items', items, {
-							storage: 'indexeddb',
+							storage: 'indexeddb'
 						});
 					})();
 				}}

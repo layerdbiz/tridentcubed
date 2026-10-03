@@ -78,23 +78,48 @@
 		return page.url.searchParams.get('pane') === 'preview' ? 'preview' : 'edit';
 	});
 	const overallMetrics = $derived(projectUtils.getOverallPanelMetrics(sections));
-	const timeLogSection = $derived(sections.find((section) => section.type === 'time-log') as projectTypes.TimeLogSectionType | undefined);
-	const photoSections = $derived(sections.filter((section) => section.type === 'photos') as projectTypes.PhotosSectionType[]);
+	const timeLogSection = $derived(
+		sections.find((section) => section.type === 'time-log') as
+			| projectTypes.TimeLogSectionType
+			| undefined
+	);
+	const photoSections = $derived(
+		sections.filter((section) => section.type === 'photos') as projectTypes.PhotosSectionType[]
+	);
 	const customPhotoSection = $derived(
 		customPanelDefinition
 			? photoSections.find((section) => section.panelId === customPanelDefinition.id)
 			: undefined
 	);
-	const reportTitle = $derived(projectDataUtils.getProjectDataString(projectData, 'project.title') || 'Survey Report');
-	const reportSubtitle = $derived(projectDataUtils.getProjectDataString(projectData, 'project.subtitle'));
+	const reportTitle = $derived(
+		projectDataUtils.getProjectDataString(projectData, 'project.title') || 'Survey Report'
+	);
+	const reportSubtitle = $derived(
+		projectDataUtils.getProjectDataString(projectData, 'project.subtitle')
+	);
 	const exportFileName = $derived(`${projectUtils.slugify(reportTitle || 'survey-report')}.pdf`);
 	const projectSummaryItems = $derived<projectTypes.PreviewSummaryItemType[]>([
-		{ label: 'Organization', value: projectDataUtils.getProjectDataString(projectData, 'org.name') || '—' },
+		{
+			label: 'Organization',
+			value: projectDataUtils.getProjectDataString(projectData, 'org.name') || '—'
+		},
 		{ label: 'Project', value: reportTitle || '—', emphasis: true },
-		{ label: 'Client', value: projectDataUtils.getProjectDataString(projectData, 'client.company') || '—' },
-		{ label: 'Facility', value: projectDataUtils.getProjectDataString(projectData, 'facility.name') || '—' },
-		{ label: 'Carrier', value: projectDataUtils.getProjectDataString(projectData, 'carrier.name') || '—' },
-		{ label: 'Items', value: projectDataUtils.getProjectDataString(projectData, 'items.title') || '—' }
+		{
+			label: 'Client',
+			value: projectDataUtils.getProjectDataString(projectData, 'client.company') || '—'
+		},
+		{
+			label: 'Facility',
+			value: projectDataUtils.getProjectDataString(projectData, 'facility.name') || '—'
+		},
+		{
+			label: 'Carrier',
+			value: projectDataUtils.getProjectDataString(projectData, 'carrier.name') || '—'
+		},
+		{
+			label: 'Items',
+			value: projectDataUtils.getProjectDataString(projectData, 'items.title') || '—'
+		}
 	]);
 	const personnelEntries = $derived.by<projectTypes.PreviewPersonnelItemType[]>(() => {
 		return projectDataUtils.getProjectTeamMembers(projectData).map((member) => ({
@@ -108,12 +133,17 @@
 		const items: projectTypes.PreviewPageItemType[] = [];
 		const fixedPhotoSectionsByPanelId = new Map(
 			photoSections
-				.filter((section): section is projectTypes.PhotosSectionType & { panelId: string } => Boolean(section.panelId))
+				.filter((section): section is projectTypes.PhotosSectionType & { panelId: string } =>
+					Boolean(section.panelId)
+				)
 				.map((section) => [section.panelId, section])
 		);
 		const fallbackPhotoSectionsByPageId = new Map(
 			photoSections
-				.filter((section): section is projectTypes.PhotosSectionType & { pageId: string } => !section.panelId && Boolean(section.pageId))
+				.filter(
+					(section): section is projectTypes.PhotosSectionType & { pageId: string } =>
+						!section.panelId && Boolean(section.pageId)
+				)
 				.map((section) => [section.pageId, section])
 		);
 		const customPreviewItems = customPhotoSection
@@ -162,7 +192,10 @@
 				continue;
 			}
 
-			if (pageDefinition.order === disclaimerOrder || pageDefinition.page === projectSchema.disclaimerPageTitle) {
+			if (
+				pageDefinition.order === disclaimerOrder ||
+				pageDefinition.page === projectSchema.disclaimerPageTitle
+			) {
 				items.push(...customPreviewItems);
 				customSectionsInserted = true;
 				items.push({
@@ -204,7 +237,8 @@
 				const derivedSection = createDerivedPhotoPreviewSection(pageDefinition);
 				const panel = projectSchemas.getPanelForPhotoPage(projectSchema, pageDefinition);
 				const section = panel
-					? fixedPhotoSectionsByPanelId.get(panel.id) || fallbackPhotoSectionsByPageId.get(pageDefinition.id)
+					? fixedPhotoSectionsByPanelId.get(panel.id) ||
+						fallbackPhotoSectionsByPageId.get(pageDefinition.id)
 					: fallbackPhotoSectionsByPageId.get(pageDefinition.id);
 				const resolvedSection = section || derivedSection;
 				if (!resolvedSection) continue;
@@ -246,7 +280,10 @@
 		return entries.map((entry) => ({
 			id: entry.id,
 			title: entry.title,
-			page: entry.pageStart === entry.pageEnd ? String(entry.pageStart) : `${entry.pageStart}-${entry.pageEnd}`
+			page:
+				entry.pageStart === entry.pageEnd
+					? String(entry.pageStart)
+					: `${entry.pageStart}-${entry.pageEnd}`
 		}));
 	});
 	const coverMeta = $derived([
@@ -258,7 +295,10 @@
 		{
 			label: 'Dates',
 			value: (() => {
-				const days = getProjectTimeLogDays().map((day) => day.dateISO).filter(Boolean).sort();
+				const days = getProjectTimeLogDays()
+					.map((day) => day.dateISO)
+					.filter(Boolean)
+					.sort();
 				if (!days?.length) return '—';
 				if (days.length === 1) return projectUtils.formatDayDate(days[0]) || days[0];
 				const firstDay = days[0];
@@ -266,9 +306,18 @@
 				return `${projectUtils.formatDayDate(firstDay) || firstDay} to ${projectUtils.formatDayDate(lastDay) || lastDay}`;
 			})()
 		},
-		{ label: 'Client', value: projectDataUtils.getProjectDataString(projectData, 'client.company') || '—' },
-		{ label: 'Owner', value: projectDataUtils.getProjectDataString(projectData, 'team.owner') || '—' },
-		{ label: 'Project Type', value: projectDataUtils.getProjectDataString(projectData, 'project.type') || '—' }
+		{
+			label: 'Client',
+			value: projectDataUtils.getProjectDataString(projectData, 'client.company') || '—'
+		},
+		{
+			label: 'Owner',
+			value: projectDataUtils.getProjectDataString(projectData, 'team.owner') || '—'
+		},
+		{
+			label: 'Project Type',
+			value: projectDataUtils.getProjectDataString(projectData, 'project.type') || '—'
+		}
 	]);
 
 	function getFieldValue(path: string): projectTypes.FieldStateValueType | undefined {
@@ -282,10 +331,10 @@
 				dateISO: typeof day.dateISO === 'string' ? day.dateISO : '',
 				entries: day.entries.length
 					? day.entries.map((entry, entryIndex) => ({
-						id: entry.id || `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
-						time: typeof entry.time === 'string' ? entry.time : '',
-						text: typeof entry.text === 'string' ? entry.text : ''
-					}))
+							id: entry.id || `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
+							time: typeof entry.time === 'string' ? entry.time : '',
+							text: typeof entry.text === 'string' ? entry.text : ''
+						}))
 					: [{ id: `derived-entry-${dayIndex + 1}-1`, time: '', text: '' }]
 			}));
 		}
@@ -295,44 +344,47 @@
 
 		return value
 			.map((day, dayIndex) => {
-			if (typeof day !== 'object' || day === null || Array.isArray(day)) return null;
+				if (typeof day !== 'object' || day === null || Array.isArray(day)) return null;
 				const dayRecord = day as Record<string, unknown>;
 
-			const entriesValue = Array.isArray(dayRecord.entries) ? dayRecord.entries : [];
+				const entriesValue = Array.isArray(dayRecord.entries) ? dayRecord.entries : [];
 				const entries = entriesValue
 					.map((entry: unknown, entryIndex: number) => {
-				if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return null;
-				const entryRecord = entry as Record<string, unknown>;
+						if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return null;
+						const entryRecord = entry as Record<string, unknown>;
 
-				return {
-					id: `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
-					time: typeof entryRecord.time === 'string' ? entryRecord.time : '',
+						return {
+							id: `derived-entry-${dayIndex + 1}-${entryIndex + 1}`,
+							time: typeof entryRecord.time === 'string' ? entryRecord.time : '',
 							text:
 								typeof entryRecord.text === 'string'
-						? entryRecord.text
-						: typeof entryRecord.description === 'string'
-							? entryRecord.description
+									? entryRecord.text
+									: typeof entryRecord.description === 'string'
+										? entryRecord.description
 										: typeof entryRecord.activity === 'string'
 											? entryRecord.activity
 											: ''
-				};
+						};
 					})
 					.filter(Boolean) as projectTypes.TimeEntryType[];
 
-			return {
-				id: `derived-day-${dayIndex + 1}`,
-				dateISO: typeof dayRecord.date === 'string' ? dayRecord.date : '',
-				entries: entries.length
-					? entries
+				return {
+					id: `derived-day-${dayIndex + 1}`,
+					dateISO: typeof dayRecord.date === 'string' ? dayRecord.date : '',
+					entries: entries.length
+						? entries
 						: [{ id: `derived-entry-${dayIndex + 1}-1`, time: '', text: '' }]
-			};
+				};
 			})
 			.filter(Boolean) as projectTypes.TimeDayType[];
 	}
 
 	function createDerivedTimeLogPreviewSection(): projectTypes.TimeLogSectionType | null {
 		const days = getProjectTimeLogDays();
-		const panelDefinition = projectSchemas.getPanelDefinition(projectSchema, projectSchema.timeLogPageTitle);
+		const panelDefinition = projectSchemas.getPanelDefinition(
+			projectSchema,
+			projectSchema.timeLogPageTitle
+		);
 		const panelMeta = projectRuntimeMeta.panels[projectSchema.timeLogPageTitle];
 
 		return {
@@ -346,7 +398,13 @@
 			placement: 'start',
 			days: days.length
 				? days
-				: [{ id: 'derived-day-1', dateISO: '', entries: [{ id: 'derived-entry-1-1', time: '', text: '' }] }]
+				: [
+						{
+							id: 'derived-day-1',
+							dateISO: '',
+							entries: [{ id: 'derived-entry-1-1', time: '', text: '' }]
+						}
+					]
 		};
 	}
 
@@ -372,13 +430,11 @@
 		ownerId: string,
 		acceptedInputs: projectTypes.FieldInputType[]
 	): projectTypes.InputDefinitionType | undefined {
-		return outputInputs.find(
-			(candidate) => {
-				const inputType = candidate.input;
-				if (!inputType) return false;
-				return acceptedInputs.includes(inputType) && candidate.reference.includes(ownerId);
-			}
-		);
+		return outputInputs.find((candidate) => {
+			const inputType = candidate.input;
+			if (!inputType) return false;
+			return acceptedInputs.includes(inputType) && candidate.reference.includes(ownerId);
+		});
 	}
 
 	function getOutputPageInputs(pageDefinition: projectTypes.PageDefinitionType) {
@@ -436,10 +492,12 @@
 			if (input.input !== 'image') continue;
 
 			const sources = getFieldValueList(getFieldValue(input.path));
-			const captionInput = getReferencedOutputInput(outputInputs, input.id, ['text', 'textarea', 'richtext']);
-			const captions = captionInput
-				? getFieldValueList(getFieldValue(captionInput.path))
-				: [];
+			const captionInput = getReferencedOutputInput(outputInputs, input.id, [
+				'text',
+				'textarea',
+				'richtext'
+			]);
+			const captions = captionInput ? getFieldValueList(getFieldValue(captionInput.path)) : [];
 
 			for (const [index, src] of sources.entries()) {
 				items.push({
@@ -467,7 +525,10 @@
 		}
 
 		if (pageDefinition.page === 'Cargo Description') {
-			return projectDataUtils.getProjectDataString(projectData, 'items.description') || projectDataUtils.getProjectDataString(projectData, 'items.title');
+			return (
+				projectDataUtils.getProjectDataString(projectData, 'items.description') ||
+				projectDataUtils.getProjectDataString(projectData, 'items.title')
+			);
 		}
 
 		return '';
@@ -481,8 +542,7 @@
 	): string {
 		const variantInput = outputInputs.find(
 			(input) =>
-				input.input === 'select' &&
-				input.options.some((option) => option.startsWith('photos-'))
+				input.input === 'select' && input.options.some((option) => option.startsWith('photos-'))
 		);
 		const configuredVariant = variantInput
 			? projectDataUtils.getProjectDataString(projectData, variantInput.path).trim()
@@ -502,10 +562,13 @@
 		const outputInputs = getOutputPageInputs(pageDefinition);
 		if (!outputInputs.length) return null;
 
-		const mediaOwnerInput = outputInputs.find((input) => {
-			if (input.input !== 'image' && input.input !== 'file') return false;
-			return hasFieldValue(getFieldValue(input.path));
-		}) || outputInputs.find((input) => input.input === 'image' || input.input === 'file') || outputInputs[0];
+		const mediaOwnerInput =
+			outputInputs.find((input) => {
+				if (input.input !== 'image' && input.input !== 'file') return false;
+				return hasFieldValue(getFieldValue(input.path));
+			}) ||
+			outputInputs.find((input) => input.input === 'image' || input.input === 'file') ||
+			outputInputs[0];
 		const ownerPanel = mediaOwnerInput
 			? projectSchemas.getPanelDefinition(projectSchema, mediaOwnerInput.panel)
 			: projectSchemas.getPrimaryPanelForPage(projectSchema, pageDefinition);
@@ -545,7 +608,7 @@
 			],
 			panelId: ownerPanel.id,
 			pageId: pageDefinition.id,
-			required: pageDefinition.required,
+			required: pageDefinition.required
 		};
 	}
 
@@ -559,15 +622,15 @@
 			? section.groups
 			: section.required || pageDefinition?.required
 				? [
-					{
-						id: `preview-group-${section.id}`,
-						title: section.title,
-						description: '',
-						variant: section.defaultVariant,
-						files: [],
-						photos: []
-					}
-				]
+						{
+							id: `preview-group-${section.id}`,
+							title: section.title,
+							description: '',
+							variant: section.defaultVariant,
+							files: [],
+							photos: []
+						}
+					]
 				: [];
 
 		return groups.map((group, groupIndex) => ({
@@ -622,7 +685,7 @@
 	}
 
 	function getReorderablePanelDefinition(
-		section: projectTypes.SectionType,
+		section: projectTypes.SectionType
 	): projectTypes.PanelDefinitionType | undefined {
 		if (section.type === 'fields' || section.type === 'cover') {
 			return projectSchemas.getPanelDefinition(projectSchema, section.section);
@@ -659,15 +722,15 @@
 
 		if (!reorderedSections.length) return;
 
-		const remainingSections = sections.filter((section) =>
-			isSectionReorderable(section) && !seenSectionIds.has(section.id)
+		const remainingSections = sections.filter(
+			(section) => isSectionReorderable(section) && !seenSectionIds.has(section.id)
 		);
 		const nextReorderableSections = [...reorderedSections, ...remainingSections];
 		let reorderableIndex = 0;
 
 		sections = sections.map((section) =>
 			isSectionReorderable(section)
-				? nextReorderableSections[reorderableIndex++] ?? section
+				? (nextReorderableSections[reorderableIndex++] ?? section)
 				: section
 		);
 	}
@@ -676,10 +739,7 @@
 		section.groups = nextGroups as projectTypes.PhotoGroupType[];
 	}
 
-	function setPhotoGroupPhotos(
-		group: projectTypes.PhotoGroupType,
-		nextPhotos: unknown[]
-	) {
+	function setPhotoGroupPhotos(group: projectTypes.PhotoGroupType, nextPhotos: unknown[]) {
 		group.photos = nextPhotos as projectTypes.PhotoItemType[];
 	}
 
@@ -690,7 +750,11 @@
 
 		const measure = () => {
 			const detailsElement = node.querySelector('details');
-			if (!(detailsElement instanceof HTMLDetailsElement) || !(summaryElement instanceof HTMLElement)) return;
+			if (
+				!(detailsElement instanceof HTMLDetailsElement) ||
+				!(summaryElement instanceof HTMLElement)
+			)
+				return;
 
 			const detailsStyles = window.getComputedStyle(detailsElement);
 			const wrapperStyles = window.getComputedStyle(node);
@@ -710,7 +774,8 @@
 
 		scheduleMeasure();
 
-		const resizeObserver = summaryElement instanceof HTMLElement ? new ResizeObserver(scheduleMeasure) : null;
+		const resizeObserver =
+			summaryElement instanceof HTMLElement ? new ResizeObserver(scheduleMeasure) : null;
 
 		if (resizeObserver && summaryElement instanceof HTMLElement) {
 			resizeObserver.observe(summaryElement);
@@ -774,9 +839,9 @@
 	function addSection(afterSectionId?: string) {
 		const customSection = customPanelDefinition
 			? sections.find(
-				(section): section is projectTypes.PhotosSectionType =>
-					section.type === 'photos' && section.panelId === customPanelDefinition.id
-			)
+					(section): section is projectTypes.PhotosSectionType =>
+						section.type === 'photos' && section.panelId === customPanelDefinition.id
+				)
 			: undefined;
 		if (!customSection) return;
 
@@ -791,10 +856,21 @@
 		return `${baseTitle} ${section.groups.length + 1}`;
 	}
 
-	function addPhotoGroup(section: projectTypes.PhotosSectionType, afterIndex = section.groups.length - 1) {
+	function addPhotoGroup(
+		section: projectTypes.PhotosSectionType,
+		afterIndex = section.groups.length - 1
+	) {
 		const insertIndex = Math.max(0, Math.min(afterIndex + 1, section.groups.length));
-		const title = section.groups.length ? getNextPhotoGroupTitle(section) : section.title === 'Custom' ? 'Section 1' : section.title;
-		section.groups.splice(insertIndex, 0, projectStates.createPhotoGroup(title, section.defaultVariant));
+		const title = section.groups.length
+			? getNextPhotoGroupTitle(section)
+			: section.title === 'Custom'
+				? 'Section 1'
+				: section.title;
+		section.groups.splice(
+			insertIndex,
+			0,
+			projectStates.createPhotoGroup(title, section.defaultVariant)
+		);
 	}
 
 	function removePhotoGroup(section: projectTypes.PhotosSectionType, groupId: string) {
@@ -811,7 +887,11 @@
 		}
 	}
 
-	function setSectionFieldValue(sectionId: string, path: string, value: projectTypes.FieldStateValueType) {
+	function setSectionFieldValue(
+		sectionId: string,
+		path: string,
+		value: projectTypes.FieldStateValueType
+	) {
 		setSectionFieldValues(sectionId, { [path]: value });
 	}
 
@@ -837,7 +917,12 @@
 			if (section.required) return;
 			section.enabled = !section.enabled;
 			if (section.enabled && !section.groups.length) {
-				section.groups = [projectStates.createPhotoGroup(section.title === 'Custom' ? 'Section 1' : section.title, section.defaultVariant)];
+				section.groups = [
+					projectStates.createPhotoGroup(
+						section.title === 'Custom' ? 'Section 1' : section.title,
+						section.defaultVariant
+					)
+				];
 			}
 			if (!section.enabled) {
 				section.open = false;
@@ -876,10 +961,7 @@
 		if (photoDropId === sectionId) photoDropId = '';
 	}
 
-	function addDay(
-		section: projectTypes.TimeLogSectionType,
-		afterIndex = section.days.length - 1
-	) {
+	function addDay(section: projectTypes.TimeLogSectionType, afterIndex = section.days.length - 1) {
 		const insertIndex = Math.max(0, Math.min(afterIndex + 1, section.days.length));
 		section.days.splice(insertIndex, 0, projectStates.createTimeDay());
 	}
@@ -906,7 +988,11 @@
 		addEntry(day, entryIndex);
 	}
 
-	function handleActivityKeyup(day: projectTypes.TimeDayType, entryId: string, event?: KeyboardEvent) {
+	function handleActivityKeyup(
+		day: projectTypes.TimeDayType,
+		entryId: string,
+		event?: KeyboardEvent
+	) {
 		if (event?.key !== 'Enter') return;
 
 		event.preventDefault();
@@ -948,7 +1034,9 @@
 		if (!group) return;
 
 		const input = event.currentTarget as HTMLInputElement | null;
-		group.files = Array.from(input?.files ?? []).map((file) => file.name).filter(Boolean);
+		group.files = Array.from(input?.files ?? [])
+			.map((file) => file.name)
+			.filter(Boolean);
 		if (input) input.value = '';
 	}
 
@@ -1023,9 +1111,7 @@
 			previewPagesData.map(async (pageItem) => ({
 				...pageItem,
 				section: cloneExportSection(pageItem.section),
-				photoGroup: pageItem.photoGroup
-					? await cloneExportPhotoGroup(pageItem.photoGroup)
-					: null
+				photoGroup: pageItem.photoGroup ? await cloneExportPhotoGroup(pageItem.photoGroup) : null
 			}))
 		);
 
@@ -1042,7 +1128,9 @@
 	}
 
 	function getSortedEntries(day: projectTypes.TimeDayType) {
-		return [...day.entries].sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')));
+		return [...day.entries].sort((a, b) =>
+			String(a.time || '').localeCompare(String(b.time || ''))
+		);
 	}
 
 	function suppressSectionToggle(sectionId: string) {
@@ -1067,7 +1155,9 @@
 
 		suppressSectionToggleId = '';
 
-		const createContentPanels = (event.currentTarget as HTMLElement | null)?.closest('#createContentPanels');
+		const createContentPanels = (event.currentTarget as HTMLElement | null)?.closest(
+			'#createContentPanels'
+		);
 		if (!(createContentPanels instanceof HTMLElement)) return;
 
 		let targetScrollTop = 0;
@@ -1111,7 +1201,7 @@
 		const fallbackMessage = `PDF export failed with status ${response.status}`;
 
 		try {
-			const payload = await response.json() as {
+			const payload = (await response.json()) as {
 				message?: unknown;
 				details?: unknown;
 			};
@@ -1181,7 +1271,13 @@
 	}
 
 	async function handlePaste(event: ClipboardEvent) {
-		const activeSection = sections.find((section) => section.open && section.type === 'photos') as projectTypes.PhotosSectionType | undefined || sections.find((section) => section.type === 'photos') as projectTypes.PhotosSectionType | undefined;
+		const activeSection =
+			(sections.find((section) => section.open && section.type === 'photos') as
+				| projectTypes.PhotosSectionType
+				| undefined) ||
+			(sections.find((section) => section.type === 'photos') as
+				| projectTypes.PhotosSectionType
+				| undefined);
 
 		if (!activeSection) return;
 		const activeGroup = activeSection.groups[activeSection.groups.length - 1];
@@ -1222,11 +1318,17 @@
 			};
 		}
 
-		const availableWidth = Math.max(200, previewViewport.clientWidth - (isDesktop
-			? projectConstants.previewDesktopPadding
-			: projectConstants.previewMobilePadding));
+		const availableWidth = Math.max(
+			200,
+			previewViewport.clientWidth -
+				(isDesktop ? projectConstants.previewDesktopPadding : projectConstants.previewMobilePadding)
+		);
 
-		const fitWidthZoom = projectUtils.clamp(availableWidth / projectConstants.previewPageWidth, projectConstants.previewZoomMin, projectConstants.previewZoomMax);
+		const fitWidthZoom = projectUtils.clamp(
+			availableWidth / projectConstants.previewPageWidth,
+			projectConstants.previewZoomMin,
+			projectConstants.previewZoomMax
+		);
 
 		if (isDesktop) {
 			return {
@@ -1257,7 +1359,11 @@
 		const bounds = getPreviewZoomBounds();
 		const step = isDesktop ? 0.08 : 0.05;
 		const delta = direction === 'in' ? step : -step;
-		const nextZoom = projectUtils.clamp((previewZoom || bounds.initial) + delta, bounds.min, bounds.max);
+		const nextZoom = projectUtils.clamp(
+			(previewZoom || bounds.initial) + delta,
+			bounds.min,
+			bounds.max
+		);
 
 		hasUserZoomed = true;
 		await zoomPreviewAtCursor(previewViewport.clientHeight / 2, nextZoom);
@@ -1288,7 +1394,11 @@
 		const cursorY = projectUtils.clamp(event.clientY - rect.top, 0, rect.height);
 		const delta = Math.sign(event.deltaY);
 		const step = 0.08;
-		const nextZoom = projectUtils.clamp((previewZoom || bounds.initial) + (delta > 0 ? -step : step), bounds.min, bounds.max);
+		const nextZoom = projectUtils.clamp(
+			(previewZoom || bounds.initial) + (delta > 0 ? -step : step),
+			bounds.min,
+			bounds.max
+		);
 		await zoomPreviewAtCursor(cursorY, nextZoom);
 	}
 
@@ -1300,7 +1410,11 @@
 		const dy = first.clientY - second.clientY;
 		const startDist = Math.hypot(dx, dy);
 		const rect = previewViewport.getBoundingClientRect();
-		const midY = projectUtils.clamp((first.clientY + second.clientY) / 2 - rect.top, 0, rect.height);
+		const midY = projectUtils.clamp(
+			(first.clientY + second.clientY) / 2 - rect.top,
+			0,
+			rect.height
+		);
 
 		pinch = { startDist, startZoom: previewZoom || 1, midY };
 		hasUserZoomed = true;
@@ -1327,7 +1441,9 @@
 
 	function resetReport() {
 		if (!browser) return;
-		const okay = window.confirm('Reset this report and clear all saved data? This cannot be undone.');
+		const okay = window.confirm(
+			'Reset this report and clear all saved data? This cannot be undone.'
+		);
 		if (!okay) return;
 		void projectAssets.clearStoredAssets();
 		projectPersist.reset();
@@ -1377,20 +1493,18 @@
 
 	$effect(() => {
 		if (!hydrated || !previewViewport || hasUserZoomed) return;
-		mq.sm;
+		void mq.sm;
 		applyFitZoomIfNeeded();
 	});
 </script>
 
-<svelte:window onpaste={handlePaste}></svelte:window>
+<svelte:window onpaste={handlePaste} />
 
 <div class="page-shell h-svh overflow-hidden text-neutral-900">
 	<div class="flex h-full min-w-0 flex-col">
-			<div class="flex items-center gap-2 pt-4 px-4 md:hidden sticky top-0 z-10 shrink-0 md:none">
+		<div class="md:none sticky top-0 z-10 flex shrink-0 items-center gap-2 px-4 pt-4 md:hidden">
 			<Button
-				{...activePane === 'edit'
-					? { heavy: true, primary: true }
-					: { outline: true, base: true }}
+				{...activePane === 'edit' ? { heavy: true, primary: true } : { outline: true, base: true }}
 				variant="text"
 				class="w-full flex-1"
 				onclick={() => setMobilePane('edit')}
@@ -1410,80 +1524,84 @@
 
 		{#if exportErrorMessage}
 			<div class="px-4 pt-3 md:px-6">
-				<div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+				<div
+					class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+				>
 					{exportErrorMessage}
 				</div>
 			</div>
 		{/if}
 
-		<main class="grid min-h-0 flex-1 gap-0 md:gap-4 md:grid-cols-[24rem_minmax(0,1fr)] md:pl-6 md:pr-0 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]">
+		<main
+			class="grid min-h-0 flex-1 gap-0 md:grid-cols-[24rem_minmax(0,1fr)] md:gap-4 md:pr-0 md:pl-6 lg:grid-cols-[26rem_minmax(0,1fr)] xl:grid-cols-[28rem_minmax(0,1fr)]"
+		>
 			<Panels
-				isDesktop={isDesktop}
-				activePane={activePane}
+				{isDesktop}
+				{activePane}
 				projectListHref="/projects"
-				sections={sections}
+				{sections}
 				schema={projectSchema}
-				draggedSectionId={draggedSectionId}
-				draggedPhotoId={draggedPhotoId}
-				photoDropId={photoDropId}
-				overallMetrics={overallMetrics}
-				sectionSort={sectionSort}
-				getPhotoSort={getPhotoSort}
-				getPhotoGroupSort={getPhotoGroupSort}
-				setSections={setSections}
-				setSectionGroups={setSectionGroups}
-				setPhotoGroupPhotos={setPhotoGroupPhotos}
-				getAccordionAnchorId={getAccordionAnchorId}
-				measureAccordionLayout={measureAccordionLayout}
-				handleAccordionToggle={handleAccordionToggle}
-				handleSectionTitleClick={handleSectionTitleClick}
-				handleSectionActionClick={handleSectionActionClick}
-				handleSectionActionDisabledClick={handleSectionActionDisabledClick}
-				addSection={addSection}
-				addPhotoGroup={addPhotoGroup}
-				removePhotoGroup={removePhotoGroup}
-				resetReport={resetReport}
-				toggleSectionEnabled={toggleSectionEnabled}
-				removeDay={removeDay}
-				addDay={addDay}
-				removeEntry={removeEntry}
-				addEntry={addEntry}
-				maybeAddEntry={maybeAddEntry}
-				handleActivityKeyup={handleActivityKeyup}
-				handlePhotoInput={handlePhotoInput}
-				handlePhotoFilesInput={handlePhotoFilesInput}
-				handlePhotoZoneDragOver={handlePhotoZoneDragOver}
-				handlePhotoZoneDragLeave={handlePhotoZoneDragLeave}
-				handlePhotoZoneDrop={handlePhotoZoneDrop}
-				removePhoto={removePhoto}
-				setSectionFieldValues={setSectionFieldValues}
-				setSectionFieldValue={setSectionFieldValue}
+				{draggedSectionId}
+				{draggedPhotoId}
+				{photoDropId}
+				{overallMetrics}
+				{sectionSort}
+				{getPhotoSort}
+				{getPhotoGroupSort}
+				{setSections}
+				{setSectionGroups}
+				{setPhotoGroupPhotos}
+				{getAccordionAnchorId}
+				{measureAccordionLayout}
+				{handleAccordionToggle}
+				{handleSectionTitleClick}
+				{handleSectionActionClick}
+				{handleSectionActionDisabledClick}
+				{addSection}
+				{addPhotoGroup}
+				{removePhotoGroup}
+				{resetReport}
+				{toggleSectionEnabled}
+				{removeDay}
+				{addDay}
+				{removeEntry}
+				{addEntry}
+				{maybeAddEntry}
+				{handleActivityKeyup}
+				{handlePhotoInput}
+				{handlePhotoFilesInput}
+				{handlePhotoZoneDragOver}
+				{handlePhotoZoneDragLeave}
+				{handlePhotoZoneDrop}
+				{removePhoto}
+				{setSectionFieldValues}
+				{setSectionFieldValue}
 			/>
 
 			<Pages
-				isDesktop={isDesktop}
-				activePane={activePane}
-				isExporting={isExporting}
-				handleExport={handleExport}
-				stepPreviewZoom={stepPreviewZoom}
-				resetPreviewZoom={resetPreviewZoom}
-				previewZoom={previewZoom}
+				{isDesktop}
+				{activePane}
+				{isExporting}
+				{handleExport}
+				{stepPreviewZoom}
+				{resetPreviewZoom}
+				{previewZoom}
 				bind:previewViewport
 				bind:previewPages
 				schema={projectSchema}
-				reportTitle={reportTitle}
-				reportSubtitle={reportSubtitle}
-				handlePreviewWheel={handlePreviewWheel}
-				handlePreviewTouchStart={handlePreviewTouchStart}
-				handlePreviewTouchMove={handlePreviewTouchMove}
-				handlePreviewTouchEnd={handlePreviewTouchEnd}
-				coverMeta={coverMeta}
-				projectSummaryItems={projectSummaryItems}
-				personnelEntries={personnelEntries}
-				tableOfContentsEntries={tableOfContentsEntries}
+				{reportTitle}
+				{reportSubtitle}
+				{handlePreviewWheel}
+				{handlePreviewTouchStart}
+				{handlePreviewTouchMove}
+				{handlePreviewTouchEnd}
+				{coverMeta}
+				{projectSummaryItems}
+				{personnelEntries}
+				{tableOfContentsEntries}
 				previewPageItems={previewPagesData}
-				getSortedEntries={getSortedEntries}
-				projectDataJson={projectDataJson}
+				{getSortedEntries}
+				{projectDataJson}
 			/>
 		</main>
 	</div>
@@ -1494,7 +1612,11 @@
 
 	.page-shell {
 		background-color: #eef2f7;
-		background-image: radial-gradient(circle at 1px 1px, rgba(100, 116, 139, 0.24) 1.05px, transparent 0);
+		background-image: radial-gradient(
+			circle at 1px 1px,
+			rgba(100, 116, 139, 0.24) 1.05px,
+			transparent 0
+		);
 		background-size: 16px 16px;
 	}
 </style>

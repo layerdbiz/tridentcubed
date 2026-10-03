@@ -1,6 +1,6 @@
-import { redirect } from "@sveltejs/kit";
-import { getSlidesData } from "#lib/slides/slides.remote.js";
-import type { PageServerLoad } from "./$types";
+import { redirect } from '@sveltejs/kit';
+import { getSlidesData } from '#lib/slides/slides.remote.js';
+import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	// Fetch all slides

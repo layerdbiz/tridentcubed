@@ -11,7 +11,11 @@
 
 	const currentMq = $derived(resolveCurrentMq());
 	const navMode = $derived(
-		currentMq === 'sm' ? 'Overlay trigger' : currentMq ? 'Pinned desktop rail' : 'Responsive nav mode'
+		currentMq === 'sm'
+			? 'Overlay trigger'
+			: currentMq
+				? 'Pinned desktop rail'
+				: 'Responsive nav mode'
 	);
 	const contentMode = $derived(
 		currentMq === 'sm'
@@ -79,7 +83,8 @@
 <div class="grid gap-4 p-4 md:p-5">
 	<h1 class="text-3xl font-black tracking-tight text-slate-950 md:text-4xl">MQ Layout</h1>
 	<p class="max-w-3xl text-sm leading-6 text-slate-700 md:text-base">
-		This route keeps the base runtime untouched and shows how the play app can read the current mq bucket while continuing to author with <code>Component</code>, rails, and layout snippets.
+		This route keeps the base runtime untouched and shows how the play app can read the current mq
+		bucket while continuing to author with <code>Component</code>, rails, and layout snippets.
 	</p>
 
 	<Component
@@ -88,28 +93,30 @@
 		debug={showRailsDebug ? { rails: true } : false}
 		class={surfaceClass}
 	>
-		<Component rail="content" class="grid gap-3 md:grid-cols-3">
+		<Component
+			rail="content"
+			class="grid gap-3 md:grid-cols-3"
+		>
 			<div class={gridCardClass}>
 				<p class={eyebrowClass}>Current Bucket</p>
 
-				<p
-					class="mt-3 min-h-10 text-3xl font-black tracking-tight text-slate-950"
-				>{currentMq ?? ''}</p>
+				<p class="mt-3 min-h-10 text-3xl font-black tracking-tight text-slate-950">
+					{currentMq ?? ''}
+				</p>
 
-				<p
-					class="mt-2 wrap-break-word text-sm leading-6 text-slate-600"
-				>
-					The public 
+				<p class="mt-2 text-sm leading-6 wrap-break-word text-slate-600">
+					The public
 					<code>mq</code>
 					object stays the runtime source of truth.
 				</p>
 			</div>
 
 			<div class={gridDarkCardClass}>
-				<p class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Nav Mode</p>
+				<p class="text-xs font-black tracking-[0.18em] text-slate-400 uppercase">Nav Mode</p>
 				<p class="mt-3 text-2xl font-black tracking-tight">{navMode}</p>
 				<p class="mt-2 text-sm leading-6 text-slate-300">
-					Small screens collapse the nav behind the overlay trigger. Larger screens keep the persistent rail.
+					Small screens collapse the nav behind the overlay trigger. Larger screens keep the
+					persistent rail.
 				</p>
 			</div>
 
@@ -117,7 +124,8 @@
 				<p class={eyebrowClass}>Content Rule</p>
 				<p class="mt-3 text-lg font-black tracking-tight text-slate-950">{contentMode}</p>
 				<p class="mt-2 text-sm leading-6 text-slate-600">
-					The mobile goal is protecting the content rail, not moving media-query logic into the shared layout runtime.
+					The mobile goal is protecting the content rail, not moving media-query logic into the
+					shared layout runtime.
 				</p>
 			</div>
 		</Component>
@@ -140,8 +148,11 @@
 			</p>
 		</Component>
 
-		<Component rail="content" class={gridDarkCardClass}>
-			<p class="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Content Rail</p>
+		<Component
+			rail="content"
+			class={gridDarkCardClass}
+		>
+			<p class="text-xs font-black tracking-[0.18em] text-slate-400 uppercase">Content Rail</p>
 			<p class="mt-3 text-2xl font-black tracking-tight">{contentMode}</p>
 			<p class="mt-2 text-sm leading-6 text-slate-300">
 				This is the slice the play layout protects while the nav behavior changes around it.
@@ -152,7 +163,7 @@
 			rail="right-lg"
 			class="hidden rounded-xl bg-sky-200 px-4 py-5 text-slate-950 shadow-sm md:block"
 		>
-			<p class="text-xs font-black uppercase tracking-[0.18em] text-sky-950/70">MQ Signal</p>
+			<p class="text-xs font-black tracking-[0.18em] text-sky-950/70 uppercase">MQ Signal</p>
 			<p class="mt-3 text-lg font-black tracking-tight">{currentMq}</p>
 			<p class="mt-2 text-sm leading-6 text-sky-950/80">
 				Use the shared mq helpers for behavior, not to push more conditions into the base runtime.
@@ -177,7 +188,10 @@
 		debug={showRailsDebug ? { rails: true } : false}
 		class={surfaceClass}
 	>
-		<Component rail="content" class="grid gap-3 md:grid-cols-3">
+		<Component
+			rail="content"
+			class="grid gap-3 md:grid-cols-3"
+		>
 			{#each guidanceItems as item (item.title)}
 				<div class={gridCardClass}>
 					<p class={eyebrowClass}>{item.title}</p>

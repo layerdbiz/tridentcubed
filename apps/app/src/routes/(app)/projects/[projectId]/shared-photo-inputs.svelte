@@ -40,9 +40,7 @@
 
 	let isDropTarget = $state(false);
 
-	function getFieldValueList(
-		value: projectTypes.FieldStateValueType | undefined
-	): string[] {
+	function getFieldValueList(value: projectTypes.FieldStateValueType | undefined): string[] {
 		if (Array.isArray(value)) {
 			return value.map((item) => String(item || '').trim()).filter(Boolean);
 		}
@@ -197,18 +195,35 @@
 
 <div class="space-y-3 rounded-2xl border border-secondary-200 bg-white p-4">
 	{#if variantField}
-		<label class="grid gap-1 text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">
+		<label class="grid gap-1 text-xs font-semibold tracking-[0.12em] text-neutral-500 uppercase">
 			<span>{variantField.label}</span>
-			<select class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15" disabled={!section.enabled || !variantField.editable} onchange={handleVariantChange}>
+			<select
+				class="rounded-xl border border-secondary-200 bg-white px-3 py-2 text-sm text-neutral-800 outline-none focus:border-info focus:ring-2 focus:ring-info/15"
+				disabled={!section.enabled || !variantField.editable}
+				onchange={handleVariantChange}
+			>
 				{#each variantField.options as option, optionIndex (`${variantField.id}-${option}-${optionIndex}`)}
-					<option selected={getFieldValueList(section.fields[variantField.path])[0] === option} value={option}>{option}</option>
+					<option
+						selected={getFieldValueList(section.fields[variantField.path])[0] === option}
+						value={option}>{option}</option
+					>
 				{/each}
 			</select>
 		</label>
 	{/if}
 
 	{#if descriptionField}
-		<Input xs label={descriptionField.label} textarea variant="text" type="text" value={getFieldValueList(section.fields[descriptionField.path])[0] || ''} placeholder={descriptionField.placeholder || ' '} disabled={!section.enabled || !descriptionField.editable} oninput={handleDescriptionInput} />
+		<Input
+			xs
+			label={descriptionField.label}
+			textarea
+			variant="text"
+			type="text"
+			value={getFieldValueList(section.fields[descriptionField.path])[0] || ''}
+			placeholder={descriptionField.placeholder || ' '}
+			disabled={!section.enabled || !descriptionField.editable}
+			oninput={handleDescriptionInput}
+		/>
 	{/if}
 
 	<div class="space-y-3">
@@ -227,19 +242,35 @@
 			onDrop={handleDrop}
 			onReorder={reorderPhotos}
 			onRemove={(_, index) => removePhoto(index)}
-			onCaptionInput={captionField ? (_, index, event) => handleCaptionInput(index, event) : undefined}
+			onCaptionInput={captionField
+				? (_, index, event) => handleCaptionInput(index, event)
+				: undefined}
 		/>
 
 		{#if fileField}
 			{@const fileValues = getFieldValueList(section.fields[fileField.path])}
 			<div class="space-y-2">
-				<p class="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">{fileField.label}</p>
+				<p class="text-xs font-semibold tracking-[0.12em] text-neutral-500 uppercase">
+					{fileField.label}
+				</p>
 				{#if fileValues.length}
-					<div class="rounded-2xl border border-secondary-200 bg-white p-3 text-sm text-neutral-600">{fileValues.join(', ')}</div>
+					<div
+						class="rounded-2xl border border-secondary-200 bg-white p-3 text-sm text-neutral-600"
+					>
+						{fileValues.join(', ')}
+					</div>
 				{/if}
-				<label class={`inline-flex rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled && fileField.editable ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}>
+				<label
+					class={`inline-flex rounded-xl px-3 py-2 text-xs font-semibold shadow-sm ${section.enabled && fileField.editable ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-secondary-200 text-neutral-500'}`}
+				>
 					<span>{fileValues.length ? 'Replace Files' : 'Upload Files'}</span>
-					<input class="hidden" type="file" multiple={fileField.repeatable} disabled={!section.enabled || !fileField.editable} onchange={handleFileInput} />
+					<input
+						class="hidden"
+						type="file"
+						multiple={fileField.repeatable}
+						disabled={!section.enabled || !fileField.editable}
+						onchange={handleFileInput}
+					/>
 				</label>
 			</div>
 		{/if}

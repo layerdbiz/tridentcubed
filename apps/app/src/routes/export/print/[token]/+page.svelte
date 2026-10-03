@@ -10,7 +10,10 @@
 </svelte:head>
 
 <div class="print-root">
-	<div class="preview-pages" style="--preview-zoom: 1; --preview-page-width: 8.5in; --preview-page-height: 11in;">
+	<div
+		class="preview-pages"
+		style="--preview-zoom: 1; --preview-page-width: 8.5in; --preview-page-height: 11in;"
+	>
 		<ReportPreviewDocument
 			mode="print"
 			schema={data.snapshot.schema}

@@ -5,17 +5,7 @@
 	const featureMode = $derived(mq.sm || mq.md ? 'compact' : 'grid');
 
 	const screenModeLabel = $derived(
-		mq.xxl
-			? 'xxl'
-			: mq.xl
-				? 'xl'
-				: mq.lg
-					? 'lg'
-					: mq.md
-						? 'md'
-						: mq.sm
-							? 'sm'
-							: 'base'
+		mq.xxl ? 'xxl' : mq.xl ? 'xl' : mq.lg ? 'lg' : mq.md ? 'md' : mq.sm ? 'sm' : 'base'
 	);
 
 	const mqComponentColor = $derived(
@@ -78,8 +68,12 @@
 </script>
 
 {#snippet featureRenderer(args: ComponentRenderArgs)}
-	<button type="button" {...args.props} class={getRendererClassName(args)}>
-		<span class="block text-xs font-black uppercase tracking-[0.12em] text-emerald-700">
+	<button
+		type="button"
+		{...args.props}
+		class={getRendererClassName(args)}
+	>
+		<span class="block text-xs font-black tracking-[0.12em] text-emerald-700 uppercase">
 			custom snippet renderer
 		</span>
 		<span class="mt-2 block font-semibold text-slate-950">
@@ -102,56 +96,108 @@
 	gap="1.5rem"
 	class="bg-linear-to-br from-sky-100/40 via-white to-slate-100/80 px-4 py-6 md:px-6"
 >
-	<Component tag="section" rail="content-full" grid="rails" rails="content-lg" gap="1rem" class={shellClass}>
+	<Component
+		tag="section"
+		rail="content-full"
+		grid="rails"
+		rails="content-lg"
+		gap="1rem"
+		class={shellClass}
+	>
 		<header class="content space-y-3">
-			<p class="text-xs font-black uppercase tracking-[0.24em] text-sky-700">Helper feature lab</p>
+			<p class="text-xs font-black tracking-[0.24em] text-sky-700 uppercase">Helper feature lab</p>
 			<div class="space-y-2">
-				<h1 class="text-3xl font-black tracking-tight text-slate-950">Component helper parity tests</h1>
+				<h1 class="text-3xl font-black tracking-tight text-slate-950">
+					Component helper parity tests
+				</h1>
 				<p class="text-sm leading-6 text-slate-600">
 					This route now lets rails do the page-level placement work. The feature blocks stay the
-					same, but the section structure is plain flow plus rail spans instead of page-level
-					layout snippets.
+					same, but the section structure is plain flow plus rail spans instead of page-level layout
+					snippets.
 				</p>
 			</div>
 		</header>
 
-		<Component rail="popout" color={mqComponentColor} appearance={mqComponentAppearance} class={cardClass}>
+		<Component
+			rail="popout"
+			color={mqComponentColor}
+			appearance={mqComponentAppearance}
+			class={cardClass}
+		>
 			mq-driven theme preview: {screenModeLabel} / layout mode: {featureMode}
 		</Component>
 	</Component>
 
-	<Component tag="section" rail="content-full" grid="rails" rails="content-lg" gap="1rem" class={shellClass}>
+	<Component
+		tag="section"
+		rail="content-full"
+		grid="rails"
+		rails="content-lg"
+		gap="1rem"
+		class={shellClass}
+	>
 		<header class="content space-y-2">
-			<p class="text-xs font-black uppercase tracking-[0.24em] text-sky-700">01</p>
+			<p class="text-xs font-black tracking-[0.24em] text-sky-700 uppercase">01</p>
 			<h2 class="text-2xl font-black tracking-tight text-slate-950">Total</h2>
 			<p class="text-sm leading-6 text-slate-600">
-				Verify repeat counts for plain rendering and a rails-led example where child spans fall
-				into place without page-level snippets.
+				Verify repeat counts for plain rendering and a rails-led example where child spans fall into
+				place without page-level snippets.
 			</p>
 		</header>
 
 		<div class="content grid gap-4 xl:grid-cols-2">
 			<div class="space-y-3">
-				<p class="text-xs font-black uppercase tracking-[0.24em] text-sky-700">plain repeat</p>
+				<p class="text-xs font-black tracking-[0.24em] text-sky-700 uppercase">plain repeat</p>
 				<div class="space-y-3">
-					<Component total="4" class={cardClass}>repeat me</Component>
+					<Component
+						total="4"
+						class={cardClass}>repeat me</Component
+					>
 				</div>
 			</div>
 
 			<div class="space-y-3">
-				<p class="text-xs font-black uppercase tracking-[0.24em] text-sky-700">rails flow</p>
-				<Component tag="div" grid="rails" rails="content-lg" gap="0.75rem" class="rounded-3xl border border-slate-300/60 p-3 shadow-sm">
-					<Component rail="content-sm" color="primary" appearance="lite" class={cardClass}>content-sm</Component>
-					<Component rail="content" color="secondary" appearance="outline" class={cardClass}>content</Component>
-					<Component rail="popout" color="accent" appearance="ghost" class={cardClass}>popout</Component>
+				<p class="text-xs font-black tracking-[0.24em] text-sky-700 uppercase">rails flow</p>
+				<Component
+					tag="div"
+					grid="rails"
+					rails="content-lg"
+					gap="0.75rem"
+					class="rounded-3xl border border-slate-300/60 p-3 shadow-sm"
+				>
+					<Component
+						rail="content-sm"
+						color="primary"
+						appearance="lite"
+						class={cardClass}>content-sm</Component
+					>
+					<Component
+						rail="content"
+						color="secondary"
+						appearance="outline"
+						class={cardClass}>content</Component
+					>
+					<Component
+						rail="popout"
+						color="accent"
+						appearance="ghost"
+						class={cardClass}>popout</Component
+					>
 				</Component>
 			</div>
 		</div>
 	</Component>
 
-	<Component tag="section" rail="content-full" grid="rails" rails="content-lg" gap="1rem" class={shellClass}>
+	<Component
+		tag="section"
+		rail="content-full"
+		grid="rails"
+		rails="content-lg"
+		gap="1rem"
+		class={shellClass}
+	>
 		<header class="content space-y-2">
-			<p class="text-xs font-black uppercase tracking-[0.24em] text-sky-700">02</p>
+			<p class="text-xs font-black tracking-[0.24em] text-sky-700 uppercase">02</p>
 			<h2 class="text-2xl font-black tracking-tight text-slate-950">Theme and disabled</h2>
 			<p class="text-sm leading-6 text-slate-600">
 				These examples rely on the wrapper theme props directly, with only local skinning classes
@@ -160,25 +206,72 @@
 		</header>
 
 		<div class="content grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-			<Component tag="button" disabled class={joinClasses(cardClass, '[[disabled]]:cursor-not-allowed [[disabled]]:opacity-60 [[disabled]]:saturate-50')}>
+			<Component
+				tag="button"
+				disabled
+				class={joinClasses(
+					cardClass,
+					'[[disabled]]:cursor-not-allowed [[disabled]]:opacity-60 [[disabled]]:saturate-50'
+				)}
+			>
 				disabled button
 			</Component>
-			<Component color="primary" appearance="heavy" class={cardClass}>heavy primary</Component>
-			<Component color="secondary" appearance="outline" class={cardClass}>outline secondary</Component>
-			<Component accent appearance="ghost" position="right" class={cardClass}>ghost accent right</Component>
-			<Component base invert appearance="heavy" class={cardClass}>heavy invert</Component>
-			<Component color="neutral" appearance="glass" class={cardClass}>glass neutral</Component>
-			<Component color="accent" appearance="gradient" class={cardClass}>gradient accent</Component>
-			<Component class={joinClasses(cardClass, 'rounded-3xl border-2 border-dashed border-slate-400 shadow-none')}>
+			<Component
+				color="primary"
+				appearance="heavy"
+				class={cardClass}>heavy primary</Component
+			>
+			<Component
+				color="secondary"
+				appearance="outline"
+				class={cardClass}>outline secondary</Component
+			>
+			<Component
+				accent
+				appearance="ghost"
+				position="right"
+				class={cardClass}>ghost accent right</Component
+			>
+			<Component
+				base
+				invert
+				appearance="heavy"
+				class={cardClass}>heavy invert</Component
+			>
+			<Component
+				color="neutral"
+				appearance="glass"
+				class={cardClass}>glass neutral</Component
+			>
+			<Component
+				color="accent"
+				appearance="gradient"
+				class={cardClass}>gradient accent</Component
+			>
+			<Component
+				class={joinClasses(
+					cardClass,
+					'rounded-3xl border-2 border-dashed border-slate-400 shadow-none'
+				)}
+			>
 				manual classes still win
 			</Component>
 		</div>
 	</Component>
 
-	<Component tag="section" rail="content-full" grid="rails" rails="content-lg" gap="1rem" class={shellClass}>
+	<Component
+		tag="section"
+		rail="content-full"
+		grid="rails"
+		rails="content-lg"
+		gap="1rem"
+		class={shellClass}
+	>
 		<header class="content space-y-2">
-			<p class="text-xs font-black uppercase tracking-[0.24em] text-sky-700">03</p>
-			<h2 class="text-2xl font-black tracking-tight text-slate-950">Position and tag passthrough</h2>
+			<p class="text-xs font-black tracking-[0.24em] text-sky-700 uppercase">03</p>
+			<h2 class="text-2xl font-black tracking-tight text-slate-950">
+				Position and tag passthrough
+			</h2>
 			<p class="text-sm leading-6 text-slate-600">
 				Keep the section structure simple and use the wrapper props directly for alignment and
 				element passthrough checks.
@@ -186,18 +279,46 @@
 		</header>
 
 		<div class="content grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-			<Component color="primary" appearance="outline" position="left" class={cardClass}>left aligned</Component>
-			<Component color="secondary" appearance="outline" position="center" class={cardClass}>center aligned</Component>
-			<Component color="accent" appearance="outline" position="right" class={cardClass}>right aligned</Component>
-			<Component tag="a" href="/demo" color="neutral" appearance="outline" class={joinClasses(cardClass, 'no-underline')}>
+			<Component
+				color="primary"
+				appearance="outline"
+				position="left"
+				class={cardClass}>left aligned</Component
+			>
+			<Component
+				color="secondary"
+				appearance="outline"
+				position="center"
+				class={cardClass}>center aligned</Component
+			>
+			<Component
+				color="accent"
+				appearance="outline"
+				position="right"
+				class={cardClass}>right aligned</Component
+			>
+			<Component
+				tag="a"
+				href="/demo"
+				color="neutral"
+				appearance="outline"
+				class={joinClasses(cardClass, 'no-underline')}
+			>
 				anchor passthrough
 			</Component>
 		</div>
 	</Component>
 
-	<Component tag="section" rail="content-full" grid="rails" rails="content-lg" gap="1rem" class={joinClasses(shellClass, 'overflow-clip')}>
+	<Component
+		tag="section"
+		rail="content-full"
+		grid="rails"
+		rails="content-lg"
+		gap="1rem"
+		class={joinClasses(shellClass, 'overflow-clip')}
+	>
 		<header class="content space-y-2">
-			<p class="text-xs font-black uppercase tracking-[0.24em] text-sky-700">04</p>
+			<p class="text-xs font-black tracking-[0.24em] text-sky-700 uppercase">04</p>
 			<h2 class="text-2xl font-black tracking-tight text-slate-950">Observe</h2>
 			<p class="text-sm leading-6 text-slate-600">
 				Scroll through this section and watch the active states update on both the default wrapper
@@ -205,26 +326,54 @@
 			</p>
 		</header>
 
-		<Component rail="content" color="neutral" appearance="outline" class="rounded-2xl border-dashed px-4 py-8 text-center text-xs font-black uppercase tracking-[0.16em] text-slate-500 shadow-none">
+		<Component
+			rail="content"
+			color="neutral"
+			appearance="outline"
+			class="rounded-2xl border-dashed px-4 py-8 text-center text-xs font-black tracking-[0.16em] text-slate-500 uppercase shadow-none"
+		>
 			scroll into the cards
 		</Component>
 
 		<div class="content grid gap-4 lg:grid-cols-3">
-			<Component observe class={observeCardClass}>default wrapper observe</Component>
-			<Component observe={{ threshold: 0.5, rootMargin: '0px 0px -20% 0px' }} component={featureRenderer} class={cardClass}>
+			<Component
+				observe
+				class={observeCardClass}>default wrapper observe</Component
+			>
+			<Component
+				observe={{ threshold: 0.5, rootMargin: '0px 0px -20% 0px' }}
+				component={featureRenderer}
+				class={cardClass}
+			>
 				custom snippet path
 			</Component>
-			<Component observe total="2" class={observeCardClass}>total + observe</Component>
+			<Component
+				observe
+				total="2"
+				class={observeCardClass}>total + observe</Component
+			>
 		</div>
 
-		<Component rail="content" color="neutral" appearance="outline" class="rounded-2xl border-dashed px-4 py-8 text-center text-xs font-black uppercase tracking-[0.16em] text-slate-500 shadow-none">
+		<Component
+			rail="content"
+			color="neutral"
+			appearance="outline"
+			class="rounded-2xl border-dashed px-4 py-8 text-center text-xs font-black tracking-[0.16em] text-slate-500 uppercase shadow-none"
+		>
 			keep scrolling
 		</Component>
 	</Component>
 
-	<Component tag="section" rail="content-full" grid="rails" rails="content-lg" gap="1rem" class={shellClass}>
+	<Component
+		tag="section"
+		rail="content-full"
+		grid="rails"
+		rails="content-lg"
+		gap="1rem"
+		class={shellClass}
+	>
 		<header class="content space-y-2">
-			<p class="text-xs font-black uppercase tracking-[0.24em] text-sky-700">05</p>
+			<p class="text-xs font-black tracking-[0.24em] text-sky-700 uppercase">05</p>
 			<h2 class="text-2xl font-black tracking-tight text-slate-950">MQ utility</h2>
 			<p class="text-sm leading-6 text-slate-600">
 				The indicator cards, the layout mode label, and the theme preview all use the shared mq
@@ -245,10 +394,18 @@
 		</div>
 
 		<div class="popout grid gap-4 md:grid-cols-2">
-			<Component color={mqComponentColor} appearance={mqComponentAppearance} class={cardClass}>
+			<Component
+				color={mqComponentColor}
+				appearance={mqComponentAppearance}
+				class={cardClass}
+			>
 				mq reactive card: {screenModeLabel}
 			</Component>
-			<Component color={mq.landscape ? 'accent' : 'neutral'} appearance={mq.landscape ? 'glass' : 'outline'} class={cardClass}>
+			<Component
+				color={mq.landscape ? 'accent' : 'neutral'}
+				appearance={mq.landscape ? 'glass' : 'outline'}
+				class={cardClass}
+			>
 				orientation: {mq.landscape ? 'landscape' : 'portrait'}
 			</Component>
 		</div>

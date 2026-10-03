@@ -15,74 +15,291 @@
 </script>
 
 <div class="min-h-svh p-4">
-	<Grid items="a1:d1" class="gap-4 h-full p-4">
-
+	<Grid
+		items="a1:d1"
+		class="h-full gap-4 p-4"
+	>
 		<!-- <Input> Examples 
 		------------------------------------------------------------------->
-		<Item col="1fr" class="grid auto-rows-min gap-5 bg-base-200/50 p-4">
+		<Item
+			col="1fr"
+			class="grid auto-rows-min gap-5 bg-base-200/50 p-4"
+		>
 			<!-- boolean -->
 			<h3>Input (boolean)</h3>
-			<Input xxs variant="icon text icon" icon="home" iconEnd="home" label="xxs (boolean)" />
-			<Input xs variant="icon text icon" icon="home" iconEnd="home" label="xs (boolean)" />
-			<Input sm variant="icon text icon" icon="home" iconEnd="home" label="sm (boolean)" />
-			<Input md variant="icon text icon" icon="home" iconEnd="home" label="md (boolean)" />
-			<Input lg variant="icon text icon" icon="home" iconEnd="home" label="lg (boolean)" />
-			<Input xl variant="icon text icon" icon="home" iconEnd="home" label="xl (boolean)" />
-			<Input xxl variant="icon text icon" icon="home" iconEnd="home" label="xxl (boolean)" />
-			
+			<Input
+				xxs
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="xxs (boolean)"
+			/>
+			<Input
+				xs
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="xs (boolean)"
+			/>
+			<Input
+				sm
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="sm (boolean)"
+			/>
+			<Input
+				md
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="md (boolean)"
+			/>
+			<Input
+				lg
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="lg (boolean)"
+			/>
+			<Input
+				xl
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="xl (boolean)"
+			/>
+			<Input
+				xxl
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="xxl (boolean)"
+			/>
+
 			<!-- prop -->
 			<h3>Input (prop)</h3>
-			<Input size="xxs" variant="icon text icon" icon="home" iconEnd="home" label="size='xxs' (prop)" />
-			<Input size="xs" variant="icon text icon" icon="home" iconEnd="home" label="size='xs' (prop)" />
-			<Input size="sm" variant="icon text icon" icon="home" iconEnd="home" label="size='sm' (prop)" />
-			<Input size="md" variant="icon text icon" icon="home" iconEnd="home" label="size='md' (prop)" />
-			<Input size="lg" variant="icon text icon" icon="home" iconEnd="home" label="size='lg' (prop)" />
-			<Input size="xl" variant="icon text icon" icon="home" iconEnd="home" label="size='xl' (prop)" />
-			<Input size="xxl" variant="icon text icon" icon="home" iconEnd="home" label="size='xxl' (prop)" />
+			<Input
+				size="xxs"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='xxs' (prop)"
+			/>
+			<Input
+				size="xs"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='xs' (prop)"
+			/>
+			<Input
+				size="sm"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='sm' (prop)"
+			/>
+			<Input
+				size="md"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='md' (prop)"
+			/>
+			<Input
+				size="lg"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='lg' (prop)"
+			/>
+			<Input
+				size="xl"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='xl' (prop)"
+			/>
+			<Input
+				size="xxl"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='xxl' (prop)"
+			/>
 		</Item>
 
 		<!-- <Textarea> Examples 
 		------------------------------------------------------------------->
-		<Item col="1fr" class="grid auto-rows-min gap-5 bg-base-200/50 p-4">
+		<Item
+			col="1fr"
+			class="grid auto-rows-min gap-5 bg-base-200/50 p-4"
+		>
 			<!-- boolean -->
 			<h3>Textarea (boolean)</h3>
-			<Textarea variant="text" label="Textarea" />
-			<Textarea variant="icon text" icon="home" label="Textarea" />
-			<Textarea variant="text icon" icon="home" iconEnd="home" label="Textarea" />
-			<Textarea variant="icon text icon" icon="home" iconEnd="home" label="Textarea" />
+			<Textarea
+				variant="text"
+				label="Textarea"
+			/>
+			<Textarea
+				variant="icon text"
+				icon="home"
+				label="Textarea"
+			/>
+			<Textarea
+				variant="text icon"
+				icon="home"
+				iconEnd="home"
+				label="Textarea"
+			/>
+			<Textarea
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="Textarea"
+			/>
 		</Item>
 
 		<!-- <Select> Examples 
 		------------------------------------------------------------------->
-		<Item col="1fr" class="grid auto-rows-min gap-5 bg-base-200/50 p-4">
+		<Item
+			col="1fr"
+			class="grid auto-rows-min gap-5 bg-base-200/50 p-4"
+		>
 			<!-- boolean -->
 			<h3>Select (boolean)</h3>
-			<Select variant="text icon" icon="chevron-down" label="Select" options={selectOptions} />
-			<Select variant="text icon" icon="chevron-down" label="Select Multiple" options={selectOptions} multiple/>
+			<Select
+				variant="text icon"
+				icon="chevron-down"
+				label="Select"
+				options={selectOptions}
+			/>
+			<Select
+				variant="text icon"
+				icon="chevron-down"
+				label="Select Multiple"
+				options={selectOptions}
+				multiple
+			/>
 		</Item>
 
 		<!-- <Button> Examples 
 		------------------------------------------------------------------->
-		<Item col="auto" class="grid auto-rows-min gap-5 bg-base-200/50 p-4">
+		<Item
+			col="auto"
+			class="grid auto-rows-min gap-5 bg-base-200/50 p-4"
+		>
 			<!-- boolean -->
 			<h3>Button (boolean)</h3>
-			<Button width="auto" xxs variant="icon text icon" icon="home" iconEnd="home" label="xxs (boolean)" />
-			<Button width="auto" xs variant="icon text icon" icon="home" iconEnd="home" label="xs (boolean)" />
-			<Button width="auto" sm variant="icon text icon" icon="home" iconEnd="home" label="sm (boolean)" />
-			<Button width="auto" md variant="icon text icon" icon="home" iconEnd="home" label="md (boolean)" />
-			<Button width="auto" lg variant="icon text icon" icon="home" iconEnd="home" label="lg (boolean)" />
-			<Button width="auto" xl variant="icon text icon" icon="home" iconEnd="home" label="xl (boolean)" />
-			<Button width="auto" xxl variant="icon text icon" icon="home" iconEnd="home" label="xxl (boolean)" />
-			
+			<Button
+				width="auto"
+				xxs
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="xxs (boolean)"
+			/>
+			<Button
+				width="auto"
+				xs
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="xs (boolean)"
+			/>
+			<Button
+				width="auto"
+				sm
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="sm (boolean)"
+			/>
+			<Button
+				width="auto"
+				md
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="md (boolean)"
+			/>
+			<Button
+				width="auto"
+				lg
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="lg (boolean)"
+			/>
+			<Button
+				width="auto"
+				xl
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="xl (boolean)"
+			/>
+			<Button
+				width="auto"
+				xxl
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="xxl (boolean)"
+			/>
+
 			<!-- prop -->
 			<h3>Button (prop)</h3>
-			<Button size="xxs" variant="icon text icon" icon="home" iconEnd="home" label="size='xxs' (prop)" />
-			<Button size="xs" variant="icon text icon" icon="home" iconEnd="home" label="size='xs' (prop)" />
-			<Button size="sm" variant="icon text icon" icon="home" iconEnd="home" label="size='sm' (prop)" />
-			<Button size="md" variant="icon text icon" icon="home" iconEnd="home" label="size='md' (prop)" />
-			<Button size="lg" variant="icon text icon" icon="home" iconEnd="home" label="size='lg' (prop)" />
-			<Button size="xl" variant="icon text icon" icon="home" iconEnd="home" label="size='xl' (prop)" />
-			<Button size="xxl" variant="icon text icon" icon="home" iconEnd="home" label="size='xxl' (prop)" /> 
+			<Button
+				size="xxs"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='xxs' (prop)"
+			/>
+			<Button
+				size="xs"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='xs' (prop)"
+			/>
+			<Button
+				size="sm"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='sm' (prop)"
+			/>
+			<Button
+				size="md"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='md' (prop)"
+			/>
+			<Button
+				size="lg"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='lg' (prop)"
+			/>
+			<Button
+				size="xl"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='xl' (prop)"
+			/>
+			<Button
+				size="xxl"
+				variant="icon text icon"
+				icon="home"
+				iconEnd="home"
+				label="size='xxl' (prop)"
+			/>
 		</Item>
 	</Grid>
 </div>
