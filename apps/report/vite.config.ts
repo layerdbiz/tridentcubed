@@ -1,9 +1,10 @@
+import { resolve } from "path";
 import adapter from "@sveltejs/adapter-vercel";
 import { vitePreprocess } from "@sveltejs/vite-plugin-svelte";
 import devtoolsJson from "vite-plugin-devtools-json";
 import tailwindcss from "@tailwindcss/vite";
 import { sveltekit } from "@sveltejs/kit/vite";
-import { defaultClientConditions, defaultServerConditions, defineConfig } from "vite";
+import { defineConfig } from "vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,6 +21,18 @@ export default defineConfig({
 			inspector: true,
 			adapter: adapter({ runtime: "nodejs24.x" }),
 			files: { assets: "../../packages/ui/static" },
+			alias: {
+				// Workspace packages - point to source for hot reloading in apps
+				"@layerd/ui": resolve("../../packages/ui/src/lib"),
+				"@layerd/tools": resolve("../../packages/tools/src"),
+				"@layerd/config": resolve("../../packages/config"),
+				// Root
+				$root: resolve("../../../"),
+
+				// Apps (plop added)
+				$site: resolve("../../apps/site/src"),
+				$storybook: resolve("../../apps/storybook/src")
+			},
 			experimental: { remoteFunctions: true },
 			prerender: { handleMissingId: "ignore" }
 		}),
@@ -37,12 +50,7 @@ export default defineConfig({
 			ignored: ["**/node_modules/**", "**/.git/**"],
 		},
 	},
-	ssr: {
-		// Resolve workspace packages (@layerd/ui) to their source for hot reloading
-		resolve: { conditions: ["source", ...defaultServerConditions] },
-	},
 	resolve: {
-		conditions: ["source", ...defaultClientConditions],
 		// Preserve symlinks for better HMR
 		preserveSymlinks: false,
 		alias: {
