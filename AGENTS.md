@@ -26,6 +26,9 @@ arguments.
 
 ### Issue tracker
 Engineering issues and specs live in GitHub. See docs/agents/issue-tracker.md.
+When you start work on an issue, move it to In Progress on the project
+board and put `Closes #<n>` in the PR body; the client follows the board.
+The how is under "Project board" in that file.
 
 ### Triage labels
 Use the five agreed default labels. See docs/agents/triage-labels.md.
