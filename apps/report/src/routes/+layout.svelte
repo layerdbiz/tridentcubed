@@ -8,8 +8,8 @@
 	let { children, data } = $props();
 
 	// Get slides data from load function
-	const chaptersData = data.chapters ?? [];
-	const slidesData = data.slides ?? [];
+	const chaptersData = $derived(data.chapters ?? []);
+	const slidesData = $derived(data.slides ?? []);
 
 	// Get current slug from URL parameter (catch-all route returns full path)
 	const currentSlug = $derived(page.params.slug);

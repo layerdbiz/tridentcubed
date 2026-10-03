@@ -41,10 +41,12 @@
 		onReset = () => {}
 	} = $props();
 
+	/** @param {string} value */
 	function hasModeView(value) {
 		return modeViews.includes(value);
 	}
 
+	/** @param {string} value */
 	function toggleModeView(value) {
 		if (hasModeView(value) && modeViews.length === 1) return;
 
@@ -63,7 +65,7 @@
 			<span>Switch modes, debug views, placement, rails, and root props without leaving this route.</span>
 		</div>
 
-		<button class="reset-button" type="button" onclick={onReset}>Reset</button>
+		<button class="reset-button" type="button" onclick={() => onReset()}>Reset</button>
 	</div>
 
 	<div class="control-body">
