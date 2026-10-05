@@ -59,7 +59,7 @@ export type PreviewPageVariantType =
 	| 'photo';
 
 /**
- * One question of the report editor. `PanelId` and `PageId` are the id unions derived from
+ * One question of the report, shown in a panel on the Edit tab. `PanelId` and `PageId` are the id unions derived from
  * ./panels.ts and ./pages.ts, so a row that names a missing panel or page does not compile.
  */
 export interface InputDefinitionType<
@@ -111,7 +111,7 @@ export interface InputDefinitionType<
 	 */
 	readonly type: FieldValueType | null;
 	/**
-	 * UI control used to capture or edit the value (NOTE: use the `<InputNew>` component for all `<input>` related elements. The other 'form' components will be created later so it's ok to use normal html for those.
+	 * UI control used to capture or edit the value.
 	 * Options: text, textarea, select, multiselect, date, datetime, number, email, tel, url, file, image, checkbox, radio, repeater, richtext, hidden.
 	 * @example text
 	 */
@@ -192,7 +192,7 @@ export interface InputDefinitionType<
 	readonly reference: readonly string[];
 }
 
-/** One panel of the report editor. */
+/** One panel of the Edit tab. */
 export interface PanelDefinitionType {
 	/**
 	 * Unique row identifier for the record or definition.
@@ -227,6 +227,8 @@ export interface PanelDefinitionType {
 	 * Panel behavior or rendering variant if needed.
 	 * Optional for now; current data allows this column even if blank.
 	 * Options: default, system, custom, repeater, photo.
+	 * In code the renderer values are `PanelRendererType`; every row is blank today and the
+	 * renderer is derived (see `getPanelRenderer`).
 	 * @example default
 	 */
 	readonly type: PanelRendererType | null;

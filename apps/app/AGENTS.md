@@ -22,7 +22,8 @@ src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <ro
   server-only takes `.server.ts`.
 - Route-colocated components are kebab nouns (`photo-grid.svelte`).
   Route-local types end in `Type`.
-- Imports: `@layerd/ui` for the library, bare `$lib` for app code.
+- Imports: `@layerd/ui` for the library, the `#lib/...js` subpath import for app code
+  (Kit 3 replaced the `$lib` alias with `package.json#imports`).
 
 ## Data
 
@@ -34,7 +35,7 @@ src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <ro
 - Remote functions are public endpoints: each `.remote.ts` checks
   `getRequestEvent().locals` and throws or redirects itself. A
   `+page.server.ts` guards the page, not the data; the hook guards many
-  routes. `.remote.ts` files import `$lib/server` but never live under it.
+  routes. `.remote.ts` files import `#lib/server/...` but never live under it.
 - `load` remains for redirects and the print-token page only.
 
 ## Known exceptions
