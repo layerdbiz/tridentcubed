@@ -38,14 +38,12 @@ export default defineConfig({
 		sortPackageJson: false,
 		svelte: true,
 		ignorePatterns: [...generated, ...outOfScope],
-		// Sort Tailwind classes against each package's own stylesheet
+		// Sort Tailwind classes against the UI source stylesheet, not each app's app.css: that
+		// imports the compiled `@layerd/ui/ui.css` (packages/ui/dist), which exists only after a
+		// build and has its `@theme` palette flattened, so the sorter misorders `text-primary-50` (#129)
 		overrides: [
-			...['app', 'play', 'report', 'site'].map((app) => ({
-				files: [`apps/${app}/**`],
-				options: { sortTailwindcss: { stylesheet: `./apps/${app}/src/app.css` } }
-			})),
 			{
-				files: ['packages/ui/**'],
+				files: ['apps/*/**', 'packages/ui/**'],
 				options: { sortTailwindcss: { stylesheet: './packages/ui/src/lib/ui.css' } }
 			}
 		]
