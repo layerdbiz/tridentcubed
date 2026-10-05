@@ -94,5 +94,5 @@ export const contactCardVariants = [
 	}
 ];
 
-// Combined examples for stories
+// Combined examples
 export const cardVariants = [...serviceCardVariants, ...contactCardVariants];

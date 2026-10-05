@@ -13,7 +13,7 @@
  *   getTurboSpawnConfig.
  * - dev = turbo watch //#barrels:watch <app>#dev
  *   watch = dev (kept as an alias; it added the stories generator until
- *   Storybook was archived on #100)
+ *   that generator was archived on #100)
  *   build/preview = turbo run <app>#build|preview
  * - The map is a developer convenience. It never limits which barrels or
  *   symlinks the generators produce, and Vercel does not use it:

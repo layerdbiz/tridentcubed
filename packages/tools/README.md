@@ -42,10 +42,10 @@ app has a `static` folder; every app serves the shared folder through
 reserved first attempt at a shared-assets package with per-app override.
 Contract: `src/generators/symlinks.ts`.
 
-**Stories.** Archived with the Storybook app on
+**Stories.** Archived with the app it wrote into on
 [#100](https://github.com/layerdbiz/tridentcubed/issues/100) (2026-10-05), at
 `.archive/packages/tools/src/generators/stories.ts` with its `stories/` helpers,
-`bin` and the `storybook` slice of `config.ts`.
+`bin` and its slice of `config.ts`.
 
 **Sheetari.** The snapshot generator is archived on
 [#48](https://github.com/layerdbiz/tridentcubed/issues/48) (2026-10-05), at
@@ -88,7 +88,7 @@ reference, edited nowhere: it carries the note "moved to code on 2026-10-05"
   package `build` lists in `dependsOn`, and a persistent watch run beside
   `vp dev` with `vp run --parallel`, both work with the untouched generator.
   Vite Task loads every package's Vite config to build its task graph; the
-  frozen Storybook config that stopped it is archived (#100). Turbo stays.
+  frozen Kit 2 config that stopped it is archived (#100). Turbo stays.
 
 ## Vercel
 
@@ -165,16 +165,11 @@ Cleaned up on ticket [#23](https://github.com/layerdbiz/tridentcubed/issues/23)
 - `src/generators/types.ts`, a stub, with its `types` bin, export and script.
 - `src/main.ts`, a second command router. `bin/stories.js` was its only
   importer, and importing it ran the barrels generator as a side effect
-  before every story run; the bin now imports `src/generators/stories.ts`
-  directly, like the other bins.
+  before every story run; the bin then imported `src/generators/stories.ts`
+  directly, like the other bins (both archived since, #100).
 - `test` script: ran the barrels generator, tested nothing. The root
   `pnpm test` never selected this package.
 - Story generator `run({ watch })` and symlink `watchSymlinks`: stubs.
-
-Retired on ticket [#100](https://github.com/layerdbiz/tridentcubed/issues/100)
-(2026-10-05): the Storybook app and the stories generator (archived, see
-above), the `storybook#story`, `storybook` and `build-storybook` Turbo tasks,
-the root `stories` script, and `getStorybookThemeItems` in `@layerd/ui`.
 
 Still true, not a dead piece: pnpm ignores `@parcel/watcher`'s build script
 (`allowBuilds` in `pnpm-workspace.yaml`), so chokidar falls back to Node's
@@ -184,5 +179,5 @@ Still true, not a dead piece: pnpm ignores `@parcel/watcher`'s build script
 
 Shared static assets as a package with per-app override; finishing or dropping
 the UI subpath entrypoints; developing the UI library in the monorepo while
-publishing it standalone; whether a component showcase replaces Storybook. See map
+publishing it standalone; whether a component showcase returns (#100). See map
 [#1](https://github.com/layerdbiz/tridentcubed/issues/1), Not yet specified.
