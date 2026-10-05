@@ -51,7 +51,9 @@ Contract: `src/generators/stories.ts`.
 `.archive/packages/tools/src/generators/sheetari.ts` with its `bin` and the
 `apps/app/src/lib/data` snapshot. The Report Generator's definitions are typed
 modules in `apps/app/src/lib/definitions`; the website still reads Sheetari
-live through its `*.remote.ts` files.
+live through its `*.remote.ts` files. The definition sheet is a frozen
+reference, edited nowhere: it carries the note "moved to code on 2026-10-05"
+(added by hand; this line stands in until it does).
 
 ## Verified by running (2026-09-18, this worktree, Node 24.21, pnpm 9.15.4)
 
