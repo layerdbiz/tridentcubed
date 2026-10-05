@@ -10,7 +10,7 @@ const schema = createProjectSchema({
 	pages: [],
 	panels: [
 		{
-			id: 'client',
+			id: 'PANEL-002',
 			order: 1,
 			visibility: null,
 			icon: '',
@@ -32,7 +32,7 @@ const schema = createProjectSchema({
 		{
 			id: 'client-name',
 			visibility: null,
-			panel: 'Client',
+			panel: 'PANEL-002',
 			label: 'Name',
 			path: 'client.name',
 			source: null,

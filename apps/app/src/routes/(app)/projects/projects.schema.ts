@@ -1,6 +1,12 @@
+import type { PageIdType, PanelIdType } from '#lib/definitions/index.js';
 import type * as projectTypes from './projects.types';
 
-const excludedSections = new Set(['Time Log']);
+// The Time Log panel has its own editor, so its inputs are not rendered as form fields.
+const excludedPanelIds = new Set<string>(['PANEL-008' satisfies PanelIdType]);
+const coverPageId = 'PAGE-001' satisfies PageIdType;
+const tocPageId = 'PAGE-002' satisfies PageIdType;
+const timeLogPageId = 'PAGE-008' satisfies PageIdType;
+const disclaimerPageId = 'PAGE-020' satisfies PageIdType;
 
 function toKey(value: string): string {
 	return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -20,12 +26,12 @@ export function createProjectSchema(
 	const panels = [...definitions.panels]
 		.filter((panel) => panel.visibility !== 'hidden')
 		.sort((left, right) => left.order - right.order);
-	const visiblePanelTitles = new Set(panels.map((panel) => panel.title));
+	const visiblePanelIds = new Set(panels.map((panel) => panel.id));
 	const formInputs = definitions.inputs.filter((input) => {
 		if (!input.id || !input.panel || !input.path) return false;
 		if (input.visibility === 'hidden') return false;
-		if (!visiblePanelTitles.has(input.panel)) return false;
-		return !excludedSections.has(input.panel);
+		if (!visiblePanelIds.has(input.panel)) return false;
+		return !excludedPanelIds.has(input.panel);
 	});
 	const inputsByPanel = formInputs.reduce((groups, input) => {
 		const inputs = groups.get(input.panel) ?? [];
@@ -35,21 +41,28 @@ export function createProjectSchema(
 	}, new Map<string, projectTypes.InputDefinitionType[]>());
 	const inputGroups = panels
 		.map((panel) => ({
-			panel: panel.title,
-			inputs: inputsByPanel.get(panel.title) ?? []
+			panel: panel.id,
+			title: panel.title,
+			inputs: inputsByPanel.get(panel.id) ?? []
 		}))
 		.filter((group) => group.inputs.length > 0);
 
 	const fieldGroups = inputGroups.map((group) => ({
-		section: group.panel,
+		section: group.title,
 		fields: group.inputs
 	}));
 
-	const customVariantOptions = definitions.inputs.find(
-		(input) => input.path === 'custom.entries.variant'
-	)?.options ?? ['photos-1', 'photos-2', 'photos-4', 'photos-6', 'photos-8'];
+	const customVariantOptions = [
+		...(definitions.inputs.find((input) => input.path === 'custom.entries.variant')?.options ?? [
+			'photos-1',
+			'photos-2',
+			'photos-4',
+			'photos-6',
+			'photos-8'
+		])
+	];
 
-	const pageByName = new Map(pages.map((page) => [page.page, page]));
+	const pageById = new Map(pages.map((page) => [page.id, page]));
 
 	return {
 		panels,
@@ -58,10 +71,10 @@ export function createProjectSchema(
 		pages,
 		coverFieldPaths: formInputs.map((input) => input.path),
 		customVariantOptions,
-		coverPageTitle: toTitle(pageByName.get('Cover'), 'Cover'),
-		tocPageTitle: toTitle(pageByName.get('Table of Contents'), 'Table of Contents'),
-		timeLogPageTitle: toTitle(pageByName.get('Time Log'), 'Time Log'),
-		disclaimerPageTitle: toTitle(pageByName.get('Disclaimer'), 'Disclaimer')
+		coverPageTitle: toTitle(pageById.get(coverPageId), 'Cover'),
+		tocPageTitle: toTitle(pageById.get(tocPageId), 'Table of Contents'),
+		timeLogPageTitle: toTitle(pageById.get(timeLogPageId), 'Time Log'),
+		disclaimerPageTitle: toTitle(pageById.get(disclaimerPageId), 'Disclaimer')
 	};
 }
 
@@ -91,11 +104,12 @@ export function getFieldGroup(
 	return schema.fieldGroups.find((group) => group.section === section);
 }
 
+/** Inputs of one panel by panel id. */
 export function getInputGroup(
 	schema: projectTypes.ProjectSchemaType,
-	panel: string
+	panelId: string
 ): projectTypes.PanelInputGroupDefinitionType | undefined {
-	return schema.inputGroups.find((group) => group.panel === panel);
+	return schema.inputGroups.find((group) => group.panel === panelId);
 }
 
 export function getPanelDefinition(
@@ -154,8 +168,8 @@ export function getPhotoPanelFields(
 	schema: projectTypes.ProjectSchemaType,
 	panel: string | projectTypes.PanelDefinitionType
 ): projectTypes.PhotoPanelFieldsType | null {
-	const panelTitle = typeof panel === 'string' ? panel : panel.title;
-	const inputGroup = getInputGroup(schema, panelTitle);
+	const panelId = typeof panel === 'string' ? panel : panel.id;
+	const inputGroup = getInputGroup(schema, panelId);
 	if (!inputGroup) return null;
 
 	const repeaters = inputGroup.inputs
@@ -198,13 +212,9 @@ export function getPhotoPanelFields(
 		photoPath: photoPath?.path ?? null,
 		captionPath: captionPath?.path ?? null,
 		variantOptions: variantField?.options.length
-			? variantField.options
+			? [...variantField.options]
 			: schema.customVariantOptions
 	};
-}
-
-function matchesPageTitle(value: string, pageTitle: string): boolean {
-	return toKey(value) === toKey(pageTitle);
 }
 
 function getExplicitPanelPageReferences(panel: projectTypes.PanelDefinitionType): string[] {
@@ -216,9 +226,7 @@ export function getInputsForOutputPage(
 	page: projectTypes.PageDefinitionType
 ): projectTypes.InputDefinitionType[] {
 	return schema.inputGroups.flatMap((group) =>
-		group.inputs.filter((input) =>
-			input.outputToPages.some((item) => matchesPageTitle(item, page.page))
-		)
+		group.inputs.filter((input) => input.outputToPages.includes(page.id))
 	);
 }
 
@@ -229,7 +237,7 @@ export function getPanelsForOutputPage(
 	const panels = new Map<string, projectTypes.PanelDefinitionType>();
 
 	for (const input of getInputsForOutputPage(schema, page)) {
-		const panel = getPanelDefinition(schema, input.panel);
+		const panel = getPanelDefinitionById(schema, input.panel);
 		if (panel) panels.set(panel.id, panel);
 	}
 
@@ -273,9 +281,7 @@ export function getPhotoPageForPanel(
 	return schema.pages.find(
 		(page) =>
 			page.variant === 'photo' &&
-			getInputsForOutputPage(schema, page).some((input) =>
-				matchesPageTitle(input.panel, panel.title)
-			)
+			getInputsForOutputPage(schema, page).some((input) => input.panel === panel.id)
 	);
 }
 

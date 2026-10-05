@@ -468,8 +468,8 @@
 			{#each sections as section, index (section.id)}
 				{@const panelDefinition = getSectionPanelDefinition(section)}
 				{@const inputGroup =
-					section.type === 'fields' || section.type === 'cover'
-						? projectSchemas.getInputGroup(schema, section.section)
+					(section.type === 'fields' || section.type === 'cover') && panelDefinition
+						? projectSchemas.getInputGroup(schema, panelDefinition.id)
 						: undefined}
 				{@const photoPanelFields =
 					section.type === 'photos' && panelDefinition
@@ -626,7 +626,7 @@
 												{/if}
 												<div class="space-y-3">
 													<Text
-														h4={inputGroup.panel}
+														h4={inputGroup.title}
 														class="font-bold text-neutral-800"
 													/>
 													{#each sharedPhotoFields.regularFields as field (field.id)}

@@ -3,16 +3,15 @@
 	import { onMount } from 'svelte';
 	import { Logo, Button, mq, Table, Text, Component } from '@layerd/ui';
 	import type { TableColumn } from '@layerd/ui';
+	import { definitions as projectDefinitions } from '#lib/definitions/index.js';
 	import * as projectAssets from './projects.assets';
 	import * as projectDialog from './projects.dialog.svelte';
 	import * as projectConstants from './projects.constants';
 	import * as projectDataUtils from './projects.data';
-	import { fetchProjectDefinitions } from './projects.remote';
 	import * as projectSchemas from './projects.schema';
 	import * as projectStates from './projects.state';
 	import type * as projectTypes from './projects.types';
 
-	const projectDefinitions = await fetchProjectDefinitions();
 	const projectSchema = projectSchemas.createProjectSchema(projectDefinitions);
 	const tableColumns: TableColumn[] = [
 		{ key: 'title', label: 'Project' },

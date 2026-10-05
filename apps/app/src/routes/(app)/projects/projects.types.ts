@@ -147,115 +147,33 @@ export interface PanelTemplateType<T extends PanelType = PanelType> {
 
 export type SectionTemplateType<T extends SectionType = SectionType> = PanelTemplateType<T>;
 
-export type FieldSourceType = 'user' | 'system' | 'prefilled' | 'derived' | 'template' | 'external';
-
-export type FieldValueType =
-	| 'string'
-	| 'number'
-	| 'boolean'
-	| 'date'
-	| 'datetime'
-	| 'enum'
-	| 'object'
-	| 'array'
-	| 'file'
-	| 'image'
-	| 'richtext';
-
-export type FieldInputType =
-	| 'text'
-	| 'textarea'
-	| 'select'
-	| 'multiselect'
-	| 'date'
-	| 'datetime'
-	| 'number'
-	| 'email'
-	| 'tel'
-	| 'url'
-	| 'file'
-	| 'image'
-	| 'checkbox'
-	| 'radio'
-	| 'repeater'
-	| 'richtext'
-	| 'hidden';
-
-export type FieldVisibilityType = 'visible' | 'hidden' | 'conditional';
-export type PanelRendererType = 'fields' | 'time-log' | 'photos' | 'custom';
-export type OutputPageSectionType = 'header' | 'main' | 'footer';
-export type PreviewPageVariantType =
-	| 'full'
-	| 'toc'
-	| 'list'
-	| 'template'
-	| 'team'
-	| 'table'
-	| 'photo';
-
-export interface InputDefinitionType {
-	id: string;
-	visibility: FieldVisibilityType | null;
-	panel: string;
-	label: string;
-	path: string;
-	source: FieldSourceType | null;
-	type: FieldValueType | null;
-	input: FieldInputType | null;
-	options: string[];
-	placeholder: string;
-	value: string;
-	editable: boolean;
-	required: boolean;
-	repeatable: boolean;
-	validation: string[];
-	outputToPages: string[];
-	outputToPageSection: OutputPageSectionType[];
-	example: string;
-	notes: string;
-	reference: string[];
-}
+// Definition row types live in src/lib/definitions (#48, #93); re-exported so the route's
+// `projectTypes` namespace keeps naming them.
+export type {
+	FieldInputType,
+	FieldSourceType,
+	FieldValueType,
+	FieldVisibilityType,
+	InputDefinitionType,
+	OutputPageSectionType,
+	PageDefinitionType,
+	PanelDefinitionType,
+	PanelRendererType,
+	PreviewPageVariantType,
+	ProjectDefinitionsType
+} from '#lib/definitions/index.js';
+import type {
+	InputDefinitionType,
+	PageDefinitionType,
+	PanelDefinitionType
+} from '#lib/definitions/index.js';
 
 export type FieldDefinitionType = InputDefinitionType;
 
-export interface PanelDefinitionType {
-	id: string;
-	order: number;
-	visibility: FieldVisibilityType | null;
-	icon: string;
-	title: string;
-	type: PanelRendererType | null;
-	description: string;
-	required: boolean;
-	readonly: boolean;
-	enabled: boolean;
-	draggable: boolean;
-	notes: string;
-	reference: string[];
-	photo: string;
-	iconClass: string;
-	iconUrl: string;
-}
-
-export interface PageDefinitionType {
-	id: string;
-	order: number;
-	required: boolean;
-	page: string;
-	variant: PreviewPageVariantType | string;
-	section: OutputPageSectionType[];
-	notes: string;
-	reference: string;
-}
-
-export interface ProjectDefinitionsType {
-	inputs: InputDefinitionType[];
-	panels: PanelDefinitionType[];
-	pages: PageDefinitionType[];
-}
-
 export interface PanelInputGroupDefinitionType {
+	/** Panel id (`PanelIdType`). */
 	panel: string;
+	title: string;
 	inputs: InputDefinitionType[];
 }
 

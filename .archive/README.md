@@ -29,3 +29,8 @@ svelte-check can be a zero-error gate on `apps/app`, `apps/site` and
 | `packages/ui/src/+versions` | UI `v1` snapshot |
 | `apps/play/src/+merge` | layout snippets and rails merge scratch space |
 | `apps/play/src/+versions` | play app `v1`, `v2`, `v3` snapshots |
+| `apps/app/src/routes/simple` | Sheetari-backed test-sheet route of the prototype ([#48](https://github.com/layerdbiz/tridentcubed/issues/48), 2026-10-05) |
+| `apps/app/src/routes/(demo)` | `persist` prop sandbox of the prototype (#48, 2026-10-05) |
+| `apps/app/src/routes/(app)/projects/example.html` | standalone "group repeater blueprint" HTML of the prototype, unreferenced (#48, 2026-10-05) |
+| `apps/app/src/lib/data` | April 2026 Sheetari snapshot (definition JSON) and the CSV mirrors (#48, 2026-10-05) |
+| `packages/tools/src/generators/sheetari.ts`, `packages/tools/bin/sheetari.js` | Sheetari snapshot generator (#48, 2026-10-05) |

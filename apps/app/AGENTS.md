@@ -26,6 +26,8 @@ src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <ro
 
 ## Data
 
+- Report definitions (inputs, panels, pages) are code in `src/lib/definitions/`,
+  imported directly (`#lib/definitions/index.js`); no remote function reads them (#48).
 - Remote functions are the data layer: `fetchX` for `query`, `query.batch`
   and `query.live`; `getXData` for `prerender`; `submitX` for `form`.
   `command` naming is decided on the platform map with persistence.
