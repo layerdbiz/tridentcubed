@@ -1,26 +1,28 @@
 {
-  "name": "@layerd/config-vite",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    ".": "./vite.config.js"
-  },
-  "files": [
-    "vite.config.js"
-  ],
-  "dependencies": {
-    "@iconify-json/mdi": "^1.2.3",
-    "@sveltejs/kit": "^3.0.0",
-    "@sveltejs/vite-plugin-svelte": "^7.0.0",
-    "@tailwindcss/vite": "4.3.3",
-    "unplugin-icons": "^23.0.1",
-    "vite-plugin-devtools-json": "^1.1.0"
-  },
-  "devDependencies": {
-    "vite": "^8.0.12"
-  },
-  "peerDependencies": {
-    "vite": "^8.0.12"
-  }
+	"name": "@layerd/config-vite",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./vite.config.ts"
+	},
+	"files": [
+		"vite.config.ts"
+	],
+	"dependencies": {
+		"@sveltejs/adapter-vercel": "^7.0.0",
+		"@sveltejs/kit": "^3.0.0",
+		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"@tailwindcss/vite": "4.3.3",
+		"vite-plugin-devtools-json": "^1.1.0",
+		"vite-plus": "catalog:"
+	},
+	"devDependencies": {
+		"svelte": "^5.56.4",
+		"vite": "catalog:"
+	},
+	"peerDependencies": {
+		"svelte": "^5.0.0",
+		"vite": "*"
+	}
 }

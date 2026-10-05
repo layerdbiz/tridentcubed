@@ -93,6 +93,16 @@ reference, edited nowhere: it carries the note "moved to code on 2026-10-05"
   Vite Task loads every package's Vite config to build its task graph; the
   frozen Kit 2 config that stopped it is archived (#100). Turbo stays.
 
+## Verified by running (2026-10-05, #101, this container, Node 22.22, pnpm 12.8.1)
+
+- With the four apps on `createAppConfig`: `pnpm build app site play report`
+  from the root, `pnpm exec vp build` inside `apps/app`, `pnpm test` (21
+  tests), `vp lint`, `pnpm barrels` with zero diff, `svelte-check` zero on
+  app, site and ui, and `vp dev --host` plus `vp preview --host` serving app
+  and site with `packages/ui/static` at the same URLs. The Vite config loader
+  imports the factory as a workspace package and Node strips its types; no
+  bundling step is involved.
+
 ## Vercel
 
 Two projects, `tridentcubed` (site) and `tridentcubed-app` (app), both on
@@ -131,7 +141,9 @@ orchestrator and Vite Task is not adopted.
    Any task runner that replaces Turbo must express both, and the workspace
    launcher must be rewritten to spawn it (it resolves `turbo/bin/turbo`).
 6. **Apps consume UI source.** Every app aliases `@layerd/ui` to
-   `packages/ui/src/lib`. The UI `dist` is not on the app critical path.
+   `packages/ui/src/lib`. The alias lives in one place, the `createAppConfig`
+   factory in `packages/config/vite` (#101). The UI `dist` is not on the app
+   critical path.
 7. **The UI package build keeps working.** `svelte-package` plus
    `postcss` to `dist/ui.css`, and the `exports` map including the
    `./src` entry, because `@layerd/ui` is published on npm for use outside this
@@ -150,15 +162,15 @@ orchestrator and Vite Task is not adopted.
 11. **Both experimental flags stay on** in every app config
     (`kit.experimental.remoteFunctions`, `compilerOptions.experimental.async`).
 12. **`packages/config/ts` stays where it is.** Every `tsconfig.json` extends
-    it by relative path. Each app's `vite.config.ts` carries its whole Kit
-    config since Kit 3 and is canonical; no `svelte.config.js` exists outside
-    the one Kit 2 leftover (`packages/config/svelte`; the Storybook copy is
-    archived, #100). Decided 2026-10-05 on #22: `@layerd/config-vite` becomes
-    the shared `createAppConfig({ root, prerender?, test? })` factory for app,
-    site, play and report (#101); Storybook, the last importer of today's copy,
-    is archived (#100), so neither config package has an importer;
-    `@layerd/config-svelte` is deleted with #101; `packages/ui` keeps its own
-    config. Until #101 lands, both packages are untouched reference copies.
+    it by relative path. Each app's `vite.config.ts` is its one config file
+    since Kit 3; no `svelte.config.js` exists outside `.archive/`. The four
+    apps (app, site, play, report) get that file from
+    `createAppConfig({ root, prerender?, test? })` in `@layerd/config-vite`,
+    each reduced to the import plus its overrides (decided 2026-10-05 on #22,
+    built on #101). The factory computes every path from its own location and
+    the `root` it is given, never from the working directory, which is what
+    broke the shared `svelte.config.js` of the first attempt.
+    `@layerd/config-svelte` is deleted; `packages/ui` keeps its own config.
 13. **One build path per app, identical locally and on Vercel:** the app's own
     `vp build` with committed generated files, or a deliberate move of Vercel
     onto the workspace build path. Not a silent drift between the two.
