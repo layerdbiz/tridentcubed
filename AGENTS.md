@@ -102,6 +102,14 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   the root `vite.config.ts`), `pnpm test`, and `svelte-check` with zero errors
   on app, site and `packages/ui` (`pnpm --filter <name> check`). `vp check
   --fix` formats and applies safe lint fixes.
+- **One config file per app.** SvelteKit 3 reads only `vite.config.ts`; no
+  `svelte.config.js` exists in this repository, and none is added. The four
+  apps share `createAppConfig` from `@layerd/config-vite` once #101 lands
+  (decided 2026-10-05 on #22); `packages/ui` keeps its own config.
+- **Stale code goes.** Code that no longer runs or is no longer used is
+  deleted, not kept; git history is the archive. `.archive/` holds only
+  prototype material someone may still port concepts from (decided
+  2026-10-05 on #22).
 
 <!-- BEGIN:turborepo-agent-rules -->
 
