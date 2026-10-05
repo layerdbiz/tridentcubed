@@ -6,7 +6,7 @@ Use a root CONTEXT-MAP.md to route to relevant domain glossaries:
 - packages/ui/CONTEXT.md: reusable UI design vocabulary.
 
 Create these lazily as terminology is resolved. Missing files do not
-block work. Until a map exists, read a root CONTEXT.md if present.
+block work.
 
 Keep glossaries limited to domain meaning. Maintain API explanations,
 examples and implementation guidance beside their owning code or package.

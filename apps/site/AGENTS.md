@@ -15,6 +15,9 @@ Shared conventions: root `AGENTS.md`. The app layout rules in
 
 ## Known exceptions
 
-`HomePage.svelte` (1,046 lines, PascalCase) and the `form.enhance` call
-in it that uses the callback shape Kit 2.61 changed: both are fixed on the
-Kit upgrade or "UI library cleanup" (#33), not mid-feature.
+`HomePage.svelte` (1,059 lines, PascalCase) waits for "UI library
+cleanup" (#33), not a mid-feature fix. Its `form.enhance` call (line 828)
+still uses the callback shape Kit 2.61 changed; the Kit 3 upgrade (#83)
+left it alone. Whether the contact form still submits is checked by hand
+on #15: it posts to a live Zapier hook, so never submit it from a test or
+a session.
