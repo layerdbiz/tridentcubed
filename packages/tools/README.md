@@ -141,9 +141,15 @@ orchestrator and Vite Task is not adopted.
     (`kit.experimental.remoteFunctions`, `compilerOptions.experimental.async`),
     with Storybook forcing `async` off under Storybook.
 12. **`packages/config/ts` stays where it is.** Every `tsconfig.json` extends
-    it by relative path. The per-app `vite.config` files, which carry the Kit
-    config since Kit 3, are canonical today; `@layerd/config-svelte` and `@layerd/config-vite` are
-    reference copies, imported only by Storybook's Vite config.
+    it by relative path. Each app's `vite.config.ts` carries its whole Kit
+    config since Kit 3 and is canonical; no `svelte.config.js` exists outside
+    the two Kit 2 leftovers (`packages/config/svelte`, `apps/storybook`).
+    Decided 2026-10-05 on #22: `@layerd/config-vite` becomes the shared
+    `createAppConfig({ root, prerender?, test? })` factory for app, site, play
+    and report (#101), after Storybook, the last importer of today's copy, is
+    archived (#100); `@layerd/config-svelte` is deleted with #101; `packages/ui`
+    keeps its own config. Until those land, both packages are untouched
+    reference copies.
 13. **One build path per app, identical locally and on Vercel:** the app's own
     `vp build` with committed generated files, or a deliberate move of Vercel
     onto the workspace build path. Not a silent drift between the two.
