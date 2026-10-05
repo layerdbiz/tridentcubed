@@ -22,7 +22,6 @@ const outOfScope = [
 	'.agents/**',
 	'.claude/**',
 	'.archive/**',
-	'.todo/**',
 	'docs/**',
 	'packages/ui/static/**',
 	'pnpm-lock.yaml',

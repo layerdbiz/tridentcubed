@@ -4,8 +4,9 @@ Comparison-only code kept for reference, outside the type-checked tree.
 
 Each folder keeps its original repository path beneath this one, so a file that
 lived at `packages/ui/src/legacy/...` is now at
-`.archive/packages/ui/src/legacy/...`. Nothing here is imported, built,
-published or type-checked:
+`.archive/packages/ui/src/legacy/...` (one exception: the TODO reconciliation
+table sits in `.archive/.todo/` beside the CSV it keys on). Nothing here is
+imported, built, published or type-checked:
 
 - `.archive/` is outside the pnpm workspace globs (`apps/*`, `packages/*`,
   `packages/config/*`).
@@ -36,3 +37,10 @@ svelte-check can be a zero-error gate on `apps/app`, `apps/site` and
 | `packages/tools/src/generators/sheetari.ts`, `packages/tools/bin/sheetari.js` | Sheetari snapshot generator (#48, 2026-10-05) |
 | `apps/storybook` | frozen Kit 2 Storybook app, failed to start on its pins and its Vite config blocked Vite Task ([#100](https://github.com/layerdbiz/tridentcubed/issues/100), 2026-10-05, decided on #22) |
 | `packages/tools/src/generators/stories.ts`, `packages/tools/src/generators/stories/`, `packages/tools/bin/stories.js`, `packages/tools/src/config.ts` (the `storybook` slice) | stories generator that wrote `apps/storybook/src/stories` from JSDoc tags (#100, 2026-10-05) |
+| `.github/copilot-instructions.md` | root Copilot instructions, contradicted by `AGENTS.md` ([#16](https://github.com/layerdbiz/tridentcubed/issues/16), 2026-10-05) |
+| `.github/instructions` | nine path-scoped Copilot instruction files, superseded by the root and scoped `AGENTS.md` (#16, 2026-10-05) |
+| `.github/prompts` | nine Copilot prompts; component, remote-function and summarize prompts superseded by the `/oneezy-ui-component`, `/oneezy-app-route` and `/handoff` skills (#16, 2026-10-05) |
+| `.github/chatmodes` | the "Beast Mode (old)" Copilot chatmode (#16, 2026-10-05) |
+| `.todo` | historical backlog: `TODO.csv`, `TODO.txt`, the `ICONS.md` PRD and the grid-breakout note, reconciled on #50; the reconciliation table `2026-09-28-todo-reconciliation.md` moved here from `docs/research/` beside the CSV it keys on (#16, 2026-10-05) |
+| `instructo.md` | Svelte-expert prompt with the email-signature design notes, now a header comment on `apps/site/src/lib/email/email.remote.ts` (#16, 2026-10-05) |
+| `TODO.md` | root TODO list, reconciled on #50 (#16, 2026-10-05) |
