@@ -1,11 +1,11 @@
 import { defineConfig } from 'vite-plus';
 
 // Generated or frozen files that the formatter and linter must leave byte-stable
-// (packages/tools/README.md, invariants 1 to 3). The reference configs in packages/config are
-// frozen per #12.
+// (packages/tools/README.md, invariants 1 to 3). The tsconfig bases in packages/config/ts are
+// frozen per #12 (invariant 12).
 const generated = [
 	'packages/tools/**',
-	'packages/config/**',
+	'packages/config/ts/**',
 	'apps/*/src/lib/index.ts',
 	'packages/ui/src/lib/index.ts',
 	'packages/ui/src/lib/base/index.ts',
