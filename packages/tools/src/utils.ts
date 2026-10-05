@@ -239,7 +239,7 @@ export async function scanRecursively(
 }
 
 /**
- * Scan folder structure for generators (barrels, stories, etc.)
+ * Scan folder structure for generators (barrels, symlinks)
  */
 export async function scanFolderStructure(
 	rootPath: string,

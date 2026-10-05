@@ -3,8 +3,7 @@
  *
  * Contract (ticket #9, 2026-09-18; see ../../README.md).
  * Status: reserved, currently no effect. No app has a static folder; every
- * app serves packages/ui/static through `kit.files.assets`, Storybook through
- * `staticDirs`. This generator is the first attempt at a shared static-assets
+ * app serves packages/ui/static through `kit.files.assets`. This generator is the first attempt at a shared static-assets
  * package with per-app override, an open question on the map. Keep it intact
  * until that question resolves.
  * Behaviour when run: creates a directory symlink per app (absolute target on

@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite-plus';
 
 // Generated or frozen files that the formatter and linter must leave byte-stable
-// (packages/tools/README.md, invariants 1 to 3). Storybook and the reference configs it imports
-// are frozen per #12.
+// (packages/tools/README.md, invariants 1 to 3). The reference configs in packages/config are
+// frozen per #12.
 const generated = [
 	'packages/tools/**',
 	'packages/config/**',
@@ -11,8 +11,7 @@ const generated = [
 	'packages/ui/src/lib/base/index.ts',
 	'packages/ui/src/lib/base/helpers/index.ts',
 	'packages/ui/src/lib/components/index.ts',
-	'packages/ui/src/lib/utils/index.ts',
-	'apps/storybook/**'
+	'packages/ui/src/lib/utils/index.ts'
 ];
 
 // Not code, or owned elsewhere: docs, synced agent skills, archived sources, static assets,

@@ -16,9 +16,6 @@ export interface ToolsConfig {
 			componentsPath: string;
 			staticPath: string;
 		};
-		storybook: {
-			storiesPath: string;
-		};
 	};
 	symlinks: {
 		source: string;
@@ -73,9 +70,6 @@ export const TOOLS_CONFIG: ToolsConfig = {
 			],
 			componentsPath: "packages/ui/src/lib/components",
 			staticPath: "packages/ui/static",
-		},
-		storybook: {
-			storiesPath: "apps/storybook/src/stories",
 		},
 	},
 	symlinks: {

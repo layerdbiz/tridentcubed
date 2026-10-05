@@ -12,10 +12,11 @@
  *   current Node binary. Replacing Turbo means rewriting buildTurboArgs and
  *   getTurboSpawnConfig.
  * - dev = turbo watch //#barrels:watch <app>#dev
- *   watch = dev + storybook#story
+ *   watch = dev (kept as an alias; it added the stories generator until
+ *   Storybook was archived on #100)
  *   build/preview = turbo run <app>#build|preview
- * - The map is a developer convenience. It never limits which barrels,
- *   stories or symlinks the generators produce, and Vercel does not use it:
+ * - The map is a developer convenience. It never limits which barrels or
+ *   symlinks the generators produce, and Vercel does not use it:
  *   Vercel runs `pnpm build` inside apps/site and apps/app directly.
  */
 
@@ -200,16 +201,7 @@ function buildTurboArgs(
 	passthroughArgs: string[] = [],
 ): string[] {
 	const turboArgs = (() => {
-		if (command === "watch") {
-			return [
-				"watch",
-				"//#barrels:watch",
-				...apps.map((appName) => `${appName}#dev`),
-				"storybook#story",
-			];
-		}
-
-		if (command === "dev") {
+		if (command === "dev" || command === "watch") {
 			return [
 				"watch",
 				"//#barrels:watch",
