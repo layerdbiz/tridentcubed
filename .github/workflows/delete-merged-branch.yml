@@ -3,9 +3,10 @@
 # cloud session cannot switch on. `dev` and `main` are never deleted, and a branch from a fork is
 # left alone.
 #
-# Run it by hand (Actions → delete-merged-branch → Run workflow) to sweep branches left behind by
-# earlier merges: a branch goes only when its newest PR is merged and the branch still points at
-# the commit that PR merged, so a branch someone has pushed to since is kept.
+# Every run also sweeps branches left behind by earlier merges, so nothing has to be run by hand:
+# a branch goes only when its newest PR is merged and the branch still points at the commit that
+# PR merged, so a branch someone has pushed to since is kept. The sweep can also be run alone from
+# Actions → delete-merged-branch → Run workflow.
 name: delete-merged-branch
 
 on:
@@ -41,7 +42,6 @@ jobs:
           fi
 
       - name: Sweep branches left behind by earlier merges
-        if: github.event_name == 'workflow_dispatch'
         run: |
           gh api --paginate "repos/$REPO/branches?per_page=100" --jq '.[] | "\(.name) \(.commit.sha)"' |
           while read -r name sha; do
