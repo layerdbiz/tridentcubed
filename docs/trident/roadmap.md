@@ -4,12 +4,11 @@ Owner: Justin. Captured 2026-09-18 from Justin's roadmap and the Trello card
 "Trident: Report Generator V1 and roadmap" (https://trello.com/c/SDILPz9M).
 Checked items are owner-reported completion, not repository-verified.
 
-> **Open question (2026-09-18):** Justin is reconsidering the order below.
-> He may want authentication, a real database, and cloud media storage set
-> up *before* the Report Generator MVP, rather than working backwards from a
-> local-only prototype. Exhibit B currently excludes auth from Milestone 1
-> and preserves a Sept 26 due date. Resolving this is a product/contract
-> decision for the next Wayfinder map, not this one.
+> **Open question (2026-09-18), answered 2026-10-05:** Justin decided on the
+> "Report Generator platform" map (#111) that authentication, the database
+> and permissions are part of V1, ahead of the report features, because
+> leaving them for Milestone 2 would create debt. The map's tickets decide
+> the mechanisms. Exhibit B's Milestone 1 wording below is unchanged.
 
 ## Phase 1 — Trident Website
 
