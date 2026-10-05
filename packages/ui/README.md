@@ -1,7 +1,7 @@
 # @layerd/ui
 
-The reusable UI package: the Svelte components, base runtime, helpers and
-stylesheet that every Trident app consumes from source as `@layerd/ui`. Its
+The reusable UI package: the Svelte components, base component system, helpers and
+stylesheet that every app in the repository consumes from source as `@layerd/ui`. Its
 vocabulary never depends on the business.
 
 Build it from this folder with `pnpm build`, or from the repository root with

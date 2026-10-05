@@ -4,8 +4,9 @@ Comparison-only code kept for reference, outside the type-checked tree.
 
 Each folder keeps its original repository path beneath this one, so a file that
 lived at `packages/ui/src/legacy/...` is now at
-`.archive/packages/ui/src/legacy/...`. Nothing here is imported, built,
-published or type-checked:
+`.archive/packages/ui/src/legacy/...` (one exception: the TODO reconciliation
+table sits in `.archive/.todo/` beside the CSV it keys on). Nothing here is
+imported, built, published or type-checked:
 
 - `.archive/` is outside the pnpm workspace globs (`apps/*`, `packages/*`,
   `packages/config/*`).

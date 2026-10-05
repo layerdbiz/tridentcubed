@@ -1,9 +1,9 @@
 // Email signatures for the internal team. Design rationale, carried from the
-// retired Svelte-expert prompt on #16: one getHTML() per signature is the single source
-// for both the rendered preview and the copyable code, so display and output
-// never drift; the preview renders inside an iframe so no page CSS leaks into
-// the signature; and copying takes the iframe's rendered content as rich HTML,
-// which pastes with its styling into Gmail and Outlook.
+// retired Svelte-expert prompt on #16: one getHTML() per signature is the
+// single source for both the rendered preview and the copyable code, so
+// display and output never drift; the preview renders inside an iframe so no
+// page CSS leaks into the signature; and copying takes the iframe's rendered
+// content as rich HTML, which pastes with its styling into Gmail and Outlook.
 import { query } from '$app/server';
 import * as v from 'valibot';
 
