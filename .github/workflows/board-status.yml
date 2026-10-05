@@ -1,0 +1,119 @@
+# Sets the Status of issues on the client-facing GitHub Project by hand, for the cases task-manager
+# cannot work out from git: a PR whose branch names no issue (the early claude/... branches), an issue
+# closed without a PR, a card dragged by hand. task-manager stays the automatic path; this is the
+# override, and it runs on a GitHub runner because a cloud session cannot reach the Projects API.
+#
+# Secrets: PROJECT_PAT, the same classic PAT task-manager uses (project + repo scopes, held by the
+# account that owns the project).
+#
+# From a cloud session:
+#   gh api -X POST repos/layerdbiz/tridentcubed/actions/workflows/board-status.yml/dispatches \
+#     -f ref=dev -f 'inputs[issues]=84 85' -f 'inputs[status]=Complete'
+# or Actions → board-status → Run workflow. The run log says what moved and from where.
+#
+# The push trigger only registers the workflow with GitHub, which lists a workflow once it has run
+# on some event; a dispatch-only workflow on a fresh branch would 404 forever. That run does nothing.
+name: board-status
+
+on:
+  push:
+    paths: [.github/workflows/board-status.yml]
+  workflow_dispatch:
+    inputs:
+      issues:
+        description: Issue numbers, separated by spaces or commas
+        type: string
+        required: true
+      status:
+        description: Status column to put them in (Todo, Next Up, In Progress, Review, Done, Complete)
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  move:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move the cards
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_PAT }}
+          REPO: ${{ github.repository }}
+          ISSUES: ${{ inputs.issues }}
+          STATUS: ${{ inputs.status }}
+        run: |
+          set -euo pipefail
+          owner=${REPO%/*}
+          name=${REPO#*/}
+
+          # The project linked to this repo (number 1 when several are), its Status field and options.
+          project=$(gh api graphql -f owner="$owner" -f name="$name" -f query='
+            query($owner: String!, $name: String!) {
+              repository(owner: $owner, name: $name) {
+                projectsV2(first: 20) {
+                  nodes {
+                    id number title
+                    field(name: "Status") {
+                      ... on ProjectV2SingleSelectField { id options { id name } }
+                    }
+                  }
+                }
+              }
+            }' --jq '.data.repository.projectsV2.nodes
+                     | (map(select(.number == 1)) + .)[0]')
+          if [ -z "$project" ] || [ "$project" = null ]; then
+            echo "::error::no GitHub Project is linked to $REPO"; exit 1
+          fi
+          project_id=$(jq -r .id <<<"$project")
+          field_id=$(jq -r .field.id <<<"$project")
+          option_id=$(jq -r --arg s "$STATUS" '.field.options[] | select(.name == $s) | .id' <<<"$project")
+          if [ -z "$option_id" ]; then
+            echo "::error::no Status named '$STATUS'; the board has: $(jq -r '[.field.options[].name] | join(", ")' <<<"$project")"
+            exit 1
+          fi
+          echo "project #$(jq -r .number <<<"$project") $(jq -r .title <<<"$project"); status $STATUS"
+
+          failed=0
+          for n in $(tr ',' ' ' <<<"$ISSUES"); do
+            case "$n" in ''|*[!0-9]*) echo "::error::'$n' is not an issue number"; failed=1; continue;; esac
+            issue=$(gh api graphql -f owner="$owner" -f name="$name" -F number="$n" -f query='
+              query($owner: String!, $name: String!, $number: Int!) {
+                repository(owner: $owner, name: $name) {
+                  issue(number: $number) {
+                    id
+                    projectItems(first: 20) {
+                      nodes {
+                        id project { id }
+                        fieldValueByName(name: "Status") {
+                          ... on ProjectV2ItemFieldSingleSelectValue { name }
+                        }
+                      }
+                    }
+                  }
+                }
+              }' --jq '.data.repository.issue') || { echo "::error::#$n not found"; failed=1; continue; }
+            item=$(jq -r --arg p "$project_id" '.projectItems.nodes[] | select(.project.id == $p)' <<<"$issue")
+            if [ -z "$item" ]; then
+              item_id=$(gh api graphql -f project="$project_id" -f content="$(jq -r .id <<<"$issue")" -f query='
+                mutation($project: ID!, $content: ID!) {
+                  addProjectV2ItemById(input: { projectId: $project, contentId: $content }) { item { id } }
+                }' --jq '.data.addProjectV2ItemById.item.id')
+              from="not on the board"
+            else
+              item_id=$(jq -r .id <<<"$item")
+              from=$(jq -r '.fieldValueByName.name // "no Status"' <<<"$item")
+            fi
+            if [ "$from" = "$STATUS" ]; then
+              echo "kept  #$n at $STATUS"; continue
+            fi
+            gh api graphql -f project="$project_id" -f item="$item_id" -f field="$field_id" -f option="$option_id" -f query='
+              mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $project, itemId: $item, fieldId: $field,
+                  value: { singleSelectOptionId: $option }
+                }) { projectV2Item { id } }
+              }' --silent
+            echo "moved #$n: $from -> $STATUS"
+          done
+          exit $failed

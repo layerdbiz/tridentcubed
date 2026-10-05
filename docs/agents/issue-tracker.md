@@ -55,15 +55,24 @@ gh api R/issues/<n>), not its number:
 
 The client watches the GitHub Project's Status column, and the
 task-manager workflow moves it from git events (rules in
-oneezy/tools packages/task-manager/scripts/status.sh). A branch named
-<type>/<n>-<slug> moves #n to In Progress on its own; cloud threads work on
-claude/... branches that name no issue, so they must say it themselves:
+oneezy/tools packages/task-manager/scripts/status.sh). The workflow reads
+the ticket number from the branch name: a branch named <type>/<n>-<slug>
+moves #n to In Progress when it is created, to Review when its PR is ready,
+back to In Progress on a draft or changes requested, and to Done when the PR
+merges into dev; a push to main takes every Done card to Complete. A branch
+that names no issue (the early claude/... thread branches) moves nothing,
+whatever its PR body says; that is how #84 and #85 sat at In Progress after
+they shipped.
 
-- Starting a ticket: dispatch the workflow with start=<n> (moves #n from
-  Todo, Next Up or no Status to In Progress):
+- Starting a ticket on a branch with no number: dispatch task-manager with
+  start=<n> (moves #n from Todo, Next Up or no Status to In Progress):
   gh api -X POST R/actions/workflows/task-manager.yml/dispatches
   -f ref=dev -f 'inputs[start]=<n>'
-- Every PR body carries Closes #<n> for each ticket it finishes. That
-  link moves the ticket to Review when the PR is ready, back to In
-  Progress on a draft or changes requested, and closes it as Done when
-  the PR merges into dev. A PR without it moves nothing.
+- Every PR body still carries Closes #<n> for each ticket it finishes, so
+  the issue closes when the work reaches main and the PR links to it.
+- A card the workflow cannot see (no numbered branch, closed by hand,
+  dragged by hand): dispatch board-status with the issues and the column.
+  It runs on a GitHub runner, where the Projects API is reachable:
+  gh api -X POST R/actions/workflows/board-status.yml/dispatches
+  -f ref=dev -f 'inputs[issues]=<n> <m>' -f 'inputs[status]=Done'
+  Columns: Todo, Next Up, In Progress, Review, Done, Complete.
