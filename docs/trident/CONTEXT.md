@@ -140,6 +140,10 @@ _Avoid_: download
 The inputs, panels and report pages that say what a report contains, whatever they are stored in.
 _Avoid_: schema (for this), mirror, snapshot, local data
 
+**Repeatable**:
+An input the surveyor can add more than once in a report: the groups of a photo panel, the photos in a photo group, the files on a group. A property of the input, not of the panel; a panel that holds repeatable inputs is a group repeater.
+_Avoid_: multiple, repeater (for the input)
+
 **Definition sheet**:
 The Google Sheet where the definitions were first authored: a specification, no longer the runtime source once the definitions live in the code.
 
