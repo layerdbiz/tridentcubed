@@ -1,0 +1,69 @@
+# Deletes a pull request's head branch once the PR is merged, so nobody has to tap "Delete branch"
+# on GitHub. Stands in for the repository setting "Automatically delete head branches", which a
+# cloud session cannot switch on. `dev` and `main` are never deleted, and a branch from a fork is
+# left alone.
+#
+# Run it by hand (Actions → delete-merged-branch → Run workflow) to sweep branches left behind by
+# earlier merges: a branch goes only when its newest PR is merged and the branch still points at
+# the commit that PR merged, so a branch someone has pushed to since is kept.
+name: delete-merged-branch
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  delete:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      OWNER: ${{ github.repository_owner }}
+    steps:
+      - name: Delete the merged PR's head branch
+        if: github.event_name == 'pull_request'
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          case "$BRANCH" in
+            dev|main) echo "kept: $BRANCH is protected"; exit 0 ;;
+          esac
+          if gh api -X DELETE "repos/$REPO/git/refs/heads/$BRANCH"; then
+            echo "deleted: $BRANCH"
+          else
+            echo "already gone: $BRANCH"
+          fi
+
+      - name: Sweep branches left behind by earlier merges
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          gh api --paginate "repos/$REPO/branches?per_page=100" --jq '.[] | "\(.name) \(.commit.sha)"' |
+          while read -r name sha; do
+            case "$name" in
+              dev|main) continue ;;
+            esac
+            newest=$(gh api "repos/$REPO/pulls?state=all&head=$OWNER:$name&sort=updated&direction=desc&per_page=1" \
+              --jq '.[0] | select(. != null) | "\(.number) \(.state) \(.merged_at // "") \(.head.sha)"' 2>/dev/null || true)
+            [ -n "$newest" ] || { echo "kept: $name has no PR"; continue; }
+            set -- $newest
+            number=$1 state=$2 merged_at=$3 head_sha=$4
+            if [ "$state" != "closed" ] || [ -z "$merged_at" ]; then
+              echo "kept: $name, PR #$number is $state and not merged"
+              continue
+            fi
+            if [ "$head_sha" != "$sha" ]; then
+              echo "kept: $name moved on since PR #$number merged"
+              continue
+            fi
+            if gh api -X DELETE "repos/$REPO/git/refs/heads/$name" >/dev/null; then
+              echo "deleted: $name (PR #$number merged)"
+            else
+              echo "failed to delete: $name"
+            fi
+          done

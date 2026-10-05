@@ -8,7 +8,8 @@
       "Bash(git branch -D *)",
       "Bash(git worktree unlock *)",
       "Bash(git worktree remove *)",
-      "Bash(git worktree prune*)"
+      "Bash(git worktree prune*)",
+      "Bash(gh api -X PUT repos/layerdbiz/tridentcubed/pulls/*)"
     ]
   },
   "hooks": {
