@@ -67,8 +67,6 @@ app.
 
 ### Protected branches
 `main` is promoted by hand; never merge into, push to, or modify it.
-Never touch the branch named `persist`. Its rule lives here because it is
-specific to this repo; it is not in any global agent config.
 
 ## Authoring conventions
 
