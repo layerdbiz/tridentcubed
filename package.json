@@ -7,8 +7,7 @@
 		"app": false,
 		"play": true,
 		"report": false,
-		"site": false,
-		"storybook": false
+		"site": false
 	},
 	"scripts": {
 		"workspace": "node ./packages/tools/bin/workspace.js",
@@ -20,7 +19,6 @@
 		"test": "turbo run test --filter=app --filter=@layerd/ui",
 		"barrels": "pnpm --filter @layerd/tools run barrels:run --workspace",
 		"barrels:watch": "pnpm --filter @layerd/tools run barrels:run --workspace --watch",
-		"stories": "turbo storybook#story",
 		"symlinks": "turbo symlinks",
 		"symlinks:clean": "turbo symlinks:clean",
 		"symlinks:check": "turbo symlinks:check",

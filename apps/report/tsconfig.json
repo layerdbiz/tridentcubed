@@ -4,12 +4,6 @@
 		"sourceMap": true,
 		"strict": true
 	},
-	"exclude": [
-		"node_modules/**",
-		"dist/**",
-		".svelte-kit/**",
-		"storybook-static/**",
-		"**/.turbo/**"
-	],
+	"exclude": ["node_modules/**", "dist/**", ".svelte-kit/**", "**/.turbo/**"],
 	"include": ["src"]
 }

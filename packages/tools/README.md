@@ -1,7 +1,7 @@
 # @layerd/tools
 
 Workspace automation for the Trident monorepo: the `workspace` launcher and the
-`barrels`, `symlinks` and `stories` generators. Everything here runs
+`barrels` and `symlinks` generators. Everything here runs
 straight from TypeScript source through Node's type stripping; there is no build
 step. `bin/*.js` are the entrypoints, `src/generators/*.ts` the implementations,
 `src/config.ts` the paths and targets, `src/utils.ts` the shared scanner.
@@ -28,7 +28,8 @@ the generators touch.
 
 **Turbo graph.** `build` depends on `//#barrels` (root script, workspace-mode
 barrels) and `^build`. `dev` and `watch` run `//#barrels:watch` beside each
-app's `dev`; `watch` adds `storybook#story`. See `turbo.json` for the task list.
+app's `dev`; `watch` is an alias of `dev` since the stories generator left
+(#100). See `turbo.json` for the task list.
 
 **Barrels.** Eleven committed `index.ts` files: five UI targets from
 `src/config.ts` plus one per app that has `src/lib`. The UI root barrel is the
@@ -37,14 +38,14 @@ imports. App barrels have no importers today. Contract: `src/generators/barrels.
 
 **Symlinks.** Would link each `apps/<app>/static` to `packages/ui/static`. No
 app has a `static` folder; every app serves the shared folder through
-`kit.files.assets` and Storybook through `staticDirs`. The generator is the
+`kit.files.assets`. The generator is the
 reserved first attempt at a shared-assets package with per-app override.
 Contract: `src/generators/symlinks.ts`.
 
-**Stories.** One `.stories.svelte` per UI component, written into
-`apps/storybook/src/stories`, driven by JSDoc tags on the component. Story
-files are generator-owned; orphans are deleted. Storybook is frozen on the map.
-Contract: `src/generators/stories.ts`.
+**Stories.** Archived with the app it wrote into on
+[#100](https://github.com/layerdbiz/tridentcubed/issues/100) (2026-10-05), at
+`.archive/packages/tools/src/generators/stories.ts` with its `stories/` helpers,
+`bin` and its slice of `config.ts`.
 
 **Sheetari.** The snapshot generator is archived on
 [#48](https://github.com/layerdbiz/tridentcubed/issues/48) (2026-10-05), at
@@ -86,8 +87,8 @@ reference, edited nowhere: it carries the note "moved to code on 2026-10-05"
 - Invariant 5 under Vite Task (#85 experiment): a root `run.tasks` entry that a
   package `build` lists in `dependsOn`, and a persistent watch run beside
   `vp dev` with `vp run --parallel`, both work with the untouched generator.
-  Vite Task loads every package's Vite config to build its task graph, so the
-  frozen Storybook config stops it until Storybook moves to Kit 3. Turbo stays.
+  Vite Task loads every package's Vite config to build its task graph; the
+  frozen Kit 2 config that stopped it is archived (#100). Turbo stays.
 
 ## Vercel
 
@@ -110,14 +111,14 @@ config; 4 is met by an `engines` field of `24.x` in the root and every app
 plus the adapter runtime `nodejs24.x`; 5 is why Turborepo stays the
 orchestrator and Vite Task is not adopted.
 
-1. **Generated files are committed and current.** Barrels and stories live in
+1. **Generated files are committed and current.** Barrels live in
    git. Vercel trusts them. Proof for any toolchain change: on a clean checkout
    run `pnpm barrels`; `git status` shows no diff.
 2. **The barrels generator is not modified by a toolchain ticket.** Node,
    TypeScript, pnpm and Turbo changes are proven by invariant 1 plus `pnpm dev`,
    `pnpm build` and `pnpm preview`, all inspected by eye.
 3. **Barrel output is byte-stable.** No formatter rewrites any generated
-   `index.ts` or `.stories.svelte`. If a formatter is adopted, either ignore
+   `index.ts`. If a formatter is adopted, either ignore
    those paths or prove it is a no-op on them.
 4. **Tools run from source on Node 24 LTS.** Type stripping and
    `erasableSyntaxOnly` are the mechanism. Target: an `engines` field and both
@@ -137,25 +138,24 @@ orchestrator and Vite Task is not adopted.
    work with no importers. Keep them intact; finishing or dropping them is a
    separate decision.
 9. **Every app keeps serving `packages/ui/static`.** Today via
-   `kit.files.assets` and Storybook `staticDirs`. Any replacement must serve the
-   same files at the same URLs.
+   `kit.files.assets`. Any replacement must serve the same files at the same
+   URLs.
 10. **The Report Generator's definitions are typed modules** in
     `apps/app/src/lib/definitions`, checked by `svelte-check`; the Report
     Generator reads neither Sheetari nor Google Sheets. The website reads
     Sheetari live through `*.remote.ts`, one sheet id per app.
 11. **Both experimental flags stay on** in every app config
-    (`kit.experimental.remoteFunctions`, `compilerOptions.experimental.async`),
-    with Storybook forcing `async` off under Storybook.
+    (`kit.experimental.remoteFunctions`, `compilerOptions.experimental.async`).
 12. **`packages/config/ts` stays where it is.** Every `tsconfig.json` extends
     it by relative path. Each app's `vite.config.ts` carries its whole Kit
     config since Kit 3 and is canonical; no `svelte.config.js` exists outside
-    the two Kit 2 leftovers (`packages/config/svelte`, `apps/storybook`).
-    Decided 2026-10-05 on #22: `@layerd/config-vite` becomes the shared
-    `createAppConfig({ root, prerender?, test? })` factory for app, site, play
-    and report (#101), after Storybook, the last importer of today's copy, is
-    archived (#100); `@layerd/config-svelte` is deleted with #101; `packages/ui`
-    keeps its own config. Until those land, both packages are untouched
-    reference copies.
+    the one Kit 2 leftover (`packages/config/svelte`; the Storybook copy is
+    archived, #100). Decided 2026-10-05 on #22: `@layerd/config-vite` becomes
+    the shared `createAppConfig({ root, prerender?, test? })` factory for app,
+    site, play and report (#101); Storybook, the last importer of today's copy,
+    is archived (#100), so neither config package has an importer;
+    `@layerd/config-svelte` is deleted with #101; `packages/ui` keeps its own
+    config. Until #101 lands, both packages are untouched reference copies.
 13. **One build path per app, identical locally and on Vercel:** the app's own
     `vp build` with committed generated files, or a deliberate move of Vercel
     onto the workspace build path. Not a silent drift between the two.
@@ -170,8 +170,8 @@ Cleaned up on ticket [#23](https://github.com/layerdbiz/tridentcubed/issues/23)
 - `src/generators/types.ts`, a stub, with its `types` bin, export and script.
 - `src/main.ts`, a second command router. `bin/stories.js` was its only
   importer, and importing it ran the barrels generator as a side effect
-  before every story run; the bin now imports `src/generators/stories.ts`
-  directly, like the other bins.
+  before every story run; the bin then imported `src/generators/stories.ts`
+  directly, like the other bins (both archived since, #100).
 - `test` script: ran the barrels generator, tested nothing. The root
   `pnpm test` never selected this package.
 - Story generator `run({ watch })` and symlink `watchSymlinks`: stubs.
@@ -184,5 +184,5 @@ Still true, not a dead piece: pnpm ignores `@parcel/watcher`'s build script
 
 Shared static assets as a package with per-app override; finishing or dropping
 the UI subpath entrypoints; developing the UI library in the monorepo while
-publishing it standalone; the Storybook rework. See map
+publishing it standalone; whether a component showcase returns (#100). See map
 [#1](https://github.com/layerdbiz/tridentcubed/issues/1), Not yet specified.

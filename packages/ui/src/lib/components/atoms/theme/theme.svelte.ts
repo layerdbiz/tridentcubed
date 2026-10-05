@@ -37,19 +37,6 @@ export function parseThemes(themes?: string | string[]): string[] {
 }
 
 /**
- * Get theme items formatted for Storybook toolbar
- */
-export function getStorybookThemeItems(themes?: string | string[]) {
-	const themeList = parseThemes(themes);
-
-	return themeList.map((theme) => ({
-		value: theme,
-		icon: 'paintbrush',
-		title: theme.charAt(0).toUpperCase() + theme.slice(1)
-	}));
-}
-
-/**
  * Apply a theme to the document
  * @param themeName - Name of the theme to apply
  */

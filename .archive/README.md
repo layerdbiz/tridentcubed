@@ -11,7 +11,7 @@ published or type-checked:
   `packages/config/*`).
 - Every `tsconfig.json` includes only its own package's `src/`, so svelte-check
   never sees these files.
-- The barrels and stories generators scan only `src/lib`.
+- The barrels generator scans only `src/lib`.
 - The `@layerd/ui` npm `files` list never shipped them.
 
 Read or diff these folders against the live code when you need the history;
@@ -34,3 +34,5 @@ svelte-check can be a zero-error gate on `apps/app`, `apps/site` and
 | `apps/app/src/routes/(app)/projects/example.html` | standalone "group repeater blueprint" HTML of the prototype, unreferenced (#48, 2026-10-05) |
 | `apps/app/src/lib/data` | April 2026 Sheetari snapshot (definition JSON) and the CSV mirrors (#48, 2026-10-05) |
 | `packages/tools/src/generators/sheetari.ts`, `packages/tools/bin/sheetari.js` | Sheetari snapshot generator (#48, 2026-10-05) |
+| `apps/storybook` | frozen Kit 2 Storybook app, failed to start on its pins and its Vite config blocked Vite Task ([#100](https://github.com/layerdbiz/tridentcubed/issues/100), 2026-10-05, decided on #22) |
+| `packages/tools/src/generators/stories.ts`, `packages/tools/src/generators/stories/`, `packages/tools/bin/stories.js`, `packages/tools/src/config.ts` (the `storybook` slice) | stories generator that wrote `apps/storybook/src/stories` from JSDoc tags (#100, 2026-10-05) |

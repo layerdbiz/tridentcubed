@@ -21,7 +21,7 @@
 	interface ThemeProps extends ComponentProps {
 		showModeToggle?: boolean;
 		showThemeSelector?: boolean;
-		themes?: ThemeName; // For Storybook controls (overrides internal state)
+		themes?: ThemeName; // Controlled value (overrides internal state)
 		variant?: 'buttons' | 'dropdown' | 'compact' | 'full';
 		// ModeWatcher configuration
 		defaultMode?: 'system' | 'light' | 'dark';
@@ -32,7 +32,7 @@
 	let {
 		showModeToggle = true,
 		showThemeSelector = true,
-		themes, // Optional - when provided, overrides internal state (Storybook mode)
+		themes, // Optional - when provided, overrides internal state (controlled mode)
 		variant = 'compact', // Default to compact variant
 		// ModeWatcher defaults
 		defaultMode = 'system',
@@ -52,7 +52,7 @@
 	const currentMode = $derived(mode.current);
 	const currentUserPreference = $derived(userPrefersMode.current);
 
-	// Use external theme (Storybook) or internal theme (normal usage)
+	// Use the controlled theme or internal theme (normal usage)
 	const currentTheme = $derived(themes || internalTheme);
 
 	// Track the last applied theme to prevent infinite loops
@@ -87,7 +87,7 @@
 		if (!themes) {
 			internalTheme = newTheme;
 		}
-		// Note: When controlled by props (Storybook), the effect will handle the application
+		// Note: When controlled by props, the effect will handle the application
 		// When not controlled, the effect will react to internalTheme change
 	}
 

@@ -1,11 +1,6 @@
 /* GENERATORS */
 export { generateBarrel, run as runBarrels } from "./generators/barrels.js";
 export {
-	generateStories,
-	generateStoryForComponent,
-	run as runStories,
-} from "./generators/stories.js";
-export {
 	checkSymlinks,
 	cleanSymlinks,
 	generateSymlinks,

@@ -6,7 +6,7 @@
 	import { sync } from '@layerd/ui';
 
 	interface IconThemeProps extends ComponentProps {
-		/** Controlled value (e.g. Storybook); when provided, disables sync updates */
+		/** Controlled value; when provided, disables sync updates */
 		iconTheme?: 'mdi' | 'heroicons' | 'carbon';
 		/** UI style variant */
 		variant?: 'dropdown';

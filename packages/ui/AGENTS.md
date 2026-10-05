@@ -1,7 +1,7 @@
 # @layerd/ui
 
-Vocabulary: `CONTEXT.md` here. Decisions: `docs/adr/`. How the barrels,
-stories and symlinks work: `../tools/README.md`. Shared conventions: the
+Vocabulary: `CONTEXT.md` here. Decisions: `docs/adr/`. How the barrels
+and symlinks work: `../tools/README.md`. Shared conventions: the
 root `AGENTS.md`. Decided on "Confirm shared UI conventions" (#4) and
 "Codify authoring conventions" (#7).
 
