@@ -5,7 +5,8 @@ Shared conventions: root `AGENTS.md`. The app layout rules in
 
 - Data lives in `src/lib/<topic>/<topic>.remote.ts` (about, contact, email,
   faq, globe, icons, partners, sections, services, team, testimonials) and
-  is imported from the bare `$lib` barrel. `prerender` for build-time
+  is imported from the `#lib` barrel (Kit 3's `package.json#imports`; `$lib`
+  is gone). `prerender` for build-time
   content (`getXData`), `query` for Sheetari reads (`fetchX`), `form` for
   contact (`submitX`).
 - Sheetari is read live; nothing reads a local snapshot.

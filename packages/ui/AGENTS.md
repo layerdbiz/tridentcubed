@@ -9,7 +9,7 @@ root `AGENTS.md`. Decided on "Confirm shared UI conventions" (#4) and
 
 Public symbols come from the bare `@layerd/ui`, inside this package too,
 `base/` included. Relative imports reach only a file the barrel does not
-export. `$lib` has no meaning here. Subpaths such as `@layerd/ui/base` are
+export. The apps' `#lib` import (and the old `$lib`) has no meaning here. Subpaths such as `@layerd/ui/base` are
 unfinished and stay unused.
 
 ## Components
