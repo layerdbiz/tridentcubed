@@ -206,20 +206,6 @@ export async function checkSymlinks(): Promise<boolean> {
 }
 
 /**
- * Watch mode - ensure symlinks exist and are valid
- */
-export async function watchSymlinks(): Promise<void> {
-	console.log("👀 Setting up symlinks for watch mode...");
-
-	// Initial setup
-	await generateSymlinks();
-
-	// In watch mode, we just ensure they exist initially
-	// The file system will handle the rest
-	console.log("✨ Symlinks ready for development!");
-}
-
-/**
  * Run symlinks generation (main entry point)
  */
 export async function run(): Promise<void> {

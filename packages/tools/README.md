@@ -154,18 +154,25 @@ orchestrator and Vite Task is not adopted.
     `vp build` with committed generated files, or a deliberate move of Vercel
     onto the workspace build path. Not a silent drift between the two.
 
-## Known dead pieces
+## Removed dead pieces
 
-Removal candidates for the cleanup ticket, on their own branch, verified by dev,
-build and preview before merge. None of them run today.
+Cleaned up on ticket [#23](https://github.com/layerdbiz/tridentcubed/issues/23)
+(2026-10-05), proven by `pnpm barrels` with zero diff, then `pnpm build`,
+`pnpm dev` and `pnpm preview` inspected by eye. None of them ran.
 
-- `barrel` task in `turbo.json`: no package defines a `barrel` script.
-- `src/generators/types.ts`: a stub; `bin` `types` and script `types` point at
-  `src/main.ts`, which is a second, unused command router.
-- `test` script: runs the barrels generator, tests nothing.
+- `barrel` task in `turbo.json`: no package defined a `barrel` script.
+- `src/generators/types.ts`, a stub, with its `types` bin, export and script.
+- `src/main.ts`, a second command router. `bin/stories.js` was its only
+  importer, and importing it ran the barrels generator as a side effect
+  before every story run; the bin now imports `src/generators/stories.ts`
+  directly, like the other bins.
+- `test` script: ran the barrels generator, tested nothing. The root
+  `pnpm test` never selected this package.
 - Story generator `run({ watch })` and symlink `watchSymlinks`: stubs.
-- pnpm ignores `@parcel/watcher`'s build script; chokidar falls back to
-  Node's `fs.watch`. Add it to `onlyBuiltDependencies` if watch is slow.
+
+Still true, not a dead piece: pnpm ignores `@parcel/watcher`'s build script
+(`allowBuilds` in `pnpm-workspace.yaml`), so chokidar falls back to Node's
+`fs.watch`. Allow it if watch is slow.
 
 ## Open questions held on the map
 

@@ -18,7 +18,7 @@ applyTo: 'packages/tools/**,packages/config/**'
 
 `@layerd/tools` is the repo's command package for local codegen and workspace utilities.
 
-- Follow the existing command shape instead of inventing parallel entrypoints: package or root script, bin entrypoint in `packages/tools/bin`, router in `packages/tools/src/main.ts` when applicable, and implementation in `packages/tools/src/generators/*.ts`.
+- Follow the existing command shape instead of inventing parallel entrypoints: package or root script, bin entrypoint in `packages/tools/bin` that imports one generator, and implementation in `packages/tools/src/generators/*.ts`. There is no command router.
 - Keep new tooling additive. Do not break or rename existing commands unless explicitly requested.
 - Reuse `TOOLS_CONFIG`, `Logger`, `resolvePath`, `writeFileAtomic`, and `getWorkspaceApps` before adding new helpers or registries.
 - Scripts and bins should call generators, not duplicate command logic.
@@ -44,24 +44,18 @@ applyTo: 'packages/tools/**,packages/config/**'
 
 ### `sheetari`
 
-- `packages/tools/src/generators/sheetari.ts` fetches the app Sheetari endpoints and writes the local mirrors into `apps/app/src/lib/data`.
-- Keep it a manual workflow unless the user explicitly asks to wire it into a broader orchestration flow.
+- Archived on #48 at `.archive/packages/tools/src/generators/sheetari.ts`. The Report Generator's definitions are typed modules in `apps/app/src/lib/definitions`; the website reads Sheetari live through `*.remote.ts`.
 
 ### `stories`
 
 - `packages/tools/src/generators/stories.ts` generates Storybook stories under `apps/storybook/src/stories`.
 - Keep it working, but do not treat story generation as the primary app development workflow.
-- Watch mode is not implemented in the generator.
+- The generator has no watch mode; `pnpm watch` reruns it through Turbo.
 
 ### `symlinks`
 
 - `packages/tools/src/generators/symlinks.ts` manages shared static asset symlinks from `packages/ui/static` into discovered app static folders.
 - Preserve discovery-based targets and the non-destructive behavior that skips apps which already own a real `static` directory.
-
-### `types`
-
-- `packages/tools/src/generators/types.ts` is a dormant placeholder.
-- Do not present it as a completed workflow unless the user explicitly asks to revive it.
 
 ## Working Rules
 

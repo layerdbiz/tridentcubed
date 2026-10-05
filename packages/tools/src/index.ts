@@ -5,16 +5,13 @@ export {
 	generateStoryForComponent,
 	run as runStories,
 } from "./generators/stories.js";
-export { patchTypes, run as runTypes } from "./generators/types.js";
 export {
 	checkSymlinks,
 	cleanSymlinks,
 	generateSymlinks,
-	watchSymlinks,
 } from "./generators/symlinks.js";
 export { run as runWorkspace } from "./generators/workspace-launcher.js";
 
 /* CORE */
 export * from "./utils.js";
 export * from "./config.js";
-export { main } from "./main.js";
