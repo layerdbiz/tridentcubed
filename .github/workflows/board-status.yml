@@ -10,9 +10,14 @@
 #   gh api -X POST repos/layerdbiz/tridentcubed/actions/workflows/board-status.yml/dispatches \
 #     -f ref=dev -f 'inputs[issues]=84 85' -f 'inputs[status]=Complete'
 # or Actions → board-status → Run workflow. The run log says what moved and from where.
+#
+# The push trigger only registers the workflow with GitHub, which lists a workflow once it has run
+# on some event; a dispatch-only workflow on a fresh branch would 404 forever. That run does nothing.
 name: board-status
 
 on:
+  push:
+    paths: [.github/workflows/board-status.yml]
   workflow_dispatch:
     inputs:
       issues:
@@ -28,6 +33,7 @@ permissions: {}
 
 jobs:
   move:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Move the cards
