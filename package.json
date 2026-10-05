@@ -6,7 +6,7 @@
 	"apps": {
 		"app": false,
 		"play": true,
-		"report": false,
+		"overview": false,
 		"site": false
 	},
 	"scripts": {

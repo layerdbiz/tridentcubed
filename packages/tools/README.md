@@ -95,7 +95,7 @@ reference, edited nowhere: it carries the note "moved to code on 2026-10-05"
 
 ## Verified by running (2026-10-05, #101, cloud container on Node 22.22, below the 24.x floor; Vercel builds on 24)
 
-- With the four apps on `createAppConfig`: `pnpm build app site play report`
+- With the four apps on `createAppConfig`: `pnpm build app site play overview`
   from the root, `pnpm exec vp build` inside `apps/app`, `pnpm test` (21
   tests), `vp lint`, `pnpm barrels` with zero diff, `svelte-check` zero on
   app, site and ui, and `vp dev --host` plus `vp preview --host` serving app
@@ -164,7 +164,7 @@ orchestrator and Vite Task is not adopted.
 12. **`packages/config/ts` stays where it is.** Every `tsconfig.json` extends
     it by relative path. Each app's `vite.config.ts` is its one config file
     since Kit 3; no `svelte.config.js` exists outside `.archive/`. The four
-    apps (app, site, play, report) get that file from
+    apps (app, site, play, overview) get that file from
     `createAppConfig({ root, prerender?, test? })` in `@layerd/config-vite`,
     each reduced to the import plus its overrides (decided 2026-10-05 on #22,
     built on #101). The factory computes every path from its own location and
