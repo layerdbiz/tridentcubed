@@ -29,6 +29,10 @@ the generators touch.
 **Turbo graph.** `build` depends on `//#barrels` (root script, workspace-mode
 barrels) and `^build`. `dev` and `watch` run `//#barrels:watch` beside each
 app's `dev`; `watch` adds `storybook#story`. See `turbo.json` for the task list.
+A persistent task (`dev`, `watch`, `barrels:watch`) is never listed in another
+task's `dependsOn`: Turbo would wait for it forever. Run it beside the other
+task instead, as `dev` and `watch` do (carried from the retired Copilot
+instructions on #16).
 
 **Barrels.** Eleven committed `index.ts` files: five UI targets from
 `src/config.ts` plus one per app that has `src/lib`. The UI root barrel is the
