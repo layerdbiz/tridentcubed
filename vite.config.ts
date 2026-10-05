@@ -25,6 +25,7 @@ const outOfScope = [
 	'docs/**',
 	'packages/ui/static/**',
 	'pnpm-lock.yaml',
+	'prototypes/**',
 	'skills-lock.json'
 ];
 
