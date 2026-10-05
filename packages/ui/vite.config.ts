@@ -17,6 +17,12 @@ export default defineConfig({
 			preprocess: vitePreprocess(),
 			inspector: true,
 			adapter: adapter({ runtime: 'nodejs24.x' }),
+			// `kit.alias` is deprecated in Kit 3 (svelte-check prints
+			// config_option_deprecated_alias on every run), but it stays until
+			// "UI library cleanup" (#33): svelte-package 2.5.8 rewrites only
+			// `kit.alias` into relative paths in dist, so the `@layerd/ui`
+			// self-imports under src/lib cannot move to `package.json#imports`
+			// the way the apps did on #83 without breaking the built package.
 			alias: {
 				'@layerd/ui': resolve('./src/lib'),
 				'@layerd/ui/base': resolve('./src/lib/base'),

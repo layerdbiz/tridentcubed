@@ -1,6 +1,6 @@
 # apps/app (Report Generator)
 
-Product vocabulary: `docs/trident/CONTEXT.md` once #8 writes it (routed from root `CONTEXT-MAP.md`).
+Product vocabulary: `docs/trident/CONTEXT.md`, via `CONTEXT-MAP.md`.
 Roadmap: `docs/trident/roadmap.md`. Shared conventions: root `AGENTS.md`.
 Layout confirmed against SvelteKit docs on #42
 (`docs/research/2026-09-26-sveltekit-app-layout.md`).
