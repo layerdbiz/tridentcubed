@@ -5,8 +5,8 @@
 	},
 	"apps": {
 		"app": false,
-		"play": true,
 		"overview": false,
+		"play": true,
 		"site": false
 	},
 	"scripts": {
