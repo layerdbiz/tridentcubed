@@ -6,16 +6,14 @@ import tailwindcss from '@tailwindcss/vite';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import { defineConfig, lazyPlugins, type ViteUserConfig } from 'vite-plus';
 
-// Every path derives from this file's location or from the app root passed in, never from
-// process.cwd(): the shared svelte.config.js of the first attempt resolved
-// `../../packages/ui/src/lib` against the working directory, which differs between the repo
-// root, an app folder and Vercel (#22, #101).
+// Paths derive from this file's location or the app root passed in, never from process.cwd()
+// (packages/tools/README.md, invariant 12).
 const PACKAGES_DIR = resolve(import.meta.dirname, '..', '..');
 const REPO_ROOT = resolve(PACKAGES_DIR, '..');
 const UI_LIB = resolve(PACKAGES_DIR, 'ui', 'src', 'lib');
 const UI_STATIC = resolve(PACKAGES_DIR, 'ui', 'static');
 
-export type AppConfigOptions = {
+export type AppConfigType = {
 	/** The app directory: `import.meta.dirname` of the app's `vite.config.ts`. */
 	root: string;
 	/** Merged over the shared prerender settings (`handleMissingId: 'ignore'`). */
@@ -28,7 +26,7 @@ export type AppConfigOptions = {
  * The one Vite config for the SvelteKit apps (app, site, play, report). SvelteKit 3 reads only
  * `vite.config.ts`, so an app's file is this call plus its overrides.
  */
-export function createAppConfig({ root, prerender, test }: AppConfigOptions) {
+export function createAppConfig({ root, prerender, test }: AppConfigType) {
 	return defineConfig({
 		root,
 		plugins: lazyPlugins(() => [
@@ -66,6 +64,6 @@ export function createAppConfig({ root, prerender, test }: AppConfigOptions) {
 				'@layerd/ui': UI_LIB
 			}
 		},
-		...(test ? { test } : {})
+		test
 	});
 }
