@@ -28,6 +28,16 @@ _Avoid_: dashboard, report app, slideshow
 The Report Generator as built before V1: the `apps/app` that saves to the browser only. Kept under `.archive/apps/app` as reference once the V1 app exists, deleted when V1 ships; concepts are taken from it, code is not.
 _Avoid_: the old app, legacy app, V0
 
+### Signing in
+
+**User**:
+A person who can sign in to the Report Generator, identified by a verified email address, whichever way they signed in.
+_Avoid_: account, login, member
+
+**Guest**:
+A User who is neither staff nor an admin. A Guest sees only their own account page.
+_Avoid_: visitor, pending, unassigned
+
 ### Projects and reports
 
 **Client**:
