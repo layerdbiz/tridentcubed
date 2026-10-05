@@ -18,7 +18,7 @@
  *   defaults in ./stories/defaults.ts.
  * Runs from `pnpm stories` (turbo storybook#story) and inside `pnpm watch`.
  *   Heuristic: one component modified in the last five seconds regenerates
- *   one story; otherwise everything. The `watch` option is a stub.
+ *   one story; otherwise everything.
  */
 
 import { dirname, join } from "path";
@@ -604,30 +604,24 @@ async function findOrphanedStories(): Promise<string[]> {
 /**
  * Run story generation (main entry point)
  */
-export async function run(options: { watch?: boolean } = {}): Promise<void> {
-	if (options.watch) {
-		logger.info("📺 Story generation watch mode not yet implemented");
-		// TODO: Watch for component changes and regenerate stories
-		// Could use chokidar or similar file watcher
-	} else {
-		// Detect operation type: bulk vs single change
-		const recentlyChanged = await getRecentlyChangedComponents();
-		const orphanedStories = await findOrphanedStories();
+export async function run(): Promise<void> {
+	// Detect operation type: bulk vs single change
+	const recentlyChanged = await getRecentlyChangedComponents();
+	const orphanedStories = await findOrphanedStories();
 
-		if (recentlyChanged.length > 1 || orphanedStories.length > 0) {
-			// Bulk operation detected - run full generation + cleanup
-			logger.info(
-				`🎭 Bulk operation detected: ${recentlyChanged.length} changed, ${orphanedStories.length} orphaned`,
-			);
-			await generateStories();
-		} else if (recentlyChanged.length === 1) {
-			// Single file change - targeted generation
-			logger.info(`🎯 Single component change detected`);
-			await generateStoryForComponent(recentlyChanged[0]);
-		} else {
-			// Startup or no recent changes - full generation
-			logger.info("🎭 Full story generation (startup or no recent changes)");
-			await generateStories();
-		}
+	if (recentlyChanged.length > 1 || orphanedStories.length > 0) {
+		// Bulk operation detected - run full generation + cleanup
+		logger.info(
+			`🎭 Bulk operation detected: ${recentlyChanged.length} changed, ${orphanedStories.length} orphaned`,
+		);
+		await generateStories();
+	} else if (recentlyChanged.length === 1) {
+		// Single file change - targeted generation
+		logger.info(`🎯 Single component change detected`);
+		await generateStoryForComponent(recentlyChanged[0]);
+	} else {
+		// Startup or no recent changes - full generation
+		logger.info("🎭 Full story generation (startup or no recent changes)");
+		await generateStories();
 	}
 }

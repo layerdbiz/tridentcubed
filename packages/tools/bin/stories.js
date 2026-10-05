@@ -1,4 +1,4 @@
 #!/usr/bin/env node
-import("../src/main.ts").then((m) =>
-	m.stories ? m.stories() : console.error("No stories export found")
+import("../src/generators/stories.ts").then((m) =>
+	m.run ? m.run() : console.error("No run export found")
 ).catch(console.error);

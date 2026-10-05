@@ -7,7 +7,6 @@
 		"barrels": "./bin/barrels.js",
 		"stories": "./bin/stories.js",
 		"symlinks": "./bin/symlinks.js",
-		"types": "./src/main.ts",
 		"workspace": "./bin/workspace.js"
 	},
 	"exports": {
@@ -18,7 +17,6 @@
 		"./barrels": "./src/generators/barrels.ts",
 		"./stories": "./src/generators/stories.ts",
 		"./symlinks": "./src/generators/symlinks.ts",
-		"./types": "./src/generators/types.ts",
 		"./workspace": "./src/generators/workspace-launcher.ts"
 	},
 	"scripts": {
@@ -28,9 +26,7 @@
 		"symlinks": "node bin/symlinks.js",
 		"symlinks:clean": "node -e \"import('./src/generators/symlinks.ts').then(m => m.cleanSymlinks())\"",
 		"symlinks:check": "node -e \"import('./src/generators/symlinks.ts').then(m => m.checkSymlinks())\"",
-		"workspace": "node ./bin/workspace.js",
-		"types": "types",
-		"test": "node ./bin/barrels.js"
+		"workspace": "node ./bin/workspace.js"
 	},
 	"devDependencies": {
 		"@types/node": "^25.2.1",
