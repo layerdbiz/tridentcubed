@@ -1,0 +1,64 @@
+# Runs the gate from AGENTS.md "Checks before a PR" and the two Vercel-shaped builds on every pull
+# request into dev and on every push to dev (#130), so no thread re-runs them by hand.
+#
+# gate: `pnpm check`, the same command a thread runs locally; what it runs is the root package.json's
+# `check` script, nowhere else. No build step comes first: the apps alias `@layerd/ui` to the UI
+# source (packages/config/vite), so `@layerd/ui/ui.css` resolves without the styles build, and dev
+# stays green on a fresh clone (#129).
+#
+# build (app) and build (site): `pnpm build` inside the app folder from a clean checkout, the way
+# Vercel builds each project, with no `turbo ^build` before it. The 2026-10-03 retro's #86 passed a
+# local `turbo build` and failed both previews because the gate's build had a different shape.
+#
+# Node comes from `engines.node` and pnpm from `packageManager` in the root package.json, so the
+# versions live in one place.
+name: ci
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+# A new push to a PR cancels that PR's running checks; a run on dev itself always finishes, so a red
+# commit on dev is never hidden by the next merge.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+  build:
+    name: build (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [app, site]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the way Vercel does, from the app folder
+        working-directory: apps/${{ matrix.app }}
+        run: pnpm build
