@@ -3,16 +3,26 @@
 # cloud session cannot switch on. `dev` and `main` are never deleted, and a branch from a fork is
 # left alone.
 #
-# Every run also sweeps branches left behind by earlier merges, so nothing has to be run by hand:
-# a branch goes only when its newest PR is merged and the branch still points at the commit that
-# PR merged, so a branch someone has pushed to since is kept. The sweep can also be run alone from
-# Actions → delete-merged-branch → Run workflow.
+# Every run also sweeps branches left behind, so nothing has to be run by hand. A branch goes when
+# either holds:
+# - its newest PR is merged and the branch still points at the commit that PR merged (a branch
+#   someone has pushed to since is kept), or
+# - everything it changed is already on dev byte for byte, however it got there (squash, cherry-pick,
+#   a copy in another PR), so deleting the name loses nothing. A branch with no commits of its own
+#   is kept: it was just cut and will get work.
+# The sweep can also be run alone from Actions → delete-merged-branch → Run workflow; tick "dry run"
+# to see what it would delete without deleting.
 name: delete-merged-branch
 
 on:
   pull_request:
     types: [closed]
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only print what the sweep would delete
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -26,6 +36,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REPO: ${{ github.repository }}
       OWNER: ${{ github.repository_owner }}
+      DRY_RUN: ${{ inputs.dry_run || false }}
     steps:
       - name: Delete the merged PR's head branch
         if: github.event_name == 'pull_request'
@@ -41,29 +52,51 @@ jobs:
             echo "already gone: $BRANCH"
           fi
 
+      - uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+
       - name: Sweep branches left behind by earlier merges
         run: |
-          gh api --paginate "repos/$REPO/branches?per_page=100" --jq '.[] | "\(.name) \(.commit.sha)"' |
+          git fetch --quiet --prune origin '+refs/heads/*:refs/remotes/origin/*'
+          delete() {
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "would delete: $1 ($2)"
+            elif gh api -X DELETE "repos/$REPO/git/refs/heads/$1" >/dev/null; then
+              echo "deleted: $1 ($2)"
+            else
+              echo "failed to delete: $1"
+            fi
+          }
+          git for-each-ref --format='%(refname:strip=3) %(objectname)' refs/remotes/origin |
           while read -r name sha; do
             case "$name" in
-              dev|main) continue ;;
+              dev|main|HEAD) continue ;;
             esac
+
+            # 1. The newest PR for the branch merged and nothing was pushed since.
             newest=$(gh api "repos/$REPO/pulls?state=all&head=$OWNER:$name&sort=updated&direction=desc&per_page=1" \
               --jq '.[0] | select(. != null) | "\(.number) \(.state) \(.merged_at // "") \(.head.sha)"' 2>/dev/null || true)
-            [ -n "$newest" ] || { echo "kept: $name has no PR"; continue; }
-            set -- $newest
-            number=$1 state=$2 merged_at=$3 head_sha=$4
-            if [ "$state" != "closed" ] || [ -z "$merged_at" ]; then
-              echo "kept: $name, PR #$number is $state and not merged"
+            if [ -n "$newest" ]; then
+              set -- $newest
+              number=$1 state=$2 merged_at=$3 head_sha=$4
+              if [ "$state" = "closed" ] && [ -n "$merged_at" ] && [ "$head_sha" = "$sha" ]; then
+                delete "$name" "PR #$number merged"
+                continue
+              fi
+            fi
+
+            # 2. Everything the branch changed is already on dev, byte for byte.
+            own=$(git rev-list --count "origin/dev..$sha")
+            if [ "$own" = "0" ]; then
+              echo "kept: $name has no commits of its own"
               continue
             fi
-            if [ "$head_sha" != "$sha" ]; then
-              echo "kept: $name moved on since PR #$number merged"
+            base=$(git merge-base origin/dev "$sha")
+            if git diff --name-only -z "$base" "$sha" | xargs -0 git diff --quiet origin/dev "$sha" --; then
+              delete "$name" "its $own commit(s) are already on dev"
               continue
             fi
-            if gh api -X DELETE "repos/$REPO/git/refs/heads/$name" >/dev/null; then
-              echo "deleted: $name (PR #$number merged)"
-            else
-              echo "failed to delete: $name"
-            fi
+            echo "kept: $name has changes dev does not"
           done
