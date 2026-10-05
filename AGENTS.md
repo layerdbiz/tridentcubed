@@ -100,12 +100,12 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   rule.
 - **Checks before a PR.** CI (`.github/workflows/ci.yml`) runs the gate and
   the two Vercel-shaped builds on every PR into `dev`, so no thread re-runs
-  them by hand. The gate is one local command, `pnpm check`, for a pre-push
-  run: `vp check` (Oxfmt and Oxlint, config in the root `vite.config.ts`),
-  `pnpm --filter <name> check` on app, site and `packages/ui` (svelte-check)
-  and on `@layerd/config-vite` (tsc), `pnpm barrels` with a zero-diff check,
-  and `pnpm test`. It runs on a fresh clone with no build step. `vp check
-  --fix` formats and applies safe lint fixes.
+  them by hand. The gate is one local command for a pre-push run,
+  `pnpm check`; the root `package.json` `check` script is the one list of
+  what it runs (format and lint, svelte-check and tsc, barrels with a
+  zero-diff check, tests). It runs on a fresh clone with no build step, and
+  its barrels check reads red on a tree with regenerated barrels not yet
+  committed. `vp check --fix` formats and applies safe lint fixes.
 - **One config file per app.** SvelteKit 3 reads only `vite.config.ts`; no
   `svelte.config.js` exists in this repository, and none is added. The four
   apps get theirs from `createAppConfig({ root, prerender?, test? })` in

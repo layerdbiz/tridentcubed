@@ -1,10 +1,10 @@
 # Runs the gate from AGENTS.md "Checks before a PR" and the two Vercel-shaped builds on every pull
 # request into dev and on every push to dev (#130), so no thread re-runs them by hand.
 #
-# gate: `pnpm check` is the same command a thread runs locally: vp check (Oxfmt and Oxlint),
-# svelte-check on app, site and packages/ui, tsc on @layerd/config-vite, the barrels generator with
-# a zero-diff check, and the tests through Turbo. No build step comes first; dev stays green on a
-# fresh clone (#129).
+# gate: `pnpm check`, the same command a thread runs locally; what it runs is the root package.json's
+# `check` script, nowhere else. No build step comes first: the apps alias `@layerd/ui` to the UI
+# source (packages/config/vite), so `@layerd/ui/ui.css` resolves without the styles build, and dev
+# stays green on a fresh clone (#129).
 #
 # build (app) and build (site): `pnpm build` inside the app folder from a clean checkout, the way
 # Vercel builds each project, with no `turbo ^build` before it. The 2026-10-03 retro's #86 passed a
@@ -21,9 +21,11 @@ on:
     branches: [dev]
   workflow_dispatch:
 
+# A new push to a PR cancels that PR's running checks; a run on dev itself always finishes, so a red
+# commit on dev is never hidden by the next merge.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -34,17 +36,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
           node-version-file: package.json
           cache: pnpm
-      - name: Restore the Turbo cache
-        uses: actions/cache@v4
-        with:
-          path: .turbo/cache
-          key: turbo-${{ runner.os }}-${{ github.sha }}
-          restore-keys: turbo-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
 
@@ -57,7 +53,7 @@ jobs:
         app: [app, site]
     steps:
       - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
           node-version-file: package.json
