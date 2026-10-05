@@ -169,8 +169,8 @@ orchestrator and Vite Task is not adopted.
     each reduced to the import plus its overrides (decided 2026-10-05 on #22,
     built on #101). The factory computes every path from its own location and
     the `root` it is given, never from the working directory, which is what
-    broke the shared `svelte.config.js` of the first attempt.
-    `@layerd/config-svelte` is deleted; `packages/ui` keeps its own config.
+    broke the shared `svelte.config.js` of the first attempt. The Kit 2
+    Svelte config package is deleted; `packages/ui` keeps its own config.
 13. **One build path per app, identical locally and on Vercel:** the app's own
     `vp build` with committed generated files, or a deliberate move of Vercel
     onto the workspace build path. Not a silent drift between the two.
