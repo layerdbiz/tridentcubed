@@ -25,8 +25,7 @@ const outOfScope = [
 	'docs/**',
 	'packages/ui/static/**',
 	'pnpm-lock.yaml',
-	'prototypes/**',
-	'skills-lock.json'
+	'prototypes/**'
 ];
 
 export default defineConfig({

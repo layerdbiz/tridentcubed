@@ -1,17 +1,17 @@
 ## Agent skills
 
 ### Skills library
-Justin's skills come from his library `oneezy/skills`, linked into
-`~/.claude/skills` by `npx @oneezy/skills-sync`; this repo also commits
-copies in `.claude/skills`. A cloud session (`CLAUDE_CODE_REMOTE=true`) gets
-the library from the environment's setup script or this repo's SessionStart
-hook. If a skill Justin asks for is not in your skill list, run this first,
-then carry on:
+Every skill comes from Justin's library `oneezy/skills`, linked into
+`~/.claude/skills` by skills-sync; this repo holds no copies of library
+skills. A cloud session (`CLAUDE_CODE_REMOTE=true`) gets the library from
+the environment's setup script or this repo's SessionStart hook. If a skill
+Justin asks for is not in your skill list, run this first, then carry on:
 
 ```
-npx --yes @oneezy/skills-sync -y --agents claude-code --global --no-projects --no-wsl --quiet
+npx --yes @oneezy/skills-sync@latest -y --agents claude-code --global --no-projects --no-wsl --quiet
 ```
 
+`@latest` keeps a PC with a cached older version on the newest release.
 Claude Code lists the new skills about a minute later; until then, Read the
 SKILL.md.
 
@@ -20,9 +20,23 @@ thread, where it reaches you as plain text rather than a command. If the
 skill is in your list, invoke it. If it is not, which is always the case for
 skills marked `disable-model-invocation` (`/wayfinder`, `/grill-me`,
 `/to-tickets`, `/oneezy-merge` and others), Read
-`.claude/skills/<name>/SKILL.md`, or `~/.claude/skills/<name>/SKILL.md` when
-the repo has no copy, and follow it, with the rest of the message as its
-arguments.
+`~/.claude/skills/<name>/SKILL.md` and follow it, with the rest of the
+message as its arguments.
+
+### Adding a skill
+To add a skill, Justin just asks ("add <owner/repo> skills", or a link to
+one skill) and `/oneezy-skills` does the rest: it writes the change in a
+fresh clone of `oneezy/skills` and pushes a `land/add-<id>` branch; a
+GitHub workflow there checks it, merges it into `dev` and `main` and cuts
+the next release with no review (Justin approved that for `oneezy/skills`
+only), then the skill syncs it here. Never ask Justin to review or merge a
+skills change, and never put skill copies in this repo; this repo keeps its
+normal rules (PRs into `dev`, Justin promotes `main`). Pushing needs
+`oneezy/skills` among this project's repositories; when a push is refused,
+say so and stop, and Justin adds the repo or runs the add from his AI
+Workflow project. The one skill still committed here,
+`.claude/skills/resolving-merge-conflicts`, is not in the library yet and
+stays until it moves there.
 
 ### Issue tracker
 Engineering issues and specs live in GitHub. See docs/agents/issue-tracker.md.
@@ -42,8 +56,8 @@ See docs/agents/domain.md.
 and its builds. `/oneezy-merge` commits, pushes and opens the PR;
 `/oneezy-merge into dev` also squash-merges on green builds and cleans up;
 both end with that report, which briefs the next agent when a wayfinder map
-is in play. Skills prefixed `oneezy-` are Justin's; the rest are installed
-from `skills-lock.json` and are never edited here.
+is in play. Skills prefixed `oneezy-` are Justin's; the rest are
+third-party skills declared in the library and are never edited here.
 
 ## Task coordination
 
