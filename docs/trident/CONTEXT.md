@@ -24,6 +24,10 @@ tridentcubed.com, the marketing site in `apps/site`.
 `apps/report`, an overview of the company itself: employees, competitors, market research. Nothing to do with reports.
 _Avoid_: dashboard, report app, slideshow
 
+**Prototype**:
+The Report Generator as built before V1: the `apps/app` that saves to the browser only. Kept under `.archive/apps/app` as reference once the V1 app exists, deleted when V1 ships; concepts are taken from it, code is not.
+_Avoid_: the old app, legacy app, V0
+
 ### Projects and reports
 
 **Client**:
