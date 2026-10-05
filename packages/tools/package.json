@@ -5,7 +5,6 @@
 	"type": "module",
 	"bin": {
 		"barrels": "./bin/barrels.js",
-		"sheetari": "./bin/sheetari.js",
 		"stories": "./bin/stories.js",
 		"symlinks": "./bin/symlinks.js",
 		"types": "./src/main.ts",
@@ -17,7 +16,6 @@
 			"import": "./src/index.ts"
 		},
 		"./barrels": "./src/generators/barrels.ts",
-		"./sheetari": "./src/generators/sheetari.ts",
 		"./stories": "./src/generators/stories.ts",
 		"./symlinks": "./src/generators/symlinks.ts",
 		"./types": "./src/generators/types.ts",
@@ -25,7 +23,6 @@
 	},
 	"scripts": {
 		"barrels:run": "node ./bin/barrels.js",
-		"sheetari": "node bin/sheetari.js",
 		"stories": "stories",
 		"story": "node bin/stories.js",
 		"symlinks": "node bin/symlinks.js",

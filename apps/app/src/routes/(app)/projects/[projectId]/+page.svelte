@@ -18,11 +18,11 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
+	import { definitions as projectDefinitions, type PanelIdType } from '#lib/definitions/index.js';
 	import * as projectConstants from '../projects.constants';
 	import type { ExportFormatType } from '../projects.constants';
 	import * as projectAssets from '../projects.assets';
 	import * as projectDataUtils from '../projects.data';
-	import { fetchProjectDefinitions } from '../projects.remote';
 	import * as projectSchemas from '../projects.schema';
 	import * as projectUtils from '../projects.utils';
 	import * as projectStates from '../projects.state';
@@ -30,9 +30,9 @@
 	import Panels from './panels.svelte';
 	import type * as projectTypes from '../projects.types';
 
-	const projectDefinitions = await fetchProjectDefinitions();
 	const projectSchema = projectSchemas.createProjectSchema(projectDefinitions);
-	const customPanelDefinition = projectSchemas.getPanelDefinition(projectSchema, 'Custom');
+	const customPanelId = 'PANEL-012' satisfies PanelIdType;
+	const customPanelDefinition = projectSchemas.getPanelDefinitionById(projectSchema, customPanelId);
 	const projectId = page.params.projectId || 'current';
 	const sectionSortType = 'report-section';
 	const photoGroupSortTypePrefix = 'report-photo-group:';

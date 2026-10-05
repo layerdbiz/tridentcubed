@@ -1,11 +1,6 @@
 /* GENERATORS */
 export { generateBarrel, run as runBarrels } from "./generators/barrels.js";
 export {
-	buildSheetariSnapshot,
-	run as runSheetari,
-	syncSheetari,
-} from "./generators/sheetari.js";
-export {
 	generateStories,
 	generateStoryForComponent,
 	run as runStories,

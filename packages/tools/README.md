@@ -1,7 +1,7 @@
 # @layerd/tools
 
 Workspace automation for the Trident monorepo: the `workspace` launcher and the
-`barrels`, `symlinks`, `stories` and `sheetari` generators. Everything here runs
+`barrels`, `symlinks` and `stories` generators. Everything here runs
 straight from TypeScript source through Node's type stripping; there is no build
 step. `bin/*.js` are the entrypoints, `src/generators/*.ts` the implementations,
 `src/config.ts` the paths and targets, `src/utils.ts` the shared scanner.
@@ -46,9 +46,14 @@ Contract: `src/generators/symlinks.ts`.
 files are generator-owned; orphans are deleted. Storybook is frozen on the map.
 Contract: `src/generators/stories.ts`.
 
-**Sheetari.** Snapshots four endpoints of one Google Sheet into
-`apps/app/src/lib/data`. Nothing reads that snapshot. Every app reads Sheetari
-live through remote functions. Contract: `src/generators/sheetari.ts`.
+**Sheetari.** The snapshot generator is archived on
+[#48](https://github.com/layerdbiz/tridentcubed/issues/48) (2026-10-05), at
+`.archive/packages/tools/src/generators/sheetari.ts` with its `bin` and the
+`apps/app/src/lib/data` snapshot. The Report Generator's definitions are typed
+modules in `apps/app/src/lib/definitions`; the website still reads Sheetari
+live through its `*.remote.ts` files. The definition sheet is a frozen
+reference, edited nowhere: it carries the note "moved to code on 2026-10-05"
+(added by hand; this line stands in until it does).
 
 ## Verified by running (2026-09-18, this worktree, Node 24.21, pnpm 9.15.4)
 
@@ -105,9 +110,9 @@ config; 4 is met by an `engines` field of `24.x` in the root and every app
 plus the adapter runtime `nodejs24.x`; 5 is why Turborepo stays the
 orchestrator and Vite Task is not adopted.
 
-1. **Generated files are committed and current.** Barrels, stories and the
-   Sheetari snapshot live in git. Vercel trusts them. Proof for any toolchain
-   change: on a clean checkout run `pnpm barrels`; `git status` shows no diff.
+1. **Generated files are committed and current.** Barrels and stories live in
+   git. Vercel trusts them. Proof for any toolchain change: on a clean checkout
+   run `pnpm barrels`; `git status` shows no diff.
 2. **The barrels generator is not modified by a toolchain ticket.** Node,
    TypeScript, pnpm and Turbo changes are proven by invariant 1 plus `pnpm dev`,
    `pnpm build` and `pnpm preview`, all inspected by eye.
@@ -134,9 +139,10 @@ orchestrator and Vite Task is not adopted.
 9. **Every app keeps serving `packages/ui/static`.** Today via
    `kit.files.assets` and Storybook `staticDirs`. Any replacement must serve the
    same files at the same URLs.
-10. **Runtime data comes from Sheetari live reads** in `*.remote.ts` files,
-    one sheet id per app. The snapshot generator and the CSVs beside it are
-    unread and never part of a build.
+10. **The Report Generator's definitions are typed modules** in
+    `apps/app/src/lib/definitions`, checked by `svelte-check`; the Report
+    Generator reads neither Sheetari nor Google Sheets. The website reads
+    Sheetari live through `*.remote.ts`, one sheet id per app.
 11. **Both experimental flags stay on** in every app config
     (`kit.experimental.remoteFunctions`, `compilerOptions.experimental.async`),
     with Storybook forcing `async` off under Storybook.

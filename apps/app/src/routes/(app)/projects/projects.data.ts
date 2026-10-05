@@ -211,7 +211,7 @@ export function createProjectData(
 				const renderer = getPanelRenderer(panel);
 				return renderer === 'time-log' || renderer === 'photos';
 			})
-			.map((panel) => panel.title)
+			.map((panel) => panel.id)
 	);
 
 	applyFieldSections(record, sections);

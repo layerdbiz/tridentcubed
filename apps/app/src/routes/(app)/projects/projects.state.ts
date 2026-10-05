@@ -324,7 +324,7 @@ export function createFixedSectionTemplates(
 			continue;
 		}
 
-		const inputGroup = projectSchemas.getInputGroup(schema, panel.title);
+		const inputGroup = projectSchemas.getInputGroup(schema, panel.id);
 		if (inputGroup) {
 			fixedPanelTemplates.push({
 				id: `section-${panel.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,

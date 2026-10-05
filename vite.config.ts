@@ -12,7 +12,6 @@ const generated = [
 	'packages/ui/src/lib/base/helpers/index.ts',
 	'packages/ui/src/lib/components/index.ts',
 	'packages/ui/src/lib/utils/index.ts',
-	'apps/app/src/lib/data/**',
 	'apps/storybook/**'
 ];
 

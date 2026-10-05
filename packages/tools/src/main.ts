@@ -11,11 +11,6 @@ export async function main() {
 				await run();
 				break;
 			}
-			case "sheetari": {
-				const { run } = await import("./generators/sheetari.ts");
-				await run();
-				break;
-			}
 			case "stories": {
 				const { run } = await import("./generators/stories.ts");
 				await run();
@@ -34,7 +29,7 @@ export async function main() {
 			default: {
 				console.error(`Unknown command: ${command}`);
 				console.error(
-					"Available commands: barrels, sheetari, stories, types, workspace",
+					"Available commands: barrels, stories, types, workspace",
 				);
 				process.exit(1);
 			}
@@ -50,7 +45,6 @@ main();
 
 // Export for programmatic use
 export { run as barrels } from "./generators/barrels.ts";
-export { run as sheetari } from "./generators/sheetari.ts";
 export { run as stories } from "./generators/stories.ts";
 export { run as types } from "./generators/types.ts";
 export { run as workspace } from "./generators/workspace-launcher.ts";
