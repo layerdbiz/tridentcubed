@@ -9,7 +9,6 @@
 		{ "path": "./apps/app" },
 		{ "path": "./apps/play" },
 		{ "path": "./apps/site" },
-		{ "path": "./apps/storybook" },
 		{ "path": "./packages/config/ts" },
 		{ "path": "./packages/tools" },
 		{ "path": "./packages/ui" }

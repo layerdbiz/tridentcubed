@@ -24,8 +24,6 @@
 	},
 	"devDependencies": {
 		"@csstools/postcss-light-dark-function": "^3.0.0",
-		"@layerd/config-svelte": "workspace:*",
-		"@layerd/config-vite": "workspace:*",
 		"@sveltejs/adapter-vercel": "^7.0.0",
 		"@sveltejs/kit": "^3.0.0",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
