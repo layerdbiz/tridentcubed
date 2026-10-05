@@ -36,3 +36,10 @@ svelte-check can be a zero-error gate on `apps/app`, `apps/site` and
 | `packages/tools/src/generators/sheetari.ts`, `packages/tools/bin/sheetari.js` | Sheetari snapshot generator (#48, 2026-10-05) |
 | `apps/storybook` | frozen Kit 2 Storybook app, failed to start on its pins and its Vite config blocked Vite Task ([#100](https://github.com/layerdbiz/tridentcubed/issues/100), 2026-10-05, decided on #22) |
 | `packages/tools/src/generators/stories.ts`, `packages/tools/src/generators/stories/`, `packages/tools/bin/stories.js`, `packages/tools/src/config.ts` (the `storybook` slice) | stories generator that wrote `apps/storybook/src/stories` from JSDoc tags (#100, 2026-10-05) |
+| `.github/copilot-instructions.md` | root Copilot instructions, contradicted by `AGENTS.md` ([#16](https://github.com/layerdbiz/tridentcubed/issues/16), 2026-10-05) |
+| `.github/instructions` | nine path-scoped Copilot instruction files, superseded by the root and scoped `AGENTS.md` (#16, 2026-10-05) |
+| `.github/prompts` | nine Copilot prompts; component, remote-function and summarize prompts superseded by the `/oneezy-ui-component`, `/oneezy-app-route` and `/handoff` skills (#16, 2026-10-05) |
+| `.github/chatmodes` | the "Beast Mode (old)" Copilot chatmode (#16, 2026-10-05) |
+| `.todo` | historical backlog: `TODO.csv`, `TODO.txt`, the `ICONS.md` PRD and the grid-breakout note, reconciled on #50; the reconciliation table `2026-09-28-todo-reconciliation.md` moved here from `docs/research/` beside the CSV it keys on (#16, 2026-10-05) |
+| `instructo.md` | Svelte-expert prompt with the email-signature design notes, now a header comment on `apps/site/src/lib/email/email.remote.ts` (#16, 2026-10-05) |
+| `TODO.md` | root TODO list, reconciled on #50 (#16, 2026-10-05) |
