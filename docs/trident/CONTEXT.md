@@ -21,7 +21,7 @@ tridentcubed.com, the marketing site in `apps/site`.
 `apps/play`, where UI ideas are tried with no rules.
 
 **Company overview**:
-`apps/report`, an overview of the company itself: employees, competitors, market research. Nothing to do with reports.
+`apps/overview`, an overview of the company itself: employees, competitors, market research. Nothing to do with reports.
 _Avoid_: dashboard, report app, slideshow
 
 **Prototype**:

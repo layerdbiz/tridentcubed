@@ -23,7 +23,7 @@ export type AppConfigType = {
 };
 
 /**
- * The one Vite config for the SvelteKit apps (app, site, play, report). SvelteKit 3 reads only
+ * The one Vite config for the SvelteKit apps (app, site, play, overview). SvelteKit 3 reads only
  * `vite.config.ts`, so an app's file is this call plus its overrides.
  */
 export function createAppConfig({ root, prerender, test }: AppConfigType) {

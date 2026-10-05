@@ -1,4 +1,4 @@
-# apps/report
+# apps/overview
 
 The company overview: an overview of Trident Cubed itself (employees,
 competitors, market research). Nothing to do with reports, and kept as is until
