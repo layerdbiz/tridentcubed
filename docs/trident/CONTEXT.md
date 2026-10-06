@@ -28,7 +28,7 @@ _Avoid_: dashboard, report app, slideshow
 The Report Generator as built before V1: the `apps/app` that saves to the browser only. Kept under `.archive/apps/app` as reference once the V1 app exists, deleted when V1 ships; concepts are taken from it, code is not.
 _Avoid_: the old app, legacy app, V0
 
-### Signing in
+### Signing in and access
 
 **User**:
 A person who can sign in to the Report Generator, identified by a verified email address, whichever way they signed in.
@@ -37,6 +37,22 @@ _Avoid_: account, login, member
 **Guest**:
 A User who is neither staff nor an admin. A Guest sees only their own account page.
 _Avoid_: visitor, pending, unassigned
+
+**Organization**:
+A group of Users who share access to its projects. Trident Cubed is the first; client organizations come later.
+_Avoid_: team, company, workspace
+
+**Membership**:
+A User's place in an organization, with one role: Admin or Member.
+_Avoid_: seat, staff record
+
+**Admin**:
+The role that runs an organization: its people and all its projects.
+_Avoid_: owner, superuser
+
+**Member**:
+The role of an organization's staff, with fewer rights than an Admin.
+_Avoid_: staff, editor, surveyor, team member
 
 ### Projects and reports
 
