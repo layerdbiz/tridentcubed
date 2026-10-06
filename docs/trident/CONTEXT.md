@@ -59,7 +59,7 @@ A User who can no longer sign in, kept with their history and shown greyed out. 
 _Avoid_: banned, suspended, removed, deleted
 
 **Member**:
-The role of an organization's staff: opens and edits any of its projects, but does not manage its people.
+The role of an organization's staff: opens and edits any of its projects and deletes the Drafts they created, but does not manage its people.
 _Avoid_: staff, editor, surveyor, team member
 
 ### Projects and reports
