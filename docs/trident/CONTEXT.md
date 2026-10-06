@@ -28,15 +28,39 @@ _Avoid_: dashboard, report app, slideshow
 The Report Generator as built before V1: the `apps/app` that saves to the browser only. Kept under `.archive/apps/app` as reference once the V1 app exists, deleted when V1 ships; concepts are taken from it, code is not.
 _Avoid_: the old app, legacy app, V0
 
-### Signing in
+### Signing in and access
 
 **User**:
-A person who can sign in to the Report Generator, identified by a verified email address, whichever way they signed in.
+Anyone who can sign in to the Report Generator, identified by a verified email address, whichever way they signed in: an Admin, a Member or a Guest.
 _Avoid_: account, login, member
 
 **Guest**:
-A User who is neither staff nor an admin. A Guest sees only their own account page.
+A User with no membership in any organization. A Guest sees only their own account page.
 _Avoid_: visitor, pending, unassigned
+
+**Organization**:
+A group of Users who share access to its projects. Trident Cubed is the first; client organizations come later.
+_Avoid_: team, company, workspace
+
+**Membership**:
+A User's place in an organization, with one role: Admin or Member.
+_Avoid_: seat, staff record
+
+**Admin**:
+The role that runs an organization: its people, its settings and all its projects.
+_Avoid_: owner, superuser
+
+**Super admin**:
+The one User above every organization, who can see and fix any of them and can never be demoted or deactivated.
+_Avoid_: root, platform owner
+
+**Deactivated**:
+A User who can no longer sign in, kept with their history and shown greyed out. Reactivating undoes it.
+_Avoid_: banned, suspended, removed, deleted
+
+**Member**:
+The role of an organization's staff: opens and edits any of its projects and deletes the Drafts they created, but does not manage its people.
+_Avoid_: staff, editor, surveyor, team member
 
 ### Projects and reports
 
@@ -72,6 +96,14 @@ The cargo the project concerns.
 **Team**:
 The owner and the assigned members of a project. On the report they appear as Personnel in Attendance.
 _Avoid_: personnel (as the panel name)
+
+**Owner**:
+The User who created a project, or the one it was handed to. Being owner gives no extra rights.
+_Avoid_: creator, author
+
+**Trash**:
+Where a deleted project goes: hidden, restorable by an admin, emptied only by an admin.
+_Avoid_: archive (that is a project status), bin
 
 ### Panels and inputs
 
