@@ -143,7 +143,11 @@ A titled set of photos inside a photo panel, with a variant that says how many p
 _Avoid_: section (as a group's name)
 
 **Photo**:
-An image the surveyor adds to a photo group, with a caption.
+An image the surveyor adds to a photo group, with a caption. One kind of attachment.
+
+**Attachment**:
+A file a User adds to a project: a photo, a video or a document. It keeps the time and place it was taken, and follows its report's rules for deleting and restoring.
+_Avoid_: asset (in surveying that is the vessel or cargo surveyed), media, upload, uploaded file
 
 ### Report pages
 
