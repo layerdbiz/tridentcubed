@@ -50,8 +50,16 @@ _Avoid_: seat, staff record
 The role that runs an organization: its people, its settings and all its projects.
 _Avoid_: owner, superuser
 
+**Super admin**:
+The one User above every organization, who can see and fix any of them and can never be demoted or deactivated.
+_Avoid_: root, platform owner
+
+**Deactivated**:
+A User who can no longer sign in, kept with their history and shown greyed out. Reactivating undoes it.
+_Avoid_: banned, suspended, removed, deleted
+
 **Member**:
-The role of an organization's staff: opens, edits and deletes any of its projects, but does not manage its people.
+The role of an organization's staff: opens and edits any of its projects, but does not manage its people.
 _Avoid_: staff, editor, surveyor, team member
 
 ### Projects and reports
@@ -92,6 +100,10 @@ _Avoid_: personnel (as the panel name)
 **Owner**:
 The User who created a project, or the one it was handed to. Being owner gives no extra rights.
 _Avoid_: creator, author
+
+**Trash**:
+Where a deleted project goes: hidden, restorable by an admin, emptied only by an admin.
+_Avoid_: archive (that is a project status), bin
 
 ### Panels and inputs
 
