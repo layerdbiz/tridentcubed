@@ -31,11 +31,11 @@ _Avoid_: the old app, legacy app, V0
 ### Signing in and access
 
 **User**:
-A person who can sign in to the Report Generator, identified by a verified email address, whichever way they signed in.
+Anyone who can sign in to the Report Generator, identified by a verified email address, whichever way they signed in: an Admin, a Member or a Guest.
 _Avoid_: account, login, member
 
 **Guest**:
-A User who is neither staff nor an admin. A Guest sees only their own account page.
+A User with no membership in any organization. A Guest sees only their own account page.
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
@@ -47,11 +47,11 @@ A User's place in an organization, with one role: Admin or Member.
 _Avoid_: seat, staff record
 
 **Admin**:
-The role that runs an organization: its people and all its projects.
+The role that runs an organization: its people, its settings and all its projects.
 _Avoid_: owner, superuser
 
 **Member**:
-The role of an organization's staff, with fewer rights than an Admin.
+The role of an organization's staff: opens, edits and deletes any of its projects, but does not manage its people.
 _Avoid_: staff, editor, surveyor, team member
 
 ### Projects and reports
@@ -88,6 +88,10 @@ The cargo the project concerns.
 **Team**:
 The owner and the assigned members of a project. On the report they appear as Personnel in Attendance.
 _Avoid_: personnel (as the panel name)
+
+**Owner**:
+The User who created a project, or the one it was handed to. Being owner gives no extra rights.
+_Avoid_: creator, author
 
 ### Panels and inputs
 
