@@ -4,7 +4,7 @@ status: accepted
 
 # Restart Report Generator V1 from the sv create scaffold
 
-The Report Generator in `apps/app` (48 files, about 12,000 lines, state in localStorage, no server, database or login) is a prototype. V1 needs a database, authentication, permissions, offline editing and live multi-user editing underneath every input, and evolving the prototype would mean rewriting most of it under the old shape. Decided on 2026-10-05 ([#113](https://github.com/layerdbiz/tridentcubed/issues/113)): V1 starts from the SvelteKit `sv create` scaffold recorded on [#112](https://github.com/layerdbiz/tridentcubed/issues/112), created with `vp create svelte` into `apps/app` once the prototype has moved to `.archive/apps/app`, and conformed to the repository's config factory and conventions. The platform is built first; report features are re-authored on it with the prototype as reference.
+The Report Generator in `apps/app` (48 files, about 12,000 lines, state in localStorage, no server, database or login) is a prototype. V1 needs a database, authentication, permissions, offline editing and live multi-user editing underneath every input, and evolving the prototype would mean rewriting most of it under the old shape. Decided on 2026-10-05 ([#113](https://github.com/layerdbiz/tridentcubed/issues/113)): V1 starts from the SvelteKit `sv create` scaffold recorded on [#112](https://github.com/layerdbiz/tridentcubed/issues/112), created with the `sv` CLI (`sv create` and its add-ons, which set up Better Auth, Drizzle and the rest) into `apps/app` once the prototype has moved to `.archive/apps/app`, moved onto Vite+ with `vp migrate`, and conformed to the repository's config factory and conventions. The platform is built first; report features are re-authored on it with the prototype as reference.
 
 ## Considered options
 
@@ -16,4 +16,4 @@ The Report Generator in `apps/app` (48 files, about 12,000 lines, state in local
 
 - Only `apps/app/src/lib/definitions/` is copied whole; everything else in the prototype is reference material, deleted when V1 ships.
 - The `persist` helper in `packages/ui` waits for the live-editing decision; the preview and PDF export wait for the data model.
-- `vp create svelte` is the documented way to start an app in this repository; a new app replaces its generated `vite.config.ts` with `createAppConfig`.
+- `sv create` with its add-ons, then `vp migrate`, is the documented way to start an app in this repository; `sv` has no Vite+ option (checked on sv 1.1.1), and `vp create svelte -- <sv arguments>` runs the same two steps in one call (#112). A new app replaces its generated `vite.config.ts` with `createAppConfig`.
