@@ -39,7 +39,7 @@ A User with no membership in any organization. A Guest sees only their own accou
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
-A group of Users who share access to its projects. Trident Cubed is the first; client organizations come later.
+A group of Users who share access to its projects. Trident Cubed is the first; client organizations come later. Its details (name, logo, address, email, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report.
 _Avoid_: team, company, workspace
 
 **Membership**:
@@ -65,36 +65,55 @@ _Avoid_: staff, editor, surveyor, team member
 ### Projects and reports
 
 **Client**:
-The company a project is done for. A client has many projects.
+The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A client has many projects.
 _Avoid_: customer, account
 
 **Project**:
 One job for a client. A project owns exactly one report; a job that would need several reports is not modelled yet.
 _Avoid_: job, survey (alone)
 
+**Project number**:
+A project's reference, built from its client's short code, the day the project was created and a count for that client and day. It can be edited.
+_Avoid_: job number, reference
+
+**Document ID**:
+The report's identifier and the name of its exported file: the project number and the revision number.
+_Avoid_: file name, report number
+
+**Revision number**:
+How many times a report has been sent: 01 for the first send, one more for each send after a Revision.
+
 **Project type**:
 One of Cargo, Warehousing, Warranty, Vessel Condition, Draft Survey, Bunker, IHM, Terminal.
 _Avoid_: report type, Draft (for the type; Draft is a status)
 
 **Project status**:
-One of Draft, In Progress, Review, Sent, Revision, Complete, Archived, in that order. Review is Trident's own check before sending. After Sent a project goes to Revision (the client asked for changes; work resumes and it is sent again) or to Complete. Complete is the client's acceptance.
-_Avoid_: ready, approved, Ready for Review, in-progress, completed
+One of Draft, In Progress, Review, Ready, Sent, Revision, Complete, Archived, in that order. Review is Trident's own check; Ready means finished, for the team to export and send. Sent is marked by hand once the report has gone to the client, and freezes a Sent copy. After Sent a project goes to Revision (the client asked for changes; work resumes and it is sent again) or to Complete, marked by hand when the client accepts. Only an admin archives a project.
+_Avoid_: approved, Ready for Review, in-progress, completed
+
+**Sent copy**:
+The report and every value as they were when the project was marked Sent. It never changes, and a Sent report prints from it.
+_Avoid_: snapshot, frozen copy
+
+**History**:
+The record of every change to a project: who changed what, when, and what it was before.
+_Avoid_: log (that is the time log), audit trail
 
 **Report**:
 The document a project produces: its panels rendered as report pages.
 _Avoid_: survey report, document
 
 **Facility**:
-The port or port terminal where the project takes place.
+The port or port terminal where the project takes place, picked from the organization's list.
 
 **Carrier**:
-What carries the items: a vessel, an airplane, a train or a truck.
+What carries the items: a vessel, an airplane, a train or a truck, picked from the organization's list.
 
 **Items**:
 The cargo the project concerns.
 
 **Team**:
-The owner and the assigned members of a project. On the report they appear as Personnel in Attendance.
+The owner and the assigned members of a project. On the report they appear as Personnel in Attendance, the owner first with a badge; the owner also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile.
 _Avoid_: personnel (as the panel name)
 
 **Owner**:
@@ -108,8 +127,29 @@ _Avoid_: archive (that is a project status), bin
 ### Panels and inputs
 
 **Panel**:
-One unit of the editor, defined by a row of the definitions, holding inputs: Organization, Client, Team, Project, Items, Facility, Carrier, Time Log, Inspection, Damages, Discharge, Custom.
-_Avoid_: section, report section
+A box in the editor. The project details panel holds the job's facts; every other panel prints as one numbered section of the report (1, 2 …). A panel is fixed, optional or custom.
+_Avoid_: section, report section, page
+
+**Project details panel**:
+The panel of the job's facts: client, facility, carrier and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction.
+_Avoid_: project panel, info panel
+
+**Fixed panel**:
+A panel every report has, always in the same place: Cover, Table of Contents, Introduction, Time Log, Closing.
+
+**Optional panel**:
+A ready-made panel the definitions offer, switched on or off per report: Cargo Damages, Ships Particulars, Lifting Gear, Post-Discharge Inspection and the like.
+
+**Custom panel**:
+A panel the surveyor makes and titles, as many as a report needs. Optional and custom panels are dragged into any order between the fixed ones.
+
+**Panel section**:
+A titled part inside a panel, listed in the contents as a subsection (1.1).
+_Avoid_: subsection (alone), block
+
+**Panel subsection**:
+The content of a panel section: text, a photo group, documents, or a time log day.
+_Avoid_: block, part, widget
 
 **Panel status**:
 One of To do, In progress, Complete, from how many of the panel's required inputs have values.
@@ -119,13 +159,17 @@ One question defined in the definitions: its panel, label, path, source, type an
 _Avoid_: field
 
 **Value**:
-What the surveyor enters for an input.
+What the surveyor enters for an input. Every value saves by itself as it is typed; there is no Save button. When two people change the same value, the last change to reach the server stays and the other is kept in the history.
+
+**Save state**:
+Where a value is: Saved on this device (only the phone has it), Syncing (on its way), Saved (the server has it, safe if the phone is lost) or Not synced (the server could not take it yet; it stays on the phone and is tried again).
+_Avoid_: pending, offline, uploaded
 
 **Source**:
 Where an input's value comes from: user, system, prefilled, derived, template or external.
 
 **Group repeater**:
-A panel whose content is groups of items the surveyor adds, reorders and removes. The time log and the photo panels are its two kinds.
+Content made of groups the surveyor adds, reorders and removes: the time log's days and the photo groups.
 _Avoid_: repeater panel, grouped repeater
 
 **Time log**:
@@ -135,11 +179,8 @@ The group repeater of a project's days; each day holds entries.
 One line of a time log day: a time and an activity.
 _Avoid_: description, text (for the activity)
 
-**Photo panel**:
-A group repeater whose groups hold photos: Inspection, Damages, Discharge and Custom.
-
 **Photo group**:
-A titled set of photos inside a photo panel, with a variant that says how many photos share a page.
+A set of photos in a panel section, with a layout that says how many share a page: 1, 2, 4, 6, 8 or a grid.
 _Avoid_: section (as a group's name)
 
 **Photo**:
@@ -152,8 +193,12 @@ _Avoid_: asset (in surveying that is the vessel or cargo surveyed), media, uploa
 ### Report pages
 
 **Report page**:
-One page of the report as the definitions list it: Cover, Table of Contents, Introduction, Project Report, Personnel in Attendance, Time Log, Disclaimer and the cargo, ship, barge and lifting pages. The surface it renders on belongs to the UI vocabulary.
+One page of the report: the Cover, Table of Contents, Introduction with Personnel in Attendance, the pages of the optional and custom panels, the Time Log and the Closing. Every page but the cover carries the header and a page number. The surface it renders on belongs to the UI vocabulary.
 _Avoid_: page (bare, where the UI's Page could be meant), sheet
+
+**Closing**:
+The last report page: the standard disclaimer and the owner's sign-off, like an email signature.
+_Avoid_: disclaimer page, sign-off page
 
 **Page variant**:
 How a report page renders: full, toc, list, template, team, table or photo.
@@ -191,7 +236,7 @@ The inputs, panels and report pages that say what a report contains, whatever th
 _Avoid_: schema (for this), mirror, snapshot, local data
 
 **Repeatable**:
-An input the surveyor can add more than once in a report: the groups of a photo panel, the photos in a photo group, the files on a group. A property of the input, not of the panel; a panel that holds repeatable inputs is a group repeater.
+An input the surveyor can add more than once in a report: the photo groups of a panel section, the photos in a photo group, the files on a group. A property of the input, not of the panel.
 _Avoid_: multiple, repeater (for the input)
 
 **Definition sheet**:
