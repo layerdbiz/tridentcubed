@@ -1,0 +1,16 @@
+{
+	"name": "pdf-size",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"photos": "node fetch-photos.js",
+		"export": "node export.js"
+	},
+	"dependencies": {
+		"@sparticuz/chromium": "^153.0.0",
+		"exifr": "^7.1.3",
+		"puppeteer-core": "25.11.0",
+		"sharp": "^0.35.5"
+	}
+}

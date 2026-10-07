@@ -182,7 +182,7 @@ What V1 does: each video in the report prints as a **poster frame** (from Stream
 
 ## Open questions
 
-- **Measure it.** Export one real 100-photo report through the V1 path. Record the time on Pro with 2 GB and with 4 GB, peak memory, and the PDF size. Run `pdfimages -list` to confirm that each image is `jpeg` at slot size, not `image` (Deflate) at 4K. The section 6 figures are arithmetic until then.
+- **Measure it.** Export one real 100-photo report through the V1 path. Record the time on Pro with 2 GB and with 4 GB, peak memory, and the PDF size. Run `pdfimages -list` to confirm that each image is `jpeg` at slot size, not `image` (Deflate) at 4K. The section 6 figures are arithmetic until then. *Measured on #146 (2026-10-07, `prototypes/pdf-size/`): every slot JPEG passed through byte for byte at its slot size in Chromium 153; 100 photos came to 2.5 to 9.5 MB at 200 ppi q80, and 100 whole-page photos to 8.5 MB after stepping down to 150 ppi q70; stored WebP embedded as is came to 336 MB.*
 - **Passthrough in practice.** Does Chrome's print path hand Skia the original encoded JPEG every time (the precondition for passthrough), or does it sometimes give decoded pixels, for example for images it downscaled when decoding? Only a test export answers it.
 - **Supabase output details.** Does a transformed `format: 'origin'` JPEG come back baseline or progressive, YCbCr, with orientation applied? Does `quality` behave as expected? Supabase does not document EXIF orientation handling; the print derivative sidesteps it, but confirm with one portrait iPhone photo.
 - **Which Vercel plan does Trident run on?** Hobby forbids commercial use and caps memory at 2 GB and duration at 300 s; this design assumes Pro.
