@@ -28,44 +28,6 @@ PRs as a request surface: no.
 When a skill says to publish to the issue tracker, it means a GitHub issue.
 Configuration alone does not authorize publishing.
 
-## Titles
-
-Every new issue title is one emoji, a space, then a plain name an eighth
-grader could read: no file paths, package names or jargon; the glossary's
-words where it has one. The labels below still say what kind of ticket it
-is; the emoji is for people scanning the list and the board.
-
-- 🗺️ roadmap phase
-- 🧭 wayfinder map (a plan made of decisions)
-- 📋 spec (the build plan written from a map)
-- 💬 decision to talk through (`wayfinder:grilling`)
-- 🔎 research (`wayfinder:research`)
-- 🧪 prototype or proof (`wayfinder:prototype`)
-- 🙋 a step only Justin can do (`wayfinder:task` for a person)
-- 📱 Report Generator app
-- 🌐 website
-- 🧩 UI component
-- 🛠️ tools, workflows, repo setup
-- 🐛 bug
-
-Pick the emoji by what the ticket is for: planning tickets take their kind
-(💬 🔎 🧪 🙋), build tickets their area (📱 🌐 🧩 🛠️), a bug 🐛 wherever it is.
-Example: "🧪 Check that signed-in users can join live updates", not "Prove a
-Better Auth session can join a Supabase Realtime private channel". Phase
-titles come from `docs/trident/roadmap.md` headings; change them there.
-
-## Hierarchy
-
-GitHub sub-issues, four levels:
-
-1. 🗺️ Phase: a roadmap phase issue (label `phase`, written by task-manager).
-2. 🧭 Map or 📋 spec: a sub-issue of its phase. `/wayfinder` links a new map
-   under the phase it serves; `/to-spec` links the spec under the same phase.
-3. Map tickets are sub-issues of their map; `/to-tickets` makes build tickets
-   sub-issues of the spec.
-4. Anything made outside a map or spec (a bug, a chore) is a sub-issue of
-   the phase it belongs to.
-
 ## Wayfinder
 
 A map is an issue labelled wayfinder:map. Link its tickets as sub-issues;
