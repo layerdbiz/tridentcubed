@@ -8,8 +8,9 @@
 # - its newest PR is merged and the branch still points at the commit that PR merged (a branch
 #   someone has pushed to since is kept), or
 # - everything it changed is already on dev byte for byte, however it got there (squash, cherry-pick,
-#   a copy in another PR), so deleting the name loses nothing. A branch with no commits of its own
-#   is kept: it was just cut and will get work.
+#   a copy in another PR), so deleting the name loses nothing, or
+# - it has no commits of its own and no open PR, and its tip is two days old or more: it was cut
+#   and never used. A younger one is kept, since it was just cut and will get work.
 # The sweep can also be run alone from Actions → delete-merged-branch → Run workflow; tick "dry run"
 # to see what it would delete without deleting.
 name: delete-merged-branch
@@ -90,7 +91,14 @@ jobs:
             # 2. Everything the branch changed is already on dev, byte for byte.
             own=$(git rev-list --count "origin/dev..$sha")
             if [ "$own" = "0" ]; then
-              echo "kept: $name has no commits of its own"
+              # 3. Cut two days ago or more and never used: no commits and no open PR.
+              age=$(( $(date +%s) - $(git log -1 --format=%ct "$sha") ))
+              open=$(gh api "repos/$REPO/pulls?state=open&head=$OWNER:$name&per_page=1" --jq 'length' 2>/dev/null || echo 1)
+              if [ "$age" -ge 172800 ] && [ "$open" = "0" ]; then
+                delete "$name" "no commits of its own for two days"
+                continue
+              fi
+              echo "kept: $name has no commits of its own yet"
               continue
             fi
             base=$(git merge-base origin/dev "$sha")
