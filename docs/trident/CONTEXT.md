@@ -88,11 +88,11 @@ One of Cargo, Warehousing, Warranty, Vessel Condition, Draft Survey, Bunker, IHM
 _Avoid_: report type, Draft (for the type; Draft is a status)
 
 **Project status**:
-One of Draft, In Progress, Review, Ready, Sent, Revision, Complete, Archived, in that order. Review is Trident's own check; Ready means finished, for the team to export and send. Sent is marked by hand once the report has gone to the client, and freezes a Sent copy. After Sent a project goes to Revision (the client asked for changes; work resumes and it is sent again) or to Complete, marked by hand when the client accepts. Only an admin archives a project.
+One of Draft, In Progress, Review, Ready, Sent, Revision, Complete, Archived, in that order. Review is Trident's own check; Ready means finished, for the team to export and send. Sent is marked by hand once the report has gone to the client, and freezes a Sent copy. After Sent a project goes to Revision (the client asked for changes; work resumes and it is sent again) or to Complete, marked by hand when the client accepts. Only an admin archives a project. Changes before Sent apply in any status and never move a project to another status.
 _Avoid_: approved, Ready for Review, in-progress, completed
 
 **Sent copy**:
-The report and every value as they were when the project was marked Sent. It never changes, and a Sent report prints from it.
+The report and every value as they were when the project was marked Sent. It never changes, and a Sent report prints from it. Changes that reach the server after the project was marked Sent are kept in the history, not applied.
 _Avoid_: snapshot, frozen copy
 
 **History**:
