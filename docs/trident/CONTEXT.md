@@ -165,6 +165,14 @@ What the surveyor enters for an input. Every value saves by itself as it is type
 Where a value is: Saved on this device (only the phone has it), Syncing (on its way), Saved (the server has it, safe if the phone is lost) or Not synced (the server could not take it yet; it stays on the phone and is tried again).
 _Avoid_: pending, offline, uploaded
 
+**Live editing**:
+Other people's saved values appearing on your screen without reloading, a second or two behind.
+_Avoid_: real-time, sync (for this)
+
+**Presence**:
+Who else has a project open right now, shown as their faces, with the panel each is in. A live hint only: never saved to the report and never in the history.
+_Avoid_: viewers, online users, collaborators
+
 **Source**:
 Where an input's value comes from: user, system, prefilled, derived, template or external.
 
