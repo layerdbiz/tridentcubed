@@ -28,6 +28,12 @@ PRs as a request surface: no.
 When a skill says to publish to the issue tracker, it means a GitHub issue.
 Configuration alone does not authorize publishing.
 
+## Names
+
+Before creating or renaming an issue, label, branch, commit or PR title,
+load /oneezy-naming and follow it. It changes titles and adds kind labels
+beside the ones below; every label and step above stays as it is.
+
 ## Wayfinder
 
 A map is an issue labelled wayfinder:map. Link its tickets as sub-issues;
