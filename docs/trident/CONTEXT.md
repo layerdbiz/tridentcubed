@@ -47,7 +47,7 @@ A User's place in an organization, with one role: Admin or Member.
 _Avoid_: seat, staff record
 
 **Admin**:
-The role that runs an organization: its people, its settings and all its projects.
+The role that runs an organization: its users, its settings and all its projects.
 _Avoid_: owner, superuser
 
 **Super admin**:
@@ -59,7 +59,7 @@ A User who can no longer sign in, kept with their history and shown greyed out. 
 _Avoid_: banned, suspended, removed, deleted
 
 **Member**:
-The role of an organization's staff: opens and edits any of its projects and deletes the Drafts they created, but does not manage its people.
+The role of an organization's staff: opens and edits any of its projects and deletes the Drafts they created, but does not manage its users.
 _Avoid_: staff, editor, surveyor, team member
 
 ### Projects and reports
