@@ -69,19 +69,23 @@ The company a project is done for, kept once in the organization's list with its
 _Avoid_: customer, account
 
 **Project**:
-One job for a client. A project owns exactly one report; a job that would need several reports is not modelled yet.
+One job for a client. A project owns exactly one report; a job that needs a second report, such as a cargo report split by booking, is not modelled yet.
 _Avoid_: job, survey (alone)
 
 **Project number**:
-A project's reference, built from its client's short code, the day the project was created and a count for that client and day. It can be edited.
-_Avoid_: job number, reference
+A project's reference: the client's short code, the day the project was created and which of that client's projects that day it is, SGL-2026-02-03-01 for the first and -02 for the second. A client sometimes assigns two or three in a day. It can be edited.
+_Avoid_: job number, reference, queue number
 
 **Document ID**:
-The report's identifier and the name of its exported file: the project number and the revision number.
-_Avoid_: file name, report number
+The report's identifier and the name of its exported file: the project number, FR for final report, the report number and the revision number, SGL-2026-02-03-01-FR-01-01. The file name may end with the carrier's name after a triple dash, SGL-2026-02-03-01-FR-01-01---BBC-Kimberly.pdf.
+_Avoid_: file name, job number
+
+**Report number**:
+Which of a project's reports this is: 01 for the first, 02 when the same job gets a second report. Always 01 while a project owns exactly one report.
+_Avoid_: sequence number
 
 **Revision number**:
-How many times a report has been sent: 01 for the first send, one more for each send after a Revision.
+How many times a report has been sent: 01 for the first send, one more for each send after a Revision. It is the last part of the document ID.
 
 **Project type**:
 One of Cargo, Warehousing, Warranty, Vessel Condition, Draft Survey, Bunker, IHM, Terminal.
