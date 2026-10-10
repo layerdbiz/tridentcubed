@@ -1,14 +1,17 @@
 <script lang="ts">
-	// PROTOTYPE (#161) Variant B, "AI app": a ChatGPT-style sidebar. On the Dashboard it holds the navigation and recent
-	// projects; inside a project the same sidebar turns into the panels, and the live preview fills the right.
+	// PROTOTYPE (#161) Variant B, "AI-app sidebar": a ChatGPT-style sidebar. On the Dashboard it holds the navigation and
+	// recent projects (each with its percent ring); inside a project the same sidebar turns into the panels, each icon
+	// sitting in its own progress ring, and the live preview fills the right.
 	// Phone: no permanent bar; a menu button opens the sidebar as a drawer, and a project swipes between Panels and Preview.
 	import { fly } from 'svelte/transition';
-	import { NAV, PANELS, PANEL_STATUS, PROJECTS, STATUS } from './look.data';
+	import { NAV, STATUS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import NewProject from './new-project.svelte';
-	import PanelInputs from './panel-inputs.svelte';
+	import PanelList from './panel-list.svelte';
+	import ProgressRing from './progress-ring.svelte';
 	import ProjectList from './project-list.svelte';
 	import ReportPreview from './report-preview.svelte';
+	import SavedBadge from './saved-badge.svelte';
 
 	let { look }: { look: LookState } = $props();
 
@@ -36,6 +39,26 @@
 		isDrawerOpen = false;
 	}
 </script>
+
+{#snippet workspaceHead()}
+	<div class="flex items-center gap-3 px-4 pb-3">
+		<ProgressRing
+			percent={look.overall}
+			size={56}
+			stroke={6}
+		/>
+		<div class="min-w-0">
+			<p class="truncate font-semibold text-slate-900">{look.project.title}</p>
+			<p class="flex flex-wrap items-center gap-x-2 text-xs">
+				<span class="flex items-center gap-1 {STATUS[look.project.status].tone}"
+					><span class="{STATUS[look.project.status].icon} size-3.5"></span>{look.project
+						.status}</span
+				>
+				<SavedBadge {look} />
+			</p>
+		</div>
+	</div>
+{/snippet}
 
 {#snippet sidebar()}
 	{#if look.screen === 'dashboard'}
@@ -76,23 +99,33 @@
 				Recent
 			</p>
 			<div class="mt-1 flex-1 space-y-0.5 overflow-y-auto px-3">
-				{#each PROJECTS.slice(0, 6) as project (project.id)}
+				{#each look.projects
+					.filter((project) => project.status !== 'Archived')
+					.slice(0, 7) as project (project.id)}
 					<button
-						class="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100"
+						class="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-100"
 						onclick={() => openProject(project.id)}
 					>
-						<span class="size-2 shrink-0 rounded-full {STATUS[project.status].dot}"></span>
-						<span class="truncate">{project.title}</span>
+						<ProgressRing
+							percent={look.progressOf(project)}
+							size={26}
+							stroke={3}
+						>
+							<span class="relative size-1.5 rounded-full {STATUS[project.status].dot}"></span>
+						</ProgressRing>
+						<span class="min-w-0 flex-1 truncate">{project.title}</span>
+						<span class="text-[11px] text-slate-400 tabular-nums">{look.progressOf(project)}%</span>
 					</button>
 				{/each}
 			</div>
 			<div class="flex items-center gap-3 border-t border-slate-200 p-4">
-				<span
-					class="flex size-9 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white"
-					>AR</span
-				>
+				<img
+					src="https://randomuser.me/api/portraits/women/52.jpg"
+					alt=""
+					class="size-9 rounded-full object-cover"
+				/>
 				<span class="text-sm"
-					><b class="block font-medium text-slate-900">A. Rivera</b><span
+					><b class="block font-medium text-slate-900">Riley Ford</b><span
 						class="text-xs text-slate-500">Admin</span
 					></span
 				>
@@ -107,46 +140,19 @@
 		>
 			<button
 				class="flex items-center gap-2 px-4 pt-5 pb-3 text-sm text-slate-500 hover:text-slate-900"
-				onclick={() => look.home()}
+				onclick={() => {
+					look.home();
+					isDrawerOpen = false;
+				}}
 			>
 				<span class="icon-[mdi--arrow-left] size-5"></span> All projects
 			</button>
-			<div class="px-4 pb-4">
-				<p class="font-semibold text-slate-900">{look.project.title}</p>
-				<p class="flex items-center gap-1 text-xs {STATUS[look.project.status].tone}">
-					<span class="{STATUS[look.project.status].icon} size-3.5"></span>{look.project.status}
-				</p>
-			</div>
-			<div class="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
-				{#each PANELS as item (item.id)}
-					{@const isOn = look.panelId === item.id}
-					<div
-						class="rounded-2xl transition {isOn ? 'bg-white shadow-sm ring-1 ring-slate-200' : ''}"
-					>
-						<button
-							class="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left text-sm {isOn
-								? 'font-medium text-slate-900'
-								: 'text-slate-600 hover:bg-slate-100'}"
-							onclick={() => (look.panelId = isOn ? '' : item.id)}
-						>
-							<span class="{item.icon} size-5 {isOn ? 'text-primary' : 'text-slate-400'}"></span>
-							<span class="flex-1">{item.name}</span>
-							<span class="{PANEL_STATUS[item.status].icon} size-4 {PANEL_STATUS[item.status].tone}"
-							></span>
-						</button>
-						{#if isOn}
-							<div
-								class="px-3 pt-1 pb-4"
-								in:fly={{ y: -6, duration: 180 }}
-							>
-								<PanelInputs
-									panel={item}
-									isCompact
-								/>
-							</div>
-						{/if}
-					</div>
-				{/each}
+			{@render workspaceHead()}
+			<div class="flex-1 overflow-y-auto px-2 pb-6">
+				<PanelList
+					{look}
+					style="row"
+				/>
 			</div>
 		</div>
 	{/if}
@@ -157,7 +163,7 @@
 	<aside
 		class="fixed inset-y-0 left-0 z-40 hidden border-r border-slate-200 bg-slate-50 transition-[width] duration-[220ms] md:block {look.screen ===
 		'workspace'
-			? 'w-[380px]'
+			? 'w-[400px]'
 			: 'w-72'}"
 	>
 		{@render sidebar()}
@@ -180,7 +186,7 @@
 
 	<main
 		class="transition-[padding] duration-[220ms] {look.screen === 'workspace'
-			? 'md:pl-[380px]'
+			? 'md:pl-[400px]'
 			: 'md:pl-72'}"
 	>
 		<!-- Phone top bar: the only chrome -->
@@ -203,19 +209,18 @@
 				>
 			{:else}
 				<button
-					class="flex size-10 items-center justify-center rounded-full hover:bg-slate-100"
+					class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-100"
 					aria-label="Back"
 					onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
 				>
 				<p class="min-w-0 flex-1 truncate text-center font-semibold text-slate-900">
 					{look.project.title}
 				</p>
-				<button
-					class="flex size-10 items-center justify-center rounded-full hover:bg-slate-100"
-					aria-label="Open menu"
-					onclick={() => (isDrawerOpen = true)}
-					><span class="icon-[mdi--dots-horizontal] size-6"></span></button
-				>
+				<ProgressRing
+					percent={look.overall}
+					size={40}
+					stroke={4}
+				/>
 			{/if}
 		</header>
 
@@ -224,7 +229,7 @@
 				<ProjectList {look} />
 			</div>
 		{:else}
-			<!-- Desktop: live preview on the right, highlighting the page the open panel feeds -->
+			<!-- Desktop: live preview on the right, following the open panel -->
 			<div class="hidden h-dvh md:block">
 				<ReportPreview
 					{look}
@@ -254,29 +259,15 @@
 					class="flex h-[calc(100dvh-148px)] snap-x snap-mandatory overflow-x-auto"
 					onscroll={onswipe}
 				>
-					<div class="w-full shrink-0 snap-start overflow-y-auto px-4 pb-10">
-						{#each PANELS as item (item.id)}
-							{@const isOn = look.panelId === item.id}
-							<div class="border-b border-slate-100">
-								<button
-									class="flex w-full items-center gap-3 py-3 text-left"
-									onclick={() => (look.panelId = isOn ? '' : item.id)}
-								>
-									<span class="{item.icon} size-6 {isOn ? 'text-primary' : 'text-slate-400'}"
-									></span>
-									<span class="flex-1 font-medium text-slate-800">{item.name}</span>
-									<span
-										class="{PANEL_STATUS[item.status].icon} size-4 {PANEL_STATUS[item.status].tone}"
-									></span>
-								</button>
-								{#if isOn}<div class="pb-5">
-										<PanelInputs
-											panel={item}
-											isCompact
-										/>
-									</div>{/if}
-							</div>
-						{/each}
+					<div class="w-full shrink-0 snap-start overflow-y-auto px-2 pb-10">
+						<div class="flex items-center justify-between px-2 pt-1 pb-2 text-xs text-slate-500">
+							<span>{look.overall}% complete</span>
+							<SavedBadge {look} />
+						</div>
+						<PanelList
+							{look}
+							style="row"
+						/>
 					</div>
 					<div class="w-full shrink-0 snap-start">
 						<ReportPreview
