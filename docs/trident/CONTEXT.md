@@ -221,6 +221,10 @@ _Avoid_: page section, output section
 
 ### The workspace
 
+**Dashboard**:
+The page every Member and Admin lands on after signing in, with a little of everything; in V1 it lists the projects, like the Projects page.
+_Avoid_: home, overview (the Company overview is another app)
+
 **Workspace**:
 A project's screen in the Report Generator, with two tabs.
 _Avoid_: details, project details workspace
