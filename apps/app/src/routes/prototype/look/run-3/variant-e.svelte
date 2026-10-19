@@ -58,7 +58,7 @@
 	>
 		{#if look.screen === 'dashboard'}
 			<header
-				class="sticky top-0 z-30 flex items-center justify-between px-4 pt-12 pb-3 md:hidden {FRAME}"
+				class="sticky top-0 z-30 flex items-center justify-between px-4 pt-3 pb-3 md:hidden {FRAME}"
 			>
 				<img
 					src="/logo-color.svg"

@@ -83,7 +83,7 @@
 			: 'md:pl-72'}"
 	>
 		{#if look.screen === 'dashboard'}
-			<div class="mx-auto max-w-6xl px-4 pt-14 pb-32 md:px-10 md:pt-10 md:pb-12">
+			<div class="mx-auto max-w-6xl px-4 pt-4 pb-32 md:px-10 md:pt-10 md:pb-12">
 				<div class="mb-5 flex items-center justify-between md:hidden">
 					<img
 						src="/logo-color.svg"

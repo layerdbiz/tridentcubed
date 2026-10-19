@@ -1,88 +1,95 @@
 <script lang="ts">
-	// PROTOTYPE (#161): variants of the Report Generator shell, switchable with ?variant=D|E|F.
-	// Also ?screen=workspace, ?tab=preview, ?project=p2, ?panel=timelog, ?view=cards, ?set=clients, ?range=1y and
-	// ?chart=bar, so any state can be linked and screenshotted.
-	// Run 3 (from Justin's 26 notes on run 2): all three carry every note; they differ only where he left a question
-	// open (white bars or not, how the filter sits by the view icons, the chart's place, the Recent icons, where the
-	// QR goes). Run 2's A and B live in this branch's history (commit 7914de2).
+	// PROTOTYPE (#161): every look built so far behind one switcher, oldest first, so Justin can page from where it
+	// started to where it is: run 1 (A1, B1, C), run 2 (A2, B2), run 3 (D, E, F). ?variant=a1|b1|c|a2|b2|d|e|f picks
+	// one (run 2 and 3 links with A, B, D, E or F still open the same look). Each run keeps its own state and params.
 	// Throwaway: lives on a prototype/161-look-* branch and is never merged.
-	import { fly } from 'svelte/transition';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import type { ChartKindType, RangeType } from './chart.data';
-	import type { DatasetType } from './look.data';
-	import { LookState, type ScreenType, type TabType, type ViewType } from './look.state.svelte';
+	import Run1 from './run-1/look.svelte';
+	import Run2 from './run-2/look.svelte';
+	import Run3 from './run-3/look.svelte';
 	import Switcher from './switcher.svelte';
-	import VariantD from './variant-d.svelte';
-	import VariantE from './variant-e.svelte';
-	import VariantF from './variant-f.svelte';
 
-	const VARIANTS = ['D', 'E', 'F'];
-	const NAMES: Record<string, string> = {
-		D: 'One surface',
-		E: 'White frame',
-		F: 'Floating canvas'
+	type LookType = { id: string; label: string; run: number; variant: string };
+	// What the switcher needs to name the page on screen; every run's state has these.
+	type PageType = {
+		screen: string;
+		tab: string;
+		isNewOpen: boolean;
+		navSection: string;
+		project: { title: string };
 	};
-	// Each variant opens on a different chart, so all three get seen; the switch inside the chart changes it.
-	const CHARTS: Record<string, ChartKindType> = { D: 'area', E: 'bar', F: 'donut' };
 
-	const params = page.url.searchParams;
-	let variant = $state(
-		VARIANTS.includes(params.get('variant') ?? '') ? params.get('variant')! : 'D'
-	);
-	const look = new LookState();
-	look.tab = (params.get('tab') as TabType) ?? 'edit';
-	look.view = (params.get('view') as ViewType) ?? 'table';
-	if (params.get('project')) look.open(params.get('project')!);
-	look.screen = (params.get('screen') as ScreenType) ?? 'dashboard';
-	if (params.has('panel')) look.panelId = params.get('panel')!;
-	if (params.has('set')) look.pick(params.get('set') as DatasetType);
-	if (params.has('range')) look.range = params.get('range') as RangeType;
-	look.chart = (params.get('chart') as ChartKindType) ?? CHARTS[variant];
+	const LOOKS: LookType[] = [
+		{ id: 'a1', label: 'A1', run: 1, variant: 'A' },
+		{ id: 'b1', label: 'B1', run: 1, variant: 'B' },
+		{ id: 'c', label: 'C', run: 1, variant: 'C' },
+		{ id: 'a2', label: 'A2', run: 2, variant: 'A' },
+		{ id: 'b2', label: 'B2', run: 2, variant: 'B' },
+		{ id: 'd', label: 'D', run: 3, variant: 'D' },
+		{ id: 'e', label: 'E', run: 3, variant: 'E' },
+		{ id: 'f', label: 'F', run: 3, variant: 'F' }
+	];
+	const LEGACY: Record<string, string> = { A: 'a2', B: 'b2', C: 'c' };
+	const SECTIONS: Record<string, string> = {
+		dashboard: 'Dashboard',
+		projects: 'Projects',
+		lists: 'Lists',
+		admin: 'Admin'
+	};
 
-	function change(next: string) {
-		variant = next;
-		look.chart = CHARTS[next];
+	function lookOf(asked: string) {
+		return LOOKS.find((look) => look.id === (LEGACY[asked] ?? asked.toLowerCase())) ?? LOOKS[0];
 	}
 
-	$effect(() => {
-		const url = new URL(page.url.href);
-		url.searchParams.set('variant', variant);
-		url.searchParams.set('screen', look.screen);
-		url.searchParams.set('tab', look.tab);
-		url.searchParams.set('view', look.view);
-		url.searchParams.set('project', look.projectId);
-		url.searchParams.set('set', look.dataset);
-		url.searchParams.set('range', look.range);
-		url.searchParams.set('chart', look.chart);
-		if (url.search !== page.url.search) goto(url, { shallow: true, replace: true });
+	let current = $state(lookOf(page.url.searchParams.get('variant') ?? ''));
+	let shown = $state<PageType>();
+	let innerWidth = $state(0);
+
+	// The name of the page on screen, as its own header would say it.
+	const name = $derived.by(() => {
+		if (!shown) return '';
+		if (shown.isNewOpen) return 'New project';
+		if (shown.screen === 'dashboard') return SECTIONS[shown.navSection] ?? 'Dashboard';
+		if (shown.tab === 'preview' && innerWidth < 768) return 'Preview';
+		return shown.project.title;
 	});
+
+	function change(id: string) {
+		current = lookOf(id);
+	}
+
+	function ready(look: PageType) {
+		shown = look;
+	}
 </script>
 
-<svelte:head><title>Look {variant} · Prototype</title></svelte:head>
+<svelte:window bind:innerWidth />
 
-<div class="font-sans text-slate-900 [color-scheme:light]">
-	{#if variant === 'D'}
-		<VariantD {look} />
-	{:else if variant === 'E'}
-		<VariantE {look} />
-	{:else}
-		<VariantF {look} />
-	{/if}
-</div>
+<svelte:head><title>{current.label} · {name || 'Prototype'}</title></svelte:head>
 
-{#if look.toast}
-	<div
-		class="fixed inset-x-0 bottom-28 z-[90] flex justify-center px-4 md:bottom-20"
-		transition:fly={{ y: 16, duration: 200 }}
-	>
-		<p class="rounded-full bg-slate-900 px-4 py-2.5 text-sm text-white shadow-xl">{look.toast}</p>
-	</div>
+{#if current.run === 1}
+	<Run1
+		id={current.id}
+		variant={current.variant}
+		onready={ready}
+	/>
+{:else if current.run === 2}
+	<Run2
+		id={current.id}
+		variant={current.variant}
+		onready={ready}
+	/>
+{:else}
+	<Run3
+		id={current.id}
+		variant={current.variant}
+		onready={ready}
+	/>
 {/if}
 
 <Switcher
-	variants={VARIANTS}
-	current={variant}
-	names={NAMES}
+	looks={LOOKS}
+	current={current.id}
+	{name}
 	onchange={change}
 />

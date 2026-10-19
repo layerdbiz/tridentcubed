@@ -47,7 +47,7 @@
 </script>
 
 <div class="md:hidden {surface}">
-	<header class="sticky top-0 z-30 flex items-center gap-2 px-3 pt-12 pb-1 {frame}">
+	<header class="sticky top-0 z-30 flex items-center gap-2 px-3 pt-3 pb-1 {frame}">
 		<button
 			class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
 			aria-label="Back"
@@ -85,7 +85,7 @@
 	</div>
 	<div
 		bind:this={swiper}
-		class="flex h-[calc(100dvh-152px)] snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overscroll-x-contain"
+		class="flex h-[calc(100dvh-116px)] snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overscroll-x-contain"
 		{onscroll}
 	>
 		<div class="w-full shrink-0 snap-start overflow-y-auto px-4 pb-16">

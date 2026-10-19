@@ -1,22 +1,23 @@
 <script lang="ts">
-	// PROTOTYPE (#161): floating variant switcher from /prototype. Top centre on a phone, bottom right on a computer, clear of the
-	// bottom bar, the page headers and the zoom bar.
+	// PROTOTYPE (#161): floating switcher from /prototype, fixed at the top centre over the page, so it adds no space
+	// and no scroll to the layout under it. It reads like a page title: the look's letter, then the page on screen.
 	// This branch is never merged, so the bar is not gated to dev builds: the Vercel preview needs it.
 	let {
-		variants,
+		looks,
 		current,
-		names,
+		name,
 		onchange
 	}: {
-		variants: string[];
+		looks: { id: string; label: string }[];
 		current: string;
-		names: Record<string, string>;
-		onchange: (variant: string) => void;
+		name: string;
+		onchange: (id: string) => void;
 	} = $props();
 
+	const index = $derived(looks.findIndex((look) => look.id === current));
+
 	function step(by: number) {
-		const index = variants.indexOf(current);
-		onchange(variants[(index + by + variants.length) % variants.length]);
+		onchange(looks[(index + by + looks.length) % looks.length].id);
 	}
 
 	function onkeydown(event: KeyboardEvent) {
@@ -30,17 +31,20 @@
 <svelte:window {onkeydown} />
 
 <div
-	class="fixed top-2 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-1 rounded-full border border-dashed border-fuchsia-400 bg-slate-950/90 px-1.5 py-1 text-xs text-white shadow-xl backdrop-blur md:top-auto md:right-3 md:bottom-3 md:left-auto md:translate-x-0"
+	class="fixed top-[max(0.5rem,env(safe-area-inset-top))] left-1/2 z-[100] flex max-w-[calc(100vw-7.5rem)] -translate-x-1/2 items-center gap-1 rounded-full border border-dashed border-fuchsia-400 bg-slate-950/90 px-1.5 py-1 text-xs text-white shadow-xl backdrop-blur md:max-w-md"
+	title="Look {index + 1} of {looks.length}"
 >
 	<button
-		class="flex size-7 items-center justify-center rounded-full hover:bg-white/15"
-		aria-label="Previous variant"
+		class="flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-white/15"
+		aria-label="Previous look"
 		onclick={() => step(-1)}><span class="icon-[mdi--chevron-left] size-5"></span></button
 	>
-	<span class="px-1 whitespace-nowrap"><b>{current}</b> · {names[current]}</span>
+	<span class="min-w-0 truncate px-1"
+		><b>{looks[index]?.label}</b>{#if name}<span class="text-white/50"> · </span>{name}{/if}</span
+	>
 	<button
-		class="flex size-7 items-center justify-center rounded-full hover:bg-white/15"
-		aria-label="Next variant"
+		class="flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-white/15"
+		aria-label="Next look"
 		onclick={() => step(1)}><span class="icon-[mdi--chevron-right] size-5"></span></button
 	>
 </div>
