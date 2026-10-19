@@ -56,15 +56,18 @@
 		look.saved();
 	}
 
+	// Run 3: borderless. Inputs are soft filled shapes that light up when you type, nothing boxed in.
 	const inputClass =
-		'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:bg-slate-50 disabled:text-slate-500';
+		'w-full rounded-xl border-0 bg-slate-900/[0.04] px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary/40 disabled:bg-transparent disabled:px-0 disabled:text-slate-500';
 	const labelClass = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
 	const ghostButton =
 		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 </script>
 
 {#if !panel.isEnabled}
-	<p class="mb-3 flex items-start gap-2 rounded-xl bg-slate-100 px-3 py-2.5 text-xs text-slate-500">
+	<p
+		class="mb-3 flex items-start gap-2 rounded-xl bg-slate-900/[0.04] px-3 py-2.5 text-xs text-slate-500"
+	>
 		<span class="mt-px icon-[mdi--eye-off-outline] size-4 shrink-0"></span>
 		This panel is off, so it is left out of the report. Switch it on to fill it in.
 	</p>
@@ -111,7 +114,7 @@
 					{:else if field.type === 'image'}
 						<span class="flex items-center gap-3">
 							<span
-								class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50"
+								class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900/[0.04]"
 							>
 								{#if field.value}
 									<img
@@ -189,9 +192,9 @@
 					{@const isOn = panel.assigned.includes(person.name)}
 					<button
 						type="button"
-						class="flex items-center gap-2 rounded-full border py-1 pr-3 pl-1 text-xs font-medium transition {isOn
-							? 'border-primary bg-primary text-white'
-							: 'border-slate-200 bg-white text-slate-600 hover:border-primary/40'}"
+						class="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs font-medium transition {isOn
+							? 'bg-primary text-white shadow-md shadow-primary/25'
+							: 'bg-slate-900/[0.04] text-slate-600 hover:bg-primary/10'}"
 						aria-pressed={isOn}
 						onclick={() => {
 							panel.assigned = isOn
@@ -213,7 +216,7 @@
 	{:else if panel.kind === 'timelog'}
 		{#each panel.days as day, dayIndex (day.id)}
 			{@const isOpen = openDays.includes(day.id)}
-			<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+			<div class="overflow-hidden rounded-2xl bg-slate-900/[0.03]">
 				<button
 					type="button"
 					class="flex w-full items-center gap-3 px-4 py-3 text-left"
@@ -233,7 +236,7 @@
 				</button>
 				{#if isOpen}
 					<div
-						class="space-y-3 border-t border-slate-100 px-4 py-3"
+						class="space-y-3 px-4 pb-4"
 						transition:slide={{ duration: 180 }}
 					>
 						<label class="block">
@@ -310,7 +313,7 @@
 			{#each panel.groups as group, groupIndex (group.id)}
 				{@const isOpen = openGroups.includes(group.id)}
 				<div
-					class="overflow-hidden rounded-2xl border border-slate-200 bg-white transition"
+					class="overflow-hidden rounded-2xl bg-slate-900/[0.03] transition"
 					data-sort="groups-{panel.id}"
 					data-index={groupIndex}
 					animate:flip={{ duration: 200 }}
@@ -339,7 +342,7 @@
 					</div>
 					{#if isOpen}
 						<div
-							class="space-y-3 border-t border-slate-100 px-4 py-3"
+							class="space-y-3 px-4 pb-4"
 							transition:slide={{ duration: 180 }}
 						>
 							<label class="block">
@@ -363,10 +366,10 @@
 									{#each LAYOUTS as layout (layout)}
 										<button
 											type="button"
-											class="flex flex-1 items-center justify-center gap-1 rounded-xl border py-2 text-xs font-semibold transition {group.layout ===
+											class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {group.layout ===
 											layout
-												? 'border-primary bg-primary text-white'
-												: 'border-slate-200 text-slate-500 hover:border-primary/40'}"
+												? 'bg-primary text-white shadow-md shadow-primary/25'
+												: 'bg-white text-slate-500 hover:text-primary'}"
 											onclick={() => {
 												group.layout = layout;
 												look.saved();
@@ -413,7 +416,7 @@
 									</div>
 								{/each}
 								<label
-									class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-200 text-slate-400 transition hover:border-primary/50 hover:text-primary"
+									class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
 								>
 									<span class="icon-[mdi--image-plus-outline] size-6"></span>
 									<span class="text-[11px] font-medium">Upload</span>
@@ -429,7 +432,7 @@
 									/>
 								</label>
 								<label
-									class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-slate-200 text-slate-400 transition hover:border-primary/50 hover:text-primary"
+									class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
 								>
 									<span class="icon-[mdi--camera-outline] size-6"></span>
 									<span class="text-[11px] font-medium">Camera</span>
@@ -472,7 +475,7 @@
 				</div>
 			{:else}
 				<div
-					class="flex flex-col items-center gap-1 rounded-2xl border border-dashed border-slate-200 py-6 text-slate-400"
+					class="flex flex-col items-center gap-1 rounded-2xl bg-slate-900/[0.03] py-6 text-slate-400"
 				>
 					<span class="icon-[mdi--image-filter-hdr] size-8"></span>
 					<p class="text-sm">No photo groups yet.</p>

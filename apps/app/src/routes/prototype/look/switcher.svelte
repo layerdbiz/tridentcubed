@@ -1,5 +1,6 @@
 <script lang="ts">
-	// PROTOTYPE (#161): floating variant switcher from /prototype. Top centre, clear of the bottom bar and the preview controls.
+	// PROTOTYPE (#161): floating variant switcher from /prototype. Top centre on a phone, bottom right on a computer, clear of the
+	// bottom bar, the page headers and the zoom bar.
 	// This branch is never merged, so the bar is not gated to dev builds: the Vercel preview needs it.
 	let {
 		variants,
@@ -29,7 +30,7 @@
 <svelte:window {onkeydown} />
 
 <div
-	class="fixed top-2 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-1 rounded-full border border-dashed border-fuchsia-400 bg-slate-950/90 px-1.5 py-1 text-xs text-white shadow-xl backdrop-blur"
+	class="fixed top-2 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-1 rounded-full border border-dashed border-fuchsia-400 bg-slate-950/90 px-1.5 py-1 text-xs text-white shadow-xl backdrop-blur md:top-auto md:right-3 md:bottom-3 md:left-auto md:translate-x-0"
 >
 	<button
 		class="flex size-7 items-center justify-center rounded-full hover:bg-white/15"

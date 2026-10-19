@@ -1,16 +1,16 @@
 <script lang="ts">
-	// PROTOTYPE (#161): the panels of the open project, in report order. Photo panels drag to reorder,
+	// PROTOTYPE (#161): the panels of the open project, in report order, spaced apart. Photo panels drag to reorder,
 	// and the preview follows the new order.
 	import { flip } from 'svelte/animate';
 	import type { LookState } from './look.state.svelte';
 	import PanelItem from './panel-item.svelte';
 	import { sortable } from './sortable';
 
-	let { look, style = 'card' }: { look: LookState; style?: 'card' | 'row' } = $props();
+	let { look, style = 'soft' }: { look: LookState; style?: 'soft' | 'flat' | 'ring' } = $props();
 </script>
 
 <div
-	class={style === 'card' ? 'space-y-4' : 'space-y-0.5'}
+	class="space-y-4"
 	{@attach sortable('panels', (from, to) => look.movePanel(from, to))}
 >
 	{#each look.panels as panel, index (panel.id)}
@@ -29,7 +29,7 @@
 </div>
 <button
 	type="button"
-	class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 py-3 text-sm font-medium text-slate-500 transition hover:border-primary/50 hover:text-primary"
+	class="mt-4 flex w-full items-center justify-center gap-2 rounded-3xl bg-primary/[0.06] py-3.5 text-sm font-semibold text-primary transition hover:bg-primary/10"
 	onclick={() => look.addPanel()}
 >
 	<span class="icon-[mdi--plus-box-multiple-outline] size-5"></span> Add panel

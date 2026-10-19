@@ -1,5 +1,6 @@
 // PROTOTYPE (#161): in-memory state shared by the variants, so switching variant keeps your place.
 // Every input counts toward its panel, and the panels toward the project, so the percents move as you type.
+import type { ChartKindType, RangeType } from './chart.data';
 import {
 	createId,
 	createPanels,
@@ -7,8 +8,8 @@ import {
 	PROJECTS,
 	type PanelStatusType,
 	type PanelType,
-	type ProjectType,
-	type StatusType
+	type DatasetType,
+	type ProjectType
 } from './look.data';
 
 export type ScreenType = 'dashboard' | 'workspace';
@@ -69,7 +70,10 @@ export function toneOf(status: PanelStatusType) {
 export class LookState {
 	screen = $state<ScreenType>('dashboard');
 	view = $state<ViewType>('table');
-	filter = $state<StatusType | 'All'>('All');
+	filter = $state('All');
+	dataset = $state<DatasetType>('projects');
+	range = $state<RangeType>('7d');
+	chart = $state<ChartKindType>('area');
 	projects = $state<ProjectType[]>(structuredClone(PROJECTS));
 	projectId = $state('p1');
 	tab = $state<TabType>('edit');
@@ -84,7 +88,7 @@ export class LookState {
 		this.projects.find((project) => project.id === this.projectId) ?? this.projects[0]
 	);
 	visible = $derived(
-		this.filter === 'All'
+		this.filter === 'All' || this.dataset !== 'projects'
 			? this.projects
 			: this.projects.filter((project) => project.status === this.filter)
 	);
@@ -112,6 +116,13 @@ export class LookState {
 		return this.workspaces[project.id] && project.id === this.projectId
 			? this.overall
 			: project.progress;
+	}
+
+	// A count tile picks what the chart and the list show; each has its own filters.
+	pick(dataset: DatasetType) {
+		this.dataset = dataset;
+		this.filter = 'All';
+		if (dataset !== 'projects' && this.view === 'board') this.view = 'table';
 	}
 
 	open(id: string) {

@@ -271,6 +271,127 @@ export const CLIENTS = [
 	'Summit Heavy Lift'
 ];
 
+export type ClientType = {
+	name: string;
+	mark: string;
+	tone: string;
+	city: string;
+	contact: string;
+	phone: string;
+	email: string;
+};
+
+// Made-up companies with made-up logo marks: a rounded badge, a gradient and one glyph each.
+export const CLIENT_INFO: Record<string, ClientType> = {
+	'Northwind Logistics': {
+		name: 'Northwind Logistics',
+		mark: 'icon-[mdi--weather-windy]',
+		tone: 'bg-linear-to-br from-sky-400 to-blue-700',
+		city: 'Halverton, TX',
+		contact: 'Operations desk',
+		phone: '+1 555 010 4477',
+		email: 'ops@northwind.example'
+	},
+	'Meridian Marine': {
+		name: 'Meridian Marine',
+		mark: 'icon-[mdi--compass-rose]',
+		tone: 'bg-linear-to-br from-teal-400 to-emerald-700',
+		city: 'Eastgate, LA',
+		contact: 'Marine superintendent',
+		phone: '+1 555 010 2290',
+		email: 'marine@meridian.example'
+	},
+	'Harborline Shipping': {
+		name: 'Harborline Shipping',
+		mark: 'icon-[mdi--ferry]',
+		tone: 'bg-linear-to-br from-indigo-400 to-violet-700',
+		city: 'Port Halverton, TX',
+		contact: 'Chartering team',
+		phone: '+1 555 010 3381',
+		email: 'charter@harborline.example'
+	},
+	'Atlas Freight': {
+		name: 'Atlas Freight',
+		mark: 'icon-[mdi--earth]',
+		tone: 'bg-linear-to-br from-amber-300 to-orange-600',
+		city: 'Northside, TX',
+		contact: 'Depot manager',
+		phone: '+1 555 010 7712',
+		email: 'depot@atlas.example'
+	},
+	'Portside Renewables': {
+		name: 'Portside Renewables',
+		mark: 'icon-[mdi--wind-turbine]',
+		tone: 'bg-linear-to-br from-lime-400 to-green-700',
+		city: 'Southpoint, TX',
+		contact: 'Project logistics',
+		phone: '+1 555 010 5506',
+		email: 'logistics@portside.example'
+	},
+	'Summit Heavy Lift': {
+		name: 'Summit Heavy Lift',
+		mark: 'icon-[mdi--image-filter-hdr]',
+		tone: 'bg-linear-to-br from-rose-400 to-red-700',
+		city: 'Summit Yard, TX',
+		contact: 'Lift engineering',
+		phone: '+1 555 010 6614',
+		email: 'lifts@summit.example'
+	}
+};
+
+export function clientOf(name: string): ClientType {
+	return (
+		CLIENT_INFO[name] ?? {
+			name,
+			mark: 'icon-[mdi--domain]',
+			tone: 'bg-linear-to-br from-slate-400 to-slate-600',
+			city: '',
+			contact: '',
+			phone: '',
+			email: ''
+		}
+	);
+}
+
+export const ROLES: Record<string, string> = { 'Riley Ford': 'Admin', 'Mila Carter': 'Admin' };
+
+// What the count tiles count, and what the chart and list then show.
+export type DatasetType = 'projects' | 'clients' | 'team' | 'ports';
+
+export const DATASETS: Record<
+	DatasetType,
+	{ label: string; icon: string; active: string; headline: string; filters: string[] }
+> = {
+	projects: {
+		label: 'Projects',
+		icon: 'icon-[mdi--briefcase-variant-outline]',
+		active: 'icon-[mdi--briefcase-variant]',
+		headline: 'Open projects',
+		filters: ['All', 'In Progress', 'Review', 'Sent', 'Complete']
+	},
+	clients: {
+		label: 'Clients',
+		icon: 'icon-[mdi--domain]',
+		active: 'icon-[mdi--domain]',
+		headline: 'Active clients',
+		filters: ['All', 'Active', 'Quiet']
+	},
+	team: {
+		label: 'Team',
+		icon: 'icon-[mdi--account-group-outline]',
+		active: 'icon-[mdi--account-group]',
+		headline: 'Team on projects',
+		filters: ['All', 'Admins', 'Members']
+	},
+	ports: {
+		label: 'Ports',
+		icon: 'icon-[mdi--anchor]',
+		active: 'icon-[mdi--anchor]',
+		headline: 'Busy ports',
+		filters: ['All', 'Busy', 'Quiet']
+	}
+};
+
 export const LAYOUTS = [2, 4, 6, 8];
 
 // Stand-in survey photos: the Website's own service pictures, served from @layerd/ui's static folder.
@@ -577,4 +698,19 @@ export const NAV = [
 		active: 'icon-[mdi--shield-account]',
 		children: ['Users', 'Organization', 'Trash']
 	}
+];
+
+// Recent activity for the sidebar (E): what happened, so the icon can say what kind of thing it was.
+export const RECENT: {
+	kind: 'project' | 'client' | 'person';
+	name: string;
+	note: string;
+	id?: string;
+}[] = [
+	{ kind: 'project', name: 'Terminal Intake Review', note: 'Edited · 12 min ago', id: 'p1' },
+	{ kind: 'client', name: 'Meridian Marine', note: 'New client · 1 h ago' },
+	{ kind: 'project', name: 'Harbor Readiness Survey', note: 'Sent to review · 1 h ago', id: 'p2' },
+	{ kind: 'person', name: 'Sofia Reyes', note: 'Joined the team · Yesterday' },
+	{ kind: 'project', name: 'Outbound Cargo Condition Report', note: 'Sent · Yesterday', id: 'p3' },
+	{ kind: 'client', name: 'Portside Renewables', note: 'New contact · 3 days ago' }
 ];
