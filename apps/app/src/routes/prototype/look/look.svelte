@@ -1,12 +1,13 @@
 <script lang="ts">
 	// PROTOTYPE (#161): every look built so far behind one switcher, oldest first, so Justin can page from where it
-	// started to where it is: run 1 (A1, B1, C), run 2 (A2, B2), run 3 (D, E, F). ?variant=a1|b1|c|a2|b2|d|e|f picks
+	// started to where it is: run 1 (A1, B1, C), run 2 (A2, B2), run 3 (D, E, F), run 4 (G). ?variant=a1|...|f|g picks
 	// one (run 2 and 3 links with A, B, D, E or F still open the same look). Each run keeps its own state and params.
 	// Throwaway: lives on a prototype/161-look-* branch and is never merged.
 	import { page } from '$app/state';
 	import Run1 from './run-1/look.svelte';
 	import Run2 from './run-2/look.svelte';
 	import Run3 from './run-3/look.svelte';
+	import Run4 from './run-4/look.svelte';
 	import Switcher from './switcher.svelte';
 
 	type LookType = { id: string; label: string; run: number; variant: string };
@@ -27,7 +28,8 @@
 		{ id: 'b2', label: 'B2', run: 2, variant: 'B' },
 		{ id: 'd', label: 'D', run: 3, variant: 'D' },
 		{ id: 'e', label: 'E', run: 3, variant: 'E' },
-		{ id: 'f', label: 'F', run: 3, variant: 'F' }
+		{ id: 'f', label: 'F', run: 3, variant: 'F' },
+		{ id: 'g', label: 'G', run: 4, variant: 'G' }
 	];
 	const LEGACY: Record<string, string> = { A: 'a2', B: 'b2', C: 'c' };
 	const SECTIONS: Record<string, string> = {
@@ -79,8 +81,14 @@
 		variant={current.variant}
 		onready={ready}
 	/>
-{:else}
+{:else if current.run === 3}
 	<Run3
+		id={current.id}
+		variant={current.variant}
+		onready={ready}
+	/>
+{:else}
+	<Run4
 		id={current.id}
 		variant={current.variant}
 		onready={ready}
