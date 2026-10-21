@@ -118,34 +118,11 @@
 		});
 	});
 
-	// Map: frame the pins with room around them, in the box's own shape, never past the edge of the map.
-	const MAP = { width: 975, height: 610 };
-	const viewBox = $derived.by(() => {
-		if (!map.pins.length || !width || !height) return `0 0 ${MAP.width} ${MAP.height}`;
-		const xs = map.pins.map((pin) => pin.x);
-		const ys = map.pins.map((pin) => pin.y);
-		let [x0, x1, y0, y1] = [
-			Math.min(...xs) - 90,
-			Math.max(...xs) + 90,
-			Math.min(...ys) - 40,
-			Math.max(...ys) + 30
-		];
-		let w = Math.max(320, x1 - x0);
-		let h = Math.max(200, y1 - y0);
-		const aspect = width / height;
-		if (w / h < aspect) w = h * aspect;
-		else h = w / aspect;
-		const cx = (x0 + x1) / 2;
-		const cy = (y0 + y1) / 2;
-		w = Math.min(w, MAP.width * 1.4);
-		h = Math.min(h, MAP.height * 1.4);
-		x0 = Math.min(Math.max(cx - w / 2, -MAP.width * 0.2), MAP.width * 1.2 - w);
-		y0 = Math.min(Math.max(cy - h / 2, -MAP.height * 0.2), MAP.height * 1.2 - h);
-		return `${x0} ${y0} ${w} ${h}`;
-	});
+	// Map: the whole country, with a little room so edge pins are not cut off.
+	const viewBox = '-10 -20 995 650';
 	// Map units per screen pixel, so pins and labels keep their size on screen.
 	const pinScale = $derived.by(() => {
-		const [, , w, h] = viewBox.split(' ').map(Number);
+		const [w, h] = [995, 650];
 		return width && height ? Math.max(w / width, h / height) : 1;
 	});
 
@@ -288,6 +265,7 @@
 				{:else if look.chart === 'map'}
 					<svg
 						{viewBox}
+						overflow="visible"
 						class="block size-full"
 						preserveAspectRatio="xMidYMid meet"
 						role="img"
@@ -304,7 +282,14 @@
 							stroke-linejoin="round"
 						/>
 						{#each map.pins as pin, at (pin.city)}
-							{@const r = (7 + Math.sqrt(pin.count) * 5) * pinScale}
+							{@const r = (4 + Math.sqrt(pin.count) * 3) * pinScale}
+							{@const name = pin.city.split(',')[0]}
+							{@const isLeft = map.pins.some(
+								(other) =>
+									other.x > pin.x &&
+									other.x - pin.x < (name.length * 6 + 24) * pinScale &&
+									Math.abs(other.y - pin.y) < 14 * pinScale
+							)}
 							<g
 								class="chart-pin"
 								style="animation-delay: {at * 60}ms"
@@ -313,7 +298,7 @@
 								<circle
 									cx={pin.x}
 									cy={pin.y}
-									r={r * 1.7}
+									r={r * 1.6}
 									class="fill-primary/15"
 								/>
 								<circle
@@ -330,15 +315,16 @@
 										text-anchor="middle"
 										dominant-baseline="central"
 										class="fill-white font-semibold"
-										style="font-size: {12 * pinScale}px">{pin.count}</text
+										style="font-size: {10 * pinScale}px">{pin.count}</text
 									>
 								{/if}
 								<text
-									x={pin.x + r + 5 * pinScale}
+									x={isLeft ? pin.x - r - 3 * pinScale : pin.x + r + 3 * pinScale}
 									y={pin.y}
+									text-anchor={isLeft ? 'end' : 'start'}
 									dominant-baseline="central"
 									class="fill-slate-600 font-medium"
-									style="font-size: {11 * pinScale}px">{pin.city.split(',')[0]}</text
+									style="font-size: {10 * pinScale}px">{name}</text
 								>
 							</g>
 						{/each}
