@@ -1,9 +1,9 @@
 # Domain documentation
 
-Use a root CONTEXT-MAP.md to route to relevant domain glossaries:
+Use a root GLOSSARY-MAP.md to route to relevant domain glossaries:
 
-- docs/trident/CONTEXT.md: Trident business vocabulary shared by its apps.
-- packages/ui/CONTEXT.md: reusable UI design vocabulary.
+- docs/trident/GLOSSARY.md: Trident business vocabulary shared by its apps.
+- packages/ui/GLOSSARY.md: reusable UI design vocabulary.
 
 Create these lazily as terminology is resolved. Missing files do not
 block work.
