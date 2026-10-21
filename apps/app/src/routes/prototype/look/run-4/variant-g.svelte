@@ -41,14 +41,6 @@
 		surface: CANVAS
 	} as const;
 
-	// Picking anything in the drawer closes it.
-	$effect(() => {
-		void look.navSection;
-		void look.screen;
-		void look.isNewOpen;
-		isDrawerOpen = false;
-	});
-
 	function onpointerdown(event: PointerEvent) {
 		if (isBellOpen && bell && !bell.contains(event.target as Node)) isBellOpen = false;
 	}
@@ -148,6 +140,7 @@
 				<Sidebar
 					{look}
 					recent="logos"
+					onnavigate={() => (isDrawerOpen = false)}
 				/>
 			</aside>
 		{/if}

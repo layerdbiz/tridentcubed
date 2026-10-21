@@ -3,7 +3,8 @@
 	// user with settings at the bottom. Run 3 tries three answers for the Recent icons:
 	// 'logos' (D) the client's logo; 'activity' (E) what happened, with a logo, a face or a project mark;
 	// 'rings' (F) the client's logo inside the project's progress ring.
-	// `isCollapsed` folds it to an icon rail, for the inside of a project.
+	// `isCollapsed` folds it to an icon rail, for the inside of a project. `onnavigate` runs after any pick, so the
+	// phone drawer can close itself, even when the pick is the page already open.
 	import ClientLogo from './client-logo.svelte';
 	import { NAV, personOf, RECENT } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -12,8 +13,14 @@
 	let {
 		look,
 		recent = 'logos',
-		isCollapsed = false
-	}: { look: LookState; recent?: 'logos' | 'activity' | 'rings'; isCollapsed?: boolean } = $props();
+		isCollapsed = false,
+		onnavigate
+	}: {
+		look: LookState;
+		recent?: 'logos' | 'activity' | 'rings';
+		isCollapsed?: boolean;
+		onnavigate?: () => void;
+	} = $props();
 
 	// Look G signs in as Justin, the one super admin.
 	const me = personOf('Justin ONeill');
@@ -25,6 +32,12 @@
 		if (look.screen === 'workspace') look.home();
 		look.navSection = id;
 		if (id === 'projects') look.pick('projects');
+		onnavigate?.();
+	}
+
+	function openProject(id: string) {
+		look.open(id);
+		onnavigate?.();
 	}
 </script>
 
@@ -48,7 +61,10 @@
 				? 'size-11 justify-center'
 				: 'w-full px-3 py-2.5'}"
 			title="New project"
-			onclick={() => (look.isNewOpen = true)}
+			onclick={() => {
+				look.isNewOpen = true;
+				onnavigate?.();
+			}}
 		>
 			<span class="icon-[mdi--square-edit-outline] size-5 text-primary"></span>
 			{#if !isCollapsed}New project{/if}
@@ -85,7 +101,7 @@
 				{#each RECENT as item (item.name)}
 					<button
 						class="flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-left hover:bg-slate-900/[0.04]"
-						onclick={() => item.id && look.open(item.id)}
+						onclick={() => item.id && openProject(item.id)}
 					>
 						<span class="relative shrink-0">
 							{#if item.kind === 'person'}
@@ -126,7 +142,7 @@
 				{#each projects as project (project.id)}
 					<button
 						class="flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-900/[0.04]"
-						onclick={() => look.open(project.id)}
+						onclick={() => openProject(project.id)}
 					>
 						{#if recent === 'rings'}
 							<ProgressRing
