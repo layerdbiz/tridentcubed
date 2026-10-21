@@ -1,0 +1,213 @@
+<script lang="ts">
+	// PROTOTYPE (#161) run 5: the sidebar and phone menu: logo, a blue New project, the sections, Recent, and the
+	// user with settings at the bottom. Every icon sits in one centred column (note 16): the logo twice its old size,
+	// the section icons half again bigger, filled (note 17: Home, Projects, Clients, Team). Signed in as Cezary,
+	// Admin (note 19). Recent icons: 'logos' the client's icon; 'activity' what happened; 'rings' the client's icon
+	// inside the project's progress ring. `isCollapsed` folds it to an icon rail. `onnavigate` runs after any pick,
+	// so the phone drawer can close itself, even when the pick is the page already open.
+	import Avatar from './avatar.svelte';
+	import ClientLogo from './client-logo.svelte';
+	import { NAV, personOf, RECENT } from './look.data';
+	import type { LookState } from './look.state.svelte';
+	import ProgressRing from './progress-ring.svelte';
+
+	let {
+		look,
+		recent = 'logos',
+		isCollapsed = false,
+		onnavigate
+	}: {
+		look: LookState;
+		recent?: 'logos' | 'activity' | 'rings';
+		isCollapsed?: boolean;
+		onnavigate?: () => void;
+	} = $props();
+
+	const me = personOf('Capt. Cezary Poninski');
+	// The one column every icon centres in.
+	const COLUMN = 'flex w-14 shrink-0 justify-center';
+	const projects = $derived(
+		look.projects.filter((project) => project.status !== 'Archived').slice(0, 7)
+	);
+
+	function go(id: string) {
+		if (look.screen === 'workspace') look.home();
+		look.navSection = id;
+		if (id === 'projects' || id === 'clients' || id === 'team') look.pick(id);
+		onnavigate?.();
+	}
+
+	function openProject(id: string) {
+		look.open(id);
+		onnavigate?.();
+	}
+</script>
+
+<div class="flex h-full flex-col {isCollapsed ? 'items-center' : ''}">
+	<button
+		class="flex items-center gap-1 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4 {isCollapsed
+			? 'justify-center'
+			: 'w-full px-3'}"
+		onclick={() => go('home')}
+	>
+		<span class={COLUMN}
+			><img
+				src="/logo-color.svg"
+				alt="Trident Cubed"
+				class="size-14"
+			/></span
+		>
+		{#if !isCollapsed}<span class="text-[15px] font-bold tracking-wide text-slate-900"
+				>TRIDENT CUBED</span
+			>{/if}
+	</button>
+	<div class={isCollapsed ? '' : 'w-full px-3'}>
+		<button
+			class="flex items-center gap-1 rounded-2xl bg-primary text-[15px] font-semibold text-white shadow-md shadow-primary/30 transition hover:brightness-110 {isCollapsed
+				? 'size-12 justify-center'
+				: 'w-full py-2.5'}"
+			title="New project"
+			onclick={() => {
+				look.isNewOpen = true;
+				onnavigate?.();
+			}}
+		>
+			<span class={isCollapsed ? '' : COLUMN}
+				><span class="icon-[mdi--plus] size-[30px]"></span></span
+			>
+			{#if !isCollapsed}New project{/if}
+		</button>
+	</div>
+	<nav class="mt-4 space-y-0.5 {isCollapsed ? '' : 'w-full px-3'}">
+		{#each NAV as item (item.id)}
+			{@const isOn =
+				look.screen === 'workspace' ? item.id === 'projects' : look.navSection === item.id}
+			<button
+				class="flex items-center rounded-xl text-[15px] transition {isCollapsed
+					? 'size-12 justify-center'
+					: 'w-full gap-1 py-1.5'} {isOn
+					? 'bg-slate-900/[0.06] font-medium text-slate-900'
+					: 'text-slate-500 hover:bg-slate-900/[0.04] hover:text-slate-800'}"
+				title={item.label}
+				aria-current={isOn ? 'page' : undefined}
+				onclick={() => go(item.id)}
+			>
+				<span class={isCollapsed ? '' : COLUMN}
+					><span class="{item.icon} size-[30px] {isOn ? 'text-primary' : 'text-slate-400'}"
+					></span></span
+				>
+				{#if !isCollapsed}{item.label}{/if}
+			</button>
+		{/each}
+	</nav>
+
+	{#if isCollapsed}
+		<div class="flex-1"></div>
+	{:else}
+		<p class="mt-6 px-7 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+			{recent === 'activity' ? 'Recent activity' : 'Recent'}
+		</p>
+		<div class="mt-1 w-full flex-1 space-y-0.5 overflow-y-auto px-3">
+			{#if recent === 'activity'}
+				{#each RECENT as item (item.name)}
+					<button
+						class="flex w-full items-center gap-1 rounded-xl py-1.5 text-left hover:bg-slate-900/[0.04]"
+						onclick={() => item.id && openProject(item.id)}
+					>
+						<span class="relative {COLUMN}">
+							{#if item.kind === 'person'}
+								<Avatar
+									name={item.name}
+									size={32}
+								/>
+							{:else if item.kind === 'client'}
+								<ClientLogo
+									name={item.name}
+									size={32}
+								/>
+							{:else}
+								<span
+									class="flex size-8 items-center justify-center rounded-[30%] bg-primary/10 text-primary"
+									><span class="icon-[mdi--briefcase-variant-outline] size-[18px]"></span></span
+								>
+							{/if}
+							<span
+								class="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-white text-slate-600 shadow ring-1 ring-white"
+								><span
+									class="{item.kind === 'person'
+										? 'icon-[mdi--account-plus]'
+										: item.kind === 'client'
+											? 'icon-[mdi--domain-plus]'
+											: 'icon-[mdi--pencil]'} size-2.5"
+								></span></span
+							>
+						</span>
+						<span class="min-w-0 flex-1">
+							<span class="block truncate text-sm text-slate-700">{item.name}</span>
+							<span class="block truncate text-[11px] text-slate-400">{item.note}</span>
+						</span>
+					</button>
+				{/each}
+			{:else}
+				{#each projects as project (project.id)}
+					<button
+						class="flex w-full items-center gap-1 rounded-xl py-1.5 pr-2 text-left text-sm text-slate-600 hover:bg-slate-900/[0.04]"
+						onclick={() => openProject(project.id)}
+					>
+						<span class={COLUMN}>
+							{#if recent === 'rings'}
+								<ProgressRing
+									percent={look.progressOf(project)}
+									size={34}
+									stroke={3}
+								>
+									<span class="relative"
+										><ClientLogo
+											name={project.client}
+											size={22}
+											shape="circle"
+										/></span
+									>
+								</ProgressRing>
+							{:else}
+								<ClientLogo
+									name={project.client}
+									size={30}
+								/>
+							{/if}
+						</span>
+						<span class="min-w-0 flex-1 truncate">{project.title}</span>
+						<span class="text-[11px] text-slate-400 tabular-nums">{look.progressOf(project)}%</span>
+					</button>
+				{/each}
+			{/if}
+		</div>
+	{/if}
+
+	<div
+		class="flex items-center gap-1 px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] {isCollapsed
+			? 'flex-col'
+			: 'w-full'}"
+	>
+		<span class={isCollapsed ? '' : COLUMN}
+			><Avatar
+				name={me.name}
+				size={40}
+				ring="ring-slate-200"
+			/></span
+		>
+		{#if !isCollapsed}
+			<span class="min-w-0 flex-1 text-sm"
+				><b class="block truncate font-medium text-slate-900">{me.name.replace('Capt. ', '')}</b
+				><span class="text-xs text-slate-500">Admin</span></span
+			>
+		{/if}
+		<button
+			class="flex size-9 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700"
+			aria-label="Settings"
+			title="Settings"
+			onclick={() => look.say('Settings and profile open from here in V1.')}
+			><span class="icon-[mdi--cog-outline] size-5"></span></button
+		>
+	</div>
+</div>

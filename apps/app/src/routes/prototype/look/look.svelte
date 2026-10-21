@@ -1,17 +1,14 @@
 <script lang="ts">
-	// PROTOTYPE (#161): every look built so far behind one switcher, oldest first, so Justin can page from where it
-	// started to where it is: run 1 (A1, B1, C), run 2 (A2, B2), run 3 (D, E, F), run 4 (G). ?variant=a1|...|f|g picks
-	// one (run 2 and 3 links with A, B, D, E or F still open the same look). Each run keeps its own state and params.
-	// Throwaway: lives on a prototype/161-look-* branch and is never merged.
+	// PROTOTYPE (#161): the two looks still in the running, behind one switcher. Run 5 starts over from look G as A
+	// (G with every fix from Justin's 29 notes) and B (A plus his B experiments: one-line header and one Project panel).
+	// ?variant=a|b picks one; any older link (a1..g) opens A. Throwaway: lives on a prototype/161-look-* branch and is
+	// never merged.
 	import { page } from '$app/state';
-	import Run1 from './run-1/look.svelte';
-	import Run2 from './run-2/look.svelte';
-	import Run3 from './run-3/look.svelte';
-	import Run4 from './run-4/look.svelte';
+	import Run5 from './run-5/look.svelte';
 	import Switcher from './switcher.svelte';
 
-	type LookType = { id: string; label: string; run: number; variant: string };
-	// What the switcher needs to name the page on screen; every run's state has these.
+	type LookType = { id: string; label: string; variant: 'A' | 'B' };
+	// What the switcher needs to name the page on screen.
 	type PageType = {
 		screen: string;
 		tab: string;
@@ -21,26 +18,19 @@
 	};
 
 	const LOOKS: LookType[] = [
-		{ id: 'a1', label: 'A1', run: 1, variant: 'A' },
-		{ id: 'b1', label: 'B1', run: 1, variant: 'B' },
-		{ id: 'c', label: 'C', run: 1, variant: 'C' },
-		{ id: 'a2', label: 'A2', run: 2, variant: 'A' },
-		{ id: 'b2', label: 'B2', run: 2, variant: 'B' },
-		{ id: 'd', label: 'D', run: 3, variant: 'D' },
-		{ id: 'e', label: 'E', run: 3, variant: 'E' },
-		{ id: 'f', label: 'F', run: 3, variant: 'F' },
-		{ id: 'g', label: 'G', run: 4, variant: 'G' }
+		{ id: 'a', label: 'A', variant: 'A' },
+		{ id: 'b', label: 'B', variant: 'B' }
 	];
-	const LEGACY: Record<string, string> = { A: 'a2', B: 'b2', C: 'c' };
 	const SECTIONS: Record<string, string> = {
-		dashboard: 'Dashboard',
+		home: 'Home',
 		projects: 'Projects',
-		lists: 'Lists',
+		clients: 'Clients',
+		team: 'Team',
 		admin: 'Admin'
 	};
 
 	function lookOf(asked: string) {
-		return LOOKS.find((look) => look.id === (LEGACY[asked] ?? asked.toLowerCase())) ?? LOOKS[0];
+		return LOOKS.find((look) => look.id === asked.toLowerCase()) ?? LOOKS[0];
 	}
 
 	let current = $state(lookOf(page.url.searchParams.get('variant') ?? ''));
@@ -51,7 +41,7 @@
 	const name = $derived.by(() => {
 		if (!shown) return '';
 		if (shown.isNewOpen) return 'New project';
-		if (shown.screen === 'dashboard') return SECTIONS[shown.navSection] ?? 'Dashboard';
+		if (shown.screen === 'dashboard') return SECTIONS[shown.navSection] ?? 'Home';
 		if (shown.tab === 'preview' && innerWidth < 768) return 'Preview';
 		return shown.project.title;
 	});
@@ -69,31 +59,11 @@
 
 <svelte:head><title>{current.label} · {name || 'Prototype'}</title></svelte:head>
 
-{#if current.run === 1}
-	<Run1
-		id={current.id}
-		variant={current.variant}
-		onready={ready}
-	/>
-{:else if current.run === 2}
-	<Run2
-		id={current.id}
-		variant={current.variant}
-		onready={ready}
-	/>
-{:else if current.run === 3}
-	<Run3
-		id={current.id}
-		variant={current.variant}
-		onready={ready}
-	/>
-{:else}
-	<Run4
-		id={current.id}
-		variant={current.variant}
-		onready={ready}
-	/>
-{/if}
+<Run5
+	id={current.id}
+	variant={current.variant}
+	onready={ready}
+/>
 
 <Switcher
 	looks={LOOKS}
