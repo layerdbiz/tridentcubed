@@ -1,6 +1,6 @@
 # Trident business
 
-The vocabulary of Trident Cubed's marine survey business and the apps that serve it. The Report Generator's words live here; the reusable UI's words live in `packages/ui/CONTEXT.md` and never depend on these.
+The vocabulary of Trident Cubed's marine survey business and the apps that serve it. The Report Generator's words live here; the reusable UI's words live in `packages/ui/GLOSSARY.md` and never depend on these.
 
 ## Language
 
