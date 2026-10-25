@@ -4,12 +4,20 @@
 	// Run 5 (Justin's notes 27 to 33): the page centres fully; a solid black rule under the letterhead; a numbered
 	// table of contents with subsections, built from the panels; the project report on one page (introduction, title,
 	// location with its marker, the facts, personnel and cargo); the sample reports' Standard Disclaimer with the
-	// owner's signature block, always last; photo captions over the photo. B has no organization, client, team,
-	// facility or carrier panels, so their values come from its Project panel. Not the real renderer: page breaks are
-	// rough and Download is a stub.
+	// owner's signature block, always last; photo captions over the photo. Client, team, transport and facility come
+	// from the Project panel; the transports also print as a chain under the personnel (2026-10-25), ready for a
+	// tracking service to fill in later. Not the real renderer: page breaks are rough and Download is a stub.
 	import { onMount, untrack } from 'svelte';
 	import ClientLogo from './client-logo.svelte';
-	import { clientOf, CLOSING, ORGANIZATION, personOf, type PanelType } from './look.data';
+	import {
+		clientOf,
+		CLOSING,
+		MODE_ICONS,
+		ORGANIZATION,
+		personOf,
+		type LegType,
+		type PanelType
+	} from './look.data';
 	import { labelsOf, TEAM } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -56,13 +64,8 @@
 	// svelte-ignore state_referenced_locally
 	let layout = $state<'column' | 'spread'>(start);
 
-	// B folds these panels into its Project panel; the organization's details are fixed.
-	const FOLDED: Record<string, string> = {
-		'client.Company': 'Client',
-		'facility.Name': 'Facility',
-		'carrier.Name': 'Carrier'
-	};
-	const ORGANIZATION_FIELDS: Record<string, string> = {
+	// The organization's details for the letterhead are fixed.
+	const LETTERHEAD: Record<string, string> = {
 		'Address line 1': '800 Town and Country',
 		'Address line 2': 'Ste 500',
 		City: 'Houston',
@@ -78,26 +81,33 @@
 			?.fields.find((field) => field.label === label)?.value;
 	}
 
-	function fieldOf(panelId: string, label: string) {
-		if (look.panels.some((panel) => panel.id === panelId)) return valueOf(panelId, label);
-		if (panelId === 'organization') return ORGANIZATION_FIELDS[label];
-		const folded = FOLDED[`${panelId}.${label}`];
-		return folded ? valueOf('project', folded) : undefined;
+	// A value of the Project panel.
+	function detail(label: string) {
+		return valueOf('project', label);
 	}
 
-	const team = $derived(
-		look.panels.find((panel) => panel.id === 'team' || panel.kind === 'project')
-	);
+	const team = $derived(look.panels.find((panel) => panel.kind === 'project'));
 	const timelog = $derived(look.panels.find((panel) => panel.id === 'timelog'));
-	const company = $derived(fieldOf('client', 'Company') || look.project.client);
-	const location = $derived(fieldOf('project', 'Location') || look.project.location);
+	const company = $derived(detail('Client') || look.project.client);
+	const location = $derived(detail('Location') || look.project.location);
 	const people = $derived(
 		[team?.owner, ...(team?.assigned ?? [])].filter((name): name is string => Boolean(name))
 	);
-	const signer = $derived(
-		TEAM.find((member) => member.name === (fieldOf('disclaimer', 'Signed by') || team?.owner))
-	);
-	const closing = $derived(fieldOf('disclaimer', 'Closing') ?? CLOSING);
+	const signer = $derived(TEAM.find((member) => member.name === team?.owner));
+	const closing = CLOSING;
+	const legs = $derived((team?.legs ?? []).filter((leg) => leg.name || leg.mode));
+	const transport = $derived(listOf(legs.map((leg) => leg.name).filter(Boolean)));
+
+	// "A", "A and B", "A, B and C".
+	function listOf(names: string[]) {
+		return names.length < 2
+			? (names[0] ?? '')
+			: `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+	}
+
+	function iconOf(leg: LegType) {
+		return MODE_ICONS[leg.mode] ?? 'icon-[mdi--help-circle-outline]';
+	}
 	const client = $derived(clientOf(company));
 	const documentNumber = $derived(`${look.project.number}-R01`);
 
@@ -139,7 +149,8 @@
 		);
 		return sections.map((item, at): EntryType => {
 			let subs: string[] = [];
-			if (item.kind === 'report') subs = ['Personnel in Attendance', 'Cargo Description'];
+			if (item.kind === 'report')
+				subs = ['Personnel in Attendance', 'Transport', 'Cargo Description'];
 			if (item.kind === 'timelog')
 				subs = (timelog?.days ?? []).map(
 					(day, dayIndex) => `Day ${dayIndex + 1}, ${dateOf(day.date)}`
@@ -175,17 +186,7 @@
 		viewport.content = { width: columns * (W + GAP) - GAP, height: rows * (H + GAP) - GAP };
 	});
 
-	const KEY_OF: Record<string, string> = $derived({
-		organization: 'report',
-		client: 'report',
-		project: look.variant === 'B' ? 'report' : 'cover',
-		items: 'report',
-		facility: 'report',
-		carrier: 'report',
-		team: 'report',
-		timelog: 'timelog',
-		disclaimer: 'disclaimer'
-	});
+	const KEY_OF: Record<string, string> = { project: 'report', items: 'report', timelog: 'timelog' };
 	const target = $derived(KEY_OF[highlight] ?? `photos-${highlight}`);
 	const targetIndex = $derived(
 		Math.max(
@@ -285,11 +286,16 @@
 	];
 
 	const COVER = $derived([
-		{ icon: 'icon-[mdi--anchor]', label: 'Facility', value: fieldOf('facility', 'Name') },
+		{ icon: 'icon-[mdi--anchor]', label: 'Facility', value: detail('Facility') },
+		{
+			icon: legs[0] ? iconOf(legs[0]) : 'icon-[mdi--ferry]',
+			label: 'Transport',
+			value: transport
+		},
 		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: look.project.dates },
-		{ icon: 'icon-[mdi--domain]', label: 'Client', value: fieldOf('client', 'Company') },
+		{ icon: 'icon-[mdi--domain]', label: 'Client', value: detail('Client') },
 		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Owner', value: team?.owner },
-		{ icon: 'icon-[mdi--shape-outline]', label: 'Project type', value: fieldOf('project', 'Type') }
+		{ icon: 'icon-[mdi--shape-outline]', label: 'Project type', value: detail('Project type') }
 	]);
 </script>
 
@@ -303,13 +309,13 @@
 		<div class="text-[7.5px] leading-[1.45] text-slate-500">
 			<p class="text-[11px] font-bold tracking-wide text-slate-900">TRIDENT CUBED</p>
 			<p>
-				{fieldOf('organization', 'Address line 1')}, {fieldOf('organization', 'Address line 2')}
+				{LETTERHEAD['Address line 1']}, {LETTERHEAD['Address line 2']}
 			</p>
 			<p>
-				{fieldOf('organization', 'City')}, {fieldOf('organization', 'State')}
-				{fieldOf('organization', 'Zip')}
+				{LETTERHEAD.City}, {LETTERHEAD.State}
+				{LETTERHEAD.Zip}
 			</p>
-			<p>{fieldOf('organization', 'Phone')} · {fieldOf('organization', 'Email')}</p>
+			<p>{LETTERHEAD.Phone} · {LETTERHEAD.Email}</p>
 		</div>
 	</div>
 {/snippet}
@@ -322,7 +328,7 @@
 		/>
 		<div class="text-[7.5px] leading-[1.45] text-slate-500">
 			<p class="text-[11px] font-bold text-slate-900">{company}</p>
-			{#each [fieldOf('client', 'Contact') || client.kind, fieldOf('client', 'Phone') || client.city, fieldOf('client', 'Email')].filter(Boolean) as line, at (at)}
+			{#each [client.kind, client.city].filter(Boolean) as line, at (at)}
 				<p>{line}</p>
 			{/each}
 		</div>
@@ -391,9 +397,9 @@
 								<p
 									class="mt-10 text-[34px] leading-tight font-bold tracking-tight text-slate-950 uppercase"
 								>
-									{fieldOf('project', 'Title') || 'Untitled project'}
+									{detail('Title') || 'Untitled project'}
 								</p>
-								<p class="mt-3 text-lg text-slate-500">{fieldOf('project', 'Subtitle')}</p>
+								<p class="mt-3 text-lg text-slate-500">{detail('Subtitle')}</p>
 							</div>
 							<div class="absolute inset-x-0 bottom-0 h-60 bg-slate-100">
 								<svg
@@ -473,22 +479,20 @@
 							{:else if item.kind === 'report'}
 								<p class="mt-3 text-[10.5px] leading-relaxed text-slate-600">
 									<b class="text-slate-900">Introduction.</b> This is to report that Trident Cubed
-									was present at {fieldOf('facility', 'Name') || 'the facility'} – {location} on {look
+									was present at {detail('Facility') || 'the facility'} – {location} on {look
 										.project.dates} for the purpose of conducting a {(
-										fieldOf('project', 'Type') || 'cargo'
-									).toLowerCase()} survey{fieldOf('items', 'Title')
-										? ` of ${fieldOf('items', 'Title')?.toLowerCase()}`
-										: ''}{fieldOf('carrier', 'Name')
-										? ` from the ${fieldOf('carrier', 'Name')}`
-										: ''}.
+										detail('Project type') || 'cargo'
+									).toLowerCase()} survey{valueOf('items', 'Title')
+										? ` of ${valueOf('items', 'Title')?.toLowerCase()}`
+										: ''}{transport ? ` from the ${transport}` : ''}.
 								</p>
 								<div class="mt-4 rounded-xl bg-slate-50 px-4 py-3">
 									<p class="text-[16px] leading-tight font-bold text-slate-950">
-										{fieldOf('project', 'Title') || 'Untitled project'}
+										{detail('Title') || 'Untitled project'}
 									</p>
-									{#if fieldOf('project', 'Subtitle')}
+									{#if detail('Subtitle')}
 										<p class="mt-0.5 text-[11px] text-slate-500">
-											{fieldOf('project', 'Subtitle')}
+											{detail('Subtitle')}
 										</p>
 									{/if}
 									<p class="mt-2 flex items-center gap-3 text-[10.5px] text-slate-600">
@@ -503,9 +507,10 @@
 									</p>
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Client', fieldOf('client', 'Company')], ['Facility', fieldOf('facility', 'Name')], ['Carrier', [fieldOf('carrier', 'Type'), fieldOf('carrier', 'Name')]
+									{#each [['Client', detail('Client')], ['Facility', detail('Facility')], ['Transport', legs
+												.map((leg) => leg.name)
 												.filter(Boolean)
-												.join(' · ')], ['Project type', fieldOf('project', 'Type')]] as [label, value] (label)}
+												.join(' → ')], ['Project type', detail('Project type')]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
 											<p
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
@@ -549,18 +554,49 @@
 									{/each}
 								</div>
 								<h3 class="mt-5 text-[13px] font-bold text-slate-950">
-									{numberOf.report}.2 Cargo Description
+									{numberOf.report}.2 Transport
+								</h3>
+								<div class="mt-2 flex flex-wrap items-center gap-1.5">
+									{#each legs as leg, legIndex (leg.id)}
+										{#if legIndex}<span class="icon-[mdi--arrow-right] size-3.5 text-slate-300"
+											></span>{/if}
+										<div class="flex items-center gap-2 rounded-xl bg-slate-50 py-1.5 pr-3 pl-2">
+											<span
+												class="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary"
+												><span class="{iconOf(leg)} size-[18px]"></span></span
+											>
+											<div>
+												<p
+													class="text-[11px] font-semibold {leg.name
+														? 'text-slate-900'
+														: 'text-slate-300 italic'}"
+												>
+													{leg.name || 'Not filled in yet'}
+												</p>
+												<p
+													class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
+												>
+													{[leg.type, leg.mode].filter(Boolean).join(' · ')}
+												</p>
+											</div>
+										</div>
+									{:else}
+										<p class="text-[11px] text-slate-300 italic">No transport yet</p>
+									{/each}
+								</div>
+								<h3 class="mt-5 text-[13px] font-bold text-slate-950">
+									{numberOf.report}.3 Cargo Description
 								</h3>
 								<p
-									class="mt-1.5 text-[11px] {fieldOf('items', 'Title')
+									class="mt-1.5 text-[11px] {valueOf('items', 'Title')
 										? 'font-semibold text-slate-900'
 										: 'text-slate-300 italic'}"
 								>
-									{fieldOf('items', 'Title') || 'Not filled in yet'}
+									{valueOf('items', 'Title') || 'Not filled in yet'}
 								</p>
-								{#if fieldOf('items', 'Description')}
+								{#if valueOf('items', 'Description')}
 									<p class="mt-1 text-[11px] leading-relaxed text-slate-600">
-										{fieldOf('items', 'Description')}
+										{valueOf('items', 'Description')}
 									</p>
 								{/if}
 							{:else if item.kind === 'timelog'}
@@ -698,7 +734,7 @@
 									>
 								</span>
 							{:else}
-								<span>{fieldOf('project', 'Title')}</span>
+								<span>{detail('Title')}</span>
 							{/if}
 							<span>Page {index + 1} of {pages.length}</span>
 						</footer>

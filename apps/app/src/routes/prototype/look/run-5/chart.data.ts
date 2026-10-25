@@ -4,8 +4,10 @@ import {
 	CLIENTS,
 	clientOf,
 	type DatasetType,
+	type FacilityType,
 	type ProjectType,
-	type StatusType
+	type StatusType,
+	type TransportType
 } from './look.data';
 import { CITIES } from './map.data';
 import { labelsOf as labelsOfMember, TEAM } from './team.data';
@@ -36,8 +38,12 @@ export const DEFAULT_CHART: Record<DatasetType, ChartKindType> = {
 	projects: 'area',
 	clients: 'map',
 	team: 'pie',
-	ports: 'bar'
+	transport: 'pie',
+	facilities: 'map'
 };
+
+// The organization's lists, for the charts of the Transport and Facilities pages.
+export type ListsType = { transports: TransportType[]; facilities: FacilityType[] };
 
 // Full class strings so Tailwind finds them; `text` colours gradient stops through currentColor.
 export type ToneType = { stroke: string; fill: string; text: string; bg: string };
@@ -242,15 +248,22 @@ export function chartOf(
 			live.filter((project) => project.team.includes(name)).length,
 			'primary'
 		]);
+	} else if (dataset === 'transport') {
+		const names = [...new Set(live.flatMap((project) => project.transports))];
+		counts = names.map((name) => [
+			name,
+			live.filter((project) => project.transports.includes(name)).length,
+			'primary'
+		]);
 	} else {
-		const names = [...new Set(live.map((project) => project.facility))];
+		const names = [...new Set(live.map((project) => project.facility).filter(Boolean))];
 		counts = names.map((name) => [
 			name,
 			live.filter((project) => project.facility === name).length,
 			'primary'
 		]);
 	}
-	if (dataset === 'team' || dataset === 'ports')
+	if (dataset !== 'projects' && dataset !== 'clients')
 		counts = counts
 			.sort((a, b) => b[1] - a[1])
 			.slice(0, 5)
@@ -266,7 +279,7 @@ export function chartOf(
 	};
 }
 
-// The big number above the chart at a point in time: projects add up; clients, team and ports count who was busy.
+// The big number above the chart at a point in time: projects add up; the other pages count who or what was busy.
 export function headlineAt(data: ChartDataType, index: number) {
 	const point = data.series.map((series) => series.values[index] ?? 0);
 	return data.isCount
@@ -276,12 +289,25 @@ export function headlineAt(data: ChartDataType, index: number) {
 
 export type SliceType = { name: string; value: number; tone: ToneType };
 
-// Pie slices are today's counts, never shares (note 12): projects by status, clients by their projects, and the team
-// by each person's first label, so everyone counts once.
+// Pie slices are today's counts, never shares (note 12): projects by status, clients by their projects, the team by
+// each person's first label, so everyone counts once, transport by type across the live projects, and facilities
+// by kind.
+const TYPE_TONE: Record<string, string> = {
+	Sea: 'primary',
+	Air: 'sky',
+	Rail: 'amber',
+	Road: 'teal',
+	Port: 'primary',
+	Airport: 'sky',
+	'Rail yard': 'amber',
+	Depot: 'teal'
+};
+
 export function slicesOf(
 	dataset: DatasetType,
 	projects: ProjectType[],
-	filter: string
+	filter: string,
+	lists: ListsType
 ): SliceType[] {
 	const live = projects.filter((project) => project.status !== 'Archived');
 	let slices: [string, number, string][] = [];
@@ -297,6 +323,23 @@ export function slicesOf(
 			name,
 			live.filter((project) => project.client === name).length,
 			CLIENT_TONE[index]
+		]);
+	} else if (dataset === 'transport') {
+		const counts = new Map<string, number>();
+		for (const name of live.flatMap((project) => project.transports)) {
+			const type = lists.transports.find((transport) => transport.name === name)?.type ?? 'Sea';
+			counts.set(type, (counts.get(type) ?? 0) + 1);
+		}
+		slices = ['Sea', 'Air', 'Rail', 'Road'].map((type) => [
+			type,
+			counts.get(type) ?? 0,
+			TYPE_TONE[type]
+		]);
+	} else if (dataset === 'facilities') {
+		slices = ['Port', 'Airport', 'Rail yard', 'Depot'].map((kind) => [
+			kind,
+			lists.facilities.filter((facility) => facility.kind === kind).length,
+			TYPE_TONE[kind]
 		]);
 	} else {
 		const counts = new Map<string, number>();
@@ -318,17 +361,22 @@ export function slicesOf(
 
 export type PinType = { city: string; x: number; y: number; count: number; names: string[] };
 
-// Map pins: where the clients' offices, the projects or the team are, one pin per city with its count. Places off the
-// US map are counted apart.
-export function pinsOf(dataset: DatasetType, projects: ProjectType[]) {
+// Map pins: where the clients' offices, the team, the facilities or the projects (and their transports) are, one pin
+// per city with its count. Places off the US map are counted apart.
+export function pinsOf(dataset: DatasetType, projects: ProjectType[], lists: ListsType) {
+	const live = projects.filter((project) => project.status !== 'Archived');
 	const places: [string, string][] =
 		dataset === 'clients'
 			? CLIENTS.map((name) => [clientOf(name).city, name])
 			: dataset === 'team'
 				? TEAM.map((member) => [member.location, member.name])
-				: projects
-						.filter((project) => project.status !== 'Archived')
-						.map((project) => [project.location, project.title]);
+				: dataset === 'facilities'
+					? lists.facilities.map((facility) => [facility.city, facility.name])
+					: dataset === 'transport'
+						? live.flatMap((project) =>
+								project.transports.map((name): [string, string] => [project.location, name])
+							)
+						: live.map((project) => [project.location, project.title]);
 	const pins = new Map<string, PinType>();
 	const away: string[] = [];
 	for (const [city, name] of places) {

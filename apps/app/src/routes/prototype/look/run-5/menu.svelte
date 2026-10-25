@@ -12,7 +12,8 @@
 </script>
 
 <script lang="ts">
-	// PROTOTYPE (#161): a small dropdown menu (view and status pickers). Closes on a pick, outside tap or Escape.
+	// PROTOTYPE (#161): a small dropdown menu (view and status pickers, and the Transport type and Kind drop-downs, which
+	// need icons a native select cannot show). Closes on a pick, outside tap or Escape. `isWide` fills its row.
 	import type { Snippet } from 'svelte';
 	import { scale } from 'svelte/transition';
 
@@ -22,7 +23,8 @@
 		label,
 		onpick,
 		trigger,
-		align = 'right'
+		align = 'right',
+		isWide = false
 	}: {
 		options: OptionType[];
 		value: string;
@@ -30,6 +32,7 @@
 		onpick: (id: string) => void;
 		trigger: Snippet<[OptionType | undefined, boolean]>;
 		align?: 'left' | 'right';
+		isWide?: boolean;
 	} = $props();
 
 	let isOpen = $state(false);
@@ -47,12 +50,12 @@
 />
 
 <div
-	class="relative"
+	class="relative {isWide ? 'w-full' : ''}"
 	bind:this={root}
 >
 	<button
 		type="button"
-		class="flex items-center"
+		class="flex items-center {isWide ? 'w-full' : ''}"
 		aria-haspopup="listbox"
 		aria-expanded={isOpen}
 		aria-label={label}

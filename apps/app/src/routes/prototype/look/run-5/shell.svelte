@@ -1,5 +1,5 @@
 <script lang="ts">
-	// PROTOTYPE (#161) run 5: the frame both looks share, from look G. Plain grey (note 3). No bottom bar: a menu
+	// PROTOTYPE (#161) run 5: the frame, from look G. Plain grey (note 3). No bottom bar: a menu
 	// button top left opens the sidebar as a flat drawer (note 15), a bell sits top right. The dashboard is one screen
 	// split 35/65 on the phone and the desktop alike (note 34): the edge-to-edge chart and the three cards on top, the
 	// list below, scrolling on its own; on a desktop the cards and list sit in a narrower column. Inside a project
@@ -13,7 +13,6 @@
 	import type { LookState } from './look.state.svelte';
 	import NewProject from './new-project.svelte';
 	import PanelList from './panel-list.svelte';
-	import ProgressRing from './progress-ring.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ReportPreview from './report-preview.svelte';
 	import SaveCloud from './save-cloud.svelte';
@@ -194,7 +193,7 @@
 			<aside
 				class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
 			>
-				<div class="flex items-center gap-2 px-4 pt-4 {look.variant === 'B' ? 'pb-2' : 'pb-4'}">
+				<div class="flex items-center gap-2 px-4 pt-4 pb-2">
 					<button
 						class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
 						aria-label="Back to Home"
@@ -204,20 +203,8 @@
 						<span class="truncate font-semibold text-slate-900">{look.project.title}</span>
 						<SaveCloud {look} />
 					</p>
-					{#if look.variant === 'A'}
-						<span
-							class="flex shrink-0 items-center gap-2 text-sm font-semibold text-slate-700 tabular-nums"
-							>{look.overall}%<ProgressRing
-								percent={look.overall}
-								size={24}
-								stroke={3.5}><span></span></ProgressRing
-							></span
-						>
-					{/if}
 				</div>
-				{#if look.variant === 'B'}
-					<div class="px-5 pb-4"><ProjectBar {look} /></div>
-				{/if}
+				<div class="px-5 pb-4"><ProjectBar {look} /></div>
 				<div class="flex-1 overflow-y-auto px-4 pb-6">
 					<PanelList
 						{look}

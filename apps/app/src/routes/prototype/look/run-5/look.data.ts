@@ -1,8 +1,10 @@
 // PROTOTYPE (#161): made-up projects for Trident's real clients. Only each client's name, square icon, kind and
 // office city are real (Justin's client pack, 2026-10-21; he chose to show names and icons here); contact details stay
-// made up. The people are the real Trident Cubed team (team.data.ts), by Justin's choice. Run 5 builds two looks from one set
-// of panels: A keeps the app prototype's panels, B folds organization, client, team, facility and carrier into one
-// Project panel of drop-downs (createPanels).
+// made up. The people are the real Trident Cubed team (team.data.ts), by Justin's choice. One look since 2026-10-25 (B;
+// A is gone): organization, client, team, transport and facility live in one Project panel (createPanels). Carrier is
+// now Transport (Justin, 2026-10-25): Transport type Sea, Air, Rail or Road; Transport mode Vessel, Barge …; then the transport
+// itself, from the organization's Transport list. Transports and facilities are typed in by hand; a tracking service
+// adds to the same list later (`source`).
 import { photoOfMember, ROLE_LABELS, TEAM } from './team.data';
 
 export type StatusType =
@@ -23,7 +25,8 @@ export type ProjectType = {
 	subtitle: string;
 	type: string;
 	client: string;
-	carrier: string;
+	// The transports the project uses, in order (names from the Transport list).
+	transports: string[];
 	facility: string;
 	location: string;
 	dates: string;
@@ -55,7 +58,10 @@ export type GroupType = {
 	photos: PhotoType[];
 };
 
-export type PanelKindType = 'fields' | 'team' | 'project' | 'timelog' | 'photos';
+// One row of the Project panel's Transport section, added like a photo group.
+export type LegType = { id: string; type: TransportTypeType | ''; mode: string; name: string };
+
+export type PanelKindType = 'fields' | 'project' | 'timelog' | 'photos';
 export type PanelControlType = 'locked' | 'switch' | 'remove';
 
 export type PanelType = {
@@ -71,6 +77,7 @@ export type PanelType = {
 	assigned: string[];
 	days: DayType[];
 	groups: GroupType[];
+	legs: LegType[];
 };
 
 export type PanelStatusType = 'To do' | 'In progress' | 'Complete' | 'Off';
@@ -157,7 +164,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Receiving inspection underway',
 		type: 'Warehousing',
 		client: 'CEVA Logistics',
-		carrier: 'MV Coral Dawn',
+		transports: ['MV Coral Dawn', 'Truck 12'],
 		facility: 'East Harbor Berth',
 		location: 'Houston, TX',
 		dates: 'Tue, 12 May 2026',
@@ -173,7 +180,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Pre-arrival condition check',
 		type: 'Vessel Condition',
 		client: 'KOGA',
-		carrier: 'MV Silver Tern',
+		transports: ['MV Silver Tern'],
 		facility: 'Eastgate Terminal 4',
 		location: 'Lake Charles, LA',
 		dates: 'Mon, 11 May 2026',
@@ -189,7 +196,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Bagged rice loading',
 		type: 'Cargo',
 		client: 'Oslo Caribbean Carrier',
-		carrier: 'MV Lantern Bay',
+		transports: ['Rail car 88', 'MV Lantern Bay'],
 		facility: 'Bulk Dock 8',
 		location: 'Corpus Christi, TX',
 		dates: 'Fri, 8 May 2026',
@@ -205,7 +212,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Warehouse stock count',
 		type: 'Warehousing',
 		client: 'UTC Overseas',
-		carrier: 'Truck fleet 12',
+		transports: ['Truck 12'],
 		facility: 'Northside Depot',
 		location: 'Pasadena, TX',
 		dates: 'Thu, 7 May 2026',
@@ -221,7 +228,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Draft and displacement',
 		type: 'Draft Survey',
 		client: 'US Ocean',
-		carrier: 'MV Coral Dawn',
+		transports: ['MV Coral Dawn'],
 		facility: 'Turning Basin Wharf 3',
 		location: 'Houston, TX',
 		dates: 'Tue, 5 May 2026',
@@ -237,7 +244,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Heavy lift supervision',
 		type: 'Cargo',
 		client: 'dship Carriers',
-		carrier: 'MV Harbor Finch',
+		transports: ['MV Harbor Finch', 'Lowboy trailer 3'],
 		facility: 'Southpoint Terminal',
 		location: 'Beaumont, TX',
 		dates: 'Mon, 4 May 2026',
@@ -253,7 +260,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Blade discharge, all clear',
 		type: 'Cargo',
 		client: 'DIX Shipping',
-		carrier: 'MV Harbor Finch',
+		transports: ['MV Harbor Finch', 'Gulf Barge 7', 'Lowboy trailer 3'],
 		facility: 'Renewables Terminal West',
 		location: 'Port Arthur, TX',
 		dates: 'Wed, 29 Apr 2026',
@@ -269,8 +276,8 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Closed survey archive',
 		type: 'Cargo',
 		client: 'Zurich North America',
-		carrier: 'Rail car 88',
-		facility: 'Heavy Lift Archive Yard',
+		transports: ['Train 3302'],
+		facility: 'Bayside Rail Yard',
 		location: 'Mobile, AL',
 		dates: 'Mon, 13 Apr 2026',
 		status: 'Archived',
@@ -325,40 +332,119 @@ export const ROLES: Record<string, string> = Object.fromEntries(
 	TEAM.map((member) => [member.name, ROLE_LABELS[member.role]])
 );
 
+export type TransportTypeType = 'Sea' | 'Air' | 'Rail' | 'Road';
+export type FacilityKindType = 'Port' | 'Airport' | 'Rail yard' | 'Depot';
+
+// Each transport type, its transport modes and the kind of facility it uses. `icon-barge` is drawn in look.svelte: no icon set
+// has a barge.
+export const TRANSPORT_TYPES: Record<
+	TransportTypeType,
+	{ icon: string; modes: string[]; facility: FacilityKindType }
+> = {
+	Sea: { icon: 'icon-[mdi--waves]', modes: ['Vessel', 'Barge'], facility: 'Port' },
+	Air: { icon: 'icon-[mdi--airplane-takeoff]', modes: ['Plane'], facility: 'Airport' },
+	Rail: { icon: 'icon-[mdi--train-variant]', modes: ['Train', 'Railcar'], facility: 'Rail yard' },
+	Road: { icon: 'icon-[mdi--road-variant]', modes: ['Truck', 'Trailer'], facility: 'Depot' }
+};
+
+export const MODE_ICONS: Record<string, string> = {
+	Vessel: 'icon-[mdi--ferry]',
+	Barge: 'icon-barge',
+	Plane: 'icon-[mdi--airplane]',
+	Train: 'icon-[mdi--train]',
+	Railcar: 'icon-[mdi--train-car-box]',
+	Truck: 'icon-[mdi--truck]',
+	Trailer: 'icon-[mdi--truck-trailer]'
+};
+
+export const FACILITY_ICONS: Record<FacilityKindType, string> = {
+	Port: 'icon-[mdi--anchor]',
+	Airport: 'icon-[mdi--airport]',
+	'Rail yard': 'icon-[mdi--train-car-container]',
+	Depot: 'icon-[mdi--warehouse]'
+};
+
+// The organization's Transport list. Every one is typed in by hand in V1; `source` is where a tracking service's
+// ships and planes merge in later.
+export type TransportType = {
+	name: string;
+	type: TransportTypeType;
+	mode: string;
+	source: 'manual' | 'api';
+};
+
+export const TRANSPORTS: TransportType[] = (
+	[
+		['MV Coral Dawn', 'Sea', 'Vessel'],
+		['MV Silver Tern', 'Sea', 'Vessel'],
+		['MV Lantern Bay', 'Sea', 'Vessel'],
+		['MV Harbor Finch', 'Sea', 'Vessel'],
+		['Gulf Barge 7', 'Sea', 'Barge'],
+		['Air Freighter 210', 'Air', 'Plane'],
+		['Train 3302', 'Rail', 'Train'],
+		['Rail car 88', 'Rail', 'Railcar'],
+		['Truck 12', 'Road', 'Truck'],
+		['Lowboy trailer 3', 'Road', 'Trailer']
+	] as const
+).map(([name, type, mode]) => ({ name, type, mode, source: 'manual' }));
+
+export type FacilityType = { name: string; kind: FacilityKindType; city: string };
+
+export const FACILITIES: FacilityType[] = (
+	[
+		['East Harbor Berth', 'Port', 'Houston, TX'],
+		['Turning Basin Wharf 3', 'Port', 'Houston, TX'],
+		['Eastgate Terminal 4', 'Port', 'Lake Charles, LA'],
+		['Bulk Dock 8', 'Port', 'Corpus Christi, TX'],
+		['Southpoint Terminal', 'Port', 'Beaumont, TX'],
+		['Renewables Terminal West', 'Port', 'Port Arthur, TX'],
+		['North Air Cargo Center', 'Airport', 'Houston, TX'],
+		['Bayside Rail Yard', 'Rail yard', 'Mobile, AL'],
+		['Northside Depot', 'Depot', 'Pasadena, TX']
+	] as const
+).map(([name, kind, city]) => ({ name, kind, city }));
+
 // What the count tiles count, and what the chart and list then show.
-export type DatasetType = 'projects' | 'clients' | 'team' | 'ports';
+export type DatasetType = 'projects' | 'clients' | 'team' | 'transport' | 'facilities';
 
 export const DATASETS: Record<
 	DatasetType,
-	{ label: string; icon: string; active: string; headline: string; filters: string[] }
+	{ label: string; one: string; icon: string; active: string; filters: string[] }
 > = {
 	projects: {
 		label: 'Projects',
+		one: 'Project',
 		icon: 'icon-[mdi--briefcase-variant-outline]',
 		active: 'icon-[mdi--briefcase-variant]',
-		headline: 'Open projects',
 		filters: ['All', 'In Progress', 'Review', 'Sent', 'Complete']
 	},
 	clients: {
 		label: 'Clients',
+		one: 'Client',
 		icon: 'icon-[mdi--domain]',
 		active: 'icon-[mdi--domain]',
-		headline: 'Active clients',
 		filters: ['All', 'Active', 'Quiet']
 	},
 	team: {
 		label: 'Team',
+		one: 'Name',
 		icon: 'icon-[mdi--account-group-outline]',
 		active: 'icon-[mdi--account-group]',
-		headline: 'Team on projects',
 		filters: ['All', 'Admins', 'Managers', 'Members']
 	},
-	ports: {
-		label: 'Ports',
+	transport: {
+		label: 'Transport',
+		one: 'Transport',
+		icon: 'icon-[mdi--ferry]',
+		active: 'icon-[mdi--ferry]',
+		filters: ['All', 'Sea', 'Air', 'Rail', 'Road']
+	},
+	facilities: {
+		label: 'Facilities',
+		one: 'Facility',
 		icon: 'icon-[mdi--anchor]',
 		active: 'icon-[mdi--anchor]',
-		headline: 'Busy ports',
-		filters: ['All', 'Busy', 'Quiet']
+		filters: ['All', 'Port', 'Airport', 'Rail yard', 'Depot']
 	}
 };
 
@@ -419,9 +505,7 @@ function group(title: string, description: string, seeds: string[]): GroupType {
 	};
 }
 
-export type VariantType = 'A' | 'B';
-
-// Trident Cubed itself: the organization every report is written for (B's Organization drop-down, the cover page).
+// Trident Cubed itself: the organization every report is written for (the Organization drop-down, the letterhead).
 export const ORGANIZATION = {
 	name: 'Trident Cubed',
 	address: '800 Town and Country, Ste 500, Houston, TX 77024',
@@ -433,10 +517,16 @@ export const ORGANIZATION = {
 export const CLOSING =
 	'Thank you for trusting Trident Cubed with your cargo. Call or email me with any question about this report.';
 
-// A's panels are the app prototype's twelve (definitions/panels.ts) plus a Disclaimer panel. B folds organization,
-// client, team, facility and carrier into one Project panel of drop-downs, each with "Add new". Both are filled in as
-// far as `progress` says, so each project opens at its own percent.
-export function createPanels(project: ProjectType, variant: VariantType = 'A'): PanelType[] {
+export const PROJECT_TYPES = ['Cargo', 'Vessel Condition', 'Warehousing', 'Draft Survey', 'Bunker'];
+
+export function legOf(name: string, transports: TransportType[] = TRANSPORTS): LegType {
+	const transport = transports.find((item) => item.name === name);
+	return { id: createId('leg'), type: transport?.type ?? '', mode: transport?.mode ?? '', name };
+}
+
+// The project's own panel first, then the app prototype's Items, Time Log and photo panels. Filled in as far as
+// `progress` says, so each project opens at its own percent.
+export function createPanels(project: ProjectType): PanelType[] {
 	const base = {
 		isEnabled: true,
 		isDraggable: false,
@@ -444,76 +534,11 @@ export function createPanels(project: ProjectType, variant: VariantType = 'A'): 
 		owner: '',
 		assigned: [],
 		days: [],
-		groups: []
+		groups: [],
+		legs: []
 	};
 	const panels: PanelType[] = [
-		{
-			...base,
-			id: 'organization',
-			name: 'Organization',
-			icon: 'icon-[mdi--domain]',
-			kind: 'fields',
-			control: 'locked',
-			fields: [
-				field('Name', 'Trident Cubed'),
-				field('Website', 'tridentcubed.com', 'url'),
-				field('Address line 1', '800 Town and Country'),
-				field('Address line 2', 'Ste 500'),
-				field('City', 'Houston'),
-				field('State', 'TX'),
-				field('Zip', '77024'),
-				field('Phone', '+1 409 543 2725', 'tel'),
-				field('Email', 'operations@tridentcubed.com', 'email'),
-				field('Logo', '/logo-color.svg', 'image')
-			].map((item) => ({ ...item, isReadonly: true }))
-		},
-		{
-			...base,
-			id: 'client',
-			name: 'Client',
-			icon: 'icon-[mdi--handshake-outline]',
-			kind: 'fields',
-			control: 'locked',
-			fields: [
-				field('Company', project.client, 'select', { options: CLIENTS }),
-				field('Short name', project.client.split(' ')[0]),
-				field('Contact', 'Operations desk'),
-				field('Phone', '+1 555 010 4477', 'tel'),
-				field('Email', 'ops@example.com', 'email'),
-				field('Website', 'example.com', 'url'),
-				field('Address line 1', '12 Quay Road'),
-				field('Address line 2', 'Unit 4'),
-				field('City', clientOf(project.client).city.split(', ')[0]),
-				field('State', clientOf(project.client).city.split(', ')[1] ?? ''),
-				field('Zip', '77001'),
-				field('Logo', photoOf('client-logo'), 'image')
-			]
-		},
-		{
-			...base,
-			id: 'team',
-			name: 'Team',
-			icon: 'icon-[mdi--account-group-outline]',
-			kind: 'team',
-			control: 'locked',
-			owner: project.team[0] ?? '',
-			assigned: project.team.slice(1)
-		},
-		{
-			...base,
-			id: 'project',
-			name: 'Project',
-			icon: 'icon-[mdi--clipboard-text-outline]',
-			kind: 'fields',
-			control: 'locked',
-			fields: [
-				field('Type', project.type, 'select', {
-					options: ['Cargo', 'Vessel Condition', 'Warehousing', 'Draft Survey', 'Bunker']
-				}),
-				field('Title', project.title),
-				field('Subtitle', project.subtitle)
-			]
-		},
+		projectPanel(project, base),
 		{
 			...base,
 			id: 'items',
@@ -525,33 +550,6 @@ export function createPanels(project: ProjectType, variant: VariantType = 'A'): 
 				field('Title', 'Containerized machinery'),
 				field('Description', 'Six crated units, shrink-wrapped on skids.', 'textarea'),
 				field('Name', 'Unit group B')
-			]
-		},
-		{
-			...base,
-			id: 'facility',
-			name: 'Facility',
-			icon: 'icon-[mdi--anchor]',
-			kind: 'fields',
-			control: 'locked',
-			fields: [
-				field('Name', project.facility),
-				field('City', project.location.split(', ')[0]),
-				field('State', project.location.split(', ')[1] ?? '')
-			]
-		},
-		{
-			...base,
-			id: 'carrier',
-			name: 'Carrier',
-			icon: 'icon-[mdi--ferry]',
-			kind: 'fields',
-			control: 'locked',
-			fields: [
-				field('Type', 'Vessel', 'select', { options: ['Vessel', 'Airplane', 'Rail', 'Road'] }),
-				field('Name', project.carrier),
-				field('Photo', photoOf('carrier'), 'image'),
-				field('Documents', 'stowage-plan.pdf', 'file')
 			]
 		},
 		{
@@ -614,72 +612,47 @@ export function createPanels(project: ProjectType, variant: VariantType = 'A'): 
 			control: 'switch',
 			isDraggable: true,
 			isEnabled: false
-		},
-		{
-			...base,
-			id: 'disclaimer',
-			name: 'Disclaimer',
-			icon: 'icon-[mdi--file-sign]',
-			kind: 'fields',
-			control: 'locked',
-			fields: [
-				field('Signed by', project.team[0] ?? '', 'select', { options: TEAM.map((m) => m.name) }),
-				field('Closing', CLOSING, 'textarea')
-			]
 		}
 	];
-	if (variant === 'B') {
-		const folded = [
-			'organization',
-			'client',
-			'team',
-			'project',
-			'facility',
-			'carrier',
-			'disclaimer'
-		];
-		panels.splice(
-			0,
-			panels.length,
-			projectPanel(project, base),
-			...panels.filter((panel) => !folded.includes(panel.id))
-		);
-	}
 
-	// Blank the later inputs so the panel percents land near the project's progress.
-	const blanks = Math.round(((100 - project.progress) / 100) * 22);
-	const order = ['items', 'client', 'carrier', 'facility', 'project'];
-	let left = blanks;
+	// Blank the later inputs, the less done the more, so each project opens at its own percent (LookState then lists
+	// that percent). Title, organization and client always stay; the transports go last, from the last one back.
+	const [details, items] = panels;
+	const kept = ['Title', 'Organization', 'Client'];
+	let left = Math.round(((100 - project.progress) / 100) * 12);
 	for (let round = 0; left > 0 && round < 12; round += 1) {
-		for (const id of order) {
-			const panel = panels.find((item) => item.id === id);
-			if (!panel) continue;
-			const filled = panel.fields.filter((item) => item.value);
+		for (const panel of [items, details]) {
+			const filled = panel.fields.filter((item) => item.value && !kept.includes(item.label));
 			if (left > 0 && filled.length > 0) {
 				filled[filled.length - 1].value = '';
 				left -= 1;
 			}
 		}
 	}
+	for (const leg of details.legs.toReversed())
+		for (const part of ['name', 'mode', 'type'] as const)
+			if (left > 0) {
+				leg[part] = '';
+				left -= 1;
+			}
 	if (project.progress < 60) {
 		panels.find((item) => item.id === 'timelog')!.days[0].entries.splice(1);
 		panels.find((item) => item.id === 'inspection')!.groups[0].photos = [];
 		panels.find((item) => item.id === 'discharge')!.isEnabled = false;
 	}
 	if (project.progress < 25) {
-		panels.find((item) => item.id === 'team' || item.id === 'project')!.assigned = [];
+		details.assigned = [];
 		panels.find((item) => item.id === 'timelog')!.days = [];
 	}
 	return panels;
 }
 
-// B's one Project panel: the project's own fields with organization, client, team, facility and carrier as drop-downs.
+// The Project panel: the project's own fields, with organization, client, team, transport and facility picked from
+// lists, each with "Add new". Its Transport section has one row per transport, added like a photo group.
 function projectPanel(
 	project: ProjectType,
 	base: Omit<PanelType, 'id' | 'name' | 'icon' | 'kind' | 'control'>
 ) {
-	const facilities = [...new Set(PROJECTS.map((item) => item.facility))];
-	const carriers = [...new Set(PROJECTS.map((item) => item.carrier))];
 	return {
 		...base,
 		id: 'project',
@@ -689,6 +662,7 @@ function projectPanel(
 		control: 'locked',
 		owner: project.team[0] ?? '',
 		assigned: project.team.slice(1),
+		legs: project.transports.map((name) => legOf(name)),
 		fields: [
 			field('Title', project.title),
 			field('Organization', ORGANIZATION.name, 'select', {
@@ -696,11 +670,8 @@ function projectPanel(
 				isAddable: true
 			}),
 			field('Client', project.client, 'select', { options: [...CLIENTS], isAddable: true }),
-			field('Facility', project.facility, 'select', { options: facilities, isAddable: true }),
-			field('Carrier', project.carrier, 'select', { options: carriers, isAddable: true }),
-			field('Type', project.type, 'select', {
-				options: ['Cargo', 'Vessel Condition', 'Warehousing', 'Draft Survey', 'Bunker']
-			}),
+			field('Facility', project.facility, 'select', { isAddable: true }),
+			field('Project type', project.type, 'select', { options: PROJECT_TYPES }),
 			field('Location', project.location),
 			field('Subtitle', project.subtitle)
 		]
@@ -720,7 +691,8 @@ export function newPanel(count: number): PanelType {
 		owner: '',
 		assigned: [],
 		days: [],
-		groups: []
+		groups: [],
+		legs: []
 	};
 }
 
@@ -729,6 +701,8 @@ export const NAV = [
 	{ id: 'projects', label: 'Projects', icon: 'icon-[mdi--folder]' },
 	{ id: 'clients', label: 'Clients', icon: 'icon-[mdi--account]' },
 	{ id: 'team', label: 'Team', icon: 'icon-[mdi--account-group]' },
+	{ id: 'transport', label: 'Transport', icon: 'icon-[mdi--ferry]' },
+	{ id: 'facilities', label: 'Facilities', icon: 'icon-[mdi--anchor]' },
 	{
 		id: 'admin',
 		label: 'Admin',

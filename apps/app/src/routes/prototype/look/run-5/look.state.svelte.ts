@@ -1,17 +1,21 @@
-// PROTOTYPE (#161): in-memory state shared by the variants, so switching variant keeps your place.
-// A and B share one state; B builds its projects from one Project panel (createPanels).
-// Every input counts toward its panel, and the panels toward the project, so the percents move as you type.
+// PROTOTYPE (#161): in-memory state for the look. Each project opens on its Project panel (createPanels).
+// Every input counts toward its panel, and the panels toward the project, so the percents move as you type. The
+// Transport and Facility lists live here, so one added from a project shows on its dashboard page.
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	createId,
 	createPanels,
+	FACILITIES,
+	legOf,
 	newPanel,
 	PROJECTS,
+	TRANSPORTS,
+	type DatasetType,
+	type FacilityType,
 	type PanelStatusType,
 	type PanelType,
-	type DatasetType,
 	type ProjectType,
-	type VariantType
+	type TransportType
 } from './look.data';
 
 export type ScreenType = 'dashboard' | 'workspace';
@@ -27,14 +31,17 @@ export function metricsOf(panel: PanelType): MetricsType {
 		total = panel.fields.length;
 		done = panel.fields.filter((field) => field.value.trim()).length;
 	} else if (panel.kind === 'project') {
-		total = panel.fields.length + 2;
+		// Each transport row counts its three picks; an empty Transport section counts as one to do.
+		total = panel.fields.length + 2 + Math.max(1, panel.legs.length * 3);
 		done =
 			panel.fields.filter((field) => field.value.trim()).length +
 			Number(Boolean(panel.owner)) +
-			Number(panel.assigned.length > 0);
-	} else if (panel.kind === 'team') {
-		total = 2;
-		done = Number(Boolean(panel.owner)) + Number(panel.assigned.length > 0);
+			Number(panel.assigned.length > 0) +
+			panel.legs.reduce(
+				(sum, leg) =>
+					sum + Number(Boolean(leg.type)) + Number(Boolean(leg.mode)) + Number(Boolean(leg.name)),
+				0
+			);
 	} else if (panel.kind === 'timelog') {
 		total = Math.max(
 			1,
@@ -67,6 +74,14 @@ export function metricsOf(panel: PanelType): MetricsType {
 	return { done, total, percent, status };
 }
 
+// A project's percent: every input of its switched-on panels counts the same.
+export function percentOf(panels: PanelType[]) {
+	const enabled = panels.filter((panel) => panel.isEnabled).map(metricsOf);
+	const done = enabled.reduce((sum, item) => sum + item.done, 0);
+	const total = enabled.reduce((sum, item) => sum + item.total, 0);
+	return total ? Math.round((done / total) * 100) : 0;
+}
+
 export function toneOf(status: PanelStatusType) {
 	if (status === 'Complete')
 		return { bar: 'bg-success', text: 'text-success', ring: 'stroke-success' };
@@ -76,7 +91,6 @@ export function toneOf(status: PanelStatusType) {
 }
 
 export class LookState {
-	variant = $state<VariantType>('A');
 	screen = $state<ScreenType>('dashboard');
 	view = $state<ViewType>('table');
 	filter = $state('All');
@@ -86,12 +100,14 @@ export class LookState {
 	projects = $state<ProjectType[]>(structuredClone(PROJECTS));
 	projectId = $state('p1');
 	tab = $state<TabType>('edit');
-	panelId = $state('client');
+	panelId = $state('project');
 	isNewOpen = $state(false);
 	navSection = $state<string>('home');
 	isSaving = $state(false);
 	toast = $state('');
 	workspaces = $state<Record<string, PanelType[]>>({});
+	transports = $state<TransportType[]>(structuredClone(TRANSPORTS));
+	facilities = $state<FacilityType[]>(structuredClone(FACILITIES));
 
 	project = $derived(
 		this.projects.find((project) => project.id === this.projectId) ?? this.projects[0]
@@ -102,35 +118,22 @@ export class LookState {
 			: this.projects.filter((project) => project.status === this.filter)
 	);
 	panels = $derived(this.workspaces[this.projectId] ?? []);
-	overall = $derived.by(() => {
-		const enabled = this.panels.filter((panel) => panel.isEnabled).map(metricsOf);
-		const done = enabled.reduce((sum, item) => sum + item.done, 0);
-		const total = enabled.reduce((sum, item) => sum + item.total, 0);
-		return total ? Math.round((done / total) * 100) : 0;
-	});
+	overall = $derived(percentOf(this.panels));
 
 	#saveTimer: ReturnType<typeof setTimeout> | undefined;
 	#toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-	constructor(variant: VariantType = 'A') {
-		this.variant = variant;
-		this.#ensure(this.projectId);
-		if (variant === 'B') this.panelId = 'project';
+	// Every project's panels up front, so the list shows the percent each one opens at.
+	constructor() {
+		for (const project of this.projects) {
+			this.workspaces[project.id] = createPanels(project);
+			project.progress = percentOf(this.workspaces[project.id]);
+		}
 	}
 
 	#ensure(id: string) {
 		const project = this.projects.find((item) => item.id === id);
-		if (project && !this.workspaces[id]) this.workspaces[id] = createPanels(project, this.variant);
-	}
-
-	// Switching look rebuilds the open panels in that look's shape.
-	use(variant: VariantType) {
-		if (variant === this.variant) return;
-		this.#keepProgress();
-		this.variant = variant;
-		this.workspaces = {};
-		this.#ensure(this.projectId);
-		if (!this.panels.some((panel) => panel.id === this.panelId)) this.panelId = this.panels[0].id;
+		if (project && !this.workspaces[id]) this.workspaces[id] = createPanels(project);
 	}
 
 	progressOf(project: ProjectType) {
@@ -148,20 +151,26 @@ export class LookState {
 	}
 
 	open(id: string) {
-		this.#keepProgress();
+		this.#keepProject();
 		this.#ensure(id);
 		this.projectId = id;
 		this.screen = 'workspace';
 	}
 
 	home() {
-		this.#keepProgress();
+		this.#keepProject();
 		this.screen = 'dashboard';
 		this.navSection = 'home';
 	}
 
-	#keepProgress() {
-		if (this.workspaces[this.projectId]) this.project.progress = this.overall;
+	// Leaving a project writes back what the dashboard lists: its progress, transports and facility.
+	#keepProject() {
+		const details = this.workspaces[this.projectId]?.find((panel) => panel.kind === 'project');
+		if (!details) return;
+		this.project.progress = this.overall;
+		this.project.transports = details.legs.map((leg) => leg.name).filter(Boolean);
+		this.project.facility =
+			details.fields.find((field) => field.label === 'Facility')?.value ?? this.project.facility;
 	}
 
 	create(title: string, client: string) {
@@ -173,7 +182,7 @@ export class LookState {
 			subtitle: '',
 			type: 'Cargo',
 			client,
-			carrier: '',
+			transports: [],
 			facility: '',
 			location: 'Houston, TX',
 			dates: 'Today',
@@ -182,19 +191,17 @@ export class LookState {
 			updated: 'Just now',
 			progress: 0
 		});
-		this.workspaces[id] = createPanels(this.projects[0], this.variant).map((panel) => ({
+		this.workspaces[id] = createPanels(this.projects[0]).map((panel) => ({
 			...panel,
 			fields: panel.fields.map((field) =>
-				field.isReadonly ||
-				['Title', 'Company', 'Organization', 'Client', 'Signed by', 'Closing'].includes(field.label)
-					? field
-					: { ...field, value: '' }
+				['Title', 'Organization', 'Client'].includes(field.label) ? field : { ...field, value: '' }
 			),
 			assigned: [],
 			days: [],
-			groups: []
+			groups: [],
+			legs: panel.kind === 'project' ? [legOf('')] : []
 		}));
-		this.panelId = this.variant === 'B' ? 'project' : 'client';
+		this.panelId = 'project';
 		this.open(id);
 	}
 
@@ -216,6 +223,17 @@ export class LookState {
 		this.toast = message;
 		clearTimeout(this.#toastTimer);
 		this.#toastTimer = setTimeout(() => (this.toast = ''), 2600);
+	}
+
+	// "Add new" from the Project panel: the Transport and Facility lists grow, as their dashboard pages show.
+	addTransport(transport: Omit<TransportType, 'source'>) {
+		this.transports.push({ ...transport, source: 'manual' });
+		this.say(`${transport.name} added to Transport`);
+	}
+
+	addFacility(facility: FacilityType) {
+		this.facilities.push(facility);
+		this.say(`${facility.name} added to Facilities`);
 	}
 
 	addPanel() {

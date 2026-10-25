@@ -1,13 +1,11 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 5: inside a project on the phone. The header floats over the content with a backdrop blur,
-	// so the panels (and the pages) scroll under it, and it is shorter than G's (Justin's note 23). A: back, the
-	// centred title with its save cloud, % and ring, then the Panels / Preview switch. B: one line, title on the left
-	// and a small switch at the far right, with the project's bar under it (note 25). Swipe between Panels and
+	// so the panels (and the pages) scroll under it, and it is shorter than G's (Justin's note 23): one line, title on
+	// the left and a small switch at the far right, with the project's bar under it (note 25). Swipe between Panels and
 	// Preview; on Preview the pages take every drag, so a hidden strip on the left edge swipes back (note 35).
 	import type { ComponentProps } from 'svelte';
 	import type { LookState } from './look.state.svelte';
 	import PanelList from './panel-list.svelte';
-	import ProgressRing from './progress-ring.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ReportPreview from './report-preview.svelte';
 	import SaveCloud from './save-cloud.svelte';
@@ -27,7 +25,6 @@
 	let swiper: HTMLDivElement | undefined = $state();
 	let progress = $state(0);
 	let top = $state(0);
-	const isB = $derived(look.variant === 'B');
 
 	function show(tab: 'edit' | 'preview') {
 		look.tab = tab;
@@ -72,11 +69,9 @@
 	}
 </script>
 
-{#snippet tabs(isSmall: boolean)}
+{#snippet tabs()}
 	<div
-		class="relative grid shrink-0 grid-cols-2 rounded-full bg-slate-900/[0.06] p-0.5 {isSmall
-			? 'w-[8.5rem] text-[12px]'
-			: 'w-44 text-[13px]'}"
+		class="relative grid w-[8.5rem] shrink-0 grid-cols-2 rounded-full bg-slate-900/[0.06] p-0.5 text-[12px]"
 		role="tablist"
 	>
 		<span
@@ -85,9 +80,9 @@
 		></span>
 		{#each [['edit', 'Panels'], ['preview', 'Preview']] as const as [tab, label] (tab)}
 			<button
-				class="relative rounded-full font-medium transition-colors {isSmall
-					? 'py-[3px]'
-					: 'py-1'} {look.tab === tab ? 'text-slate-900' : 'text-slate-500'}"
+				class="relative rounded-full py-[3px] font-medium transition-colors {look.tab === tab
+					? 'text-slate-900'
+					: 'text-slate-500'}"
 				role="tab"
 				aria-selected={look.tab === tab}
 				onclick={() => show(tab)}>{label}</button
@@ -107,28 +102,13 @@
 				aria-label="Back"
 				onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
 			>
-			<p class="flex min-w-0 flex-1 items-center gap-1.5 {isB ? 'pl-0.5' : 'justify-center'}">
+			<p class="flex min-w-0 flex-1 items-center gap-1.5 pl-0.5">
 				<span class="truncate font-semibold text-slate-900">{look.project.title}</span>
 				<SaveCloud {look} />
 			</p>
-			{#if isB}
-				<span class="pr-1.5">{@render tabs(true)}</span>
-			{:else}
-				<span
-					class="flex shrink-0 items-center gap-1.5 pr-2 text-sm font-semibold text-slate-700 tabular-nums"
-					>{look.overall}%<ProgressRing
-						percent={look.overall}
-						size={22}
-						stroke={3}><span></span></ProgressRing
-					></span
-				>
-			{/if}
+			<span class="pr-1.5">{@render tabs()}</span>
 		</div>
-		{#if isB}
-			<div class="px-4 pb-2"><ProjectBar {look} /></div>
-		{:else}
-			<div class="flex justify-center pb-2">{@render tabs(false)}</div>
-		{/if}
+		<div class="px-4 pb-2"><ProjectBar {look} /></div>
 	</header>
 
 	<div

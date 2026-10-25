@@ -39,8 +39,8 @@
 	const count = $derived(data.labels.length);
 	const last = $derived(count - 1);
 	const index = $derived(scrub ?? last);
-	const slices = $derived(slicesOf(look.dataset, look.projects, look.filter));
-	const map = $derived(pinsOf(look.dataset, look.projects));
+	const slices = $derived(slicesOf(look.dataset, look.projects, look.filter, look));
+	const map = $derived(pinsOf(look.dataset, look.projects, look));
 	const isTimeless = $derived(look.chart === 'pie' || look.chart === 'map');
 	const value = $derived(
 		look.chart === 'pie'
@@ -52,7 +52,9 @@
 	const PIE_NOTE: Record<string, string> = {
 		projects: 'open, by status',
 		clients: 'open projects, by client',
-		team: 'people, by label'
+		team: 'people, by label',
+		transport: 'transports on live projects, by type',
+		facilities: 'facilities, by kind'
 	};
 	const note = $derived(
 		look.chart === 'pie'
@@ -124,6 +126,42 @@
 	const pinScale = $derived.by(() => {
 		const [w, h] = [995, 650];
 		return width && height ? Math.max(w / width, h / height) : 1;
+	});
+
+	const radiusOf = (count: number) => (4 + Math.sqrt(count) * 3) * pinScale;
+
+	// City labels, biggest pin first: to the right, else to the left, else none, so no two overlap where pins crowd
+	// (the facilities on the Gulf coast); a pin's tooltip still names it.
+	const spots = $derived.by(() => {
+		type BoxType = { x1: number; x2: number; y1: number; y2: number };
+		const boxes: BoxType[] = map.pins.map((pin) => {
+			const r = radiusOf(pin.count);
+			return { x1: pin.x - r, x2: pin.x + r, y1: pin.y - r, y2: pin.y + r };
+		});
+		const found = new Map<string, { x: number; anchor: 'start' | 'end' }>();
+		for (const pin of map.pins.toSorted((a, b) => b.count - a.count)) {
+			const r = radiusOf(pin.count);
+			const width = pin.city.split(',')[0].length * 5.8 * pinScale;
+			const half = 6 * pinScale;
+			for (const anchor of ['start', 'end'] as const) {
+				const x = anchor === 'start' ? pin.x + r + 3 * pinScale : pin.x - r - 3 * pinScale;
+				const box = {
+					x1: anchor === 'start' ? x : x - width,
+					x2: anchor === 'start' ? x + width : x,
+					y1: pin.y - half,
+					y2: pin.y + half
+				};
+				const isTaken = boxes.some(
+					(other) =>
+						other.x1 < box.x2 && box.x1 < other.x2 && other.y1 < box.y2 && box.y1 < other.y2
+				);
+				if (isTaken) continue;
+				boxes.push(box);
+				found.set(pin.city, { x, anchor });
+				break;
+			}
+		}
+		return found;
 	});
 
 	function arcOf(start: number, end: number, radius: number) {
@@ -282,14 +320,8 @@
 							stroke-linejoin="round"
 						/>
 						{#each map.pins as pin, at (pin.city)}
-							{@const r = (4 + Math.sqrt(pin.count) * 3) * pinScale}
-							{@const name = pin.city.split(',')[0]}
-							{@const isLeft = map.pins.some(
-								(other) =>
-									other.x > pin.x &&
-									other.x - pin.x < (name.length * 6 + 24) * pinScale &&
-									Math.abs(other.y - pin.y) < 14 * pinScale
-							)}
+							{@const r = radiusOf(pin.count)}
+							{@const spot = spots.get(pin.city)}
 							<g
 								class="chart-pin"
 								style="animation-delay: {at * 60}ms"
@@ -318,14 +350,16 @@
 										style="font-size: {10 * pinScale}px">{pin.count}</text
 									>
 								{/if}
-								<text
-									x={isLeft ? pin.x - r - 3 * pinScale : pin.x + r + 3 * pinScale}
-									y={pin.y}
-									text-anchor={isLeft ? 'end' : 'start'}
-									dominant-baseline="central"
-									class="fill-slate-600 font-medium"
-									style="font-size: {10 * pinScale}px">{name}</text
-								>
+								{#if spot}
+									<text
+										x={spot.x}
+										y={pin.y}
+										text-anchor={spot.anchor}
+										dominant-baseline="central"
+										class="fill-slate-600 font-medium"
+										style="font-size: {10 * pinScale}px">{pin.city.split(',')[0]}</text
+									>
+								{/if}
 							</g>
 						{/each}
 					</svg>

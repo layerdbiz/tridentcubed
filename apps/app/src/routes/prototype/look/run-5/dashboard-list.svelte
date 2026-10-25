@@ -2,8 +2,9 @@
 	// PROTOTYPE (#161) run 5: the lower part of the dashboard, the list of whatever the selected card counts, rows
 	// grouped in one white box. A project row reads title, client, then status and a grey map marker with the
 	// location (note 7); its bar takes the status colour (note 8). People show their presence dot (note 9) and their
-	// labels, not their job title (note 22); every location has the same grey marker (note 21). `isSplit` lets the
-	// rows scroll inside the lower part of the phone screen.
+	// labels, not their job title (note 22); every location has the same grey marker (note 21). Transport and
+	// Facilities (2026-10-25) list the organization's lists with each one's icon, filtered by transport type or facility kind. `isSplit`
+	// lets the rows scroll inside the lower part of the phone screen.
 	import { flip } from 'svelte/animate';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
@@ -13,6 +14,8 @@
 		CLIENTS,
 		clientOf,
 		DATASETS,
+		FACILITY_ICONS,
+		MODE_ICONS,
 		ROLES,
 		STATUS,
 		type ProjectType,
@@ -63,11 +66,24 @@
 			};
 		})
 	);
-	const ports = $derived(
-		[...new Set(look.projects.map((project) => project.facility))].map((name) => {
-			const theirs = look.projects.filter((project) => project.facility === name);
+	const transports = $derived(
+		look.transports.map((transport) => {
+			const theirs = look.projects.filter((project) => project.transports.includes(transport.name));
 			return {
-				name,
+				...transport,
+				group: transport.type,
+				projects: theirs.length,
+				open: theirs.filter(isOpen).length,
+				clients: [...new Set(theirs.map((project) => project.client))]
+			};
+		})
+	);
+	const facilities = $derived(
+		look.facilities.map((facility) => {
+			const theirs = look.projects.filter((project) => project.facility === facility.name);
+			return {
+				...facility,
+				group: facility.kind,
 				projects: theirs.length,
 				open: theirs.filter(isOpen).length,
 				clients: [...new Set(theirs.map((project) => project.client))]
@@ -75,15 +91,17 @@
 		})
 	);
 
-	function isShown(filter: string, item: { open: number; role?: string }) {
+	function isShown(filter: string, item: { open: number; role?: string; group?: string }) {
 		if (filter === 'All') return true;
 		if (look.dataset === 'team') return `${item.role}s` === filter;
+		if (item.group) return item.group === filter;
 		return filter === 'Quiet' ? item.open === 0 : item.open > 0;
 	}
 
 	const shownClients = $derived(clients.filter((item) => isShown(look.filter, item)));
 	const shownTeam = $derived(team.filter((item) => isShown(look.filter, item)));
-	const shownPorts = $derived(ports.filter((item) => isShown(look.filter, item)));
+	const shownTransports = $derived(transports.filter((item) => isShown(look.filter, item)));
+	const shownFacilities = $derived(facilities.filter((item) => isShown(look.filter, item)));
 	const total = $derived(
 		look.dataset === 'projects'
 			? look.visible.length
@@ -91,7 +109,9 @@
 				? shownClients.length
 				: look.dataset === 'team'
 					? shownTeam.length
-					: shownPorts.length
+					: look.dataset === 'transport'
+						? shownTransports.length
+						: shownFacilities.length
 	);
 
 	function countOf(filter: string) {
@@ -99,8 +119,19 @@
 			return filter === 'All'
 				? look.projects.length
 				: look.projects.filter((project) => project.status === filter).length;
-		const list = look.dataset === 'clients' ? clients : look.dataset === 'team' ? team : ports;
+		const list =
+			look.dataset === 'clients'
+				? clients
+				: look.dataset === 'team'
+					? team
+					: look.dataset === 'transport'
+						? transports
+						: facilities;
 		return list.filter((item) => isShown(filter, item)).length;
+	}
+
+	function projectsOf(item: { projects: number; open: number }) {
+		return `${item.projects} project${item.projects === 1 ? '' : 's'} · ${item.open} open`;
 	}
 
 	const filterOptions = $derived(
@@ -444,7 +475,7 @@
 				</div>
 			{/if}
 		{:else}
-			<!-- Clients, team and ports: the same grouped list, other data -->
+			<!-- Clients, team, transport and facilities: the same grouped list, other data -->
 			{@const rows =
 				look.dataset === 'clients'
 					? shownClients.map((item) => ({
@@ -458,7 +489,8 @@
 							email: '',
 							stack: item.people,
 							logos: [] as string[],
-							kind: 'client'
+							kind: 'client',
+							icon: ''
 						}))
 					: look.dataset === 'team'
 						? shownTeam.map((item) => ({
@@ -472,21 +504,38 @@
 								email: item.email,
 								stack: [] as string[],
 								logos: item.clients,
-								kind: 'person'
+								kind: 'person',
+								icon: ''
 							}))
-						: shownPorts.map((item) => ({
-								key: item.name,
-								title: item.name,
-								sub: `${item.projects} project${item.projects === 1 ? '' : 's'} · ${item.open} open`,
-								location: '',
-								labels: [] as string[],
-								meta: item.open ? 'Busy' : 'Quiet',
-								phone: '',
-								email: '',
-								stack: [] as string[],
-								logos: item.clients,
-								kind: 'port'
-							}))}
+						: look.dataset === 'transport'
+							? shownTransports.map((item) => ({
+									key: item.name,
+									title: item.name,
+									sub: projectsOf(item),
+									location: '',
+									labels: [item.type, item.mode],
+									meta: item.open ? 'Busy' : 'Quiet',
+									phone: '',
+									email: '',
+									stack: [] as string[],
+									logos: item.clients,
+									kind: 'thing',
+									icon: MODE_ICONS[item.mode] ?? 'icon-[mdi--ferry]'
+								}))
+							: shownFacilities.map((item) => ({
+									key: item.name,
+									title: item.name,
+									sub: projectsOf(item),
+									location: item.city,
+									labels: [item.kind],
+									meta: item.open ? 'Busy' : 'Quiet',
+									phone: '',
+									email: '',
+									stack: [] as string[],
+									logos: item.clients,
+									kind: 'thing',
+									icon: FACILITY_ICONS[item.kind]
+								}))}
 			{#snippet mark(row: (typeof rows)[number], size: number)}
 				{#if row.kind === 'client'}
 					<ClientLogo
@@ -504,7 +553,7 @@
 					<span
 						class="flex shrink-0 items-center justify-center rounded-full bg-linear-to-br from-slate-700 to-slate-900 text-white"
 						style="width: {size}px; height: {size}px"
-						><span class="icon-[mdi--anchor] size-1/2"></span></span
+						><span class="{row.icon} size-1/2"></span></span
 					>
 				{/if}
 			{/snippet}
@@ -521,9 +570,7 @@
 						>
 							<tr>
 								<th class="w-16 py-3 pl-4"></th>
-								<th class="py-3"
-									>{look.dataset === 'team' ? 'Name' : info.label.replace(/s$/, '')}</th
-								>
+								<th class="py-3">{info.one}</th>
 								<th class="py-3">Details</th>
 								{#if look.dataset === 'team'}
 									<th class="py-3">Contact</th>

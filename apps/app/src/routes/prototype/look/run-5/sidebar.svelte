@@ -1,13 +1,14 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 5: the sidebar and phone menu: logo, a blue New project, the sections, Recent, and the
 	// user with settings at the bottom. Every icon sits in one centred column (note 16): the logo twice its old size,
-	// the section icons half again bigger, filled (note 17: Home, Projects, Clients, Team). Signed in as Cezary,
+	// the section icons half again bigger, filled (note 17: Home, Projects, Clients, Team; Transport and Facilities
+	// since 2026-10-25). Signed in as Cezary,
 	// Admin (note 19). Recent icons: 'logos' the client's icon; 'activity' what happened; 'rings' the client's icon
 	// inside the project's progress ring. `isCollapsed` folds it to an icon rail. `onnavigate` runs after any pick,
 	// so the phone drawer can close itself, even when the pick is the page already open.
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
-	import { NAV, personOf, RECENT } from './look.data';
+	import { DATASETS, NAV, personOf, RECENT, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProgressRing from './progress-ring.svelte';
 
@@ -33,7 +34,7 @@
 	function go(id: string) {
 		if (look.screen === 'workspace') look.home();
 		look.navSection = id;
-		if (id === 'projects' || id === 'clients' || id === 'team') look.pick(id);
+		if (id in DATASETS) look.pick(id as DatasetType);
 		onnavigate?.();
 	}
 
