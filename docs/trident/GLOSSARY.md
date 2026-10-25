@@ -77,7 +77,7 @@ A project's reference: the client's short code, the day the project was created 
 _Avoid_: job number, reference, queue number
 
 **Document ID**:
-The report's identifier and the name of its exported file: the project number, FR for final report, the report number and the revision number, SGL-2026-02-03-01-FR-01-01. The file name may end with the carrier's name after a triple dash, SGL-2026-02-03-01-FR-01-01---BBC-Kimberly.pdf.
+The report's identifier and the name of its exported file: the project number, FR for final report, the report number and the revision number, SGL-2026-02-03-01-FR-01-01. The file name may end with the transport's name after a triple dash, SGL-2026-02-03-01-FR-01-01---BBC-Kimberly.pdf.
 _Avoid_: file name, job number
 
 **Report number**:
@@ -108,10 +108,22 @@ The document a project produces: its panels rendered as report pages.
 _Avoid_: survey report, document
 
 **Facility**:
-The port or port terminal where the project takes place, picked from the organization's list.
+Where the project takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. The drop-down offers the facilities that match the project's transport types.
+
+**Transport**:
+The ship, barge, plane, train or truck that moves the items, like MV Coral Dawn, picked from the organization's Transport list or added on the spot. A project can use several, one after another, each in its own row of the Transport section. In V1 every transport is typed in by hand; later a tracking service adds ships and planes to the same list.
+_Avoid_: carrier (that is the owner), vehicle, conveyance
+
+**Transport type**:
+Sea, Air, Rail or Road. Picking one offers its transport modes.
+_Avoid_: transport mode (that is Vessel, Barge and the rest)
+
+**Transport mode**:
+What a transport is within its type: Vessel or Barge for Sea, Plane for Air, Train or Railcar for Rail, Truck or Trailer for Road. Each mode has its own icon.
+_Avoid_: kind, transport type (that is Sea, Air, Rail or Road)
 
 **Carrier**:
-What carries the items: a vessel, an airplane, a train or a truck, picked from the organization's list.
+The company that owns a transport, like a shipping line; never the ship itself. Not in V1.
 
 **Items**:
 The cargo the project concerns.
@@ -135,7 +147,7 @@ A box in the editor. The project details panel holds the job's facts; every othe
 _Avoid_: section, report section, page
 
 **Project details panel**:
-The panel of the job's facts: client, facility, carrier and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction.
+The panel of the job's facts: client, facility, transport and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction.
 _Avoid_: project panel, info panel
 
 **Fixed panel**:

@@ -23,8 +23,8 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
       - Sent copies
   - Clients ✅ (list only)
     - Client
-  - Carriers ✅ (list only, filtered by vessel, airplane, train, truck)
-    - Carrier
+  - Transport ✅ (list only, filtered by Sea, Air, Rail, Road)
+    - Transport
   - Facilities ✅ (list only)
     - Facility
   - Notifications
@@ -55,12 +55,12 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
 2. A Member or Admin lands on the Dashboard; a Guest lands on Waiting for access.
 3. From the Dashboard a User opens a project, or makes one with New project, a popup (title and client; whoever makes it is the Owner).
 4. A project opens on its Workspace, Edit and Preview; Preview exports the PDF.
-5. The navigation always reaches Dashboard, Projects, Clients, Carriers, Facilities, Profile and Settings; admins also reach Users, Organization and Trash.
+5. The navigation always reaches Dashboard, Projects, Clients, Transport, Facilities, Profile and Settings; admins also reach Users, Organization and Trash.
 
 ## Rules
 
-- **One list, three views.** Dashboard, Projects, Clients, Carriers, Facilities, Users and Trash are the same list component with different data. Table, Cards and Board (a column per project status) are all V1, and the User picks the view.
-- **Clients, Carriers and Facilities get their own list pages** on top of being picked and added from dropdowns in the Project details panel (ADR 0005). A single Client, Carrier or Facility page comes later.
+- **One list, three views.** Dashboard, Projects, Clients, Transport, Facilities, Users and Trash are the same list component with different data. Table, Cards and Board (a column per project status) are all V1, and the User picks the view.
+- **Clients, Transport and Facilities get their own list pages** on top of being picked and added from dropdowns in the Project details panel (ADR 0005). A single Client, Transport or Facility page comes later.
 - **New project is a popup,** not a page.
 - **No Welcome walkthrough in V1.** The phone asks for the camera, location or microphone the first time a feature needs it. A walkthrough at first sign-in stays on the list for later.
 - **No Offline page.** Once signed in the app runs from the device (ADR 0007); opening it for the first time with no signal shows a message on Sign in.
