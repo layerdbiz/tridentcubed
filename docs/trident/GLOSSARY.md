@@ -108,10 +108,10 @@ The document a project produces: its panels rendered as report pages.
 _Avoid_: survey report, document
 
 **Facility**:
-Where the project takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. The drop-down offers the facilities that match the project's transport types.
+Where a stop takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. The drop-down lists every facility, the kind that suits the stop's transport type first (ports for Sea).
 
 **Transport**:
-The ship, barge, plane, train or truck that moves the items, like MV Coral Dawn, picked from the organization's Transport list or added on the spot. A project can use several, one after another, each in its own row of the Transport section. In V1 every transport is typed in by hand; later a tracking service adds ships and planes to the same list.
+The ship, barge, plane, train or truck that moves the items, like MV Coral Dawn, picked from the organization's Transport list or added on the spot. A project can use several, one per stop. In V1 every transport is typed in by hand; later a tracking service adds ships and planes to the same list and fills in their particulars.
 _Avoid_: carrier (that is the owner), vehicle, conveyance
 
 **Transport type**:
@@ -121,6 +121,14 @@ _Avoid_: transport mode (that is Vessel, Barge and the rest)
 **Transport mode**:
 What a transport is within its type: Vessel or Barge for Sea, Plane for Air, Train or Railcar for Rail, Truck or Trailer for Road. Each mode has its own icon.
 _Avoid_: kind, transport type (that is Sea, Air, Rail or Road)
+
+**Stop**:
+One place on a project's trip: its operation, its transport and its facility. The Transport panel lists a project's stops in trip order, so one report can cover the start, the stops on the way and the end; each stop prints its own page with the transport's particulars.
+_Avoid_: leg, row, transport block
+
+**Operation**:
+What happens at a stop: Loading (the start of the trip), Transfer (a stop on the way, onto the next transport) or Discharge (the end).
+_Avoid_: stage (that is the project's), stop type
 
 **Carrier**:
 The company that owns a transport, like a shipping line; never the ship itself. Not in V1.
@@ -147,7 +155,7 @@ A box in the editor. The project details panel holds the job's facts; every othe
 _Avoid_: section, report section, page
 
 **Project details panel**:
-The panel of the job's facts: client, facility, transport and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction.
+The panel of the job's facts: organization, client and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction. The trip has its own Transport panel right after it.
 _Avoid_: project panel, info panel
 
 **Fixed panel**:
@@ -193,7 +201,7 @@ _Avoid_: viewers, online users, collaborators
 Where an input's value comes from: user, system, prefilled, derived, template or external.
 
 **Group repeater**:
-Content made of groups the surveyor adds, reorders and removes: the time log's days and the photo groups.
+Content made of groups the surveyor adds, reorders, collapses and removes: the time log's days, the photo groups and the transport stops. Removing anything asks first.
 _Avoid_: repeater panel, grouped repeater
 
 **Time log**:
