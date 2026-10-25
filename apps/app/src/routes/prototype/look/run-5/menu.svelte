@@ -8,12 +8,15 @@
 		icon?: string;
 		dot?: string;
 		count?: number;
+		// A delete in a ⋮ menu reads red.
+		isDanger?: boolean;
 	};
 </script>
 
 <script lang="ts">
-	// PROTOTYPE (#161): a small dropdown menu (view and status pickers, and the Transport type and Kind drop-downs, which
-	// need icons a native select cannot show). Closes on a pick, outside tap or Escape. `isWide` fills its row.
+	// PROTOTYPE (#161): a small dropdown menu (view and status pickers, the ⋮ menus of the groups, and the Operation,
+	// Transport type and Transport mode drop-downs, which need icons a native select cannot show). Closes on a pick,
+	// outside tap or Escape. `isWide` fills its row.
 	import type { Snippet } from 'svelte';
 	import { scale } from 'svelte/transition';
 
@@ -76,16 +79,19 @@
 					type="button"
 					role="option"
 					aria-selected={option.id === value}
-					class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition {option.id ===
-					value
-						? 'bg-primary/[0.08] font-medium text-slate-900'
-						: 'text-slate-600 hover:bg-slate-900/[0.04]'}"
+					class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition {option.isDanger
+						? 'font-medium text-danger hover:bg-danger/10'
+						: option.id === value
+							? 'bg-primary/[0.08] font-medium text-slate-900'
+							: 'text-slate-600 hover:bg-slate-900/[0.04]'}"
 					onclick={() => {
 						onpick(option.id);
 						isOpen = false;
 					}}
 				>
-					{#if option.icon}<span class="{option.icon} size-[18px] text-slate-500"></span>{/if}
+					{#if option.icon}<span
+							class="{option.icon} size-[18px] {option.isDanger ? '' : 'text-slate-500'}"
+						></span>{/if}
 					{#if option.dot}<span class="size-2.5 rounded-full {option.dot}"></span>{/if}
 					<span class="flex-1">{option.label}</span>
 					{#if option.count !== undefined}<span class="text-xs text-slate-400 tabular-nums"

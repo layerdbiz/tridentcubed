@@ -14,10 +14,12 @@
 		CLIENTS,
 		clientOf,
 		DATASETS,
+		facilitiesOf,
 		FACILITY_ICONS,
 		MODE_ICONS,
 		ROLES,
 		STATUS,
+		transportsOf,
 		type ProjectType,
 		type StatusType
 	} from './look.data';
@@ -68,7 +70,9 @@
 	);
 	const transports = $derived(
 		look.transports.map((transport) => {
-			const theirs = look.projects.filter((project) => project.transports.includes(transport.name));
+			const theirs = look.projects.filter((project) =>
+				transportsOf(project).includes(transport.name)
+			);
 			return {
 				...transport,
 				group: transport.type,
@@ -80,7 +84,9 @@
 	);
 	const facilities = $derived(
 		look.facilities.map((facility) => {
-			const theirs = look.projects.filter((project) => project.facility === facility.name);
+			const theirs = look.projects.filter((project) =>
+				facilitiesOf(project).includes(facility.name)
+			);
 			return {
 				...facility,
 				group: facility.kind,
@@ -416,7 +422,12 @@
 								<span class="flex gap-1.5">
 									<button
 										class="rounded-full px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-danger/10 hover:text-danger"
-										onclick={() => look.remove(project.id)}>Delete</button
+										onclick={() =>
+											look.confirm({
+												title: `Delete ${project.title}?`,
+												note: 'It moves to Trash, where an admin can restore it.',
+												onyes: () => look.remove(project.id)
+											})}>Delete</button
 									>
 									<button
 										class="rounded-full px-4 py-1.5 text-xs font-semibold text-white {isArchived(

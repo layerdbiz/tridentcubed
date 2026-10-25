@@ -1,14 +1,15 @@
 // PROTOTYPE (#161): in-memory state for the look. Each project opens on its Project panel (createPanels).
 // Every input counts toward its panel, and the panels toward the project, so the percents move as you type. The
-// Transport and Facility lists live here, so one added from a project shows on its dashboard page.
+// Transport and Facility lists live here, so one added from a project shows on its dashboard page. Every delete asks
+// first (`confirm`, Justin 2026-10-25).
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	createId,
 	createPanels,
 	FACILITIES,
-	legOf,
 	newPanel,
 	PROJECTS,
+	stopOf,
 	TRANSPORTS,
 	type DatasetType,
 	type FacilityType,
@@ -24,6 +25,9 @@ export type TabType = 'edit' | 'preview';
 
 export type MetricsType = { done: number; total: number; percent: number; status: PanelStatusType };
 
+// The "Are you sure?" dialog: what is about to go, and what to do on yes.
+export type ConfirmType = { title: string; note?: string; onyes: () => void };
+
 export function metricsOf(panel: PanelType): MetricsType {
 	let done = 0;
 	let total = 0;
@@ -31,17 +35,19 @@ export function metricsOf(panel: PanelType): MetricsType {
 		total = panel.fields.length;
 		done = panel.fields.filter((field) => field.value.trim()).length;
 	} else if (panel.kind === 'project') {
-		// Each transport row counts its three picks; an empty Transport section counts as one to do.
-		total = panel.fields.length + 2 + Math.max(1, panel.legs.length * 3);
+		total = panel.fields.length + 2;
 		done =
 			panel.fields.filter((field) => field.value.trim()).length +
 			Number(Boolean(panel.owner)) +
-			Number(panel.assigned.length > 0) +
-			panel.legs.reduce(
-				(sum, leg) =>
-					sum + Number(Boolean(leg.type)) + Number(Boolean(leg.mode)) + Number(Boolean(leg.name)),
-				0
-			);
+			Number(panel.assigned.length > 0);
+	} else if (panel.kind === 'transport') {
+		// Each stop counts its five picks; a panel with no stop counts as one to do.
+		const PARTS = ['operation', 'type', 'mode', 'name', 'facility'] as const;
+		total = Math.max(1, panel.stops.length * PARTS.length);
+		done = panel.stops.reduce(
+			(sum, stop) => sum + PARTS.filter((part) => Boolean(stop[part])).length,
+			0
+		);
 	} else if (panel.kind === 'timelog') {
 		total = Math.max(
 			1,
@@ -108,6 +114,7 @@ export class LookState {
 	workspaces = $state<Record<string, PanelType[]>>({});
 	transports = $state<TransportType[]>(structuredClone(TRANSPORTS));
 	facilities = $state<FacilityType[]>(structuredClone(FACILITIES));
+	asking = $state<ConfirmType>();
 
 	project = $derived(
 		this.projects.find((project) => project.id === this.projectId) ?? this.projects[0]
@@ -163,14 +170,18 @@ export class LookState {
 		this.navSection = 'home';
 	}
 
-	// Leaving a project writes back what the dashboard lists: its progress, transports and facility.
+	// Leaving a project writes back what the dashboard lists: its progress and its trip's transports and facilities.
 	#keepProject() {
-		const details = this.workspaces[this.projectId]?.find((panel) => panel.kind === 'project');
-		if (!details) return;
+		const trip = this.workspaces[this.projectId]?.find((panel) => panel.kind === 'transport');
+		if (!trip) return;
 		this.project.progress = this.overall;
-		this.project.transports = details.legs.map((leg) => leg.name).filter(Boolean);
-		this.project.facility =
-			details.fields.find((field) => field.label === 'Facility')?.value ?? this.project.facility;
+		this.project.stops = trip.stops
+			.filter((stop) => stop.name || stop.facility)
+			.map((stop) => ({
+				operation: stop.operation || 'Loading',
+				transport: stop.name,
+				facility: stop.facility
+			}));
 	}
 
 	create(title: string, client: string) {
@@ -182,8 +193,7 @@ export class LookState {
 			subtitle: '',
 			type: 'Cargo',
 			client,
-			transports: [],
-			facility: '',
+			stops: [],
 			location: 'Houston, TX',
 			dates: 'Today',
 			status: 'Draft',
@@ -199,7 +209,7 @@ export class LookState {
 			assigned: [],
 			days: [],
 			groups: [],
-			legs: panel.kind === 'project' ? [legOf('')] : []
+			stops: panel.kind === 'transport' ? [stopOf()] : []
 		}));
 		this.panelId = 'project';
 		this.open(id);
@@ -209,6 +219,11 @@ export class LookState {
 		const index = this.projects.findIndex((project) => project.id === id);
 		const [removed] = this.projects.splice(index, 1);
 		this.say(`"${removed.title}" moved to Trash`);
+	}
+
+	// Every delete asks first; Cancel keeps the thing.
+	confirm(ask: ConfirmType) {
+		this.asking = ask;
 	}
 
 	// Called by every input, so the "Saved" badge shows auto-save at work.

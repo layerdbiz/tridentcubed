@@ -4,19 +4,22 @@
 	// Run 5 (Justin's notes 27 to 33): the page centres fully; a solid black rule under the letterhead; a numbered
 	// table of contents with subsections, built from the panels; the project report on one page (introduction, title,
 	// location with its marker, the facts, personnel and cargo); the sample reports' Standard Disclaimer with the
-	// owner's signature block, always last; photo captions over the photo. Client, team, transport and facility come
-	// from the Project panel; the transports also print as a chain under the personnel (2026-10-25), ready for a
-	// tracking service to fill in later. Not the real renderer: page breaks are rough and Download is a stub.
+	// owner's signature block, always last; photo captions over the photo. Client and team come from the Project panel,
+	// the trip from the Transport panel (2026-10-25): its stops print as a chain under the personnel and each stop gets
+	// its own page, like a photo group, with the particulars a tracking service fills in later (the sample reports'
+	// Ships Particulars). Not the real renderer: page breaks are rough and Download is a stub.
 	import { onMount, untrack } from 'svelte';
 	import ClientLogo from './client-logo.svelte';
 	import {
 		clientOf,
 		CLOSING,
 		MODE_ICONS,
+		OPERATIONS,
 		ORGANIZATION,
+		PARTICULARS,
 		personOf,
-		type LegType,
-		type PanelType
+		type PanelType,
+		type StopType
 	} from './look.data';
 	import { labelsOf, TEAM } from './team.data';
 	import type { LookState } from './look.state.svelte';
@@ -95,8 +98,14 @@
 	);
 	const signer = $derived(TEAM.find((member) => member.name === team?.owner));
 	const closing = CLOSING;
-	const legs = $derived((team?.legs ?? []).filter((leg) => leg.name || leg.mode));
-	const transport = $derived(listOf(legs.map((leg) => leg.name).filter(Boolean)));
+	const trip = $derived(look.panels.find((panel) => panel.kind === 'transport'));
+	const stops = $derived(
+		(trip?.stops ?? []).filter((stop) => stop.name || stop.mode || stop.facility)
+	);
+	const transport = $derived(listOf([...new Set(stops.map((stop) => stop.name).filter(Boolean))]));
+	const facility = $derived(
+		listOf([...new Set(stops.map((stop) => stop.facility).filter(Boolean))])
+	);
 
 	// "A", "A and B", "A, B and C".
 	function listOf(names: string[]) {
@@ -105,8 +114,16 @@
 			: `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 	}
 
-	function iconOf(leg: LegType) {
-		return MODE_ICONS[leg.mode] ?? 'icon-[mdi--help-circle-outline]';
+	function iconOf(stop: StopType) {
+		return (
+			MODE_ICONS[stop.mode] ??
+			(stop.operation ? OPERATIONS[stop.operation].icon : 'icon-[mdi--help-circle-outline]')
+		);
+	}
+
+	// "Loading at Eastgate Terminal 4": a stop's subsection title.
+	function titleOf(stop: StopType, index: number) {
+		return [stop.operation, stop.facility].filter(Boolean).join(' at ') || `Stop ${index + 1}`;
 	}
 	const client = $derived(clientOf(company));
 	const documentNumber = $derived(`${look.project.number}-R01`);
@@ -119,6 +136,16 @@
 		];
 		for (const panel of look.panels) {
 			if (!panel.isEnabled) continue;
+			if (panel.kind === 'transport')
+				panel.stops.forEach((_, stopIndex) =>
+					list.push({
+						key: 'transport',
+						title: panel.name,
+						kind: 'transport',
+						panel,
+						group: stopIndex
+					})
+				);
 			if (panel.kind === 'timelog' && panel.days.length)
 				list.push({ key: 'timelog', title: 'Time Log', kind: 'timelog', panel });
 			if (panel.kind === 'photos')
@@ -157,6 +184,7 @@
 				);
 			if (item.kind === 'photos' && item.panel)
 				subs = item.panel.groups.map((group) => group.title || 'Untitled group');
+			if (item.kind === 'transport' && item.panel) subs = item.panel.stops.map(titleOf);
 			return { number: `${at + 1}`, title: item.title, key: item.key, subs };
 		});
 	});
@@ -186,7 +214,12 @@
 		viewport.content = { width: columns * (W + GAP) - GAP, height: rows * (H + GAP) - GAP };
 	});
 
-	const KEY_OF: Record<string, string> = { project: 'report', items: 'report', timelog: 'timelog' };
+	const KEY_OF: Record<string, string> = {
+		project: 'report',
+		transport: 'transport',
+		items: 'report',
+		timelog: 'timelog'
+	};
 	const target = $derived(KEY_OF[highlight] ?? `photos-${highlight}`);
 	const targetIndex = $derived(
 		Math.max(
@@ -286,9 +319,9 @@
 	];
 
 	const COVER = $derived([
-		{ icon: 'icon-[mdi--anchor]', label: 'Facility', value: detail('Facility') },
+		{ icon: 'icon-[mdi--anchor]', label: 'Facility', value: facility },
 		{
-			icon: legs[0] ? iconOf(legs[0]) : 'icon-[mdi--ferry]',
+			icon: stops[0] ? iconOf(stops[0]) : 'icon-[mdi--ferry]',
 			label: 'Transport',
 			value: transport
 		},
@@ -479,10 +512,11 @@
 							{:else if item.kind === 'report'}
 								<p class="mt-3 text-[10.5px] leading-relaxed text-slate-600">
 									<b class="text-slate-900">Introduction.</b> This is to report that Trident Cubed
-									was present at {detail('Facility') || 'the facility'} – {location} on {look
-										.project.dates} for the purpose of conducting a {(
-										detail('Project type') || 'cargo'
-									).toLowerCase()} survey{valueOf('items', 'Title')
+									was present at {facility || 'the facility'} – {location} on {look.project.dates} for
+									the purpose of conducting a {(detail('Project type') || 'cargo').toLowerCase()} survey{valueOf(
+										'items',
+										'Title'
+									)
 										? ` of ${valueOf('items', 'Title')?.toLowerCase()}`
 										: ''}{transport ? ` from the ${transport}` : ''}.
 								</p>
@@ -507,8 +541,8 @@
 									</p>
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Client', detail('Client')], ['Facility', detail('Facility')], ['Transport', legs
-												.map((leg) => leg.name)
+									{#each [['Client', detail('Client')], ['Facility', facility], ['Transport', stops
+												.map((stop) => stop.name)
 												.filter(Boolean)
 												.join(' → ')], ['Project type', detail('Project type')]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
@@ -557,27 +591,30 @@
 									{numberOf.report}.2 Transport
 								</h3>
 								<div class="mt-2 flex flex-wrap items-center gap-1.5">
-									{#each legs as leg, legIndex (leg.id)}
-										{#if legIndex}<span class="icon-[mdi--arrow-right] size-3.5 text-slate-300"
+									{#each stops as stop, stopIndex (stop.id)}
+										{#if stopIndex}<span class="icon-[mdi--arrow-right] size-3.5 text-slate-300"
 											></span>{/if}
 										<div class="flex items-center gap-2 rounded-xl bg-slate-50 py-1.5 pr-3 pl-2">
 											<span
 												class="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary"
-												><span class="{iconOf(leg)} size-[18px]"></span></span
+												><span class="{iconOf(stop)} size-[18px]"></span></span
 											>
 											<div>
 												<p
-													class="text-[11px] font-semibold {leg.name
+													class="text-[11px] font-semibold {stop.name
 														? 'text-slate-900'
 														: 'text-slate-300 italic'}"
 												>
-													{leg.name || 'Not filled in yet'}
+													{stop.name || 'Not filled in yet'}
 												</p>
 												<p
 													class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
 												>
-													{[leg.type, leg.mode].filter(Boolean).join(' · ')}
+													{[stop.operation, stop.mode].filter(Boolean).join(' · ')}
 												</p>
+												{#if stop.facility}
+													<p class="text-[8px] text-slate-500">{stop.facility}</p>
+												{/if}
 											</div>
 										</div>
 									{:else}
@@ -597,6 +634,76 @@
 								{#if valueOf('items', 'Description')}
 									<p class="mt-1 text-[11px] leading-relaxed text-slate-600">
 										{valueOf('items', 'Description')}
+									</p>
+								{/if}
+							{:else if item.kind === 'transport' && item.panel}
+								{@const stopIndex = item.group ?? 0}
+								{@const stop = item.panel.stops[stopIndex]}
+								{@const place = look.facilities.find((other) => other.name === stop.facility)}
+								<h3 class="mt-2 text-[13px] font-bold text-slate-950">
+									{numberOf.transport}.{stopIndex + 1}
+									{titleOf(stop, stopIndex)}
+								</h3>
+								<div class="mt-3 flex items-center gap-4 rounded-xl bg-slate-50 px-4 py-4">
+									<span
+										class="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+										><span class="{iconOf(stop)} size-8"></span></span
+									>
+									<div class="min-w-0 flex-1">
+										<p
+											class="text-[18px] leading-tight font-bold {stop.name
+												? 'text-slate-950'
+												: 'text-slate-300 italic'}"
+										>
+											{stop.name || 'Not filled in yet'}
+										</p>
+										<p
+											class="mt-1 text-[8px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
+										>
+											{[stop.type, stop.mode].filter(Boolean).join(' · ') || 'Transport'}
+										</p>
+									</div>
+									{#if stop.operation}
+										<span
+											class="flex shrink-0 items-center gap-1 rounded-full bg-primary px-3 py-1 text-[10px] font-semibold text-white"
+											><span class="{OPERATIONS[stop.operation].icon} size-3.5"
+											></span>{stop.operation}</span
+										>
+									{/if}
+								</div>
+								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+									{#each [['Operation', stop.operation ? `${stop.operation} (${OPERATIONS[stop.operation].hint})` : ''], ['Facility', stop.facility], ['Facility kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Transport type', stop.type], ['Transport mode', stop.mode]] as [label, value] (label)}
+										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
+											<p
+												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
+											>
+												{label}
+											</p>
+											<p class="mt-0.5 {value ? 'text-slate-900' : 'text-slate-300 italic'}">
+												{value || 'Not filled in yet'}
+											</p>
+										</div>
+									{/each}
+								</div>
+								<h3 class="mt-5 text-[13px] font-bold text-slate-950">
+									{stop.mode || 'Transport'} particulars
+								</h3>
+								{#if PARTICULARS[stop.mode]}
+									<dl class="mt-2 divide-y divide-slate-100 text-[11px]">
+										{#each PARTICULARS[stop.mode] as label (label)}
+											<div class="flex justify-between gap-4 py-1.5">
+												<dt class="font-medium text-slate-600">{label}</dt>
+												<dd class="text-slate-300 italic">Not filled in yet</dd>
+											</div>
+										{/each}
+									</dl>
+									<p class="mt-2 text-[9px] text-slate-400">
+										A tracking service fills these in later, from the {stop.mode.toLowerCase()}'s
+										name.
+									</p>
+								{:else}
+									<p class="mt-1.5 text-[11px] text-slate-300 italic">
+										Pick the transport mode to list its particulars
 									</p>
 								{/if}
 							{:else if item.kind === 'timelog'}

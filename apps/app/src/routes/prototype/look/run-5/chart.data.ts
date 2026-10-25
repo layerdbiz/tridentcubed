@@ -3,6 +3,8 @@
 import {
 	CLIENTS,
 	clientOf,
+	facilitiesOf,
+	transportsOf,
 	type DatasetType,
 	type FacilityType,
 	type ProjectType,
@@ -249,17 +251,17 @@ export function chartOf(
 			'primary'
 		]);
 	} else if (dataset === 'transport') {
-		const names = [...new Set(live.flatMap((project) => project.transports))];
+		const names = [...new Set(live.flatMap(transportsOf))];
 		counts = names.map((name) => [
 			name,
-			live.filter((project) => project.transports.includes(name)).length,
+			live.filter((project) => transportsOf(project).includes(name)).length,
 			'primary'
 		]);
 	} else {
-		const names = [...new Set(live.map((project) => project.facility).filter(Boolean))];
+		const names = [...new Set(live.flatMap(facilitiesOf))];
 		counts = names.map((name) => [
 			name,
-			live.filter((project) => project.facility === name).length,
+			live.filter((project) => facilitiesOf(project).includes(name)).length,
 			'primary'
 		]);
 	}
@@ -326,7 +328,7 @@ export function slicesOf(
 		]);
 	} else if (dataset === 'transport') {
 		const counts = new Map<string, number>();
-		for (const name of live.flatMap((project) => project.transports)) {
+		for (const name of live.flatMap(transportsOf)) {
 			const type = lists.transports.find((transport) => transport.name === name)?.type ?? 'Sea';
 			counts.set(type, (counts.get(type) ?? 0) + 1);
 		}
@@ -361,7 +363,7 @@ export function slicesOf(
 
 export type PinType = { city: string; x: number; y: number; count: number; names: string[] };
 
-// Map pins: where the clients' offices, the team, the facilities or the projects (and their transports) are, one pin
+// Map pins: where the clients' offices, the team, the facilities, the stops' transports or the projects are, one pin
 // per city with its count. Places off the US map are counted apart.
 export function pinsOf(dataset: DatasetType, projects: ProjectType[], lists: ListsType) {
 	const live = projects.filter((project) => project.status !== 'Archived');
@@ -374,7 +376,13 @@ export function pinsOf(dataset: DatasetType, projects: ProjectType[], lists: Lis
 					? lists.facilities.map((facility) => [facility.city, facility.name])
 					: dataset === 'transport'
 						? live.flatMap((project) =>
-								project.transports.map((name): [string, string] => [project.location, name])
+								project.stops
+									.filter((stop) => stop.transport)
+									.map((stop): [string, string] => [
+										lists.facilities.find((facility) => facility.name === stop.facility)?.city ??
+											project.location,
+										stop.transport
+									])
 							)
 						: live.map((project) => [project.location, project.title]);
 	const pins = new Map<string, PinType>();

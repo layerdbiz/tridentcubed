@@ -1,14 +1,14 @@
 <script lang="ts">
 	// PROTOTYPE (#161): one panel with its progress and controls, opening like an accordion. Run 5 (Justin's note 24):
 	// every panel has a switch coloured by its state (to do grey, in progress blue, complete green); a required panel's
-	// switch is always on with a lock on the knob; an added panel also has an X top right that asks before deleting.
+	// switch is always on with a lock on the knob; an added panel also has an X top right that asks before deleting
+	// (LookState.confirm, the same dialog as every other delete).
 	// Every style keeps the cards apart with room to breathe and draws no borders.
 	// `soft` (D): white card on a soft shadow, control badge on the corner, bar under.
 	// `flat` (E): white card with no shadow until it opens, control inline.
 	// `ring` (F): the icon sits in its own progress ring, so the card needs no bar.
 	import { slide } from 'svelte/transition';
 	import type { PanelType } from './look.data';
-	import BottomSheet from './bottom-sheet.svelte';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
 	import ProgressRing from './progress-ring.svelte';
@@ -29,7 +29,6 @@
 	const tone = $derived(toneOf(metrics.status));
 	const isOpen = $derived(look.panelId === panel.id);
 	const isLocked = $derived(panel.control === 'locked');
-	let isAsking = $state(false);
 	const TRACKS = {
 		'To do': 'bg-slate-400',
 		'In progress': 'bg-primary',
@@ -91,7 +90,12 @@
 			class="absolute -top-1.5 -right-1.5 z-10 flex size-6 items-center justify-center rounded-full bg-slate-900 text-white shadow ring-2 ring-white transition hover:bg-danger"
 			aria-label="Delete {panel.name}"
 			title="Delete panel"
-			onclick={() => (isAsking = true)}><span class="icon-[mdi--close] size-3.5"></span></button
+			onclick={() =>
+				look.confirm({
+					title: `Delete ${panel.name}?`,
+					note: 'Its photos leave the report.',
+					onyes: () => look.removePanel(panel.id)
+				})}><span class="icon-[mdi--close] size-3.5"></span></button
 		>
 	{/if}
 	<div class="flex items-center gap-1 p-4 {style === 'ring' ? '' : 'pb-3'}">
@@ -180,33 +184,3 @@
 		</div>
 	{/if}
 </div>
-
-{#if isAsking}
-	<BottomSheet
-		label="Delete {panel.name}?"
-		onclose={() => (isAsking = false)}
-	>
-		<div class="flex items-center gap-3">
-			<span class="icon-[mdi--trash-can-outline] size-8 text-danger"></span>
-			<p>
-				<b class="block text-lg text-slate-900">Delete {panel.name}?</b>
-				<span class="text-sm text-slate-500">Its photos leave the report.</span>
-			</p>
-		</div>
-		<div class="mt-6 grid grid-cols-2 gap-2">
-			<button
-				type="button"
-				class="rounded-full bg-slate-100 py-3 text-sm font-semibold text-slate-700"
-				onclick={() => (isAsking = false)}>Cancel</button
-			>
-			<button
-				type="button"
-				class="rounded-full bg-danger py-3 text-sm font-semibold text-white"
-				onclick={() => {
-					isAsking = false;
-					look.removePanel(panel.id);
-				}}>Delete</button
-			>
-		</div>
-	</BottomSheet>
-{/if}

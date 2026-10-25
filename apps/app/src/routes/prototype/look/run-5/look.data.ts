@@ -1,10 +1,11 @@
 // PROTOTYPE (#161): made-up projects for Trident's real clients. Only each client's name, square icon, kind and
 // office city are real (Justin's client pack, 2026-10-21; he chose to show names and icons here); contact details stay
 // made up. The people are the real Trident Cubed team (team.data.ts), by Justin's choice. One look since 2026-10-25 (B;
-// A is gone): organization, client, team, transport and facility live in one Project panel (createPanels). Carrier is
-// now Transport (Justin, 2026-10-25): Transport type Sea, Air, Rail or Road; Transport mode Vessel, Barge …; then the transport
-// itself, from the organization's Transport list. Transports and facilities are typed in by hand; a tracking service
-// adds to the same list later (`source`).
+// A is gone): organization, client and team live in the Project panel, and the trip in the Transport panel after it
+// (Justin, 2026-10-25): one stop per place, in trip order, each with its operation (Loading, Transfer, Discharge), its
+// Transport type (Sea, Air, Rail, Road), Transport mode (Vessel, Barge …), the transport itself from the organization's
+// Transport list, and the facility. Transports and facilities are typed in by hand; a tracking service adds to the same
+// list later (`source`).
 import { photoOfMember, ROLE_LABELS, TEAM } from './team.data';
 
 export type StatusType =
@@ -25,9 +26,8 @@ export type ProjectType = {
 	subtitle: string;
 	type: string;
 	client: string;
-	// The transports the project uses, in order (names from the Transport list).
-	transports: string[];
-	facility: string;
+	// The trip's stops in order: what happened there, on which transport, at which facility.
+	stops: { operation: OperationType; transport: string; facility: string }[];
 	location: string;
 	dates: string;
 	status: StatusType;
@@ -58,10 +58,17 @@ export type GroupType = {
 	photos: PhotoType[];
 };
 
-// One row of the Project panel's Transport section, added like a photo group.
-export type LegType = { id: string; type: TransportTypeType | ''; mode: string; name: string };
+// One stop of the Transport panel, added like a photo group: a place on the trip and what moved the items there.
+export type StopType = {
+	id: string;
+	operation: OperationType | '';
+	type: TransportTypeType | '';
+	mode: string;
+	name: string;
+	facility: string;
+};
 
-export type PanelKindType = 'fields' | 'project' | 'timelog' | 'photos';
+export type PanelKindType = 'fields' | 'project' | 'transport' | 'timelog' | 'photos';
 export type PanelControlType = 'locked' | 'switch' | 'remove';
 
 export type PanelType = {
@@ -77,7 +84,7 @@ export type PanelType = {
 	assigned: string[];
 	days: DayType[];
 	groups: GroupType[];
-	legs: LegType[];
+	stops: StopType[];
 };
 
 export type PanelStatusType = 'To do' | 'In progress' | 'Complete' | 'Off';
@@ -156,6 +163,20 @@ export function personOf(name: string): PersonType {
 	return PEOPLE.find((person) => person.name === name) ?? { name, photo: '' };
 }
 
+// A project's stops, written short: [operation, transport, facility].
+function trip(...stops: [OperationType, string, string][]): ProjectType['stops'] {
+	return stops.map(([operation, transport, facility]) => ({ operation, transport, facility }));
+}
+
+// The transports and facilities a project's trip uses, once each.
+export function transportsOf(project: ProjectType) {
+	return [...new Set(project.stops.map((stop) => stop.transport).filter(Boolean))];
+}
+
+export function facilitiesOf(project: ProjectType) {
+	return [...new Set(project.stops.map((stop) => stop.facility).filter(Boolean))];
+}
+
 export const PROJECTS: ProjectType[] = [
 	{
 		id: 'p1',
@@ -164,8 +185,10 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Receiving inspection underway',
 		type: 'Warehousing',
 		client: 'CEVA Logistics',
-		transports: ['MV Coral Dawn', 'Truck 12'],
-		facility: 'East Harbor Berth',
+		stops: trip(
+			['Transfer', 'MV Coral Dawn', 'East Harbor Berth'],
+			['Discharge', 'Truck 12', 'Northside Depot']
+		),
 		location: 'Houston, TX',
 		dates: 'Tue, 12 May 2026',
 		status: 'In Progress',
@@ -180,8 +203,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Pre-arrival condition check',
 		type: 'Vessel Condition',
 		client: 'KOGA',
-		transports: ['MV Silver Tern'],
-		facility: 'Eastgate Terminal 4',
+		stops: trip(['Discharge', 'MV Silver Tern', 'Eastgate Terminal 4']),
 		location: 'Lake Charles, LA',
 		dates: 'Mon, 11 May 2026',
 		status: 'Review',
@@ -196,8 +218,10 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Bagged rice loading',
 		type: 'Cargo',
 		client: 'Oslo Caribbean Carrier',
-		transports: ['Rail car 88', 'MV Lantern Bay'],
-		facility: 'Bulk Dock 8',
+		stops: trip(
+			['Loading', 'Rail car 88', 'Bayside Rail Yard'],
+			['Transfer', 'MV Lantern Bay', 'Bulk Dock 8']
+		),
 		location: 'Corpus Christi, TX',
 		dates: 'Fri, 8 May 2026',
 		status: 'Sent',
@@ -212,8 +236,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Warehouse stock count',
 		type: 'Warehousing',
 		client: 'UTC Overseas',
-		transports: ['Truck 12'],
-		facility: 'Northside Depot',
+		stops: trip(['Loading', 'Truck 12', 'Northside Depot']),
 		location: 'Pasadena, TX',
 		dates: 'Thu, 7 May 2026',
 		status: 'Draft',
@@ -228,8 +251,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Draft and displacement',
 		type: 'Draft Survey',
 		client: 'US Ocean',
-		transports: ['MV Coral Dawn'],
-		facility: 'Turning Basin Wharf 3',
+		stops: trip(['Discharge', 'MV Coral Dawn', 'Turning Basin Wharf 3']),
 		location: 'Houston, TX',
 		dates: 'Tue, 5 May 2026',
 		status: 'Revision',
@@ -244,8 +266,10 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Heavy lift supervision',
 		type: 'Cargo',
 		client: 'dship Carriers',
-		transports: ['MV Harbor Finch', 'Lowboy trailer 3'],
-		facility: 'Southpoint Terminal',
+		stops: trip(
+			['Transfer', 'MV Harbor Finch', 'Southpoint Terminal'],
+			['Discharge', 'Lowboy trailer 3', 'Southpoint Terminal']
+		),
 		location: 'Beaumont, TX',
 		dates: 'Mon, 4 May 2026',
 		status: 'In Progress',
@@ -260,8 +284,11 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Blade discharge, all clear',
 		type: 'Cargo',
 		client: 'DIX Shipping',
-		transports: ['MV Harbor Finch', 'Gulf Barge 7', 'Lowboy trailer 3'],
-		facility: 'Renewables Terminal West',
+		stops: trip(
+			['Loading', 'MV Harbor Finch', 'Eastgate Terminal 4'],
+			['Transfer', 'Gulf Barge 7', 'Renewables Terminal West'],
+			['Discharge', 'Lowboy trailer 3', 'Northside Depot']
+		),
 		location: 'Port Arthur, TX',
 		dates: 'Wed, 29 Apr 2026',
 		status: 'Complete',
@@ -276,8 +303,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Closed survey archive',
 		type: 'Cargo',
 		client: 'Zurich North America',
-		transports: ['Train 3302'],
-		facility: 'Bayside Rail Yard',
+		stops: trip(['Discharge', 'Train 3302', 'Bayside Rail Yard']),
 		location: 'Mobile, AL',
 		dates: 'Mon, 13 Apr 2026',
 		status: 'Archived',
@@ -333,6 +359,8 @@ export const ROLES: Record<string, string> = Object.fromEntries(
 );
 
 export type TransportTypeType = 'Sea' | 'Air' | 'Rail' | 'Road';
+// What happens at a stop: Loading starts the trip, Transfer is a stop on the way, Discharge ends it.
+export type OperationType = 'Loading' | 'Transfer' | 'Discharge';
 export type FacilityKindType = 'Port' | 'Airport' | 'Rail yard' | 'Depot';
 
 // Each transport type, its transport modes and the kind of facility it uses. `icon-barge` is drawn in look.svelte: no icon set
@@ -355,6 +383,12 @@ export const MODE_ICONS: Record<string, string> = {
 	Railcar: 'icon-[mdi--train-car-box]',
 	Truck: 'icon-[mdi--truck]',
 	Trailer: 'icon-[mdi--truck-trailer]'
+};
+
+export const OPERATIONS: Record<OperationType, { icon: string; hint: string }> = {
+	Loading: { icon: 'icon-[mdi--package-up]', hint: 'start' },
+	Transfer: { icon: 'icon-[mdi--swap-horizontal]', hint: 'on the way' },
+	Discharge: { icon: 'icon-[mdi--package-down]', hint: 'end' }
 };
 
 export const FACILITY_ICONS: Record<FacilityKindType, string> = {
@@ -387,6 +421,18 @@ export const TRANSPORTS: TransportType[] = (
 		['Lowboy trailer 3', 'Road', 'Trailer']
 	] as const
 ).map(([name, type, mode]) => ({ name, type, mode, source: 'manual' }));
+
+// What a transport's own page lists, by transport mode (the Ships Particulars page of the sample reports). Empty in
+// V1; a tracking service fills them in later.
+export const PARTICULARS: Record<string, string[]> = {
+	Vessel: ['IMO number', 'Flag', 'Year built', 'Gross tonnage', 'Length overall'],
+	Barge: ['Registration', 'Flag', 'Deck size', 'Deadweight'],
+	Plane: ['Registration', 'Flight number', 'Aircraft type', 'Airline'],
+	Train: ['Train number', 'Railroad', 'Cars'],
+	Railcar: ['Car number', 'Railroad', 'Car type'],
+	Truck: ['Plate number', 'Haulier', 'Axles'],
+	Trailer: ['Plate number', 'Haulier', 'Trailer type', 'Deck length']
+};
 
 export type FacilityType = { name: string; kind: FacilityKindType; city: string };
 
@@ -519,9 +565,23 @@ export const CLOSING =
 
 export const PROJECT_TYPES = ['Cargo', 'Vessel Condition', 'Warehousing', 'Draft Survey', 'Bunker'];
 
-export function legOf(name: string, transports: TransportType[] = TRANSPORTS): LegType {
+export function stopOf(
+	{ operation, transport: name, facility }: ProjectType['stops'][number] = {
+		operation: 'Loading',
+		transport: '',
+		facility: ''
+	},
+	transports: TransportType[] = TRANSPORTS
+): StopType {
 	const transport = transports.find((item) => item.name === name);
-	return { id: createId('leg'), type: transport?.type ?? '', mode: transport?.mode ?? '', name };
+	return {
+		id: createId('stop'),
+		operation: name || facility ? operation : '',
+		type: transport?.type ?? '',
+		mode: transport?.mode ?? '',
+		name,
+		facility
+	};
 }
 
 // The project's own panel first, then the app prototype's Items, Time Log and photo panels. Filled in as far as
@@ -535,10 +595,19 @@ export function createPanels(project: ProjectType): PanelType[] {
 		assigned: [],
 		days: [],
 		groups: [],
-		legs: []
+		stops: []
 	};
 	const panels: PanelType[] = [
 		projectPanel(project, base),
+		{
+			...base,
+			id: 'transport',
+			name: 'Transport',
+			icon: 'icon-[mdi--ferry]',
+			kind: 'transport',
+			control: 'locked',
+			stops: project.stops.map((stop) => stopOf(stop))
+		},
 		{
 			...base,
 			id: 'items',
@@ -616,8 +685,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 	];
 
 	// Blank the later inputs, the less done the more, so each project opens at its own percent (LookState then lists
-	// that percent). Title, organization and client always stay; the transports go last, from the last one back.
-	const [details, items] = panels;
+	// that percent). Title, organization and client always stay; the stops go last, from the last one back.
+	const [details, trip, items] = panels;
 	const kept = ['Title', 'Organization', 'Client'];
 	let left = Math.round(((100 - project.progress) / 100) * 12);
 	for (let round = 0; left > 0 && round < 12; round += 1) {
@@ -629,10 +698,10 @@ export function createPanels(project: ProjectType): PanelType[] {
 			}
 		}
 	}
-	for (const leg of details.legs.toReversed())
-		for (const part of ['name', 'mode', 'type'] as const)
+	for (const stop of trip.stops.toReversed())
+		for (const part of ['facility', 'name', 'mode', 'type'] as const)
 			if (left > 0) {
-				leg[part] = '';
+				stop[part] = '';
 				left -= 1;
 			}
 	if (project.progress < 60) {
@@ -647,8 +716,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 	return panels;
 }
 
-// The Project panel: the project's own fields, with organization, client, team, transport and facility picked from
-// lists, each with "Add new". Its Transport section has one row per transport, added like a photo group.
+// The Project panel: the project's own fields, with organization and client picked from lists, each with "Add new",
+// and its team. The trip has its own Transport panel, right after it.
 function projectPanel(
 	project: ProjectType,
 	base: Omit<PanelType, 'id' | 'name' | 'icon' | 'kind' | 'control'>
@@ -662,7 +731,6 @@ function projectPanel(
 		control: 'locked',
 		owner: project.team[0] ?? '',
 		assigned: project.team.slice(1),
-		legs: project.transports.map((name) => legOf(name)),
 		fields: [
 			field('Title', project.title),
 			field('Organization', ORGANIZATION.name, 'select', {
@@ -670,7 +738,6 @@ function projectPanel(
 				isAddable: true
 			}),
 			field('Client', project.client, 'select', { options: [...CLIENTS], isAddable: true }),
-			field('Facility', project.facility, 'select', { isAddable: true }),
 			field('Project type', project.type, 'select', { options: PROJECT_TYPES }),
 			field('Location', project.location),
 			field('Subtitle', project.subtitle)
@@ -692,7 +759,7 @@ export function newPanel(count: number): PanelType {
 		assigned: [],
 		days: [],
 		groups: [],
-		legs: []
+		stops: []
 	};
 }
 

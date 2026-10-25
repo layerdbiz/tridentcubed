@@ -9,6 +9,7 @@
 	import type { ChartKindType, RangeType } from './chart.data';
 	import type { DatasetType } from './look.data';
 	import { LookState, type ScreenType, type TabType, type ViewType } from './look.state.svelte';
+	import Confirm from './confirm.svelte';
 	import Shell from './shell.svelte';
 
 	let { onready }: { onready: (look: LookState) => void } = $props();
@@ -44,6 +45,7 @@
 
 <div class="font-sans text-slate-900 [color-scheme:light]">
 	<Shell {look} />
+	<Confirm {look} />
 </div>
 
 {#if look.toast}
