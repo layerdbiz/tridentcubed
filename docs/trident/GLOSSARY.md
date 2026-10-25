@@ -1,6 +1,6 @@
 # Trident business
 
-The vocabulary of Trident Cubed's marine survey business and the apps that serve it. The Report Generator's words live here; the reusable UI's words live in `packages/ui/CONTEXT.md` and never depend on these.
+The vocabulary of Trident Cubed's marine survey business and the apps that serve it. The Report Generator's words live here; the reusable UI's words live in `packages/ui/GLOSSARY.md` and never depend on these.
 
 ## Language
 
@@ -220,6 +220,10 @@ The header, main or footer of a report page, where an input's value lands.
 _Avoid_: page section, output section
 
 ### The workspace
+
+**Dashboard**:
+The page every Member and Admin lands on after signing in, with a little of everything; in V1 it lists the projects, like the Projects page.
+_Avoid_: home, overview (the Company overview is another app)
 
 **Workspace**:
 A project's screen in the Report Generator, with two tabs.
