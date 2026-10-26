@@ -73,11 +73,11 @@ One job for a client. A project owns exactly one report; a job that needs a seco
 _Avoid_: job, survey (alone)
 
 **Project number**:
-A project's reference: the client's short code, the day the project was created and which of that client's projects that day it is, SGL-2026-02-03-01 for the first and -02 for the second. A client sometimes assigns two or three in a day. It can be edited.
+A project's reference: the client's short code, the day the project was created and J with which of that client's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A client sometimes assigns two or three in a day. It can be edited.
 _Avoid_: job number, reference, queue number
 
 **Document ID**:
-The report's identifier and the name of its exported file: the project number, FR for final report, the report number and the revision number, SGL-2026-02-03-01-FR-01-01. The file name may end with the transport's name after a triple dash, SGL-2026-02-03-01-FR-01-01---BBC-Kimberly.pdf.
+The report's identifier and the name of its exported file: the project number, FR with the report number and R with the revision number, SGL-2026-02-03-J01-FR01-R01 (the client's pick, 2026-10-09). The file name may end with the transport's name after a triple dash, SGL-2026-02-03-J01-FR01-R01---BBC-Kimberly.pdf. Every report page prints it in the footer, next to the client.
 _Avoid_: file name, job number
 
 **Report number**:
@@ -123,12 +123,12 @@ What a transport is within its type: Vessel or Barge for Sea, Plane for Air, Tra
 _Avoid_: kind, transport type (that is Sea, Air, Rail or Road)
 
 **Stop**:
-One place on a project's trip: its operation, its transport and its facility. The Transport panel lists a project's stops in trip order, so one report can cover the start, the stops on the way and the end; each stop prints its own page with the transport's particulars.
+One place on a project's trip: its point, its transport and its facility. The Transport panel lists a project's stops in trip order, so one report can cover the start, the stops on the way and the end; each stop prints its own page with the transport's particulars.
 _Avoid_: leg, row, transport block
 
-**Operation**:
-What happens at a stop: Loading (the start of the trip), Transfer (a stop on the way, onto the next transport) or Discharge (the end).
-_Avoid_: stage (that is the project's), stop type
+**Point**:
+Where a stop sits on the trip: Start, Stop (on the way) or End, words everyone reads the same way. Each has its colour wherever it shows: Start blue, Stop amber, End green.
+_Avoid_: operation, Loading, Transfer, Discharge (those say what happens there), stage (that is the project's)
 
 **Carrier**:
 The company that owns a transport, like a shipping line; never the ship itself. Not in V1.
@@ -201,7 +201,7 @@ _Avoid_: viewers, online users, collaborators
 Where an input's value comes from: user, system, prefilled, derived, template or external.
 
 **Group repeater**:
-Content made of groups the surveyor adds, reorders, collapses and removes: the time log's days, the photo groups and the transport stops. Removing anything asks first.
+Content made of groups the surveyor adds, reorders, collapses and removes: the time log's days, the photo groups and the transport stops. A group's Delete sits at the far right of its bottom row, and removing anything asks first. Groups, photos and panels move by holding and dragging; nothing has a drag handle.
 _Avoid_: repeater panel, grouped repeater
 
 **Time log**:
@@ -216,7 +216,8 @@ A set of photos in a panel section, with a layout that says how many share a pag
 _Avoid_: section (as a group's name)
 
 **Photo**:
-An image the surveyor adds to a photo group, with a caption. One kind of attachment.
+An image the surveyor adds to a photo group, with its own description, written by tapping the photo; the description prints on the photo. One kind of attachment.
+_Avoid_: caption
 
 **Attachment**:
 A file a User adds to a project: a photo, a video or a document. It keeps the time and place it was taken, and follows its report's rules for deleting and restoring.
