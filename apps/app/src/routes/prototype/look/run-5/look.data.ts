@@ -1,4 +1,5 @@
-// PROTOTYPE (#161): made-up projects for Trident's real clients. Only each client's name, square icon, kind and
+// PROTOTYPE (#161): made-up projects for Trident's real customers (called clients until 2026-10-26 19:22; the code
+// keeps `client` for the field). Only each customer's name, square icon, kind and
 // office city are real (Justin's client pack, 2026-10-21; he chose to show names and icons here); contact details stay
 // made up. The people are the real Trident Cubed team (team.data.ts), by Justin's choice. One look since 2026-10-25 (B;
 // A is gone): organization, client and team live in the Project panel, and the trip in the Transport panel after it
@@ -6,7 +7,7 @@
 // Transport type (Sea, Air, Rail, Road), Transport mode (Vessel, Barge …), the transport itself from the organization's
 // Transport list, and the facility. Transports and facilities are typed in by hand; a tracking service adds to the same
 // list later (`source`).
-import { photoOfMember, ROLE_LABELS, TEAM } from './team.data';
+import { initialsOf, photoOfMember, ROLE_LABELS, TEAM } from './team.data';
 
 export type StatusType =
 	| 'Draft'
@@ -31,6 +32,8 @@ export type ProjectType = {
 	location: string;
 	dates: string;
 	status: StatusType;
+	// The state a project was in before it was marked Sent, so Unsend can put it back (2026-10-26 19:22).
+	before?: StatusType;
 	team: string[];
 	updated: string;
 	progress: number;
@@ -165,7 +168,7 @@ export const PEOPLE: PersonType[] = TEAM.map((member) => ({
 }));
 
 export function personOf(name: string): PersonType {
-	return PEOPLE.find((person) => person.name === name) ?? { name, photo: '' };
+	return PEOPLE.find((person) => person.name === name) ?? { name, photo: initialsOf(name) };
 }
 
 // A project's stops, written short: [point, transport, facility].
@@ -180,6 +183,18 @@ export function transportsOf(project: ProjectType) {
 
 export function facilitiesOf(project: ProjectType) {
 	return [...new Set(project.stops.map((stop) => stop.facility).filter(Boolean))];
+}
+
+// Where a project's trip starts and ends (its Start and End stops, 2026-10-26 19:22): each facility's city, or the
+// facility's own name when both ends are in the same city. With fewer than two stops it is the project's location.
+export function routeOf(project: ProjectType, facilities: { name: string; city: string }[]) {
+	const start = project.stops.find((stop) => stop.point === 'Start') ?? project.stops[0];
+	const end = project.stops.findLast((stop) => stop.point === 'End') ?? project.stops.at(-1);
+	if (!start?.facility || !end?.facility || start === end)
+		return { from: project.location, to: '' };
+	const cityOf = (name: string) => facilities.find((item) => item.name === name)?.city || name;
+	const [from, to] = [cityOf(start.facility), cityOf(end.facility)];
+	return from === to ? { from: start.facility, to: end.facility } : { from, to };
 }
 
 export const PROJECTS: ProjectType[] = [
@@ -368,6 +383,14 @@ export const CLIENT_INFO: Record<string, ClientType> = Object.fromEntries(
 
 export const CLIENTS: string[] = CLIENT_ROWS.map(([name]) => name);
 
+// A customer added in the prototype: no icon or logo yet, so it shows its initial on a colour of its own. It joins
+// the list a new project's Customer drop-down offers.
+export function registerCustomer(name: string, city: string): ClientType {
+	if (!CLIENTS.includes(name)) CLIENTS.push(name);
+	CLIENT_INFO[name] = { ...clientOf(name), city };
+	return CLIENT_INFO[name];
+}
+
 export function clientOf(name: string): ClientType {
 	const code =
 		name
@@ -524,7 +547,20 @@ export const FACILITIES: FacilityType[] = (
 ).map(([name, kind, city]) => ({ name, kind, city }));
 
 // What the count tiles count, and what the chart and list then show.
-export type DatasetType = 'projects' | 'clients' | 'team' | 'transport' | 'facilities';
+export type DatasetType = 'projects' | 'customers' | 'team' | 'transport' | 'facilities';
+
+// The dashboard's pages in order: the floating bar, the count cards and a sideways swipe all go through them.
+export const PAGES: DatasetType[] = ['projects', 'customers', 'team', 'transport', 'facilities'];
+
+// One icon per page, the same everywhere (Justin, 2026-10-26 19:22): a folder for projects, a smile for customers,
+// the building (once the clients' icon) for facilities, and a box on the move for transport by sea, air, rail or road.
+export const PAGE_ICONS: Record<DatasetType, { icon: string; active: string }> = {
+	projects: { icon: 'icon-[mdi--folder-outline]', active: 'icon-[mdi--folder]' },
+	customers: { icon: 'icon-[mdi--emoticon-outline]', active: 'icon-[mdi--emoticon]' },
+	team: { icon: 'icon-[mdi--account-group-outline]', active: 'icon-[mdi--account-group]' },
+	transport: { icon: 'icon-[mdi--cube-send]', active: 'icon-[mdi--cube-send]' },
+	facilities: { icon: 'icon-[mdi--domain]', active: 'icon-[mdi--domain]' }
+};
 
 export const DATASETS: Record<
 	DatasetType,
@@ -533,36 +569,31 @@ export const DATASETS: Record<
 	projects: {
 		label: 'Projects',
 		one: 'Project',
-		icon: 'icon-[mdi--briefcase-variant-outline]',
-		active: 'icon-[mdi--briefcase-variant]',
+		...PAGE_ICONS.projects,
 		filters: ['All', 'In Progress', 'Review', 'Sent', 'Complete']
 	},
-	clients: {
-		label: 'Clients',
-		one: 'Client',
-		icon: 'icon-[mdi--domain]',
-		active: 'icon-[mdi--domain]',
+	customers: {
+		label: 'Customers',
+		one: 'Customer',
+		...PAGE_ICONS.customers,
 		filters: ['All', 'Active', 'Quiet']
 	},
 	team: {
 		label: 'Team',
 		one: 'Name',
-		icon: 'icon-[mdi--account-group-outline]',
-		active: 'icon-[mdi--account-group]',
+		...PAGE_ICONS.team,
 		filters: ['All', 'Admins', 'Managers', 'Members']
 	},
 	transport: {
 		label: 'Transport',
 		one: 'Transport',
-		icon: 'icon-[mdi--ferry]',
-		active: 'icon-[mdi--ferry]',
+		...PAGE_ICONS.transport,
 		filters: ['All', 'Sea', 'Air', 'Rail', 'Road']
 	},
 	facilities: {
 		label: 'Facilities',
 		one: 'Facility',
-		icon: 'icon-[mdi--anchor]',
-		active: 'icon-[mdi--anchor]',
+		...PAGE_ICONS.facilities,
 		filters: ['All', 'Port', 'Airport', 'Rail yard', 'Depot']
 	}
 };
@@ -766,10 +797,10 @@ export function createPanels(project: ProjectType): PanelType[] {
 	];
 
 	// Blank the later inputs, the less done the more, so each project opens at its own percent (LookState then lists
-	// that percent). Title, organization and client always stay; items empty from the last row up; the stops go last,
+	// that percent). Title, organization and customer always stay; items empty from the last row up; the stops go last,
 	// from the last one back.
 	const [details, trip, cargo] = panels;
-	const kept = ['Title', 'Organization', 'Client'];
+	const kept = ['Title', 'Organization', 'Customer'];
 	let left = Math.round(((100 - project.progress) / 100) * 12);
 	for (let round = 0; left > 0 && round < 12; round += 1) {
 		const row = cargo.items.findLast((item) => item.description);
@@ -822,7 +853,7 @@ function projectPanel(
 				options: [ORGANIZATION.name],
 				isAddable: true
 			}),
-			field('Client', project.client, 'select', { options: [...CLIENTS], isAddable: true }),
+			field('Customer', project.client, 'select', { options: [...CLIENTS], isAddable: true }),
 			field('Project type', project.type, 'select', { options: PROJECT_TYPES }),
 			field('Location', project.location),
 			field('Subtitle', project.subtitle)
@@ -849,13 +880,9 @@ export function newPanel(count: number): PanelType {
 	};
 }
 
+// The side menu: the five pages (no Home since 2026-10-26 19:22), then Admin.
 export const NAV = [
-	{ id: 'home', label: 'Home', icon: 'icon-[mdi--home]' },
-	{ id: 'projects', label: 'Projects', icon: 'icon-[mdi--folder]' },
-	{ id: 'clients', label: 'Clients', icon: 'icon-[mdi--account]' },
-	{ id: 'team', label: 'Team', icon: 'icon-[mdi--account-group]' },
-	{ id: 'transport', label: 'Transport', icon: 'icon-[mdi--ferry]' },
-	{ id: 'facilities', label: 'Facilities', icon: 'icon-[mdi--anchor]' },
+	...PAGES.map((id) => ({ id, label: DATASETS[id].label, icon: PAGE_ICONS[id].active })),
 	{
 		id: 'admin',
 		label: 'Admin',
@@ -866,15 +893,15 @@ export const NAV = [
 
 // Recent activity for the sidebar (E): what happened, so the icon can say what kind of thing it was.
 export const RECENT: {
-	kind: 'project' | 'client' | 'person';
+	kind: 'project' | 'customer' | 'person';
 	name: string;
 	note: string;
 	id?: string;
 }[] = [
 	{ kind: 'project', name: 'Terminal Intake Review', note: 'Edited · 12 min ago', id: 'p1' },
-	{ kind: 'client', name: 'KOGA', note: 'New client · 1 h ago' },
+	{ kind: 'customer', name: 'KOGA', note: 'New customer · 1 h ago' },
 	{ kind: 'project', name: 'Harbor Readiness Survey', note: 'Sent to review · 1 h ago', id: 'p2' },
 	{ kind: 'person', name: 'Natzul Reyes Flores', note: 'Joined the team · Yesterday' },
 	{ kind: 'project', name: 'Outbound Cargo Condition Report', note: 'Sent · Yesterday', id: 'p3' },
-	{ kind: 'client', name: 'dship Carriers', note: 'New contact · 3 days ago' }
+	{ kind: 'customer', name: 'dship Carriers', note: 'New contact · 3 days ago' }
 ];

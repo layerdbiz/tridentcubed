@@ -28,6 +28,18 @@ export const RANGES: { id: RangeType; label: string; long: string }[] = [
 	{ id: 'all', label: 'ALL', long: 'since day one' }
 ];
 
+// The time range's menu names.
+export const RANGE_NAMES: Record<RangeType, string> = {
+	'24h': '24 hours',
+	'7d': '7 days',
+	'30d': '30 days',
+	qtr: 'Quarter',
+	'6m': '6 months',
+	'1y': '1 year',
+	'5y': '5 years',
+	all: 'All time'
+};
+
 export const CHART_KINDS: { id: ChartKindType; label: string; icon: string }[] = [
 	{ id: 'area', label: 'Area', icon: 'icon-[mdi--chart-areaspline]' },
 	{ id: 'bar', label: 'Bars', icon: 'icon-[mdi--chart-bar]' },
@@ -38,14 +50,18 @@ export const CHART_KINDS: { id: ChartKindType; label: string; icon: string }[] =
 // Each card opens on the chart that suits it (Justin's note 11).
 export const DEFAULT_CHART: Record<DatasetType, ChartKindType> = {
 	projects: 'area',
-	clients: 'map',
+	customers: 'map',
 	team: 'pie',
 	transport: 'pie',
 	facilities: 'map'
 };
 
 // The organization's lists, for the charts of the Transport and Facilities pages.
-export type ListsType = { transports: TransportType[]; facilities: FacilityType[] };
+export type ListsType = {
+	transports: TransportType[];
+	facilities: FacilityType[];
+	customers?: string[];
+};
 
 // Full class strings so Tailwind finds them; `text` colours gradient stops through currentColor.
 export type ToneType = { stroke: string; fill: string; text: string; bg: string };
@@ -237,11 +253,11 @@ export function chartOf(
 			live.filter((project) => project.status === status).length,
 			STATUS_TONE[status] ?? 'slate'
 		]);
-	} else if (dataset === 'clients') {
+	} else if (dataset === 'customers') {
 		counts = CLIENTS.map((name, index) => [
 			name,
 			live.filter((project) => project.client === name).length,
-			CLIENT_TONE[index]
+			CLIENT_TONE[index % CLIENT_TONE.length]
 		]);
 	} else if (dataset === 'team') {
 		const names = [...new Set(live.flatMap((project) => project.team))];
@@ -265,7 +281,7 @@ export function chartOf(
 			'primary'
 		]);
 	}
-	if (dataset !== 'projects' && dataset !== 'clients')
+	if (dataset !== 'projects' && dataset !== 'customers')
 		counts = counts
 			.sort((a, b) => b[1] - a[1])
 			.slice(0, 5)
@@ -291,7 +307,7 @@ export function headlineAt(data: ChartDataType, index: number) {
 
 export type SliceType = { name: string; value: number; tone: ToneType };
 
-// Pie slices are today's counts, never shares (note 12): projects by status, clients by their projects, the team by
+// Pie slices are today's counts, never shares (note 12): projects by status, customers by their projects, the team by
 // each person's first label, so everyone counts once, transport by type across the live projects, and facilities
 // by kind.
 const TYPE_TONE: Record<string, string> = {
@@ -320,11 +336,11 @@ export function slicesOf(
 			live.filter((project) => project.status === status).length,
 			STATUS_TONE[status] ?? 'slate'
 		]);
-	} else if (dataset === 'clients') {
-		slices = CLIENTS.map((name, index) => [
+	} else if (dataset === 'customers') {
+		slices = (lists.customers ?? CLIENTS).map((name, index) => [
 			name,
 			live.filter((project) => project.client === name).length,
-			CLIENT_TONE[index]
+			CLIENT_TONE[index % CLIENT_TONE.length]
 		]);
 	} else if (dataset === 'transport') {
 		const counts = new Map<string, number>();
@@ -363,13 +379,13 @@ export function slicesOf(
 
 export type PinType = { city: string; x: number; y: number; count: number; names: string[] };
 
-// Map pins: where the clients' offices, the team, the facilities, the stops' transports or the projects are, one pin
+// Map pins: where the customers' offices, the team, the facilities, the stops' transports or the projects are, one pin
 // per city with its count. Places off the US map are counted apart.
 export function pinsOf(dataset: DatasetType, projects: ProjectType[], lists: ListsType) {
 	const live = projects.filter((project) => project.status !== 'Archived');
 	const places: [string, string][] =
-		dataset === 'clients'
-			? CLIENTS.map((name) => [clientOf(name).city, name])
+		dataset === 'customers'
+			? (lists.customers ?? CLIENTS).map((name) => [clientOf(name).city, name])
 			: dataset === 'team'
 				? TEAM.map((member) => [member.location, member.name])
 				: dataset === 'facilities'

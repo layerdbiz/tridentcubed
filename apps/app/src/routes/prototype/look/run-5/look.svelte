@@ -7,7 +7,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import type { ChartKindType, RangeType } from './chart.data';
-	import type { DatasetType } from './look.data';
+	import { PAGES, type DatasetType } from './look.data';
 	import { LookState, type ScreenType, type TabType, type ViewType } from './look.state.svelte';
 	import Confirm from './confirm.svelte';
 	import Shell from './shell.svelte';
@@ -22,7 +22,9 @@
 	look.screen = (params.get('screen') as ScreenType) ?? 'dashboard';
 	if (look.panels.some((panel) => panel.id === params.get('panel')))
 		look.panelId = params.get('panel')!;
-	if (params.has('set')) look.pick(params.get('set') as DatasetType);
+	// Old links said ?set=clients (Customers since run 11); anything unknown stays on Projects.
+	const set = params.get('set')?.replace('clients', 'customers') as DatasetType | undefined;
+	if (set && PAGES.includes(set)) look.pick(set);
 	if (params.has('range')) look.range = params.get('range') as RangeType;
 	if (params.has('chart')) look.chart = params.get('chart') as ChartKindType;
 	// svelte-ignore state_referenced_locally

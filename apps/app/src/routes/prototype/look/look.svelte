@@ -8,15 +8,14 @@
 	type PageType = {
 		screen: string;
 		tab: string;
-		isNewOpen: boolean;
+		adding?: string;
 		navSection: string;
 		project: { title: string };
 	};
 
 	const SECTIONS: Record<string, string> = {
-		home: 'Home',
 		projects: 'Projects',
-		clients: 'Clients',
+		customers: 'Customers',
 		team: 'Team',
 		transport: 'Transport',
 		facilities: 'Facilities',
@@ -29,8 +28,8 @@
 	// The name of the page on screen, as its own header would say it.
 	const name = $derived.by(() => {
 		if (!shown) return '';
-		if (shown.isNewOpen) return 'New project';
-		if (shown.screen === 'dashboard') return SECTIONS[shown.navSection] ?? 'Home';
+		if (shown.adding) return 'Add';
+		if (shown.screen === 'dashboard') return SECTIONS[shown.navSection] ?? 'Projects';
 		if (shown.tab === 'preview' && innerWidth < 768) return 'Preview';
 		return shown.project.title;
 	});

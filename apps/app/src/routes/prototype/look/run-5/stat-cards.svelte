@@ -1,23 +1,24 @@
 <script lang="ts">
-	// PROTOTYPE (#161) run 5: the dashboard cards, one per page: Projects, Clients, Team, and since 2026-10-25 Transport
-	// and Facilities. The bare icon sits on the left (no badge behind it, note 4) and the number over the label to its
+	// PROTOTYPE (#161) run 5: the dashboard cards, one per page: Projects, Customers, Team, and since 2026-10-25
+	// Transport and Facilities. The bare icon sits on the left (no badge behind it, note 4) and the number over the label to its
 	// right. A filled question mark by the label explains the card (note 5): a popover on hover with a mouse, a bottom
 	// sheet on a phone. Bigger on a desktop (note 34). Five do not fit a phone, so the row scrolls sideways and the
-	// picked card scrolls into view; the popover is fixed, so the row cannot clip it.
+	// picked card scrolls into view; the popover is fixed, so the row cannot clip it. Run 11 (2026-10-26 19:22): the
+	// row has room above and below, so the picked card's shadow is not cut off, and only that card has one; the list's
+	// sheet casts its shadow under the rest.
 	import { scale } from 'svelte/transition';
 	import BottomSheet from './bottom-sheet.svelte';
-	import { CLIENTS, DATASETS, type DatasetType } from './look.data';
+	import { DATASETS, PAGES, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import { TEAM } from './team.data';
 
 	let { look }: { look: LookState } = $props();
 
-	const SETS: DatasetType[] = ['projects', 'clients', 'team', 'transport', 'facilities'];
+	const SETS = PAGES;
 	const HELP: Record<string, string> = {
 		projects:
 			'Every project in the workspace, whatever its status. The chart counts the ones still open, and the list below shows them all.',
-		clients:
-			'Companies Trident Cubed works for. A client counts once, however many projects they have. The chart counts clients with a project still open.',
+		customers:
+			'Companies Trident Cubed works for. A customer counts once, however many projects they have. The chart counts customers with a project still open.',
 		team: 'Everyone on the Trident Cubed team who can sign in. The chart counts the people working on a project that is still open.',
 		transport:
 			"The ships, barges, planes, trains and trucks in the organization's list. Each is typed in once and picked in any project; later a tracking service adds ships and planes to the same list.",
@@ -51,10 +52,10 @@
 
 	function countOf(dataset: DatasetType) {
 		if (dataset === 'projects') return look.projects.length;
-		if (dataset === 'clients') return CLIENTS.length;
+		if (dataset === 'customers') return look.customers.length;
 		if (dataset === 'transport') return look.transports.length;
 		if (dataset === 'facilities') return look.facilities.length;
-		return TEAM.length;
+		return look.members.length;
 	}
 
 	function ask(event: MouseEvent, dataset: DatasetType) {
@@ -66,7 +67,7 @@
 <svelte:window onkeydown={(event) => event.key === 'Escape' && (sheet = hovered = undefined)} />
 
 <div
-	class="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 md:mx-0 md:scroll-px-0 md:gap-3 md:px-0"
+	class="-mx-4 -my-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 py-4 md:mx-0 md:scroll-px-0 md:gap-3 md:px-0"
 	role="tablist"
 	aria-label="What to count"
 	bind:this={row}
@@ -81,7 +82,7 @@
 			data-set={dataset}
 			class="relative flex w-[calc((100%-1rem)/2.6)] shrink-0 cursor-pointer snap-start items-center gap-2 rounded-2xl p-2.5 transition duration-200 select-none md:w-auto md:min-w-44 md:flex-1 md:gap-3 md:rounded-3xl md:px-4 md:py-5 {isOn
 				? 'bg-primary text-white shadow-lg shadow-primary/30'
-				: 'bg-white text-slate-700 shadow-[0_1px_2px_rgb(15_23_42/0.04),0_10px_24px_-18px_rgb(15_23_42/0.3)] hover:-translate-y-0.5'}"
+				: 'bg-white text-slate-700 hover:-translate-y-0.5'}"
 			onclick={() => look.pick(dataset)}
 			onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && look.pick(dataset)}
 		>

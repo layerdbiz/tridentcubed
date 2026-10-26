@@ -116,6 +116,8 @@ export function sortable(
 
 		function down(event: PointerEvent) {
 			if (event.button !== 0) return;
+			// A Sent or Complete project is read only (run 11).
+			if (list.closest('[data-frozen]')) return;
 			const target = event.target as HTMLElement;
 			if (target.closest('input, select, textarea, [contenteditable], [data-no-drag]')) return;
 			const grip = target.closest<HTMLElement>('[data-grip]');

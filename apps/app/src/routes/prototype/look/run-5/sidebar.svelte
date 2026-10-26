@@ -1,15 +1,15 @@
 <script lang="ts">
-	// PROTOTYPE (#161) run 5: the sidebar and phone menu: logo, a blue New project, the sections, Recent, and the
-	// user with settings at the bottom. Every icon sits in one centred column (note 16): the logo twice its old size,
-	// the section icons half again bigger, filled (note 17: Home, Projects, Clients, Team; Transport and Facilities
-	// since 2026-10-25). Signed in as Cezary,
+	// PROTOTYPE (#161) run 5: the sidebar and phone menu: logo, the sections, Recent, and the user with settings at
+	// the bottom. Run 11 (2026-10-26 19:22): no Home and no New project button; the floating bar's + adds things. Every icon sits in one centred column (note 16): the logo twice its old size,
+	// the section icons half again bigger, filled (note 17; since run 11 the pages' own icons, the same as on the floating
+	// bar). Signed in as Cezary,
 	// Admin (note 19). Recent icons: 'logos' the client's icon; 'activity' what happened; 'rings' the client's icon
 	// inside the project's progress ring. `isCollapsed` fades the words, leaving the icons: the desktop sidebar keeps
 	// one layout at every width and clips it, so the words slide out as it is dragged wider (2026-10-26 16:34).
 	// `onnavigate` runs after any pick, so the phone drawer can close itself, even when the pick is the page already open.
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
-	import { DATASETS, NAV, personOf, RECENT, type DatasetType } from './look.data';
+	import { DATASETS, NAV, PAGE_ICONS, personOf, RECENT, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProgressRing from './progress-ring.svelte';
 
@@ -52,7 +52,7 @@
 <div class="flex h-full flex-col">
 	<button
 		class="flex w-full items-center gap-1 px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4"
-		onclick={() => go('home')}
+		onclick={() => go('projects')}
 	>
 		<span class={COLUMN}
 			><img
@@ -63,20 +63,7 @@
 		>
 		<span class="text-[15px] font-bold tracking-wide text-slate-900 {WORDS}">TRIDENT CUBED</span>
 	</button>
-	<div class="w-full px-3">
-		<button
-			class="flex w-full items-center gap-1 overflow-hidden rounded-2xl bg-primary py-2.5 text-[15px] font-semibold text-white shadow-md shadow-primary/30 transition hover:brightness-110"
-			title="New project"
-			onclick={() => {
-				look.isNewOpen = true;
-				onnavigate?.();
-			}}
-		>
-			<span class={COLUMN}><span class="icon-[mdi--plus] size-[30px]"></span></span>
-			<span class={WORDS}>New project</span>
-		</button>
-	</div>
-	<nav class="mt-4 w-full space-y-0.5 px-3">
+	<nav class="w-full space-y-0.5 px-3">
 		{#each NAV as item (item.id)}
 			{@const isOn =
 				look.screen === 'workspace' ? item.id === 'projects' : look.navSection === item.id}
@@ -114,7 +101,7 @@
 								name={item.name}
 								size={32}
 							/>
-						{:else if item.kind === 'client'}
+						{:else if item.kind === 'customer'}
 							<ClientLogo
 								name={item.name}
 								size={32}
@@ -122,7 +109,7 @@
 						{:else}
 							<span
 								class="flex size-8 items-center justify-center rounded-[30%] bg-primary/10 text-primary"
-								><span class="icon-[mdi--briefcase-variant-outline] size-[18px]"></span></span
+								><span class="{PAGE_ICONS.projects.active} size-[18px]"></span></span
 							>
 						{/if}
 						<span
@@ -130,8 +117,8 @@
 							><span
 								class="{item.kind === 'person'
 									? 'icon-[mdi--account-plus]'
-									: item.kind === 'client'
-										? 'icon-[mdi--domain-plus]'
+									: item.kind === 'customer'
+										? 'icon-[mdi--emoticon-plus]'
 										: 'icon-[mdi--pencil]'} size-2.5"
 							></span></span
 						>

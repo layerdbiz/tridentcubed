@@ -5,13 +5,13 @@
 	// centre, like the preview's zoom bar, with the save cloud at its start (note 1). Swipe between the two; on Preview
 	// the pages take every drag, so a hidden strip on the left edge swipes back. Run 9: the bar is words only, with no
 	// line after the cloud (note 19); on Panels the left edge swipes the whole project away, back to the dashboard
-	// (note 21).
+	// (note 21). Run 11 (2026-10-26 19:22): Panels and Preview moved into the one floating bar (nav-bar.svelte), which
+	// sets look.tab; the panes follow it, and their scroll drives the bar's highlight through look.tabProgress.
 	import type { ComponentProps } from 'svelte';
 	import type { LookState } from './look.state.svelte';
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ReportPreview from './report-preview.svelte';
-	import SaveCloud from './save-cloud.svelte';
 
 	let {
 		look,
@@ -26,8 +26,8 @@
 	} = $props();
 
 	let swiper: HTMLDivElement | undefined = $state();
-	let progress = $state(0);
 	let top = $state(0);
+	let isLanded = false;
 
 	function show(tab: 'edit' | 'preview') {
 		look.tab = tab;
@@ -36,16 +36,21 @@
 
 	function onscroll() {
 		if (!swiper?.clientWidth) return;
-		progress = swiper.scrollLeft / swiper.clientWidth;
-		look.tab = progress > 0.5 ? 'preview' : 'edit';
+		look.tabProgress = swiper.scrollLeft / swiper.clientWidth;
+		look.tab = look.tabProgress > 0.5 ? 'preview' : 'edit';
 	}
 
-	// Land on the Preview pane when the URL asks for it.
+	// The bar's Panels and Preview: the panes slide to the one picked. The first time, as the project opens (on
+	// Preview when the URL asks for it), they are simply there.
 	$effect(() => {
-		if (swiper && look.tab === 'preview' && swiper.scrollLeft === 0) {
-			swiper.scrollLeft = swiper.clientWidth;
-			progress = 1;
-		}
+		if (!swiper) return;
+		const left = look.tab === 'edit' ? 0 : swiper.clientWidth;
+		if (!isLanded) {
+			isLanded = true;
+			swiper.scrollLeft = left;
+			look.tabProgress = look.tab === 'edit' ? 0 : 1;
+		} else if (Math.abs(swiper.scrollLeft - left) > swiper.clientWidth / 2)
+			swiper.scrollTo({ left, behavior: 'smooth' });
 	});
 
 	// The left-edge strip on Preview: the panes follow the finger, and past a fifth of the screen it lets go to Panels.
@@ -96,35 +101,6 @@
 	}
 </script>
 
-{#snippet tabs()}
-	<nav
-		class="absolute bottom-[calc(env(safe-area-inset-bottom)+14px)] left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black p-1.5 text-white shadow-xl shadow-black/25"
-		aria-label="Panels or preview"
-	>
-		<span class="flex size-9 items-center justify-center"><SaveCloud {look} /></span>
-		<div
-			class="relative grid grid-cols-[1fr_1fr]"
-			role="tablist"
-		>
-			<span
-				class="absolute inset-y-0 left-0 w-1/2 rounded-full bg-primary shadow-md shadow-primary/30"
-				style="transform: translateX({progress * 100}%)"
-			></span>
-			{#each [['edit', 'Panels'], ['preview', 'Preview']] as const as [tab, label] (tab)}
-				<button
-					class="relative flex h-9 items-center justify-center rounded-full px-4 text-[13px] font-medium transition-colors {look.tab ===
-					tab
-						? 'text-white'
-						: 'text-white/60 hover:text-white'}"
-					role="tab"
-					aria-selected={look.tab === tab}
-					onclick={() => show(tab)}>{label}</button
-				>
-			{/each}
-		</div>
-	</nav>
-{/snippet}
-
 <div
 	class="relative h-dvh overflow-hidden md:hidden {surface} {isPulling
 		? ''
@@ -141,7 +117,6 @@
 			<ProjectBar {look} />
 		</div>
 	</header>
-	{@render tabs()}
 
 	<div
 		bind:this={swiper}

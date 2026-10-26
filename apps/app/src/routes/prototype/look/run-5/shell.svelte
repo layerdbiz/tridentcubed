@@ -7,7 +7,9 @@
 	// project slides in from the right over the dashboard, which stays underneath, so a swipe back can uncover it.
 	// 2026-10-26 16:34: the list sits in a sheet whose top drags down to grow the chart (like Airbnb's map and list);
 	// the phone menu pulls out from the left edge and pushes back the same way; the desktop sidebar's right edge drags
-	// it narrower, down to the icons alone, or wider, up to a limit.
+	// it narrower, down to the icons alone, or wider, up to a limit. Run 11 (2026-10-26 19:22): one floating bar at the
+	// bottom for the pages, the + and, in a project, Panels and Preview (nav-bar.svelte); a finger swipes the list
+	// sideways to the next page; the sheet has rounder corners and a deep shadow that falls under the cards.
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fly, scale } from 'svelte/transition';
@@ -15,9 +17,10 @@
 	import ClientLogo from './client-logo.svelte';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
-	import { RECENT } from './look.data';
+	import AddSheet from './add-sheet.svelte';
+	import { PAGE_ICONS, PAGES, RECENT } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import NewProject from './new-project.svelte';
+	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ReportPreview from './report-preview.svelte';
@@ -173,6 +176,86 @@
 		};
 	};
 
+	// Swipe the list sideways for the page before or after (Justin, 2026-10-26 19:22): the list follows the finger with
+	// the next page peeking in beside it and, past a quarter of its width or on a flick, the two slide the rest of the
+	// way together; at either end it only gives a little. Only a finger: a mouse selects and drags as usual. Photo
+	// strips and the board scroll sideways themselves (data-swipe-ignore), and the heading row drags the sheet.
+	let swipeX = $state(0);
+	let isSwiping = $state(false);
+	// How far the pages still have to slide when a swipe lets go; 0 when a page is picked by a tap (a whole width).
+	let flight = $state(0);
+	let swipe = { x: 0, y: 0, t: 0, id: -1, isOn: false, isDragged: false };
+	const neighbour = $derived(
+		swipeX ? PAGES[PAGES.indexOf(look.dataset) + (swipeX < 0 ? 1 : -1)] : undefined
+	);
+
+	const pageSwipe: Attachment<HTMLElement> = (node) => {
+		function down(event: PointerEvent) {
+			swipe.isDragged = false;
+			if (event.pointerType !== 'touch' || look.screen !== 'dashboard') return;
+			if ((event.target as HTMLElement).closest('[data-swipe-ignore], [data-sheet-grip]')) return;
+			swipe = {
+				x: event.clientX,
+				y: event.clientY,
+				t: event.timeStamp,
+				id: event.pointerId,
+				isOn: false,
+				isDragged: false
+			};
+		}
+		function move(event: PointerEvent) {
+			if (event.pointerId !== swipe.id) return;
+			const dx = event.clientX - swipe.x;
+			const dy = event.clientY - swipe.y;
+			if (!swipe.isOn) {
+				if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) swipe.id = -1;
+				if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+				swipe.isOn = true;
+				isSwiping = true;
+				node.setPointerCapture(event.pointerId);
+			}
+			swipe.isDragged = true;
+			const index = PAGES.indexOf(look.dataset);
+			const isEnd = (dx > 0 && index === 0) || (dx < 0 && index === PAGES.length - 1);
+			swipeX = isEnd ? dx * 0.25 : dx;
+		}
+		function up(event: PointerEvent) {
+			if (event.pointerId !== swipe.id) return;
+			swipe.id = -1;
+			if (!swipe.isOn) return;
+			isSwiping = false;
+			const dx = event.clientX - swipe.x;
+			const speed = dx / Math.max(1, event.timeStamp - swipe.t);
+			const next = PAGES.indexOf(look.dataset) + (dx < 0 ? 1 : -1);
+			const isFar = Math.abs(dx) > node.clientWidth / 4 || Math.abs(speed) > 0.5;
+			if (event.type === 'pointerup' && isFar && next >= 0 && next < PAGES.length) {
+				flight = node.clientWidth - Math.abs(swipeX);
+				setTimeout(() => (flight = 0), 400);
+				look.pick(PAGES[next]);
+			}
+			swipeX = 0;
+		}
+		// The swipe ends on whatever was under the finger; that tap is not a pick.
+		function click(event: MouseEvent) {
+			if (!swipe.isDragged) return;
+			swipe.isDragged = false;
+			event.stopPropagation();
+			event.preventDefault();
+		}
+		node.addEventListener('pointerdown', down);
+		node.addEventListener('pointermove', move);
+		node.addEventListener('pointerup', up);
+		node.addEventListener('pointercancel', up);
+		node.addEventListener('click', click, true);
+		return () => {
+			node.removeEventListener('pointerdown', down);
+			node.removeEventListener('pointermove', move);
+			node.removeEventListener('pointerup', up);
+			node.removeEventListener('pointercancel', up);
+			node.removeEventListener('click', click, true);
+		};
+	};
+
 	// The desktop sidebar's width: its right edge drags from the icons alone (RAIL) up to SIDE_MAX, the words sliding
 	// out as it widens; let go nearer the icons than SIDE_MIN and it snaps to the icons. A double-click toggles.
 	const RAIL = 80;
@@ -246,7 +329,7 @@
 								name={item.name}
 								size={36}
 							/>
-						{:else if item.kind === 'client'}
+						{:else if item.kind === 'customer'}
 							<ClientLogo
 								name={item.name}
 								size={36}
@@ -255,7 +338,7 @@
 						{:else}
 							<span
 								class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-								><span class="icon-[mdi--briefcase-variant-outline] size-[18px]"></span></span
+								><span class="{PAGE_ICONS.projects.active} size-[18px]"></span></span
 							>
 						{/if}
 						<span class="min-w-0 flex-1">
@@ -347,7 +430,7 @@
 				: 'transition-[padding] duration-200 ease-out'}"
 		>
 			<section
-				class="flex shrink-0 flex-col {sheetTop === undefined
+				class="relative z-10 flex shrink-0 flex-col {sheetTop === undefined
 					? 'transition-[height] duration-300 ease-out'
 					: ''}"
 				style="height: {top}px"
@@ -370,7 +453,7 @@
 				</div>
 			</section>
 			<section
-				class="flex min-h-0 flex-1 flex-col rounded-t-[28px] bg-white px-4 shadow-[0_-6px_24px_rgb(15_23_42/0.07)] md:px-8"
+				class="flex min-h-0 flex-1 flex-col rounded-t-[40px] bg-white shadow-[0_-24px_70px_-8px_rgb(15_23_42/0.28)] md:px-8"
 				{@attach sheetDrag}
 			>
 				<div
@@ -380,11 +463,50 @@
 				>
 					<span class="h-1.5 w-10 rounded-full bg-slate-300"></span>
 				</div>
-				<div class="{COLUMN} min-h-0 flex-1">
-					<DashboardList
-						{look}
-						isSplit
-					/>
+				<!-- One page at a time; on a change the new one slides in from its side and the old one out the other. -->
+				<div
+					class="{COLUMN} grid min-h-0 flex-1 touch-pan-y grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-clip"
+					{@attach pageSwipe}
+				>
+					{#key look.dataset}
+						<div
+							class="min-h-0 [grid-area:1/1] {isSwiping
+								? ''
+								: 'transition-transform duration-300 ease-out'}"
+							style:transform={swipeX ? `translateX(${swipeX}px)` : undefined}
+							in:fly={{
+								x: flight ? look.slide * flight : `${look.slide * 100}%`,
+								opacity: 1,
+								duration: flight ? 240 : 320,
+								easing: cubicOut
+							}}
+							out:fly={{
+								x: flight ? -look.slide * flight : `${-look.slide * 100}%`,
+								opacity: 1,
+								duration: flight ? 240 : 320,
+								easing: cubicOut
+							}}
+						>
+							<DashboardList
+								{look}
+								isSplit
+							/>
+						</div>
+					{/key}
+					{#if neighbour}
+						<div
+							class="pointer-events-none min-h-0 [grid-area:1/1]"
+							style:transform="translateX(calc({swipeX}px {swipeX < 0 ? '+' : '-'} 100%))"
+							inert
+							aria-hidden="true"
+						>
+							<DashboardList
+								{look}
+								isSplit
+								page={neighbour}
+							/>
+						</div>
+					{/if}
 				</div>
 			</section>
 		</main>
@@ -431,5 +553,9 @@
 		</div>
 	{/if}
 
-	<NewProject {look} />
+	<NavBar
+		{look}
+		left={isWide ? `calc(${side + 24}px + (100vw - ${side + 24}px) / 2)` : '50%'}
+	/>
+	<AddSheet {look} />
 </div>

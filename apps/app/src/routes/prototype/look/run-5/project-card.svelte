@@ -1,14 +1,16 @@
 <script lang="ts">
-	// PROTOTYPE (#161): a project in the Cards view, after the way Airbnb shows a stay (Justin, 2026-10-26 16:34): the
-	// project's report photos to swipe through with dots under them (arrows on a desktop hover), its state on the
-	// photo's top left and the ⋮ on its top right; under the photo the client's logo with the project's name beside
-	// it, then the rest in two quiet lines. A project with no photos yet shows its client's logo. The progress runs
-	// along the photo's bottom edge.
+	// PROTOTYPE (#161): a project in the Cards view. Run 10 took Airbnb's card (the report's photos to swipe through,
+	// dots, the state top left, the ⋮ top right). Run 11 (Justin, 2026-10-26 19:22: "see what you can do there with
+	// your own design"): nothing under the photo; everything the list row shows sits on the photo over a dark fade:
+	// the customer's logo with its state dot, the title and progress, where the trip starts and ends, the team. The
+	// state label is filled with its own colour. A project with no photos shows a dark card with its customer's logo.
 	import ClientLogo from './client-logo.svelte';
 	import Faces from './faces.svelte';
 	import { STATUS, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import ProjectLogo from './project-logo.svelte';
 	import ProjectMenu from './project-menu.svelte';
+	import ProjectRoute from './project-route.svelte';
 
 	let { look, project }: { look: LookState; project: ProjectType } = $props();
 
@@ -55,11 +57,12 @@
 </script>
 
 <article class="group/card relative {isArchived ? 'opacity-60' : ''}">
-	<div class="relative aspect-[4/3] overflow-hidden rounded-3xl bg-slate-100">
+	<div class="relative aspect-square overflow-hidden rounded-3xl bg-slate-900 sm:aspect-[5/4]">
 		{#if photos.length}
 			<div
 				bind:this={strip}
 				class="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+				data-swipe-ignore
 				{onscroll}
 			>
 				{#each photos as photo (photo.id)}
@@ -78,30 +81,16 @@
 				{/each}
 			</div>
 			{#if photos.length > 1}
-				<span
-					class="pointer-events-none absolute inset-x-0 bottom-4 flex items-center justify-center gap-1.5"
-				>
-					{#each dots as dot (dot)}
-						<span
-							class="rounded-full bg-white shadow-[0_0_2px_rgb(0_0_0/0.4)] transition-all {dot ===
-							at
-								? 'size-[7px]'
-								: isSmall(dot)
-									? 'size-1 opacity-60'
-									: 'size-1.5 opacity-60'}"
-						></span>
-					{/each}
-				</span>
 				{#if at > 0}
 					<button
-						class="absolute top-1/2 left-3 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition hover:scale-105 md:group-hover/card:flex"
+						class="absolute top-[38%] left-3 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition hover:scale-105 md:group-hover/card:flex"
 						aria-label="Previous photo"
 						onclick={() => step(-1)}><span class="icon-[mdi--chevron-left] size-5"></span></button
 					>
 				{/if}
 				{#if at < photos.length - 1}
 					<button
-						class="absolute top-1/2 right-3 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition hover:scale-105 md:group-hover/card:flex"
+						class="absolute top-[38%] right-3 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition hover:scale-105 md:group-hover/card:flex"
 						aria-label="Next photo"
 						onclick={() => step(1)}><span class="icon-[mdi--chevron-right] size-5"></span></button
 					>
@@ -109,19 +98,64 @@
 			{/if}
 		{:else}
 			<button
-				class="flex size-full flex-col items-center justify-center gap-3 bg-linear-to-br from-slate-100 to-slate-200/80"
+				class="flex size-full flex-col items-center gap-2 bg-linear-to-br from-slate-700 to-slate-950 pt-[16%]"
 				aria-label="Open {project.title}"
 				onclick={() => look.open(project.id)}
 			>
 				<ClientLogo
 					name={project.client}
 					size={72}
+					shape="circle"
 					isMuted={isArchived}
 				/>
-				<span class="text-xs font-medium text-slate-400">No photos yet</span>
+				<span class="text-xs font-medium text-white/50">No photos yet</span>
 			</button>
 		{/if}
-		<span class="absolute inset-x-0 bottom-0 h-1 bg-slate-900/15"
+		<!-- Everything the list row shows, on a dark fade over the photo's lower half. Taps fall through to the photo. -->
+		<div
+			class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-slate-950/90 via-slate-950/60 to-transparent px-4 pt-14 pb-4"
+		>
+			{#if photos.length > 1}
+				<span class="mb-3 flex items-center justify-center gap-1.5">
+					{#each dots as dot (dot)}
+						<span
+							class="rounded-full bg-white transition-all {dot === at
+								? 'size-[7px]'
+								: isSmall(dot)
+									? 'size-1 opacity-50'
+									: 'size-1.5 opacity-50'}"
+						></span>
+					{/each}
+				</span>
+			{/if}
+			<span class="flex items-center gap-3">
+				<ProjectLogo
+					{project}
+					size={44}
+					isMuted={isArchived}
+				/>
+				<span class="min-w-0 flex-1 space-y-1">
+					<span class="flex items-baseline gap-2">
+						<span class="min-w-0 flex-1 truncate font-semibold text-white">{project.title}</span>
+						<span class="shrink-0 text-sm font-semibold text-white tabular-nums">{progress}%</span>
+					</span>
+					<span class="flex items-center justify-between gap-2">
+						<ProjectRoute
+							{look}
+							{project}
+							isLight
+						/>
+						<Faces
+							names={project.team}
+							size={22}
+							max={3}
+							isMuted={isArchived}
+						/>
+					</span>
+				</span>
+			</span>
+		</div>
+		<span class="absolute inset-x-0 bottom-0 h-1 bg-white/15"
 			><span
 				class="block h-full transition-[width] duration-500 {status.bar}"
 				style="width: {progress}%"
@@ -129,43 +163,15 @@
 		>
 	</div>
 	<span
-		class="pointer-events-none absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm"
-		><span class="size-2 rounded-full {status.dot}"></span>{project.status}</span
+		class="pointer-events-none absolute top-3 left-3 rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm {status.bar}"
+		>{project.status}</span
 	>
 	<div class="absolute top-2 right-2">
 		<ProjectMenu
 			{look}
 			{project}
 			isOpenable
-			tone={photos.length ? 'photo' : 'plain'}
+			tone="photo"
 		/>
 	</div>
-	<button
-		class="mt-3 flex w-full items-start gap-3 text-left"
-		onclick={() => look.open(project.id)}
-	>
-		<ClientLogo
-			name={project.client}
-			size={44}
-			isMuted={isArchived}
-		/>
-		<span class="min-w-0 flex-1">
-			<span class="flex items-baseline gap-2">
-				<span class="min-w-0 flex-1 truncate font-semibold text-slate-900">{project.title}</span>
-				<span class="shrink-0 text-sm font-semibold text-slate-900 tabular-nums">{progress}%</span>
-			</span>
-			<span class="block truncate text-sm text-slate-500"
-				>{project.client} · {project.location}</span
-			>
-			<span class="mt-1 flex items-center justify-between gap-2 text-sm text-slate-500">
-				<span class="truncate">{project.dates} · {project.updated}</span>
-				<Faces
-					names={project.team}
-					size={22}
-					max={3}
-					isMuted={isArchived}
-				/>
-			</span>
-		</span>
-	</button>
 </article>

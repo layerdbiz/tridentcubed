@@ -248,7 +248,7 @@ const PHOTOS = import.meta.glob<string>('./team/*.webp', {
 });
 
 // Initials on a soft circle for the two people with no photo yet.
-function initialsOf(name: string) {
+export function initialsOf(name: string) {
 	const letters = name
 		.replace(/^Capt\. /, '')
 		.split(' ')

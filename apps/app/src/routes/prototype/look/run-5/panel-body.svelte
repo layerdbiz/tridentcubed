@@ -1,7 +1,7 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the inputs inside one panel, by kind: project, transport, items, time log or photo groups.
 	// Everything is live: typing moves the panel's count, its bar, the project's bar and the preview. The Project panel is
-	// its fields with the Team after Client; its drop-downs offer "Add new", a quick sheet (note 26). The Transport panel
+	// its fields with the Team after Customer; its drop-downs offer "Add new", a quick sheet (note 26). The Transport panel
 	// (Justin, 2026-10-25) is the trip, one stop per place in trip order: its point (Start, Stop, End, each with its
 	// colour), Transport type, Transport mode, the transport from the organization's list, and the facility, whose list
 	// puts the kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with
@@ -586,7 +586,7 @@
 {/if}
 
 <fieldset
-	disabled={!panel.isEnabled}
+	disabled={!panel.isEnabled || look.isFrozen}
 	class="min-w-0 space-y-3"
 	oninput={() => look.saved()}
 >
@@ -594,7 +594,7 @@
 		<div class="grid gap-3 sm:grid-cols-2">
 			{#each panel.fields as field (field.id)}
 				{@render fieldBlock(field)}
-				{#if field.label === 'Client'}
+				{#if field.label === 'Customer'}
 					<div class="space-y-3 rounded-2xl bg-slate-900/[0.025] p-3 sm:col-span-2">
 						<p class="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
 							<span class="icon-[mdi--account-group] size-4 text-primary"></span>Team

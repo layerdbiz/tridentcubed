@@ -1,4 +1,4 @@
-// PROTOTYPE (#161): a small map of the United States for the Clients chart, made once from us-atlas 3.0.1
+// PROTOTYPE (#161): a small map of the United States for the Customers chart, made once from us-atlas 3.0.1
 // (states-albers-10m, the Albers USA projection at 975 x 610) and thinned to whole pixels. CITIES are in the same
 // space, so a client's city is a point on the map.
 

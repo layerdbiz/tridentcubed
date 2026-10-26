@@ -2,23 +2,32 @@
 // Every input counts toward its panel, and the panels toward the project, so the percents move as you type. The
 // Transport and Facility lists live here, so one added from a project shows on its dashboard page. Every delete asks
 // first (`confirm`, Justin 2026-10-25). Run 9: everything is kept in this browser, so a reload keeps your edits.
+// Run 11 (2026-10-26 19:22): a project marked Sent remembers its state before, so Unsend puts it back; a Sent or
+// Complete project is frozen (`isFrozen`); the floating bar's + adds a project, customer, team member, transport or
+// facility (`adding`), and the dashboard's pages slide in from the side they sit on (`slide`).
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
+	CLIENTS,
 	createId,
 	createPanels,
 	FACILITIES,
 	itemOf,
 	newPanel,
+	PAGES,
 	PROJECTS,
+	registerCustomer,
 	stopOf,
 	TRANSPORTS,
+	type ClientType,
 	type DatasetType,
 	type FacilityType,
 	type PanelStatusType,
 	type PanelType,
 	type ProjectType,
+	type StatusType,
 	type TransportType
 } from './look.data';
+import { TEAM, type TeamMemberType } from './team.data';
 
 export type ScreenType = 'dashboard' | 'workspace';
 export type ViewType = 'table' | 'cards' | 'board';
@@ -93,13 +102,19 @@ export function percentOf(panels: PanelType[]) {
 // Run 9 (Justin's note 14, edits that "sometimes don't stay"): a phone browser reloads a tab it kept in the background,
 // and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
 // in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
-const KEEP = 'trident-look-161-run-9';
+const KEEP = 'trident-look-161-run-11';
 type KeptType = {
 	projects: ProjectType[];
 	workspaces: Record<string, PanelType[]>;
 	transports: TransportType[];
 	facilities: FacilityType[];
+	customers: string[];
+	added: ClientType[];
+	members: TeamMemberType[];
 };
+
+// Sent and Complete projects can be looked at, not edited (2026-10-26 19:22).
+export const FROZEN: StatusType[] = ['Sent', 'Complete'];
 
 function readKept(): KeptType | undefined {
 	try {
@@ -129,13 +144,22 @@ export class LookState {
 	projectId = $state('p1');
 	tab = $state<TabType>('edit');
 	panelId = $state('');
-	isNewOpen = $state(false);
-	navSection = $state<string>('home');
+	// What the + is adding, or nothing while its sheet is shut.
+	adding = $state<DatasetType>();
+	navSection = $state<string>('projects');
+	// Which way the dashboard's next page slides in: 1 from the right, -1 from the left.
+	slide = $state(0);
+	// Panels 0, Preview 1, and in between while a finger swipes from one to the other.
+	tabProgress = $state(0);
 	isSaving = $state(false);
 	toast = $state('');
 	workspaces = $state<Record<string, PanelType[]>>({});
 	transports = $state<TransportType[]>(structuredClone(TRANSPORTS));
 	facilities = $state<FacilityType[]>(structuredClone(FACILITIES));
+	customers = $state<string[]>([...CLIENTS]);
+	// Customers added here, with their city; their names are in `customers` too.
+	added = $state<ClientType[]>([]);
+	members = $state<TeamMemberType[]>(structuredClone(TEAM));
 	asking = $state<ConfirmType>();
 
 	project = $derived(
@@ -148,6 +172,7 @@ export class LookState {
 	);
 	panels = $derived(this.workspaces[this.projectId] ?? []);
 	overall = $derived(percentOf(this.panels));
+	isFrozen = $derived(FROZEN.includes(this.project?.status));
 
 	#saveTimer: ReturnType<typeof setTimeout> | undefined;
 	#toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -163,6 +188,10 @@ export class LookState {
 			this.workspaces = kept.workspaces;
 			this.transports = kept.transports;
 			this.facilities = kept.facilities;
+			this.customers = kept.customers;
+			this.added = kept.added;
+			this.members = kept.members;
+			for (const customer of kept.added) registerCustomer(customer.name, customer.city);
 		} else
 			for (const project of this.projects) {
 				this.workspaces[project.id] = createPanels(project);
@@ -173,7 +202,10 @@ export class LookState {
 				projects: this.projects,
 				workspaces: this.workspaces,
 				transports: this.transports,
-				facilities: this.facilities
+				facilities: this.facilities,
+				customers: this.customers,
+				added: this.added,
+				members: this.members
 			} satisfies KeptType);
 			clearTimeout(this.#keepTimer);
 			this.#keepTimer = setTimeout(() => this.#keep(text), 300);
@@ -204,6 +236,8 @@ export class LookState {
 
 	// A count card picks what the chart and the list show, and the chart that suits it; each has its own filters.
 	pick(dataset: DatasetType) {
+		this.slide = Math.sign(PAGES.indexOf(dataset) - PAGES.indexOf(this.dataset));
+		this.navSection = dataset;
 		this.dataset = dataset;
 		this.chart = DEFAULT_CHART[dataset];
 		this.filter = 'All';
@@ -221,7 +255,22 @@ export class LookState {
 	home() {
 		this.#keepProject();
 		this.screen = 'dashboard';
-		this.navSection = 'home';
+		this.navSection = this.dataset;
+	}
+
+	// Mark sent remembers the state before, and Unsend goes back to it.
+	markSent(project: ProjectType) {
+		if (project.status !== 'Sent') project.before = project.status;
+		project.status = 'Sent';
+		this.saved();
+		this.say(`"${project.title}" marked sent. It can't be edited now.`);
+	}
+
+	unsend(project: ProjectType) {
+		project.status = project.before && project.before !== 'Sent' ? project.before : 'Review';
+		project.before = undefined;
+		this.saved();
+		this.say(`"${project.title}" is back to ${project.status}`);
 	}
 
 	// Leaving a project writes back what the dashboard lists: its progress and its trip's transports and facilities.
@@ -239,6 +288,7 @@ export class LookState {
 	}
 
 	create(title: string, client: string) {
+		this.adding = undefined;
 		const id = createId('p');
 		this.projects.unshift({
 			id,
@@ -258,7 +308,9 @@ export class LookState {
 		this.workspaces[id] = createPanels(this.projects[0]).map((panel) => ({
 			...panel,
 			fields: panel.fields.map((field) =>
-				['Title', 'Organization', 'Client'].includes(field.label) ? field : { ...field, value: '' }
+				['Title', 'Organization', 'Customer'].includes(field.label)
+					? field
+					: { ...field, value: '' }
 			),
 			assigned: [],
 			days: [],
@@ -305,6 +357,27 @@ export class LookState {
 		this.say(`${facility.name} added to Facilities`);
 	}
 
+	addCustomer(name: string, city = '') {
+		this.added.push(registerCustomer(name, city));
+		this.customers.push(name);
+		this.say(`${name} added to Customers`);
+	}
+
+	addMember(member: Pick<TeamMemberType, 'name' | 'email' | 'role'>) {
+		this.members.push({
+			...member,
+			rank: 9,
+			title: '',
+			label: '',
+			phone: '',
+			location: '',
+			href: '',
+			profileURL: '',
+			slug: ''
+		});
+		this.say(`${member.name} added to the Team`);
+	}
+
 	addPanel() {
 		const count = this.panels.filter((panel) => panel.id.startsWith('panel')).length + 1;
 		const panel = newPanel(count);
@@ -322,7 +395,8 @@ export class LookState {
 
 	// Only the photo panels move, and only among themselves, as in the app prototype.
 	movePanel(from: number, to: number) {
-		if (!this.panels[from]?.isDraggable || !this.panels[to]?.isDraggable) return false;
+		if (this.isFrozen || !this.panels[from]?.isDraggable || !this.panels[to]?.isDraggable)
+			return false;
 		const [panel] = this.panels.splice(from, 1);
 		this.panels.splice(to, 0, panel);
 		this.saved();

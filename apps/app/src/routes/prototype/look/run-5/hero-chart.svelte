@@ -1,35 +1,15 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 5: the dashboard chart. It runs edge to edge in one blue, its fill fading out just above
-	// the cards. The big number and its change sit top left; the chart type and the time range are two ghost menus top
-	// right, white only while open (note 10). Each card opens on its own chart (note 11): projects an area, clients a
-	// map of where they are, the team a pie by label, and pies give numbers, never percents (note 12). A finger (or
-	// mouse) scrubs back in time. The history is made up (chart.data.ts); the map is us-atlas (map.data.ts).
+	// the cards. The big number and its change sit top left. Run 11 (2026-10-26 19:22): the chart type and time range
+	// menus moved down to the list's heading (dashboard-list.svelte). Each card opens on its own chart (note 11):
+	// projects an area, customers a map of where they are, the team a pie by label, and pies give numbers, never
+	// percents (note 12). A finger (or mouse) scrubs back in time. The history is made up (chart.data.ts); the map is us-atlas (map.data.ts).
 	import { fade } from 'svelte/transition';
-	import {
-		CHART_KINDS,
-		chartOf,
-		headlineAt,
-		pinsOf,
-		RANGES,
-		slicesOf,
-		type ChartKindType
-	} from './chart.data';
+	import { chartOf, headlineAt, pinsOf, RANGE_NAMES, RANGES, slicesOf } from './chart.data';
 	import type { LookState } from './look.state.svelte';
 	import { US_BORDERS, US_NATION } from './map.data';
-	import Menu from './menu.svelte';
 
 	let { look }: { look: LookState } = $props();
-
-	const RANGE_NAMES: Record<string, string> = {
-		'24h': '24 hours',
-		'7d': '7 days',
-		'30d': '30 days',
-		qtr: 'Quarter',
-		'6m': '6 months',
-		'1y': '1 year',
-		'5y': '5 years',
-		all: 'All time'
-	};
 
 	let width = $state(0);
 	let height = $state(0);
@@ -51,7 +31,7 @@
 	);
 	const PIE_NOTE: Record<string, string> = {
 		projects: 'open, by status',
-		clients: 'open projects, by client',
+		customers: 'open projects, by customer',
 		team: 'people, by label',
 		transport: 'transports on live projects, by type',
 		facilities: 'facilities, by kind'
@@ -63,7 +43,6 @@
 	);
 	const change = $derived(headlineAt(data, last) - headlineAt(data, 0));
 	const range = $derived(RANGES.find((item) => item.id === look.range)!);
-	const kind = $derived(CHART_KINDS.find((item) => item.id === look.chart)!);
 
 	// One line: the total of every series at each point.
 	const totals = $derived(
@@ -180,15 +159,6 @@
 			Math.min(last, Math.round((event.clientX - box.left - inset) / (step || 1)))
 		);
 	}
-
-	// Ghost until open; open, it turns white with a light grey edge (note 10).
-	function buttonOf(isOpen: boolean) {
-		return `flex h-9 items-center gap-1 rounded-full px-2.5 transition ${
-			isOpen
-				? 'bg-white text-slate-900 ring-1 ring-slate-200 shadow-sm'
-				: 'text-slate-600 ring-1 ring-transparent hover:text-slate-900'
-		}`;
-	}
 </script>
 
 <section class="flex h-full min-h-0 flex-col">
@@ -212,43 +182,6 @@
 				<span class="truncate text-sm font-medium text-slate-500">{data.labels[index]}</span>
 			{/if}
 		</p>
-		<div class="flex shrink-0 items-center gap-1.5">
-			<Menu
-				label="Chart type"
-				value={look.chart}
-				options={CHART_KINDS.map((item) => ({ id: item.id, label: item.label, icon: item.icon }))}
-				onpick={(id) => (look.chart = id as ChartKindType)}
-			>
-				{#snippet trigger(_, isOpen)}
-					<span
-						class={buttonOf(isOpen)}
-						title="Chart: {kind.label}"
-						><span class="{kind.icon} size-[18px]"></span><span
-							class="icon-[mdi--chevron-down] size-3.5 text-slate-400"
-						></span></span
-					>
-				{/snippet}
-			</Menu>
-			{#if !isTimeless}<Menu
-					label="Time range"
-					value={look.range}
-					options={RANGES.map((item) => ({
-						id: item.id,
-						label: RANGE_NAMES[item.id]
-					}))}
-					onpick={(id) => (look.range = id as typeof look.range)}
-				>
-					{#snippet trigger(_, isOpen)}
-						<span
-							class={buttonOf(isOpen)}
-							title="Time range: {RANGE_NAMES[look.range]}"
-							><span class="icon-[mdi--calendar-blank-outline] size-[18px]"></span><span
-								class="text-xs font-semibold tabular-nums">{range.label}</span
-							><span class="icon-[mdi--chevron-down] size-3.5 text-slate-400"></span></span
-						>
-					{/snippet}
-				</Menu>{/if}
-		</div>
 	</div>
 
 	<div

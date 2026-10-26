@@ -9,8 +9,11 @@
 	// `soft` (D): white card on a soft shadow, control badge on the corner, bar under.
 	// `flat` (E): white card with no shadow until it opens, control inline.
 	// `ring` (F): the icon sits in its own progress ring, so the card needs no bar.
+	// Run 11 (Justin, 2026-10-26 19:22): a Sent or Complete project is frozen. Every panel's icon and ring take the
+	// state's colour (Sent purple, Complete green), a lock in that colour stands where the switch was, and nothing
+	// inside opens for editing, drags or deletes (panel-list.svelte says why, with Unsend).
 	import { slide } from 'svelte/transition';
-	import type { PanelType } from './look.data';
+	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
 	import ProgressRing from './progress-ring.svelte';
@@ -31,6 +34,11 @@
 	const tone = $derived(toneOf(metrics.status));
 	const isOpen = $derived(look.panelId === panel.id);
 	const isLocked = $derived(panel.control === 'locked');
+	const frozen = $derived(look.isFrozen ? look.project.status : undefined);
+	const FROZEN_RINGS: Record<string, string> = {
+		Sent: 'stroke-violet-500',
+		Complete: 'stroke-success'
+	};
 	const TRACKS = {
 		'To do': 'bg-slate-400',
 		'In progress': 'bg-primary',
@@ -57,7 +65,14 @@
 </script>
 
 {#snippet control(isBadge: boolean)}
-	{#if isLocked}
+	{#if frozen}
+		<span
+			class="icon-[mdi--lock] size-7 shrink-0 {STATUS[frozen].tone}"
+			role="img"
+			aria-label="{panel.name} can't be edited while {frozen}"
+			title="{frozen}: read only"
+		></span>
+	{:else if isLocked}
 		<span
 			class="icon-[mdi--lock] size-7 shrink-0 text-slate-200"
 			role="img"
@@ -90,7 +105,7 @@
 	{#if style === 'soft'}
 		<div class="absolute -top-2 -right-2 z-10">{@render control(true)}</div>
 	{/if}
-	{#if panel.control === 'remove'}
+	{#if panel.control === 'remove' && !frozen}
 		<button
 			type="button"
 			class="absolute -top-1.5 -right-1.5 z-10 flex size-6 items-center justify-center rounded-full bg-slate-900 text-white shadow ring-2 ring-white transition hover:bg-danger"
@@ -108,8 +123,8 @@
 		class="flex items-center gap-1 p-4 select-none [-webkit-touch-callout:none] {style === 'ring'
 			? ''
 			: 'pb-3'}"
-		data-grip={panel.isDraggable ? 'panels' : undefined}
-		title={panel.isDraggable ? 'Hold and drag to reorder' : undefined}
+		data-grip={panel.isDraggable && !frozen ? 'panels' : undefined}
+		title={panel.isDraggable && !frozen ? 'Hold and drag to reorder' : undefined}
 	>
 		<button
 			type="button"
@@ -122,14 +137,16 @@
 					percent={panel.isEnabled ? metrics.percent : 0}
 					size={52}
 					stroke={4}
-					tone={tone.ring}
+					tone={frozen && panel.isEnabled ? FROZEN_RINGS[frozen] : tone.ring}
 				>
 					<span
-						class="{panel.icon} relative size-6 {panel.isEnabled
-							? metrics.status === 'Complete'
-								? 'text-success'
-								: 'text-primary'
-							: 'text-slate-300'}"
+						class="{panel.icon} relative size-6 {frozen && panel.isEnabled
+							? STATUS[frozen].tone
+							: panel.isEnabled
+								? metrics.status === 'Complete'
+									? 'text-success'
+									: 'text-primary'
+								: 'text-slate-300'}"
 					></span>
 				</ProgressRing>
 			{:else}

@@ -2,7 +2,8 @@
 	// PROTOTYPE (#161): the live preview, built from the panels as they stand (cover, contents with page numbers,
 	// the report pages in panel order), laid on a free canvas you can drag in any direction (viewport.svelte.ts).
 	// The project report on one page (introduction, title, location, the facts, personnel, transport and cargo); the
-	// sample reports' disclaimer with the owner's signature, always last; each photo's own description over it. Client and team come from the Project panel, the trip from the Transport panel: its stops print as a chain
+	// sample reports' disclaimer with the owner's signature, always last; each photo's own description over it.
+	// Customer and team come from the Project panel, the trip from the Transport panel: its stops print as a chain
 	// and each stop gets its own page with the particulars a tracking service fills in later (the sample reports'
 	// Ships Particulars). Run 8 (Justin's notes 15 to 23): the contents list every page, Cover first, unnumbered, with
 	// only the Project Report's parts under it; no section numbers; Start, Stop and End each in their colour; the
@@ -12,7 +13,10 @@
 	// the QR in thicker square corners with the Trident logo in its middle and no SCAN; the contents numbered like an
 	// ordered list (the page titles stay unnumbered) with black numbers and wider dots; "Disclaimer"; the footer is the
 	// client's logo at its own width, the client's name and the document ID under it; six and eight photos sit in two
-	// columns; the spread layout opens at the top left.
+	// columns; the spread layout opens at the top left. Run 11 (2026-10-26 19:22): Customer for Client; a light grey
+	// line under the header; the QR is the code alone; the footer's customer logo is the size of the header's Trident
+	// logo, a customer with none gets its initial on a colour circle; a barcode marks the document ID; the contents
+	// number 1. 2. 3. with parts 3.1 under the title's first letter; the spread layout opens at the top centre.
 	import { onMount, untrack } from 'svelte';
 	import ClientLogo from './client-logo.svelte';
 	import {
@@ -21,6 +25,7 @@
 		documentIdOf,
 		MODE_ICONS,
 		ORGANIZATION,
+		PAGE_ICONS,
 		PARTICULARS,
 		personOf,
 		POINTS,
@@ -84,7 +89,7 @@
 
 	const team = $derived(look.panels.find((panel) => panel.kind === 'project'));
 	const timelog = $derived(look.panels.find((panel) => panel.id === 'timelog'));
-	const company = $derived(detail('Client') || look.project.client);
+	const company = $derived(detail('Customer') || look.project.client);
 	const location = $derived(detail('Location') || look.project.location);
 	const people = $derived(
 		[team?.owner, ...(team?.assigned ?? [])].filter((name): name is string => Boolean(name))
@@ -167,7 +172,7 @@
 	});
 
 	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on and
-	// numbered like an ordered list (1, 2, 3, 3.1); only the Project Report lists its parts (Justin's run 8 notes 16
+	// numbered like an ordered list (1. 2. 3. 3.1); only the Project Report lists its parts (Justin's run 8 notes 16
 	// and 17, run 9 note 4).
 	const REPORT_PARTS = ['Personnel in Attendance', 'Transport', 'Cargo Description'];
 	const contents = $derived(
@@ -302,7 +307,7 @@
 		],
 		[
 			'Accuracy of Information',
-			'The accuracy of this report depends on the information provided by the client and others involved. We do not guarantee the accuracy of such third-party information.'
+			'The accuracy of this report depends on the information provided by the customer and others involved. We do not guarantee the accuracy of such third-party information.'
 		],
 		[
 			'Right to Amend',
@@ -319,20 +324,20 @@
 	];
 
 	const COVER = $derived([
-		{ icon: 'icon-[mdi--anchor]', label: 'Facility', value: facility },
+		{ icon: PAGE_ICONS.facilities.active, label: 'Facility', value: facility },
 		{
 			icon: stops[0] ? iconOf(stops[0]) : 'icon-[mdi--ferry]',
 			label: 'Transport',
 			value: transport
 		},
 		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: look.project.dates },
-		{ icon: 'icon-[mdi--domain]', label: 'Client', value: detail('Client') },
+		{ icon: PAGE_ICONS.customers.active, label: 'Customer', value: detail('Customer') },
 		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Owner', value: team?.owner },
 		{ icon: 'icon-[mdi--package-variant-closed]', label: 'Type', value: detail('Project type') }
 	]);
 </script>
 
-<!-- Trident in the header and the client in the footer, the same way: logo, name, lines under it. -->
+<!-- Trident in the header and the customer in the footer, the same way: logo, name, lines under it. -->
 {#snippet trident()}
 	<div class="flex items-center gap-2.5">
 		<img
@@ -352,7 +357,8 @@
 	</div>
 {/snippet}
 
-<!-- The client's logo at its own width, no box around it (run 9 note 6), and the document ID under the name. -->
+<!-- The customer's logo, no box around it (run 9 note 6), as big as Trident's in the header (run 11); a customer with
+     no logo gets its initial on a colour circle. The document ID under the name, by a barcode. -->
 {#snippet customer()}
 	<div class="flex min-w-0 items-center gap-2.5">
 		{#if client.logo}
@@ -360,46 +366,31 @@
 				src={client.logo}
 				alt=""
 				draggable="false"
-				class="h-[30px] w-auto max-w-[96px] shrink-0 object-contain"
+				class="size-10 shrink-0 object-contain"
 			/>
 		{:else}
 			<ClientLogo
 				name={company}
-				size={30}
+				size={40}
+				shape={client.icon ? 'rounded' : 'circle'}
 				isBare
 			/>
 		{/if}
 		<div class="min-w-0 text-[7.5px] leading-[1.5] text-slate-500">
 			<p class="truncate text-[10px] font-bold text-slate-900">{company}</p>
 			<p class="flex items-center gap-1 tabular-nums">
-				<span class="icon-[mdi--card-account-details-outline] size-2.5 text-slate-950"
-				></span>{documentNumber}
+				<span class="icon-[mdi--barcode] size-2.5 text-slate-950"></span>{documentNumber}
 			</p>
 		</div>
 	</div>
 {/snippet}
 
-<!-- The QR code in a camera's focus corners, square and bold, with the Trident logo in a small circle at its middle
-     (run 9 notes 2 and 3). A real code keeps scanning with a mark that small: QR codes carry spare data for it. -->
+<!-- The QR code alone: no corners, no logo (run 11). -->
 {#snippet code()}
-	<div class="relative p-[6px]">
-		{#each ['top-0 left-0 border-t-[3px] border-l-[3px]', 'top-0 right-0 border-t-[3px] border-r-[3px]', 'bottom-0 left-0 border-b-[3px] border-l-[3px]', 'right-0 bottom-0 border-r-[3px] border-b-[3px]'] as corner (corner)}
-			<span class="absolute size-3 border-slate-950 {corner}"></span>
-		{/each}
-		<Qr
-			value={documentNumber}
-			size={38}
-		/>
-		<span
-			class="absolute top-1/2 left-1/2 flex size-[11px] -translate-1/2 items-center justify-center rounded-full bg-white"
-		>
-			<img
-				src="/logo-color.svg"
-				alt=""
-				class="size-[8px]"
-			/>
-		</span>
-	</div>
+	<Qr
+		value={documentNumber}
+		size={44}
+	/>
 {/snippet}
 
 {#snippet entryRow(time: string, activity: string, isLast: boolean)}
@@ -490,7 +481,7 @@
 								{@render trident()}
 								{@render code()}
 							</div>
-							<div class="mt-3 h-px bg-slate-950"></div>
+							<div class="mt-3 h-px bg-slate-900/15"></div>
 						</header>
 						<div class="px-10 pt-6">
 							<h2 class="text-[24px] font-bold tracking-tight text-slate-950">{item.title}</h2>
@@ -498,13 +489,11 @@
 								{#snippet line(number: string, title: string, page: number, isSub: boolean)}
 									<li
 										class="flex items-baseline gap-2 {isSub
-											? 'py-[3px] pl-5 text-[11px] text-slate-600'
+											? 'py-[3px] pl-8 text-[11px] text-slate-600'
 											: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
 									>
-										<span
-											class="shrink-0 font-semibold text-slate-950 tabular-nums {isSub
-												? 'w-6'
-												: 'w-5'}">{number}</span
+										<span class="w-6 shrink-0 font-semibold text-slate-950 tabular-nums"
+											>{number}</span
 										>
 										<span>{title}</span>
 										<span
@@ -515,7 +504,7 @@
 								{/snippet}
 								<ol class="mt-4">
 									{#each contents as entry, entryIndex (entry.key)}
-										{@render line(`${entryIndex + 1}`, entry.title, pageOf(entry.key), false)}
+										{@render line(`${entryIndex + 1}.`, entry.title, pageOf(entry.key), false)}
 										{#each entry.subs as sub, subIndex (sub)}
 											{@render line(
 												`${entryIndex + 1}.${subIndex + 1}`,
@@ -555,7 +544,7 @@
 									</p>
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Client', detail('Client')], ['Type', detail('Project type')]] as [label, value] (label)}
+									{#each [['Customer', detail('Customer')], ['Type', detail('Project type')]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
 											<p
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
