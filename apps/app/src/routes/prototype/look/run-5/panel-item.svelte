@@ -1,7 +1,8 @@
 <script lang="ts">
 	// PROTOTYPE (#161): one panel with its progress and controls, opening like an accordion. A panel that can be left
 	// out has a switch coloured by its state (to do grey, in progress blue, complete green); a required panel shows one
-	// big lock in its state's colour instead, a see-through green once complete (Justin's run 8 note 5). A photo panel
+	// big lock instead, in the light grey of the progress ring's track whatever its state (Justin's run 9 note 22). Lock
+	// and switch sit in the same width, so every panel's percent lines up (note 23). A photo panel
 	// drags by its whole header, with no handle (notes 6 and 7). An added panel also has an X top right that asks
 	// before deleting (LookState.confirm, the same dialog as every other delete).
 	// Every style keeps the cards apart with room to breathe and draws no borders.
@@ -36,12 +37,6 @@
 		Complete: 'bg-success',
 		Off: 'bg-slate-300'
 	};
-	const LOCKS = {
-		'To do': 'text-slate-300',
-		'In progress': 'text-primary',
-		Complete: 'text-success/40',
-		Off: 'text-slate-300'
-	};
 
 	function toggleOpen() {
 		look.panelId = isOpen ? '' : panel.id;
@@ -64,7 +59,7 @@
 {#snippet control(isBadge: boolean)}
 	{#if isLocked}
 		<span
-			class="icon-[mdi--lock] size-7 shrink-0 transition-colors {LOCKS[metrics.status]}"
+			class="icon-[mdi--lock] size-7 shrink-0 text-slate-200"
 			role="img"
 			aria-label="{panel.name} is required"
 			title="Required panel"
@@ -171,7 +166,7 @@
 			</span>
 		</button>
 		{#if style !== 'soft'}
-			<span class="ml-2">{@render control(false)}</span>
+			<span class="ml-2 flex w-11 shrink-0 justify-center">{@render control(false)}</span>
 		{/if}
 	</div>
 	{#if style !== 'ring'}

@@ -3,7 +3,9 @@
 	// blur and no border, so the panels (and the pages) show scrolling under it (Justin's note 3): back, the title, and
 	// the project's percent and state over its bar (note 2). Panels / Preview is a black bar floating at the bottom
 	// centre, like the preview's zoom bar, with the save cloud at its start (note 1). Swipe between the two; on Preview
-	// the pages take every drag, so a hidden strip on the left edge swipes back.
+	// the pages take every drag, so a hidden strip on the left edge swipes back. Run 9: the bar is words only, with no
+	// line after the cloud (note 19); on Panels the left edge swipes the whole project away, back to the dashboard
+	// (note 21).
 	import type { ComponentProps } from 'svelte';
 	import type { LookState } from './look.state.svelte';
 	import PanelList from './panel-list.svelte';
@@ -68,6 +70,30 @@
 		swiper.style.scrollSnapType = '';
 		show(isBack ? 'edit' : 'preview');
 	}
+
+	// The left-edge strip on Panels: the project follows the finger, showing the dashboard under it, and goes home past
+	// a third of the screen or on a quick flick; otherwise it springs back.
+	let pull = $state(0);
+	let isPulling = $state(false);
+	let pullStart = { x: 0, t: 0 };
+
+	function pullDown(event: PointerEvent) {
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		isPulling = true;
+		pullStart = { x: event.clientX, t: event.timeStamp };
+	}
+
+	function pullMove(event: PointerEvent) {
+		if (isPulling) pull = Math.max(0, event.clientX - pullStart.x);
+	}
+
+	function pullUp(event: PointerEvent) {
+		if (!isPulling) return;
+		isPulling = false;
+		const speed = pull / Math.max(1, event.timeStamp - pullStart.t);
+		if (pull > window.innerWidth / 3 || (pull > 40 && speed > 0.5)) look.home();
+		else pull = 0;
+	}
 </script>
 
 {#snippet tabs()}
@@ -76,7 +102,6 @@
 		aria-label="Panels or preview"
 	>
 		<span class="flex size-9 items-center justify-center"><SaveCloud {look} /></span>
-		<span class="h-5 w-px bg-white/15"></span>
 		<div
 			class="relative grid grid-cols-[1fr_1fr]"
 			role="tablist"
@@ -85,35 +110,35 @@
 				class="absolute inset-y-0 left-0 w-1/2 rounded-full bg-primary shadow-md shadow-primary/30"
 				style="transform: translateX({progress * 100}%)"
 			></span>
-			{#each [['edit', 'Panels', 'icon-[mdi--view-agenda-outline]'], ['preview', 'Preview', 'icon-[mdi--file-document-outline]']] as const as [tab, label, icon] (tab)}
+			{#each [['edit', 'Panels'], ['preview', 'Preview']] as const as [tab, label] (tab)}
 				<button
-					class="relative flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors {look.tab ===
+					class="relative flex h-9 items-center justify-center rounded-full px-4 text-[13px] font-medium transition-colors {look.tab ===
 					tab
 						? 'text-white'
 						: 'text-white/60 hover:text-white'}"
 					role="tab"
 					aria-selected={look.tab === tab}
-					onclick={() => show(tab)}><span class="{icon} size-[18px] shrink-0"></span>{label}</button
+					onclick={() => show(tab)}>{label}</button
 				>
 			{/each}
 		</div>
 	</nav>
 {/snippet}
 
-<div class="relative h-dvh overflow-hidden md:hidden {surface}">
+<div
+	class="relative h-dvh overflow-hidden md:hidden {surface} {isPulling
+		? ''
+		: 'transition-transform duration-300 ease-out'} {pull
+		? 'shadow-[-16px_0_40px_rgb(15_23_42/0.18)]'
+		: ''}"
+	style:transform={pull ? `translateX(${pull}px)` : undefined}
+>
 	<header
 		class="absolute inset-x-0 top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
 		bind:clientHeight={top}
 	>
-		<div class="py-2 pr-4 pl-1.5">
-			<ProjectBar {look}>
-				<button
-					class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
-					aria-label="Back"
-					onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
-				>
-				<span class="truncate font-semibold text-slate-900">{look.project.title}</span>
-			</ProjectBar>
+		<div class="py-2 pr-1.5 pl-1.5">
+			<ProjectBar {look} />
 		</div>
 	</header>
 	{@render tabs()}
@@ -130,7 +155,6 @@
 			<PanelList
 				{look}
 				style={panels}
-				bottom="bottom-0"
 			/>
 		</div>
 		<div class="relative w-full shrink-0 snap-start">
@@ -151,4 +175,15 @@
 			></div>
 		</div>
 	</div>
+	{#if look.tab === 'edit'}
+		<div
+			class="absolute bottom-0 left-0 z-10 w-4 touch-none"
+			style="top: {top}px"
+			aria-hidden="true"
+			onpointerdown={pullDown}
+			onpointermove={pullMove}
+			onpointerup={pullUp}
+			onpointercancel={pullUp}
+		></div>
+	{/if}
 </div>

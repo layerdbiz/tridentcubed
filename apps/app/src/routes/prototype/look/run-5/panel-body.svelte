@@ -1,5 +1,5 @@
 <script lang="ts">
-	// PROTOTYPE (#161): the inputs inside one panel, by kind: fields, project, transport, time log or photo groups.
+	// PROTOTYPE (#161): the inputs inside one panel, by kind: project, transport, items, time log or photo groups.
 	// Everything is live: typing moves the panel's count, its bar, the project's bar and the preview. The Project panel is
 	// its fields with the Team after Client; its drop-downs offer "Add new", a quick sheet (note 26). The Transport panel
 	// (Justin, 2026-10-25) is the trip, one stop per place in trip order: its point (Start, Stop, End, each with its
@@ -7,6 +7,10 @@
 	// puts the kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with
 	// Delete at the far right of its bottom row (run 8 note 10); every delete asks first. Each photo has its own
 	// description: tap it, or Edit description in its ⋮ (notes 12 and 14). The time log can add a sample day (note 9).
+	// Run 9: Items is rows of quantity and description, like the time log's entries (note 24); a photo with a
+	// description shows an icon instead of its text (note 16), its ⋮ is bare dots (note 15), and the photos-per-page
+	// buttons draw their own layout (note 17). Uploads are shrunk here, as V1 will, so the browser can keep them.
+	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
 	import Avatar from './avatar.svelte';
 	import BottomSheet from './bottom-sheet.svelte';
@@ -14,6 +18,7 @@
 	import {
 		createId,
 		FACILITY_ICONS,
+		itemOf,
 		LAYOUTS,
 		MODE_ICONS,
 		PEOPLE,
@@ -43,10 +48,28 @@
 		return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 	}
 
-	function pick(event: Event, onfile: (url: string, name: string) => void) {
+	// A picked image comes back at most 1280 px on its long side, as a JPEG small enough for the browser to keep.
+	async function shrink(file: File) {
+		try {
+			const bitmap = await createImageBitmap(file);
+			const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
+			const canvas = document.createElement('canvas');
+			canvas.width = Math.round(bitmap.width * scale);
+			canvas.height = Math.round(bitmap.height * scale);
+			canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+			bitmap.close();
+			return canvas.toDataURL('image/jpeg', 0.78);
+		} catch {
+			return URL.createObjectURL(file);
+		}
+	}
+
+	async function pick(event: Event, onfile: (url: string, name: string) => void) {
 		const input = event.currentTarget as HTMLInputElement;
-		for (const file of input.files ?? []) onfile(URL.createObjectURL(file), file.name);
+		const files = [...(input.files ?? [])];
 		input.value = '';
+		for (const file of files)
+			onfile(file.type.startsWith('image/') ? await shrink(file) : '', file.name);
 		look.saved();
 	}
 
@@ -232,8 +255,13 @@
 		look.saved();
 	}
 
-	// The photo whose description is open in the sheet.
+	// The photo whose description is open in the sheet. The sheet opens with the cursor at the end of the text, ready to
+	// type: the browser's own autofocus skips a field that appears after a tap on a button.
 	let editing = $state<PhotoType>();
+	const focusEnd: Attachment<HTMLTextAreaElement> = (node) => {
+		node.focus({ preventScroll: true });
+		node.setSelectionRange(node.value.length, node.value.length);
+	};
 
 	function sortEntries(index: number) {
 		panel.days[index].entries.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
@@ -562,18 +590,7 @@
 	class="min-w-0 space-y-3"
 	oninput={() => look.saved()}
 >
-	{#if panel.kind === 'fields'}
-		{#if panel.fields[0]?.isReadonly}
-			<p class="flex items-center gap-1.5 text-xs text-slate-400">
-				<span class="icon-[mdi--lock-outline] size-4"></span> Comes from your organization settings.
-			</p>
-		{/if}
-		<div class="grid gap-3 sm:grid-cols-2">
-			{#each panel.fields as field (field.id)}
-				{@render fieldBlock(field)}
-			{/each}
-		</div>
-	{:else if panel.kind === 'project'}
+	{#if panel.kind === 'project'}
 		<div class="grid gap-3 sm:grid-cols-2">
 			{#each panel.fields as field (field.id)}
 				{@render fieldBlock(field)}
@@ -589,6 +606,56 @@
 		</div>
 	{:else if panel.kind === 'transport'}
 		{@render stopsBlock()}
+	{:else if panel.kind === 'items'}
+		{#if panel.items.length}
+			<p class="flex gap-2 text-xs font-medium text-slate-500">
+				<span class="w-20 shrink-0 pl-1">Quantity</span><span>Description</span>
+			</p>
+		{/if}
+		{#each panel.items as item, itemIndex (item.id)}
+			<div
+				class="flex items-start gap-2"
+				animate:flip={{ duration: 200 }}
+			>
+				<input
+					class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+					inputmode="numeric"
+					bind:value={item.quantity}
+					placeholder="Qty"
+					aria-label="Quantity of item {itemIndex + 1}"
+				/>
+				<input
+					class={inputClass}
+					bind:value={item.description}
+					placeholder="What it is, e.g. Accessory crates"
+					aria-label="Description of item {itemIndex + 1}"
+				/>
+				<button
+					type="button"
+					class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
+					aria-label="Delete item {itemIndex + 1}"
+					onclick={() =>
+						remove(
+							panel.items,
+							item,
+							'Delete this item?',
+							item.description
+								? `"${item.description}" leaves the cargo description.`
+								: 'It leaves the cargo description.'
+						)}><span class="icon-[mdi--close] size-4"></span></button
+				>
+			</div>
+		{:else}
+			<p class="py-2 text-center text-sm text-slate-400">No items yet. Add the first one.</p>
+		{/each}
+		<button
+			type="button"
+			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+			onclick={() => {
+				panel.items.push(itemOf());
+				look.saved();
+			}}><span class="icon-[mdi--plus] size-4"></span>Add item</button
+		>
 	{:else if panel.kind === 'timelog'}
 		{#each panel.days as day, dayIndex (day.id)}
 			<div animate:flip={{ duration: 200 }}>
@@ -732,15 +799,16 @@
 											look.saved();
 										}}
 									>
+										<!-- The page in miniature: one column for one or two, two columns from four up. -->
 										<span
-											class="{layout === 1
-												? 'icon-[mdi--crop-portrait]'
-												: layout === 2
-													? 'icon-[mdi--view-agenda-outline]'
-													: layout === 4
-														? 'icon-[mdi--view-grid-outline]'
-														: 'icon-[mdi--view-module-outline]'} size-4"
-										></span>{layout}
+											class="grid h-4 w-3 gap-px {layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}"
+											style="grid-template-rows: repeat({layout <= 2 ? layout : layout / 2}, 1fr)"
+											aria-hidden="true"
+										>
+											{#each Array.from({ length: layout }, (_, at) => at) as cell (cell)}
+												<span class="rounded-[1px] bg-current"></span>
+											{/each}
+										</span>{layout}
 									</button>
 								{/each}
 							</div>
@@ -771,9 +839,9 @@
 										/>
 										{#if photo.description}
 											<span
-												class="absolute inset-x-0 bottom-0 line-clamp-2 bg-linear-to-t from-black/75 to-transparent px-1.5 pt-4 pb-1 text-left text-[10px] leading-tight text-white"
-												>{photo.description}</span
-											>
+												class="absolute bottom-1 left-1 icon-[mdi--text-box] size-5 text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
+												title="Has a description"
+											></span>
 										{/if}
 									</button>
 									<div
@@ -808,9 +876,10 @@
 														)}
 										>
 											{#snippet trigger()}
-												<span
-													class="flex size-7 items-center justify-center rounded-full bg-slate-900/55 text-white backdrop-blur"
-													><span class="icon-[mdi--dots-vertical] size-[18px]"></span></span
+												<span class="flex size-7 items-center justify-center text-white"
+													><span
+														class="icon-[mdi--dots-vertical] size-6 drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
+													></span></span
 												>
 											{/snippet}
 										</Menu>
@@ -959,13 +1028,12 @@
 			</div>
 			<label class="mt-4 block">
 				<span class={labelClass}>Description</span>
-				<!-- svelte-ignore a11y_autofocus -->
 				<textarea
 					class="{inputClass} min-h-20"
 					bind:value={photo.description}
 					oninput={() => look.saved()}
 					placeholder="e.g. Lashing on the forward stack, seen from the quay"
-					autofocus></textarea>
+					{@attach focusEnd}></textarea>
 			</label>
 			<button class="mt-5 w-full rounded-full bg-primary py-3 text-sm font-semibold text-white"
 				>Done</button

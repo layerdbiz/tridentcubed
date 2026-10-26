@@ -3,7 +3,9 @@
 	// button top left opens the sidebar as a flat drawer (note 15), a bell sits top right. The dashboard is one screen
 	// split 35/65 on the phone and the desktop alike (note 34): the edge-to-edge chart and the three cards on top, the
 	// list below, scrolling on its own; on a desktop the cards and list sit in a narrower column. Inside a project
-	// the phone gets WorkspacePhone; the desktop the panels in a floating column over the pages.
+	// the phone gets WorkspacePhone; the desktop the panels in a floating column over the pages. Run 9 (note 21): a
+	// project slides in from the right over the dashboard, which stays underneath, so a swipe back can uncover it.
+	import { cubicOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
@@ -15,7 +17,6 @@
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ReportPreview from './report-preview.svelte';
-	import SaveCloud from './save-cloud.svelte';
 	import Sidebar from './sidebar.svelte';
 	import StatCards from './stat-cards.svelte';
 	import WorkspacePhone from './workspace-phone.svelte';
@@ -116,7 +117,7 @@
 {/snippet}
 
 <div class="min-h-dvh {CANVAS}">
-	{#if look.screen === 'dashboard'}
+	<div inert={look.screen !== 'dashboard'}>
 		<aside class="fixed top-3 bottom-3 left-3 z-40 hidden w-72 overflow-hidden md:block {FLOAT}">
 			<Sidebar
 				{look}
@@ -172,47 +173,47 @@
 				</div>
 			</section>
 		</main>
-	{:else}
-		<WorkspacePhone
-			{look}
-			panels="ring"
-			surface={CANVAS}
-			preview={{ ...PREVIEW, start: 'column' }}
-		/>
-		{#if isWide}
-			<div class="fixed inset-0">
-				<ReportPreview
-					{look}
-					highlight={look.panelId}
-					{...PREVIEW}
-					start="spread"
-					left={444}
-				/>
-			</div>
-			<aside
-				class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
-			>
-				<div class="pt-4 pr-5 pb-4 pl-4">
-					<ProjectBar {look}>
-						<button
-							class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
-							aria-label="Back to Home"
-							onclick={() => look.home()}
-							><span class="icon-[mdi--arrow-left] size-6"></span></button
-						>
-						<span class="truncate font-semibold text-slate-900">{look.project.title}</span>
-						<SaveCloud {look} />
-					</ProjectBar>
-				</div>
-				<div class="flex-1 overflow-y-auto px-4 pb-4">
-					<PanelList
+	</div>
+
+	{#if look.screen !== 'dashboard'}
+		<div
+			class="fixed inset-0 z-50"
+			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
+		>
+			<WorkspacePhone
+				{look}
+				panels="ring"
+				surface={CANVAS}
+				preview={{ ...PREVIEW, start: 'column' }}
+			/>
+			{#if isWide}
+				<div class="fixed inset-0">
+					<ReportPreview
 						{look}
-						style="ring"
-						bottom="bottom-0"
+						highlight={look.panelId}
+						{...PREVIEW}
+						start="spread"
+						left={444}
 					/>
 				</div>
-			</aside>
-		{/if}
+				<aside
+					class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
+				>
+					<div class="pt-4 pr-3 pb-4 pl-4">
+						<ProjectBar
+							{look}
+							isCloud
+						/>
+					</div>
+					<div class="flex-1 overflow-y-auto px-4 pb-4">
+						<PanelList
+							{look}
+							style="ring"
+						/>
+					</div>
+				</aside>
+			{/if}
+		</div>
 	{/if}
 
 	<NewProject {look} />

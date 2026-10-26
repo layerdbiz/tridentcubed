@@ -2,14 +2,17 @@
 	// PROTOTYPE (#161): the live preview, built from the panels as they stand (cover, contents with page numbers,
 	// the report pages in panel order), laid on a free canvas you can drag in any direction (viewport.svelte.ts).
 	// The project report on one page (introduction, title, location, the facts, personnel, transport and cargo); the
-	// sample reports' Standard Disclaimer with the owner's signature, always last; each photo's own description over
-	// it. Client and team come from the Project panel, the trip from the Transport panel: its stops print as a chain
+	// sample reports' disclaimer with the owner's signature, always last; each photo's own description over it. Client and team come from the Project panel, the trip from the Transport panel: its stops print as a chain
 	// and each stop gets its own page with the particulars a tracking service fills in later (the sample reports'
 	// Ships Particulars). Run 8 (Justin's notes 15 to 23): the contents list every page, Cover first, unnumbered, with
 	// only the Project Report's parts under it; no section numbers; Start, Stop and End each in their colour; the
-	// header is Trident (logo, name, phone, email) and a QR code in camera corners over SCAN; the footer is the client
-	// in Trident's style next to the document ID; the signature follows the HTML email signatures. Not the real
-	// renderer: page breaks are rough and Download is a stub.
+	// header is Trident (logo, name, phone, email) and a QR code in camera corners; the footer is the client in
+	// Trident's style; the signature follows the HTML email signatures. Not the real
+	// renderer: page breaks are rough and Download is a stub. Run 9 (Justin's notes 1 to 9 and 20): black header icons;
+	// the QR in thicker square corners with the Trident logo in its middle and no SCAN; the contents numbered like an
+	// ordered list (the page titles stay unnumbered) with black numbers and wider dots; "Disclaimer"; the footer is the
+	// client's logo at its own width, the client's name and the document ID under it; six and eight photos sit in two
+	// columns; the spread layout opens at the top left.
 	import { onMount, untrack } from 'svelte';
 	import ClientLogo from './client-logo.svelte';
 	import {
@@ -96,6 +99,17 @@
 	const facility = $derived(
 		listOf([...new Set(stops.map((stop) => stop.facility).filter(Boolean))])
 	);
+	// The Items panel's filled rows, and the same as words: "2 power transformers and 27 accessory crates".
+	const cargo = $derived(
+		(look.panels.find((panel) => panel.kind === 'items')?.items ?? []).filter((item) =>
+			item.description.trim()
+		)
+	);
+	const cargoLine = $derived(
+		listOf(
+			cargo.map((item) => [item.quantity, item.description.toLowerCase()].filter(Boolean).join(' '))
+		)
+	);
 
 	// "A", "A and B", "A, B and C".
 	function listOf(names: string[]) {
@@ -148,12 +162,13 @@
 						});
 				});
 		}
-		list.push({ key: 'disclaimer', title: 'Standard Disclaimer', kind: 'disclaimer' });
+		list.push({ key: 'disclaimer', title: 'Disclaimer', kind: 'disclaimer' });
 		return list;
 	});
 
-	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on, with
-	// no numbers; only the Project Report lists its parts (Justin's run 8 notes 16 and 17).
+	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on and
+	// numbered like an ordered list (1, 2, 3, 3.1); only the Project Report lists its parts (Justin's run 8 notes 16
+	// and 17, run 9 note 4).
 	const REPORT_PARTS = ['Personnel in Attendance', 'Transport', 'Cargo Description'];
 	const contents = $derived(
 		pages
@@ -167,6 +182,16 @@
 	function pageOf(key: string) {
 		return pages.findIndex((other) => other.key === key) + 1;
 	}
+
+	// How tall each photo prints for each photos-per-page choice: one or two fill the width; four, six and eight sit in
+	// two columns of two, three and four rows (run 9 note 13).
+	const PHOTO_SIZES: Record<number, string> = {
+		1: 'aspect-[4/3]',
+		2: 'aspect-[16/9]',
+		4: 'aspect-[4/3]',
+		6: 'h-[172px]',
+		8: 'h-[128px]'
+	};
 
 	// Where each page sits on the canvas: one column, or spread out in rows like a design board.
 	const COLUMNS = 4;
@@ -307,7 +332,7 @@
 	]);
 </script>
 
-<!-- Trident in the header and the client in the footer, the same way: logo, name, two lines under it. -->
+<!-- Trident in the header and the client in the footer, the same way: logo, name, lines under it. -->
 {#snippet trident()}
 	<div class="flex items-center gap-2.5">
 		<img
@@ -318,44 +343,62 @@
 		<div class="text-[7.5px] leading-[1.5] text-slate-500">
 			<p class="text-[11px] font-bold tracking-wide text-slate-900">TRIDENT CUBED</p>
 			<p class="flex items-center gap-1">
-				<span class="icon-[mdi--phone] size-2.5 text-primary"></span>{ORGANIZATION.phone}
+				<span class="icon-[mdi--phone] size-2.5 text-slate-950"></span>{ORGANIZATION.phone}
 			</p>
 			<p class="flex items-center gap-1">
-				<span class="icon-[mdi--email] size-2.5 text-primary"></span>{ORGANIZATION.email}
+				<span class="icon-[mdi--email] size-2.5 text-slate-950"></span>{ORGANIZATION.email}
 			</p>
 		</div>
 	</div>
 {/snippet}
 
+<!-- The client's logo at its own width, no box around it (run 9 note 6), and the document ID under the name. -->
 {#snippet customer()}
 	<div class="flex min-w-0 items-center gap-2.5">
-		<ClientLogo
-			name={company}
-			size={34}
-			isBare
-		/>
+		{#if client.logo}
+			<img
+				src={client.logo}
+				alt=""
+				draggable="false"
+				class="h-[30px] w-auto max-w-[96px] shrink-0 object-contain"
+			/>
+		{:else}
+			<ClientLogo
+				name={company}
+				size={30}
+				isBare
+			/>
+		{/if}
 		<div class="min-w-0 text-[7.5px] leading-[1.5] text-slate-500">
 			<p class="truncate text-[10px] font-bold text-slate-900">{company}</p>
-			{#each [client.kind, client.city].filter(Boolean) as line, at (at)}
-				<p>{line}</p>
-			{/each}
+			<p class="flex items-center gap-1 tabular-nums">
+				<span class="icon-[mdi--card-account-details-outline] size-2.5 text-slate-950"
+				></span>{documentNumber}
+			</p>
 		</div>
 	</div>
 {/snippet}
 
-<!-- The QR code in a camera's focus corners, with SCAN under it and no number. -->
+<!-- The QR code in a camera's focus corners, square and bold, with the Trident logo in a small circle at its middle
+     (run 9 notes 2 and 3). A real code keeps scanning with a mark that small: QR codes carry spare data for it. -->
 {#snippet code()}
-	<div class="flex flex-col items-center gap-1">
-		<div class="relative p-[5px]">
-			{#each ['top-0 left-0 rounded-tl-[3px] border-t-[1.5px] border-l-[1.5px]', 'top-0 right-0 rounded-tr-[3px] border-t-[1.5px] border-r-[1.5px]', 'bottom-0 left-0 rounded-bl-[3px] border-b-[1.5px] border-l-[1.5px]', 'right-0 bottom-0 rounded-br-[3px] border-r-[1.5px] border-b-[1.5px]'] as corner (corner)}
-				<span class="absolute size-2.5 border-slate-900 {corner}"></span>
-			{/each}
-			<Qr
-				value={documentNumber}
-				size={34}
+	<div class="relative p-[6px]">
+		{#each ['top-0 left-0 border-t-[3px] border-l-[3px]', 'top-0 right-0 border-t-[3px] border-r-[3px]', 'bottom-0 left-0 border-b-[3px] border-l-[3px]', 'right-0 bottom-0 border-r-[3px] border-b-[3px]'] as corner (corner)}
+			<span class="absolute size-3 border-slate-950 {corner}"></span>
+		{/each}
+		<Qr
+			value={documentNumber}
+			size={38}
+		/>
+		<span
+			class="absolute top-1/2 left-1/2 flex size-[11px] -translate-1/2 items-center justify-center rounded-full bg-white"
+		>
+			<img
+				src="/logo-color.svg"
+				alt=""
+				class="size-[8px]"
 			/>
-		</div>
-		<p class="text-[7px] leading-none font-black tracking-[0.3em] text-slate-900">SCAN</p>
+		</span>
 	</div>
 {/snippet}
 
@@ -452,22 +495,34 @@
 						<div class="px-10 pt-6">
 							<h2 class="text-[24px] font-bold tracking-tight text-slate-950">{item.title}</h2>
 							{#if item.kind === 'contents'}
-								{#snippet line(title: string, page: number, isSub: boolean)}
+								{#snippet line(number: string, title: string, page: number, isSub: boolean)}
 									<li
 										class="flex items-baseline gap-2 {isSub
-											? 'py-[3px] pl-4 text-[11px] text-slate-600'
+											? 'py-[3px] pl-5 text-[11px] text-slate-600'
 											: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
 									>
+										<span
+											class="shrink-0 font-semibold text-slate-950 tabular-nums {isSub
+												? 'w-6'
+												: 'w-5'}">{number}</span
+										>
 										<span>{title}</span>
-										<span class="min-w-4 flex-1 border-b border-dotted border-slate-300"></span>
-										<span class="w-5 text-right text-slate-500 tabular-nums">{page}</span>
+										<span
+											class="h-[3px] min-w-4 flex-1 bg-[radial-gradient(circle,var(--color-slate-400)_0.8px,transparent_1.1px)] bg-size-[7px_3px] bg-bottom bg-repeat-x"
+										></span>
+										<span class="w-5 text-right text-slate-950 tabular-nums">{page}</span>
 									</li>
 								{/snippet}
 								<ol class="mt-4">
-									{#each contents as entry (entry.key)}
-										{@render line(entry.title, pageOf(entry.key), false)}
-										{#each entry.subs as sub (sub)}
-											{@render line(sub, pageOf(entry.key), true)}
+									{#each contents as entry, entryIndex (entry.key)}
+										{@render line(`${entryIndex + 1}`, entry.title, pageOf(entry.key), false)}
+										{#each entry.subs as sub, subIndex (sub)}
+											{@render line(
+												`${entryIndex + 1}.${subIndex + 1}`,
+												sub,
+												pageOf(entry.key),
+												true
+											)}
 										{/each}
 									{/each}
 								</ol>
@@ -475,11 +530,8 @@
 								<p class="mt-3 text-[10.5px] leading-relaxed text-slate-600">
 									<b class="text-slate-900">Introduction.</b> This is to report that Trident Cubed
 									was present at {facility || 'the facility'} – {location} on {look.project.dates} for
-									the purpose of conducting a {(detail('Project type') || 'cargo').toLowerCase()} survey{valueOf(
-										'items',
-										'Title'
-									)
-										? ` of ${valueOf('items', 'Title')?.toLowerCase()}`
+									the purpose of conducting a {(detail('Project type') || 'cargo').toLowerCase()} survey{cargoLine
+										? ` of ${cargoLine}`
 										: ''}{transport ? ` from the ${transport}` : ''}.
 								</p>
 								<div class="mt-4 rounded-xl bg-slate-50 px-4 py-3">
@@ -582,17 +634,29 @@
 									{/each}
 								</div>
 								<h3 class="mt-5 text-[13px] font-bold text-slate-950">Cargo Description</h3>
-								<p
-									class="mt-1.5 text-[11px] {valueOf('items', 'Title')
-										? 'font-semibold text-slate-900'
-										: 'text-slate-300 italic'}"
-								>
-									{valueOf('items', 'Title') || 'Not filled in yet'}
-								</p>
-								{#if valueOf('items', 'Description')}
-									<p class="mt-1 text-[11px] leading-relaxed text-slate-600">
-										{valueOf('items', 'Description')}
-									</p>
+								{#if cargo.length}
+									<table class="mt-2 w-full text-left text-[11px]">
+										<thead>
+											<tr
+												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
+											>
+												<th class="w-14 pb-1 font-semibold">Qty</th>
+												<th class="pb-1 font-semibold">Description</th>
+											</tr>
+										</thead>
+										<tbody class="divide-y divide-slate-100">
+											{#each cargo as item (item.id)}
+												<tr>
+													<td class="py-1.5 font-bold text-slate-900 tabular-nums"
+														>{item.quantity || '–'}</td
+													>
+													<td class="py-1.5 text-slate-700">{item.description}</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								{:else}
+									<p class="mt-1.5 text-[11px] text-slate-300 italic">Not filled in yet</p>
 								{/if}
 							{:else if item.kind === 'transport' && item.panel}
 								{@const stopIndex = item.group ?? 0}
@@ -701,24 +765,14 @@
 								{#if group.description && !item.part}
 									<p class="mt-1 text-[11px] text-slate-500">{group.description}</p>
 								{/if}
-								<div
-									class="mt-4 grid gap-3 {group.layout <= 2
-										? 'grid-cols-1'
-										: group.layout === 4
-											? 'grid-cols-2'
-											: 'grid-cols-3'}"
-								>
+								<div class="mt-4 grid gap-3 {group.layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}">
 									{#each shown as photo (photo.id)}
 										<figure class="relative overflow-hidden rounded">
 											<img
 												src={photo.src}
 												alt=""
 												draggable="false"
-												class="w-full object-cover {group.layout === 1
-													? 'aspect-[4/3]'
-													: group.layout === 2
-														? 'aspect-[16/9]'
-														: 'aspect-[4/3]'}"
+												class="w-full object-cover {PHOTO_SIZES[group.layout]}"
 											/>
 											{#if photo.description}
 												<figcaption
@@ -791,18 +845,7 @@
 						<footer
 							class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-white px-10 pt-3 pb-6 text-[9px] text-slate-400"
 						>
-							<span class="flex min-w-0 items-center gap-4">
-								{@render customer()}
-								<span class="shrink-0 border-l border-slate-200 pl-4 leading-[1.5]">
-									<span
-										class="block text-[6.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
-										>Document ID</span
-									>
-									<b class="block text-[8.5px] font-semibold text-slate-700 tabular-nums"
-										>{documentNumber}</b
-									>
-								</span>
-							</span>
+							{@render customer()}
 							<span class="shrink-0">Page {index + 1} of {pages.length}</span>
 						</footer>
 					{/if}

@@ -51,6 +51,9 @@ export type EntryType = { id: string; time: string; activity: string };
 export type DayType = { id: string; date: string; entries: EntryType[] };
 // Each photo has its own description, written from the photo's ⋮ or a tap, shown over it in the preview.
 export type PhotoType = { id: string; src: string; description: string };
+// One row of the Items panel: how many and what (Justin's run 9 note 24), the way the sample reports list cargo
+// ("2x transformers and 27x accessory crates"). A manifest's extra columns may come later.
+export type ItemType = { id: string; quantity: string; description: string };
 export type GroupType = {
 	id: string;
 	title: string;
@@ -69,7 +72,7 @@ export type StopType = {
 	facility: string;
 };
 
-export type PanelKindType = 'fields' | 'project' | 'transport' | 'timelog' | 'photos';
+export type PanelKindType = 'project' | 'transport' | 'items' | 'timelog' | 'photos';
 export type PanelControlType = 'locked' | 'switch' | 'remove';
 
 export type PanelType = {
@@ -86,6 +89,7 @@ export type PanelType = {
 	days: DayType[];
 	groups: GroupType[];
 	stops: StopType[];
+	items: ItemType[];
 };
 
 export type PanelStatusType = 'To do' | 'In progress' | 'Complete' | 'Off';
@@ -318,6 +322,8 @@ export type ClientType = {
 	name: string;
 	kind: string;
 	icon: string;
+	// The same artwork trimmed to its edges, for the report footer (Justin's run 9 note 6).
+	logo: string;
 	city: string;
 	// The short code a document ID starts with. Made up for the prototype; the client's own come with V1.
 	code: string;
@@ -329,8 +335,14 @@ const ICONS = import.meta.glob<string>('./clients/*.{png,jpg,ico}', {
 	import: 'default'
 });
 
-function iconOf(id: string) {
-	return Object.entries(ICONS).find(([path]) => path.includes(`/${id}.`))?.[1] ?? '';
+const LOGOS = import.meta.glob<string>('./clients/trimmed/*.png', {
+	eager: true,
+	query: '?url',
+	import: 'default'
+});
+
+function iconOf(id: string, files = ICONS) {
+	return Object.entries(files).find(([path]) => path.includes(`/${id}.`))?.[1] ?? '';
 }
 
 // [name, icon file, kind, office city, document code]
@@ -350,7 +362,7 @@ const CLIENT_ROWS = [
 export const CLIENT_INFO: Record<string, ClientType> = Object.fromEntries(
 	CLIENT_ROWS.map(([name, id, kind, city, code]) => [
 		name,
-		{ name, kind, icon: iconOf(id), city, code }
+		{ name, kind, icon: iconOf(id), logo: iconOf(id, LOGOS), city, code }
 	])
 );
 
@@ -362,7 +374,7 @@ export function clientOf(name: string): ClientType {
 			.replace(/[^a-z]/gi, '')
 			.slice(0, 3)
 			.toUpperCase() || 'TC';
-	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', city: '', code };
+	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', logo: '', city: '', code };
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -584,9 +596,16 @@ export function photoOf(seed: string) {
 }
 
 let nextId = 0;
+// The page load's own mark, so an id made now never repeats one kept from an earlier visit (LookState keeps the
+// projects in the browser).
+const LOAD = Math.random().toString(36).slice(2, 7);
 export function createId(prefix: string) {
 	nextId += 1;
-	return `${prefix}-${nextId}`;
+	return `${prefix}-${LOAD}${nextId}`;
+}
+
+export function itemOf(quantity = '', description = ''): ItemType {
+	return { id: createId('item'), quantity, description };
 }
 
 function field(
@@ -656,7 +675,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 		assigned: [],
 		days: [],
 		groups: [],
-		stops: []
+		stops: [],
+		items: []
 	};
 	const panels: PanelType[] = [
 		projectPanel(project, base),
@@ -674,12 +694,12 @@ export function createPanels(project: ProjectType): PanelType[] {
 			id: 'items',
 			name: 'Items',
 			icon: 'icon-[mdi--package-variant-closed]',
-			kind: 'fields',
+			kind: 'items',
 			control: 'locked',
-			fields: [
-				field('Title', 'Containerized machinery'),
-				field('Description', 'Six crated units, shrink-wrapped on skids.', 'textarea'),
-				field('Name', 'Unit group B')
+			items: [
+				itemOf('2', 'Power transformers on steel cradles'),
+				itemOf('27', 'Accessory crates'),
+				itemOf('6', 'Crated machinery units, shrink-wrapped on skids')
 			]
 		},
 		{
@@ -746,17 +766,21 @@ export function createPanels(project: ProjectType): PanelType[] {
 	];
 
 	// Blank the later inputs, the less done the more, so each project opens at its own percent (LookState then lists
-	// that percent). Title, organization and client always stay; the stops go last, from the last one back.
-	const [details, trip, items] = panels;
+	// that percent). Title, organization and client always stay; items empty from the last row up; the stops go last,
+	// from the last one back.
+	const [details, trip, cargo] = panels;
 	const kept = ['Title', 'Organization', 'Client'];
 	let left = Math.round(((100 - project.progress) / 100) * 12);
 	for (let round = 0; left > 0 && round < 12; round += 1) {
-		for (const panel of [items, details]) {
-			const filled = panel.fields.filter((item) => item.value && !kept.includes(item.label));
-			if (left > 0 && filled.length > 0) {
-				filled[filled.length - 1].value = '';
-				left -= 1;
-			}
+		const row = cargo.items.findLast((item) => item.description);
+		if (row) {
+			row.quantity = row.description = '';
+			left -= 1;
+		}
+		const filled = details.fields.filter((item) => item.value && !kept.includes(item.label));
+		if (left > 0 && filled.length > 0) {
+			filled[filled.length - 1].value = '';
+			left -= 1;
 		}
 	}
 	for (const stop of trip.stops.toReversed())
@@ -820,7 +844,8 @@ export function newPanel(count: number): PanelType {
 		assigned: [],
 		days: [],
 		groups: [],
-		stops: []
+		stops: [],
+		items: []
 	};
 }
 

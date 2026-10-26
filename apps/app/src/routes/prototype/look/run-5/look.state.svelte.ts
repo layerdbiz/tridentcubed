@@ -1,12 +1,13 @@
 // PROTOTYPE (#161): in-memory state for the look. A project opens with every panel closed (Justin's run 8 note 4).
 // Every input counts toward its panel, and the panels toward the project, so the percents move as you type. The
 // Transport and Facility lists live here, so one added from a project shows on its dashboard page. Every delete asks
-// first (`confirm`, Justin 2026-10-25).
+// first (`confirm`, Justin 2026-10-25). Run 9: everything is kept in this browser, so a reload keeps your edits.
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	createId,
 	createPanels,
 	FACILITIES,
+	itemOf,
 	newPanel,
 	PROJECTS,
 	stopOf,
@@ -31,9 +32,10 @@ export type ConfirmType = { title: string; note?: string; onyes: () => void };
 export function metricsOf(panel: PanelType): MetricsType {
 	let done = 0;
 	let total = 0;
-	if (panel.kind === 'fields') {
-		total = panel.fields.length;
-		done = panel.fields.filter((field) => field.value.trim()).length;
+	if (panel.kind === 'items') {
+		// Each row counts once, when it has both its quantity and its description; no rows is one to do.
+		total = Math.max(1, panel.items.length);
+		done = panel.items.filter((item) => item.quantity.trim() && item.description.trim()).length;
 	} else if (panel.kind === 'project') {
 		total = panel.fields.length + 2;
 		done =
@@ -88,6 +90,26 @@ export function percentOf(panels: PanelType[]) {
 	return total ? Math.round((done / total) * 100) : 0;
 }
 
+// Run 9 (Justin's note 14, edits that "sometimes don't stay"): a phone browser reloads a tab it kept in the background,
+// and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
+// in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
+const KEEP = 'trident-look-161-run-9';
+type KeptType = {
+	projects: ProjectType[];
+	workspaces: Record<string, PanelType[]>;
+	transports: TransportType[];
+	facilities: FacilityType[];
+};
+
+function readKept(): KeptType | undefined {
+	try {
+		const text = localStorage.getItem(KEEP);
+		return text ? JSON.parse(text) : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 export function toneOf(status: PanelStatusType) {
 	if (status === 'Complete')
 		return { bar: 'bg-success', text: 'text-success', ring: 'stroke-success' };
@@ -129,12 +151,43 @@ export class LookState {
 
 	#saveTimer: ReturnType<typeof setTimeout> | undefined;
 	#toastTimer: ReturnType<typeof setTimeout> | undefined;
+	#keepTimer: ReturnType<typeof setTimeout> | undefined;
+	#isFull = false;
 
-	// Every project's panels up front, so the list shows the percent each one opens at.
+	// What this browser kept, or every project's panels up front, so the list shows the percent each one opens at.
+	// Any change is written back a moment later.
 	constructor() {
-		for (const project of this.projects) {
-			this.workspaces[project.id] = createPanels(project);
-			project.progress = percentOf(this.workspaces[project.id]);
+		const kept = readKept();
+		if (kept) {
+			this.projects = kept.projects;
+			this.workspaces = kept.workspaces;
+			this.transports = kept.transports;
+			this.facilities = kept.facilities;
+		} else
+			for (const project of this.projects) {
+				this.workspaces[project.id] = createPanels(project);
+				project.progress = percentOf(this.workspaces[project.id]);
+			}
+		$effect(() => {
+			const text = JSON.stringify({
+				projects: this.projects,
+				workspaces: this.workspaces,
+				transports: this.transports,
+				facilities: this.facilities
+			} satisfies KeptType);
+			clearTimeout(this.#keepTimer);
+			this.#keepTimer = setTimeout(() => this.#keep(text), 300);
+		});
+	}
+
+	#keep(text: string) {
+		try {
+			localStorage.setItem(KEEP, text);
+			this.#isFull = false;
+		} catch {
+			if (!this.#isFull)
+				this.say('This browser is full, so new changes are not kept after a reload');
+			this.#isFull = true;
 		}
 	}
 
@@ -210,7 +263,8 @@ export class LookState {
 			assigned: [],
 			days: [],
 			groups: [],
-			stops: panel.kind === 'transport' ? [stopOf()] : []
+			stops: panel.kind === 'transport' ? [stopOf()] : [],
+			items: panel.kind === 'items' ? [itemOf()] : []
 		}));
 		this.open(id);
 	}

@@ -112,6 +112,7 @@ export class Viewport {
 		this.focus(rect, isAnimated);
 	}
 
+	// Show every page, from the top left corner, where reading starts (Justin's run 9 note 20).
 	fitAll(isAnimated = true) {
 		this.#animate(isAnimated);
 		const room = this.width - this.left - this.right;
@@ -120,8 +121,8 @@ export class Viewport {
 			Math.min((room - 64) / this.content.width, (tall - 64) / this.content.height)
 		);
 		this.#sharpen();
-		this.x = this.left + (room - this.content.width * this.zoom) / 2;
-		this.y = this.top + (tall - this.content.height * this.zoom) / 2;
+		this.x = this.left + 32;
+		this.y = this.top + 32;
 	}
 
 	glide(vx: number, vy: number) {
