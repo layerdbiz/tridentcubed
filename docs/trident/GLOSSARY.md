@@ -39,7 +39,7 @@ A User with no membership in any organization. A Guest sees only their own accou
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
-A group of Users who share access to its projects. Trident Cubed is the first; client organizations come later. Its details (name, logo, address, email, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report.
+A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, logo, address, email, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report.
 _Avoid_: team, company, workspace
 
 **Membership**:
@@ -64,20 +64,20 @@ _Avoid_: staff, editor, surveyor, team member
 
 ### Projects and reports
 
-**Client**:
-The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A client has many projects.
-_Avoid_: customer, account
+**Customer**:
+The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A customer has many projects. Called Client until 2026-10-26.
+_Avoid_: client, account
 
 **Project**:
-One job for a client. A project owns exactly one report; a job that needs a second report, such as a cargo report split by booking, is not modelled yet.
+One job for a customer. A project owns exactly one report; a job that needs a second report, such as a cargo report split by booking, is not modelled yet.
 _Avoid_: job, survey (alone)
 
 **Project number**:
-A project's reference: the client's short code, the day the project was created and J with which of that client's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A client sometimes assigns two or three in a day. It can be edited.
+A project's reference: the customer's short code, the day the project was created and J with which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. It can be edited.
 _Avoid_: job number, reference, queue number
 
 **Document ID**:
-The report's identifier and the name of its exported file: the project number, FR with the report number and R with the revision number, SGL-2026-02-03-J01-FR01-R01 (the client's pick, 2026-10-09). The file name may end with the transport's name after a triple dash, SGL-2026-02-03-J01-FR01-R01---BBC-Kimberly.pdf.Every report page prints it in the footer, under the client's name.
+The report's identifier and the name of its exported file: the project number, FR with the report number and R with the revision number, SGL-2026-02-03-J01-FR01-R01 (Trident Cubed's pick, 2026-10-09). The file name may end with the transport's name after a triple dash, SGL-2026-02-03-J01-FR01-R01---BBC-Kimberly.pdf.Every report page prints it in the footer, under the customer's name.
 _Avoid_: file name, job number
 
 **Report number**:
@@ -92,7 +92,7 @@ One of Cargo, Warehousing, Warranty, Vessel Condition, Draft Survey, Bunker, IHM
 _Avoid_: report type, Draft (for the type; Draft is a status)
 
 **Project status**:
-One of Draft, In Progress, Review, Ready, Sent, Revision, Complete, Archived, in that order. Review is Trident's own check; Ready means finished, for the team to export and send. Sent is marked by hand once the report has gone to the client, and freezes a Sent copy. After Sent a project goes to Revision (the client asked for changes; work resumes and it is sent again) or to Complete, marked by hand when the client accepts. Only an admin archives a project. Changes before Sent apply in any status and never move a project to another status.
+One of Draft, In Progress, Review, Ready, Sent, Revision, Complete, Archived, in that order. Review is Trident's own check; Ready means finished, for the team to export and send. Sent is marked by hand once the report has gone to the customer, and freezes a Sent copy. Unsend takes back a Sent mark made by mistake: the project returns to the status it had before. A Sent or Complete project is read only. After Sent a project goes to Revision (the customer asked for changes; work resumes and it is sent again) or to Complete, marked by hand when the customer accepts. Only an admin archives a project. Changes before Sent apply in any status and never move a project to another status.
 _Avoid_: approved, Ready for Review, in-progress, completed
 
 **Sent copy**:
@@ -155,7 +155,7 @@ A box in the editor. The project details panel holds the job's facts; every othe
 _Avoid_: section, report section, page
 
 **Project details panel**:
-The panel of the job's facts: organization, client and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction. The trip has its own Transport panel right after it.
+The panel of the job's facts: organization, customer and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction. The trip has its own Transport panel right after it.
 _Avoid_: project panel, info panel
 
 **Fixed panel**:
