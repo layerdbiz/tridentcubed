@@ -77,7 +77,7 @@ A project's reference: the client's short code, the day the project was created 
 _Avoid_: job number, reference, queue number
 
 **Document ID**:
-The report's identifier and the name of its exported file: the project number, FR with the report number and R with the revision number, SGL-2026-02-03-J01-FR01-R01 (the client's pick, 2026-10-09). The file name may end with the transport's name after a triple dash, SGL-2026-02-03-J01-FR01-R01---BBC-Kimberly.pdf. Every report page prints it in the footer, next to the client.
+The report's identifier and the name of its exported file: the project number, FR with the report number and R with the revision number, SGL-2026-02-03-J01-FR01-R01 (the client's pick, 2026-10-09). The file name may end with the transport's name after a triple dash, SGL-2026-02-03-J01-FR01-R01---BBC-Kimberly.pdf.Every report page prints it in the footer, under the client's name.
 _Avoid_: file name, job number
 
 **Report number**:
@@ -134,7 +134,7 @@ _Avoid_: operation, Loading, Transfer, Discharge (those say what happens there),
 The company that owns a transport, like a shipping line; never the ship itself. Not in V1.
 
 **Items**:
-The cargo the project concerns.
+The cargo the project concerns, as rows of a quantity and a description (2, Power transformers on steel cradles), printed as the report's Cargo Description. A manifest's further columns may come later.
 
 **Team**:
 The owner and the assigned members of a project. On the report they appear as Personnel in Attendance, the owner first with a badge; the owner also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile.
@@ -212,11 +212,11 @@ One line of a time log day: a time and an activity.
 _Avoid_: description, text (for the activity)
 
 **Photo group**:
-A set of photos in a panel section, with a layout that says how many share a page: 1, 2, 4, 6, 8 or a grid.
+A set of photos in a panel section, with a layout that says how many share a page: 1 or 2 across the page, or 4, 6 or 8 in two columns.
 _Avoid_: section (as a group's name)
 
 **Photo**:
-An image the surveyor adds to a photo group, with its own description, written by tapping the photo; the description prints on the photo. One kind of attachment.
+An image the surveyor adds to a photo group, with its own description, written by tapping the photo; the description prints on the photo, and in the panel an icon on the photo shows it has one. One kind of attachment.
 _Avoid_: caption
 
 **Attachment**:
@@ -230,7 +230,7 @@ One page of the report: the Cover, Table of Contents, Introduction with Personne
 _Avoid_: page (bare, where the UI's Page could be meant), sheet
 
 **Closing**:
-The last report page: the standard disclaimer and the owner's sign-off, like an email signature.
+The last report page: the standard disclaimer and the owner's sign-off, like an email signature. It prints under the title Disclaimer.
 _Avoid_: disclaimer page, sign-off page
 
 **Page variant**:
