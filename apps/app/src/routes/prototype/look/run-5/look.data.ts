@@ -2,7 +2,7 @@
 // office city are real (Justin's client pack, 2026-10-21; he chose to show names and icons here); contact details stay
 // made up. The people are the real Trident Cubed team (team.data.ts), by Justin's choice. One look since 2026-10-25 (B;
 // A is gone): organization, client and team live in the Project panel, and the trip in the Transport panel after it
-// (Justin, 2026-10-25): one stop per place, in trip order, each with its operation (Loading, Transfer, Discharge), its
+// (Justin, 2026-10-25): one stop per place, in trip order, each with its point (Start, Stop, End; run 8 note 18), its
 // Transport type (Sea, Air, Rail, Road), Transport mode (Vessel, Barge …), the transport itself from the organization's
 // Transport list, and the facility. Transports and facilities are typed in by hand; a tracking service adds to the same
 // list later (`source`).
@@ -27,7 +27,7 @@ export type ProjectType = {
 	type: string;
 	client: string;
 	// The trip's stops in order: what happened there, on which transport, at which facility.
-	stops: { operation: OperationType; transport: string; facility: string }[];
+	stops: { point: PointType; transport: string; facility: string }[];
 	location: string;
 	dates: string;
 	status: StatusType;
@@ -49,7 +49,8 @@ export type FieldType = {
 
 export type EntryType = { id: string; time: string; activity: string };
 export type DayType = { id: string; date: string; entries: EntryType[] };
-export type PhotoType = { id: string; src: string; caption: string };
+// Each photo has its own description, written from the photo's ⋮ or a tap, shown over it in the preview.
+export type PhotoType = { id: string; src: string; description: string };
 export type GroupType = {
 	id: string;
 	title: string;
@@ -61,7 +62,7 @@ export type GroupType = {
 // One stop of the Transport panel, added like a photo group: a place on the trip and what moved the items there.
 export type StopType = {
 	id: string;
-	operation: OperationType | '';
+	point: PointType | '';
 	type: TransportTypeType | '';
 	mode: string;
 	name: string;
@@ -163,9 +164,9 @@ export function personOf(name: string): PersonType {
 	return PEOPLE.find((person) => person.name === name) ?? { name, photo: '' };
 }
 
-// A project's stops, written short: [operation, transport, facility].
-function trip(...stops: [OperationType, string, string][]): ProjectType['stops'] {
-	return stops.map(([operation, transport, facility]) => ({ operation, transport, facility }));
+// A project's stops, written short: [point, transport, facility].
+function trip(...stops: [PointType, string, string][]): ProjectType['stops'] {
+	return stops.map(([point, transport, facility]) => ({ point, transport, facility }));
 }
 
 // The transports and facilities a project's trip uses, once each.
@@ -186,8 +187,8 @@ export const PROJECTS: ProjectType[] = [
 		type: 'Warehousing',
 		client: 'CEVA Logistics',
 		stops: trip(
-			['Transfer', 'MV Coral Dawn', 'East Harbor Berth'],
-			['Discharge', 'Truck 12', 'Northside Depot']
+			['Start', 'MV Coral Dawn', 'East Harbor Berth'],
+			['End', 'Truck 12', 'Northside Depot']
 		),
 		location: 'Houston, TX',
 		dates: 'Tue, 12 May 2026',
@@ -203,7 +204,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Pre-arrival condition check',
 		type: 'Vessel Condition',
 		client: 'KOGA',
-		stops: trip(['Discharge', 'MV Silver Tern', 'Eastgate Terminal 4']),
+		stops: trip(['End', 'MV Silver Tern', 'Eastgate Terminal 4']),
 		location: 'Lake Charles, LA',
 		dates: 'Mon, 11 May 2026',
 		status: 'Review',
@@ -219,8 +220,8 @@ export const PROJECTS: ProjectType[] = [
 		type: 'Cargo',
 		client: 'Oslo Caribbean Carrier',
 		stops: trip(
-			['Loading', 'Rail car 88', 'Bayside Rail Yard'],
-			['Transfer', 'MV Lantern Bay', 'Bulk Dock 8']
+			['Start', 'Rail car 88', 'Bayside Rail Yard'],
+			['End', 'MV Lantern Bay', 'Bulk Dock 8']
 		),
 		location: 'Corpus Christi, TX',
 		dates: 'Fri, 8 May 2026',
@@ -236,7 +237,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Warehouse stock count',
 		type: 'Warehousing',
 		client: 'UTC Overseas',
-		stops: trip(['Loading', 'Truck 12', 'Northside Depot']),
+		stops: trip(['Start', 'Truck 12', 'Northside Depot']),
 		location: 'Pasadena, TX',
 		dates: 'Thu, 7 May 2026',
 		status: 'Draft',
@@ -251,7 +252,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Draft and displacement',
 		type: 'Draft Survey',
 		client: 'US Ocean',
-		stops: trip(['Discharge', 'MV Coral Dawn', 'Turning Basin Wharf 3']),
+		stops: trip(['End', 'MV Coral Dawn', 'Turning Basin Wharf 3']),
 		location: 'Houston, TX',
 		dates: 'Tue, 5 May 2026',
 		status: 'Revision',
@@ -267,8 +268,8 @@ export const PROJECTS: ProjectType[] = [
 		type: 'Cargo',
 		client: 'dship Carriers',
 		stops: trip(
-			['Transfer', 'MV Harbor Finch', 'Southpoint Terminal'],
-			['Discharge', 'Lowboy trailer 3', 'Southpoint Terminal']
+			['Start', 'MV Harbor Finch', 'Southpoint Terminal'],
+			['End', 'Lowboy trailer 3', 'Southpoint Terminal']
 		),
 		location: 'Beaumont, TX',
 		dates: 'Mon, 4 May 2026',
@@ -285,9 +286,9 @@ export const PROJECTS: ProjectType[] = [
 		type: 'Cargo',
 		client: 'DIX Shipping',
 		stops: trip(
-			['Loading', 'MV Harbor Finch', 'Eastgate Terminal 4'],
-			['Transfer', 'Gulf Barge 7', 'Renewables Terminal West'],
-			['Discharge', 'Lowboy trailer 3', 'Northside Depot']
+			['Start', 'MV Harbor Finch', 'Eastgate Terminal 4'],
+			['Stop', 'Gulf Barge 7', 'Renewables Terminal West'],
+			['End', 'Lowboy trailer 3', 'Northside Depot']
 		),
 		location: 'Port Arthur, TX',
 		dates: 'Wed, 29 Apr 2026',
@@ -303,7 +304,7 @@ export const PROJECTS: ProjectType[] = [
 		subtitle: 'Closed survey archive',
 		type: 'Cargo',
 		client: 'Zurich North America',
-		stops: trip(['Discharge', 'Train 3302', 'Bayside Rail Yard']),
+		stops: trip(['End', 'Train 3302', 'Bayside Rail Yard']),
 		location: 'Mobile, AL',
 		dates: 'Mon, 13 Apr 2026',
 		status: 'Archived',
@@ -318,6 +319,8 @@ export type ClientType = {
 	kind: string;
 	icon: string;
 	city: string;
+	// The short code a document ID starts with. Made up for the prototype; the client's own come with V1.
+	code: string;
 };
 
 const ICONS = import.meta.glob<string>('./clients/*.{png,jpg,ico}', {
@@ -330,28 +333,61 @@ function iconOf(id: string) {
 	return Object.entries(ICONS).find(([path]) => path.includes(`/${id}.`))?.[1] ?? '';
 }
 
-// [name, icon file, kind, office city]
+// [name, icon file, kind, office city, document code]
 const CLIENT_ROWS = [
-	['US Ocean', 'us-ocean', 'Ocean carrier', 'Houston, TX'],
-	['KOGA', 'koga', 'Ocean carrier', 'Houston, TX'],
-	['dship Carriers', 'dship-carriers', 'Ocean carrier', 'Houston, TX'],
-	['Oslo Caribbean Carrier', 'oslo-caribbean-carrier', 'Ocean carrier', 'Houston, TX'],
-	['UTC Overseas', 'utc-overseas', 'Freight forwarder', 'Houston, TX'],
-	['CEVA Logistics', 'ceva-logistics', 'Freight forwarder', 'Houston, TX'],
-	['DIX Shipping', 'dix-industries', 'Stevedore and terminal', 'Brownsville, TX'],
-	['Zurich North America', 'zurich-north-america', 'Insurer', 'Schaumburg, IL'],
-	['AXA XL', 'axa-xl', 'Insurer', 'Stamford, CT'],
-	['Liberty Specialty Markets', 'liberty-specialty-markets', 'Insurer', 'London, UK']
+	['US Ocean', 'us-ocean', 'Ocean carrier', 'Houston, TX', 'USO'],
+	['KOGA', 'koga', 'Ocean carrier', 'Houston, TX', 'KOG'],
+	['dship Carriers', 'dship-carriers', 'Ocean carrier', 'Houston, TX', 'DSC'],
+	['Oslo Caribbean Carrier', 'oslo-caribbean-carrier', 'Ocean carrier', 'Houston, TX', 'OCC'],
+	['UTC Overseas', 'utc-overseas', 'Freight forwarder', 'Houston, TX', 'UTC'],
+	['CEVA Logistics', 'ceva-logistics', 'Freight forwarder', 'Houston, TX', 'CVA'],
+	['DIX Shipping', 'dix-industries', 'Stevedore and terminal', 'Brownsville, TX', 'DIX'],
+	['Zurich North America', 'zurich-north-america', 'Insurer', 'Schaumburg, IL', 'ZNA'],
+	['AXA XL', 'axa-xl', 'Insurer', 'Stamford, CT', 'AXA'],
+	['Liberty Specialty Markets', 'liberty-specialty-markets', 'Insurer', 'London, UK', 'LSM']
 ] as const;
 
 export const CLIENT_INFO: Record<string, ClientType> = Object.fromEntries(
-	CLIENT_ROWS.map(([name, id, kind, city]) => [name, { name, kind, icon: iconOf(id), city }])
+	CLIENT_ROWS.map(([name, id, kind, city, code]) => [
+		name,
+		{ name, kind, icon: iconOf(id), city, code }
+	])
 );
 
 export const CLIENTS: string[] = CLIENT_ROWS.map(([name]) => name);
 
 export function clientOf(name: string): ClientType {
-	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', city: '' };
+	const code =
+		name
+			.replace(/[^a-z]/gi, '')
+			.slice(0, 3)
+			.toUpperCase() || 'TC';
+	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', city: '', code };
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// "Tue, 12 May 2026" as 2026-05-12; "Today" (a new project) as today.
+function isoOf(dates: string) {
+	const match = dates.match(/(\d{1,2}) (\w{3}) (\d{4})/);
+	if (!match) return new Date().toISOString().slice(0, 10);
+	const month = String(MONTHS.indexOf(match[2]) + 1).padStart(2, '0');
+	return `${match[3]}-${month}-${match[1].padStart(2, '0')}`;
+}
+
+// The document ID the client picked (format 3, 2026-10-25): client code, date, J = which of that client's jobs that
+// day, FR = final report, R = revision. SGL-2026-02-03-J01-FR01-R01.
+export function documentIdOf(
+	project: ProjectType,
+	projects: ProjectType[],
+	client = project.client
+) {
+	const date = isoOf(project.dates);
+	const sameDay = projects.filter(
+		(other) => other.client === project.client && isoOf(other.dates) === date
+	);
+	const job = String(Math.max(1, sameDay.indexOf(project) + 1)).padStart(2, '0');
+	return `${clientOf(client).code}-${date}-J${job}-FR01-R01`;
 }
 
 export const ROLES: Record<string, string> = Object.fromEntries(
@@ -359,8 +395,9 @@ export const ROLES: Record<string, string> = Object.fromEntries(
 );
 
 export type TransportTypeType = 'Sea' | 'Air' | 'Rail' | 'Road';
-// What happens at a stop: Loading starts the trip, Transfer is a stop on the way, Discharge ends it.
-export type OperationType = 'Loading' | 'Transfer' | 'Discharge';
+// Where a stop sits on the trip: Start, a Stop on the way, or End. Words everyone reads the same way (Justin's run 8
+// note 18), each with its own colour: Start blue, Stop amber, End green.
+export type PointType = 'Start' | 'Stop' | 'End';
 export type FacilityKindType = 'Port' | 'Airport' | 'Rail yard' | 'Depot';
 
 // Each transport type, its transport modes and the kind of facility it uses. `icon-barge` is drawn in look.svelte: no icon set
@@ -385,10 +422,34 @@ export const MODE_ICONS: Record<string, string> = {
 	Trailer: 'icon-[mdi--truck-trailer]'
 };
 
-export const OPERATIONS: Record<OperationType, { icon: string; hint: string }> = {
-	Loading: { icon: 'icon-[mdi--package-up]', hint: 'start' },
-	Transfer: { icon: 'icon-[mdi--swap-horizontal]', hint: 'on the way' },
-	Discharge: { icon: 'icon-[mdi--package-down]', hint: 'end' }
+export const POINTS: Record<
+	PointType,
+	{ icon: string; hint: string; text: string; chip: string; dot: string; solid: string }
+> = {
+	Start: {
+		icon: 'icon-[mdi--ray-start-arrow]',
+		hint: 'where the trip starts',
+		text: 'text-primary',
+		chip: 'bg-primary/10 text-primary',
+		dot: 'bg-primary',
+		solid: 'bg-primary text-white'
+	},
+	Stop: {
+		icon: 'icon-[mdi--ray-vertex]',
+		hint: 'on the way',
+		text: 'text-amber-600',
+		chip: 'bg-warning/15 text-amber-700',
+		dot: 'bg-warning',
+		solid: 'bg-warning text-white'
+	},
+	End: {
+		icon: 'icon-[mdi--ray-end]',
+		hint: 'where the trip ends',
+		text: 'text-success',
+		chip: 'bg-success/15 text-emerald-700',
+		dot: 'bg-success',
+		solid: 'bg-success text-white'
+	}
 };
 
 export const FACILITY_ICONS: Record<FacilityKindType, string> = {
@@ -494,7 +555,7 @@ export const DATASETS: Record<
 	}
 };
 
-export const LAYOUTS = [2, 4, 6, 8];
+export const LAYOUTS = [1, 2, 4, 6, 8];
 
 // Stand-in survey photos: the Website's own service pictures, served from @layerd/ui's static folder.
 const SAMPLE_PHOTOS = [
@@ -546,7 +607,7 @@ function group(title: string, description: string, seeds: string[]): GroupType {
 		photos: seeds.map((seed, index) => ({
 			id: createId('photo'),
 			src: photoOf(seed),
-			caption: `${title}, photo ${index + 1}`
+			description: `${title}, photo ${index + 1}`
 		}))
 	};
 }
@@ -566,8 +627,8 @@ export const CLOSING =
 export const PROJECT_TYPES = ['Cargo', 'Vessel Condition', 'Warehousing', 'Draft Survey', 'Bunker'];
 
 export function stopOf(
-	{ operation, transport: name, facility }: ProjectType['stops'][number] = {
-		operation: 'Loading',
+	{ point, transport: name, facility }: ProjectType['stops'][number] = {
+		point: 'Start',
 		transport: '',
 		facility: ''
 	},
@@ -576,7 +637,7 @@ export function stopOf(
 	const transport = transports.find((item) => item.name === name);
 	return {
 		id: createId('stop'),
-		operation: name || facility ? operation : '',
+		point: name || facility ? point : '',
 		type: transport?.type ?? '',
 		mode: transport?.mode ?? '',
 		name,

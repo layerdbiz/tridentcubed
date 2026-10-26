@@ -36,7 +36,6 @@
 	const ROUND =
 		'flex size-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-900/[0.05]';
 	const PREVIEW = {
-		letterhead: 'footer',
 		days: 'timeline',
 		surface: CANVAS
 	} as const;
@@ -193,22 +192,23 @@
 			<aside
 				class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
 			>
-				<div class="flex items-center gap-2 px-4 pt-4 pb-2">
-					<button
-						class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
-						aria-label="Back to Home"
-						onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
-					>
-					<p class="flex min-w-0 flex-1 items-center gap-1.5">
+				<div class="pt-4 pr-5 pb-4 pl-4">
+					<ProjectBar {look}>
+						<button
+							class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
+							aria-label="Back to Home"
+							onclick={() => look.home()}
+							><span class="icon-[mdi--arrow-left] size-6"></span></button
+						>
 						<span class="truncate font-semibold text-slate-900">{look.project.title}</span>
 						<SaveCloud {look} />
-					</p>
+					</ProjectBar>
 				</div>
-				<div class="px-5 pb-4"><ProjectBar {look} /></div>
-				<div class="flex-1 overflow-y-auto px-4 pb-6">
+				<div class="flex-1 overflow-y-auto px-4 pb-4">
 					<PanelList
 						{look}
 						style="ring"
+						bottom="bottom-0"
 					/>
 				</div>
 			</aside>

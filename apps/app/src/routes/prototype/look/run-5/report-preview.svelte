@@ -1,23 +1,26 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the live preview, built from the panels as they stand (cover, contents with page numbers,
 	// the report pages in panel order), laid on a free canvas you can drag in any direction (viewport.svelte.ts).
-	// Run 5 (Justin's notes 27 to 33): the page centres fully; a solid black rule under the letterhead; a numbered
-	// table of contents with subsections, built from the panels; the project report on one page (introduction, title,
-	// location with its marker, the facts, personnel and cargo); the sample reports' Standard Disclaimer with the
-	// owner's signature block, always last; photo captions over the photo. Client and team come from the Project panel,
-	// the trip from the Transport panel (2026-10-25): its stops print as a chain under the personnel and each stop gets
-	// its own page, like a photo group, with the particulars a tracking service fills in later (the sample reports'
-	// Ships Particulars). Not the real renderer: page breaks are rough and Download is a stub.
+	// The project report on one page (introduction, title, location, the facts, personnel, transport and cargo); the
+	// sample reports' Standard Disclaimer with the owner's signature, always last; each photo's own description over
+	// it. Client and team come from the Project panel, the trip from the Transport panel: its stops print as a chain
+	// and each stop gets its own page with the particulars a tracking service fills in later (the sample reports'
+	// Ships Particulars). Run 8 (Justin's notes 15 to 23): the contents list every page, Cover first, unnumbered, with
+	// only the Project Report's parts under it; no section numbers; Start, Stop and End each in their colour; the
+	// header is Trident (logo, name, phone, email) and a QR code in camera corners over SCAN; the footer is the client
+	// in Trident's style next to the document ID; the signature follows the HTML email signatures. Not the real
+	// renderer: page breaks are rough and Download is a stub.
 	import { onMount, untrack } from 'svelte';
 	import ClientLogo from './client-logo.svelte';
 	import {
 		clientOf,
 		CLOSING,
+		documentIdOf,
 		MODE_ICONS,
-		OPERATIONS,
 		ORGANIZATION,
 		PARTICULARS,
 		personOf,
+		POINTS,
 		type PanelType,
 		type StopType
 	} from './look.data';
@@ -30,7 +33,6 @@
 	let {
 		look,
 		highlight = '',
-		letterhead = 'split',
 		days = 'parens',
 		start = 'column',
 		surface = 'bg-slate-100',
@@ -39,7 +41,6 @@
 	}: {
 		look: LookState;
 		highlight?: string;
-		letterhead?: 'split' | 'center' | 'footer';
 		days?: 'parens' | 'newline' | 'timeline';
 		start?: 'column' | 'spread';
 		surface?: string;
@@ -55,7 +56,7 @@
 		group?: number;
 		part?: number;
 	};
-	type EntryType = { number: string; title: string; key: string; subs: string[] };
+	type EntryType = { title: string; key: string; subs: string[] };
 
 	const W = 595;
 	const H = 842;
@@ -66,17 +67,6 @@
 	});
 	// svelte-ignore state_referenced_locally
 	let layout = $state<'column' | 'spread'>(start);
-
-	// The organization's details for the letterhead are fixed.
-	const LETTERHEAD: Record<string, string> = {
-		'Address line 1': '800 Town and Country',
-		'Address line 2': 'Ste 500',
-		City: 'Houston',
-		State: 'TX',
-		Zip: '77024',
-		Phone: ORGANIZATION.phone,
-		Email: ORGANIZATION.email
-	};
 
 	function valueOf(panelId: string, label: string) {
 		return look.panels
@@ -117,16 +107,12 @@
 	function iconOf(stop: StopType) {
 		return (
 			MODE_ICONS[stop.mode] ??
-			(stop.operation ? OPERATIONS[stop.operation].icon : 'icon-[mdi--help-circle-outline]')
+			(stop.point ? POINTS[stop.point].icon : 'icon-[mdi--help-circle-outline]')
 		);
 	}
 
-	// "Loading at Eastgate Terminal 4": a stop's subsection title.
-	function titleOf(stop: StopType, index: number) {
-		return [stop.operation, stop.facility].filter(Boolean).join(' at ') || `Stop ${index + 1}`;
-	}
 	const client = $derived(clientOf(company));
-	const documentNumber = $derived(`${look.project.number}-R01`);
+	const documentNumber = $derived(documentIdOf(look.project, look.projects, company));
 
 	const pages = $derived.by(() => {
 		const list: PageType[] = [
@@ -166,29 +152,18 @@
 		return list;
 	});
 
-	// The table of contents, numbered like the sample reports, with each section's own subsections.
-	const contents = $derived.by(() => {
-		const sections = pages.filter(
-			(item, index) =>
-				item.kind !== 'cover' &&
-				item.kind !== 'contents' &&
-				pages.findIndex((other) => other.key === item.key) === index
-		);
-		return sections.map((item, at): EntryType => {
-			let subs: string[] = [];
-			if (item.kind === 'report')
-				subs = ['Personnel in Attendance', 'Transport', 'Cargo Description'];
-			if (item.kind === 'timelog')
-				subs = (timelog?.days ?? []).map(
-					(day, dayIndex) => `Day ${dayIndex + 1}, ${dateOf(day.date)}`
-				);
-			if (item.kind === 'photos' && item.panel)
-				subs = item.panel.groups.map((group) => group.title || 'Untitled group');
-			if (item.kind === 'transport' && item.panel) subs = item.panel.stops.map(titleOf);
-			return { number: `${at + 1}`, title: item.title, key: item.key, subs };
-		});
-	});
-	const numberOf = $derived(Object.fromEntries(contents.map((entry) => [entry.key, entry.number])));
+	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on, with
+	// no numbers; only the Project Report lists its parts (Justin's run 8 notes 16 and 17).
+	const REPORT_PARTS = ['Personnel in Attendance', 'Transport', 'Cargo Description'];
+	const contents = $derived(
+		pages
+			.filter((item, index) => pages.findIndex((other) => other.key === item.key) === index)
+			.map((item): EntryType => ({
+				title: item.title,
+				key: item.key,
+				subs: item.kind === 'report' ? REPORT_PARTS : []
+			}))
+	);
 	function pageOf(key: string) {
 		return pages.findIndex((other) => other.key === key) + 1;
 	}
@@ -328,39 +303,39 @@
 		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: look.project.dates },
 		{ icon: 'icon-[mdi--domain]', label: 'Client', value: detail('Client') },
 		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Owner', value: team?.owner },
-		{ icon: 'icon-[mdi--shape-outline]', label: 'Project type', value: detail('Project type') }
+		{ icon: 'icon-[mdi--package-variant-closed]', label: 'Type', value: detail('Project type') }
 	]);
 </script>
 
-{#snippet trident(isRight = false)}
-	<div class="flex items-start gap-2.5 {isRight ? 'flex-row-reverse text-right' : ''}">
+<!-- Trident in the header and the client in the footer, the same way: logo, name, two lines under it. -->
+{#snippet trident()}
+	<div class="flex items-center gap-2.5">
 		<img
 			src="/logo-color.svg"
 			alt=""
 			class="size-10 shrink-0"
 		/>
-		<div class="text-[7.5px] leading-[1.45] text-slate-500">
+		<div class="text-[7.5px] leading-[1.5] text-slate-500">
 			<p class="text-[11px] font-bold tracking-wide text-slate-900">TRIDENT CUBED</p>
-			<p>
-				{LETTERHEAD['Address line 1']}, {LETTERHEAD['Address line 2']}
+			<p class="flex items-center gap-1">
+				<span class="icon-[mdi--phone] size-2.5 text-primary"></span>{ORGANIZATION.phone}
 			</p>
-			<p>
-				{LETTERHEAD.City}, {LETTERHEAD.State}
-				{LETTERHEAD.Zip}
+			<p class="flex items-center gap-1">
+				<span class="icon-[mdi--email] size-2.5 text-primary"></span>{ORGANIZATION.email}
 			</p>
-			<p>{LETTERHEAD.Phone} · {LETTERHEAD.Email}</p>
 		</div>
 	</div>
 {/snippet}
 
 {#snippet customer()}
-	<div class="flex flex-row-reverse items-start gap-2.5 text-right">
+	<div class="flex min-w-0 items-center gap-2.5">
 		<ClientLogo
 			name={company}
-			size={38}
+			size={34}
+			isBare
 		/>
-		<div class="text-[7.5px] leading-[1.45] text-slate-500">
-			<p class="text-[11px] font-bold text-slate-900">{company}</p>
+		<div class="min-w-0 text-[7.5px] leading-[1.5] text-slate-500">
+			<p class="truncate text-[10px] font-bold text-slate-900">{company}</p>
 			{#each [client.kind, client.city].filter(Boolean) as line, at (at)}
 				<p>{line}</p>
 			{/each}
@@ -368,13 +343,19 @@
 	</div>
 {/snippet}
 
-{#snippet code(size: number)}
-	<div class="flex flex-col items-center gap-0.5">
-		<Qr
-			value={documentNumber}
-			{size}
-		/>
-		<p class="text-[6.5px] font-semibold tracking-wider text-slate-500">{documentNumber}</p>
+<!-- The QR code in a camera's focus corners, with SCAN under it and no number. -->
+{#snippet code()}
+	<div class="flex flex-col items-center gap-1">
+		<div class="relative p-[5px]">
+			{#each ['top-0 left-0 rounded-tl-[3px] border-t-[1.5px] border-l-[1.5px]', 'top-0 right-0 rounded-tr-[3px] border-t-[1.5px] border-r-[1.5px]', 'bottom-0 left-0 rounded-bl-[3px] border-b-[1.5px] border-l-[1.5px]', 'right-0 bottom-0 rounded-br-[3px] border-r-[1.5px] border-b-[1.5px]'] as corner (corner)}
+				<span class="absolute size-2.5 border-slate-900 {corner}"></span>
+			{/each}
+			<Qr
+				value={documentNumber}
+				size={34}
+			/>
+		</div>
+		<p class="text-[7px] leading-none font-black tracking-[0.3em] text-slate-900">SCAN</p>
 	</div>
 {/snippet}
 
@@ -444,12 +425,16 @@
 									/></svg
 								>
 								<dl
-									class="mx-auto mt-12 grid w-fit grid-cols-[auto_auto_auto] items-center gap-x-2.5 gap-y-2 text-left text-[12px]"
+									class="mx-auto mt-12 grid w-fit max-w-[400px] grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-x-2.5 gap-y-2 text-left text-[12px]"
 								>
 									{#each COVER as line (line.label)}
-										<span class="{line.icon} size-4 text-primary"></span>
+										<span class="{line.icon} mt-px size-4 text-primary"></span>
 										<dt class="font-semibold text-slate-900">{line.label}</dt>
-										<dd class={line.value ? 'pl-2 text-slate-600' : 'pl-2 text-slate-300 italic'}>
+										<dd
+											class="line-clamp-2 pl-2 leading-snug {line.value
+												? 'text-slate-600'
+												: 'text-slate-300 italic'}"
+										>
 											{line.value || 'Not filled in yet'}
 										</dd>
 									{/each}
@@ -457,55 +442,32 @@
 							</div>
 						</div>
 					{:else}
-						<header class="px-10 pt-7">
-							{#if letterhead === 'center'}
-								<div class="grid grid-cols-[1fr_auto_1fr] items-start gap-4">
-									{@render trident()}
-									{@render code(44)}
-									{@render customer()}
-								</div>
-							{:else}
-								<div class="flex items-start justify-between gap-4">
-									{@render trident()}
-									<div class="flex items-start gap-3">
-										{@render customer()}
-										{#if letterhead === 'split'}{@render code(44)}{/if}
-									</div>
-								</div>
-							{/if}
-							<div class="mt-4 h-px bg-slate-950"></div>
+						<header class="px-10 pt-6">
+							<div class="flex items-center justify-between gap-4">
+								{@render trident()}
+								{@render code()}
+							</div>
+							<div class="mt-3 h-px bg-slate-950"></div>
 						</header>
 						<div class="px-10 pt-6">
-							<h2 class="text-[24px] font-bold tracking-tight text-slate-950">
-								{#if numberOf[item.key]}{numberOf[item.key]}.{/if}
-								{item.title}
-							</h2>
+							<h2 class="text-[24px] font-bold tracking-tight text-slate-950">{item.title}</h2>
 							{#if item.kind === 'contents'}
-								{#snippet line(number: string, title: string, page: number, isSub: boolean)}
+								{#snippet line(title: string, page: number, isSub: boolean)}
 									<li
-										class="flex items-baseline gap-1.5 py-[3px] {isSub
-											? 'pl-7 text-[11px] text-slate-600'
-											: 'mt-1.5 text-[12.5px] font-semibold text-slate-900'}"
+										class="flex items-baseline gap-2 {isSub
+											? 'py-[3px] pl-4 text-[11px] text-slate-600'
+											: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
 									>
-										{#if number}<span class="w-7 shrink-0 tabular-nums {isSub ? '-ml-1' : ''}"
-												>{number}.</span
-											>{/if}
 										<span>{title}</span>
 										<span class="min-w-4 flex-1 border-b border-dotted border-slate-300"></span>
-										<span class="text-slate-500 tabular-nums">{page}</span>
+										<span class="w-5 text-right text-slate-500 tabular-nums">{page}</span>
 									</li>
 								{/snippet}
-								<ol class="mt-6">
-									{@render line('', 'INTRODUCTION', pageOf('report'), false)}
+								<ol class="mt-4">
 									{#each contents as entry (entry.key)}
-										{@render line(entry.number, entry.title, pageOf(entry.key), false)}
-										{#each entry.subs as sub, subIndex (subIndex)}
-											{@render line(
-												`${entry.number}.${subIndex + 1}`,
-												sub,
-												pageOf(entry.key),
-												true
-											)}
+										{@render line(entry.title, pageOf(entry.key), false)}
+										{#each entry.subs as sub (sub)}
+											{@render line(sub, pageOf(entry.key), true)}
 										{/each}
 									{/each}
 								</ol>
@@ -541,10 +503,7 @@
 									</p>
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Client', detail('Client')], ['Facility', facility], ['Transport', stops
-												.map((stop) => stop.name)
-												.filter(Boolean)
-												.join(' → ')], ['Project type', detail('Project type')]] as [label, value] (label)}
+									{#each [['Client', detail('Client')], ['Type', detail('Project type')]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
 											<p
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
@@ -557,9 +516,7 @@
 										</div>
 									{/each}
 								</div>
-								<h3 class="mt-5 text-[13px] font-bold text-slate-950">
-									{numberOf.report}.1 Personnel in Attendance
-								</h3>
+								<h3 class="mt-5 text-[13px] font-bold text-slate-950">Personnel in Attendance</h3>
 								<div class="mt-2 grid grid-cols-2 gap-2">
 									{#each people.slice(0, 6) as name, personIndex (name)}
 										{@const person = personOf(name)}
@@ -587,16 +544,16 @@
 										<p class="text-[11px] text-slate-300 italic">No one assigned yet</p>
 									{/each}
 								</div>
-								<h3 class="mt-5 text-[13px] font-bold text-slate-950">
-									{numberOf.report}.2 Transport
-								</h3>
+								<h3 class="mt-5 text-[13px] font-bold text-slate-950">Transport</h3>
 								<div class="mt-2 flex flex-wrap items-center gap-1.5">
 									{#each stops as stop, stopIndex (stop.id)}
 										{#if stopIndex}<span class="icon-[mdi--arrow-right] size-3.5 text-slate-300"
 											></span>{/if}
 										<div class="flex items-center gap-2 rounded-xl bg-slate-50 py-1.5 pr-3 pl-2">
 											<span
-												class="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary"
+												class="flex size-7 items-center justify-center rounded-lg {stop.point
+													? POINTS[stop.point].chip
+													: 'bg-slate-100 text-slate-400'}"
 												><span class="{iconOf(stop)} size-[18px]"></span></span
 											>
 											<div>
@@ -610,7 +567,10 @@
 												<p
 													class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
 												>
-													{[stop.operation, stop.mode].filter(Boolean).join(' · ')}
+													{#if stop.point}<span class={POINTS[stop.point].text}>{stop.point}</span
+														>{#if stop.mode}
+															·
+														{/if}{/if}{stop.mode}
 												</p>
 												{#if stop.facility}
 													<p class="text-[8px] text-slate-500">{stop.facility}</p>
@@ -621,9 +581,7 @@
 										<p class="text-[11px] text-slate-300 italic">No transport yet</p>
 									{/each}
 								</div>
-								<h3 class="mt-5 text-[13px] font-bold text-slate-950">
-									{numberOf.report}.3 Cargo Description
-								</h3>
+								<h3 class="mt-5 text-[13px] font-bold text-slate-950">Cargo Description</h3>
 								<p
 									class="mt-1.5 text-[11px] {valueOf('items', 'Title')
 										? 'font-semibold text-slate-900'
@@ -640,13 +598,21 @@
 								{@const stopIndex = item.group ?? 0}
 								{@const stop = item.panel.stops[stopIndex]}
 								{@const place = look.facilities.find((other) => other.name === stop.facility)}
-								<h3 class="mt-2 text-[13px] font-bold text-slate-950">
-									{numberOf.transport}.{stopIndex + 1}
-									{titleOf(stop, stopIndex)}
+								<h3 class="mt-2 flex items-center gap-2 text-[13px] font-bold text-slate-950">
+									{#if stop.point}
+										<span
+											class="rounded-full px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase {POINTS[
+												stop.point
+											].solid}">{stop.point}</span
+										>
+									{/if}
+									{stop.facility || `Stop ${stopIndex + 1}`}
 								</h3>
 								<div class="mt-3 flex items-center gap-4 rounded-xl bg-slate-50 px-4 py-4">
 									<span
-										class="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+										class="flex size-14 shrink-0 items-center justify-center rounded-2xl {stop.point
+											? POINTS[stop.point].chip
+											: 'bg-slate-100 text-slate-400'}"
 										><span class="{iconOf(stop)} size-8"></span></span
 									>
 									<div class="min-w-0 flex-1">
@@ -663,16 +629,9 @@
 											{[stop.type, stop.mode].filter(Boolean).join(' · ') || 'Transport'}
 										</p>
 									</div>
-									{#if stop.operation}
-										<span
-											class="flex shrink-0 items-center gap-1 rounded-full bg-primary px-3 py-1 text-[10px] font-semibold text-white"
-											><span class="{OPERATIONS[stop.operation].icon} size-3.5"
-											></span>{stop.operation}</span
-										>
-									{/if}
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Operation', stop.operation ? `${stop.operation} (${OPERATIONS[stop.operation].hint})` : ''], ['Facility', stop.facility], ['Facility kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Transport type', stop.type], ['Transport mode', stop.mode]] as [label, value] (label)}
+									{#each [['Point', stop.point ? `${stop.point}, ${POINTS[stop.point].hint}` : ''], ['Facility', stop.facility], ['Facility kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Transport type', stop.type], ['Transport mode', stop.mode]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
 											<p
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
@@ -743,7 +702,7 @@
 									<p class="mt-1 text-[11px] text-slate-500">{group.description}</p>
 								{/if}
 								<div
-									class="mt-4 grid gap-3 {group.layout === 2
+									class="mt-4 grid gap-3 {group.layout <= 2
 										? 'grid-cols-1'
 										: group.layout === 4
 											? 'grid-cols-2'
@@ -755,15 +714,22 @@
 												src={photo.src}
 												alt=""
 												draggable="false"
-												class="w-full object-cover {group.layout === 2
-													? 'aspect-[16/9]'
-													: 'aspect-[4/3]'}"
+												class="w-full object-cover {group.layout === 1
+													? 'aspect-[4/3]'
+													: group.layout === 2
+														? 'aspect-[16/9]'
+														: 'aspect-[4/3]'}"
 											/>
-											<figcaption
-												class="absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/75 via-black/40 to-transparent px-2 pt-5 pb-1.5 text-[8px] font-medium text-white"
-											>
-												{photo.caption}
-											</figcaption>
+											{#if photo.description}
+												<figcaption
+													class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/40 to-transparent px-2 pt-5 pb-1.5 font-medium text-white {group.layout <=
+													2
+														? 'text-[10px]'
+														: 'truncate text-[8px]'}"
+												>
+													{photo.description}
+												</figcaption>
+											{/if}
 										</figure>
 									{:else}
 										<p class="text-[11px] text-slate-300 italic">No photos yet</p>
@@ -787,63 +753,57 @@
 									Please note that this report reflects the situation as observed on a date of
 									Inspection and may not reflect subsequent changes or conditions.
 								</p>
-								<p class="mt-3 text-[10.5px] text-slate-900">Regards,</p>
+								<!-- Like the HTML email signatures (packages/ui email): Best Regards with room above and below,
+								     a round photo, the name, the title in blue capitals, then phone, email and the group email. -->
+								{#if closing}
+									<p class="mt-6 text-[10.5px] text-slate-700 italic">{closing}</p>
+								{/if}
+								<p class="mt-6 text-[11px] text-slate-950">Best Regards,</p>
 								{#if signer}
-									<div class="mt-3 flex items-center gap-4 border-t border-slate-200 pt-4">
+									<div class="mt-6 flex items-start gap-3">
 										<img
 											src={personOf(signer.name).photo}
 											alt=""
 											draggable="false"
-											class="size-20 shrink-0 rounded-2xl object-cover"
+											class="size-[76px] shrink-0 rounded-full object-cover"
 										/>
-										<div class="min-w-0 text-[9.5px] leading-[1.55] text-slate-600">
-											<p class="text-[15px] leading-tight font-bold text-slate-950">
+										<div class="min-w-0 pt-1.5 text-[9px] leading-[1.5] text-slate-500">
+											<p class="text-[17px] leading-tight font-semibold text-slate-950">
 												{signer.name}
 											</p>
-											<p class="mb-1 text-slate-500">{labelsOf(signer).join(' · ')}</p>
-											<p class="flex items-center gap-1.5">
-												<span class="icon-[mdi--cellphone] size-3 text-primary"></span>Mobile
-												{signer.phone}
+											<p
+												class="text-[7.5px] font-semibold tracking-[0.02em] text-primary-700 uppercase"
+											>
+												{labelsOf(signer).join(' · ')}
 											</p>
-											<p class="flex items-center gap-1.5">
-												<span class="icon-[mdi--email-outline] size-3 text-primary"></span>Email
-												{signer.email}
-											</p>
-											<p class="flex items-center gap-1.5">
-												<span class="icon-[mdi--email-outline] size-3 text-primary"></span>Email
-												ProjectGroup@TridentCubed.com
-											</p>
+											<div class="mt-1.5 space-y-0.5">
+												{#each [['icon-[mdi--phone]', signer.phone], ['icon-[mdi--email]', signer.email], ['icon-[mdi--web]', 'ProjectGroup@TridentCubed.com']] as [icon, text] (icon)}
+													<p class="flex items-center gap-1.5">
+														<span class="{icon} size-3 text-slate-950"></span>{text}
+													</p>
+												{/each}
+											</div>
 										</div>
-										<img
-											src="/logo-color.svg"
-											alt=""
-											draggable="false"
-											class="ml-auto size-14 shrink-0 opacity-90"
-										/>
 									</div>
-								{/if}
-								{#if closing}
-									<p class="mt-3 text-[10.5px] text-slate-700 italic">{closing}</p>
 								{/if}
 							{/if}
 						</div>
 						<footer
-							class="absolute inset-x-10 bottom-6 flex items-end justify-between text-[9px] text-slate-400"
+							class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-white px-10 pt-3 pb-6 text-[9px] text-slate-400"
 						>
-							{#if letterhead === 'footer'}
-								<span class="flex items-center gap-2">
-									<Qr
-										value={documentNumber}
-										size={34}
-									/>
-									<span class="leading-tight"
-										><b class="block text-slate-600">{documentNumber}</b>Scan to open this report</span
+							<span class="flex min-w-0 items-center gap-4">
+								{@render customer()}
+								<span class="shrink-0 border-l border-slate-200 pl-4 leading-[1.5]">
+									<span
+										class="block text-[6.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
+										>Document ID</span
+									>
+									<b class="block text-[8.5px] font-semibold text-slate-700 tabular-nums"
+										>{documentNumber}</b
 									>
 								</span>
-							{:else}
-								<span>{detail('Title')}</span>
-							{/if}
-							<span>Page {index + 1} of {pages.length}</span>
+							</span>
+							<span class="shrink-0">Page {index + 1} of {pages.length}</span>
 						</footer>
 					{/if}
 				</article>
@@ -852,7 +812,7 @@
 	</div>
 
 	<div
-		class="absolute right-3 bottom-4 z-10 md:top-1/2 md:right-5 md:bottom-auto md:-translate-y-1/2"
+		class="absolute right-3 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-10 md:top-1/2 md:right-5 md:bottom-auto md:-translate-y-1/2"
 	>
 		<ZoomBar
 			{viewport}
@@ -865,7 +825,7 @@
 
 	<p
 		style="left: {left + 16}px"
-		class="pointer-events-none absolute bottom-4 flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm backdrop-blur transition-opacity duration-500 {isHintShown
+		class="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm backdrop-blur transition-opacity duration-500 md:bottom-4 {isHintShown
 			? 'opacity-100'
 			: 'opacity-0 md:opacity-100'}"
 	>

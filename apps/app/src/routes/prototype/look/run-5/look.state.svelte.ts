@@ -1,4 +1,4 @@
-// PROTOTYPE (#161): in-memory state for the look. Each project opens on its Project panel (createPanels).
+// PROTOTYPE (#161): in-memory state for the look. A project opens with every panel closed (Justin's run 8 note 4).
 // Every input counts toward its panel, and the panels toward the project, so the percents move as you type. The
 // Transport and Facility lists live here, so one added from a project shows on its dashboard page. Every delete asks
 // first (`confirm`, Justin 2026-10-25).
@@ -42,7 +42,7 @@ export function metricsOf(panel: PanelType): MetricsType {
 			Number(panel.assigned.length > 0);
 	} else if (panel.kind === 'transport') {
 		// Each stop counts its five picks; a panel with no stop counts as one to do.
-		const PARTS = ['operation', 'type', 'mode', 'name', 'facility'] as const;
+		const PARTS = ['point', 'type', 'mode', 'name', 'facility'] as const;
 		total = Math.max(1, panel.stops.length * PARTS.length);
 		done = panel.stops.reduce(
 			(sum, stop) => sum + PARTS.filter((part) => Boolean(stop[part])).length,
@@ -61,11 +61,11 @@ export function metricsOf(panel: PanelType): MetricsType {
 			0
 		);
 	} else {
-		// A photo group counts its title, its layout and having photos.
-		total = Math.max(1, panel.groups.length * 3);
+		// A photo group counts its title and having photos. Its layout always has a value, so it never counts: a new
+		// untitled group with no photos is To do (Justin's run 8 note 8).
+		total = Math.max(1, panel.groups.length * 2);
 		done = panel.groups.reduce(
-			(sum, group) =>
-				sum + Number(Boolean(group.title.trim())) + 1 + Number(group.photos.length > 0),
+			(sum, group) => sum + Number(Boolean(group.title.trim())) + Number(group.photos.length > 0),
 			0
 		);
 	}
@@ -106,7 +106,7 @@ export class LookState {
 	projects = $state<ProjectType[]>(structuredClone(PROJECTS));
 	projectId = $state('p1');
 	tab = $state<TabType>('edit');
-	panelId = $state('project');
+	panelId = $state('');
 	isNewOpen = $state(false);
 	navSection = $state<string>('home');
 	isSaving = $state(false);
@@ -161,6 +161,7 @@ export class LookState {
 		this.#keepProject();
 		this.#ensure(id);
 		this.projectId = id;
+		this.panelId = '';
 		this.screen = 'workspace';
 	}
 
@@ -178,7 +179,7 @@ export class LookState {
 		this.project.stops = trip.stops
 			.filter((stop) => stop.name || stop.facility)
 			.map((stop) => ({
-				operation: stop.operation || 'Loading',
+				point: stop.point || 'Stop',
 				transport: stop.name,
 				facility: stop.facility
 			}));
@@ -211,7 +212,6 @@ export class LookState {
 			groups: [],
 			stops: panel.kind === 'transport' ? [stopOf()] : []
 		}));
-		this.panelId = 'project';
 		this.open(id);
 	}
 

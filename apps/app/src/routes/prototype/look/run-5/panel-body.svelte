@@ -2,10 +2,11 @@
 	// PROTOTYPE (#161): the inputs inside one panel, by kind: fields, project, transport, time log or photo groups.
 	// Everything is live: typing moves the panel's count, its bar, the project's bar and the preview. The Project panel is
 	// its fields with the Team after Client; its drop-downs offer "Add new", a quick sheet (note 26). The Transport panel
-	// (Justin, 2026-10-25) is the trip, one stop per place in trip order: its operation (Loading, Transfer, Discharge),
-	// Transport type, Transport mode, the transport from the organization's list, and the facility, whose list puts the
-	// kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with Delete
-	// tucked in its ⋮ menu; every delete asks first.
+	// (Justin, 2026-10-25) is the trip, one stop per place in trip order: its point (Start, Stop, End, each with its
+	// colour), Transport type, Transport mode, the transport from the organization's list, and the facility, whose list
+	// puts the kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with
+	// Delete at the far right of its bottom row (run 8 note 10); every delete asks first. Each photo has its own
+	// description: tap it, or Edit description in its ⋮ (notes 12 and 14). The time log can add a sample day (note 9).
 	import { flip } from 'svelte/animate';
 	import Avatar from './avatar.svelte';
 	import BottomSheet from './bottom-sheet.svelte';
@@ -15,20 +16,21 @@
 		FACILITY_ICONS,
 		LAYOUTS,
 		MODE_ICONS,
-		OPERATIONS,
 		PEOPLE,
 		photoOf,
+		POINTS,
 		stopOf,
 		TRANSPORT_TYPES,
 		type FacilityKindType,
 		type FieldType,
-		type OperationType,
 		type PanelType,
+		type PhotoType,
+		type PointType,
 		type StopType,
 		type TransportTypeType
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import Menu from './menu.svelte';
+	import Menu, { type OptionType } from './menu.svelte';
 	import { sortable } from './sortable';
 
 	let { look, panel }: { look: LookState; panel: PanelType } = $props();
@@ -99,14 +101,14 @@
 
 	// The Transport panel's stops.
 	const TYPES = Object.keys(TRANSPORT_TYPES) as TransportTypeType[];
-	const OPERATION_OPTIONS = (Object.keys(OPERATIONS) as OperationType[]).map((operation) => ({
-		id: operation,
-		label: `${operation} (${OPERATIONS[operation].hint})`,
-		icon: OPERATIONS[operation].icon
+	const POINT_OPTIONS = (Object.keys(POINTS) as PointType[]).map((point) => ({
+		id: point,
+		label: `${point} (${POINTS[point].hint})`,
+		dot: POINTS[point].dot
 	}));
 
-	function setOperation(stop: StopType, operation: string) {
-		stop.operation = operation as OperationType;
+	function setPoint(stop: StopType, point: string) {
+		stop.point = point as PointType;
 		look.saved();
 	}
 
@@ -180,8 +182,11 @@
 		});
 	}
 
+	// The first stop starts the trip; a later one ends it, and the stop that ended it becomes a stop on the way.
 	function addStop() {
 		const stop = stopOf();
+		stop.point = panel.stops.length ? 'End' : 'Start';
+		for (const other of panel.stops) if (other.point === 'End') other.point = 'Stop';
 		panel.stops.push(stop);
 		openStops = [...openStops, stop.id];
 		look.saved();
@@ -201,6 +206,34 @@
 		openDays = [...openDays, day.id];
 		look.saved();
 	}
+
+	// A filled-in day the day after the last one, so the time log shows how a real day reads.
+	const SAMPLE_DAY = [
+		['07:00', 'Arrived on site, safety briefing with the terminal'],
+		['07:45', 'Hatches opened, cargo condition checked before work'],
+		['09:30', 'Discharge started, first lift landed on the quay'],
+		['12:00', 'Break, cargo secured'],
+		['13:00', 'Discharge resumed'],
+		['16:15', 'Last lift landed, tally agreed with the stevedores'],
+		['17:00', 'Left site']
+	];
+
+	function addSampleDay() {
+		const last = panel.days.findLast((day) => day.date)?.date;
+		const date = last ? new Date(`${last}T12:00`) : new Date();
+		if (last) date.setDate(date.getDate() + 1);
+		const day = {
+			id: createId('day'),
+			date: date.toISOString().slice(0, 10),
+			entries: SAMPLE_DAY.map(([time, activity]) => ({ id: createId('entry'), time, activity }))
+		};
+		panel.days.push(day);
+		openDays = [...openDays, day.id];
+		look.saved();
+	}
+
+	// The photo whose description is open in the sheet.
+	let editing = $state<PhotoType>();
 
 	function sortEntries(index: number) {
 		panel.days[index].entries.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
@@ -364,7 +397,7 @@
 {#snippet dropdown(
 	label: string,
 	value: string,
-	options: { id: string; label: string; icon: string }[],
+	options: OptionType[],
 	onpick: (id: string) => void
 )}
 	<div>
@@ -389,7 +422,10 @@
 						? 'bg-white ring-2 ring-primary/40'
 						: ''}"
 				>
-					{#if current}
+					{#if current?.dot}
+						<span class="ml-0.5 size-2.5 shrink-0 rounded-full {current.dot}"></span>
+						<span class="flex-1 truncate">{current.label}</span>
+					{:else if current}
 						<span class="{current.icon} size-[18px] shrink-0 text-primary"></span>
 						<span class="flex-1 truncate">{current.label}</span>
 					{:else}
@@ -423,10 +459,11 @@
 			<div animate:flip={{ duration: 200 }}>
 				<Group
 					title={stop.name || `Stop ${stopIndex + 1}`}
-					note={[stop.operation, stop.mode, stop.facility].filter(Boolean).join(' · ') ||
-						'Pick what happens here first'}
+					note={[stop.point, stop.mode, stop.facility].filter(Boolean).join(' · ') ||
+						'Pick where this sits on the trip first'}
 					icon={MODE_ICONS[stop.mode] ??
-						(stop.operation ? OPERATIONS[stop.operation].icon : 'icon-[mdi--map-marker-outline]')}
+						(stop.point ? POINTS[stop.point].icon : 'icon-[mdi--map-marker-outline]')}
+					tone={stop.point ? POINTS[stop.point].chip : undefined}
 					isOpen={openStops.includes(stop.id)}
 					ontoggle={() => (openStops = toggle(openStops, stop.id))}
 					ondelete={() =>
@@ -441,9 +478,7 @@
 					index={stopIndex}
 				>
 					<div class="grid gap-2 sm:grid-cols-2">
-						{@render dropdown('Operation', stop.operation, OPERATION_OPTIONS, (operation) =>
-							setOperation(stop, operation)
-						)}
+						{@render dropdown('Point', stop.point, POINT_OPTIONS, (point) => setPoint(stop, point))}
 						{@render dropdown(
 							'Transport type',
 							stop.type,
@@ -615,24 +650,34 @@
 							>
 						</div>
 					{/each}
-					<button
-						type="button"
-						class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
-						onclick={() => {
-							day.entries.push({ id: createId('entry'), time: '', activity: '' });
-							look.saved();
-						}}><span class="icon-[mdi--plus] size-4"></span>Add entry</button
-					>
+					{#snippet actions()}
+						<button
+							type="button"
+							class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+							onclick={() => {
+								day.entries.push({ id: createId('entry'), time: '', activity: '' });
+								look.saved();
+							}}><span class="icon-[mdi--plus] size-4"></span>Add entry</button
+						>
+					{/snippet}
 				</Group>
 			</div>
 		{:else}
 			<p class="py-2 text-center text-sm text-slate-400">No days yet. Add the first one.</p>
 		{/each}
-		<button
-			type="button"
-			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-			onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
-		>
+		<div class="flex flex-wrap gap-2">
+			<button
+				type="button"
+				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
+			>
+			<button
+				type="button"
+				class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+				onclick={addSampleDay}
+				><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample day</button
+			>
+		</div>
 	{:else}
 		<div
 			class="space-y-3"
@@ -688,11 +733,13 @@
 										}}
 									>
 										<span
-											class="{layout === 2
-												? 'icon-[mdi--view-agenda-outline]'
-												: layout === 4
-													? 'icon-[mdi--view-grid-outline]'
-													: 'icon-[mdi--view-module-outline]'} size-4"
+											class="{layout === 1
+												? 'icon-[mdi--crop-portrait]'
+												: layout === 2
+													? 'icon-[mdi--view-agenda-outline]'
+													: layout === 4
+														? 'icon-[mdi--view-grid-outline]'
+														: 'icon-[mdi--view-module-outline]'} size-4"
 										></span>{layout}
 									</button>
 								{/each}
@@ -704,30 +751,70 @@
 						>
 							{#each group.photos as photo, photoIndex (photo.id)}
 								<div
-									class="group relative aspect-square overflow-hidden rounded-xl bg-slate-100 transition"
+									class="relative aspect-square transition"
 									data-sort="photos-{group.id}"
 									data-index={photoIndex}
 									animate:flip={{ duration: 200 }}
 								>
-									<img
-										src={photo.src}
-										alt={photo.caption}
-										class="size-full cursor-grab touch-none object-cover select-none"
-										draggable="false"
-										data-grip="photos-{group.id}"
-									/>
 									<button
 										type="button"
-										class="absolute top-1 right-1 flex size-6 items-center justify-center rounded-full bg-slate-900/70 text-white backdrop-blur"
-										aria-label="Delete photo"
-										onclick={() =>
-											remove(
-												group.photos,
-												photo,
-												'Delete this photo?',
-												'It leaves the group and the report.'
-											)}><span class="icon-[mdi--close] size-4"></span></button
+										class="relative block size-full overflow-hidden rounded-xl bg-slate-100 select-none [-webkit-touch-callout:none]"
+										aria-label="Describe photo {photoIndex + 1}"
+										data-grip="photos-{group.id}"
+										onclick={() => (editing = photo)}
 									>
+										<img
+											src={photo.src}
+											alt={photo.description}
+											class="pointer-events-none size-full object-cover"
+											draggable="false"
+										/>
+										{#if photo.description}
+											<span
+												class="absolute inset-x-0 bottom-0 line-clamp-2 bg-linear-to-t from-black/75 to-transparent px-1.5 pt-4 pb-1 text-left text-[10px] leading-tight text-white"
+												>{photo.description}</span
+											>
+										{/if}
+									</button>
+									<div
+										class="absolute top-1 right-1"
+										data-no-drag
+									>
+										<Menu
+											label="More for photo {photoIndex + 1}"
+											value=""
+											align={photoIndex % 3 === 0 ? 'left' : 'right'}
+											options={[
+												{
+													id: 'describe',
+													label: 'Edit description',
+													icon: 'icon-[mdi--pencil-outline]'
+												},
+												{
+													id: 'delete',
+													label: 'Delete',
+													icon: 'icon-[mdi--trash-can-outline]',
+													isDanger: true
+												}
+											]}
+											onpick={(id) =>
+												id === 'describe'
+													? (editing = photo)
+													: remove(
+															group.photos,
+															photo,
+															'Delete this photo?',
+															'It leaves the group and the report.'
+														)}
+										>
+											{#snippet trigger()}
+												<span
+													class="flex size-7 items-center justify-center rounded-full bg-slate-900/55 text-white backdrop-blur"
+													><span class="icon-[mdi--dots-vertical] size-[18px]"></span></span
+												>
+											{/snippet}
+										</Menu>
+									</div>
 								</div>
 							{/each}
 							<label
@@ -742,7 +829,7 @@
 									class="sr-only"
 									onchange={(event) =>
 										pick(event, (src, name) =>
-											group.photos.push({ id: createId('photo'), src, caption: name })
+											group.photos.push({ id: createId('photo'), src, description: '' })
 										)}
 								/>
 							</label>
@@ -758,23 +845,25 @@
 									class="sr-only"
 									onchange={(event) =>
 										pick(event, (src, name) =>
-											group.photos.push({ id: createId('photo'), src, caption: name })
+											group.photos.push({ id: createId('photo'), src, description: '' })
 										)}
 								/>
 							</label>
 						</div>
-						<button
-							type="button"
-							class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
-							onclick={() => {
-								group.photos.push({
-									id: createId('photo'),
-									src: photoOf(createId('demo')),
-									caption: `${group.title || 'Photo'}`
-								});
-								look.saved();
-							}}><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample photo</button
-						>
+						{#snippet actions()}
+							<button
+								type="button"
+								class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+								onclick={() => {
+									group.photos.push({
+										id: createId('photo'),
+										src: photoOf(createId('demo')),
+										description: ''
+									});
+									look.saved();
+								}}><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample photo</button
+							>
+						{/snippet}
 					</Group>
 				</div>
 			{:else}
@@ -840,6 +929,46 @@
 			<button
 				class="mt-5 w-full rounded-full bg-primary py-3 text-sm font-semibold text-white disabled:opacity-40"
 				disabled={!draft.trim()}>Add {noun}</button
+			>
+		</form>
+	</BottomSheet>
+{/if}
+
+{#if editing}
+	{@const photo = editing}
+	<BottomSheet
+		label="Describe this photo"
+		onclose={() => (editing = undefined)}
+	>
+		<form
+			onsubmit={(event) => {
+				event.preventDefault();
+				editing = undefined;
+			}}
+		>
+			<div class="flex items-center gap-3">
+				<img
+					src={photo.src}
+					alt=""
+					class="size-16 shrink-0 rounded-xl object-cover"
+				/>
+				<div>
+					<b class="block text-lg text-slate-900">Photo description</b>
+					<p class="text-sm text-slate-500">Shows on this photo in the report.</p>
+				</div>
+			</div>
+			<label class="mt-4 block">
+				<span class={labelClass}>Description</span>
+				<!-- svelte-ignore a11y_autofocus -->
+				<textarea
+					class="{inputClass} min-h-20"
+					bind:value={photo.description}
+					oninput={() => look.saved()}
+					placeholder="e.g. Lashing on the forward stack, seen from the quay"
+					autofocus></textarea>
+			</label>
+			<button class="mt-5 w-full rounded-full bg-primary py-3 text-sm font-semibold text-white"
+				>Done</button
 			>
 		</form>
 	</BottomSheet>

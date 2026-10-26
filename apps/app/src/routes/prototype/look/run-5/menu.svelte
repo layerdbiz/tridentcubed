@@ -14,8 +14,8 @@
 </script>
 
 <script lang="ts">
-	// PROTOTYPE (#161): a small dropdown menu (view and status pickers, the ⋮ menus of the groups, and the Operation,
-	// Transport type and Transport mode drop-downs, which need icons a native select cannot show). Closes on a pick,
+	// PROTOTYPE (#161): a small dropdown menu (view and status pickers, each photo's ⋮ menu, and the Point, Transport
+	// type and Transport mode drop-downs, which need dots and icons a native select cannot show). Closes on a pick,
 	// outside tap or Escape. `isWide` fills its row.
 	import type { Snippet } from 'svelte';
 	import { scale } from 'svelte/transition';

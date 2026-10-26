@@ -1,8 +1,9 @@
 <script lang="ts">
-	// PROTOTYPE (#161) run 5: inside a project on the phone. The header floats over the content with a backdrop blur,
-	// so the panels (and the pages) scroll under it, and it is shorter than G's (Justin's note 23): one line, title on
-	// the left and a small switch at the far right, with the project's bar under it (note 25). Swipe between Panels and
-	// Preview; on Preview the pages take every drag, so a hidden strip on the left edge swipes back (note 35).
+	// PROTOTYPE (#161) run 8: inside a project on the phone. A white header floats over the content with a backdrop
+	// blur and no border, so the panels (and the pages) show scrolling under it (Justin's note 3): back, the title, and
+	// the project's percent and state over its bar (note 2). Panels / Preview is a black bar floating at the bottom
+	// centre, like the preview's zoom bar, with the save cloud at its start (note 1). Swipe between the two; on Preview
+	// the pages take every drag, so a hidden strip on the left edge swipes back.
 	import type { ComponentProps } from 'svelte';
 	import type { LookState } from './look.state.svelte';
 	import PanelList from './panel-list.svelte';
@@ -70,46 +71,52 @@
 </script>
 
 {#snippet tabs()}
-	<div
-		class="relative grid w-[8.5rem] shrink-0 grid-cols-2 rounded-full bg-slate-900/[0.06] p-0.5 text-[12px]"
-		role="tablist"
+	<nav
+		class="absolute bottom-[calc(env(safe-area-inset-bottom)+14px)] left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black p-1.5 text-white shadow-xl shadow-black/25"
+		aria-label="Panels or preview"
 	>
-		<span
-			class="absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-full bg-white shadow-sm"
-			style="transform: translateX({progress * 100}%)"
-		></span>
-		{#each [['edit', 'Panels'], ['preview', 'Preview']] as const as [tab, label] (tab)}
-			<button
-				class="relative rounded-full py-[3px] font-medium transition-colors {look.tab === tab
-					? 'text-slate-900'
-					: 'text-slate-500'}"
-				role="tab"
-				aria-selected={look.tab === tab}
-				onclick={() => show(tab)}>{label}</button
-			>
-		{/each}
-	</div>
+		<span class="flex size-9 items-center justify-center"><SaveCloud {look} /></span>
+		<span class="h-5 w-px bg-white/15"></span>
+		<div
+			class="relative grid grid-cols-[1fr_1fr]"
+			role="tablist"
+		>
+			<span
+				class="absolute inset-y-0 left-0 w-1/2 rounded-full bg-primary shadow-md shadow-primary/30"
+				style="transform: translateX({progress * 100}%)"
+			></span>
+			{#each [['edit', 'Panels', 'icon-[mdi--view-agenda-outline]'], ['preview', 'Preview', 'icon-[mdi--file-document-outline]']] as const as [tab, label, icon] (tab)}
+				<button
+					class="relative flex h-9 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors {look.tab ===
+					tab
+						? 'text-white'
+						: 'text-white/60 hover:text-white'}"
+					role="tab"
+					aria-selected={look.tab === tab}
+					onclick={() => show(tab)}><span class="{icon} size-[18px] shrink-0"></span>{label}</button
+				>
+			{/each}
+		</div>
+	</nav>
 {/snippet}
 
 <div class="relative h-dvh overflow-hidden md:hidden {surface}">
 	<header
-		class="absolute inset-x-0 top-0 z-20 border-b border-slate-900/[0.06] bg-slate-100/70 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+		class="absolute inset-x-0 top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
 		bind:clientHeight={top}
 	>
-		<div class="flex h-12 items-center gap-1 px-1.5">
-			<button
-				class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
-				aria-label="Back"
-				onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
-			>
-			<p class="flex min-w-0 flex-1 items-center gap-1.5 pl-0.5">
+		<div class="py-2 pr-4 pl-1.5">
+			<ProjectBar {look}>
+				<button
+					class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
+					aria-label="Back"
+					onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
+				>
 				<span class="truncate font-semibold text-slate-900">{look.project.title}</span>
-				<SaveCloud {look} />
-			</p>
-			<span class="pr-1.5">{@render tabs()}</span>
+			</ProjectBar>
 		</div>
-		<div class="px-4 pb-2"><ProjectBar {look} /></div>
 	</header>
+	{@render tabs()}
 
 	<div
 		bind:this={swiper}
@@ -117,12 +124,13 @@
 		{onscroll}
 	>
 		<div
-			class="w-full shrink-0 snap-start overflow-y-auto px-4 pb-16"
+			class="w-full shrink-0 snap-start overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+76px)]"
 			style="padding-top: {top + 12}px"
 		>
 			<PanelList
 				{look}
 				style={panels}
+				bottom="bottom-0"
 			/>
 		</div>
 		<div class="relative w-full shrink-0 snap-start">

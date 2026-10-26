@@ -1,8 +1,9 @@
 <script lang="ts">
-	// PROTOTYPE (#161): one panel with its progress and controls, opening like an accordion. Run 5 (Justin's note 24):
-	// every panel has a switch coloured by its state (to do grey, in progress blue, complete green); a required panel's
-	// switch is always on with a lock on the knob; an added panel also has an X top right that asks before deleting
-	// (LookState.confirm, the same dialog as every other delete).
+	// PROTOTYPE (#161): one panel with its progress and controls, opening like an accordion. A panel that can be left
+	// out has a switch coloured by its state (to do grey, in progress blue, complete green); a required panel shows one
+	// big lock in its state's colour instead, a see-through green once complete (Justin's run 8 note 5). A photo panel
+	// drags by its whole header, with no handle (notes 6 and 7). An added panel also has an X top right that asks
+	// before deleting (LookState.confirm, the same dialog as every other delete).
 	// Every style keeps the cards apart with room to breathe and draws no borders.
 	// `soft` (D): white card on a soft shadow, control badge on the corner, bar under.
 	// `flat` (E): white card with no shadow until it opens, control inline.
@@ -35,6 +36,12 @@
 		Complete: 'bg-success',
 		Off: 'bg-slate-300'
 	};
+	const LOCKS = {
+		'To do': 'text-slate-300',
+		'In progress': 'text-primary',
+		Complete: 'text-success/40',
+		Off: 'text-slate-300'
+	};
 
 	function toggleOpen() {
 		look.panelId = isOpen ? '' : panel.id;
@@ -55,24 +62,28 @@
 </script>
 
 {#snippet control(isBadge: boolean)}
+	{#if isLocked}
+		<span
+			class="icon-[mdi--lock] size-7 shrink-0 transition-colors {LOCKS[metrics.status]}"
+			role="img"
+			aria-label="{panel.name} is required"
+			title="Required panel"
+		></span>
+	{:else}
+		{@render toggle(isBadge)}
+	{/if}
+{/snippet}
+
+{#snippet toggle(isBadge: boolean)}
 	<button
 		type="button"
 		role="switch"
 		aria-checked={panel.isEnabled}
-		aria-disabled={isLocked}
-		aria-label={isLocked
-			? `${panel.name} is required`
-			: `${panel.isEnabled ? 'Turn off' : 'Turn on'} ${panel.name}`}
-		title={isLocked ? 'Required panel' : undefined}
+		aria-label="{panel.isEnabled ? 'Turn off' : 'Turn on'} {panel.name}"
 		class="flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors {TRACKS[
 			metrics.status
-		]} {panel.isEnabled ? 'justify-end' : 'justify-start'} {isBadge
-			? 'ring-4 ring-white'
-			: ''} {isLocked ? 'cursor-default' : ''}"
-		onclick={() => !isLocked && toggleEnabled()}
-		><span class="flex size-5 items-center justify-center rounded-full bg-white shadow"
-			>{#if isLocked}<span class="icon-[mdi--lock] size-3 {tone.text}"></span>{/if}</span
-		></button
+		]} {panel.isEnabled ? 'justify-end' : 'justify-start'} {isBadge ? 'ring-4 ring-white' : ''}"
+		onclick={toggleEnabled}><span class="size-5 rounded-full bg-white shadow"></span></button
 	>
 {/snippet}
 
@@ -98,14 +109,13 @@
 				})}><span class="icon-[mdi--close] size-3.5"></span></button
 		>
 	{/if}
-	<div class="flex items-center gap-1 p-4 {style === 'ring' ? '' : 'pb-3'}">
-		{#if panel.isDraggable}
-			<span
-				class="-ml-2 flex h-12 w-6 shrink-0 cursor-grab touch-none items-center justify-center text-slate-300 hover:text-slate-500"
-				data-grip="panels"
-				title="Drag to reorder"><span class="icon-[mdi--drag-vertical] size-5"></span></span
-			>
-		{/if}
+	<div
+		class="flex items-center gap-1 p-4 select-none [-webkit-touch-callout:none] {style === 'ring'
+			? ''
+			: 'pb-3'}"
+		data-grip={panel.isDraggable ? 'panels' : undefined}
+		title={panel.isDraggable ? 'Hold and drag to reorder' : undefined}
+	>
 		<button
 			type="button"
 			class="flex min-w-0 flex-1 items-center gap-3 text-left"
