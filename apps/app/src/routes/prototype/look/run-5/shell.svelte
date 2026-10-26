@@ -5,8 +5,12 @@
 	// list below, scrolling on its own; on a desktop the cards and list sit in a narrower column. Inside a project
 	// the phone gets WorkspacePhone; the desktop the panels in a floating column over the pages. Run 9 (note 21): a
 	// project slides in from the right over the dashboard, which stays underneath, so a swipe back can uncover it.
+	// 2026-10-26 16:34: the list sits in a sheet whose top drags down to grow the chart (like Airbnb's map and list);
+	// the phone menu pulls out from the left edge and pushes back the same way; the desktop sidebar's right edge drags
+	// it narrower, down to the icons alone, or wider, up to a limit.
+	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
-	import { fade, fly, scale } from 'svelte/transition';
+	import { fly, scale } from 'svelte/transition';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import DashboardList from './dashboard-list.svelte';
@@ -24,7 +28,7 @@
 	let { look }: { look: LookState } = $props();
 
 	let innerWidth = $state(0);
-	let isDrawerOpen = $state(false);
+	let innerHeight = $state(0);
 	let isBellOpen = $state(false);
 	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
@@ -49,12 +53,161 @@
 		isBellOpen = !isBellOpen;
 		seen = true;
 	}
+
+	function clamp(value: number, min: number, max: number) {
+		return Math.min(max, Math.max(min, value));
+	}
+
+	// The phone menu: 0 shut, 1 open, in between under a finger. From the left-edge strip it follows the finger at
+	// once; on the open menu a sideways push to the left closes it, while an up or down move still scrolls Recent.
+	let drawer = $state(0);
+	let isPulling = $state(false);
+	let drawerBox: HTMLElement | undefined = $state();
+	let pull = { x: 0, y: 0, t: 0, from: 0, isDown: false, isOn: false, isDragged: false };
+
+	function pullStart(event: PointerEvent, isEdge: boolean) {
+		pull = {
+			x: event.clientX,
+			y: event.clientY,
+			t: event.timeStamp,
+			from: drawer,
+			isDown: true,
+			isOn: isEdge,
+			isDragged: false
+		};
+		if (!isEdge) return;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		isPulling = true;
+	}
+
+	function pullMove(event: PointerEvent) {
+		if (!pull.isDown) return;
+		const dx = event.clientX - pull.x;
+		if (!pull.isOn) {
+			if (dx > -8 || Math.abs(dx) < Math.abs(event.clientY - pull.y)) return;
+			pull.isOn = true;
+			isPulling = true;
+			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		}
+		pull.isDragged = Math.abs(dx) > 4;
+		drawer = clamp(pull.from + dx / (drawerBox?.offsetWidth || 300), 0, 1);
+	}
+
+	function pullEnd(event: PointerEvent) {
+		pull.isDown = false;
+		if (!pull.isOn) return;
+		pull.isOn = false;
+		isPulling = false;
+		const speed = (event.clientX - pull.x) / Math.max(1, event.timeStamp - pull.t);
+		drawer = speed > 0.4 ? 1 : speed < -0.4 ? 0 : Math.round(drawer);
+	}
+
+	// A push that closed the menu ends on whatever was under the finger; that tap is not a pick.
+	function swallowClick(event: MouseEvent) {
+		if (!pull.isDragged) return;
+		pull.isDragged = false;
+		event.stopPropagation();
+		event.preventDefault();
+	}
+
+	// The list's sheet rests at three heights: the list at its 65%, half way, or folded down to its heading. Drag its top
+	// (the handle or the heading row) and the part above, chart and cards, follows; a flick moves one rest.
+	let rest = $state(0);
+	let sheetTop = $state<number>();
+	let sheetFrom = { y: 0, t: 0, top: 0 };
+	const rests = $derived.by(() => {
+		const first = Math.max(innerHeight * 0.35, isWide ? 368 : 256);
+		const last = Math.max(first, innerHeight - (isWide ? 116 : 108));
+		return [first, (first + last) / 2, last];
+	});
+	const top = $derived(sheetTop ?? rests[rest]);
+
+	function sheetDown(event: PointerEvent) {
+		const target = event.target as HTMLElement;
+		if (!target.closest('[data-sheet-handle], [data-sheet-grip]')) return;
+		if (target.closest('button, a, input, select, textarea, [role="listbox"]')) return;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		sheetFrom = { y: event.clientY, t: event.timeStamp, top };
+		sheetTop = top;
+	}
+
+	function sheetMove(event: PointerEvent) {
+		if (sheetTop === undefined) return;
+		sheetTop = clamp(sheetFrom.top + event.clientY - sheetFrom.y, rests[0], rests[2]);
+	}
+
+	function sheetUp(event: PointerEvent) {
+		if (sheetTop === undefined) return;
+		const at = sheetTop;
+		const speed = (event.clientY - sheetFrom.y) / Math.max(1, event.timeStamp - sheetFrom.t);
+		const nearest = rests.reduce(
+			(best, value, index) => (Math.abs(value - at) < Math.abs(rests[best] - at) ? index : best),
+			0
+		);
+		rest =
+			speed > 0.5
+				? Math.max(
+						nearest,
+						rests.findIndex((value) => value > at + 1)
+					)
+				: speed < -0.5
+					? Math.min(
+							nearest,
+							rests.findLastIndex((value) => value < at - 1)
+						)
+					: nearest;
+		if (rest < 0) rest = nearest;
+		sheetTop = undefined;
+	}
+
+	const sheetDrag: Attachment<HTMLElement> = (node) => {
+		node.addEventListener('pointerdown', sheetDown);
+		node.addEventListener('pointermove', sheetMove);
+		node.addEventListener('pointerup', sheetUp);
+		node.addEventListener('pointercancel', sheetUp);
+		return () => {
+			node.removeEventListener('pointerdown', sheetDown);
+			node.removeEventListener('pointermove', sheetMove);
+			node.removeEventListener('pointerup', sheetUp);
+			node.removeEventListener('pointercancel', sheetUp);
+		};
+	};
+
+	// The desktop sidebar's width: its right edge drags from the icons alone (RAIL) up to SIDE_MAX, the words sliding
+	// out as it widens; let go nearer the icons than SIDE_MIN and it snaps to the icons. A double-click toggles.
+	const RAIL = 80;
+	const SIDE_MIN = 232;
+	const SIDE_MAX = 340;
+	let side = $state(288);
+	let isSizing = $state(false);
+	let sizeFrom = { x: 0, width: 0 };
+
+	function sizeDown(event: PointerEvent) {
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		isSizing = true;
+		sizeFrom = { x: event.clientX, width: side };
+	}
+
+	function sizeMove(event: PointerEvent) {
+		if (isSizing) side = clamp(sizeFrom.width + event.clientX - sizeFrom.x, RAIL, SIDE_MAX);
+	}
+
+	function sizeUp() {
+		if (!isSizing) return;
+		isSizing = false;
+		side = side < (RAIL + SIDE_MIN) / 2 ? RAIL : Math.max(SIDE_MIN, side);
+	}
 </script>
 
 <svelte:window
 	bind:innerWidth
+	bind:innerHeight
 	{onpointerdown}
-	onkeydown={(event) => event.key === 'Escape' && (isBellOpen = isDrawerOpen = false)}
+	onkeydown={(event) => {
+		if (event.key !== 'Escape') return;
+		isBellOpen = false;
+		drawer = 0;
+	}}
 />
 
 {#snippet bellButton()}
@@ -117,43 +270,95 @@
 {/snippet}
 
 <div class="min-h-dvh {CANVAS}">
-	<div inert={look.screen !== 'dashboard'}>
-		<aside class="fixed top-3 bottom-3 left-3 z-40 hidden w-72 overflow-hidden md:block {FLOAT}">
+	<div
+		inert={look.screen !== 'dashboard'}
+		style="--side: {side}px"
+	>
+		<aside
+			class="group/side fixed top-3 bottom-3 left-3 z-40 hidden overflow-hidden md:block {FLOAT} {isSizing
+				? ''
+				: 'transition-[width] duration-200 ease-out'}"
+			style="width: {side}px"
+		>
 			<Sidebar
 				{look}
 				recent="logos"
+				isCollapsed={side < 150}
 			/>
+			<div
+				class="absolute inset-y-6 right-0 flex w-3 cursor-col-resize touch-none items-center justify-center"
+				title="Drag to resize, double-click to fold"
+				aria-hidden="true"
+				onpointerdown={sizeDown}
+				onpointermove={sizeMove}
+				onpointerup={sizeUp}
+				onpointercancel={sizeUp}
+				ondblclick={() => (side = side > RAIL ? RAIL : 288)}
+			>
+				<span
+					class="h-10 w-1 rounded-full bg-slate-400/60 opacity-0 transition group-hover/side:opacity-100 {isSizing
+						? 'opacity-100'
+						: ''}"
+				></span>
+			</div>
 		</aside>
 
-		{#if isDrawerOpen}
-			<button
-				class="fixed inset-0 z-[60] bg-slate-950/30 md:hidden"
-				aria-label="Close menu"
-				onclick={() => (isDrawerOpen = false)}
-				transition:fade={{ duration: 180 }}
-			></button>
-			<aside
-				class="fixed inset-y-0 left-0 z-[61] w-[84%] max-w-xs overflow-hidden bg-white shadow-2xl md:hidden"
-				transition:fly={{ x: -340, duration: 240 }}
-			>
-				<Sidebar
-					{look}
-					recent="logos"
-					onnavigate={() => (isDrawerOpen = false)}
-				/>
-			</aside>
-		{/if}
+		<!-- The phone menu stays in place, off screen while shut, so a finger can pull it out part way. -->
+		<button
+			class="fixed inset-0 z-[60] bg-slate-950/30 md:hidden {drawer
+				? ''
+				: 'pointer-events-none'} {isPulling ? '' : 'transition-opacity duration-200'}"
+			style="opacity: {drawer}"
+			aria-label="Close menu"
+			tabindex={drawer ? 0 : -1}
+			onclick={() => (drawer = 0)}
+		></button>
+		<aside
+			bind:this={drawerBox}
+			class="fixed inset-y-0 left-0 z-[61] w-[84%] max-w-xs touch-pan-y overflow-hidden bg-white md:hidden {drawer
+				? 'shadow-2xl'
+				: ''} {isPulling ? '' : 'transition-transform duration-[260ms] ease-out'}"
+			style="transform: translateX({(drawer - 1) * 100}%)"
+			inert={!drawer}
+			onpointerdown={(event) => pullStart(event, false)}
+			onpointermove={pullMove}
+			onpointerup={pullEnd}
+			onpointercancel={pullEnd}
+			onclickcapture={swallowClick}
+		>
+			<Sidebar
+				{look}
+				recent="logos"
+				onnavigate={() => (drawer = 0)}
+			/>
+		</aside>
+		<div
+			class="fixed inset-y-0 left-0 z-30 w-4 touch-none md:hidden"
+			aria-hidden="true"
+			onpointerdown={(event) => pullStart(event, true)}
+			onpointermove={pullMove}
+			onpointerup={pullEnd}
+			onpointercancel={pullEnd}
+		></div>
 
-		<main class="flex h-dvh flex-col overflow-hidden md:pl-[312px]">
-			<section class="flex h-[35dvh] min-h-64 shrink-0 flex-col md:min-h-[23rem]">
+		<main
+			class="flex h-dvh flex-col overflow-hidden md:pl-[calc(var(--side)+24px)] {isSizing
+				? ''
+				: 'transition-[padding] duration-200 ease-out'}"
+		>
+			<section
+				class="flex shrink-0 flex-col {sheetTop === undefined
+					? 'transition-[height] duration-300 ease-out'
+					: ''}"
+				style="height: {top}px"
+			>
 				<header
 					class="flex shrink-0 items-center justify-between px-2 pt-[max(0.25rem,env(safe-area-inset-top))] md:justify-end md:px-6 md:pt-5"
 				>
 					<button
 						class="{ROUND} md:hidden"
 						aria-label="Open menu"
-						onclick={() => (isDrawerOpen = true)}
-						><span class="icon-[mdi--menu] size-6"></span></button
+						onclick={() => (drawer = 1)}><span class="icon-[mdi--menu] size-6"></span></button
 					>
 					{@render bellButton()}
 				</header>
@@ -164,8 +369,18 @@
 					<div class={COLUMN}><StatCards {look} /></div>
 				</div>
 			</section>
-			<section class="min-h-0 flex-1 px-4 pt-2 md:px-8 md:pt-4">
-				<div class="{COLUMN} h-full">
+			<section
+				class="flex min-h-0 flex-1 flex-col rounded-t-[28px] bg-white px-4 shadow-[0_-6px_24px_rgb(15_23_42/0.07)] md:px-8"
+				{@attach sheetDrag}
+			>
+				<div
+					class="flex h-6 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+					data-sheet-handle
+					aria-hidden="true"
+				>
+					<span class="h-1.5 w-10 rounded-full bg-slate-300"></span>
+				</div>
+				<div class="{COLUMN} min-h-0 flex-1">
 					<DashboardList
 						{look}
 						isSplit

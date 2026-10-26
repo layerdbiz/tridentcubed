@@ -4,7 +4,11 @@
 	// location (note 7); its bar takes the status colour (note 8). People show their presence dot (note 9) and their
 	// labels, not their job title (note 22); every location has the same grey marker (note 21). Transport and
 	// Facilities (2026-10-25) list the organization's lists with each one's icon, filtered by transport type or facility kind. `isSplit`
-	// lets the rows scroll inside the lower part of the phone screen.
+	// lets the rows scroll inside the lower part of the phone screen. 2026-10-26 16:34: every project has its ⋮
+	// (ProjectMenu) at its top right in the list, the cards and the board, in place of Open and Delete; Cards shows
+	// each project the way Airbnb shows a stay (project-card.svelte); the board's cards read like the list's rows and
+	// its columns reach the bottom of the screen, each scrolling on its own. The heading row is a grip for the sheet
+	// the list sits in (data-sheet-grip, shell.svelte).
 	import { flip } from 'svelte/animate';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
@@ -25,6 +29,8 @@
 	} from './look.data';
 	import type { LookState, ViewType } from './look.state.svelte';
 	import Menu from './menu.svelte';
+	import ProjectCard from './project-card.svelte';
+	import ProjectMenu from './project-menu.svelte';
 	import { labelsOf, TEAM } from './team.data';
 
 	let { look, isSplit = false }: { look: LookState; isSplit?: boolean } = $props();
@@ -155,7 +161,11 @@
 
 	const ICON_BUTTON =
 		'relative flex size-10 items-center justify-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 transition hover:text-slate-900';
-	const GROUP = 'overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200';
+	// In the white sheet the lists need no card of their own. (No negative margins: the list scrolls up and down, and
+	// anything wider would let it slide sideways too.)
+	const GROUP = $derived(
+		isSplit ? '' : 'overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200'
+	);
 </script>
 
 {#snippet bar(project: ProjectType)}
@@ -232,7 +242,10 @@
 
 <div class={isSplit ? 'flex h-full min-h-0 flex-col' : ''}>
 	<!-- Heading, then the view and filter menus as two small icon buttons -->
-	<div class="mb-3 flex shrink-0 items-center justify-between gap-2">
+	<div
+		class="mb-3 flex shrink-0 items-center justify-between gap-2 {isSplit ? 'touch-none' : ''}"
+		data-sheet-grip
+	>
 		<h2 class="min-w-0 truncate text-xl font-semibold text-slate-900 md:text-2xl">
 			{info.label}
 		</h2>
@@ -279,7 +292,13 @@
 		</div>
 	</div>
 
-	<div class={isSplit ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6' : ''}>
+	<div
+		class={isSplit
+			? look.dataset === 'projects' && look.view === 'board'
+				? 'min-h-0 flex-1 pb-[max(1rem,env(safe-area-inset-bottom))]'
+				: 'min-h-0 flex-1 overflow-y-auto overscroll-contain pb-6'
+			: ''}
+	>
 		{#if total === 0}
 			<div class="flex flex-col items-center gap-2 py-16 text-slate-400 {GROUP}">
 				<span class="icon-[mdi--sail-boat] size-14"></span>
@@ -344,7 +363,15 @@
 									<td class="py-3">{@render pill(project.status)}</td>
 									<td class="py-3 pr-4">{@render bar(project)}</td>
 									<td class="py-3 text-xs text-slate-400">{project.updated}</td>
-									<td class="py-3 pr-4 text-right">{@render chevron()}</td>
+									<td
+										class="py-3 pr-3 text-right"
+										onclick={(event) => event.stopPropagation()}
+										><ProjectMenu
+											{look}
+											{project}
+											isOpenable
+										/></td
+									>
 								</tr>
 							{/each}
 						</tbody>
@@ -353,9 +380,12 @@
 				<!-- Phone: F's rows, grouped in one white box -->
 				<ul class="divide-y divide-slate-100 md:hidden {GROUP}">
 					{#each look.visible as project (project.id)}
-						<li animate:flip={{ duration: 200 }}>
+						<li
+							class="relative"
+							animate:flip={{ duration: 200 }}
+						>
 							<button
-								class="flex w-full items-center gap-3 py-3 pr-3 pl-3.5 text-left transition active:bg-slate-50 {isArchived(
+								class="flex w-full items-center gap-3 py-3 pr-11 pl-3.5 text-left transition active:bg-slate-50 {isArchived(
 									project
 								)
 									? 'opacity-60'
@@ -382,101 +412,82 @@
 									{@render state(project)}
 									{@render bar(project)}
 								</span>
-								<span class="pl-1">{@render chevron()}</span>
 							</button>
+							<div class="absolute top-2 right-1">
+								<ProjectMenu
+									{look}
+									{project}
+									isOpenable
+								/>
+							</div>
 						</li>
 					{/each}
 				</ul>
 			{:else if look.view === 'cards'}
-				<div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+				<div class="grid gap-x-4 gap-y-7 sm:grid-cols-2 xl:grid-cols-3">
 					{#each look.visible as project (project.id)}
-						<article
-							class="flex flex-col gap-3 rounded-3xl bg-white p-4 ring-1 ring-slate-900/[0.07] transition {isArchived(
-								project
-							)
-								? 'opacity-60'
-								: 'hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/[0.06]'}"
-							animate:flip={{ duration: 200 }}
-						>
-							<div class="flex items-center gap-3">
-								<ClientLogo
-									name={project.client}
-									size={40}
-									shape="circle"
-									isMuted={isArchived(project)}
-								/>
-								<div class="min-w-0 flex-1">
-									<p class="truncate font-semibold text-slate-900">{project.title}</p>
-									<p class="truncate text-xs text-slate-500">{project.client}</p>
-									<p class="mt-1">{@render state(project)}</p>
-								</div>
-							</div>
-							{@render bar(project)}
-							<div class="flex items-center justify-between gap-2">
-								<Faces
-									names={project.team}
-									size={26}
-									isMuted={isArchived(project)}
-								/>
-								<span class="text-xs text-slate-400">{project.updated}</span>
-								<span class="flex gap-1.5">
-									<button
-										class="rounded-full px-3 py-1.5 text-xs font-medium text-slate-500 hover:bg-danger/10 hover:text-danger"
-										onclick={() =>
-											look.confirm({
-												title: `Delete ${project.title}?`,
-												note: 'It moves to Trash, where an admin can restore it.',
-												onyes: () => look.remove(project.id)
-											})}>Delete</button
-									>
-									<button
-										class="rounded-full px-4 py-1.5 text-xs font-semibold text-white {isArchived(
-											project
-										)
-											? 'bg-slate-400'
-											: 'bg-primary hover:brightness-110'}"
-										onclick={() => look.open(project.id)}>Open</button
-									>
-								</span>
-							</div>
-						</article>
+						<div animate:flip={{ duration: 200 }}>
+							<ProjectCard
+								{look}
+								{project}
+							/>
+						</div>
 					{/each}
 				</div>
 			{:else}
-				<div class="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+				<!-- Columns run from here to the bottom of the screen; each scrolls on its own. -->
+				<div
+					class="-mx-4 flex h-full snap-x scroll-px-4 gap-3 overflow-x-auto px-4 md:mx-0 md:scroll-px-0 md:px-0"
+				>
 					{#each BOARD_COLUMNS as column (column)}
 						{@const items = look.visible.filter((project) => project.status === column)}
-						<div class="w-64 shrink-0 snap-start rounded-3xl bg-slate-900/[0.03] p-2">
-							<p class="flex items-center gap-2 px-2 py-2 text-xs font-semibold text-slate-600">
+						<div
+							class="flex h-full w-72 shrink-0 snap-start flex-col rounded-3xl bg-slate-900/[0.03] p-2"
+						>
+							<p
+								class="flex shrink-0 items-center gap-2 px-2 py-2 text-xs font-semibold text-slate-600"
+							>
 								<span class="size-2 rounded-full {STATUS[column].dot}"></span>{column}
 								<span class="ml-auto text-slate-400">{items.length}</span>
 							</p>
-							<div class="space-y-2">
+							<div class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain">
 								{#each items as project (project.id)}
-									<button
-										class="w-full space-y-2 rounded-2xl bg-white p-3 text-left ring-1 ring-slate-900/[0.06] hover:shadow-md"
-										onclick={() => look.open(project.id)}
+									<div
+										class="relative rounded-2xl bg-white ring-1 ring-slate-900/[0.06] transition hover:shadow-md"
 									>
-										<span class="flex items-center gap-2">
+										<button
+											class="flex w-full items-start gap-2.5 py-3 pr-10 pl-3 text-left"
+											onclick={() => look.open(project.id)}
+										>
 											<ClientLogo
 												name={project.client}
-												size={26}
+												size={34}
 												shape="circle"
 											/>
-											<span class="min-w-0 flex-1 truncate text-sm font-medium text-slate-900"
-												>{project.title}</span
-											>
-										</span>
-										<span class="flex items-center justify-between">
-											<span class="truncate text-xs text-slate-500">{project.client}</span>
-											<Faces
-												names={project.team}
-												size={22}
-												max={3}
+											<span class="min-w-0 flex-1 space-y-1">
+												<span class="block truncate text-sm font-medium text-slate-900"
+													>{project.title}</span
+												>
+												<span class="block truncate text-xs text-slate-500">{project.client}</span>
+												<span class="flex items-center justify-between gap-2 text-xs">
+													{@render place(project.location)}
+													<Faces
+														names={project.team}
+														size={20}
+														max={3}
+													/>
+												</span>
+												{@render bar(project)}
+											</span>
+										</button>
+										<div class="absolute top-1.5 right-0.5">
+											<ProjectMenu
+												{look}
+												{project}
+												isOpenable
 											/>
-										</span>
-										{@render bar(project)}
-									</button>
+										</div>
+									</div>
 								{:else}
 									<p class="px-2 py-4 text-center text-xs text-slate-400">Nothing here</p>
 								{/each}

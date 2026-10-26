@@ -145,7 +145,7 @@
 
 	<div
 		bind:this={swiper}
-		class="flex h-full snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overscroll-x-contain"
+		class="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
 		{onscroll}
 	>
 		<div

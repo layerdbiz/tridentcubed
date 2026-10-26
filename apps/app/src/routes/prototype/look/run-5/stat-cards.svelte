@@ -66,7 +66,7 @@
 <svelte:window onkeydown={(event) => event.key === 'Escape' && (sheet = hovered = undefined)} />
 
 <div
-	class="-mx-4 flex snap-x scroll-px-4 [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:scroll-px-0 md:gap-3 md:px-0"
+	class="-mx-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 md:mx-0 md:scroll-px-0 md:gap-3 md:px-0"
 	role="tablist"
 	aria-label="What to count"
 	bind:this={row}

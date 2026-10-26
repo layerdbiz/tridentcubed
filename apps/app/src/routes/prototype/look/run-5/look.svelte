@@ -43,7 +43,7 @@
 	});
 </script>
 
-<div class="font-sans text-slate-900 [color-scheme:light]">
+<div class="look font-sans text-slate-900 [color-scheme:light]">
 	<Shell {look} />
 	<Confirm {look} />
 </div>
@@ -58,6 +58,18 @@
 {/if}
 
 <style>
+	/* No scrollbars anywhere, up and down or sideways, phone and desktop; everything still scrolls (2026-10-26 16:34). */
+	:global(html:has(.look)),
+	:global(body:has(.look)),
+	.look :global(*) {
+		scrollbar-width: none;
+	}
+	:global(html:has(.look))::-webkit-scrollbar,
+	:global(body:has(.look))::-webkit-scrollbar,
+	.look :global(*::-webkit-scrollbar) {
+		display: none;
+	}
+
 	/* A barge in mdi's filled style (none of the icon sets has one): cargo on a flat hull over mdi's ferry waves, drawn
 	   for Justin's note of 2026-10-25. Masked like the icon-[…] classes, so `icon-barge size-5` works anywhere. */
 	@layer components {

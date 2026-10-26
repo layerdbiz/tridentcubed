@@ -2,40 +2,16 @@
 	// PROTOTYPE (#161): the top of an open project, on the phone and the desktop alike. Back, the title with the
 	// project's percent and state at its right (the state in its colour, the way each panel shows them), the bar under
 	// both, from where the title starts (run 9 notes 10 and 12), and a ⋮ at the far right with what can be done to the
-	// whole project (note 11). `isCloud` adds the save cloud after the title (the phone has it on the floating bar).
+	// whole project (note 11), the same ProjectMenu the dashboard's lists use. `isCloud` adds the save cloud after the
+	// title (the phone has it on the floating bar).
 	import { STATUS } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import Menu, { type OptionType } from './menu.svelte';
+	import ProjectMenu from './project-menu.svelte';
 	import SaveCloud from './save-cloud.svelte';
 
 	let { look, isCloud = false }: { look: LookState; isCloud?: boolean } = $props();
 
 	const status = $derived(STATUS[look.project.status]);
-
-	const ACTIONS: OptionType[] = [
-		{ id: 'send', label: 'Send project', icon: 'icon-[mdi--send-outline]' },
-		{ id: 'sent', label: 'Mark sent', icon: 'icon-[mdi--send-check-outline]' },
-		{ id: 'delete', label: 'Delete project', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
-	];
-
-	function act(id: string) {
-		const { project } = look;
-		if (id === 'send') look.say('Send opens the send flow in V1. Not wired up in this prototype.');
-		if (id === 'sent') {
-			project.status = 'Sent';
-			look.saved();
-			look.say(`"${project.title}" marked sent`);
-		}
-		if (id === 'delete')
-			look.confirm({
-				title: `Delete ${project.title}?`,
-				note: 'It moves to Trash, where an admin can restore it.',
-				onyes: () => {
-					look.home();
-					look.remove(project.id);
-				}
-			});
-	}
 </script>
 
 <div class="flex items-start gap-1">
@@ -67,18 +43,10 @@
 			></span>
 		</span>
 	</div>
-	<Menu
-		label="Project actions"
-		value=""
-		options={ACTIONS}
-		onpick={act}
+	<span class="flex size-10 shrink-0 items-center justify-center"
+		><ProjectMenu
+			{look}
+			project={look.project}
+		/></span
 	>
-		{#snippet trigger(_, isOpen)}
-			<span
-				class="flex size-10 items-center justify-center rounded-full text-slate-700 transition {isOpen
-					? 'bg-slate-900/[0.06]'
-					: 'hover:bg-slate-900/5'}"><span class="icon-[mdi--dots-vertical] size-6"></span></span
-			>
-		{/snippet}
-	</Menu>
 </div>
