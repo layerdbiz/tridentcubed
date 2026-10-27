@@ -65,5 +65,8 @@ export default defineConfig({
 			// Covers @layerd/ui/ui.css too, so Tailwind sees the source @theme.
 			'@layerd/ui': path.resolve(__dirname, '../../packages/ui/src/lib')
 		}
+	},
+	test: {
+		include: ['src/**/*.test.ts']
 	}
 });
