@@ -29,7 +29,7 @@
 <dialog
 	bind:this={dialog}
 	aria-labelledby="legal-dialog-title"
-	class="legal-dialog m-auto max-h-[calc(100dvh-2rem)] w-[min(48rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-3xl bg-base-50-950 p-0 text-base-950-50 shadow-2xl"
+	class="legal-dialog light m-auto max-h-[calc(100dvh-2rem)] w-[min(48rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-3xl border-4 border-primary-300 bg-white p-0 text-base-950 shadow-2xl"
 	oncancel={(event) => {
 		event.preventDefault();
 		close();
@@ -39,10 +39,10 @@
 	}}
 >
 	{#if kind}
-		<div class="sticky top-0 z-10 flex justify-end p-3">
+		<div class="sticky top-0 z-10 flex justify-end p-4">
 			<button
 				type="button"
-				class="grid size-11 place-items-center rounded-full bg-base-200-800/80 backdrop-blur hover:bg-base-300-700"
+				class="grid size-11 place-items-center rounded-full bg-base-100/90 backdrop-blur hover:bg-base-200"
 				aria-label="Close"
 				onclick={close}
 			>
@@ -52,7 +52,7 @@
 				></span>
 			</button>
 		</div>
-		<div class="-mt-14 px-6 pb-10 md:px-10">
+		<div class="-mt-6 px-6 pb-10 md:-mt-8 md:px-12 md:pb-12">
 			<Legal
 				{kind}
 				headingId="legal-dialog-title"
