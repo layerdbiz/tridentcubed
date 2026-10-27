@@ -2,6 +2,7 @@
 export * from "./about/about.remote.ts";
 export * from "./ads/ads.ts";
 export * from "./contact/contact.remote.ts";
+export { default as Cta } from "./cta/cta.svelte";
 export * from "./email/email.remote.ts";
 export * from "./faq/faq.remote.ts";
 export * from "./globe/globe.remote.ts";

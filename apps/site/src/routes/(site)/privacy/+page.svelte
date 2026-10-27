@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Legal, LEGAL_DOCUMENTS } from '#lib';
+	import { Section } from '@layerd/ui';
+	import { Cta, Legal, LEGAL_DOCUMENTS } from '#lib';
 
 	const { title } = LEGAL_DOCUMENTS.privacy;
 </script>
@@ -8,6 +9,15 @@
 	<title>{title} | Trident Cubed</title>
 </svelte:head>
 
-<div class="mx-auto w-full max-w-3xl px-4 pt-36 pb-24">
+<Section
+	divider="bottom"
+	dividerBottom={{ svg: 'text-base-950' }}
+	container="mx-auto w-full max-w-3xl !pt-36"
+>
 	<Legal kind="privacy" />
-</div>
+</Section>
+
+<Cta
+	href="/#Contact"
+	location="legal_page_cta"
+/>

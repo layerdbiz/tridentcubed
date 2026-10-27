@@ -34,7 +34,8 @@
 		getSectionsData,
 		submitContactData,
 		validateField,
-		reportLeadConversion
+		reportLeadConversion,
+		Cta
 	} from '#lib';
 
 	import { getGlobeLocations, getGlobePorts } from '#lib/globe/globe.remote.js';
@@ -979,33 +980,7 @@
 
 <!-- CTA 
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: -->
-<Section
-	class="dark flex flex-col py-0 text-center lg:items-start lg:justify-start lg:text-left"
-	container="!gap-6 !pt-0 lg:!gap-6 flex w-full flex-col items-center lg:grid lg:grid-flow-col lg:grid-rows-2"
->
-	<Text
-		class="text-4xl text-balance md:text-6xl md:text-pretty"
-		h1={getSection('CTA')?.title ?? 'CTA Title'}
-	/>
-	<Text
-		class="text-pretty md:max-w-xl md:text-balance"
-		p={getSection('CTA')?.subtitle ?? 'CTA Subtitle'}
-	/>
-	<Button
-		size="xl"
-		primary
-		variant="text"
-		label="Contact Sales"
-		class="row-span-2 min-w-72 place-self-end self-center"
-		href="#Contact"
-		onclick={trackEvent({
-			name: toButtonEventName('Contact Sales'),
-			location: 'homepage_cta',
-			label: 'Contact Sales',
-			href: '#Contact'
-		})}
-	/>
-</Section>
+<Cta />
 
 <style lang="postcss">
 	@reference "#ui.css";
