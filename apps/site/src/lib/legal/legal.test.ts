@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
 	LEGAL_DOCUMENTS,
 	LEGAL_KINDS,
-	LEGAL_PHONE,
+	LEGAL_PHONES,
 	isLegalKind,
 	toLegalHref,
 	toLegalParts
@@ -34,18 +34,21 @@ describe('legal documents', () => {
 		expect(text).not.toContain('confidential');
 	});
 
-	it('gives both documents the site call number and no other', () => {
+	it('gives both documents the US and Mexico numbers and no other', () => {
 		for (const kind of LEGAL_KINDS) {
 			const text = JSON.stringify(LEGAL_DOCUMENTS[kind]);
-			expect(text).toContain(LEGAL_PHONE.label);
-			expect(text).not.toMatch(/570|832/);
+			expect(text).toContain(LEGAL_PHONES.us.label);
+			expect(text).toContain(LEGAL_PHONES.mx.label);
+			expect(text).not.toContain('570');
 		}
 	});
 
-	it('turns the phone number into a tap-to-call link', () => {
-		expect(toLegalParts(`Call ${LEGAL_PHONE.label}.`)).toEqual([
+	it('turns each phone number into a tap-to-call link', () => {
+		expect(toLegalParts(`Call ${LEGAL_PHONES.us.label} or ${LEGAL_PHONES.mx.label}.`)).toEqual([
 			{ text: 'Call ' },
-			{ text: LEGAL_PHONE.label, href: 'tel:+14095432725' },
+			{ text: LEGAL_PHONES.us.label, href: 'tel:+14095432725' },
+			{ text: ' or ' },
+			{ text: LEGAL_PHONES.mx.label, href: 'tel:+18324776974' },
 			{ text: '.' }
 		]);
 		expect(toLegalParts('No number here.')).toEqual([{ text: 'No number here.' }]);

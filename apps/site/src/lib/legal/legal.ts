@@ -26,17 +26,27 @@ export function toLegalHref(kind: LegalKind) {
 
 const ADDRESS = '800 Town and Country Blvd., Suite 500, Houston, TX 77024';
 
-// The site's one call number; the header's Call Us button dials the same.
-export const LEGAL_PHONE = { label: '+1 (409) 543-2725', href: 'tel:+14095432725' };
+// The same US and Mexico numbers the home page's Contact section lists.
+export const LEGAL_PHONES = {
+	us: { label: '+1 (409) 543-2725', href: 'tel:+14095432725' },
+	mx: { label: '+1 (832) 477-6974', href: 'tel:+18324776974' }
+};
 
 export type LegalPartType = { text: string; href?: string };
 
-/** Splits a paragraph so the phone number renders as a tappable link. */
+const PHONE_PATTERN = new RegExp(
+	`(${Object.values(LEGAL_PHONES)
+		.map(({ label }) => label.replace(/[()+]/g, '\\$&'))
+		.join('|')})`
+);
+
+/** Splits a paragraph so each phone number renders as a tappable link. */
 export function toLegalParts(paragraph: string): LegalPartType[] {
 	const parts: LegalPartType[] = [];
-	for (const [index, text] of paragraph.split(LEGAL_PHONE.label).entries()) {
-		if (index > 0) parts.push({ text: LEGAL_PHONE.label, href: LEGAL_PHONE.href });
-		if (text) parts.push({ text });
+	for (const text of paragraph.split(PHONE_PATTERN)) {
+		const phone = Object.values(LEGAL_PHONES).find(({ label }) => label === text);
+		if (phone) parts.push({ text, href: phone.href });
+		else if (text) parts.push({ text });
 	}
 	return parts;
 }
@@ -84,7 +94,9 @@ const TERMS: LegalDocumentType = {
 		},
 		{
 			heading: 'Contact',
-			paragraphs: [`Trident Cubed Solutions, LLC, ${ADDRESS}. Phone ${LEGAL_PHONE.label}.`]
+			paragraphs: [
+				`Trident Cubed Solutions, LLC, ${ADDRESS}. Phone ${LEGAL_PHONES.us.label} (US), ${LEGAL_PHONES.mx.label} (Mexico).`
+			]
 		}
 	]
 };
@@ -130,7 +142,7 @@ const PRIVACY: LegalDocumentType = {
 		{
 			heading: 'Questions and requests',
 			paragraphs: [
-				`For questions about this policy or the information you have sent us, contact us through the form on this site, call ${LEGAL_PHONE.label}, or write to us at ${ADDRESS}.`
+				`For questions about this policy or the information you have sent us, contact us through the form on this site, call ${LEGAL_PHONES.us.label} in the US or ${LEGAL_PHONES.mx.label} in Mexico, or write to us at ${ADDRESS}.`
 			]
 		},
 		{
