@@ -213,7 +213,7 @@
 		<Theme
 			ghost
 			invert
-			class="justify-self-start lg:justify-self-center"
+			class="ml-9 justify-self-start lg:ml-0 lg:justify-self-center"
 		/>
 		<Button
 			size="sm"
@@ -230,6 +230,16 @@
 				href: 'tel:+14095432725'
 			})}
 		/>
+		<!-- Phone menu only; on desktop these sit in the footer -->
+		<div class="flex gap-6 pt-2 pl-12 text-sm lg:hidden">
+			{#each LEGAL_KINDS as kind (kind)}
+				<a
+					href={toLegalHref(kind)}
+					class="text-primary-200 underline-offset-4 hover:text-white hover:underline"
+					onclick={(event) => openLegal(event, kind)}>{LEGAL_DOCUMENTS[kind].title}</a
+				>
+			{/each}
+		</div>
 	</Nav>
 </Header>
 
@@ -243,24 +253,26 @@
 	<Container class="mt-6 flex translate-y-6 flex-col items-center md:flex-row md:justify-between">
 		<div class="flex flex-col items-center justify-center gap-4 md:flex-row md:items-center">
 			<Logo class="size-11" />
-			<Copyright
-				year="2020"
-				name="Trident Cubed Solutions"
-				type="llc"
-				class="py-0! text-sm text-primary-50"
-			/>
-			<nav
-				aria-label="Legal"
-				class="flex gap-4 text-sm text-primary-50"
-			>
-				{#each LEGAL_KINDS as kind (kind)}
-					<a
-						href={toLegalHref(kind)}
-						class="underline-offset-4 hover:text-primary-200 hover:underline"
-						onclick={(event) => openLegal(event, kind)}>{LEGAL_DOCUMENTS[kind].title}</a
-					>
-				{/each}
-			</nav>
+			<div class="flex flex-col items-center gap-2 md:items-start md:gap-1">
+				<Copyright
+					year="2020"
+					name="Trident Cubed Solutions"
+					type="llc"
+					class="py-0! text-sm text-primary-50"
+				/>
+				<nav
+					aria-label="Legal"
+					class="flex gap-4 text-sm"
+				>
+					{#each LEGAL_KINDS as kind (kind)}
+						<a
+							href={toLegalHref(kind)}
+							class="text-primary-200 underline-offset-4 hover:text-white hover:underline"
+							onclick={(event) => openLegal(event, kind)}>{LEGAL_DOCUMENTS[kind].title}</a
+						>
+					{/each}
+				</nav>
+			</div>
 		</div>
 		<div class="mt-2 flex lg:mt-0">
 			<Button
