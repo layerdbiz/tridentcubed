@@ -29,7 +29,7 @@
 <dialog
 	bind:this={dialog}
 	aria-labelledby="legal-dialog-title"
-	class="legal-dialog light m-auto max-h-[calc(100dvh-2rem)] w-[min(48rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-3xl border-4 border-primary-300 bg-white p-0 text-base-950 shadow-2xl"
+	class="legal-dialog light m-auto max-h-[calc(100dvh-2rem)] w-[min(48rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-3xl border-4 border-primary-600 bg-white p-0 text-base-950 shadow-2xl"
 	oncancel={(event) => {
 		event.preventDefault();
 		close();
