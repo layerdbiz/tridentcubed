@@ -26,6 +26,31 @@ export function toLegalHref(kind: LegalKind) {
 
 const ADDRESS = '800 Town and Country Blvd., Suite 500, Houston, TX 77024';
 
+// The same US and Mexico numbers the home page's Contact section lists.
+export const LEGAL_PHONES = {
+	us: { label: '+1 (409) 543-2725', href: 'tel:+14095432725' },
+	mx: { label: '+1 (832) 477-6974', href: 'tel:+18324776974' }
+};
+
+export type LegalPartType = { text: string; href?: string };
+
+const PHONE_PATTERN = new RegExp(
+	`(${Object.values(LEGAL_PHONES)
+		.map(({ label }) => label.replace(/[()+]/g, '\\$&'))
+		.join('|')})`
+);
+
+/** Splits a paragraph so each phone number renders as a tappable link. */
+export function toLegalParts(paragraph: string): LegalPartType[] {
+	const parts: LegalPartType[] = [];
+	for (const text of paragraph.split(PHONE_PATTERN)) {
+		const phone = Object.values(LEGAL_PHONES).find(({ label }) => label === text);
+		if (phone) parts.push({ text, href: phone.href });
+		else if (text) parts.push({ text });
+	}
+	return parts;
+}
+
 // Word for word from "TCS terms conditions r.1.pdf" (modified 2026-03-31).
 const TERMS: LegalDocumentType = {
 	title: 'Terms & Conditions',
@@ -69,7 +94,9 @@ const TERMS: LegalDocumentType = {
 		},
 		{
 			heading: 'Contact',
-			paragraphs: [`Trident Cubed Solutions, LLC, ${ADDRESS}.`]
+			paragraphs: [
+				`Trident Cubed Solutions, LLC, ${ADDRESS}. Phone ${LEGAL_PHONES.us.label} (US), ${LEGAL_PHONES.mx.label} (Mexico).`
+			]
 		}
 	]
 };
@@ -115,7 +142,7 @@ const PRIVACY: LegalDocumentType = {
 		{
 			heading: 'Questions and requests',
 			paragraphs: [
-				`For questions about this policy or the information you have sent us, contact us through the form on this site, call +1 (409) 543-2725, or write to us at ${ADDRESS}.`
+				`For questions about this policy or the information you have sent us, contact us through the form on this site, call ${LEGAL_PHONES.us.label} in the US or ${LEGAL_PHONES.mx.label} in Mexico, or write to us at ${ADDRESS}.`
 			]
 		},
 		{

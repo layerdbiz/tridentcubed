@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { LEGAL_DOCUMENTS, type LegalKind } from './legal';
+	import { LEGAL_DOCUMENTS, toLegalParts, type LegalKind } from './legal';
 
 	interface LegalProps {
 		kind: LegalKind;
@@ -25,7 +25,19 @@
 		<section class="grid gap-2">
 			<h2 class="text-lg font-semibold">{section.heading}</h2>
 			{#each section.paragraphs as paragraph, index (index)}
-				<p class="leading-relaxed text-base-600-300">{paragraph}</p>
+				<p class="leading-relaxed text-base-600-300">
+					{#each toLegalParts(paragraph) as part, partIndex (partIndex)}
+						{#if part.href}
+							<a
+								href={part.href}
+								class="whitespace-nowrap text-primary-600-300 underline underline-offset-4"
+								>{part.text}</a
+							>
+						{:else}
+							{part.text}
+						{/if}
+					{/each}
+				</p>
 			{/each}
 		</section>
 	{/each}
