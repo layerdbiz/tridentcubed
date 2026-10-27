@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { LEGAL_DOCUMENTS, LEGAL_KINDS, isLegalKind, toLegalHref } from './legal';
+import {
+	LEGAL_DOCUMENTS,
+	LEGAL_KINDS,
+	LEGAL_PHONE,
+	isLegalKind,
+	toLegalHref,
+	toLegalParts
+} from './legal';
 
 describe('legal documents', () => {
 	it('knows only terms and privacy', () => {
@@ -25,5 +32,22 @@ describe('legal documents', () => {
 	it('keeps the private-document confidentiality line off the public terms', () => {
 		const text = JSON.stringify(LEGAL_DOCUMENTS.terms);
 		expect(text).not.toContain('confidential');
+	});
+
+	it('gives both documents the site call number and no other', () => {
+		for (const kind of LEGAL_KINDS) {
+			const text = JSON.stringify(LEGAL_DOCUMENTS[kind]);
+			expect(text).toContain(LEGAL_PHONE.label);
+			expect(text).not.toMatch(/570|832/);
+		}
+	});
+
+	it('turns the phone number into a tap-to-call link', () => {
+		expect(toLegalParts(`Call ${LEGAL_PHONE.label}.`)).toEqual([
+			{ text: 'Call ' },
+			{ text: LEGAL_PHONE.label, href: 'tel:+14095432725' },
+			{ text: '.' }
+		]);
+		expect(toLegalParts('No number here.')).toEqual([{ text: 'No number here.' }]);
 	});
 });
