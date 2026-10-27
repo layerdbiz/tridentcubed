@@ -33,7 +33,8 @@
 		getAboutData,
 		getSectionsData,
 		submitContactData,
-		validateField
+		validateField,
+		reportLeadConversion
 	} from '#lib';
 
 	import { getGlobeLocations, getGlobePorts } from '#lib/globe/globe.remote.js';
@@ -831,10 +832,12 @@
 					isSubmitting = true;
 					// Add 2 second delay to show loading state
 					await new Promise((resolve) => setTimeout(resolve, 2000));
-					await submit();
-
-					// Show sent state
+					const isValid = await submit();
 					isSubmitting = false;
+
+					// Only a message that reached Zapier counts as sent (and as an Ads lead)
+					if (!isValid || !submitContactData.result?.success) return;
+					reportLeadConversion();
 					isSent = true;
 
 					// Revert to idle state after 4 seconds

@@ -21,5 +21,6 @@ export default createAppConfig({
 
 		// Handle routes that weren't crawled (like catch-all 404 routes)
 		handleUnseenRoutes: 'ignore'
-	}
+	},
+	test: { include: ['src/**/*.test.ts'] }
 });

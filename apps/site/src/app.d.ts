@@ -13,7 +13,9 @@ declare global {
 		// interface Error {}
 		// interface Locals {}
 		// interface PageData {}
-		// interface PageState {}
+		interface PageState {
+			legal?: import('#lib/legal/legal').LegalKind;
+		}
 		// interface Platform {}
 	}
 }
