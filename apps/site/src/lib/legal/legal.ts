@@ -26,6 +26,21 @@ export function toLegalHref(kind: LegalKind) {
 
 const ADDRESS = '800 Town and Country Blvd., Suite 500, Houston, TX 77024';
 
+// The site's one call number; the header's Call Us button dials the same.
+export const LEGAL_PHONE = { label: '+1 (409) 543-2725', href: 'tel:+14095432725' };
+
+export type LegalPartType = { text: string; href?: string };
+
+/** Splits a paragraph so the phone number renders as a tappable link. */
+export function toLegalParts(paragraph: string): LegalPartType[] {
+	const parts: LegalPartType[] = [];
+	for (const [index, text] of paragraph.split(LEGAL_PHONE.label).entries()) {
+		if (index > 0) parts.push({ text: LEGAL_PHONE.label, href: LEGAL_PHONE.href });
+		if (text) parts.push({ text });
+	}
+	return parts;
+}
+
 // Word for word from "TCS terms conditions r.1.pdf" (modified 2026-03-31).
 const TERMS: LegalDocumentType = {
 	title: 'Terms & Conditions',
@@ -69,7 +84,7 @@ const TERMS: LegalDocumentType = {
 		},
 		{
 			heading: 'Contact',
-			paragraphs: [`Trident Cubed Solutions, LLC, ${ADDRESS}.`]
+			paragraphs: [`Trident Cubed Solutions, LLC, ${ADDRESS}. Phone ${LEGAL_PHONE.label}.`]
 		}
 	]
 };
@@ -115,7 +130,7 @@ const PRIVACY: LegalDocumentType = {
 		{
 			heading: 'Questions and requests',
 			paragraphs: [
-				`For questions about this policy or the information you have sent us, contact us through the form on this site, call +1 (409) 543-2725, or write to us at ${ADDRESS}.`
+				`For questions about this policy or the information you have sent us, contact us through the form on this site, call ${LEGAL_PHONE.label}, or write to us at ${ADDRESS}.`
 			]
 		},
 		{
