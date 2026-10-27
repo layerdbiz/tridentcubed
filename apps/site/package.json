@@ -19,7 +19,8 @@
 		"sync": "svelte-kit sync",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vp test run"
 	},
 	"devDependencies": {
 		"@csstools/postcss-light-dark-function": "^3.0.0",

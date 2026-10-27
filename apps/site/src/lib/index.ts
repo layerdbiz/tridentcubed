@@ -1,11 +1,16 @@
 /* ROOT */
 export * from "./about/about.remote.ts";
+export * from "./ads/ads.ts";
 export * from "./contact/contact.remote.ts";
+export { default as Cta } from "./cta/cta.svelte";
 export * from "./email/email.remote.ts";
 export * from "./faq/faq.remote.ts";
 export * from "./globe/globe.remote.ts";
 export { default as HomePage } from "./HomePage.svelte";
 export * from "./icons/icons.remote.ts";
+export * from "./legal/legal.ts";
+export { default as Legal } from "./legal/legal.svelte";
+export { default as LegalDialog } from "./legal/legal-dialog.svelte";
 export * from "./partners/partners.remote.ts";
 export * from "./sections/sections.remote.ts";
 export * from "./services/services.remote.ts";

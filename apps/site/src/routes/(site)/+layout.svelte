@@ -1,6 +1,8 @@
 <script>
 	import '../../app.css';
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import {
 		Metadata,
 		Theme,
@@ -19,7 +21,33 @@
 		mq,
 		navigationState
 	} from '@layerd/ui';
+	import {
+		LegalDialog,
+		LEGAL_DOCUMENTS,
+		LEGAL_KINDS,
+		configureAds,
+		reportPhoneTap,
+		toLegalHref
+	} from '#lib';
 	let { children } = $props();
+
+	onMount(configureAds);
+
+	/**
+	 * Opens a footer legal link in the dialog; modified clicks open the route as usual.
+	 * @param {MouseEvent} event
+	 * @param {import('#lib').LegalKind} kind
+	 */
+	function openLegal(event, kind) {
+		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+			return;
+		event.preventDefault();
+		goto(toLegalHref(kind), {
+			shallow: true,
+			state: { legal: kind },
+			replace: Boolean(page.state.legal)
+		});
+	}
 	let navOpen = $state(false);
 
 	// Use page.url for dynamic URLs (works in browser)
@@ -33,6 +61,9 @@
 	let stickyActiveSection = $derived(navigationState.stickyActiveSection);
 
 	let headerElement = $state();
+
+	// Only the home page has the dark hero photo behind a see-through header
+	let isHome = $derived(page.route.id === '/(site)');
 
 	// Navigation links configuration
 	const links = [
@@ -153,9 +184,9 @@
 
 <Header
 	fixed
-	appearance={navOpen ? 'glass' : scroll.top ? 'ghost' : 'glass'}
+	appearance={navOpen ? 'glass' : scroll.top && isHome ? 'ghost' : 'glass'}
 	invert
-	class="relative grid grid-cols-[auto_minmax(0,1fr)] grid-rows-1 gap-4 rounded-4xl p-2 lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:p-2 {navOpen
+	class="relative grid grid-cols-[auto_minmax(0,1fr)] grid-rows-1 gap-x-4 rounded-4xl p-2 lg:grid-cols-[auto_minmax(0,1fr)] lg:grid-rows-1 lg:p-2 {navOpen
 		? 'grid-rows-[auto_auto]'
 		: ''}"
 >
@@ -166,7 +197,7 @@
 	<Nav bind:navOpen>
 		{#each links as link (link.href)}
 			<Link
-				href={link.href}
+				href={isHome ? link.href : `/${link.href}`}
 				onclick={trackEvent({
 					name: toLinkEventName(link.label),
 					location: 'website_header_navigation',
@@ -179,10 +210,21 @@
 			>
 		{/each}
 
+		<!-- Phone menu only; on desktop these sit in the footer -->
+		<div class="contents lg:hidden">
+			{#each LEGAL_KINDS as kind (kind)}
+				<Link
+					href={toLegalHref(kind)}
+					onclick={(/** @type {MouseEvent} */ event) => openLegal(event, kind)}
+					>{LEGAL_DOCUMENTS[kind].title}</Link
+				>
+			{/each}
+		</div>
+
 		<Theme
 			ghost
 			invert
-			class="justify-self-start lg:justify-self-center"
+			class="ml-9 justify-self-start lg:ml-0 lg:justify-self-center"
 		/>
 		<Button
 			size="sm"
@@ -202,6 +244,8 @@
 	</Nav>
 </Header>
 
+<svelte:document onclick={reportPhoneTap} />
+
 <main class="container flex flex-col">
 	{@render children()}
 </main>
@@ -210,12 +254,32 @@
 	<Container class="mt-6 flex translate-y-6 flex-col items-center md:flex-row md:justify-between">
 		<div class="flex flex-col items-center justify-center gap-4 md:flex-row md:items-center">
 			<Logo class="size-11" />
-			<Copyright
-				year="2020"
-				name="Trident Cubed Solutions"
-				type="llc"
-				class="py-0! text-sm text-primary-50"
-			/>
+			<div class="flex flex-col items-center gap-2 md:items-start md:gap-1">
+				<Copyright
+					year="2020"
+					name="Trident Cubed Solutions"
+					type="llc"
+					class="py-0! text-sm text-primary-50"
+				/>
+				<nav
+					aria-label="Legal"
+					class="flex items-center gap-3 text-sm"
+				>
+					{#each LEGAL_KINDS as kind, index (kind)}
+						{#if index > 0}
+							<span
+								class="h-3.5 w-px bg-white/30"
+								aria-hidden="true"
+							></span>
+						{/if}
+						<a
+							href={toLegalHref(kind)}
+							class="text-primary-200 underline-offset-4 hover:text-white hover:underline"
+							onclick={(event) => openLegal(event, kind)}>{LEGAL_DOCUMENTS[kind].title}</a
+						>
+					{/each}
+				</nav>
+			</div>
 		</div>
 		<div class="mt-2 flex lg:mt-0">
 			<Button
@@ -273,6 +337,8 @@
 		overlay="bg-radial from-primary to-transparent from-0% to-80% bg-black scale-y-200 translate-y-1/2"
 	/>
 </Footer>
+
+<LegalDialog />
 
 <style lang="postcss">
 	@reference '#ui.css';

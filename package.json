@@ -17,7 +17,7 @@
 		"build": "pnpm run workspace -- build",
 		"preview": "pnpm run workspace -- preview",
 		"preview:all": "turbo preview",
-		"test": "turbo run test --filter=app --filter=@layerd/ui",
+		"test": "turbo run test --filter=app --filter=site --filter=@layerd/ui",
 		"barrels": "pnpm --filter @layerd/tools run barrels:run --workspace",
 		"barrels:watch": "pnpm --filter @layerd/tools run barrels:run --workspace --watch",
 		"sheetari": "pnpm --filter @layerd/tools sheetari",
