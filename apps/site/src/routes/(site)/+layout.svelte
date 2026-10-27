@@ -210,6 +210,17 @@
 			>
 		{/each}
 
+		<!-- Phone menu only; on desktop these sit in the footer -->
+		<div class="contents lg:hidden">
+			{#each LEGAL_KINDS as kind (kind)}
+				<Link
+					href={toLegalHref(kind)}
+					onclick={(/** @type {MouseEvent} */ event) => openLegal(event, kind)}
+					>{LEGAL_DOCUMENTS[kind].title}</Link
+				>
+			{/each}
+		</div>
+
 		<Theme
 			ghost
 			invert
@@ -230,16 +241,6 @@
 				href: 'tel:+14095432725'
 			})}
 		/>
-		<!-- Phone menu only; on desktop these sit in the footer -->
-		<div class="flex gap-6 pt-2 pl-12 text-sm lg:hidden">
-			{#each LEGAL_KINDS as kind (kind)}
-				<a
-					href={toLegalHref(kind)}
-					class="text-primary-200 underline-offset-4 hover:text-white hover:underline"
-					onclick={(event) => openLegal(event, kind)}>{LEGAL_DOCUMENTS[kind].title}</a
-				>
-			{/each}
-		</div>
 	</Nav>
 </Header>
 
@@ -262,9 +263,15 @@
 				/>
 				<nav
 					aria-label="Legal"
-					class="flex gap-4 text-sm"
+					class="flex items-center gap-3 text-sm"
 				>
-					{#each LEGAL_KINDS as kind (kind)}
+					{#each LEGAL_KINDS as kind, index (kind)}
+						{#if index > 0}
+							<span
+								class="h-3.5 w-px bg-white/30"
+								aria-hidden="true"
+							></span>
+						{/if}
 						<a
 							href={toLegalHref(kind)}
 							class="text-primary-200 underline-offset-4 hover:text-white hover:underline"
