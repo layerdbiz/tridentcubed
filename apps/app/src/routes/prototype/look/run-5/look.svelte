@@ -10,6 +10,7 @@
 	import { PAGES, type DatasetType } from './look.data';
 	import { LookState, type ScreenType, type TabType, type ViewType } from './look.state.svelte';
 	import Confirm from './confirm.svelte';
+	import type { PageType } from './records.data';
 	import Shell from './shell.svelte';
 
 	let { onready }: { onready: (look: LookState) => void } = $props();
@@ -25,6 +26,14 @@
 	// Old links said ?set=clients (Customers since run 11); anything unknown stays on Projects.
 	const set = params.get('set')?.replace('clients', 'customers') as DatasetType | undefined;
 	if (set && PAGES.includes(set)) look.pick(set);
+	// ?screen=record&record=customers:KOGA opens a record's own page (run 12).
+	const [recordPage, ...recordKey] = (params.get('record') ?? '').split(':');
+	if (look.screen === 'record') {
+		const page = recordPage as PageType;
+		if (PAGES.slice(1).includes(page) && look.has(page, recordKey.join(':')))
+			look.openRecord(page, recordKey.join(':'), look.tab);
+		else look.screen = 'dashboard';
+	}
 	if (params.has('range')) look.range = params.get('range') as RangeType;
 	if (params.has('chart')) look.chart = params.get('chart') as ChartKindType;
 	// svelte-ignore state_referenced_locally
@@ -41,6 +50,9 @@
 		url.searchParams.set('range', look.range);
 		url.searchParams.set('chart', look.chart);
 		url.searchParams.set('panel', look.panelId);
+		if (look.screen === 'record' && look.record)
+			url.searchParams.set('record', `${look.record.page}:${look.record.key}`);
+		else url.searchParams.delete('record');
 		if (url.search !== page.url.search) goto(url, { shallow: true, replace: true });
 	});
 </script>

@@ -5,21 +5,25 @@
 	// sheet on a phone. Bigger on a desktop (note 34). Five do not fit a phone, so the row scrolls sideways and the
 	// picked card scrolls into view; the popover is fixed, so the row cannot clip it. Run 11 (2026-10-26 19:22): the
 	// row has room above and below, so the picked card's shadow is not cut off, and only that card has one; the list's
-	// sheet casts its shadow under the rest.
+	// sheet casts its shadow under the rest. Run 12 (2026-11-07, note 13): each card's number is the same count the
+	// chart ends on and the list shows (records.data.ts), and what changed over the time range sits beside it (▲3 for
+	// "3 more this week"), so the chart no longer repeats the number.
 	import { scale } from 'svelte/transition';
 	import BottomSheet from './bottom-sheet.svelte';
+	import { changeOf, RANGES } from './chart.data';
 	import { DATASETS, PAGES, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { countOf } from './records.data';
 
 	let { look }: { look: LookState } = $props();
 
 	const SETS = PAGES;
 	const HELP: Record<string, string> = {
 		projects:
-			'Every project in the workspace, whatever its status. The chart counts the ones still open, and the list below shows them all.',
+			'Every project in the workspace, whatever its state. The number beside it is how many more there are than at the start of the time range.',
 		customers:
-			'Companies Trident Cubed works for. A customer counts once, however many projects they have. The chart counts customers with a project still open.',
-		team: 'Everyone on the Trident Cubed team who can sign in. The chart counts the people working on a project that is still open.',
+			'Companies Trident Cubed works for. A customer counts once, however many projects they have; the badge on its logo counts its projects.',
+		team: 'Everyone on the Trident Cubed team who can sign in. A blue ring marks an admin and a violet ring a manager.',
 		transport:
 			"The ships, barges, planes, trains and trucks in the organization's list. Each is typed in once and picked in any project; later a tracking service adds ships and planes to the same list.",
 		facilities:
@@ -50,13 +54,7 @@
 		typeof window !== 'undefined' &&
 		window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-	function countOf(dataset: DatasetType) {
-		if (dataset === 'projects') return look.projects.length;
-		if (dataset === 'customers') return look.customers.length;
-		if (dataset === 'transport') return look.transports.length;
-		if (dataset === 'facilities') return look.facilities.length;
-		return look.members.length;
-	}
+	const range = $derived(RANGES.find((item) => item.id === look.range)!);
 
 	function ask(event: MouseEvent, dataset: DatasetType) {
 		event.stopPropagation();
@@ -75,40 +73,60 @@
 	{#each SETS as dataset (dataset)}
 		{@const info = DATASETS[dataset]}
 		{@const isOn = look.dataset === dataset}
+		{@const change = changeOf(look, dataset)}
 		<div
 			role="tab"
 			tabindex="0"
 			aria-selected={isOn}
 			data-set={dataset}
-			class="relative flex w-[calc((100%-1rem)/2.6)] shrink-0 cursor-pointer snap-start items-center gap-2 rounded-2xl p-2.5 transition duration-200 select-none md:w-auto md:min-w-44 md:flex-1 md:gap-3 md:rounded-3xl md:px-4 md:py-5 {isOn
+			class="relative flex w-[calc((100%-1rem)/2.6)] shrink-0 cursor-pointer snap-start items-center gap-1.5 rounded-2xl p-2.5 transition duration-200 select-none md:w-auto md:min-w-44 md:flex-1 md:gap-3 md:rounded-3xl md:px-4 md:py-5 {isOn
 				? 'bg-primary text-white shadow-lg shadow-primary/30'
 				: 'bg-white text-slate-700 hover:-translate-y-0.5'}"
 			onclick={() => look.pick(dataset)}
 			onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && look.pick(dataset)}
 		>
-			<span class="{info.active} size-7 shrink-0 md:size-10 {isOn ? 'text-white' : 'text-primary'}"
+			<span class="{info.active} size-6 shrink-0 md:size-10 {isOn ? 'text-white' : 'text-primary'}"
 			></span>
 			<span class="min-w-0 flex-1">
-				<span class="block text-lg leading-tight font-semibold tabular-nums md:text-3xl"
-					>{countOf(dataset)}</span
-				>
+				<span class="flex items-baseline gap-1">
+					<span class="text-lg leading-tight font-semibold tabular-nums md:text-3xl"
+						>{countOf(look, dataset)}</span
+					>
+					{#if change}
+						<span
+							class="flex items-center text-[11px] font-semibold tabular-nums md:text-sm {isOn
+								? 'text-white/85'
+								: change > 0
+									? 'text-success'
+									: 'text-danger'}"
+							title="{Math.abs(change)} {change > 0 ? 'more' : 'fewer'} {range.long}"
+							><span
+								class="{change > 0
+									? 'icon-[mdi--menu-up]'
+									: 'icon-[mdi--menu-down]'} -mx-0.5 size-4 md:size-5"
+							></span>{Math.abs(change)}</span
+						>
+					{/if}
+					<span class="ml-auto self-start">
+						<button
+							type="button"
+							class="relative -m-1 flex shrink-0 items-center justify-center p-1 {isOn
+								? 'text-white hover:text-white/85'
+								: 'text-slate-300 hover:text-slate-500'}"
+							aria-label="What does {info.label} count?"
+							onclick={(event) => ask(event, dataset)}
+							onpointerenter={(event) => hasHover && hover(event, dataset)}
+							onpointerleave={() => hasHover && (hovered = undefined)}
+							><span class="icon-[mdi--help-circle] size-3.5 md:size-5"></span></button
+						>
+					</span>
+				</span>
 				<span
 					class="flex items-center gap-0.5 text-[11px] font-medium md:gap-1 md:text-[15px] {isOn
 						? 'text-white/85'
 						: 'text-slate-500'}"
 				>
 					<span class="truncate">{info.label}</span>
-					<button
-						type="button"
-						class="relative -m-1 flex shrink-0 items-center justify-center p-1 {isOn
-							? 'text-white hover:text-white/85'
-							: 'text-slate-300 hover:text-slate-500'}"
-						aria-label="What does {info.label} count?"
-						onclick={(event) => ask(event, dataset)}
-						onpointerenter={(event) => hasHover && hover(event, dataset)}
-						onpointerleave={() => hasHover && (hovered = undefined)}
-						><span class="icon-[mdi--help-circle] size-3.5 md:size-5"></span></button
-					>
 				</span>
 			</span>
 		</div>
@@ -136,7 +154,7 @@
 			<span class="{info.active} size-9 text-primary"></span>
 			<p>
 				<b class="block text-lg text-slate-900">{info.label}</b>
-				<span class="text-sm text-slate-500">{countOf(sheet)} right now</span>
+				<span class="text-sm text-slate-500">{countOf(look, sheet)} right now</span>
 			</p>
 		</div>
 		<p class="mt-4 text-[15px] leading-relaxed text-slate-600">{HELP[sheet]}</p>

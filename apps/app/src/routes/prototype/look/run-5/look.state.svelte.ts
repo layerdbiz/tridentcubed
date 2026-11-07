@@ -4,9 +4,12 @@
 // first (`confirm`, Justin 2026-10-25). Run 9: everything is kept in this browser, so a reload keeps your edits.
 // Run 11 (2026-10-26 19:22): a project marked Sent remembers its state before, so Unsend puts it back; a Sent or
 // Complete project is frozen (`isFrozen`); the floating bar's + adds a project, customer, team member, transport or
-// facility (`adding`), and the dashboard's pages slide in from the side they sit on (`slide`).
+// facility (`adding`), and the dashboard's pages slide in from the side they sit on (`slide`). Run 12 (2026-11-07): a
+// customer, team member, transport or facility opens its own screen (`record`, tabs Page and Edit), where it is edited
+// or deleted; a rename follows it into every project that uses it.
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
+	clientOf as clientOfName,
 	CLIENTS,
 	createId,
 	createPanels,
@@ -16,6 +19,7 @@ import {
 	PAGES,
 	PROJECTS,
 	registerCustomer,
+	registerPerson,
 	stopOf,
 	TRANSPORTS,
 	type ClientType,
@@ -27,11 +31,13 @@ import {
 	type StatusType,
 	type TransportType
 } from './look.data';
+import type { PageType } from './records.data';
 import { TEAM, type TeamMemberType } from './team.data';
 
-export type ScreenType = 'dashboard' | 'workspace';
+export type ScreenType = 'dashboard' | 'workspace' | 'record';
 export type ViewType = 'table' | 'cards' | 'board';
-export type TabType = 'edit' | 'preview';
+// A project has Edit (its panels, once called Panels) and Preview; a record has Page (how it reads) and Edit.
+export type TabType = 'page' | 'edit' | 'preview';
 
 export type MetricsType = { done: number; total: number; percent: number; status: PanelStatusType };
 
@@ -102,7 +108,7 @@ export function percentOf(panels: PanelType[]) {
 // Run 9 (Justin's note 14, edits that "sometimes don't stay"): a phone browser reloads a tab it kept in the background,
 // and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
 // in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
-const KEEP = 'trident-look-161-run-11';
+const KEEP = 'trident-look-161-run-12';
 type KeptType = {
 	projects: ProjectType[];
 	workspaces: Record<string, PanelType[]>;
@@ -149,7 +155,9 @@ export class LookState {
 	navSection = $state<string>('projects');
 	// Which way the dashboard's next page slides in: 1 from the right, -1 from the left.
 	slide = $state(0);
-	// Panels 0, Preview 1, and in between while a finger swipes from one to the other.
+	// The record on show: which page it belongs to and its name.
+	record = $state<{ page: PageType; key: string }>();
+	// The first tab 0, the second 1, and in between while a finger swipes from one to the other.
 	tabProgress = $state(0);
 	isSaving = $state(false);
 	toast = $state('');
@@ -164,11 +172,6 @@ export class LookState {
 
 	project = $derived(
 		this.projects.find((project) => project.id === this.projectId) ?? this.projects[0]
-	);
-	visible = $derived(
-		this.filter === 'All' || this.dataset !== 'projects'
-			? this.projects
-			: this.projects.filter((project) => project.status === this.filter)
 	);
 	panels = $derived(this.workspaces[this.projectId] ?? []);
 	overall = $derived(percentOf(this.panels));
@@ -191,7 +194,8 @@ export class LookState {
 			this.customers = kept.customers;
 			this.added = kept.added;
 			this.members = kept.members;
-			for (const customer of kept.added) registerCustomer(customer.name, customer.city);
+			for (const customer of kept.added) registerCustomer(customer);
+			for (const member of kept.members) registerPerson(member);
 		} else
 			for (const project of this.projects) {
 				this.workspaces[project.id] = createPanels(project);
@@ -234,26 +238,36 @@ export class LookState {
 			: project.progress;
 	}
 
-	// A count card picks what the chart and the list show, and the chart that suits it; each has its own filters.
+	// A count card picks what the chart and the list show, and the chart that suits it. The view (list, cards or
+	// board) stays as it is: every page has all three since run 12.
 	pick(dataset: DatasetType) {
 		this.slide = Math.sign(PAGES.indexOf(dataset) - PAGES.indexOf(this.dataset));
 		this.navSection = dataset;
 		this.dataset = dataset;
 		this.chart = DEFAULT_CHART[dataset];
 		this.filter = 'All';
-		if (dataset !== 'projects' && this.view === 'board') this.view = 'table';
 	}
 
 	open(id: string) {
-		this.#keepProject();
+		if (this.screen === 'workspace') this.#keepProject();
 		this.#ensure(id);
 		this.projectId = id;
 		this.panelId = '';
+		if (this.tab === 'page') this.tab = 'edit';
+		this.tabProgress = this.tab === 'preview' ? 1 : 0;
 		this.screen = 'workspace';
 	}
 
+	openRecord(page: PageType, key: string, tab: TabType = 'page') {
+		if (this.screen === 'workspace') this.#keepProject();
+		this.record = { page, key };
+		this.tab = tab === 'preview' ? 'page' : tab;
+		this.tabProgress = this.tab === 'page' ? 0 : 1;
+		this.screen = 'record';
+	}
+
 	home() {
-		this.#keepProject();
+		if (this.screen === 'workspace') this.#keepProject();
 		this.screen = 'dashboard';
 		this.navSection = this.dataset;
 	}
@@ -334,8 +348,12 @@ export class LookState {
 
 	// Called by every input, so the "Saved" badge shows auto-save at work.
 	saved() {
-		this.isSaving = true;
 		this.project.updated = 'Just now';
+		this.flash();
+	}
+
+	flash() {
+		this.isSaving = true;
 		clearTimeout(this.#saveTimer);
 		this.#saveTimer = setTimeout(() => (this.isSaving = false), 700);
 	}
@@ -346,24 +364,123 @@ export class LookState {
 		this.#toastTimer = setTimeout(() => (this.toast = ''), 2600);
 	}
 
-	// "Add new" from the Project panel: the Transport and Facility lists grow, as their dashboard pages show.
+	// Is that name taken on its page? Records are known by their name.
+	has(page: PageType, name: string) {
+		const names =
+			page === 'customers'
+				? this.customers
+				: page === 'team'
+					? this.members.map((member) => member.name)
+					: page === 'transport'
+						? this.transports.map((transport) => transport.name)
+						: this.facilities.map((facility) => facility.name);
+		return names.includes(name);
+	}
+
+	// "Add new" from the Project panel or the +: the lists grow, as their dashboard pages show.
 	addTransport(transport: Omit<TransportType, 'source'>) {
+		if (this.has('transport', transport.name))
+			return this.say(`${transport.name} is already there`);
 		this.transports.push({ ...transport, source: 'manual' });
-		this.say(`${transport.name} added to Transport`);
+		this.say(`${transport.name} added to Transport mode`);
 	}
 
 	addFacility(facility: FacilityType) {
+		if (this.has('facilities', facility.name)) return this.say(`${facility.name} is already there`);
 		this.facilities.push(facility);
 		this.say(`${facility.name} added to Facilities`);
 	}
 
-	addCustomer(name: string, city = '') {
-		this.added.push(registerCustomer(name, city));
+	addCustomer(name: string, city = '', kind = '') {
+		if (this.has('customers', name)) return this.say(`${name} is already there`);
+		this.setCustomer(name, { city, kind });
 		this.customers.push(name);
 		this.say(`${name} added to Customers`);
 	}
 
+	// A customer's types or city, edited on its page: kept here with the rest of its card.
+	setCustomer(name: string, patch: Partial<ClientType>) {
+		const index = this.added.findIndex((customer) => customer.name === name);
+		const before = this.added[index] ?? clientOfName(name);
+		const after = registerCustomer({ ...before, ...patch });
+		if (index < 0) this.added.push(after);
+		else this.added[index] = after;
+		this.flash();
+	}
+
+	// A new name follows the record into every project, panel and drop-down that uses it.
+	rename(page: PageType, from: string, to: string) {
+		const name = to.trim();
+		if (!name || name === from) return false;
+		if (this.has(page, name)) {
+			this.say(`${name} is already there`);
+			return false;
+		}
+		const swap = (value: string) => (value === from ? name : value);
+		if (page === 'customers') {
+			this.customers = this.customers.map(swap);
+			this.setCustomer(from, { name });
+			this.added = this.added.filter((customer) => customer.name !== from);
+			for (const project of this.projects) project.client = swap(project.client);
+		}
+		if (page === 'team') {
+			const member = this.members.find((item) => item.name === from);
+			if (member) {
+				member.name = name;
+				registerPerson(member);
+			}
+			for (const project of this.projects) project.team = project.team.map(swap);
+		}
+		for (const project of this.projects)
+			project.stops = project.stops.map((stop) => ({
+				...stop,
+				transport: page === 'transport' ? swap(stop.transport) : stop.transport,
+				facility: page === 'facilities' ? swap(stop.facility) : stop.facility
+			}));
+		if (page === 'transport') {
+			const transport = this.transports.find((item) => item.name === from);
+			if (transport) transport.name = name;
+		}
+		if (page === 'facilities') {
+			const facility = this.facilities.find((item) => item.name === from);
+			if (facility) facility.name = name;
+		}
+		for (const panels of Object.values(this.workspaces))
+			for (const panel of panels) {
+				if (page === 'team') {
+					panel.owner = swap(panel.owner);
+					panel.assigned = panel.assigned.map(swap);
+				}
+				if (page === 'customers')
+					for (const field of panel.fields)
+						if (field.label === 'Customer') {
+							field.value = swap(field.value);
+							field.options = field.options?.map(swap);
+						}
+				for (const stop of panel.stops) {
+					if (page === 'transport') stop.name = swap(stop.name);
+					if (page === 'facilities') stop.facility = swap(stop.facility);
+				}
+			}
+		if (this.record?.page === page && this.record.key === from) this.record = { page, key: name };
+		this.flash();
+		return true;
+	}
+
+	// Deleting a record asks first (the caller's confirm); its projects keep the name they had.
+	removeRecord(page: PageType, key: string) {
+		if (page === 'customers') this.customers = this.customers.filter((name) => name !== key);
+		if (page === 'team') this.members = this.members.filter((member) => member.name !== key);
+		if (page === 'transport')
+			this.transports = this.transports.filter((transport) => transport.name !== key);
+		if (page === 'facilities')
+			this.facilities = this.facilities.filter((facility) => facility.name !== key);
+		if (this.screen === 'record' && this.record?.key === key) this.home();
+		this.say(`${key} moved to Trash`);
+	}
+
 	addMember(member: Pick<TeamMemberType, 'name' | 'email' | 'role'>) {
+		if (this.has('team', member.name)) return this.say(`${member.name} is already there`);
 		this.members.push({
 			...member,
 			rank: 9,

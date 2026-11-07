@@ -9,20 +9,25 @@
 	// the phone menu pulls out from the left edge and pushes back the same way; the desktop sidebar's right edge drags
 	// it narrower, down to the icons alone, or wider, up to a limit. Run 11 (2026-10-26 19:22): one floating bar at the
 	// bottom for the pages, the + and, in a project, Panels and Preview (nav-bar.svelte); a finger swipes the list
-	// sideways to the next page; the sheet has rounder corners and a deep shadow that falls under the cards.
+	// sideways to the next page; the sheet has rounder corners and a deep shadow that falls under the cards. Run 12
+	// (2026-11-07): the list's four menus stay put over the sheet while a swipe slides the title and the list, and the
+	// coming page fades in as it slides (notes 2 and 3); a customer, team member, transport or facility opens its own
+	// screen (record-page.svelte), as a project does; the bell and the menu share one Recent list.
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fly, scale } from 'svelte/transition';
-	import Avatar from './avatar.svelte';
-	import ClientLogo from './client-logo.svelte';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
 	import AddSheet from './add-sheet.svelte';
-	import { PAGE_ICONS, PAGES, RECENT } from './look.data';
+	import ListMenus from './list-menus.svelte';
+	import { PAGES } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
+	import RecentList from './recent-list.svelte';
+	import RecordPage from './record-page.svelte';
+	import { recordOf } from './records.data';
 	import ReportPreview from './report-preview.svelte';
 	import Sidebar from './sidebar.svelte';
 	import StatCards from './stat-cards.svelte';
@@ -36,6 +41,9 @@
 	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
 	const isWide = $derived(innerWidth >= 768);
+	const record = $derived(
+		look.record ? recordOf(look, look.record.page, look.record.key) : undefined
+	);
 
 	const CANVAS = 'bg-slate-100';
 	const COLUMN = 'mx-auto w-full max-w-5xl';
@@ -185,9 +193,36 @@
 	// How far the pages still have to slide when a swipe lets go; 0 when a page is picked by a tap (a whole width).
 	let flight = $state(0);
 	let swipe = { x: 0, y: 0, t: 0, id: -1, isOn: false, isDragged: false };
+	let pagerWidth = $state(0);
 	const neighbour = $derived(
 		swipeX ? PAGES[PAGES.indexOf(look.dataset) + (swipeX < 0 ? 1 : -1)] : undefined
 	);
+	// The page peeking in fades in as the finger brings it over (run 12 note 3), full by about half way.
+	const peek = $derived(Math.min(1, Math.abs(swipeX) / Math.max(1, pagerWidth * 0.5)));
+	// Where a page that slides in after a swipe starts from: as far in, and as faded in, as the peek had got.
+	let flightOpacity = 0;
+
+	// The coming page slides in from its side and fades in over its first 220 ms; the page going slides out whole.
+	function slideIn(node: HTMLElement) {
+		const width = node.clientWidth || pagerWidth;
+		const x = look.slide * (flight || width);
+		const duration = flight ? 240 : 320;
+		const opacity = flight ? flightOpacity : 0;
+		return {
+			duration,
+			css: (t: number) =>
+				`transform: translateX(${(1 - cubicOut(t)) * x}px); opacity: ${opacity + (1 - opacity) * Math.min(1, (t * duration) / 220)}`
+		};
+	}
+
+	function slideOut(node: HTMLElement) {
+		const width = node.clientWidth || pagerWidth;
+		const x = -look.slide * (flight || width);
+		return {
+			duration: flight ? 240 : 320,
+			css: (t: number) => `transform: translateX(${(1 - cubicOut(1 - t)) * x}px)`
+		};
+	}
 
 	const pageSwipe: Attachment<HTMLElement> = (node) => {
 		function down(event: PointerEvent) {
@@ -230,6 +265,7 @@
 			const isFar = Math.abs(dx) > node.clientWidth / 4 || Math.abs(speed) > 0.5;
 			if (event.type === 'pointerup' && isFar && next >= 0 && next < PAGES.length) {
 				flight = node.clientWidth - Math.abs(swipeX);
+				flightOpacity = peek;
 				setTimeout(() => (flight = 0), 400);
 				look.pick(PAGES[next]);
 			}
@@ -316,37 +352,10 @@
 				transition:scale={{ start: 0.95, duration: 140 }}
 			>
 				<p class="px-3 pt-2 pb-1 text-sm font-semibold text-slate-900">Notifications</p>
-				{#each RECENT as item (item.name)}
-					<button
-						class="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left hover:bg-slate-900/[0.04]"
-						onclick={() => {
-							isBellOpen = false;
-							if (item.id) look.open(item.id);
-						}}
-					>
-						{#if item.kind === 'person'}
-							<Avatar
-								name={item.name}
-								size={36}
-							/>
-						{:else if item.kind === 'customer'}
-							<ClientLogo
-								name={item.name}
-								size={36}
-								shape="circle"
-							/>
-						{:else}
-							<span
-								class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-								><span class="{PAGE_ICONS.projects.active} size-[18px]"></span></span
-							>
-						{/if}
-						<span class="min-w-0 flex-1">
-							<span class="block truncate text-sm text-slate-800">{item.name}</span>
-							<span class="block truncate text-xs text-slate-400">{item.note}</span>
-						</span>
-					</button>
-				{/each}
+				<RecentList
+					{look}
+					onpick={() => (isBellOpen = false)}
+				/>
 			</div>
 		{/if}
 	</div>
@@ -365,7 +374,6 @@
 		>
 			<Sidebar
 				{look}
-				recent="logos"
 				isCollapsed={side < 150}
 			/>
 			<div
@@ -411,7 +419,6 @@
 		>
 			<Sidebar
 				{look}
-				recent="logos"
 				onnavigate={() => (drawer = 0)}
 			/>
 		</aside>
@@ -463,56 +470,66 @@
 				>
 					<span class="h-1.5 w-10 rounded-full bg-slate-300"></span>
 				</div>
-				<!-- One page at a time; on a change the new one slides in from its side and the old one out the other. -->
-				<div
-					class="{COLUMN} grid min-h-0 flex-1 touch-pan-y grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-clip"
-					{@attach pageSwipe}
-				>
-					{#key look.dataset}
-						<div
-							class="min-h-0 [grid-area:1/1] {isSwiping
-								? ''
-								: 'transition-transform duration-300 ease-out'}"
-							style:transform={swipeX ? `translateX(${swipeX}px)` : undefined}
-							in:fly={{
-								x: flight ? look.slide * flight : `${look.slide * 100}%`,
-								opacity: 1,
-								duration: flight ? 240 : 320,
-								easing: cubicOut
-							}}
-							out:fly={{
-								x: flight ? -look.slide * flight : `${-look.slide * 100}%`,
-								opacity: 1,
-								duration: flight ? 240 : 320,
-								easing: cubicOut
-							}}
-						>
-							<DashboardList
-								{look}
-								isSplit
-							/>
-						</div>
-					{/key}
-					{#if neighbour}
-						<div
-							class="pointer-events-none min-h-0 [grid-area:1/1]"
-							style:transform="translateX(calc({swipeX}px {swipeX < 0 ? '+' : '-'} 100%))"
-							inert
-							aria-hidden="true"
-						>
-							<DashboardList
-								{look}
-								isSplit
-								page={neighbour}
-							/>
-						</div>
-					{/if}
+				<!-- One page at a time; on a change the new one slides in from its side and the old one out the other. The
+				     four menus sit over the pages' heading row and never move. -->
+				<div class="{COLUMN} relative flex min-h-0 flex-1 flex-col">
+					<!-- White behind the menus, fading in from the left, so a title sliding under them goes out of sight. -->
+					<div
+						class="absolute top-0 right-0 z-10 bg-[linear-gradient(to_right,transparent,white_2.5rem)] pr-2 pl-12 md:pr-0"
+					>
+						<ListMenus {look} />
+					</div>
+					<div
+						class="grid min-h-0 flex-1 touch-pan-y grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] overflow-clip"
+						bind:clientWidth={pagerWidth}
+						{@attach pageSwipe}
+					>
+						{#key look.dataset}
+							<div
+								class="min-h-0 [grid-area:1/1] {isSwiping
+									? ''
+									: 'transition-transform duration-300 ease-out'}"
+								style:transform={swipeX ? `translateX(${swipeX}px)` : undefined}
+								in:slideIn
+								out:slideOut
+							>
+								<DashboardList {look} />
+							</div>
+						{/key}
+						{#if neighbour}
+							<div
+								class="pointer-events-none min-h-0 [grid-area:1/1]"
+								style:transform="translateX(calc({swipeX}px {swipeX < 0 ? '+' : '-'} 100%))"
+								style:opacity={peek}
+								inert
+								aria-hidden="true"
+							>
+								<DashboardList
+									{look}
+									page={neighbour}
+								/>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</section>
 		</main>
 	</div>
 
-	{#if look.screen !== 'dashboard'}
+	{#if look.screen === 'record' && record}
+		<div
+			class="fixed inset-0 z-50"
+			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
+		>
+			<RecordPage
+				{look}
+				{record}
+				{isWide}
+			/>
+		</div>
+	{/if}
+
+	{#if look.screen === 'workspace'}
 		<div
 			class="fixed inset-0 z-50"
 			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}

@@ -7,12 +7,13 @@
 // Transport type (Sea, Air, Rail, Road), Transport mode (Vessel, Barge …), the transport itself from the organization's
 // Transport list, and the facility. Transports and facilities are typed in by hand; a tracking service adds to the same
 // list later (`source`).
-import { initialsOf, photoOfMember, ROLE_LABELS, TEAM } from './team.data';
+import { initialsOf, photoOfMember, ROLE_LABELS, TEAM, type TeamMemberType } from './team.data';
 
 export type StatusType =
 	| 'Draft'
 	| 'In Progress'
 	| 'Review'
+	| 'Ready'
 	| 'Sent'
 	| 'Revision'
 	| 'Complete'
@@ -123,6 +124,13 @@ export const STATUS: Record<
 		bar: 'bg-warning',
 		pill: 'bg-warning/15 text-amber-700'
 	},
+	Ready: {
+		icon: 'icon-[mdi--check-circle-outline]',
+		tone: 'text-teal-500',
+		dot: 'bg-teal-500',
+		bar: 'bg-teal-500',
+		pill: 'bg-teal-500/10 text-teal-700'
+	},
 	Sent: {
 		icon: 'icon-[mdi--send-check-outline]',
 		tone: 'text-violet-500',
@@ -153,15 +161,6 @@ export const STATUS: Record<
 	}
 };
 
-export const BOARD_COLUMNS: StatusType[] = [
-	'Draft',
-	'In Progress',
-	'Review',
-	'Sent',
-	'Revision',
-	'Complete'
-];
-
 export const PEOPLE: PersonType[] = TEAM.map((member) => ({
 	name: member.name,
 	photo: photoOfMember(member)
@@ -169,6 +168,12 @@ export const PEOPLE: PersonType[] = TEAM.map((member) => ({
 
 export function personOf(name: string): PersonType {
 	return PEOPLE.find((person) => person.name === name) ?? { name, photo: initialsOf(name) };
+}
+
+// A team member renamed or added in the prototype keeps their photo under the new name.
+export function registerPerson(member: TeamMemberType) {
+	if (!PEOPLE.some((person) => person.name === member.name))
+		PEOPLE.push({ name: member.name, photo: photoOfMember(member) });
 }
 
 // A project's stops, written short: [point, transport, facility].
@@ -292,10 +297,10 @@ export const PROJECTS: ProjectType[] = [
 		),
 		location: 'Beaumont, TX',
 		dates: 'Mon, 4 May 2026',
-		status: 'In Progress',
+		status: 'Ready',
 		team: ['Tynequa Shaw', 'Gustavo Ruiz'],
 		updated: '3 days ago',
-		progress: 35
+		progress: 100
 	},
 	{
 		id: 'p7',
@@ -368,7 +373,7 @@ const CLIENT_ROWS = [
 	['Oslo Caribbean Carrier', 'oslo-caribbean-carrier', 'Ocean carrier', 'Houston, TX', 'OCC'],
 	['UTC Overseas', 'utc-overseas', 'Freight forwarder', 'Houston, TX', 'UTC'],
 	['CEVA Logistics', 'ceva-logistics', 'Freight forwarder', 'Houston, TX', 'CVA'],
-	['DIX Shipping', 'dix-industries', 'Stevedore and terminal', 'Brownsville, TX', 'DIX'],
+	['DIX Shipping', 'dix-industries', 'Stevedore, Terminal', 'Brownsville, TX', 'DIX'],
 	['Zurich North America', 'zurich-north-america', 'Insurer', 'Schaumburg, IL', 'ZNA'],
 	['AXA XL', 'axa-xl', 'Insurer', 'Stamford, CT', 'AXA'],
 	['Liberty Specialty Markets', 'liberty-specialty-markets', 'Insurer', 'London, UK', 'LSM']
@@ -383,12 +388,13 @@ export const CLIENT_INFO: Record<string, ClientType> = Object.fromEntries(
 
 export const CLIENTS: string[] = CLIENT_ROWS.map(([name]) => name);
 
-// A customer added in the prototype: no icon or logo yet, so it shows its initial on a colour of its own. It joins
-// the list a new project's Customer drop-down offers.
-export function registerCustomer(name: string, city: string): ClientType {
-	if (!CLIENTS.includes(name)) CLIENTS.push(name);
-	CLIENT_INFO[name] = { ...clientOf(name), city };
-	return CLIENT_INFO[name];
+// A customer added or edited in the prototype (run 12: a customer's own page edits its name, types and city). An
+// added one has no icon or logo yet, so it shows its initial on a colour of its own. It joins the list a new
+// project's Customer drop-down offers.
+export function registerCustomer(customer: ClientType): ClientType {
+	if (!CLIENTS.includes(customer.name)) CLIENTS.push(customer.name);
+	CLIENT_INFO[customer.name] = customer;
+	return customer;
 }
 
 export function clientOf(name: string): ClientType {
@@ -501,6 +507,8 @@ export type TransportType = {
 	type: TransportTypeType;
 	mode: string;
 	source: 'manual' | 'api';
+	// Its particulars (PARTICULARS), typed in on its own page (run 12).
+	details?: Record<string, string>;
 };
 
 export const TRANSPORTS: TransportType[] = (
@@ -562,41 +570,21 @@ export const PAGE_ICONS: Record<DatasetType, { icon: string; active: string }> =
 	facilities: { icon: 'icon-[mdi--domain]', active: 'icon-[mdi--domain]' }
 };
 
+// Each page's name. Transport is "Transport mode" since run 12 (the Trident team's word, 2026-11-07; Justin may want one
+// word later). What a page sorts by (its labels) is in records.data.ts.
 export const DATASETS: Record<
 	DatasetType,
-	{ label: string; one: string; icon: string; active: string; filters: string[] }
+	{ label: string; one: string; icon: string; active: string }
 > = {
-	projects: {
-		label: 'Projects',
-		one: 'Project',
-		...PAGE_ICONS.projects,
-		filters: ['All', 'In Progress', 'Review', 'Sent', 'Complete']
-	},
-	customers: {
-		label: 'Customers',
-		one: 'Customer',
-		...PAGE_ICONS.customers,
-		filters: ['All', 'Active', 'Quiet']
-	},
-	team: {
-		label: 'Team',
-		one: 'Name',
-		...PAGE_ICONS.team,
-		filters: ['All', 'Admins', 'Managers', 'Members']
-	},
-	transport: {
-		label: 'Transport',
-		one: 'Transport',
-		...PAGE_ICONS.transport,
-		filters: ['All', 'Sea', 'Air', 'Rail', 'Road']
-	},
-	facilities: {
-		label: 'Facilities',
-		one: 'Facility',
-		...PAGE_ICONS.facilities,
-		filters: ['All', 'Port', 'Airport', 'Rail yard', 'Depot']
-	}
+	projects: { label: 'Projects', one: 'Project', ...PAGE_ICONS.projects },
+	customers: { label: 'Customers', one: 'Customer', ...PAGE_ICONS.customers },
+	team: { label: 'Team', one: 'Team member', ...PAGE_ICONS.team },
+	transport: { label: 'Transport mode', one: 'Transport', ...PAGE_ICONS.transport },
+	facilities: { label: 'Facilities', one: 'Facility', ...PAGE_ICONS.facilities }
 };
+
+// The bottom of anything that scrolls fades out rather than stopping at a hard edge (run 12 note 15).
+export const FADE = '[mask-image:linear-gradient(to_bottom,black_calc(100%-56px),transparent)]';
 
 export const LAYOUTS = [1, 2, 4, 6, 8];
 
@@ -891,17 +879,16 @@ export const NAV = [
 	}
 ];
 
-// Recent activity for the sidebar (E): what happened, so the icon can say what kind of thing it was.
-export const RECENT: {
-	kind: 'project' | 'customer' | 'person';
-	name: string;
-	note: string;
-	id?: string;
-}[] = [
-	{ kind: 'project', name: 'Terminal Intake Review', note: 'Edited · 12 min ago', id: 'p1' },
-	{ kind: 'customer', name: 'KOGA', note: 'New customer · 1 h ago' },
-	{ kind: 'project', name: 'Harbor Readiness Survey', note: 'Sent to review · 1 h ago', id: 'p2' },
-	{ kind: 'person', name: 'Natzul Reyes Flores', note: 'Joined the team · Yesterday' },
-	{ kind: 'project', name: 'Outbound Cargo Condition Report', note: 'Sent · Yesterday', id: 'p3' },
-	{ kind: 'customer', name: 'dship Carriers', note: 'New contact · 3 days ago' }
+// Recent activity, the same in the bell and the menu (run 12 note 14): anything new or changed, of any page.
+export type RecentType = { page: DatasetType; name: string; note: string; id?: string };
+
+export const RECENT: RecentType[] = [
+	{ page: 'projects', name: 'Terminal Intake Review', note: 'Edited · 12 min ago', id: 'p1' },
+	{ page: 'team', name: 'Natzul Reyes Flores', note: 'Joined the team · 40 min ago' },
+	{ page: 'customers', name: 'KOGA', note: 'New customer · 1 h ago' },
+	{ page: 'projects', name: 'Harbor Readiness Survey', note: 'Sent to review · 1 h ago', id: 'p2' },
+	{ page: 'transport', name: 'Air Freighter 210', note: 'New transport · 3 h ago' },
+	{ page: 'facilities', name: 'North Air Cargo Center', note: 'New facility · Yesterday' },
+	{ page: 'projects', name: 'Outbound Cargo Condition Report', note: 'Sent · Yesterday', id: 'p3' },
+	{ page: 'customers', name: 'dship Carriers', note: 'New contact · 3 days ago' }
 ];

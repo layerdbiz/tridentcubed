@@ -1,53 +1,57 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 5: the dashboard chart. It runs edge to edge in one blue, its fill fading out just above
-	// the cards. The big number and its change sit top left. Run 11 (2026-10-26 19:22): the chart type and time range
+	// the cards. The big number and its change sat top left until run 12. Run 11 (2026-10-26 19:22): the chart type and time range
 	// menus moved down to the list's heading (dashboard-list.svelte). Each card opens on its own chart (note 11):
 	// projects an area, customers a map of where they are, the team a pie by label, and pies give numbers, never
 	// percents (note 12). A finger (or mouse) scrubs back in time. The history is made up (chart.data.ts); the map is us-atlas (map.data.ts).
+	// Run 12 (2026-11-07): the chart ends on the same count as its card (note 13), and the card carries the number and
+	// what changed, so no big number repeats it up here; scrubbing shows the count on the day under the finger. The pie
+	// sits in the middle (note 11) with one slice per label, in the board's order and colours, and no legend on a phone
+	// (note 12): tap a slice and its count and name show in the middle, and the list below filters to it; tap it again
+	// for all. A desktop has room for the legend beside it, every label listed, zero or not.
 	import { fade } from 'svelte/transition';
-	import { chartOf, headlineAt, pinsOf, RANGE_NAMES, RANGES, slicesOf } from './chart.data';
+	import { chartOf, headlineAt, pinsOf, RANGE_NAMES, slicesOf } from './chart.data';
+	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { US_BORDERS, US_NATION } from './map.data';
+	import { countOf } from './records.data';
 
 	let { look }: { look: LookState } = $props();
 
 	let width = $state(0);
 	let height = $state(0);
 	let scrub = $state<number | undefined>(undefined);
+	let hovered = $state<string>();
 
-	const data = $derived(chartOf(look.dataset, look.range, look.projects, look.filter));
+	const total = $derived(countOf(look, look.dataset, look.filter));
+	const data = $derived(chartOf(look.dataset, look.range, total, look.filter));
 	const count = $derived(data.labels.length);
 	const last = $derived(count - 1);
 	const index = $derived(scrub ?? last);
-	const slices = $derived(slicesOf(look.dataset, look.projects, look.filter, look));
-	const map = $derived(pinsOf(look.dataset, look.projects, look));
-	const isTimeless = $derived(look.chart === 'pie' || look.chart === 'map');
-	const value = $derived(
-		look.chart === 'pie'
-			? slices.reduce((sum, slice) => sum + slice.value, 0)
-			: look.chart === 'map'
-				? map.pins.reduce((sum, pin) => sum + pin.count, 0) + map.away.length
-				: headlineAt(data, index)
-	);
-	const PIE_NOTE: Record<string, string> = {
-		projects: 'open, by status',
-		customers: 'open projects, by customer',
-		team: 'people, by label',
-		transport: 'transports on live projects, by type',
-		facilities: 'facilities, by kind'
-	};
+	const slices = $derived(slicesOf(look, look.dataset));
+	const map = $derived(pinsOf(look, look.dataset, look.filter));
 	const note = $derived(
-		look.chart === 'pie'
-			? (PIE_NOTE[look.dataset] ?? '')
-			: `in ${map.pins.length} US cities${map.away.length ? ` + ${[...new Set(map.away)].join(', ')}` : ''}`
+		`On the map: ${map.pins.length} US ${map.pins.length === 1 ? 'city' : 'cities'}${map.away.length ? ` + ${[...new Set(map.away)].join(', ')}` : ''}`
 	);
-	const change = $derived(headlineAt(data, last) - headlineAt(data, 0));
-	const range = $derived(RANGES.find((item) => item.id === look.range)!);
+	// The slice in the middle of the pie: the one filtered to, else the one under a mouse.
+	const picked = $derived(
+		slices.find((slice) => slice.name === (look.filter === 'All' ? hovered : look.filter))
+	);
 
-	// One line: the total of every series at each point.
-	const totals = $derived(
-		data.labels.map((_, at) => data.series.reduce((sum, series) => sum + series.values[at], 0))
-	);
+	// What the number in the middle of the pie counts, short enough to fit inside it.
+	const NOUNS = {
+		projects: 'projects',
+		customers: 'customers',
+		team: 'people',
+		transport: 'transports',
+		facilities: 'facilities'
+	};
+
+	function tap(name: string) {
+		look.filter = look.filter === name ? 'All' : name;
+	}
+
+	const totals = $derived(data.values);
 	const max = $derived(Math.max(1, ...totals) * 1.12);
 	const barWidth = $derived(Math.max(3, Math.min(28, count > 1 ? (width / count) * 0.55 : 28)));
 	const inset = $derived(look.chart === 'bar' ? barWidth / 2 + 12 : 0);
@@ -87,16 +91,18 @@
 	});
 	const area = $derived(line ? `${line}L${xOf(last)},${height}L${xOf(0)},${height}Z` : '');
 
-	// Pie: today's counts, each slice in its own colour.
+	// Pie: today's counts, each slice in its own colour; a label nothing has yet has no slice, only its legend row.
 	const shares = $derived.by(() => {
 		const total = slices.reduce((sum, slice) => sum + slice.value, 0) || 1;
 		let start = 0;
-		return slices.map((slice) => {
-			const share = slice.value / total;
-			const item = { slice, start, end: start + share };
-			start += share;
-			return item;
-		});
+		return slices
+			.filter((slice) => slice.value > 0)
+			.map((slice) => {
+				const share = slice.value / total;
+				const item = { slice, start, end: start + share };
+				start += share;
+				return item;
+			});
 	});
 
 	// Map: the whole country, with a little room so edge pins are not cut off.
@@ -162,47 +168,43 @@
 </script>
 
 <section class="flex h-full min-h-0 flex-col">
-	<div class="flex shrink-0 items-start justify-between gap-3 px-4 md:px-8">
-		<p class="flex min-w-0 items-baseline gap-2">
-			<span class="text-4xl font-semibold tracking-tight text-slate-900 tabular-nums md:text-5xl"
-				>{value}</span
-			>
-			{#if isTimeless}
-				<span class="truncate text-sm font-medium text-slate-500">{note}</span>
-			{:else if scrub === undefined}
-				<span
-					class="flex items-center text-sm font-semibold whitespace-nowrap {change >= 0
-						? 'text-success'
-						: 'text-danger'}"
-					><span class="{change >= 0 ? 'icon-[mdi--menu-up]' : 'icon-[mdi--menu-down]'} size-5"
-					></span>{Math.abs(change)}
-					{range.long}</span
-				>
-			{:else}
-				<span class="truncate text-sm font-medium text-slate-500">{data.labels[index]}</span>
-			{/if}
-		</p>
-	</div>
-
 	<div
 		class="relative min-h-0 flex-1"
 		bind:clientWidth={width}
 		bind:clientHeight={height}
 	>
-		{#key `${look.dataset}-${look.range}-${look.chart}-${look.filter}`}
+		{#if scrub !== undefined && (look.chart === 'area' || look.chart === 'bar')}
+			<p
+				class="pointer-events-none absolute top-0 left-4 z-10 flex items-baseline gap-2 rounded-full bg-white/80 px-3 py-1 backdrop-blur md:left-8"
+			>
+				<span class="text-lg font-semibold text-slate-900 tabular-nums"
+					>{headlineAt(data, index)}</span
+				>
+				<span class="text-xs font-medium text-slate-500">{data.labels[index]}</span>
+			</p>
+		{:else if look.chart === 'map'}
+			<p
+				class="pointer-events-none absolute top-0 left-4 z-10 max-w-[60%] truncate text-xs font-medium text-slate-500 md:left-8"
+			>
+				{note}
+			</p>
+		{/if}
+		{#key `${look.dataset}-${look.range}-${look.chart}${look.chart === 'pie' ? '' : `-${look.filter}`}`}
 			<div
 				class="absolute inset-0"
 				in:fade={{ duration: 260 }}
 			>
 				{#if look.chart === 'pie'}
-					{@const size = Math.max(60, Math.min(height - 8, 220))}
+					{@const size = Math.max(60, Math.min(height - 8, 240))}
 					{@const radius = size / 2 - 14}
-					<div class="flex h-full items-center gap-5 px-4 md:gap-10 md:px-8">
+					<div class="flex h-full items-center justify-center gap-10 px-4 md:px-8">
 						<svg
 							viewBox="{-size / 2} {-size / 2} {size} {size}"
 							width={size}
 							height={size}
-							class="shrink-0"
+							class="shrink-0 overflow-visible"
+							role="group"
+							aria-label="{DATASETS[look.dataset].label} by label"
 						>
 							<circle
 								r={radius}
@@ -210,25 +212,54 @@
 								stroke-width="24"
 							/>
 							{#each shares as item (item.slice.name)}
+								{@const isDim = picked && picked.name !== item.slice.name}
 								<path
 									d={arcOf(item.start, item.end, radius)}
-									class="chart-draw fill-none {item.slice.tone.stroke}"
-									stroke-width="24"
+									class="chart-draw cursor-pointer fill-none transition-[opacity,stroke-width] duration-200 outline-none {item
+										.slice.tone.stroke} {isDim ? 'opacity-25' : ''}"
+									stroke-width={picked?.name === item.slice.name ? 30 : 24}
 									pathLength="1"
+									role="button"
+									tabindex="0"
+									aria-label="{item.slice.name}: {item.slice.value}"
+									onclick={() => tap(item.slice.name)}
+									onkeydown={(event) => event.key === 'Enter' && tap(item.slice.name)}
+									onpointerenter={(event) =>
+										event.pointerType === 'mouse' && (hovered = item.slice.name)}
+									onpointerleave={() => (hovered = undefined)}
 								/>
 							{/each}
 							<text
 								text-anchor="middle"
-								dominant-baseline="central"
-								class="fill-slate-900 text-[22px] font-semibold tabular-nums">{value}</text
+								y={-6}
+								class="pointer-events-none fill-slate-900 text-[26px] font-semibold tabular-nums"
+								>{picked ? picked.value : total}</text
+							>
+							<text
+								text-anchor="middle"
+								y={14}
+								class="pointer-events-none fill-slate-500 text-[11px] font-medium"
+								>{(picked?.name ?? NOUNS[look.dataset]).slice(0, 16)}</text
 							>
 						</svg>
-						<ul class="min-w-0 flex-1 space-y-1 text-xs md:max-w-xs md:text-sm">
+						<ul
+							class="hidden max-h-full w-56 shrink-0 space-y-0.5 overflow-y-auto text-sm md:block"
+						>
 							{#each slices as slice (slice.name)}
-								<li class="flex items-center gap-2">
-									<span class="size-2.5 shrink-0 rounded-full {slice.tone.bg}"></span>
-									<span class="min-w-0 flex-1 truncate text-slate-600">{slice.name}</span>
-									<span class="font-semibold text-slate-900 tabular-nums">{slice.value}</span>
+								<li>
+									<button
+										class="flex w-full items-center gap-2 rounded-lg px-2 py-0.5 text-left transition hover:bg-slate-900/[0.04] {picked &&
+										picked.name !== slice.name
+											? 'opacity-50'
+											: ''}"
+										onclick={() => tap(slice.name)}
+										onpointerenter={() => (hovered = slice.name)}
+										onpointerleave={() => (hovered = undefined)}
+									>
+										<span class="size-2.5 shrink-0 rounded-full {slice.tone.bg}"></span>
+										<span class="min-w-0 flex-1 truncate text-slate-600">{slice.name}</span>
+										<span class="font-semibold text-slate-900 tabular-nums">{slice.value}</span>
+									</button>
 								</li>
 							{/each}
 						</ul>

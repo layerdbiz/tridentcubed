@@ -3,17 +3,24 @@
 	// five pages and a blue + that adds anything (add-sheet.svelte). Open a project and the pages slide off to the
 	// left behind the Projects icon, which stays at the far left and goes back; the save cloud with Panels and Preview
 	// slide in behind them, and the + goes. It stays one bar the whole time: it narrows or widens, it never jumps. A
-	// desktop project has its panels in their own column, so there the bar shows on the dashboard only.
+	// desktop project has its panels in their own column, so there the bar shows on the dashboard only. Run 12
+	// (2026-11-07): Panels is called Edit; a customer, team member, transport or facility opens the same way, with Page
+	// and Edit, and the icon at the far left is the page it came from, so it leads back there.
 	import { untrack } from 'svelte';
 	import { DATASETS, PAGE_ICONS, PAGES, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import SaveCloud from './save-cloud.svelte';
+	import { fade } from 'svelte/transition';
 
 	let { look, left = '50%' }: { look: LookState; left?: string } = $props();
 
-	const TABS = [
-		['edit', 'Panels'],
+	const PROJECT_TABS = [
+		['edit', 'Edit'],
 		['preview', 'Preview']
+	] as const;
+	const RECORD_TABS = [
+		['page', 'Page'],
+		['edit', 'Edit']
 	] as const;
 	const BUTTON =
 		'relative flex size-11 shrink-0 items-center justify-center rounded-full transition-colors';
@@ -21,6 +28,7 @@
 	const FOLD = 'grid transition-[grid-template-columns,opacity] duration-300 ease-out';
 
 	const isProject = $derived(look.screen !== 'dashboard');
+	const tabs = $derived(look.screen === 'record' ? RECORD_TABS : PROJECT_TABS);
 	let nav: HTMLElement | undefined = $state();
 	let mark = $state({ x: 0, width: 0 });
 
@@ -39,8 +47,8 @@
 			mark = boxOf(`[data-page="${look.navSection}"]`) ?? mark;
 			return;
 		}
-		const edit = boxOf('[data-tab="edit"]');
-		const preview = boxOf('[data-tab="preview"]');
+		const edit = boxOf(`[data-tab="${tabs[0][0]}"]`);
+		const preview = boxOf(`[data-tab="${tabs[1][0]}"]`);
 		if (!edit || !preview) return;
 		const at = Math.min(1, Math.max(0, look.tabProgress));
 		mark = {
@@ -52,6 +60,7 @@
 	// While the bar changes shape, the highlight is measured every frame.
 	$effect(() => {
 		void isProject;
+		void tabs;
 		void look.navSection;
 		const end = performance.now() + 450;
 		let frame = 0;
@@ -82,12 +91,31 @@
 	<button
 		class="{BUTTON} {isOn ? 'text-white' : 'text-white/55 hover:text-white'}"
 		data-page={id}
-		aria-label={isProject ? `Back to ${DATASETS[id].label}` : DATASETS[id].label}
-		aria-current={isOn && !isProject ? 'page' : undefined}
+		aria-label={DATASETS[id].label}
+		aria-current={isOn ? 'page' : undefined}
 		title={DATASETS[id].label}
 		onclick={() => go(id)}
 		><span class="{isOn ? PAGE_ICONS[id].active : PAGE_ICONS[id].icon} size-6"></span></button
 	>
+{/snippet}
+
+<!-- The far left: Projects on the dashboard; inside a project or a record, the page it came from, which it goes back to. -->
+{#snippet lead()}
+	{@const id = isProject ? look.dataset : PAGES[0]}
+	{@const isOn = isProject || look.navSection === id}
+	<button
+		class="{BUTTON} {isOn ? 'text-white' : 'text-white/55 hover:text-white'}"
+		data-page={PAGES[0]}
+		aria-label={isProject ? `Back to ${DATASETS[id].label}` : DATASETS[id].label}
+		aria-current={isOn && !isProject ? 'page' : undefined}
+		title={DATASETS[id].label}
+		onclick={() => go(id)}
+	>
+		{#key id}<span
+				class="{isOn ? PAGE_ICONS[id].active : PAGE_ICONS[id].icon} size-6"
+				in:fade={{ duration: 200 }}
+			></span>{/key}
+	</button>
 {/snippet}
 
 <nav
@@ -105,7 +133,7 @@
 		style="width: {mark.width}px; transform: translateX({mark.x}px)"
 		aria-hidden="true"
 	></span>
-	{@render page(PAGES[0])}
+	{@render lead()}
 	<!-- The other pages: anchored on the right, so as their column narrows they slide left, under the Projects icon. -->
 	<div
 		class={FOLD}
@@ -128,10 +156,10 @@
 			<div
 				class="flex shrink-0 items-center"
 				role="tablist"
-				aria-label="Panels or preview"
+				aria-label={tabs.map(([, label]) => label).join(' or ')}
 			>
 				<span class="flex size-9 items-center justify-center"><SaveCloud {look} /></span>
-				{#each TABS as [tab, label] (tab)}
+				{#each tabs as [tab, label] (tab)}
 					<button
 						class="relative flex h-11 items-center justify-center rounded-full px-4 text-[13px] font-medium transition-colors {look.tab ===
 						tab

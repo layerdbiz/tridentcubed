@@ -9,7 +9,7 @@
 	import { STATUS, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProjectLogo from './project-logo.svelte';
-	import ProjectMenu from './project-menu.svelte';
+	import MoreMenu from './more-menu.svelte';
 	import ProjectRoute from './project-route.svelte';
 
 	let { look, project }: { look: LookState; project: ProjectType } = $props();
@@ -167,9 +167,10 @@
 		>{project.status}</span
 	>
 	<div class="absolute top-2 right-2">
-		<ProjectMenu
+		<MoreMenu
 			{look}
-			{project}
+			page="projects"
+			id={project.id}
 			isOpenable
 			tone="photo"
 		/>

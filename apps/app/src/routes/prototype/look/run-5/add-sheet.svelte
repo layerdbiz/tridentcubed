@@ -2,7 +2,7 @@
 	// PROTOTYPE (#161) run 11: what the floating bar's blue + opens (Justin, 2026-10-26 19:22): one sheet from the
 	// bottom to add a project, customer, team member, transport or facility. It opens on the page being looked at; the
 	// chips at its top switch what is added. A new project opens straight away, as New project did; anything else
-	// lands in its page's list, and that page shows.
+	// lands in its page's list, and that page shows. Run 12: it then opens on its own page, on Edit, to fill in.
 	import BottomSheet from './bottom-sheet.svelte';
 	import {
 		FACILITY_ICONS,
@@ -64,6 +64,7 @@
 			return;
 		}
 		if (!title) return;
+		if (look.has(kind, title)) return look.say(`${title} is already there`);
 		if (kind === 'customers') look.addCustomer(title, city.trim());
 		else if (kind === 'team') look.addMember({ name: title, email: email.trim(), role });
 		else if (kind === 'transport') look.addTransport({ name: title, type, mode });
@@ -71,6 +72,7 @@
 		const page = kind;
 		close();
 		if (look.dataset !== page) look.pick(page);
+		look.openRecord(page, title, 'edit');
 	}
 </script>
 

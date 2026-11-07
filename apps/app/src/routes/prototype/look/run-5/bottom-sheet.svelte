@@ -1,8 +1,11 @@
 <script lang="ts">
 	// PROTOTYPE (#161): every sheet on the phone (Justin's note 14). It slides up from the bottom; drag it down (or
 	// flick it) or tap outside to close; dragging up only stretches a little and springs back. No close button. From
-	// md up it is a centred dialog.
+	// md up it is a centred dialog. Run 12 (Justin's note 17): it opens in the browser's top layer (a popover), so it
+	// covers the floating bar wherever it is opened from (a count card's ? sat behind the bar), and white runs on below
+	// its bottom edge, so dragging it up never shows a gap.
 	import type { Snippet } from 'svelte';
+	import type { Attachment } from 'svelte/attachments';
 	import { fade, fly } from 'svelte/transition';
 
 	let { label, onclose, children }: { label: string; onclose: () => void; children: Snippet } =
@@ -30,6 +33,10 @@
 		samples = samples.filter((sample) => event.timeStamp - sample.t < 100);
 	}
 
+	const lift: Attachment<HTMLElement> = (node) => {
+		node.showPopover();
+	};
+
 	function up(event: PointerEvent) {
 		if (!isDragging) return;
 		isDragging = false;
@@ -42,27 +49,34 @@
 
 <svelte:window onkeydown={(event) => event.key === 'Escape' && onclose()} />
 
-<button
-	type="button"
-	class="fixed inset-0 z-[110] bg-slate-950/30"
-	aria-label="Close"
-	onclick={onclose}
-	transition:fade={{ duration: 180 }}
-></button>
 <div
-	class="fixed inset-x-0 bottom-0 z-[111] touch-none rounded-t-[28px] bg-white px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgb(15_23_42/0.18)] md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[26rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 {isDragging
-		? ''
-		: 'transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'}"
-	style="transform: translateY({offset}px)"
-	role="dialog"
-	aria-label={label}
-	tabindex="-1"
-	onpointerdown={down}
-	onpointermove={move}
-	onpointerup={up}
-	onpointercancel={up}
-	transition:fly={{ y: 320, duration: 260 }}
+	popover="manual"
+	class="m-0 size-full max-h-none max-w-none overflow-visible border-0 bg-transparent p-0"
+	style="inset: 0"
+	{@attach lift}
 >
-	<span class="mx-auto mb-4 block h-1.5 w-10 rounded-full bg-slate-200 md:hidden"></span>
-	{@render children()}
+	<button
+		type="button"
+		class="fixed inset-0 z-[110] bg-slate-950/30"
+		aria-label="Close"
+		onclick={onclose}
+		transition:fade={{ duration: 180 }}
+	></button>
+	<div
+		class="fixed inset-x-0 bottom-0 z-[111] touch-none rounded-t-[28px] bg-white px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgb(15_23_42/0.18)] after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-white md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[26rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden {isDragging
+			? ''
+			: 'transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'}"
+		style="transform: translateY({offset}px)"
+		role="dialog"
+		aria-label={label}
+		tabindex="-1"
+		onpointerdown={down}
+		onpointermove={move}
+		onpointerup={up}
+		onpointercancel={up}
+		transition:fly={{ y: 320, duration: 260 }}
+	>
+		<span class="mx-auto mb-4 block h-1.5 w-10 rounded-full bg-slate-200 md:hidden"></span>
+		{@render children()}
+	</div>
 </div>

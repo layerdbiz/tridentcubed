@@ -1,18 +1,17 @@
-// PROTOTYPE (#161): made-up history for the dashboard chart. Each series walks back in time from today's real
-// count, so the right edge of the chart always matches the list below it. Seeded, so every load looks the same.
-import {
-	CLIENTS,
-	clientOf,
-	facilitiesOf,
-	transportsOf,
-	type DatasetType,
-	type FacilityType,
-	type ProjectType,
-	type StatusType,
-	type TransportType
-} from './look.data';
+// PROTOTYPE (#161): made-up history for the dashboard chart. It walks back in time from today's real count, so the
+// right edge of the chart always matches the card and the list (run 12 note 13: one number everywhere). Seeded, so
+// every load looks the same. The pie's slices are the page's labels, the same as the board's columns (note 11).
+import type { DatasetType } from './look.data';
+import type { LookState } from './look.state.svelte';
 import { CITIES } from './map.data';
-import { labelsOf as labelsOfMember, TEAM } from './team.data';
+import {
+	columnsOf,
+	countOf,
+	customerOf,
+	shownProjects,
+	shownRecords,
+	type ToneType
+} from './records.data';
 
 export type RangeType = '24h' | '7d' | '30d' | 'qtr' | '6m' | '1y' | '5y' | 'all';
 export type ChartKindType = 'area' | 'bar' | 'pie' | 'map';
@@ -55,112 +54,6 @@ export const DEFAULT_CHART: Record<DatasetType, ChartKindType> = {
 	transport: 'pie',
 	facilities: 'map'
 };
-
-// The organization's lists, for the charts of the Transport and Facilities pages.
-export type ListsType = {
-	transports: TransportType[];
-	facilities: FacilityType[];
-	customers?: string[];
-};
-
-// Full class strings so Tailwind finds them; `text` colours gradient stops through currentColor.
-export type ToneType = { stroke: string; fill: string; text: string; bg: string };
-
-function tone(name: string): ToneType {
-	return TONES[name];
-}
-
-const TONES: Record<string, ToneType> = {
-	slate: {
-		stroke: 'stroke-slate-400',
-		fill: 'fill-slate-400',
-		text: 'text-slate-400',
-		bg: 'bg-slate-400'
-	},
-	primary: {
-		stroke: 'stroke-primary',
-		fill: 'fill-primary',
-		text: 'text-primary',
-		bg: 'bg-primary'
-	},
-	warning: {
-		stroke: 'stroke-warning',
-		fill: 'fill-warning',
-		text: 'text-warning',
-		bg: 'bg-warning'
-	},
-	violet: {
-		stroke: 'stroke-violet-500',
-		fill: 'fill-violet-500',
-		text: 'text-violet-500',
-		bg: 'bg-violet-500'
-	},
-	danger: { stroke: 'stroke-danger', fill: 'fill-danger', text: 'text-danger', bg: 'bg-danger' },
-	success: {
-		stroke: 'stroke-success',
-		fill: 'fill-success',
-		text: 'text-success',
-		bg: 'bg-success'
-	},
-	sky: { stroke: 'stroke-sky-500', fill: 'fill-sky-500', text: 'text-sky-500', bg: 'bg-sky-500' },
-	teal: {
-		stroke: 'stroke-teal-500',
-		fill: 'fill-teal-500',
-		text: 'text-teal-500',
-		bg: 'bg-teal-500'
-	},
-	indigo: {
-		stroke: 'stroke-indigo-500',
-		fill: 'fill-indigo-500',
-		text: 'text-indigo-500',
-		bg: 'bg-indigo-500'
-	},
-	amber: {
-		stroke: 'stroke-amber-500',
-		fill: 'fill-amber-500',
-		text: 'text-amber-500',
-		bg: 'bg-amber-500'
-	},
-	green: {
-		stroke: 'stroke-green-600',
-		fill: 'fill-green-600',
-		text: 'text-green-600',
-		bg: 'bg-green-600'
-	},
-	rose: {
-		stroke: 'stroke-rose-500',
-		fill: 'fill-rose-500',
-		text: 'text-rose-500',
-		bg: 'bg-rose-500'
-	}
-};
-
-const STATUS_TONE: Partial<Record<StatusType, string>> = {
-	Draft: 'slate',
-	'In Progress': 'primary',
-	Review: 'warning',
-	Sent: 'violet',
-	Revision: 'danger',
-	Complete: 'success'
-};
-const CLIENT_TONE = [
-	'sky',
-	'teal',
-	'indigo',
-	'amber',
-	'green',
-	'rose',
-	'violet',
-	'warning',
-	'success',
-	'slate'
-];
-const PALETTE = ['primary', 'sky', 'violet', 'amber', 'teal'];
-// Stacked bottom to top, so In Progress draws the top line in the brand blue.
-const OPEN: StatusType[] = ['Revision', 'Draft', 'Sent', 'Review', 'In Progress'];
-
-export type SeriesType = { name: string; tone: ToneType; values: number[] };
-export type ChartDataType = { labels: string[]; series: SeriesType[]; isCount: boolean };
 
 // The prototype's "now": the day the sample projects are dated.
 const NOW = new Date(2026, 4, 12, 14, 0);
@@ -228,182 +121,75 @@ function walk(now: number, count: number, range: RangeType, seed: string) {
 	}[range];
 	const values = [now];
 	let value = now;
-	// Going back in time the numbers shrink a little: the business has been growing.
-	const drift = (range === '5y' || range === 'all' ? 0.08 : 0.07) * Math.max(1, now);
+	// Going back in time the numbers shrink: the business has been growing, more over a longer range.
+	const growth = {
+		'24h': 0.04,
+		'7d': 0.3,
+		'30d': 0.45,
+		qtr: 0.55,
+		'6m': 0.65,
+		'1y': 0.75,
+		'5y': 0.9,
+		all: 0.95
+	}[range];
+	const drift = (growth * Math.max(1, now)) / Math.max(1, count - 1);
 	for (let index = 1; index < count; index += 1) {
-		value = Math.max(0, value + (next() - 0.55) * 2 * step - drift);
+		value = Math.max(0, value + (next() - 0.5) * step - drift);
 		values.unshift(Math.round(value * 10) / 10);
 	}
 	return values;
 }
 
+export type ChartDataType = { labels: string[]; values: number[] };
+
 export function chartOf(
 	dataset: DatasetType,
 	range: RangeType,
-	projects: ProjectType[],
+	now: number,
 	filter: string
 ): ChartDataType {
 	const labels = labelsOf(range);
-	const live = projects.filter((project) => project.status !== 'Archived');
-	let counts: [string, number, string][] = [];
-	if (dataset === 'projects') {
-		const statuses = filter === 'All' ? OPEN : ([filter] as StatusType[]);
-		counts = statuses.map((status) => [
-			status,
-			live.filter((project) => project.status === status).length,
-			STATUS_TONE[status] ?? 'slate'
-		]);
-	} else if (dataset === 'customers') {
-		counts = CLIENTS.map((name, index) => [
-			name,
-			live.filter((project) => project.client === name).length,
-			CLIENT_TONE[index % CLIENT_TONE.length]
-		]);
-	} else if (dataset === 'team') {
-		const names = [...new Set(live.flatMap((project) => project.team))];
-		counts = names.map((name) => [
-			name,
-			live.filter((project) => project.team.includes(name)).length,
-			'primary'
-		]);
-	} else if (dataset === 'transport') {
-		const names = [...new Set(live.flatMap(transportsOf))];
-		counts = names.map((name) => [
-			name,
-			live.filter((project) => transportsOf(project).includes(name)).length,
-			'primary'
-		]);
-	} else {
-		const names = [...new Set(live.flatMap(facilitiesOf))];
-		counts = names.map((name) => [
-			name,
-			live.filter((project) => facilitiesOf(project).includes(name)).length,
-			'primary'
-		]);
-	}
-	if (dataset !== 'projects' && dataset !== 'customers')
-		counts = counts
-			.sort((a, b) => b[1] - a[1])
-			.slice(0, 5)
-			.map(([name, value], index) => [name, value, PALETTE[index]]);
-	return {
-		labels,
-		isCount: dataset !== 'projects',
-		series: counts.map(([name, value, toneName]) => ({
-			name,
-			tone: tone(toneName),
-			values: walk(value, labels.length, range, `${dataset}-${range}-${name}`)
-		}))
-	};
+	return { labels, values: walk(now, labels.length, range, `${dataset}-${range}-${filter}`) };
 }
 
-// The big number above the chart at a point in time: projects add up; the other pages count who or what was busy.
+// The count at a point in time.
 export function headlineAt(data: ChartDataType, index: number) {
-	const point = data.series.map((series) => series.values[index] ?? 0);
-	return data.isCount
-		? point.filter((value) => value >= 0.5).length
-		: Math.round(point.reduce((sum, value) => sum + value, 0));
+	return Math.round(data.values[index] ?? 0);
+}
+
+// What changed over the time range, for the count cards.
+export function changeOf(look: LookState, dataset: DatasetType) {
+	const data = chartOf(dataset, look.range, countOf(look, dataset), 'All');
+	return headlineAt(data, data.values.length - 1) - headlineAt(data, 0);
 }
 
 export type SliceType = { name: string; value: number; tone: ToneType };
 
-// Pie slices are today's counts, never shares (note 12): projects by status, customers by their projects, the team by
-// each person's first label, so everyone counts once, transport by type across the live projects, and facilities
-// by kind.
-const TYPE_TONE: Record<string, string> = {
-	Sea: 'primary',
-	Air: 'sky',
-	Rail: 'amber',
-	Road: 'teal',
-	Port: 'primary',
-	Airport: 'sky',
-	'Rail yard': 'amber',
-	Depot: 'teal'
-};
-
-export function slicesOf(
-	dataset: DatasetType,
-	projects: ProjectType[],
-	filter: string,
-	lists: ListsType
-): SliceType[] {
-	const live = projects.filter((project) => project.status !== 'Archived');
-	let slices: [string, number, string][] = [];
-	if (dataset === 'projects') {
-		const statuses = filter === 'All' ? [...OPEN].reverse() : ([filter] as StatusType[]);
-		slices = statuses.map((status) => [
-			status,
-			live.filter((project) => project.status === status).length,
-			STATUS_TONE[status] ?? 'slate'
-		]);
-	} else if (dataset === 'customers') {
-		slices = (lists.customers ?? CLIENTS).map((name, index) => [
-			name,
-			live.filter((project) => project.client === name).length,
-			CLIENT_TONE[index % CLIENT_TONE.length]
-		]);
-	} else if (dataset === 'transport') {
-		const counts = new Map<string, number>();
-		for (const name of live.flatMap(transportsOf)) {
-			const type = lists.transports.find((transport) => transport.name === name)?.type ?? 'Sea';
-			counts.set(type, (counts.get(type) ?? 0) + 1);
-		}
-		slices = ['Sea', 'Air', 'Rail', 'Road'].map((type) => [
-			type,
-			counts.get(type) ?? 0,
-			TYPE_TONE[type]
-		]);
-	} else if (dataset === 'facilities') {
-		slices = ['Port', 'Airport', 'Rail yard', 'Depot'].map((kind) => [
-			kind,
-			lists.facilities.filter((facility) => facility.kind === kind).length,
-			TYPE_TONE[kind]
-		]);
-	} else {
-		const counts = new Map<string, number>();
-		for (const member of TEAM) {
-			const label = labelsOfMember(member)[0] ?? 'Other';
-			counts.set(label, (counts.get(label) ?? 0) + 1);
-		}
-		const sorted = [...counts].sort((a, b) => b[1] - a[1]);
-		const top = sorted.slice(0, 4);
-		const other = sorted.slice(4).reduce((sum, [, value]) => sum + value, 0);
-		slices = [...top, ...(other ? [['Other', other] as [string, number]] : [])].map(
-			([name, value], index) => [name, value, [...PALETTE, 'slate'][index]]
-		);
-	}
-	return slices
-		.filter(([, value]) => value > 0)
-		.map(([name, value, toneName]) => ({ name, value, tone: tone(toneName) }));
+// Pie slices are today's counts, never shares (note 12), one per label, zero or not.
+export function slicesOf(look: LookState, dataset: DatasetType): SliceType[] {
+	return columnsOf(look, dataset).map((column) => ({
+		name: column.label,
+		value: countOf(look, dataset, column.label),
+		tone: column.tone
+	}));
 }
 
 export type PinType = { city: string; x: number; y: number; count: number; names: string[] };
 
-// Map pins: where the customers' offices, the team, the facilities, the stops' transports or the projects are, one pin
-// per city with its count. Places off the US map are counted apart.
-export function pinsOf(dataset: DatasetType, projects: ProjectType[], lists: ListsType) {
-	const live = projects.filter((project) => project.status !== 'Archived');
+// Map pins: where the customers' offices, the team, the facilities, the transports (where each was last) or the
+// projects are, one pin per city with its count. Places off the US map are counted apart.
+export function pinsOf(look: LookState, dataset: DatasetType, filter: string) {
 	const places: [string, string][] =
-		dataset === 'customers'
-			? (lists.customers ?? CLIENTS).map((name) => [clientOf(name).city, name])
-			: dataset === 'team'
-				? TEAM.map((member) => [member.location, member.name])
-				: dataset === 'facilities'
-					? lists.facilities.map((facility) => [facility.city, facility.name])
-					: dataset === 'transport'
-						? live.flatMap((project) =>
-								project.stops
-									.filter((stop) => stop.transport)
-									.map((stop): [string, string] => [
-										lists.facilities.find((facility) => facility.name === stop.facility)?.city ??
-											project.location,
-										stop.transport
-									])
-							)
-						: live.map((project) => [project.location, project.title]);
+		dataset === 'projects'
+			? shownProjects(look, filter).map((project) => [project.location, project.title])
+			: shownRecords(look, dataset, filter).map((record) => [
+					dataset === 'customers' ? customerOf(look, record.key).city : record.location,
+					record.key
+				]);
 	const pins = new Map<string, PinType>();
 	const away: string[] = [];
 	for (const [city, name] of places) {
+		if (!city) continue;
 		const point = CITIES[city];
 		if (!point) {
 			away.push(city);
