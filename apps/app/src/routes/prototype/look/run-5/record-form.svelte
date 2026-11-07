@@ -167,7 +167,7 @@
 				</div>
 			</div>
 			<div>
-				<p class={LABEL}>Transport mode</p>
+				<p class={LABEL}>Transport Mode</p>
 				<div class="flex flex-wrap gap-2">
 					{#each TRANSPORT_TYPES[transport.type].modes as mode (mode)}
 						{@render chip(transport.mode === mode, mode, () => {

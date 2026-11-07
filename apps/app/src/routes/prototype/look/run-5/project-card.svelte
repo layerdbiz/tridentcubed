@@ -11,6 +11,7 @@
 	import ProjectLogo from './project-logo.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import ProjectRoute from './project-route.svelte';
+	import { projectPhotosOf } from './records.data';
 
 	let { look, project }: { look: LookState; project: ProjectType } = $props();
 
@@ -21,10 +22,7 @@
 	// The photos the report prints: switched-on photo panels, in order. The sample projects share one set of photos,
 	// so each starts the strip at a different one and the grid does not repeat (prototype only).
 	const photos = $derived.by(() => {
-		const all = (look.workspaces[project.id] ?? [])
-			.filter((panel) => panel.kind === 'photos' && panel.isEnabled)
-			.flatMap((panel) => panel.groups.flatMap((group) => group.photos))
-			.slice(0, 10);
+		const all = projectPhotosOf(look, project);
 		const turn =
 			Math.max(
 				0,

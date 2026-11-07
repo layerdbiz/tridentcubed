@@ -10,9 +10,7 @@
 	let { look, record }: { look: LookState; record: RecordType } = $props();
 </script>
 
-<article
-	class="relative rounded-3xl bg-white ring-1 ring-slate-900/[0.07] transition hover:shadow-md"
->
+<article class="relative rounded-3xl bg-white ring-1 ring-slate-900/[0.07]">
 	<button
 		class="flex w-full flex-col items-center gap-2 p-4 pt-5 text-center"
 		onclick={() => look.openRecord(record.page, record.key)}
@@ -27,7 +25,7 @@
 		</span>
 		{#if record.location}
 			<span class="flex max-w-full items-center gap-0.5 text-xs text-slate-500"
-				><span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-slate-400"></span><span
+				><span class="icon-[mdi--map-marker] size-3.5 shrink-0 {record.tone.text}"></span><span
 					class="truncate">{record.location}</span
 				></span
 			>

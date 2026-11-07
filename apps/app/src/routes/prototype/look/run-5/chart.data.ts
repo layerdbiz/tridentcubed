@@ -3,7 +3,7 @@
 // every load looks the same. The pie's slices are the page's labels, the same as the board's columns (note 11).
 import type { DatasetType } from './look.data';
 import type { LookState } from './look.state.svelte';
-import { CITIES } from './map.data';
+import { PLACES } from './map.data';
 import {
 	columnsOf,
 	countOf,
@@ -157,12 +157,6 @@ export function headlineAt(data: ChartDataType, index: number) {
 	return Math.round(data.values[index] ?? 0);
 }
 
-// What changed over the time range, for the count cards.
-export function changeOf(look: LookState, dataset: DatasetType) {
-	const data = chartOf(dataset, look.range, countOf(look, dataset), 'All');
-	return headlineAt(data, data.values.length - 1) - headlineAt(data, 0);
-}
-
 export type SliceType = { name: string; value: number; tone: ToneType };
 
 // Pie slices are today's counts, never shares (note 12), one per label, zero or not.
@@ -174,31 +168,31 @@ export function slicesOf(look: LookState, dataset: DatasetType): SliceType[] {
 	}));
 }
 
-export type PinType = { city: string; x: number; y: number; count: number; names: string[] };
+export type PinType = { city: string; lng: number; lat: number; count: number; names: string[] };
 
-// Map pins: where the customers' offices, the team, the facilities, the transports (where each was last) or the
-// projects are, one pin per city with its count. Places off the US map are counted apart.
+// Pins for the map, one per city with how many are there; a city the map does not know gets none.
+export function pinsAt(places: [city: string, name: string][]): PinType[] {
+	const pins = new Map<string, PinType>();
+	for (const [city, name] of places) {
+		const point = PLACES[city];
+		if (!point) continue;
+		const pin = pins.get(city) ?? { city, lng: point[0], lat: point[1], count: 0, names: [] };
+		pin.count += 1;
+		pin.names.push(name);
+		pins.set(city, pin);
+	}
+	return [...pins.values()].sort((a, b) => a.count - b.count);
+}
+
+// The dashboard map: where the customers' offices, the team, the facilities, the transports (where each was last) or
+// the projects are.
 export function pinsOf(look: LookState, dataset: DatasetType, filter: string) {
-	const places: [string, string][] =
+	return pinsAt(
 		dataset === 'projects'
 			? shownProjects(look, filter).map((project) => [project.location, project.title])
 			: shownRecords(look, dataset, filter).map((record) => [
 					dataset === 'customers' ? customerOf(look, record.key).city : record.location,
 					record.key
-				]);
-	const pins = new Map<string, PinType>();
-	const away: string[] = [];
-	for (const [city, name] of places) {
-		if (!city) continue;
-		const point = CITIES[city];
-		if (!point) {
-			away.push(city);
-			continue;
-		}
-		const pin = pins.get(city) ?? { city, x: point[0], y: point[1], count: 0, names: [] };
-		pin.count += 1;
-		pin.names.push(name);
-		pins.set(city, pin);
-	}
-	return { pins: [...pins.values()].sort((a, b) => a.count - b.count), away };
+				])
+	);
 }

@@ -41,6 +41,7 @@
 		"@iconify-json/svg-spinners": "^1.2.4",
 		"@layerd/ui": "workspace:*",
 		"@sparticuz/chromium-min": "143.0.4",
+		"maplibre-gl": "6.16.0",
 		"puppeteer-core": "24.38.0",
 		"valibot": "^1.2.0"
 	}

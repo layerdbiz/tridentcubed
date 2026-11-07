@@ -55,7 +55,7 @@
 			<Chips labels={record.sub ? [...record.labels, record.sub] : record.labels} />
 			{#if record.location}
 				<span class="flex min-w-0 items-center gap-0.5 text-xs text-slate-500"
-					><span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-slate-400"></span><span
+					><span class="icon-[mdi--map-marker] size-3.5 shrink-0 {record.tone.text}"></span><span
 						class="truncate">{record.location}</span
 					></span
 				>

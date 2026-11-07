@@ -562,25 +562,23 @@ export const PAGES: DatasetType[] = ['projects', 'customers', 'team', 'transport
 
 // One icon per page, the same everywhere (Justin, 2026-10-26 19:22): a folder for projects, a smile for customers,
 // the building (once the clients' icon) for facilities, and a box on the move for transport by sea, air, rail or road.
-export const PAGE_ICONS: Record<DatasetType, { icon: string; active: string }> = {
-	projects: { icon: 'icon-[mdi--folder-outline]', active: 'icon-[mdi--folder]' },
-	customers: { icon: 'icon-[mdi--emoticon-outline]', active: 'icon-[mdi--emoticon]' },
-	team: { icon: 'icon-[mdi--account-group-outline]', active: 'icon-[mdi--account-group]' },
-	transport: { icon: 'icon-[mdi--cube-send]', active: 'icon-[mdi--cube-send]' },
-	facilities: { icon: 'icon-[mdi--domain]', active: 'icon-[mdi--domain]' }
+// Each page's icon, filled wherever it shows: no outline versions (run 13, 2026-11-07).
+export const PAGE_ICONS: Record<DatasetType, string> = {
+	projects: 'icon-[mdi--folder]',
+	customers: 'icon-[mdi--emoticon]',
+	team: 'icon-[mdi--account-group]',
+	transport: 'icon-[mdi--cube-send]',
+	facilities: 'icon-[mdi--domain]'
 };
 
-// Each page's name. Transport is "Transport mode" since run 12 (the Trident team's word, 2026-11-07; Justin may want one
-// word later). What a page sorts by (its labels) is in records.data.ts.
-export const DATASETS: Record<
-	DatasetType,
-	{ label: string; one: string; icon: string; active: string }
-> = {
-	projects: { label: 'Projects', one: 'Project', ...PAGE_ICONS.projects },
-	customers: { label: 'Customers', one: 'Customer', ...PAGE_ICONS.customers },
-	team: { label: 'Team', one: 'Team member', ...PAGE_ICONS.team },
-	transport: { label: 'Transport mode', one: 'Transport', ...PAGE_ICONS.transport },
-	facilities: { label: 'Facilities', one: 'Facility', ...PAGE_ICONS.facilities }
+// Each page's name. Transport is "Transport Mode" since run 12 (the Trident team's word, 2026-11-07; capital M from
+// run 13; Justin may want one word later). What a page sorts by (its labels) is in records.data.ts.
+export const DATASETS: Record<DatasetType, { label: string; one: string; icon: string }> = {
+	projects: { label: 'Projects', one: 'Project', icon: PAGE_ICONS.projects },
+	customers: { label: 'Customers', one: 'Customer', icon: PAGE_ICONS.customers },
+	team: { label: 'Team', one: 'Team member', icon: PAGE_ICONS.team },
+	transport: { label: 'Transport Mode', one: 'Transport', icon: PAGE_ICONS.transport },
+	facilities: { label: 'Facilities', one: 'Facility', icon: PAGE_ICONS.facilities }
 };
 
 // The bottom of anything that scrolls fades out rather than stopping at a hard edge (run 12 note 15).
@@ -870,7 +868,7 @@ export function newPanel(count: number): PanelType {
 
 // The side menu: the five pages (no Home since 2026-10-26 19:22), then Admin.
 export const NAV = [
-	...PAGES.map((id) => ({ id, label: DATASETS[id].label, icon: PAGE_ICONS[id].active })),
+	...PAGES.map((id) => ({ id, label: DATASETS[id].label, icon: PAGE_ICONS[id] })),
 	{
 		id: 'admin',
 		label: 'Admin',

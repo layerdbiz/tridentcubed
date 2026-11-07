@@ -324,14 +324,14 @@
 	];
 
 	const COVER = $derived([
-		{ icon: PAGE_ICONS.facilities.active, label: 'Facility', value: facility },
+		{ icon: PAGE_ICONS.facilities, label: 'Facility', value: facility },
 		{
 			icon: stops[0] ? iconOf(stops[0]) : 'icon-[mdi--ferry]',
 			label: 'Transport',
 			value: transport
 		},
 		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: look.project.dates },
-		{ icon: PAGE_ICONS.customers.active, label: 'Customer', value: detail('Customer') },
+		{ icon: PAGE_ICONS.customers, label: 'Customer', value: detail('Customer') },
 		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Owner', value: team?.owner },
 		{ icon: 'icon-[mdi--package-variant-closed]', label: 'Type', value: detail('Project type') }
 	]);
@@ -684,7 +684,7 @@
 									</div>
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Point', stop.point ? `${stop.point}, ${POINTS[stop.point].hint}` : ''], ['Facility', stop.facility], ['Facility kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Transport type', stop.type], ['Transport mode', stop.mode]] as [label, value] (label)}
+									{#each [['Point', stop.point ? `${stop.point}, ${POINTS[stop.point].hint}` : ''], ['Facility', stop.facility], ['Facility kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Transport type', stop.type], ['Transport Mode', stop.mode]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
 											<p
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
@@ -715,7 +715,7 @@
 									</p>
 								{:else}
 									<p class="mt-1.5 text-[11px] text-slate-300 italic">
-										Pick the transport mode to list its particulars
+										Pick the Transport Mode to list its particulars
 									</p>
 								{/if}
 							{:else if item.kind === 'timelog'}

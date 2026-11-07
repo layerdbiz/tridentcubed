@@ -3,7 +3,7 @@
 	// 2026-10-26 16:34, and run 12 note 19: every page's rows, not only Projects). A project offers Send, Mark sent (or
 	// Unsend, back to its state before) and Delete; a customer, team member, transport or facility offers Edit and
 	// Delete. Every delete asks first. `isOpenable` adds Open first, for the lists; `tone` 'photo' is white dots in a
-	// dark glass circle, readable on any photo.
+	// dark glass circle, readable on any photo; 'bare' just the dots, in the colour around them (a Page's top bar).
 	import { DATASETS, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import Menu, { type OptionType } from './menu.svelte';
@@ -20,7 +20,7 @@
 		// A project's id, or a record's name.
 		id: string;
 		isOpenable?: boolean;
-		tone?: 'plain' | 'photo';
+		tone?: 'plain' | 'photo' | 'bare';
 	} = $props();
 
 	const project = $derived(
@@ -81,7 +81,11 @@
 	onpick={act}
 >
 	{#snippet trigger(_, isOpen)}
-		{#if tone === 'photo'}
+		{#if tone === 'bare'}
+			<span class="flex size-9 items-center justify-center"
+				><span class="icon-[mdi--dots-vertical] size-[22px]"></span></span
+			>
+		{:else if tone === 'photo'}
 			<span
 				class="flex size-9 items-center justify-center rounded-full bg-slate-950/25 text-white backdrop-blur-sm"
 				><span class="icon-[mdi--dots-vertical] size-[22px]"></span></span

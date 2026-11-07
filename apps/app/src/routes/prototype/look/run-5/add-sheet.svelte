@@ -101,13 +101,13 @@
 		>
 			<div class="-mx-5 mb-5 flex gap-2 overflow-x-auto px-5">
 				{#each PAGES as id (id)}
-					{@render chip(kind === id, KINDS[id], () => (kind = id), PAGE_ICONS[id].icon)}
+					{@render chip(kind === id, KINDS[id], () => (kind = id), PAGE_ICONS[id])}
 				{/each}
 			</div>
 			<div class="mb-5 flex items-center gap-3">
 				<span
 					class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
-					><span class="{PAGE_ICONS[kind].active} size-6"></span></span
+					><span class="{PAGE_ICONS[kind]} size-6"></span></span
 				>
 				<div>
 					<p class="text-lg font-semibold text-slate-900">New {KINDS[kind].toLowerCase()}</p>
@@ -165,7 +165,7 @@
 						{@render chip(type === id, id, () => (type = id as TransportTypeType), item.icon)}
 					{/each}
 				</div>
-				<p class={LABEL}>Transport mode</p>
+				<p class={LABEL}>Transport Mode</p>
 				<div class="mb-3 flex flex-wrap gap-2">
 					{#each TRANSPORT_TYPES[type].modes as item (item)}
 						{@render chip(mode === item, item, () => (mode = item))}

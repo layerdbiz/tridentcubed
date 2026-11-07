@@ -1,24 +1,33 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 12: a customer, team member, transport or facility on its own screen, opened from its row
-	// the way a project opens (Justin's run 12 note 18). On a phone it slides in over the dashboard with two tabs,
-	// Page (how it reads, first) and Edit, swiped between or picked on the floating bar; on a desktop the Edit form
-	// sits in the floating column on the left and the Page fills the rest. The header has back, its icon and name, and
-	// the same ⋮ as its row.
+	// the way a project opens (Justin's run 12 note 18), with two tabs, Page (how it reads, first) and Edit, swiped
+	// between or picked on the floating bar. Run 13 (2026-11-07 22:21): the Page is built like the dashboard
+	// (page-view.svelte): its picture or a map of where it is on top, its name and labels over the picture, and the
+	// rest in the sheet below. On a desktop the Edit form sits in the floating column on the left and the Page fills
+	// the rest.
+	import { pinsAt } from './chart.data';
+	import Chips from './chips.svelte';
+	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import PageView from './page-view.svelte';
 	import RecordForm from './record-form.svelte';
 	import RecordMark from './record-mark.svelte';
 	import RecordView from './record-view.svelte';
-	import type { RecordType } from './records.data';
-	import { DATASETS } from './look.data';
+	import { customerOf, photosOf, type RecordType } from './records.data';
+	import { ROLE_LABELS } from './team.data';
 
 	let { look, record, isWide }: { look: LookState; record: RecordType; isWide: boolean } = $props();
 
 	const FLOAT =
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
 
+	const city = $derived(
+		record.page === 'customers' ? customerOf(look, record.key).city : record.location
+	);
+	const pins = $derived(pinsAt([[city, record.key]]));
+
 	let swiper: HTMLDivElement | undefined = $state();
-	let top = $state(0);
 	let isLanded = false;
 
 	function onscroll() {
@@ -63,15 +72,73 @@
 	</div>
 {/snippet}
 
-{#if isWide}
-	<div class="fixed inset-0 overflow-y-auto bg-slate-100 pl-[444px]">
-		<div class="mx-auto max-w-2xl px-8 py-8">
-			<RecordView
+{#snippet page(left: number)}
+	<PageView
+		photos={photosOf(record)}
+		{pins}
+		isBlurred={record.page === 'team'}
+		{isWide}
+		{left}
+		onback={() => look.home()}
+		backLabel="Back to {DATASETS[record.page].label}"
+	>
+		{#snippet actions()}
+			<MoreMenu
 				{look}
-				{record}
+				page={record.page}
+				id={record.key}
+				tone="bare"
 			/>
-		</div>
-	</div>
+		{/snippet}
+		{#snippet overlay(isLight)}
+			<div class="flex items-center gap-3">
+				<RecordMark
+					{record}
+					size={64}
+					hasBadge={false}
+				/>
+				<div class="min-w-0 flex-1 space-y-1.5">
+					<h1
+						class="line-clamp-2 text-2xl leading-tight font-semibold {isLight
+							? 'text-white'
+							: 'text-slate-900'}"
+					>
+						{record.key}
+					</h1>
+					{#if record.member}
+						<p class="truncate text-sm {isLight ? 'text-white/80' : 'text-slate-500'}">
+							{[record.member.title, ROLE_LABELS[record.member.role]].filter(Boolean).join(' · ')}
+						</p>
+					{/if}
+					<Chips
+						labels={record.sub ? [...record.labels, record.sub] : record.labels}
+						isWrapped
+						{isLight}
+					/>
+					{#if city}
+						<p
+							class="flex items-center gap-0.5 text-sm {isLight
+								? 'text-white/85'
+								: 'text-slate-600'}"
+						>
+							<span class="icon-[mdi--map-marker] size-4 shrink-0 {record.tone.text}"></span>
+							<span class="truncate"
+								>{record.page === 'transport' ? `Last seen in ${city}` : city}</span
+							>
+						</p>
+					{/if}
+				</div>
+			</div>
+		{/snippet}
+		<RecordView
+			{look}
+			{record}
+		/>
+	</PageView>
+{/snippet}
+
+{#if isWide}
+	<div class="fixed inset-0 bg-slate-100">{@render page(444)}</div>
 	<aside class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}">
 		<div class="pt-4 pr-3 pb-4 pl-4">{@render header()}</div>
 		<div class="flex-1 overflow-y-auto px-4 pb-4">
@@ -83,35 +150,27 @@
 	</aside>
 {:else}
 	<div class="relative h-dvh overflow-hidden bg-slate-100">
-		<header
-			class="absolute inset-x-0 top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
-			bind:clientHeight={top}
-		>
-			<div class="px-1.5 py-2">{@render header()}</div>
-		</header>
 		<div
 			bind:this={swiper}
 			class="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
 			{onscroll}
 		>
-			{#each ['page', 'edit'] as pane (pane)}
-				<div
-					class="w-full shrink-0 snap-start overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+96px)]"
-					style="padding-top: {top + 12}px"
+			<div class="h-full w-full shrink-0 snap-start">{@render page(0)}</div>
+			<div
+				class="h-full w-full shrink-0 snap-start overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+96px)]"
+			>
+				<header
+					class="sticky top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
 				>
-					{#if pane === 'page'}
-						<RecordView
-							{look}
-							{record}
-						/>
-					{:else}
-						<RecordForm
-							{look}
-							{record}
-						/>
-					{/if}
+					<div class="px-1.5 py-2">{@render header()}</div>
+				</header>
+				<div class="px-4 pt-3">
+					<RecordForm
+						{look}
+						{record}
+					/>
 				</div>
-			{/each}
+			</div>
 		</div>
 	</div>
 {/if}

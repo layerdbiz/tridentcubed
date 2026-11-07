@@ -59,7 +59,7 @@
 						? 'bg-primary/10 text-primary'
 						: 'bg-slate-900 text-white'}"
 					style="width: {size}px; height: {size}px"
-					><span class="{PAGE_ICONS[item.page].active} size-1/2"></span></span
+					><span class="{PAGE_ICONS[item.page]} size-1/2"></span></span
 				>
 			{/if}
 		</span>

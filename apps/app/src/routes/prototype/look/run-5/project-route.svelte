@@ -23,9 +23,7 @@
 		></span>
 		<span class="min-w-0 truncate">{route.to}</span>
 	{:else}
-		<span
-			class="icon-[mdi--map-marker] size-3.5 shrink-0 {isLight ? 'text-white' : 'text-slate-400'}"
-		></span>
+		<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {STATUS[project.status].tone}"></span>
 		<span class="min-w-0 truncate">{route.from}</span>
 	{/if}
 </span>

@@ -12,26 +12,33 @@
 	// sideways to the next page; the sheet has rounder corners and a deep shadow that falls under the cards. Run 12
 	// (2026-11-07): the list's four menus stay put over the sheet while a swipe slides the title and the list, and the
 	// coming page fades in as it slides (notes 2 and 3); a customer, team member, transport or facility opens its own
-	// screen (record-page.svelte), as a project does; the bell and the menu share one Recent list.
+	// screen (record-page.svelte), as a project does; the bell and the menu share one Recent list. Run 13 (2026-11-07
+	// 22:21): the split is split.svelte, shared with the Page views; the map chart is a real map filling the top of the
+	// screen edge to edge, down behind the sheet; a swipe slides the pages without fading them; the bell's list sits
+	// over the list's menus.
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fly, scale } from 'svelte/transition';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
 	import AddSheet from './add-sheet.svelte';
+	import { pinsOf } from './chart.data';
 	import ListMenus from './list-menus.svelte';
 	import { PAGES } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
+	import ProjectPage from './project-page.svelte';
 	import RecentList from './recent-list.svelte';
 	import RecordPage from './record-page.svelte';
 	import { recordOf } from './records.data';
 	import ReportPreview from './report-preview.svelte';
 	import Sidebar from './sidebar.svelte';
+	import Split from './split.svelte';
 	import StatCards from './stat-cards.svelte';
 	import WorkspacePhone from './workspace-phone.svelte';
+	import WorldMap from './world-map.svelte';
 
 	let { look }: { look: LookState } = $props();
 
@@ -40,6 +47,8 @@
 	let isBellOpen = $state(false);
 	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
+	let headHeight = $state(0);
+	let cardsHeight = $state(0);
 	const isWide = $derived(innerWidth >= 768);
 	const record = $derived(
 		look.record ? recordOf(look, look.record.page, look.record.key) : undefined
@@ -121,69 +130,6 @@
 		event.preventDefault();
 	}
 
-	// The list's sheet rests at three heights: the list at its 65%, half way, or folded down to its heading. Drag its top
-	// (the handle or the heading row) and the part above, chart and cards, follows; a flick moves one rest.
-	let rest = $state(0);
-	let sheetTop = $state<number>();
-	let sheetFrom = { y: 0, t: 0, top: 0 };
-	const rests = $derived.by(() => {
-		const first = Math.max(innerHeight * 0.35, isWide ? 368 : 256);
-		const last = Math.max(first, innerHeight - (isWide ? 116 : 108));
-		return [first, (first + last) / 2, last];
-	});
-	const top = $derived(sheetTop ?? rests[rest]);
-
-	function sheetDown(event: PointerEvent) {
-		const target = event.target as HTMLElement;
-		if (!target.closest('[data-sheet-handle], [data-sheet-grip]')) return;
-		if (target.closest('button, a, input, select, textarea, [role="listbox"]')) return;
-		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		sheetFrom = { y: event.clientY, t: event.timeStamp, top };
-		sheetTop = top;
-	}
-
-	function sheetMove(event: PointerEvent) {
-		if (sheetTop === undefined) return;
-		sheetTop = clamp(sheetFrom.top + event.clientY - sheetFrom.y, rests[0], rests[2]);
-	}
-
-	function sheetUp(event: PointerEvent) {
-		if (sheetTop === undefined) return;
-		const at = sheetTop;
-		const speed = (event.clientY - sheetFrom.y) / Math.max(1, event.timeStamp - sheetFrom.t);
-		const nearest = rests.reduce(
-			(best, value, index) => (Math.abs(value - at) < Math.abs(rests[best] - at) ? index : best),
-			0
-		);
-		rest =
-			speed > 0.5
-				? Math.max(
-						nearest,
-						rests.findIndex((value) => value > at + 1)
-					)
-				: speed < -0.5
-					? Math.min(
-							nearest,
-							rests.findLastIndex((value) => value < at - 1)
-						)
-					: nearest;
-		if (rest < 0) rest = nearest;
-		sheetTop = undefined;
-	}
-
-	const sheetDrag: Attachment<HTMLElement> = (node) => {
-		node.addEventListener('pointerdown', sheetDown);
-		node.addEventListener('pointermove', sheetMove);
-		node.addEventListener('pointerup', sheetUp);
-		node.addEventListener('pointercancel', sheetUp);
-		return () => {
-			node.removeEventListener('pointerdown', sheetDown);
-			node.removeEventListener('pointermove', sheetMove);
-			node.removeEventListener('pointerup', sheetUp);
-			node.removeEventListener('pointercancel', sheetUp);
-		};
-	};
-
 	// Swipe the list sideways for the page before or after (Justin, 2026-10-26 19:22): the list follows the finger with
 	// the next page peeking in beside it and, past a quarter of its width or on a flick, the two slide the rest of the
 	// way together; at either end it only gives a little. Only a finger: a mouse selects and drags as usual. Photo
@@ -197,21 +143,13 @@
 	const neighbour = $derived(
 		swipeX ? PAGES[PAGES.indexOf(look.dataset) + (swipeX < 0 ? 1 : -1)] : undefined
 	);
-	// The page peeking in fades in as the finger brings it over (run 12 note 3), full by about half way.
-	const peek = $derived(Math.min(1, Math.abs(swipeX) / Math.max(1, pagerWidth * 0.5)));
-	// Where a page that slides in after a swipe starts from: as far in, and as faded in, as the peek had got.
-	let flightOpacity = 0;
-
-	// The coming page slides in from its side and fades in over its first 220 ms; the page going slides out whole.
+	// The coming page slides in from its side, from where the swipe left it; the page going slides out the other way.
 	function slideIn(node: HTMLElement) {
 		const width = node.clientWidth || pagerWidth;
 		const x = look.slide * (flight || width);
-		const duration = flight ? 240 : 320;
-		const opacity = flight ? flightOpacity : 0;
 		return {
-			duration,
-			css: (t: number) =>
-				`transform: translateX(${(1 - cubicOut(t)) * x}px); opacity: ${opacity + (1 - opacity) * Math.min(1, (t * duration) / 220)}`
+			duration: flight ? 240 : 320,
+			css: (t: number) => `transform: translateX(${(1 - cubicOut(t)) * x}px)`
 		};
 	}
 
@@ -265,7 +203,6 @@
 			const isFar = Math.abs(dx) > node.clientWidth / 4 || Math.abs(speed) > 0.5;
 			if (event.type === 'pointerup' && isFar && next >= 0 && next < PAGES.length) {
 				flight = node.clientWidth - Math.abs(swipeX);
-				flightOpacity = peek;
 				setTimeout(() => (flight = 0), 400);
 				look.pick(PAGES[next]);
 			}
@@ -361,6 +298,20 @@
 	</div>
 {/snippet}
 
+<!-- The map chart: the whole top of the screen, edge to edge (under the desktop sidebar too), its pins kept in the
+     part between the header and the cards. -->
+{#snippet mapBackdrop()}
+	<WorldMap
+		pins={pinsOf(look, look.dataset, look.filter)}
+		padding={{
+			top: headHeight + 64,
+			bottom: cardsHeight + 76,
+			left: isWide ? side + 48 : 28,
+			right: 28
+		}}
+	/>
+{/snippet}
+
 <div class="min-h-dvh {CANVAS}">
 	<div
 		inert={look.screen !== 'dashboard'}
@@ -432,44 +383,38 @@
 		></div>
 
 		<main
-			class="flex h-dvh flex-col overflow-hidden md:pl-[calc(var(--side)+24px)] {isSizing
+			class="h-dvh overflow-hidden md:pl-[calc(var(--side)+24px)] {isSizing
 				? ''
 				: 'transition-[padding] duration-200 ease-out'}"
 		>
-			<section
-				class="relative z-10 flex shrink-0 flex-col {sheetTop === undefined
-					? 'transition-[height] duration-300 ease-out'
-					: ''}"
-				style="height: {top}px"
+			<Split
+				{isWide}
+				sheetClass="md:px-8"
+				backdropClass="md:-left-[calc(var(--side)+24px)]"
+				backdrop={look.chart === 'map' ? mapBackdrop : undefined}
 			>
-				<header
-					class="flex shrink-0 items-center justify-between px-2 pt-[max(0.25rem,env(safe-area-inset-top))] md:justify-end md:px-6 md:pt-5"
-				>
-					<button
-						class="{ROUND} md:hidden"
-						aria-label="Open menu"
-						onclick={() => (drawer = 1)}><span class="icon-[mdi--menu] size-6"></span></button
+				{#snippet head()}
+					<header
+						class="pointer-events-auto flex shrink-0 items-center justify-between px-2 pt-[max(0.25rem,env(safe-area-inset-top))] md:justify-end md:px-6 md:pt-5"
+						bind:clientHeight={headHeight}
 					>
-					{@render bellButton()}
-				</header>
-				<div class="min-h-0 flex-1 pt-1 md:pt-0">
-					<HeroChart {look} />
-				</div>
-				<div class="shrink-0 px-4 pt-2 pb-3 md:px-8 md:pt-3 md:pb-4">
-					<div class={COLUMN}><StatCards {look} /></div>
-				</div>
-			</section>
-			<section
-				class="flex min-h-0 flex-1 flex-col rounded-t-[40px] bg-white shadow-[0_-24px_70px_-8px_rgb(15_23_42/0.28)] md:px-8"
-				{@attach sheetDrag}
-			>
-				<div
-					class="flex h-6 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
-					data-sheet-handle
-					aria-hidden="true"
-				>
-					<span class="h-1.5 w-10 rounded-full bg-slate-300"></span>
-				</div>
+						<button
+							class="{ROUND} md:hidden"
+							aria-label="Open menu"
+							onclick={() => (drawer = 1)}><span class="icon-[mdi--menu] size-6"></span></button
+						>
+						{@render bellButton()}
+					</header>
+					<div class="min-h-0 flex-1 pt-1 md:pt-0">
+						<HeroChart {look} />
+					</div>
+					<div
+						class="pointer-events-auto shrink-0 px-4 pt-2 pb-3 md:px-8 md:pt-3 md:pb-4"
+						bind:clientHeight={cardsHeight}
+					>
+						<div class={COLUMN}><StatCards {look} /></div>
+					</div>
+				{/snippet}
 				<!-- One page at a time; on a change the new one slides in from its side and the old one out the other. The
 				     four menus sit over the pages' heading row and never move. -->
 				<div class="{COLUMN} relative flex min-h-0 flex-1 flex-col">
@@ -500,7 +445,6 @@
 							<div
 								class="pointer-events-none min-h-0 [grid-area:1/1]"
 								style:transform="translateX(calc({swipeX}px {swipeX < 0 ? '+' : '-'} 100%))"
-								style:opacity={peek}
 								inert
 								aria-hidden="true"
 							>
@@ -512,7 +456,7 @@
 						{/if}
 					</div>
 				</div>
-			</section>
+			</Split>
 		</main>
 	</div>
 
@@ -541,14 +485,24 @@
 				preview={{ ...PREVIEW, start: 'column' }}
 			/>
 			{#if isWide}
-				<div class="fixed inset-0">
-					<ReportPreview
-						{look}
-						highlight={look.panelId}
-						{...PREVIEW}
-						start="spread"
-						left={444}
-					/>
+				<!-- Run 13: on a desktop the panels keep their column (Edit), and the rest shows the project's Page or its Preview, picked on the floating bar. -->
+				<div class="fixed inset-0 bg-slate-100">
+					{#if look.tab === 'page'}
+						<ProjectPage
+							{look}
+							project={look.project}
+							isWide
+							left={444}
+						/>
+					{:else}
+						<ReportPreview
+							{look}
+							highlight={look.panelId}
+							{...PREVIEW}
+							start="spread"
+							left={444}
+						/>
+					{/if}
 				</div>
 				<aside
 					class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
@@ -572,7 +526,12 @@
 
 	<NavBar
 		{look}
-		left={isWide ? `calc(${side + 24}px + (100vw - ${side + 24}px) / 2)` : '50%'}
+		{isWide}
+		left={!isWide
+			? '50%'
+			: look.screen === 'workspace'
+				? 'calc(444px + (100vw - 444px) / 2)'
+				: `calc(${side + 24}px + (100vw - ${side + 24}px) / 2)`}
 	/>
 	<AddSheet {look} />
 </div>

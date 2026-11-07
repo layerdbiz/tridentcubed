@@ -8,6 +8,7 @@
 import {
 	clientOf,
 	facilitiesOf,
+	personOf,
 	FACILITY_ICONS,
 	MODE_ICONS,
 	PAGE_ICONS,
@@ -220,6 +221,8 @@ export type RecordType = {
 	icon: string;
 	projects: ProjectType[];
 	member?: TeamMemberType;
+	// Its first label's colour, which its small icons take in a list, a card or the board (run 13).
+	tone: ToneType;
 };
 
 export function isOpen(project: ProjectType) {
@@ -262,7 +265,7 @@ function counts(theirs: ProjectType[]) {
 	};
 }
 
-export function recordsOf(look: LookState, page: PageType): RecordType[] {
+function baseRecordsOf(look: LookState, page: PageType): Omit<RecordType, 'tone'>[] {
 	if (page === 'customers')
 		return look.customers.map((name) => {
 			const info = customerOf(look, name);
@@ -298,7 +301,7 @@ export function recordsOf(look: LookState, page: PageType): RecordType[] {
 			labels: [transport.type],
 			sub: transport.mode,
 			location: lastSeenOf(look, transport.name),
-			icon: MODE_ICONS[transport.mode] ?? PAGE_ICONS.transport.active,
+			icon: MODE_ICONS[transport.mode] ?? PAGE_ICONS.transport,
 			...counts(look.projects.filter((project) => transportsOf(project).includes(transport.name))),
 			people: []
 		}));
@@ -314,6 +317,15 @@ export function recordsOf(look: LookState, page: PageType): RecordType[] {
 	}));
 }
 
+export function recordsOf(look: LookState, page: PageType): RecordType[] {
+	const columns = columnsOf(look, page);
+	return baseRecordsOf(look, page).map((record) => ({
+		...record,
+		tone: (columns.find((column) => column.label === (record.labels[0] ?? OTHER)) ?? columns[0])
+			.tone
+	}));
+}
+
 export function recordOf(look: LookState, page: PageType, key: string) {
 	return recordsOf(look, page).find((record) => record.key === key);
 }
@@ -321,7 +333,7 @@ export function recordOf(look: LookState, page: PageType, key: string) {
 // A page's labels in order: the fixed ones, then any typed in here, then Other when something has none.
 export function labelsFor(look: LookState, page: DatasetType): string[] {
 	if (page === 'projects') return STATES;
-	const records = recordsOf(look, page);
+	const records = baseRecordsOf(look, page);
 	const extra = [...new Set(records.flatMap((record) => record.labels))]
 		.filter((label) => !LABELS[page].includes(label))
 		.sort();
@@ -373,4 +385,39 @@ export function countOf(look: LookState, page: DatasetType, filter = 'All') {
 // A count badge never needs more than two characters.
 export function badgeOf(count: number) {
 	return count > 9 ? '9+' : String(count);
+}
+
+// The picture at the top of a record's Page (run 13): the Website's own service photos, picked by what the record
+// is. A team member's own photo, blurred behind them. Trains, rail cars and rail yards have none yet, so their Page
+// opens on the map.
+const PHOTOS: Record<string, string> = {
+	Vessel: 'port-captain-services.png',
+	Barge: 'heavy-lift-support.png',
+	Plane: 'cargo-surveys.webp',
+	Truck: 'road-transport.webp',
+	Trailer: 'project-cargo.webp',
+	Port: 'terminal-surveys.webp',
+	Airport: 'cargo-surveys.webp',
+	Depot: 'warehouse-surveys.webp',
+	'Ocean carrier': 'engineering-planning.png',
+	'Freight forwarder': 'compliance-solutions.png',
+	Stevedore: 'project-cargo.webp',
+	Terminal: 'terminal-surveys.webp',
+	Insurer: 'marine-warranty.png'
+};
+
+export function photosOf(record: RecordType) {
+	if (record.member) return [personOf(record.key).photo];
+	const keys = record.page === 'transport' ? [record.sub] : record.labels;
+	return [...new Set(keys.map((key) => PHOTOS[key]).filter(Boolean))].map(
+		(file) => `/services/${file}`
+	);
+}
+
+// The photos a project's report prints: its switched-on photo panels, in order, at most ten.
+export function projectPhotosOf(look: LookState, project: ProjectType) {
+	return (look.workspaces[project.id] ?? [])
+		.filter((panel) => panel.kind === 'photos' && panel.isEnabled)
+		.flatMap((panel) => panel.groups.flatMap((group) => group.photos))
+		.slice(0, 10);
 }

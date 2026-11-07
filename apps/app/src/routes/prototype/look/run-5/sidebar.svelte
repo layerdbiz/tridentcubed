@@ -7,7 +7,8 @@
 	// width and clips it, so the words slide out as it is dragged wider (2026-10-26 16:34). `onnavigate` runs after any
 	// pick, so the phone drawer can close itself, even when the pick is the page already open. Run 12 (2026-11-07,
 	// notes 14 to 16): Recent is the same list as the bell's notifications (recent-list.svelte), with round icons, and
-	// fades out at its bottom before the profile; the section names and TRIDENT CUBED are bold.
+	// fades out at its bottom before the profile; the section names and TRIDENT CUBED are bold. Run 13: the pages not
+	// on show have black icons and lighter words.
 	import Avatar from './avatar.svelte';
 	import { DATASETS, FADE, NAV, personOf, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -60,13 +61,13 @@
 			<button
 				class="flex w-full items-center gap-1 overflow-hidden rounded-xl py-1.5 text-[15px] font-bold transition {isOn
 					? 'bg-slate-900/[0.06] text-slate-900'
-					: 'text-slate-600 hover:bg-slate-900/[0.04] hover:text-slate-900'}"
+					: 'text-slate-500 hover:bg-slate-900/[0.04]'}"
 				title={item.label}
 				aria-current={isOn ? 'page' : undefined}
 				onclick={() => go(item.id)}
 			>
 				<span class={COLUMN}
-					><span class="{item.icon} size-[30px] {isOn ? 'text-primary' : 'text-slate-400'}"
+					><span class="{item.icon} size-[30px] {isOn ? 'text-primary' : 'text-slate-900'}"
 					></span></span
 				>
 				<span class={WORDS}>{item.label}</span>

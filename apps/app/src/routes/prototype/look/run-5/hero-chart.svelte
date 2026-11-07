@@ -1,25 +1,28 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 5: the dashboard chart. It runs edge to edge in one blue, its fill fading out just above
-	// the cards. The big number and its change sat top left until run 12. Run 11 (2026-10-26 19:22): the chart type and time range
-	// menus moved down to the list's heading (dashboard-list.svelte). Each card opens on its own chart (note 11):
-	// projects an area, customers a map of where they are, the team a pie by label, and pies give numbers, never
-	// percents (note 12). A finger (or mouse) scrubs back in time. The history is made up (chart.data.ts); the map is us-atlas (map.data.ts).
-	// Run 12 (2026-11-07): the chart ends on the same count as its card (note 13), and the card carries the number and
-	// what changed, so no big number repeats it up here; scrubbing shows the count on the day under the finger. The pie
-	// sits in the middle (note 11) with one slice per label, in the board's order and colours, and no legend on a phone
-	// (note 12): tap a slice and its count and name show in the middle, and the list below filters to it; tap it again
-	// for all. A desktop has room for the legend beside it, every label listed, zero or not.
+	// the cards. Run 11 (2026-10-26 19:22): the chart type and time range menus moved down to the list's heading
+	// (dashboard-list.svelte). Each card opens on its own chart (note 11): projects an area, customers a map of where
+	// they are, the team a pie by label, and pies give numbers, never percents (note 12). A finger (or mouse) scrubs
+	// back in time. The history is made up (chart.data.ts). Run 12 (2026-11-07): the chart ends on the same count as its
+	// card (note 13); the pie has one slice per label, in the board's order and colours, a tap on a slice filters the
+	// list below to it, and a desktop lists the labels beside it.
+	// Run 13 (Justin, 2026-11-07 22:21): the number is back at the top left, with what changed beside it in green (▲3
+	// this week), on every page and every chart: it follows a finger or mouse scrubbing the chart, and a pie slice
+	// tapped (its name beside the number). Nothing else is written up here. The pie is a thick ring of rounded slices
+	// with the page's icon in its middle, so no word can run over it; on a phone it sits at the right, beside the number,
+	// using the whole height, and on a desktop in the middle. The map is a real one, behind the whole top of
+	// the screen (shell.svelte, world-map.svelte), so this draws only the number over it and lets taps through.
 	import { fade } from 'svelte/transition';
-	import { chartOf, headlineAt, pinsOf, RANGE_NAMES, slicesOf } from './chart.data';
+	import { chartOf, headlineAt, RANGE_NAMES, RANGES, slicesOf } from './chart.data';
 	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import { US_BORDERS, US_NATION } from './map.data';
 	import { countOf } from './records.data';
 
 	let { look }: { look: LookState } = $props();
 
 	let width = $state(0);
 	let height = $state(0);
+	let sectionHeight = $state(0);
 	let scrub = $state<number | undefined>(undefined);
 	let hovered = $state<string>();
 
@@ -29,23 +32,18 @@
 	const last = $derived(count - 1);
 	const index = $derived(scrub ?? last);
 	const slices = $derived(slicesOf(look, look.dataset));
-	const map = $derived(pinsOf(look, look.dataset, look.filter));
-	const note = $derived(
-		`On the map: ${map.pins.length} US ${map.pins.length === 1 ? 'city' : 'cities'}${map.away.length ? ` + ${[...new Set(map.away)].join(', ')}` : ''}`
-	);
-	// The slice in the middle of the pie: the one filtered to, else the one under a mouse.
+	const range = $derived(RANGES.find((item) => item.id === look.range)!);
+	const change = $derived(headlineAt(data, last) - headlineAt(data, 0));
+	// The slice the number is about: the one filtered to, else the one under a mouse.
 	const picked = $derived(
-		slices.find((slice) => slice.name === (look.filter === 'All' ? hovered : look.filter))
+		look.chart === 'pie'
+			? slices.find((slice) => slice.name === (look.filter === 'All' ? hovered : look.filter))
+			: undefined
 	);
-
-	// What the number in the middle of the pie counts, short enough to fit inside it.
-	const NOUNS = {
-		projects: 'projects',
-		customers: 'customers',
-		team: 'people',
-		transport: 'transports',
-		facilities: 'facilities'
-	};
+	const isScrubbing = $derived(
+		scrub !== undefined && (look.chart === 'area' || look.chart === 'bar')
+	);
+	const value = $derived(isScrubbing ? headlineAt(data, index) : (picked?.value ?? total));
 
 	function tap(name: string) {
 		look.filter = look.filter === name ? 'All' : name;
@@ -93,69 +91,44 @@
 
 	// Pie: today's counts, each slice in its own colour; a label nothing has yet has no slice, only its legend row.
 	const shares = $derived.by(() => {
-		const total = slices.reduce((sum, slice) => sum + slice.value, 0) || 1;
+		const sum = slices.reduce((all, slice) => all + slice.value, 0) || 1;
 		let start = 0;
 		return slices
 			.filter((slice) => slice.value > 0)
 			.map((slice) => {
-				const share = slice.value / total;
+				const share = slice.value / sum;
 				const item = { slice, start, end: start + share };
 				start += share;
 				return item;
 			});
 	});
 
-	// Map: the whole country, with a little room so edge pins are not cut off.
-	const viewBox = '-10 -20 995 650';
-	// Map units per screen pixel, so pins and labels keep their size on screen.
-	const pinScale = $derived.by(() => {
-		const [w, h] = [995, 650];
-		return width && height ? Math.max(w / width, h / height) : 1;
-	});
+	// The ring's rounded corners come from a stroke in the slice's own colour, so the shape is drawn that much smaller.
+	const ROUND = 5;
+	const GAP = 3;
 
-	const radiusOf = (count: number) => (4 + Math.sqrt(count) * 3) * pinScale;
+	function pointAt(turn: number, radius: number) {
+		const angle = turn * Math.PI * 2 - Math.PI / 2;
+		return `${Math.cos(angle) * radius},${Math.sin(angle) * radius}`;
+	}
 
-	// City labels, biggest pin first: to the right, else to the left, else none, so no two overlap where pins crowd
-	// (the facilities on the Gulf coast); a pin's tooltip still names it.
-	const spots = $derived.by(() => {
-		type BoxType = { x1: number; x2: number; y1: number; y2: number };
-		const boxes: BoxType[] = map.pins.map((pin) => {
-			const r = radiusOf(pin.count);
-			return { x1: pin.x - r, x2: pin.x + r, y1: pin.y - r, y2: pin.y + r };
-		});
-		const found = new Map<string, { x: number; anchor: 'start' | 'end' }>();
-		for (const pin of map.pins.toSorted((a, b) => b.count - a.count)) {
-			const r = radiusOf(pin.count);
-			const width = pin.city.split(',')[0].length * 5.8 * pinScale;
-			const half = 6 * pinScale;
-			for (const anchor of ['start', 'end'] as const) {
-				const x = anchor === 'start' ? pin.x + r + 3 * pinScale : pin.x - r - 3 * pinScale;
-				const box = {
-					x1: anchor === 'start' ? x : x - width,
-					x2: anchor === 'start' ? x + width : x,
-					y1: pin.y - half,
-					y2: pin.y + half
-				};
-				const isTaken = boxes.some(
-					(other) =>
-						other.x1 < box.x2 && box.x1 < other.x2 && other.y1 < box.y2 && box.y1 < other.y2
-				);
-				if (isTaken) continue;
-				boxes.push(box);
-				found.set(pin.city, { x, anchor });
-				break;
-			}
-		}
-		return found;
-	});
+	// One slice of the ring, from `start` to `end` (shares of a turn), with an even gap on both sides.
+	function sliceOf(start: number, end: number, outer: number, inner: number) {
+		const [big, small] = [outer - ROUND / 2, inner + ROUND / 2];
+		if (shares.length === 1)
+			return `M${pointAt(0, big)} A${big},${big} 0 1 1 ${pointAt(0.5, big)} A${big},${big} 0 1 1 ${pointAt(0, big)} M${pointAt(0, small)} A${small},${small} 0 1 0 ${pointAt(0.5, small)} A${small},${small} 0 1 0 ${pointAt(0, small)}Z`;
+		const half = (GAP + ROUND) / 2;
+		const [outerGap, innerGap] = [half / (big * Math.PI * 2), half / (small * Math.PI * 2)];
+		const [a, b] = [start + outerGap, Math.max(start + outerGap, end - outerGap)];
+		const [c, d] = [start + innerGap, Math.max(start + innerGap, end - innerGap)];
+		const isLarge = end - start > 0.5 ? 1 : 0;
+		return `M${pointAt(a, big)} A${big},${big} 0 ${isLarge} 1 ${pointAt(b, big)} L${pointAt(d, small)} A${small},${small} 0 ${isLarge} 0 ${pointAt(c, small)}Z`;
+	}
 
-	function arcOf(start: number, end: number, radius: number) {
-		const gap = 0.012;
-		const [from, to] = [start + gap, Math.max(start + gap, end - gap)];
-		const a = from * Math.PI * 2 - Math.PI / 2;
-		const b = to * Math.PI * 2 - Math.PI / 2;
-		const isLarge = to - from > 0.5 ? 1 : 0;
-		return `M${Math.cos(a) * radius},${Math.sin(a) * radius} A${radius},${radius} 0 ${isLarge} 1 ${Math.cos(b) * radius},${Math.sin(b) * radius}`;
+	// A picked slice moves out a little from the middle.
+	function nudgeOf(start: number, end: number) {
+		const angle = ((start + end) / 2) * Math.PI * 2 - Math.PI / 2;
+		return `translate(${Math.cos(angle) * 6}px, ${Math.sin(angle) * 6}px)`;
 	}
 
 	function onpointermove(event: PointerEvent) {
@@ -167,58 +140,76 @@
 	}
 </script>
 
-<section class="flex h-full min-h-0 flex-col">
+<section
+	class="pointer-events-none relative flex h-full min-h-0 flex-col"
+	bind:clientHeight={sectionHeight}
+>
+	<!-- Over the map the number gets a soft glow of the page's grey, so a place name under it never muddles it. -->
+	<p
+		class="relative z-10 flex shrink-0 items-baseline gap-2 px-4 md:px-8 {look.chart === 'pie'
+			? 'max-w-[58%] md:max-w-none'
+			: ''} {look.chart === 'map' ? '[text-shadow:0_0_10px_#f1f5f9,0_0_4px_#f1f5f9]' : ''}"
+	>
+		<span class="text-4xl font-semibold tracking-tight text-slate-900 tabular-nums md:text-5xl"
+			>{value}</span
+		>
+		{#if isScrubbing}
+			<span class="truncate text-sm font-medium text-slate-500">{data.labels[index]}</span>
+		{:else if picked}
+			<span class="flex min-w-0 items-center gap-1.5 text-sm font-semibold {picked.tone.text}"
+				><span class="size-2.5 shrink-0 rounded-full {picked.tone.bg}"></span><span class="truncate"
+					>{picked.name}</span
+				></span
+			>
+		{:else}
+			<span
+				class="flex items-center text-sm font-semibold whitespace-nowrap {change >= 0
+					? 'text-success'
+					: 'text-danger'}"
+				><span class="{change >= 0 ? 'icon-[mdi--menu-up]' : 'icon-[mdi--menu-down]'} size-5"
+				></span>{Math.abs(change)}&nbsp;{range.long}</span
+			>
+		{/if}
+	</p>
+
 	<div
 		class="relative min-h-0 flex-1"
 		bind:clientWidth={width}
 		bind:clientHeight={height}
 	>
-		{#if scrub !== undefined && (look.chart === 'area' || look.chart === 'bar')}
-			<p
-				class="pointer-events-none absolute top-0 left-4 z-10 flex items-baseline gap-2 rounded-full bg-white/80 px-3 py-1 backdrop-blur md:left-8"
-			>
-				<span class="text-lg font-semibold text-slate-900 tabular-nums"
-					>{headlineAt(data, index)}</span
-				>
-				<span class="text-xs font-medium text-slate-500">{data.labels[index]}</span>
-			</p>
-		{:else if look.chart === 'map'}
-			<p
-				class="pointer-events-none absolute top-0 left-4 z-10 max-w-[60%] truncate text-xs font-medium text-slate-500 md:left-8"
-			>
-				{note}
-			</p>
-		{/if}
 		{#key `${look.dataset}-${look.range}-${look.chart}${look.chart === 'pie' ? '' : `-${look.filter}`}`}
 			<div
 				class="absolute inset-0"
 				in:fade={{ duration: 260 }}
 			>
 				{#if look.chart === 'pie'}
-					{@const size = Math.max(60, Math.min(height - 8, 240))}
-					{@const radius = size / 2 - 14}
-					<div class="flex h-full items-center justify-center gap-10 px-4 md:px-8">
+					{@const size = Math.max(60, Math.min(sectionHeight - 12, 220))}
+					{@const outer = size / 2 - 8}
+					{@const inner = outer * 0.58}
+					<div
+						class="absolute inset-x-0 bottom-0 flex items-center justify-end gap-10 px-5 md:justify-center md:px-8"
+						style="height: {sectionHeight}px"
+					>
 						<svg
 							viewBox="{-size / 2} {-size / 2} {size} {size}"
 							width={size}
 							height={size}
-							class="shrink-0 overflow-visible"
+							class="pointer-events-auto shrink-0 overflow-visible"
 							role="group"
 							aria-label="{DATASETS[look.dataset].label} by label"
 						>
-							<circle
-								r={radius}
-								class="fill-none stroke-slate-900/[0.06]"
-								stroke-width="24"
-							/>
-							{#each shares as item (item.slice.name)}
-								{@const isDim = picked && picked.name !== item.slice.name}
+							{#each shares as item, at (item.slice.name)}
+								{@const isPicked = picked?.name === item.slice.name}
 								<path
-									d={arcOf(item.start, item.end, radius)}
-									class="chart-draw cursor-pointer fill-none transition-[opacity,stroke-width] duration-200 outline-none {item
-										.slice.tone.stroke} {isDim ? 'opacity-25' : ''}"
-									stroke-width={picked?.name === item.slice.name ? 30 : 24}
-									pathLength="1"
+									d={sliceOf(item.start, item.end, outer, inner)}
+									fill-rule="evenodd"
+									stroke-width={ROUND}
+									stroke-linejoin="round"
+									class="pie-slice cursor-pointer outline-none {item.slice.tone.fill} {item.slice
+										.tone.stroke} {picked && !isPicked ? 'opacity-30' : ''}"
+									style="animation-delay: {at * 40}ms; transform: {isPicked
+										? nudgeOf(item.start, item.end)
+										: 'none'}"
 									role="button"
 									tabindex="0"
 									aria-label="{item.slice.name}: {item.slice.value}"
@@ -229,26 +220,27 @@
 									onpointerleave={() => (hovered = undefined)}
 								/>
 							{/each}
-							<text
-								text-anchor="middle"
-								y={-6}
-								class="pointer-events-none fill-slate-900 text-[26px] font-semibold tabular-nums"
-								>{picked ? picked.value : total}</text
+							<foreignObject
+								x={-inner * 0.5}
+								y={-inner * 0.5}
+								width={inner}
+								height={inner}
+								class="pointer-events-none"
 							>
-							<text
-								text-anchor="middle"
-								y={14}
-								class="pointer-events-none fill-slate-500 text-[11px] font-medium"
-								>{(picked?.name ?? NOUNS[look.dataset]).slice(0, 16)}</text
-							>
+								<span
+									class="{DATASETS[look.dataset].icon} block size-full transition-colors {picked
+										? picked.tone.text
+										: 'text-slate-300'}"
+								></span>
+							</foreignObject>
 						</svg>
 						<ul
-							class="hidden max-h-full w-56 shrink-0 space-y-0.5 overflow-y-auto text-sm md:block"
+							class="pointer-events-auto hidden max-h-full w-56 shrink-0 space-y-0.5 overflow-y-auto text-sm md:block"
 						>
 							{#each slices as slice (slice.name)}
 								<li>
 									<button
-										class="flex w-full items-center gap-2 rounded-lg px-2 py-0.5 text-left transition hover:bg-slate-900/[0.04] {picked &&
+										class="flex w-full items-center gap-2 rounded-lg px-2 py-0.5 text-left {picked &&
 										picked.name !== slice.name
 											? 'opacity-50'
 											: ''}"
@@ -264,74 +256,11 @@
 							{/each}
 						</ul>
 					</div>
-				{:else if look.chart === 'map'}
-					<svg
-						{viewBox}
-						overflow="visible"
-						class="block size-full"
-						preserveAspectRatio="xMidYMid meet"
-						role="img"
-						aria-label="Where the {look.dataset} are"
-					>
-						<path
-							d={US_NATION}
-							class="fill-slate-900/[0.07]"
-						/>
-						<path
-							d={US_BORDERS}
-							class="fill-none stroke-white"
-							stroke-width={1.2 * pinScale}
-							stroke-linejoin="round"
-						/>
-						{#each map.pins as pin, at (pin.city)}
-							{@const r = radiusOf(pin.count)}
-							{@const spot = spots.get(pin.city)}
-							<g
-								class="chart-pin"
-								style="animation-delay: {at * 60}ms"
-							>
-								<title>{pin.city}: {pin.names.join(', ')}</title>
-								<circle
-									cx={pin.x}
-									cy={pin.y}
-									r={r * 1.6}
-									class="fill-primary/15"
-								/>
-								<circle
-									cx={pin.x}
-									cy={pin.y}
-									{r}
-									class="fill-primary stroke-white"
-									stroke-width={2 * pinScale}
-								/>
-								{#if pin.count > 1}
-									<text
-										x={pin.x}
-										y={pin.y}
-										text-anchor="middle"
-										dominant-baseline="central"
-										class="fill-white font-semibold"
-										style="font-size: {10 * pinScale}px">{pin.count}</text
-									>
-								{/if}
-								{#if spot}
-									<text
-										x={spot.x}
-										y={pin.y}
-										text-anchor={spot.anchor}
-										dominant-baseline="central"
-										class="fill-slate-600 font-medium"
-										style="font-size: {10 * pinScale}px">{pin.city.split(',')[0]}</text
-									>
-								{/if}
-							</g>
-						{/each}
-					</svg>
-				{:else if width && height}
+				{:else if look.chart !== 'map' && width && height}
 					<svg
 						{width}
 						{height}
-						class="block touch-pan-y"
+						class="pointer-events-auto block touch-pan-y"
 						role="img"
 						aria-label="{look.dataset} over {RANGE_NAMES[look.range]}"
 						{onpointermove}
@@ -441,8 +370,13 @@
 	.chart-fill {
 		animation: rise 700ms ease-out both;
 	}
-	.chart-pin {
-		animation: rise 500ms ease-out both;
+	.pie-slice {
+		transform-box: view-box;
+		transform-origin: center;
+		transition:
+			transform 200ms ease-out,
+			opacity 200ms;
+		animation: pop 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
 	}
 	.chart-bar {
 		transform-box: fill-box;
@@ -460,6 +394,12 @@
 	@keyframes rise {
 		from {
 			opacity: 0;
+		}
+	}
+	@keyframes pop {
+		from {
+			opacity: 0;
+			scale: 0.85;
 		}
 	}
 	@keyframes grow {

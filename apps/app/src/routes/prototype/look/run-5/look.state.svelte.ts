@@ -38,6 +38,8 @@ export type ScreenType = 'dashboard' | 'workspace' | 'record';
 export type ViewType = 'table' | 'cards' | 'board';
 // A project has Edit (its panels, once called Panels) and Preview; a record has Page (how it reads) and Edit.
 export type TabType = 'page' | 'edit' | 'preview';
+// A project's tabs in order; a record has Page and Edit.
+export const PROJECT_TABS: TabType[] = ['page', 'edit', 'preview'];
 
 export type MetricsType = { done: number; total: number; percent: number; status: PanelStatusType };
 
@@ -248,13 +250,14 @@ export class LookState {
 		this.filter = 'All';
 	}
 
-	open(id: string) {
+	// A project opens on its Page, before Edit and Preview (run 13), unless asked for another tab.
+	open(id: string, tab: TabType = 'page') {
 		if (this.screen === 'workspace') this.#keepProject();
 		this.#ensure(id);
 		this.projectId = id;
 		this.panelId = '';
-		if (this.tab === 'page') this.tab = 'edit';
-		this.tabProgress = this.tab === 'preview' ? 1 : 0;
+		this.tab = tab;
+		this.tabProgress = PROJECT_TABS.indexOf(tab);
 		this.screen = 'workspace';
 	}
 
@@ -332,7 +335,7 @@ export class LookState {
 			stops: panel.kind === 'transport' ? [stopOf()] : [],
 			items: panel.kind === 'items' ? [itemOf()] : []
 		}));
-		this.open(id);
+		this.open(id, 'edit');
 	}
 
 	remove(id: string) {
@@ -382,7 +385,7 @@ export class LookState {
 		if (this.has('transport', transport.name))
 			return this.say(`${transport.name} is already there`);
 		this.transports.push({ ...transport, source: 'manual' });
-		this.say(`${transport.name} added to Transport mode`);
+		this.say(`${transport.name} added to Transport Mode`);
 	}
 
 	addFacility(facility: FacilityType) {

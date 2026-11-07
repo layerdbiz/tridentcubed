@@ -5,17 +5,28 @@
 	// slide in behind them, and the + goes. It stays one bar the whole time: it narrows or widens, it never jumps. A
 	// desktop project has its panels in their own column, so there the bar shows on the dashboard only. Run 12
 	// (2026-11-07): Panels is called Edit; a customer, team member, transport or facility opens the same way, with Page
-	// and Edit, and the icon at the far left is the page it came from, so it leads back there.
+	// and Edit, and the icon at the far left is the page it came from, so it leads back there. Run 13 (2026-11-07): a
+	// project has Page, Edit and Preview; the icons are filled everywhere, and the page on show just turns white, with
+	// no circle behind it. A desktop project keeps Edit in its column, so its bar shows there too, with Page and Preview.
 	import { untrack } from 'svelte';
 	import { DATASETS, PAGE_ICONS, PAGES, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import SaveCloud from './save-cloud.svelte';
 	import { fade } from 'svelte/transition';
 
-	let { look, left = '50%' }: { look: LookState; left?: string } = $props();
+	let {
+		look,
+		left = '50%',
+		isWide = false
+	}: { look: LookState; left?: string; isWide?: boolean } = $props();
 
 	const PROJECT_TABS = [
+		['page', 'Page'],
 		['edit', 'Edit'],
+		['preview', 'Preview']
+	] as const;
+	const DESK_TABS = [
+		['page', 'Page'],
 		['preview', 'Preview']
 	] as const;
 	const RECORD_TABS = [
@@ -28,7 +39,10 @@
 	const FOLD = 'grid transition-[grid-template-columns,opacity] duration-300 ease-out';
 
 	const isProject = $derived(look.screen !== 'dashboard');
-	const tabs = $derived(look.screen === 'record' ? RECORD_TABS : PROJECT_TABS);
+	const isDesk = $derived(isWide && look.screen === 'workspace');
+	const tabs = $derived(look.screen === 'record' ? RECORD_TABS : isDesk ? DESK_TABS : PROJECT_TABS);
+	// On a desktop project nothing is swiped: Edit is always there, and the main part shows Page or Preview.
+	const shown = $derived(isDesk && look.tab === 'edit' ? 'preview' : look.tab);
 	let nav: HTMLElement | undefined = $state();
 	let mark = $state({ x: 0, width: 0 });
 
@@ -40,21 +54,22 @@
 		return { x: inner.left - outer.left, width: inner.width };
 	}
 
-	// The highlight sits under the page on show, or in a project under Panels or Preview, following the panes as they
-	// are swiped.
+	// In a project or a record the blue highlight sits under its tab, following the panes as they are swiped. On the
+	// dashboard there is none: the page on show is the white icon.
 	function place() {
 		if (!isProject) {
 			mark = boxOf(`[data-page="${look.navSection}"]`) ?? mark;
 			return;
 		}
-		const edit = boxOf(`[data-tab="${tabs[0][0]}"]`);
-		const preview = boxOf(`[data-tab="${tabs[1][0]}"]`);
-		if (!edit || !preview) return;
-		const at = Math.min(1, Math.max(0, look.tabProgress));
-		mark = {
-			x: edit.x + (preview.x - edit.x) * at,
-			width: edit.width + (preview.width - edit.width) * at
-		};
+		const boxes = tabs.map(([tab]) => boxOf(`[data-tab="${tab}"]`));
+		if (boxes.some((box) => !box)) return;
+		const at = isDesk
+			? tabs.findIndex(([tab]) => tab === shown)
+			: Math.min(tabs.length - 1, Math.max(0, look.tabProgress));
+		const from = Math.min(tabs.length - 2, Math.floor(at));
+		const [a, b] = [boxes[from]!, boxes[from + 1]!];
+		const part = at - from;
+		mark = { x: a.x + (b.x - a.x) * part, width: a.width + (b.width - a.width) * part };
 	}
 
 	// While the bar changes shape, the highlight is measured every frame.
@@ -74,6 +89,7 @@
 
 	$effect(() => {
 		void look.tabProgress;
+		void shown;
 		untrack(place);
 	});
 
@@ -89,13 +105,12 @@
 {#snippet page(id: DatasetType)}
 	{@const isOn = look.navSection === id}
 	<button
-		class="{BUTTON} {isOn ? 'text-white' : 'text-white/55 hover:text-white'}"
+		class="{BUTTON} {isOn ? 'text-white' : 'text-white/45 hover:text-white/70'}"
 		data-page={id}
 		aria-label={DATASETS[id].label}
 		aria-current={isOn ? 'page' : undefined}
 		title={DATASETS[id].label}
-		onclick={() => go(id)}
-		><span class="{isOn ? PAGE_ICONS[id].active : PAGE_ICONS[id].icon} size-6"></span></button
+		onclick={() => go(id)}><span class="{PAGE_ICONS[id]} size-6"></span></button
 	>
 {/snippet}
 
@@ -104,7 +119,7 @@
 	{@const id = isProject ? look.dataset : PAGES[0]}
 	{@const isOn = isProject || look.navSection === id}
 	<button
-		class="{BUTTON} {isOn ? 'text-white' : 'text-white/55 hover:text-white'}"
+		class="{BUTTON} {isOn ? 'text-white' : 'text-white/45 hover:text-white/70'}"
 		data-page={PAGES[0]}
 		aria-label={isProject ? `Back to ${DATASETS[id].label}` : DATASETS[id].label}
 		aria-current={isOn && !isProject ? 'page' : undefined}
@@ -112,7 +127,7 @@
 		onclick={() => go(id)}
 	>
 		{#key id}<span
-				class="{isOn ? PAGE_ICONS[id].active : PAGE_ICONS[id].icon} size-6"
+				class="{PAGE_ICONS[id]} size-6"
 				in:fade={{ duration: 200 }}
 			></span>{/key}
 	</button>
@@ -120,7 +135,8 @@
 
 <nav
 	bind:this={nav}
-	class="fixed bottom-[calc(env(safe-area-inset-bottom)+14px)] z-[55] flex w-max -translate-x-1/2 items-center rounded-full bg-black p-1.5 text-white shadow-xl shadow-black/25 {isProject
+	class="fixed bottom-[calc(env(safe-area-inset-bottom)+14px)] z-[55] flex w-max -translate-x-1/2 items-center rounded-full bg-black p-1.5 text-white shadow-xl shadow-black/25 {isProject &&
+	!isDesk
 		? 'md:hidden'
 		: ''}"
 	style="left: {left}"
@@ -129,7 +145,7 @@
 	<span
 		class="absolute top-1.5 bottom-1.5 left-0 rounded-full {isProject
 			? 'bg-primary shadow-md shadow-primary/30'
-			: 'bg-white/15 transition-[transform,width,background-color] duration-300 ease-out'}"
+			: 'bg-transparent transition-[transform,width,background-color] duration-300 ease-out'}"
 		style="width: {mark.width}px; transform: translateX({mark.x}px)"
 		aria-hidden="true"
 	></span>
@@ -161,13 +177,13 @@
 				<span class="flex size-9 items-center justify-center"><SaveCloud {look} /></span>
 				{#each tabs as [tab, label] (tab)}
 					<button
-						class="relative flex h-11 items-center justify-center rounded-full px-4 text-[13px] font-medium transition-colors {look.tab ===
+						class="relative flex h-11 items-center justify-center rounded-full px-4 text-[13px] font-medium transition-colors {shown ===
 						tab
 							? 'text-white'
 							: 'text-white/60 hover:text-white'}"
 						data-tab={tab}
 						role="tab"
-						aria-selected={look.tab === tab}
+						aria-selected={shown === tab}
 						onclick={() => (look.tab = tab)}>{label}</button
 					>
 				{/each}

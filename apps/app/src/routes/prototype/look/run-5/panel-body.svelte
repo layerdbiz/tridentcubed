@@ -515,7 +515,7 @@
 						)}
 						{#if stop.type}
 							{@render dropdown(
-								'Transport mode',
+								'Transport Mode',
 								stop.mode,
 								TRANSPORT_TYPES[stop.type].modes.map((mode) => ({
 									id: mode,

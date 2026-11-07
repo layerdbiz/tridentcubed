@@ -1,17 +1,15 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 12: a record's Page tab, how it reads (Justin's run 12 note 18): one shared view for a
-	// customer, a team member, a transport and a facility. Its icon, name, labels and place; its numbers; for a team
+	// customer, a team member, a transport and a facility. Since run 13 its icon, name, labels and place sit over the
+	// Page's picture (record-page.svelte) and this is the sheet under it: its numbers; for a team
 	// member their phone and email, for a transport its particulars (empty until typed in on Edit, or later filled by a
-	// tracking service); then its projects, as the same rows the Projects page lists. Projects get a Page tab later.
+	// tracking service); then its projects, as the same rows the Projects page lists.
 	import ClientLogo from './client-logo.svelte';
-	import Chips from './chips.svelte';
 	import Faces from './faces.svelte';
 	import { DATASETS, PARTICULARS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProjectRow from './project-row.svelte';
-	import RecordMark from './record-mark.svelte';
 	import type { RecordType } from './records.data';
-	import { ROLE_LABELS } from './team.data';
 
 	let { look, record }: { look: LookState; record: RecordType } = $props();
 
@@ -20,45 +18,11 @@
 			? look.transports.find((item) => item.name === record.key)
 			: undefined
 	);
-	const ROLE_TONES = {
-		admin: 'bg-primary/10 text-primary',
-		manager: 'bg-violet-500/10 text-violet-700',
-		team: 'bg-slate-100 text-slate-600'
-	};
-	const CARD = 'rounded-3xl bg-white ring-1 ring-slate-900/[0.05]';
+	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 	const HEADING = 'mb-2 px-1 text-sm font-semibold text-slate-900';
 </script>
 
 <div class="space-y-5">
-	<div class="flex flex-col items-center gap-2 px-6 pt-6 pb-5 text-center {CARD}">
-		<RecordMark
-			{record}
-			size={96}
-			hasBadge={false}
-		/>
-		<h1 class="mt-2 text-2xl font-semibold text-slate-900">{record.key}</h1>
-		{#if record.member}
-			{#if record.member.title}<p class="-mt-1 text-sm text-slate-500">
-					{record.member.title}
-				</p>{/if}
-			<span
-				class="rounded-full px-2.5 py-0.5 text-xs font-semibold {ROLE_TONES[record.member.role]}"
-				>{ROLE_LABELS[record.member.role]}</span
-			>
-		{/if}
-		<span class="flex justify-center">
-			<Chips
-				labels={record.sub ? [...record.labels, record.sub] : record.labels}
-				isWrapped
-			/>
-		</span>
-		{#if record.location}
-			<p class="flex items-center gap-0.5 text-sm text-slate-500">
-				<span class="icon-[mdi--map-marker] size-4 text-slate-400"></span>{record.location}
-			</p>
-		{/if}
-	</div>
-
 	<div class="grid grid-cols-3 gap-2">
 		{#each [['Projects', record.count], ['Open', record.open], [record.page === 'customers' ? 'Team' : 'Customers', record.page === 'customers' ? record.people.length : record.logos.length]] as [label, value] (label)}
 			<div class="p-3 text-center {CARD}">

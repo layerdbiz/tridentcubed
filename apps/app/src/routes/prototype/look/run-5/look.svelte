@@ -17,9 +17,9 @@
 
 	const params = page.url.searchParams;
 	const look = new LookState();
-	look.tab = (params.get('tab') as TabType) ?? 'edit';
+	look.tab = (params.get('tab') as TabType) ?? 'page';
 	look.view = (params.get('view') as ViewType) ?? 'table';
-	if (params.get('project')) look.open(params.get('project')!);
+	if (params.get('project')) look.open(params.get('project')!, look.tab);
 	look.screen = (params.get('screen') as ScreenType) ?? 'dashboard';
 	if (look.panels.some((panel) => panel.id === params.get('panel')))
 		look.panelId = params.get('panel')!;

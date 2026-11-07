@@ -6,9 +6,12 @@
 	// the pages take every drag, so a hidden strip on the left edge swipes back. Run 9: the bar is words only, with no
 	// line after the cloud (note 19); on Panels the left edge swipes the whole project away, back to the dashboard
 	// (note 21). Run 11 (2026-10-26 19:22): Panels and Preview moved into the one floating bar (nav-bar.svelte), which
-	// sets look.tab; the panes follow it, and their scroll drives the bar's highlight through look.tabProgress.
+	// sets look.tab; the panes follow it, and their scroll drives the bar's highlight through look.tabProgress. Run 13
+	// (2026-11-07 22:21): a Page pane comes first (project-page.svelte), with its own picture and buttons, so the
+	// header shows from Edit on; the left edge of the Page swipes the project away.
 	import type { ComponentProps } from 'svelte';
-	import type { LookState } from './look.state.svelte';
+	import { PROJECT_TABS, type LookState, type TabType } from './look.state.svelte';
+	import ProjectPage from './project-page.svelte';
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ReportPreview from './report-preview.svelte';
@@ -29,26 +32,29 @@
 	let top = $state(0);
 	let isLanded = false;
 
-	function show(tab: 'edit' | 'preview') {
+	function show(tab: TabType) {
 		look.tab = tab;
-		swiper?.scrollTo({ left: tab === 'edit' ? 0 : swiper.clientWidth, behavior: 'smooth' });
+		swiper?.scrollTo({
+			left: PROJECT_TABS.indexOf(tab) * swiper.clientWidth,
+			behavior: 'smooth'
+		});
 	}
 
 	function onscroll() {
 		if (!swiper?.clientWidth) return;
 		look.tabProgress = swiper.scrollLeft / swiper.clientWidth;
-		look.tab = look.tabProgress > 0.5 ? 'preview' : 'edit';
+		look.tab = PROJECT_TABS[Math.round(look.tabProgress)] ?? 'page';
 	}
 
 	// The bar's Panels and Preview: the panes slide to the one picked. The first time, as the project opens (on
 	// Preview when the URL asks for it), they are simply there.
 	$effect(() => {
 		if (!swiper) return;
-		const left = look.tab === 'edit' ? 0 : swiper.clientWidth;
+		const left = Math.max(0, PROJECT_TABS.indexOf(look.tab)) * swiper.clientWidth;
 		if (!isLanded) {
 			isLanded = true;
 			swiper.scrollLeft = left;
-			look.tabProgress = look.tab === 'edit' ? 0 : 1;
+			look.tabProgress = Math.max(0, PROJECT_TABS.indexOf(look.tab));
 		} else if (Math.abs(swiper.scrollLeft - left) > swiper.clientWidth / 2)
 			swiper.scrollTo({ left, behavior: 'smooth' });
 	});
@@ -110,7 +116,12 @@
 	style:transform={pull ? `translateX(${pull}px)` : undefined}
 >
 	<header
-		class="absolute inset-x-0 top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+		class="absolute inset-x-0 top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 {look.tabProgress <
+		0.5
+			? 'pointer-events-none'
+			: ''}"
+		style:opacity={Math.min(1, Math.max(0, look.tabProgress))}
+		inert={look.tabProgress < 0.5}
 		bind:clientHeight={top}
 	>
 		<div class="py-2 pr-1.5 pl-1.5">
@@ -123,6 +134,13 @@
 		class="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
 		{onscroll}
 	>
+		<div class="h-full w-full shrink-0 snap-start">
+			<ProjectPage
+				{look}
+				project={look.project}
+				isWide={false}
+			/>
+		</div>
 		<div
 			class="w-full shrink-0 snap-start overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+76px)]"
 			style="padding-top: {top + 12}px"
@@ -150,10 +168,10 @@
 			></div>
 		</div>
 	</div>
-	{#if look.tab === 'edit'}
+	{#if look.tab === 'page'}
 		<div
 			class="absolute bottom-0 left-0 z-10 w-4 touch-none"
-			style="top: {top}px"
+			style="top: 72px"
 			aria-hidden="true"
 			onpointerdown={pullDown}
 			onpointermove={pullMove}
