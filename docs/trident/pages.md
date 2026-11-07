@@ -21,12 +21,12 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
       - Photos
       - History
       - Sent copies
-  - Customers ✅ (list only)
-    - Customer
-  - Transport ✅ (list only, filtered by Sea, Air, Rail, Road)
-    - Transport
-  - Facilities ✅ (list only)
-    - Facility
+  - Customers ✅
+    - Customer (record page, Page and Edit; design prototype run 12)
+  - Transport ✅ (filtered by Sea, Air, Rail, Road; reads Transport mode in the design prototype from run 12)
+    - Transport (record page, Page and Edit; design prototype run 12)
+  - Facilities ✅
+    - Facility (record page, Page and Edit; design prototype run 12)
   - Notifications
   - Search
   - Profile ✅
@@ -59,8 +59,8 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
 
 ## Rules
 
-- **One list, three views.** Dashboard, Projects, Customers, Transport, Facilities, Users and Trash are the same list component with different data. Table, Cards and Board (a column per project status) are all V1, and the User picks the view.
-- **Customers, Transport and Facilities get their own list pages** on top of being picked and added from dropdowns in the Project details panel and the Transport panel's stops (ADR 0005). A single Customer, Transport or Facility page comes later.
+- **One list, three views.** Dashboard, Projects, Customers, Transport, Facilities, Users and Trash are the same list component with different data. Table, Cards and Board (a column per label: project status, customer type, team label, transport type, facility kind) are all V1, and the User picks the view; a change of view applies to every page.
+- **Customers, Transport and Facilities get their own list pages** on top of being picked and added from dropdowns in the Project details panel and the Transport panel's stops (ADR 0005). Each opens its own record page, one screen shared by all four, with a Page tab first and an Edit tab.
 - **New project is a popup,** not a page.
 - **No Welcome walkthrough in V1.** The phone asks for the camera, location or microphone the first time a feature needs it. A walkthrough at first sign-in stays on the list for later.
 - **No Offline page.** Once signed in the app runs from the device (ADR 0007); opening it for the first time with no signal shows a message on Sign in.

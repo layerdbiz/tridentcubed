@@ -121,6 +121,7 @@ _Avoid_: transport mode (that is Vessel, Barge and the rest)
 **Transport mode**:
 What a transport is within its type: Vessel or Barge for Sea, Plane for Air, Train or Railcar for Rail, Truck or Trailer for Road. Each mode has its own icon.
 _Avoid_: kind, transport type (that is Sea, Air, Rail or Road)
+_Open_: the Trident team asked (2026-11-07) for the Transport list page to read Transport mode, which the design prototype does from run 12; that clashes with this term, and Justin wants one word for the page later.
 
 **Stop**:
 One place on a project's trip: its point, its transport and its facility. The Transport panel lists a project's stops in trip order, so one report can cover the start, the stops on the way and the end; each stop prints its own page with the transport's particulars.
@@ -255,12 +256,24 @@ One of the workspace's two views, Edit or Preview.
 _Avoid_: pane, mode
 
 **Edit tab**:
-The workspace tab that shows the panels.
-_Avoid_: editor, create tab
+The workspace tab that shows the panels, and a record page's tab that changes the record.
+_Avoid_: editor, create tab, panels tab
 
 **Preview tab**:
 The workspace tab that shows the report pages as they will export.
 _Avoid_: live preview, print preview
+
+**Record**:
+A customer, team member, transport or facility: anything with its own list page that is not a project. Its row opens its record page.
+_Avoid_: entity, item, resource
+
+**Record page**:
+One record's screen, shared by all four kinds, with two tabs: Page, how it reads with its projects, first, and Edit.
+_Avoid_: detail page, profile (that is the User's own)
+
+**Label**:
+What a list page sorts by: a project's status, a customer's types, a team member's labels, a transport's transport type and a facility's kind. A page's labels are its board columns, its filter options and its chart's slices, in the same colours and order; a record with none sits under Other.
+_Avoid_: tag, category, group
 
 **Export**:
 Producing a file of the report. PDF today; other formats are listed but not built.
