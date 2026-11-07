@@ -121,7 +121,7 @@ _Avoid_: transport mode (that is Vessel, Barge and the rest)
 **Transport mode**:
 What a transport is within its type: Vessel or Barge for Sea, Plane for Air, Train or Railcar for Rail, Truck or Trailer for Road. Each mode has its own icon.
 _Avoid_: kind, transport type (that is Sea, Air, Rail or Road)
-_Open_: the Trident team asked (2026-11-07) for the Transport list page to read Transport mode, which the design prototype does from run 12; that clashes with this term, and Justin wants one word for the page later.
+_Open_: the Trident team asked (2026-11-07) for the Transport list page to read Transport Mode, which the design prototype does from run 12 (with a capital M everywhere from run 13); that clashes with this term, and Justin wants one word for the page later.
 
 **Stop**:
 One place on a project's trip: its point, its transport and its facility. The Transport panel lists a project's stops in trip order, so one report can cover the start, the stops on the way and the end; each stop prints its own page with the transport's particulars.
@@ -248,12 +248,16 @@ The page every Member and Admin lands on after signing in, with a little of ever
 _Avoid_: home, overview (the Company overview is another app)
 
 **Workspace**:
-A project's screen in the Report Generator, with two tabs.
+A project's screen in the Report Generator, with three tabs: Page, Edit and Preview (Page from design prototype run 13).
 _Avoid_: details, project details workspace
 
 **Tab**:
-One of the workspace's two views, Edit or Preview.
+One of the workspace's views, Page, Edit or Preview, or one of a record page's two, Page and Edit.
 _Avoid_: pane, mode
+
+**Page tab**:
+The first tab of a project or a record: how it reads. Built like the Dashboard, a big photo or a map of where it is on top, with its name and main facts over it, and a sheet below that is dragged up and down.
+_Avoid_: overview, profile, view
 
 **Edit tab**:
 The workspace tab that shows the panels, and a record page's tab that changes the record.

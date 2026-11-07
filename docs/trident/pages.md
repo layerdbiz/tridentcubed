@@ -16,6 +16,7 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
   - Dashboard ✅ (where Members and Admins land; in V1 it is the same list as Projects)
   - Projects ✅
     - Project ✅ (the Workspace)
+      - Page (photos or a map of the trip, then its details; design prototype run 13)
       - Edit ✅
       - Preview ✅ (zoom, page layouts, Export PDF)
       - Photos
@@ -23,7 +24,7 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
       - Sent copies
   - Customers ✅
     - Customer (record page, Page and Edit; design prototype run 12)
-  - Transport ✅ (filtered by Sea, Air, Rail, Road; reads Transport mode in the design prototype from run 12)
+  - Transport ✅ (filtered by Sea, Air, Rail, Road; reads Transport Mode in the design prototype from run 12)
     - Transport (record page, Page and Edit; design prototype run 12)
   - Facilities ✅
     - Facility (record page, Page and Edit; design prototype run 12)
