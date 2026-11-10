@@ -99,10 +99,14 @@
 				}}
 				onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && look.pick(dataset)}
 			>
-				<span class="{info.icon} size-7 shrink-0 md:size-7 2xl:size-10 {isOn ? 'text-white' : 'text-primary'}"
+				<span
+					class="{info.icon} size-7 shrink-0 md:size-7 2xl:size-10 {isOn
+						? 'text-white'
+						: 'text-primary'}"
 				></span>
 				<span class="min-w-0 flex-1">
-					<span class="block text-lg leading-tight font-semibold tabular-nums md:text-2xl 2xl:text-3xl"
+					<span
+						class="block text-lg leading-tight font-semibold tabular-nums md:text-2xl 2xl:text-3xl"
 						>{countOf(look, dataset)}</span
 					>
 					<!-- Run 14 (note 2): the name stays on one line (Transport Mode); the card is as wide as it needs. -->
