@@ -36,7 +36,7 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
 - Admin
   - Users ✅
     - User
-  - Organization ✅
+  - Organization ✅ (its details and the report's disclaimer and sign-off; the design prototype's Settings screen, run 15)
     - Report templates
   - Trash ✅
   - Activity log

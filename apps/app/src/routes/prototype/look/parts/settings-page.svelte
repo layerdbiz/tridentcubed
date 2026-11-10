@@ -122,7 +122,8 @@
 			<div>
 				<p class={HEADING}>Organization</p>
 				<p class="mt-0.5 text-xs text-slate-400">
-					Printed at the top of every report page, and on the cover.
+					The logo, name, phone and email print at the top of every report page; the logo is on the
+					cover too.
 				</p>
 			</div>
 			<ImageField

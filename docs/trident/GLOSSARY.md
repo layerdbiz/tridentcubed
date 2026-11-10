@@ -39,7 +39,7 @@ A User with no membership in any organization. A Guest sees only their own accou
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
-A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, logo, address, email, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report.
+A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15).
 _Avoid_: team, company, workspace
 
 **Membership**:
@@ -65,7 +65,7 @@ _Avoid_: staff, editor, surveyor, team member
 ### Projects and reports
 
 **Customer**:
-The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A customer has many projects. Called Client until 2026-10-26.
+The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its logo (printed in every page's footer), types, city, address, email, phone, website, a background picture and one contact. Picking a customer's name in a project fills all of it in. Called Client until 2026-10-26.
 _Avoid_: client, account
 
 **Project**:
@@ -107,11 +107,15 @@ _Avoid_: log (that is the time log), audit trail
 The document a project produces: its panels rendered as report pages.
 _Avoid_: survey report, document
 
+**Contact**:
+The person at a customer a report is for: name, title, email, phone and photo, kept on the customer's record. The report prints the name, title and email under the customer. A facility has a simpler one: a name, phone and email.
+_Avoid_: client contact, recipient, attendee
+
 **Facility**:
-Where a stop takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. The drop-down lists every facility, the kind that suits the stop's transport type first (ports for Sea).
+Where a stop takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. Its record holds its kind, city, address, a picture and a contact; the stop's report page prints the address and contact. The drop-down lists every facility, the kind that suits the stop's transport type first (ports for Sea).
 
 **Transport**:
-The ship, barge, plane, train or truck that moves the items, like MV Coral Dawn, picked from the organization's Transport list or added on the spot. A project can use several, one per stop. In V1 every transport is typed in by hand; later a tracking service adds ships and planes to the same list and fills in their particulars.
+The ship, barge, plane, train or truck that moves the items, like MV Coral Dawn, picked from the organization's Transport list or added on the spot. A project can use several, one per stop. In V1 every transport is typed in by hand, with a picture and its particulars, which each of its stops' report pages print; later a tracking service adds ships and planes to the same list and fills in their particulars.
 _Avoid_: carrier (that is the owner), vehicle, conveyance
 
 **Transport type**:
