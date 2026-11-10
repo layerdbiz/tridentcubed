@@ -7,6 +7,11 @@
 // Transport type (Sea, Air, Rail, Road), Transport mode (Vessel, Barge …), the transport itself from the organization's
 // Transport list, and the facility. Transports and facilities are typed in by hand; a tracking service adds to the same
 // list later (`source`).
+// Run 15 (Justin, 2026-11-10): everything the report prints is a field someone can edit. A customer has its logo, a
+// background picture, its short code, address, email, phone, website and a contact person; a team member a photo; a
+// transport a picture and its operator; a facility a picture, address and contact; and the organization (Trident
+// Cubed) its own details and the report's standard wording, edited in Settings.
+import { seen, touch } from './registry.svelte';
 import { initialsOf, photoOfMember, ROLE_LABELS, TEAM, type TeamMemberType } from './team.data';
 
 export type StatusType =
@@ -167,13 +172,18 @@ export const PEOPLE: PersonType[] = TEAM.map((member) => ({
 }));
 
 export function personOf(name: string): PersonType {
+	seen();
 	return PEOPLE.find((person) => person.name === name) ?? { name, photo: initialsOf(name) };
 }
 
-// A team member renamed or added in the prototype keeps their photo under the new name.
+// A team member renamed or added in the prototype keeps their photo under the new name; a photo uploaded on their
+// page (run 15) takes over from the one they came with.
 export function registerPerson(member: TeamMemberType) {
-	if (!PEOPLE.some((person) => person.name === member.name))
-		PEOPLE.push({ name: member.name, photo: photoOfMember(member) });
+	const photo = member.photo || photoOfMember(member);
+	const person = PEOPLE.find((item) => item.name === member.name);
+	if (person) person.photo = photo;
+	else PEOPLE.push({ name: member.name, photo });
+	touch();
 }
 
 // A project's stops, written short: [point, transport, facility].
@@ -347,7 +357,26 @@ export type ClientType = {
 	city: string;
 	// The short code a document ID starts with. Made up for the prototype; the client's own come with V1.
 	code: string;
+	// Run 15, all typed in or uploaded on the customer's Edit tab. An uploaded logo fills `icon` and `logo`.
+	address?: string;
+	email?: string;
+	phone?: string;
+	website?: string;
+	// The picture behind its Page.
+	photo?: string;
+	// Who the report is for at the customer: the report page prints their name and email.
+	contact?: ContactType;
 };
+
+export type ContactType = {
+	name: string;
+	title: string;
+	email: string;
+	phone: string;
+	photo: string;
+};
+
+export const NO_CONTACT: ContactType = { name: '', title: '', email: '', phone: '', photo: '' };
 
 const ICONS = import.meta.glob<string>('./clients/*.{png,jpg,ico}', {
 	eager: true,
@@ -394,10 +423,12 @@ export const CLIENTS: string[] = CLIENT_ROWS.map(([name]) => name);
 export function registerCustomer(customer: ClientType): ClientType {
 	if (!CLIENTS.includes(customer.name)) CLIENTS.push(customer.name);
 	CLIENT_INFO[customer.name] = customer;
+	touch();
 	return customer;
 }
 
 export function clientOf(name: string): ClientType {
+	seen();
 	const code =
 		name
 			.replace(/[^a-z]/gi, '')
@@ -507,8 +538,10 @@ export type TransportType = {
 	type: TransportTypeType;
 	mode: string;
 	source: 'manual' | 'api';
-	// Its particulars (PARTICULARS), typed in on its own page (run 12).
+	// Its particulars (PARTICULARS), typed in on its own page (run 12); the report's stop page prints them (run 15).
 	details?: Record<string, string>;
+	// Its own picture, uploaded on its page (run 15); without one its transport mode's stock picture shows.
+	photo?: string;
 };
 
 export const TRANSPORTS: TransportType[] = (
@@ -538,7 +571,17 @@ export const PARTICULARS: Record<string, string[]> = {
 	Trailer: ['Plate number', 'Haulier', 'Trailer type', 'Deck length']
 };
 
-export type FacilityType = { name: string; kind: FacilityKindType; city: string };
+export type FacilityType = {
+	name: string;
+	kind: FacilityKindType;
+	city: string;
+	// Run 15: its street address (printed on the report's stop page), a picture, and who to call there.
+	address?: string;
+	photo?: string;
+	contact?: string;
+	phone?: string;
+	email?: string;
+};
 
 export const FACILITIES: FacilityType[] = (
 	[
@@ -649,16 +692,81 @@ function group(title: string, description: string, seeds: string[]): GroupType {
 }
 
 // Trident Cubed itself: the organization every report is written for (the Organization drop-down, the letterhead).
-export const ORGANIZATION = {
+// Run 15: kept once and edited by an admin in Settings (settings-page.svelte), as the glossary's Organization says:
+// its details print in every page's header, and its disclaimer and sign-off wording on the report's last page.
+export type OrganizationType = {
+	name: string;
+	logo: string;
+	address: string;
+	phone: string;
+	email: string;
+	// The shared inbox printed last in the owner's sign-off.
+	groupEmail: string;
+	website: string;
+	disclaimer: {
+		opening: string;
+		points: { id: string; title: string; text: string }[];
+		note: string;
+	};
+	// The line before the sign-off, and the sign-off itself.
+	closing: string;
+	signoff: string;
+};
+
+export const ORGANIZATION: OrganizationType = {
 	name: 'Trident Cubed',
+	logo: '/logo-color.svg',
 	address: '800 Town and Country, Ste 500, Houston, TX 77024',
 	phone: '+1 409 543 2725',
 	email: 'operations@tridentcubed.com',
-	website: 'tridentcubed.com'
+	groupEmail: 'ProjectGroup@TridentCubed.com',
+	website: 'tridentcubed.com',
+	disclaimer: {
+		opening:
+			'This Cargo Survey Report is prepared based on the observations, conditions, and information available to the undersigned at the time of the inspection. The findings and conclusions herein are made to the best of our knowledge and belief, but are subject to the following limitations:',
+		points: [
+			[
+				'Scope Limitation',
+				'The survey was conducted without dismantling or intrusive testing unless explicitly stated otherwise. Our observations are limited to visible and accessible parts of the cargo.'
+			],
+			[
+				'No Warranty',
+				"This report does not constitute a warranty or guarantee of the cargo's condition, quality, or fitness for any particular purpose. It is not a guarantee against latent defects or conditions not apparent at the time of inspection."
+			],
+			[
+				'Use Limitation',
+				'This report is provided solely for the use of the party to whom it is addressed. No liability is assumed by the Company or the undersigned for any use or reliance by third parties.'
+			],
+			[
+				'Liability Limitation',
+				'The liability of the Company and the undersigned, if any, arising from this report shall be limited to the fee charged for this service. We shall not be liable for any indirect, consequential, or special damages, including but not limited to loss of profit or business interruption.'
+			],
+			[
+				'Accuracy of Information',
+				'The accuracy of this report depends on the information provided by the customer and others involved. We do not guarantee the accuracy of such third-party information.'
+			],
+			[
+				'Right to Amend',
+				'We reserve the right to amend or supplement this report should additional pertinent information become available.'
+			],
+			[
+				'Legal Context',
+				'This report is not intended to be used for legal proceedings without the express written consent of the Company.'
+			],
+			[
+				'No Endorsement',
+				'This survey does not endorse or approve the cargo for any specific use or handling beyond what is stated in the report.'
+			]
+		].map(([title, text], index) => ({ id: `point-${index + 1}`, title, text })),
+		note: 'Please note that this report reflects the situation as observed on a date of Inspection and may not reflect subsequent changes or conditions.'
+	},
+	closing:
+		'Thank you for trusting Trident Cubed with your cargo. Call or email me with any question about this report.',
+	signoff: 'Best Regards,'
 };
 
-export const CLOSING =
-	'Thank you for trusting Trident Cubed with your cargo. Call or email me with any question about this report.';
+// Who is signed in, in this prototype: an admin (run 5 note 19). Their Team page is their profile.
+export const ME = 'Capt. Cezary Poninski';
 
 export const PROJECT_TYPES = ['Cargo', 'Vessel Condition', 'Warehousing', 'Draft Survey', 'Bunker'];
 

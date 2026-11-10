@@ -17,14 +17,16 @@
 	// line under the header; the QR is the code alone; the footer's customer logo is the size of the header's Trident
 	// logo, a customer with none gets its initial on a colour circle; a barcode marks the document ID; the contents
 	// number 1. 2. 3. with parts 3.1 under the title's first letter; the spread layout opens at the top centre.
+	// Run 15 (Justin, 2026-11-10: "no fake data anywhere"): nothing printed is written in this file any more. The
+	// header, the introduction's first words, the disclaimer and the sign-off come from the organization (Settings);
+	// the footer's logo and code and the contact under Customer from the customer's page; faces, titles and the
+	// owner's sign-off from the team's pages; a stop's address and particulars from the facility's and transport's
+	// pages; the dates from the Time Log's days.
 	import { onMount, untrack } from 'svelte';
 	import ClientLogo from './client-logo.svelte';
 	import {
-		clientOf,
-		CLOSING,
 		documentIdOf,
 		MODE_ICONS,
-		ORGANIZATION,
 		PAGE_ICONS,
 		PARTICULARS,
 		personOf,
@@ -32,7 +34,8 @@
 		type PanelType,
 		type StopType
 	} from './look.data';
-	import { labelsOf, TEAM } from './team.data';
+	import { customerOf } from './records.data';
+	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
 	import { Viewport, type RectType } from './viewport.svelte';
@@ -94,8 +97,8 @@
 	const people = $derived(
 		[team?.owner, ...(team?.assigned ?? [])].filter((name): name is string => Boolean(name))
 	);
-	const signer = $derived(TEAM.find((member) => member.name === team?.owner));
-	const closing = CLOSING;
+	const signer = $derived(look.members.find((member) => member.name === team?.owner));
+	const organization = $derived(look.organization);
 	const trip = $derived(look.panels.find((panel) => panel.kind === 'transport'));
 	const stops = $derived(
 		(trip?.stops ?? []).filter((stop) => stop.name || stop.mode || stop.facility)
@@ -130,7 +133,22 @@
 		);
 	}
 
-	const client = $derived(clientOf(company));
+	const client = $derived(customerOf(look, company));
+	// The days the team was there: the Time Log's dated days, first to last; before any, the day the project began.
+	const dates = $derived.by(() => {
+		const days = (timelog?.days ?? [])
+			.map((day) => day.date)
+			.filter(Boolean)
+			.toSorted();
+		if (!days.length) return look.project.dates;
+		return days.length > 1 && days[0] !== days.at(-1)
+			? `${dateOf(days[0])} to ${dateOf(days.at(-1)!)}`
+			: dateOf(days[0]);
+	});
+
+	function titleOf(name: string) {
+		return look.members.find((member) => member.name === name)?.title ?? '';
+	}
 	const documentNumber = $derived(documentIdOf(look.project, look.projects, company));
 
 	const pages = $derived.by(() => {
@@ -223,7 +241,10 @@
 		project: 'report',
 		transport: 'transport',
 		items: 'report',
-		timelog: 'timelog'
+		timelog: 'timelog',
+		// Settings (run 15): the organization's details show in every header, its wording on the last page.
+		organization: 'report',
+		wording: 'disclaimer'
 	};
 	const target = $derived(KEY_OF[highlight] ?? `photos-${highlight}`);
 	const targetIndex = $derived(
@@ -288,41 +309,6 @@
 		return () => clearTimeout(timer);
 	});
 
-	const DISCLAIMER = [
-		[
-			'Scope Limitation',
-			'The survey was conducted without dismantling or intrusive testing unless explicitly stated otherwise. Our observations are limited to visible and accessible parts of the cargo.'
-		],
-		[
-			'No Warranty',
-			"This report does not constitute a warranty or guarantee of the cargo's condition, quality, or fitness for any particular purpose. It is not a guarantee against latent defects or conditions not apparent at the time of inspection."
-		],
-		[
-			'Use Limitation',
-			'This report is provided solely for the use of the party to whom it is addressed. No liability is assumed by the Company or the undersigned for any use or reliance by third parties.'
-		],
-		[
-			'Liability Limitation',
-			'The liability of the Company and the undersigned, if any, arising from this report shall be limited to the fee charged for this service. We shall not be liable for any indirect, consequential, or special damages, including but not limited to loss of profit or business interruption.'
-		],
-		[
-			'Accuracy of Information',
-			'The accuracy of this report depends on the information provided by the customer and others involved. We do not guarantee the accuracy of such third-party information.'
-		],
-		[
-			'Right to Amend',
-			'We reserve the right to amend or supplement this report should additional pertinent information become available.'
-		],
-		[
-			'Legal Context',
-			'This report is not intended to be used for legal proceedings without the express written consent of the Company.'
-		],
-		[
-			'No Endorsement',
-			'This survey does not endorse or approve the cargo for any specific use or handling beyond what is stated in the report.'
-		]
-	];
-
 	const COVER = $derived([
 		{ icon: PAGE_ICONS.facilities, label: 'Facility', value: facility },
 		{
@@ -330,7 +316,7 @@
 			label: 'Transport',
 			value: transport
 		},
-		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: look.project.dates },
+		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: dates },
 		{ icon: PAGE_ICONS.customers, label: 'Customer', value: detail('Customer') },
 		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Owner', value: team?.owner },
 		{ icon: 'icon-[mdi--package-variant-closed]', label: 'Type', value: detail('Project type') }
@@ -340,19 +326,27 @@
 <!-- Trident in the header and the customer in the footer, the same way: logo, name, lines under it. -->
 {#snippet trident()}
 	<div class="flex items-center gap-2.5">
-		<img
-			src="/logo-color.svg"
-			alt=""
-			class="size-10 shrink-0"
-		/>
+		{#if organization.logo}
+			<img
+				src={organization.logo}
+				alt=""
+				class="size-10 shrink-0 object-contain"
+			/>
+		{/if}
 		<div class="text-[7.5px] leading-[1.5] text-slate-500">
-			<p class="text-[11px] font-bold tracking-wide text-slate-900">TRIDENT CUBED</p>
-			<p class="flex items-center gap-1">
-				<span class="icon-[mdi--phone] size-2.5 text-slate-950"></span>{ORGANIZATION.phone}
+			<p class="text-[11px] font-bold tracking-wide text-slate-900 uppercase">
+				{organization.name}
 			</p>
-			<p class="flex items-center gap-1">
-				<span class="icon-[mdi--email] size-2.5 text-slate-950"></span>{ORGANIZATION.email}
-			</p>
+			{#if organization.phone}
+				<p class="flex items-center gap-1">
+					<span class="icon-[mdi--phone] size-2.5 text-slate-950"></span>{organization.phone}
+				</p>
+			{/if}
+			{#if organization.email}
+				<p class="flex items-center gap-1">
+					<span class="icon-[mdi--email] size-2.5 text-slate-950"></span>{organization.email}
+				</p>
+			{/if}
 		</div>
 	</div>
 {/snippet}
@@ -437,11 +431,13 @@
 					{#if item.kind === 'cover'}
 						<div class="flex h-full flex-col items-center text-center">
 							<div class="flex flex-1 flex-col items-center justify-center px-12 pb-36">
-								<img
-									src="/logo-color.svg"
-									alt=""
-									class="size-48"
-								/>
+								{#if organization.logo}
+									<img
+										src={organization.logo}
+										alt=""
+										class="size-48 object-contain"
+									/>
+								{/if}
 								<p
 									class="mt-10 text-[34px] leading-tight font-bold tracking-tight text-slate-950 uppercase"
 								>
@@ -517,9 +513,9 @@
 								</ol>
 							{:else if item.kind === 'report'}
 								<p class="mt-3 text-[10.5px] leading-relaxed text-slate-600">
-									<b class="text-slate-900">Introduction.</b> This is to report that Trident Cubed
-									was present at {facility || 'the facility'} – {location} on {look.project.dates} for
-									the purpose of conducting a {(detail('Project type') || 'cargo').toLowerCase()} survey{cargoLine
+									<b class="text-slate-900">Introduction.</b> This is to report that {organization.name}
+									was present at {facility || 'the facility'} – {location} on {dates} for the purpose
+									of conducting a {(detail('Project type') || 'cargo').toLowerCase()} survey{cargoLine
 										? ` of ${cargoLine}`
 										: ''}{transport ? ` from the ${transport}` : ''}.
 								</p>
@@ -539,7 +535,7 @@
 										>
 										<span class="flex items-center gap-1"
 											><span class="icon-[mdi--calendar-blank-outline] size-3.5 text-slate-400"
-											></span>{look.project.dates}</span
+											></span>{dates}</span
 										>
 									</p>
 								</div>
@@ -554,6 +550,13 @@
 											<p class="mt-0.5 {value ? 'text-slate-900' : 'text-slate-300 italic'}">
 												{value || 'Not filled in yet'}
 											</p>
+											{#if label === 'Customer' && client.contact?.name}
+												<p class="mt-0.5 truncate text-[8.5px] text-slate-500">
+													Attn. {[client.contact.name, client.contact.title, client.contact.email]
+														.filter(Boolean)
+														.join(' · ')}
+												</p>
+											{/if}
 										</div>
 									{/each}
 								</div>
@@ -577,7 +580,9 @@
 												<p
 													class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
 												>
-													{personIndex === 0 ? 'Project owner' : 'Assigned'}
+													{[personIndex === 0 ? 'Project owner' : 'Assigned', titleOf(name)]
+														.filter(Boolean)
+														.join(' · ')}
 												</p>
 											</div>
 										</div>
@@ -651,6 +656,7 @@
 								{@const stopIndex = item.group ?? 0}
 								{@const stop = item.panel.stops[stopIndex]}
 								{@const place = look.facilities.find((other) => other.name === stop.facility)}
+								{@const carrier = look.transports.find((other) => other.name === stop.name)}
 								<h3 class="mt-2 flex items-center gap-2 text-[13px] font-bold text-slate-950">
 									{#if stop.point}
 										<span
@@ -684,7 +690,9 @@
 									</div>
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Point', stop.point ? `${stop.point}, ${POINTS[stop.point].hint}` : ''], ['Facility', stop.facility], ['Facility kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Transport type', stop.type], ['Transport Mode', stop.mode]] as [label, value] (label)}
+									{#each [['Point', stop.point ? `${stop.point}, ${POINTS[stop.point].hint}` : ''], ['Facility', stop.facility], ['Facility kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Address', place?.address ?? ''], ['Facility contact', [place?.contact, place?.phone]
+												.filter(Boolean)
+												.join(' · ')], ['Transport type', stop.type], ['Transport Mode', stop.mode]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
 											<p
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
@@ -705,14 +713,16 @@
 										{#each PARTICULARS[stop.mode] as label (label)}
 											<div class="flex justify-between gap-4 py-1.5">
 												<dt class="font-medium text-slate-600">{label}</dt>
-												<dd class="text-slate-300 italic">Not filled in yet</dd>
+												<dd
+													class={carrier?.details?.[label]
+														? 'text-slate-900'
+														: 'text-slate-300 italic'}
+												>
+													{carrier?.details?.[label] || 'Not filled in yet'}
+												</dd>
 											</div>
 										{/each}
 									</dl>
-									<p class="mt-2 text-[9px] text-slate-400">
-										A tracking service fills these in later, from the {stop.mode.toLowerCase()}'s
-										name.
-									</p>
 								{:else}
 									<p class="mt-1.5 text-[11px] text-slate-300 italic">
 										Pick the Transport Mode to list its particulars
@@ -780,28 +790,26 @@
 								</div>
 							{:else if item.kind === 'disclaimer'}
 								<p class="mt-3 text-[9.5px] leading-[1.5] text-slate-700">
-									This Cargo Survey Report is prepared based on the observations, conditions, and
-									information available to the undersigned at the time of the inspection. The
-									findings and conclusions herein are made to the best of our knowledge and belief,
-									but are subject to the following limitations:
+									{organization.disclaimer.opening}
 								</p>
 								<ul
 									class="mt-2 list-disc space-y-1 pl-4 text-[9.5px] leading-[1.45] text-slate-700"
 								>
-									{#each DISCLAIMER as [title, text] (title)}
-										<li><b class="text-slate-900">{title}:</b> {text}</li>
+									{#each organization.disclaimer.points as point (point.id)}
+										<li><b class="text-slate-900">{point.title}:</b> {point.text}</li>
 									{/each}
 								</ul>
-								<p class="mt-2 text-[9.5px] leading-[1.5] text-slate-700">
-									Please note that this report reflects the situation as observed on a date of
-									Inspection and may not reflect subsequent changes or conditions.
-								</p>
+								{#if organization.disclaimer.note}
+									<p class="mt-2 text-[9.5px] leading-[1.5] text-slate-700">
+										{organization.disclaimer.note}
+									</p>
+								{/if}
 								<!-- Like the HTML email signatures (packages/ui email): Best Regards with room above and below,
 								     a round photo, the name, the title in blue capitals, then phone, email and the group email. -->
-								{#if closing}
-									<p class="mt-6 text-[10.5px] text-slate-700 italic">{closing}</p>
+								{#if organization.closing}
+									<p class="mt-6 text-[10.5px] text-slate-700 italic">{organization.closing}</p>
 								{/if}
-								<p class="mt-6 text-[11px] text-slate-950">Best Regards,</p>
+								<p class="mt-6 text-[11px] text-slate-950">{organization.signoff}</p>
 								{#if signer}
 									<div class="mt-6 flex items-start gap-3">
 										<img
@@ -820,10 +828,12 @@
 												{labelsOf(signer).join(' · ')}
 											</p>
 											<div class="mt-1.5 space-y-0.5">
-												{#each [['icon-[mdi--phone]', signer.phone], ['icon-[mdi--email]', signer.email], ['icon-[mdi--web]', 'ProjectGroup@TridentCubed.com']] as [icon, text] (icon)}
-													<p class="flex items-center gap-1.5">
-														<span class="{icon} size-3 text-slate-950"></span>{text}
-													</p>
+												{#each [['icon-[mdi--phone]', signer.phone], ['icon-[mdi--email]', signer.email], ['icon-[mdi--web]', organization.groupEmail]] as [icon, text] (icon)}
+													{#if text}
+														<p class="flex items-center gap-1.5">
+															<span class="{icon} size-3 text-slate-950"></span>{text}
+														</p>
+													{/if}
 												{/each}
 											</div>
 										</div>

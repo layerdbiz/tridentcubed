@@ -15,6 +15,7 @@
 	import Avatar from './avatar.svelte';
 	import BottomSheet from './bottom-sheet.svelte';
 	import Group from './group.svelte';
+	import { shrink } from './image';
 	import {
 		createId,
 		FACILITY_ICONS,
@@ -46,22 +47,6 @@
 
 	function toggle(list: string[], id: string) {
 		return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
-	}
-
-	// A picked image comes back at most 1280 px on its long side, as a JPEG small enough for the browser to keep.
-	async function shrink(file: File) {
-		try {
-			const bitmap = await createImageBitmap(file);
-			const scale = Math.min(1, 1280 / Math.max(bitmap.width, bitmap.height));
-			const canvas = document.createElement('canvas');
-			canvas.width = Math.round(bitmap.width * scale);
-			canvas.height = Math.round(bitmap.height * scale);
-			canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-			bitmap.close();
-			return canvas.toDataURL('image/jpeg', 0.78);
-		} catch {
-			return URL.createObjectURL(file);
-		}
 	}
 
 	async function pick(event: Event, onfile: (url: string, name: string) => void) {
@@ -389,13 +374,13 @@
 			bind:value={panel.owner}
 		>
 			<option value="">Choose…</option>
-			{#each PEOPLE as person (person.name)}<option>{person.name}</option>{/each}
+			{#each look.members as person (person.name)}<option>{person.name}</option>{/each}
 		</select>
 	</label>
 	<div>
 		<p class={labelClass}>Assigned · tap to add or remove</p>
 		<div class="flex flex-wrap gap-2">
-			{#each PEOPLE.filter((person) => person.name !== panel.owner) as person (person.name)}
+			{#each look.members.filter((person) => person.name !== panel.owner) as person (person.name)}
 				{@const isOn = panel.assigned.includes(person.name)}
 				<button
 					type="button"

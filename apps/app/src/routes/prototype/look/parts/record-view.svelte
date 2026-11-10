@@ -9,7 +9,7 @@
 	import { DATASETS, PARTICULARS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProjectRow from './project-row.svelte';
-	import type { RecordType } from './records.data';
+	import { customerOf, type RecordType } from './records.data';
 
 	let { look, record }: { look: LookState; record: RecordType } = $props();
 
@@ -18,9 +18,85 @@
 			? look.transports.find((item) => item.name === record.key)
 			: undefined
 	);
+	const customer = $derived(record.page === 'customers' ? customerOf(look, record.key) : undefined);
+	const facility = $derived(
+		record.page === 'facilities'
+			? look.facilities.find((item) => item.name === record.key)
+			: undefined
+	);
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 	const HEADING = 'mb-2 px-1 text-sm font-semibold text-slate-900';
+
+	type LineType = { icon: string; text: string; href?: string };
+
+	function phoneLine(phone = ''): LineType {
+		return { icon: 'icon-[mdi--phone]', text: phone, href: `tel:${phone.replace(/[^+\d]/g, '')}` };
+	}
+
+	function emailLine(email = ''): LineType {
+		return { icon: 'icon-[mdi--email-outline]', text: email, href: `mailto:${email}` };
+	}
+
+	function filled(lines: LineType[]) {
+		return lines.filter((line) => line.text);
+	}
+
+	// What the record's Edit tab holds about it (run 15): a customer's code, address, email, phone and website, a
+	// facility's address, a team member's phone and email.
+	const details = $derived(
+		customer
+			? filled([
+					{ icon: 'icon-[mdi--barcode]', text: customer.code },
+					{ icon: 'icon-[mdi--map-marker-outline]', text: customer.address ?? '' },
+					emailLine(customer.email),
+					phoneLine(customer.phone),
+					{
+						icon: 'icon-[mdi--web]',
+						text: customer.website ?? '',
+						href: `https://${(customer.website ?? '').replace(/^https?:\/\//, '')}`
+					}
+				])
+			: facility
+				? filled([{ icon: 'icon-[mdi--map-marker-outline]', text: facility.address ?? '' }])
+				: record.member
+					? filled([phoneLine(record.member.phone), emailLine(record.member.email)])
+					: []
+	);
+	// The person to reach there: a customer's contact, or a facility's.
+	const person = $derived(
+		customer?.contact
+			? {
+					name: customer.contact.name,
+					title: customer.contact.title,
+					photo: customer.contact.photo,
+					lines: filled([emailLine(customer.contact.email), phoneLine(customer.contact.phone)])
+				}
+			: {
+					name: facility?.contact ?? '',
+					title: '',
+					photo: '',
+					lines: facility ? filled([phoneLine(facility.phone), emailLine(facility.email)]) : []
+				}
+	);
 </script>
+
+{#snippet row(line: LineType)}
+	{#if line.href}
+		<a
+			class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-100"
+			href={line.href}
+			><span class="{line.icon} size-5 shrink-0 text-primary"></span><span class="min-w-0 truncate"
+				>{line.text}</span
+			></a
+		>
+	{:else}
+		<p class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700">
+			<span class="{line.icon} size-5 shrink-0 text-primary"></span><span class="min-w-0"
+				>{line.text}</span
+			>
+		</p>
+	{/if}
+{/snippet}
 
 <div class="space-y-5">
 	<div class="grid grid-cols-3 gap-2">
@@ -32,25 +108,42 @@
 		{/each}
 	</div>
 
-	{#if record.member && (record.member.phone || record.member.email)}
+	{#if details.length}
+		<section>
+			<h3 class={HEADING}>{record.member ? 'Contact' : 'Details'}</h3>
+			<div class="divide-y divide-slate-100 overflow-hidden {CARD}">
+				{#each details as line (line.icon)}{@render row(line)}{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if person.name || person.lines.length}
 		<section>
 			<h3 class={HEADING}>Contact</h3>
 			<div class="divide-y divide-slate-100 overflow-hidden {CARD}">
-				{#if record.member.phone}
-					<a
-						class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50"
-						href="tel:{record.member.phone.replace(/[^+\d]/g, '')}"
-						><span class="icon-[mdi--phone] size-5 text-primary"></span>{record.member.phone}</a
-					>
+				{#if person.name}
+					<div class="flex items-center gap-3 px-4 py-3">
+						{#if person.photo}
+							<img
+								src={person.photo}
+								alt=""
+								class="size-10 shrink-0 rounded-full object-cover"
+							/>
+						{:else}
+							<span
+								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500"
+								><span class="icon-[mdi--account] size-6"></span></span
+							>
+						{/if}
+						<span class="min-w-0">
+							<span class="block truncate text-sm font-semibold text-slate-900">{person.name}</span>
+							{#if person.title}<span class="block truncate text-xs text-slate-500"
+									>{person.title}</span
+								>{/if}
+						</span>
+					</div>
 				{/if}
-				{#if record.member.email}
-					<a
-						class="flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50"
-						href="mailto:{record.member.email}"
-						><span class="icon-[mdi--email-outline] size-5 text-primary"></span>{record.member
-							.email}</a
-					>
-				{/if}
+				{#each person.lines as line (line.icon)}{@render row(line)}{/each}
 			</div>
 		</section>
 	{/if}

@@ -223,6 +223,8 @@ export type RecordType = {
 	member?: TeamMemberType;
 	// Its first label's colour, which its small icons take in a list, a card or the board (run 13).
 	tone: ToneType;
+	// Its own uploaded picture (run 15), shown behind its Page before any stock picture.
+	photo?: string;
 };
 
 export function isOpen(project: ProjectType) {
@@ -277,6 +279,7 @@ function baseRecordsOf(look: LookState, page: PageType): Omit<RecordType, 'tone'
 				sub: '',
 				location: info.city,
 				icon: '',
+				photo: info.photo,
 				...counts(theirs),
 				logos: [],
 				people: [...new Set(theirs.flatMap((project) => project.team))]
@@ -302,6 +305,7 @@ function baseRecordsOf(look: LookState, page: PageType): Omit<RecordType, 'tone'
 			sub: transport.mode,
 			location: lastSeenOf(look, transport.name),
 			icon: MODE_ICONS[transport.mode] ?? PAGE_ICONS.transport,
+			photo: transport.photo,
 			...counts(look.projects.filter((project) => transportsOf(project).includes(transport.name))),
 			people: []
 		}));
@@ -312,6 +316,7 @@ function baseRecordsOf(look: LookState, page: PageType): Omit<RecordType, 'tone'
 		sub: '',
 		location: facility.city,
 		icon: FACILITY_ICONS[facility.kind],
+		photo: facility.photo,
 		...counts(look.projects.filter((project) => facilitiesOf(project).includes(facility.name))),
 		people: []
 	}));
@@ -409,9 +414,10 @@ const PHOTOS: Record<string, string> = {
 export function photosOf(record: RecordType) {
 	if (record.member) return [personOf(record.key).photo];
 	const keys = record.page === 'transport' ? [record.sub] : record.labels;
-	return [...new Set(keys.map((key) => PHOTOS[key]).filter(Boolean))].map(
+	const stock = [...new Set(keys.map((key) => PHOTOS[key]).filter(Boolean))].map(
 		(file) => `/services/${file}`
 	);
+	return record.photo ? [record.photo, ...stock] : stock;
 }
 
 // The photos a project's report prints: its switched-on photo panels, in order, at most ten.

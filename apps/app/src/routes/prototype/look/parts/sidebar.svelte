@@ -8,9 +8,10 @@
 	// pick, so the phone drawer can close itself, even when the pick is the page already open. Run 12 (2026-11-07,
 	// notes 14 to 16): Recent is the same list as the bell's notifications (recent-list.svelte), with round icons, and
 	// fades out at its bottom before the profile; the section names and TRIDENT CUBED are bold. Run 13: the pages not
-	// on show have black icons and lighter words.
+	// on show have black icons and lighter words. Run 15 (2026-11-10): the logo and name are the organization's own,
+	// and the cog and Admin both open Settings.
 	import Avatar from './avatar.svelte';
-	import { DATASETS, FADE, NAV, personOf, type DatasetType } from './look.data';
+	import { DATASETS, FADE, ME, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import RecentList from './recent-list.svelte';
 
@@ -24,14 +25,20 @@
 		onnavigate?: () => void;
 	} = $props();
 
-	const me = personOf('Capt. Cezary Poninski');
+	const me = $derived(look.members.find((member) => member.name === ME) ?? { name: ME, role: '' });
 	// The one column every icon centres in.
 	const COLUMN = 'flex w-14 shrink-0 justify-center';
 	// Words never wrap while the sidebar narrows; folded to icons they fade out.
 	const WORDS = $derived(
 		`whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'pointer-events-none opacity-0' : ''}`
 	);
+	function settings() {
+		look.openSettings();
+		onnavigate?.();
+	}
+
 	function go(id: string) {
+		if (id === 'admin') return settings();
 		if (look.screen !== 'dashboard') look.home();
 		look.navSection = id;
 		if (id in DATASETS) look.pick(id as DatasetType);
@@ -45,14 +52,14 @@
 		onclick={() => go('projects')}
 	>
 		<span class={COLUMN}
-			><img
-				src="/logo-color.svg"
-				alt="Trident Cubed"
-				class="size-14"
-			/></span
+			>{#if look.organization.logo}<img
+					src={look.organization.logo}
+					alt={look.organization.name}
+					class="size-14 object-contain"
+				/>{/if}</span
 		>
-		<span class="text-[15px] font-extrabold tracking-wide text-slate-900 {WORDS}"
-			>TRIDENT CUBED</span
+		<span class="text-[15px] font-extrabold tracking-wide text-slate-900 uppercase {WORDS}"
+			>{look.organization.name}</span
 		>
 	</button>
 	<nav class="w-full space-y-0.5 px-3">
@@ -98,15 +105,14 @@
 		>
 		<span class="min-w-0 flex-1 text-sm {WORDS}"
 			><b class="block truncate font-medium text-slate-900">{me.name.replace('Capt. ', '')}</b><span
-				class="text-xs text-slate-500">Admin</span
+				class="text-xs text-slate-500">{me.role === 'admin' ? 'Admin' : 'Member'}</span
 			></span
 		>
 		<button
 			class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 {WORDS}"
 			aria-label="Settings"
 			title="Settings"
-			onclick={() => look.say('Settings and profile open from here in V1.')}
-			><span class="icon-[mdi--cog-outline] size-5"></span></button
+			onclick={settings}><span class="icon-[mdi--cog-outline] size-5"></span></button
 		>
 	</div>
 </div>

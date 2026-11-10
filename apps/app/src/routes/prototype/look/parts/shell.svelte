@@ -15,7 +15,8 @@
 	// screen (record-page.svelte), as a project does; the bell and the menu share one Recent list. Run 13 (2026-11-07
 	// 22:21): the split is split.svelte, shared with the Page views; the map chart is a real map filling the top of the
 	// screen edge to edge, down behind the sheet; a swipe slides the pages without fading them; the bell's list sits
-	// over the list's menus.
+	// over the list's menus. Run 15 (2026-11-10): Settings is a screen of its own (settings-page.svelte), opened from
+	// the menu's cog or Admin, and slides in like a record.
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fly, scale } from 'svelte/transition';
@@ -24,7 +25,7 @@
 	import AddSheet from './add-sheet.svelte';
 	import { pinsOf } from './chart.data';
 	import ListMenus from './list-menus.svelte';
-	import { PAGES } from './look.data';
+	import { ME, PAGES } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
@@ -32,6 +33,7 @@
 	import ProjectPage from './project-page.svelte';
 	import RecentList from './recent-list.svelte';
 	import RecordPage from './record-page.svelte';
+	import SettingsPage from './settings-page.svelte';
 	import { recordOf } from './records.data';
 	import ReportPreview from './report-preview.svelte';
 	import Sidebar from './sidebar.svelte';
@@ -477,6 +479,19 @@
 		</div>
 	{/if}
 
+	{#if look.screen === 'settings'}
+		<div
+			class="fixed inset-0 z-50"
+			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
+		>
+			<SettingsPage
+				{look}
+				{isWide}
+				me={ME}
+			/>
+		</div>
+	{/if}
+
 	{#if look.screen === 'workspace'}
 		<div
 			class="fixed inset-0 z-50"
@@ -528,15 +543,17 @@
 		</div>
 	{/if}
 
-	<NavBar
-		{look}
-		{isWide}
-		left={!isWide
-			? '50%'
-			: look.screen === 'workspace'
-				? 'calc(444px + (100vw - 444px) / 2)'
-				: `calc(${side + 24}px + (100vw - ${side + 24}px) / 2)`}
-	/>
+	{#if look.screen !== 'settings'}
+		<NavBar
+			{look}
+			{isWide}
+			left={!isWide
+				? '50%'
+				: look.screen === 'workspace'
+					? 'calc(444px + (100vw - 444px) / 2)'
+					: `calc(${side + 24}px + (100vw - ${side + 24}px) / 2)`}
+		/>
+	{/if}
 	<!-- Run 14 (note 11): a desktop dashboard has no floating bar (the sidebar has the pages), so its + floats on its
 	     own at the bottom right. -->
 	{#if isWide && look.screen === 'dashboard'}

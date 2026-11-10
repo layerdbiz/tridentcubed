@@ -6,7 +6,8 @@
 // Complete project is frozen (`isFrozen`); the floating bar's + adds a project, customer, team member, transport or
 // facility (`adding`), and the dashboard's pages slide in from the side they sit on (`slide`). Run 12 (2026-11-07): a
 // customer, team member, transport or facility opens its own screen (`record`, tabs Page and Edit), where it is edited
-// or deleted; a rename follows it into every project that uses it.
+// or deleted; a rename follows it into every project that uses it. Run 15 (2026-11-10): the organization's own details
+// and report wording live here too (`organization`), edited on the Settings screen.
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	clientOf as clientOfName,
@@ -16,6 +17,7 @@ import {
 	FACILITIES,
 	itemOf,
 	newPanel,
+	ORGANIZATION,
 	PAGES,
 	PROJECTS,
 	registerCustomer,
@@ -25,6 +27,7 @@ import {
 	type ClientType,
 	type DatasetType,
 	type FacilityType,
+	type OrganizationType,
 	type PanelStatusType,
 	type PanelType,
 	type ProjectType,
@@ -34,7 +37,7 @@ import {
 import type { PageType } from './records.data';
 import { TEAM, type TeamMemberType } from './team.data';
 
-export type ScreenType = 'dashboard' | 'workspace' | 'record';
+export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings';
 export type ViewType = 'table' | 'cards' | 'board';
 // A project has Edit (its panels, once called Panels) and Preview; a record has Page (how it reads) and Edit.
 export type TabType = 'page' | 'edit' | 'preview';
@@ -119,6 +122,8 @@ type KeptType = {
 	customers: string[];
 	added: ClientType[];
 	members: TeamMemberType[];
+	// Since run 15; a browser that kept run 12 to 14 has none yet and starts from Trident Cubed's own.
+	organization?: OrganizationType;
 };
 
 // Sent and Complete projects can be looked at, not edited (2026-10-26 19:22).
@@ -170,6 +175,7 @@ export class LookState {
 	// Customers added here, with their city; their names are in `customers` too.
 	added = $state<ClientType[]>([]);
 	members = $state<TeamMemberType[]>(structuredClone(TEAM));
+	organization = $state<OrganizationType>(structuredClone(ORGANIZATION));
 	asking = $state<ConfirmType>();
 
 	project = $derived(
@@ -196,6 +202,7 @@ export class LookState {
 			this.customers = kept.customers;
 			this.added = kept.added;
 			this.members = kept.members;
+			if (kept.organization) this.organization = kept.organization;
 			for (const customer of kept.added) registerCustomer(customer);
 			for (const member of kept.members) registerPerson(member);
 		} else
@@ -211,7 +218,8 @@ export class LookState {
 				facilities: this.facilities,
 				customers: this.customers,
 				added: this.added,
-				members: this.members
+				members: this.members,
+				organization: this.organization
 			} satisfies KeptType);
 			clearTimeout(this.#keepTimer);
 			this.#keepTimer = setTimeout(() => this.#keep(text), 300);
@@ -267,6 +275,33 @@ export class LookState {
 		this.tab = tab === 'preview' ? 'page' : tab;
 		this.tabProgress = this.tab === 'page' ? 0 : 1;
 		this.screen = 'record';
+	}
+
+	// Settings: the organization's details and report wording (run 15).
+	openSettings() {
+		if (this.screen === 'workspace') this.#keepProject();
+		this.screen = 'settings';
+	}
+
+	// The organization's new name follows it into every project's Organization drop-down.
+	nameOrganization(name: string) {
+		const before = this.organization.name;
+		this.organization.name = name;
+		for (const panels of Object.values(this.workspaces))
+			for (const panel of panels)
+				for (const field of panel.fields)
+					if (field.label === 'Organization') {
+						if (field.value === before) field.value = name;
+						field.options = field.options?.map((option) => (option === before ? name : option));
+					}
+		this.flash();
+	}
+
+	// A team member's uploaded photo shows wherever their face does.
+	setPhoto(member: TeamMemberType, photo: string) {
+		member.photo = photo;
+		registerPerson(member);
+		this.flash();
 	}
 
 	home() {
@@ -325,9 +360,11 @@ export class LookState {
 		this.workspaces[id] = createPanels(this.projects[0]).map((panel) => ({
 			...panel,
 			fields: panel.fields.map((field) =>
-				['Title', 'Organization', 'Customer'].includes(field.label)
-					? field
-					: { ...field, value: '' }
+				field.label === 'Organization'
+					? { ...field, value: this.organization.name, options: [this.organization.name] }
+					: ['Title', 'Customer'].includes(field.label)
+						? field
+						: { ...field, value: '' }
 			),
 			assigned: [],
 			days: [],

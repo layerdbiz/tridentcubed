@@ -14,6 +14,8 @@ export type TeamMemberType = {
 	href: string;
 	profileURL: string;
 	slug: string;
+	// A photo uploaded on their page (run 15); without one, the Drive copy `profileURL` names shows.
+	photo?: string;
 };
 
 export const TEAM: TeamMemberType[] = [
