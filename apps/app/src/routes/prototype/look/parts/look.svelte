@@ -1,5 +1,5 @@
 <script lang="ts">
-	// PROTOTYPE (#161) run 5: look B, from Justin's notes on look G (design/161-look/run-5-notes.md), with one Project
+	// PROTOTYPE (#161): look B, first built in run 5 from Justin's notes on look G (design/161-look/run-5-notes.md), with one Project
 	// panel and a one-line project header; since 2026-10-25 with Transport (once Carrier) and the Transport and
 	// Facilities pages. ?screen=workspace, ?tab=preview, ?project=p2, ?panel=timelog, ?view=cards, ?set=transport,
 	// ?range=1y and ?chart=bar link to any state, for screenshots. Throwaway: lives on a prototype/161-look-* branch.

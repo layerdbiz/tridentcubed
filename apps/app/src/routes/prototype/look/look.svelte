@@ -2,7 +2,7 @@
 	// PROTOTYPE (#161): the one look left. Run 5 made looks A and B from Justin's notes on look G; on 2026-10-25 he
 	// kept B and dropped A, so the A/B switcher went too and any old link (?variant=a, b or older) opens this look.
 	// Throwaway: lives on a prototype/161-look-* branch.
-	import Run5 from './run-5/look.svelte';
+	import Look from './parts/look.svelte';
 
 	// What the tab title needs to name the page on screen.
 	type PageType = {
@@ -43,4 +43,4 @@
 
 <svelte:head><title>{name || 'Report Generator'} · Trident Cubed</title></svelte:head>
 
-<Run5 onready={ready} />
+<Look onready={ready} />
