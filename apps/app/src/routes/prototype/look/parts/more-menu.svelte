@@ -13,7 +13,8 @@
 		page,
 		id,
 		isOpenable = false,
-		tone = 'plain'
+		tone = 'plain',
+		onact
 	}: {
 		look: LookState;
 		page: DatasetType;
@@ -21,6 +22,8 @@
 		id: string;
 		isOpenable?: boolean;
 		tone?: 'plain' | 'photo' | 'bare';
+		// Runs after any pick, so a drawer the menu sits in can close (the menu's Recent, run 14).
+		onact?: () => void;
 	} = $props();
 
 	const project = $derived(
@@ -45,6 +48,7 @@
 	]);
 
 	function act(choice: string) {
+		if (choice !== 'delete') onact?.();
 		if (page !== 'projects') {
 			if (choice === 'open') look.openRecord(page, id, 'page');
 			if (choice === 'edit') look.openRecord(page, id, 'edit');

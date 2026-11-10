@@ -1,6 +1,7 @@
 <script lang="ts">
 	// PROTOTYPE (#161): where a project's trip starts, an arrow in the colour of its state, and where it ends
 	// (Justin, 2026-10-26 19:22), from the Start and End stops of its Transport panel. `isLight` for over a photo.
+	// Run 14 (note 3): a trip of two stops starts with the map marker too, in the state's colour, like a trip of one.
 	import { routeOf, STATUS, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 
@@ -17,13 +18,13 @@
 	class="flex min-w-0 items-center gap-1 text-xs {isLight ? 'text-white/85' : 'text-slate-500'}"
 	title={route.to ? `${route.from} to ${route.to}` : route.from}
 >
+	<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {STATUS[project.status].tone}"></span>
 	{#if route.to}
 		<span class="min-w-0 truncate">{route.from}</span>
 		<span class="icon-[mdi--arrow-right-thick] size-3.5 shrink-0 {STATUS[project.status].tone}"
 		></span>
 		<span class="min-w-0 truncate">{route.to}</span>
 	{:else}
-		<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {STATUS[project.status].tone}"></span>
 		<span class="min-w-0 truncate">{route.from}</span>
 	{/if}
 </span>

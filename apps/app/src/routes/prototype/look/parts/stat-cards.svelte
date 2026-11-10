@@ -41,11 +41,15 @@
 		hovered = dataset;
 	}
 
-	// A page picked from the menu brings its card into view.
-	$effect(() => {
+	// The picked card, whether tapped or picked from the menu, scrolls to the middle of the row so it shows in full
+	// and the cards beside it show too (run 14, note 10). No snapping, which would pull it back to the row's edge.
+	function reveal(dataset: DatasetType) {
 		row
-			?.querySelector(`[data-set="${look.dataset}"]`)
-			?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+			?.querySelector(`[data-set="${dataset}"]`)
+			?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+	}
+	$effect(() => {
+		reveal(look.dataset);
 	});
 	let sheet = $state<DatasetType>();
 	// A mouse gets the popover on hover; a finger gets the sheet.
@@ -62,7 +66,7 @@
 <svelte:window onkeydown={(event) => event.key === 'Escape' && (sheet = hovered = undefined)} />
 
 <div
-	class="-mx-4 -my-4 flex snap-x scroll-px-4 gap-2 overflow-x-auto px-4 py-4 md:mx-0 md:scroll-px-0 md:gap-3 md:px-0"
+	class="-mx-4 -my-4 flex scroll-px-4 gap-2 overflow-x-auto px-4 py-4 md:mx-0 md:scroll-px-0 md:gap-3 md:px-0"
 	role="tablist"
 	aria-label="What to count"
 	bind:this={row}
@@ -76,10 +80,13 @@
 			tabindex="0"
 			aria-selected={isOn}
 			data-set={dataset}
-			class="relative flex w-[calc((100%-1rem)/2.6)] shrink-0 cursor-pointer snap-start items-center gap-2 rounded-2xl p-2.5 select-none md:w-auto md:min-w-44 md:flex-1 md:gap-3 md:rounded-3xl md:px-4 md:py-5 {isOn
+			class="relative flex w-max min-w-28 shrink-0 cursor-pointer items-center gap-2 rounded-2xl p-2.5 pr-3.5 select-none md:w-auto md:min-w-44 md:flex-1 md:gap-3 md:rounded-3xl md:px-4 md:py-5 {isOn
 				? 'bg-primary text-white'
 				: 'bg-white text-slate-700'}"
-			onclick={() => look.pick(dataset)}
+			onclick={() => {
+				look.pick(dataset);
+				reveal(dataset);
+			}}
 			onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && look.pick(dataset)}
 		>
 			<span class="{info.icon} size-7 shrink-0 md:size-10 {isOn ? 'text-white' : 'text-primary'}"
@@ -88,9 +95,9 @@
 				<span class="block text-lg leading-tight font-semibold tabular-nums md:text-3xl"
 					>{countOf(look, dataset)}</span
 				>
-				<!-- A long name (Transport Mode) wraps onto a second line rather than being cut short, with the ? after it. -->
+				<!-- Run 14 (note 2): the name stays on one line (Transport Mode); the card is as wide as it needs. -->
 				<span
-					class="block text-[11px] leading-tight font-medium md:text-[15px] {isOn
+					class="block text-[11px] leading-tight font-medium whitespace-nowrap md:text-[15px] {isOn
 						? 'text-white/85'
 						: 'text-slate-500'}"
 				>

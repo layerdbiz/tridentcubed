@@ -1,11 +1,11 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 12: what happened lately, of any page, the same in the bell's notifications and the menu's
-	// Recent (Justin's run 12 note 14): a new team member, a new customer, an edited project... Every icon is a full
-	// circle: the customer's logo, the person's photo, or the page's icon. A tap opens what it is about.
-	import Avatar from './avatar.svelte';
-	import ClientLogo from './client-logo.svelte';
+	// Recent (Justin's run 12 note 14): a new team member, a new customer, an edited project... A tap opens what it is
+	// about. Run 14 (note 1): each row shows its page's own icon (the folder, the face, the group...), not the photo
+	// or logo, and ends in the same ⋮ menu as the page's rows, so it can be opened, edited or deleted from here.
 	import { PAGE_ICONS, RECENT, type RecentType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import MoreMenu from './more-menu.svelte';
 
 	let {
 		look,
@@ -32,40 +32,35 @@
 </script>
 
 {#each RECENT as item (item.name)}
-	<button
-		class="flex w-full items-center gap-2 rounded-2xl py-1.5 pr-2 text-left hover:bg-slate-900/[0.04]"
-		title={item.name}
-		onclick={() => open(item)}
-	>
-		<span
-			class="flex shrink-0 justify-center"
-			style="width: {width}px"
+	<div class="flex w-full items-center rounded-2xl hover:bg-slate-900/[0.04]">
+		<button
+			class="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left"
+			title={item.name}
+			onclick={() => open(item)}
 		>
-			{#if item.page === 'team'}
-				<Avatar
-					name={item.name}
-					{size}
-					hasPresence={false}
-				/>
-			{:else if item.page === 'customers'}
-				<ClientLogo
-					name={item.name}
-					{size}
-					shape="circle"
-				/>
-			{:else}
+			<span
+				class="flex shrink-0 justify-center"
+				style="width: {width}px"
+			>
 				<span
-					class="flex items-center justify-center rounded-full {item.page === 'projects'
-						? 'bg-primary/10 text-primary'
-						: 'bg-slate-900 text-white'}"
+					class="flex items-center justify-center rounded-full bg-slate-900/[0.06] text-slate-900"
 					style="width: {size}px; height: {size}px"
-					><span class="{PAGE_ICONS[item.page]} size-1/2"></span></span
+					><span class="{PAGE_ICONS[item.page]} size-[55%]"></span></span
 				>
-			{/if}
+			</span>
+			<span class="min-w-0 flex-1 {words}">
+				<span class="block truncate text-sm text-slate-800">{item.name}</span>
+				<span class="block truncate text-xs text-slate-400">{item.note}</span>
+			</span>
+		</button>
+		<span class="shrink-0 {words}">
+			<MoreMenu
+				{look}
+				page={item.page}
+				id={item.id ?? item.name}
+				isOpenable
+				onact={onpick}
+			/>
 		</span>
-		<span class="min-w-0 flex-1 {words}">
-			<span class="block truncate text-sm text-slate-800">{item.name}</span>
-			<span class="block truncate text-xs text-slate-400">{item.note}</span>
-		</span>
-	</button>
+	</div>
 {/each}

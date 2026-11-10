@@ -54,17 +54,23 @@
 		if (isOpen || !root) return (isOpen = false);
 		const box = root.getBoundingClientRect();
 		const tall = options.length * 40 + 16;
-		const isUp = innerHeight - box.bottom < tall + 16 && box.top > tall + 16;
+		const below = innerHeight - box.bottom - 24;
+		const above = box.top - 24;
+		const isUp = below < tall && above > below;
 		const x = align === 'right' ? `right: ${innerWidth - box.right}px` : `left: ${box.left}px`;
 		const y = isUp ? `bottom: ${innerHeight - box.top + 8}px` : `top: ${box.bottom + 8}px`;
-		place = `${x}; ${y}; min-width: ${isWide ? box.width : 192}px`;
+		// Run 14 (note 5): never taller than the room on its side, or 360px; longer lists scroll inside it.
+		const most = Math.min(isUp ? above : below, 360);
+		place = `${x}; ${y}; min-width: ${isWide ? box.width : 192}px; max-height: ${most}px`;
 		isOpen = true;
 	}
 
-	// In the top layer, and closed by any scroll, which would leave it behind.
+	// In the top layer, and closed by any scroll outside it, which would leave it behind. Its own scroll keeps it open.
 	const lift: Attachment<HTMLElement> = (node) => {
 		node.showPopover();
-		const close = () => (isOpen = false);
+		const close = (event: Event) => {
+			if (!node.contains(event.target as Node)) isOpen = false;
+		};
 		document.addEventListener('scroll', close, { capture: true, passive: true });
 		return () => document.removeEventListener('scroll', close, { capture: true });
 	};
@@ -91,7 +97,7 @@
 	{#if isOpen}
 		<div
 			popover="manual"
-			class="fixed m-0 overflow-visible rounded-2xl border-0 bg-white p-1.5 text-left shadow-[0_2px_6px_rgb(15_23_42/0.06),0_20px_44px_-12px_rgb(15_23_42/0.28)]"
+			class="fixed m-0 overflow-y-auto overscroll-contain rounded-2xl border-0 bg-white p-1.5 text-left shadow-[0_2px_6px_rgb(15_23_42/0.06),0_20px_44px_-12px_rgb(15_23_42/0.28)]"
 			style="inset: auto; {place}"
 			role="listbox"
 			aria-label={label}
