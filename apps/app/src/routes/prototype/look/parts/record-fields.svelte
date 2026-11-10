@@ -18,17 +18,20 @@
 		type TransportType,
 		type TransportTypeType
 	} from './look.data';
-	import type { RecordDraftType } from './look.state.svelte';
+	import type { LookState, RecordDraftType } from './look.state.svelte';
+	import PlaceField from './place-field.svelte';
 	import { CUSTOMER_TYPES, TEAM_LABELS, typesOf, type PageType } from './records.data';
 	import { labelsOf, ROLE_LABELS, type TeamMemberType } from './team.data';
 
 	let {
+		look,
 		page,
 		value,
 		set,
 		isNew = false,
 		onname
 	}: {
+		look: LookState;
 		page: PageType;
 		value: RecordDraftType;
 		set: (change: Record<string, unknown>) => void;
@@ -89,6 +92,19 @@
 			oninput={(event) => oninput(event.currentTarget.value)}
 		/>
 	</label>
+{/snippet}
+
+<!-- Where it is: one field everywhere, which suggests places and saves the one picked (place-field.svelte). -->
+{#snippet place(label: string, current: string, oninput: (text: string) => void)}
+	<div>
+		<p class={LABEL}>{label}</p>
+		<PlaceField
+			{look}
+			value={current}
+			{oninput}
+			inputClass={FIELD}
+		/>
+	</div>
 {/snippet}
 
 <div class="space-y-4">
@@ -163,7 +179,7 @@
 					{/each}
 				</div>
 			</div>
-			{@render text('City', customer.city, (city) => set({ city }))}
+			{@render place('City', customer.city, (city) => set({ city }))}
 			{@render text('Address', customer.address ?? '', (address) => set({ address }))}
 			{@render text('Email', customer.email ?? '', (email) => set({ email }), 'email')}
 			{@render text('Phone', customer.phone ?? '', (phone) => set({ phone }), 'tel')}
@@ -196,7 +212,7 @@
 			</div>
 			{@render text('Phone', member.phone, (phone) => set({ phone }), 'tel')}
 			{@render text('Email', member.email, (email) => set({ email }), 'email')}
-			{@render text('Location', member.location, (location) => set({ location }))}
+			{@render place('Location', member.location, (location) => set({ location }))}
 		{:else if transport}
 			<div>
 				<p class={LABEL}>Transport Type</p>
@@ -239,7 +255,7 @@
 					{/each}
 				</div>
 			</div>
-			{@render text('City', facility.city, (city) => set({ city }))}
+			{@render place('City', facility.city, (city) => set({ city }))}
 			{@render text('Address', facility.address ?? '', (address) => set({ address }))}
 			<ImageField
 				label="Picture"

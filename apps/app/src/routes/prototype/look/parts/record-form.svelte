@@ -32,6 +32,7 @@
 <div class="space-y-4">
 	{#if value}
 		<RecordFields
+			{look}
 			page={record.page}
 			{value}
 			set={(change) => look.patch(record.page, record.key, change)}

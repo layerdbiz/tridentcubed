@@ -10,7 +10,8 @@
 // and report wording live here too (`organization`), edited on the Settings screen. Run 16 (2026-11-10, "no dummy
 // data"): the Project panel is the project (an effect copies its title, subtitle, type, customer, location and team
 // onto the project's row as they change, so its Page, rows and cards follow Edit); every project and record keeps
-// when it was made and last changed; one `add` and one `patch` serve the + sheet and every Edit tab.
+// when it was made and last changed; one `add` and one `patch` serve the + sheet and every Edit tab. Run 17: the
+// places picked in location fields are kept with their coordinates (`places`), and the map pins read them.
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	clientOf as clientOfName,
@@ -40,6 +41,7 @@ import {
 	type StatusType,
 	type TransportType
 } from './look.data';
+import { seedPlaces, type PlaceType } from './map.data';
 import type { PageType } from './records.data';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
@@ -132,6 +134,8 @@ type KeptType = {
 	members: TeamMemberType[];
 	// Since run 15; a browser that kept run 12 to 14 has none yet and starts from Trident Cubed's own.
 	organization?: OrganizationType;
+	// Since run 17.
+	places?: PlaceType[];
 };
 
 // Sent and Complete projects can be looked at, not edited (2026-10-26 19:22).
@@ -184,6 +188,8 @@ export class LookState {
 	added = $state<ClientType[]>([]);
 	members = $state<TeamMemberType[]>(structuredClone(TEAM));
 	organization = $state<OrganizationType>(structuredClone(ORGANIZATION));
+	// Every place a location field has been given, with where it is: looked up once, then read from here.
+	places = $state<PlaceType[]>(seedPlaces());
 	asking = $state<ConfirmType>();
 
 	project = $derived(
@@ -211,6 +217,7 @@ export class LookState {
 			this.added = kept.added;
 			this.members = kept.members;
 			if (kept.organization) this.organization = kept.organization;
+			if (kept.places) this.places = kept.places;
 			for (const customer of kept.added) registerCustomer(customer);
 		} else
 			for (const project of this.projects) {
@@ -233,7 +240,8 @@ export class LookState {
 				customers: this.customers,
 				added: this.added,
 				members: this.members,
-				organization: this.organization
+				organization: this.organization,
+				places: this.places
 			} satisfies KeptType);
 			clearTimeout(this.#keepTimer);
 			this.#keepTimer = setTimeout(() => this.#keep(text), 300);
@@ -289,6 +297,17 @@ export class LookState {
 		this.tab = tab === 'preview' ? 'page' : tab;
 		this.tabProgress = this.tab === 'page' ? 0 : 1;
 		this.screen = 'record';
+	}
+
+	// The saved place a location's words name, whatever their capitals.
+	placeOf(name: string) {
+		const text = name.trim().toLowerCase();
+		return text ? this.places.find((place) => place.name.toLowerCase() === text) : undefined;
+	}
+
+	// A suggestion picked in a location field joins the saved places, once.
+	keepPlace(place: PlaceType) {
+		if (!this.placeOf(place.name)) this.places.push({ ...place, created: nowIso() });
 	}
 
 	// Settings: the organization's details and report wording (run 15).

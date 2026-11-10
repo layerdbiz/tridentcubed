@@ -19,7 +19,6 @@
 		type ProjectType
 	} from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
-	import { PLACES } from './map.data';
 	import MoreMenu from './more-menu.svelte';
 	import PageView from './page-view.svelte';
 	import ProjectLogo from './project-logo.svelte';
@@ -48,11 +47,12 @@
 			? stops.map((stop) => [cityOf(stop.facility), stop.facility] as [string, string])
 			: [[project.location, project.title] as [string, string]]
 	);
-	const pins = $derived(pinsAt(places));
+	const pins = $derived(pinsAt(look.places, places));
 	const route = $derived(
 		places
-			.map(([city]) => PLACES[city])
-			.filter(Boolean)
+			.map(([city]) => look.placeOf(city))
+			.filter((place) => place !== undefined)
+			.map((place): [number, number] => [place.lng, place.lat])
 			.filter((point, index, all) => index === 0 || point !== all[index - 1])
 	);
 	const transportOf = (name: string) => look.transports.find((item) => item.name === name);

@@ -25,7 +25,7 @@
 	const city = $derived(
 		record.page === 'customers' ? customerOf(look, record.key).city : record.location
 	);
-	const pins = $derived(pinsAt([[city, record.key]]));
+	const pins = $derived(pinsAt(look.places, [[city, record.key]]));
 
 	let swiper: HTMLDivElement | undefined = $state();
 	let isLanded = false;

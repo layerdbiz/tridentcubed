@@ -121,6 +121,7 @@
 				{:else}
 					{#key kind}
 						<RecordFields
+							{look}
 							page={kind}
 							value={drafts[kind]}
 							set={(change) => Object.assign(drafts[kind as PageType], change)}

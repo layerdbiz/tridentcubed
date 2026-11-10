@@ -5,7 +5,7 @@
 // board's columns (note 11).
 import type { DatasetType } from './look.data';
 import type { LookState } from './look.state.svelte';
-import { PLACES } from './map.data';
+import type { PlaceType } from './map.data';
 import {
 	columnsOf,
 	countOf,
@@ -132,13 +132,15 @@ export function slicesOf(look: LookState, dataset: DatasetType): SliceType[] {
 
 export type PinType = { city: string; lng: number; lat: number; count: number; names: string[] };
 
-// Pins for the map, one per city with how many are there; a city the map does not know gets none.
-export function pinsAt(places: [city: string, name: string][]): PinType[] {
+// Pins for the map, one per place with how many are there. Where a place is comes from the saved places (run 17);
+// words that are not a saved place get no pin.
+export function pinsAt(saved: PlaceType[], places: [city: string, name: string][]): PinType[] {
 	const pins = new Map<string, PinType>();
 	for (const [city, name] of places) {
-		const point = PLACES[city];
+		const text = city.trim().toLowerCase();
+		const point = text ? saved.find((place) => place.name.toLowerCase() === text) : undefined;
 		if (!point) continue;
-		const pin = pins.get(city) ?? { city, lng: point[0], lat: point[1], count: 0, names: [] };
+		const pin = pins.get(city) ?? { city, lng: point.lng, lat: point.lat, count: 0, names: [] };
 		pin.count += 1;
 		pin.names.push(name);
 		pins.set(city, pin);
@@ -150,6 +152,7 @@ export function pinsAt(places: [city: string, name: string][]): PinType[] {
 // the projects are.
 export function pinsOf(look: LookState, dataset: DatasetType, filter: string) {
 	return pinsAt(
+		look.places,
 		dataset === 'projects'
 			? shownProjects(look, filter).map((project) => [project.location, project.title])
 			: shownRecords(look, dataset, filter).map((record) => [

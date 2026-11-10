@@ -43,6 +43,7 @@
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import Menu, { type OptionType } from './menu.svelte';
+	import PlaceField from './place-field.svelte';
 	import { customerOf } from './records.data';
 	import { sortable } from './sortable';
 
@@ -304,95 +305,121 @@
 </script>
 
 {#snippet fieldBlock(field: FieldType)}
-	<label class="block {field.type === 'textarea' || field.type === 'image' ? 'sm:col-span-2' : ''}">
-		<span class={labelClass}>
-			{field.label}
-			{#if !field.value && !field.isReadonly}<span
-					class="size-1.5 rounded-full bg-warning"
-					title="Not filled in yet"
-				></span>{/if}
-		</span>
-		{#if field.type === 'select' && field.isAddable}
-			<select
-				class={inputClass}
+	{#if field.label === 'Location'}
+		<!-- Where the project is: the shared location field, which suggests places and saves the one picked. -->
+		<div class="sm:col-span-2">
+			<p class={labelClass}>
+				{field.label}
+				{#if !field.value}<span
+						class="size-1.5 rounded-full bg-warning"
+						title="Not filled in yet"
+					></span>{/if}
+			</p>
+			<PlaceField
+				{look}
 				value={field.value}
-				onchange={(event) => choose(field, event)}
-			>
-				<option value="">Choose…</option>
-				{#each optionsOf(field) as option (option)}<option>{option}</option>{/each}
-				<option value={ADD}>＋ Add new {field.label}…</option>
-			</select>
-		{:else if field.type === 'select'}
-			<select
-				class={inputClass}
-				bind:value={field.value}
-				disabled={field.isReadonly}
-			>
-				<option value="">Choose…</option>
-				{#each optionsOf(field) as option (option)}<option>{option}</option>{/each}
-			</select>
-		{:else if field.type === 'textarea'}
-			<textarea
-				class="{inputClass} min-h-20 resize-y"
-				bind:value={field.value}
-				disabled={field.isReadonly}
-				placeholder="Type here"></textarea>
-		{:else if field.type === 'image'}
-			<span class="flex items-center gap-3">
-				<span
-					class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900/[0.04]"
+				oninput={(text) => {
+					field.value = text;
+					save();
+				}}
+				{inputClass}
+			/>
+		</div>
+	{:else}
+		<label
+			class="block {field.type === 'textarea' || field.type === 'image' ? 'sm:col-span-2' : ''}"
+		>
+			<span class={labelClass}>
+				{field.label}
+				{#if !field.value && !field.isReadonly}<span
+						class="size-1.5 rounded-full bg-warning"
+						title="Not filled in yet"
+					></span>{/if}
+			</span>
+			{#if field.type === 'select' && field.isAddable}
+				<select
+					class={inputClass}
+					value={field.value}
+					onchange={(event) => choose(field, event)}
 				>
-					{#if field.value}
-						<img
-							src={field.value}
-							alt=""
-							class="size-full object-cover"
-						/>
-					{:else}
-						<span class="icon-[mdi--image-plus-outline] size-7 text-slate-300"></span>
+					<option value="">Choose…</option>
+					{#each optionsOf(field) as option (option)}<option>{option}</option>{/each}
+					<option value={ADD}>＋ Add new {field.label}…</option>
+				</select>
+			{:else if field.type === 'select'}
+				<select
+					class={inputClass}
+					bind:value={field.value}
+					disabled={field.isReadonly}
+				>
+					<option value="">Choose…</option>
+					{#each optionsOf(field) as option (option)}<option>{option}</option>{/each}
+				</select>
+			{:else if field.type === 'textarea'}
+				<textarea
+					class="{inputClass} min-h-20 resize-y"
+					bind:value={field.value}
+					disabled={field.isReadonly}
+					placeholder="Type here"></textarea>
+			{:else if field.type === 'image'}
+				<span class="flex items-center gap-3">
+					<span
+						class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900/[0.04]"
+					>
+						{#if field.value}
+							<img
+								src={field.value}
+								alt=""
+								class="size-full object-cover"
+							/>
+						{:else}
+							<span class="icon-[mdi--image-plus-outline] size-7 text-slate-300"></span>
+						{/if}
+					</span>
+					{#if !field.isReadonly}
+						<span
+							class="{ghostButton} cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200"
+						>
+							<span class="icon-[mdi--upload] size-4"></span>{field.value ? 'Replace' : 'Upload'}
+							<input
+								type="file"
+								accept="image/*"
+								class="sr-only"
+								onchange={(event) => setImage(field, event)}
+							/>
+						</span>
 					{/if}
 				</span>
-				{#if !field.isReadonly}
-					<span class="{ghostButton} cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200">
-						<span class="icon-[mdi--upload] size-4"></span>{field.value ? 'Replace' : 'Upload'}
+			{:else if field.type === 'file'}
+				<span class="flex items-center gap-2">
+					<span class="{inputClass} flex items-center gap-2 truncate">
+						<span class="icon-[mdi--file-document-outline] size-4 shrink-0 text-slate-400"></span>
+						<span class="truncate {field.value ? '' : 'text-slate-300'}"
+							>{field.value || 'No file yet'}</span
+						>
+					</span>
+					<span
+						class="{ghostButton} shrink-0 cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200"
+					>
+						<span class="icon-[mdi--paperclip] size-4"></span>Add
 						<input
 							type="file"
-							accept="image/*"
 							class="sr-only"
 							onchange={(event) => setImage(field, event)}
 						/>
 					</span>
-				{/if}
-			</span>
-		{:else if field.type === 'file'}
-			<span class="flex items-center gap-2">
-				<span class="{inputClass} flex items-center gap-2 truncate">
-					<span class="icon-[mdi--file-document-outline] size-4 shrink-0 text-slate-400"></span>
-					<span class="truncate {field.value ? '' : 'text-slate-300'}"
-						>{field.value || 'No file yet'}</span
-					>
 				</span>
-				<span
-					class="{ghostButton} shrink-0 cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200"
-				>
-					<span class="icon-[mdi--paperclip] size-4"></span>Add
-					<input
-						type="file"
-						class="sr-only"
-						onchange={(event) => setImage(field, event)}
-					/>
-				</span>
-			</span>
-		{:else}
-			<input
-				class={inputClass}
-				type={field.type}
-				bind:value={field.value}
-				disabled={field.isReadonly}
-				placeholder="Type here"
-			/>
-		{/if}
-	</label>
+			{:else}
+				<input
+					class={inputClass}
+					type={field.type}
+					bind:value={field.value}
+					disabled={field.isReadonly}
+					placeholder="Type here"
+				/>
+			{/if}
+		</label>
+	{/if}
 {/snippet}
 
 {#snippet teamBlock()}

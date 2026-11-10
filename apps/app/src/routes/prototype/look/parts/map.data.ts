@@ -1,6 +1,8 @@
 // PROTOTYPE (#161) run 13: where each city in the sample data is, as [longitude, latitude], for the real map
 // (world-map.svelte, Justin 2026-11-07: "use a real map"). It took over from a drawn map of the United States, so
-// places abroad (London, Cartagena) now show too. A city missing here simply gets no pin.
+// places abroad (London, Cartagena) now show too. Since run 17 this is only the places the prototype starts with:
+// the app keeps its own list (LookState.places, the "places table"), which grows each time a suggestion is picked
+// in a location field, and the pins read that list.
 export const PLACES: Record<string, [number, number]> = {
 	'Houston, TX': [-95.3698, 29.7604],
 	'Beaumont, TX': [-94.1266, 30.0802],
@@ -33,3 +35,16 @@ export const PLACES: Record<string, [number, number]> = {
 	'Georgetown, GY': [-58.1551, 6.8013],
 	'Tampico, TAM': [-97.8611, 22.2331]
 };
+
+// A saved place: what a location field's text means on the map. `detail` is the full address the lookup gave.
+export type PlaceType = {
+	name: string;
+	lat: number;
+	lng: number;
+	detail?: string;
+	created?: string;
+};
+
+export function seedPlaces(): PlaceType[] {
+	return Object.entries(PLACES).map(([name, [lng, lat]]) => ({ name, lat, lng }));
+}
