@@ -696,9 +696,9 @@
 									</div>
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Point', stop.point ? `${stop.point}, ${POINTS[stop.point].hint}` : ''], ['Facility', stop.facility], ['Facility kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Address', place?.address ?? ''], ['Facility contact', [place?.contact, place?.phone]
+									{#each [['Point', stop.point ? `${stop.point}, ${POINTS[stop.point].hint}` : ''], ['Facility', stop.facility], ['Facility Kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Address', place?.address ?? ''], ['Facility Contact', [place?.contact, place?.phone]
 												.filter(Boolean)
-												.join(' · ')], ['Transport type', stop.type], ['Transport Mode', stop.mode]] as [label, value] (label)}
+												.join(' · ')], ['Transport Type', stop.type], ['Transport Mode', stop.mode]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
 											<p
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"

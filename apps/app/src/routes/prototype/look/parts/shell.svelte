@@ -560,7 +560,7 @@
 		<button
 			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40 transition hover:brightness-110"
 			aria-label="Add"
-			title="Add a project, customer, team member, transport or facility"
+			title="Add a Project, Customer, Team, Transport Mode or Facility"
 			onclick={() => (look.adding = look.dataset)}
 			transition:scale={{ start: 0.8, duration: 160 }}
 			><span class="icon-[mdi--plus] size-8"></span></button

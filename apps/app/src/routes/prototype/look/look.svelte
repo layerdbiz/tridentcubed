@@ -10,6 +10,7 @@
 		tab: string;
 		adding?: string;
 		navSection: string;
+		record?: { key: string };
 		project: { title: string };
 	};
 
@@ -17,7 +18,7 @@
 		projects: 'Projects',
 		customers: 'Customers',
 		team: 'Team',
-		transport: 'Transport',
+		transport: 'Transport Mode',
 		facilities: 'Facilities',
 		admin: 'Admin'
 	};
@@ -30,6 +31,7 @@
 		if (!shown) return '';
 		if (shown.adding) return 'Add';
 		if (shown.screen === 'settings') return 'Settings';
+		if (shown.screen === 'record' && shown.record) return shown.record.key;
 		if (shown.screen === 'dashboard') return SECTIONS[shown.navSection] ?? 'Projects';
 		if (shown.tab === 'preview' && innerWidth < 768) return 'Preview';
 		return shown.project.title;

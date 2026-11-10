@@ -200,7 +200,7 @@
 			<button
 				class="ml-1 flex size-11 shrink-0 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/40 transition hover:brightness-110"
 				aria-label="Add"
-				title="Add a project, customer, team member, transport or facility"
+				title="Add a Project, Customer, Team, Transport Mode or Facility"
 				onclick={() => (look.adding = look.dataset)}
 				><span class="icon-[mdi--plus] size-7"></span></button
 			>

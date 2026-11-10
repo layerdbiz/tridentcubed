@@ -65,7 +65,7 @@ _Avoid_: staff, editor, surveyor, team member
 ### Projects and reports
 
 **Customer**:
-The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its logo (printed in every page's footer), types, city, address, email, phone, website, a background picture and one contact. Picking a customer's name in a project fills all of it in. Called Client until 2026-10-26.
+The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its logo (printed in every page's footer), types, city, address, email, phone, website, a background picture and any number of contacts. Picking a customer's name in a project fills all of it in. Called Client until 2026-10-26.
 _Avoid_: client, account
 
 **Project**:
@@ -108,7 +108,7 @@ The document a project produces: its panels rendered as report pages.
 _Avoid_: survey report, document
 
 **Contact**:
-The person at a customer a report is for: name, title, email, phone and photo, kept on the customer's record. The report prints the name, title and email under the customer. A facility has a simpler one: a name, phone and email.
+A person at a customer: name, title, email, phone and photo, kept on the customer's record. A customer has any number; a project picks the one its report is for, and the report prints their name, title and email under the customer. A facility has a simpler one: a name, phone and email.
 _Avoid_: client contact, recipient, attendee
 
 **Facility**:
@@ -125,7 +125,7 @@ _Avoid_: transport mode (that is Vessel, Barge and the rest)
 **Transport mode**:
 What a transport is within its type: Vessel or Barge for Sea, Plane for Air, Train or Railcar for Rail, Truck or Trailer for Road. Each mode has its own icon.
 _Avoid_: kind, transport type (that is Sea, Air, Rail or Road)
-_Open_: the Trident team asked (2026-11-07) for the Transport list page to read Transport Mode, which the design prototype does from run 12 (with a capital M everywhere from run 13); that clashes with this term, and Justin wants one word for the page later.
+_Open_: the Trident team asked (2026-11-07) for the Transport list page to read Transport Mode, which the design prototype does from run 12 (with a capital M everywhere from run 13); that clashes with this term, and Justin wants one word for the page later. From run 16 (Justin, 2026-11-10) one record of that page is also called a Transport Mode, and one person of the Team page a Team, always with both words capitalised, so the record and this term now share a name. The data audit (`docs/research/2026-11-10-prototype-data-audit.md`) lists it as open before the schema is written.
 
 **Stop**:
 One place on a project's trip: its point, its transport and its facility. The Transport panel lists a project's stops in trip order, so one report can cover the start, the stops on the way and the end; each stop prints its own page with the transport's particulars.

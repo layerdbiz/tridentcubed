@@ -6,7 +6,8 @@
 	// colour), Transport type, Transport mode, the transport from the organization's list, and the facility, whose list
 	// puts the kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with
 	// Delete at the far right of its bottom row (run 8 note 10); every delete asks first. Each photo has its own
-	// description: tap it, or Edit description in its ⋮ (notes 12 and 14). The time log can add a sample day (note 9).
+	// description: tap it, or Edit description in its ⋮ (notes 12 and 14). The time log could add a made-up sample day
+	// (note 9) until run 16 took out everything that writes made-up data.
 	// Run 9: Items is rows of quantity and description, like the time log's entries (note 24); a photo with a
 	// description shows an icon instead of its text (note 16), its ⋮ is bare dots (note 15), and the photos-per-page
 	// buttons draw their own layout (note 17). Uploads are shrunk here, as V1 will, so the browser can keep them.
@@ -268,31 +269,6 @@
 		save();
 	}
 
-	// A filled-in day the day after the last one, so the time log shows how a real day reads.
-	const SAMPLE_DAY = [
-		['07:00', 'Arrived on site, safety briefing with the terminal'],
-		['07:45', 'Hatches opened, cargo condition checked before work'],
-		['09:30', 'Discharge started, first lift landed on the quay'],
-		['12:00', 'Break, cargo secured'],
-		['13:00', 'Discharge resumed'],
-		['16:15', 'Last lift landed, tally agreed with the stevedores'],
-		['17:00', 'Left site']
-	];
-
-	function addSampleDay() {
-		const last = panel.days.findLast((day) => day.date)?.date;
-		const date = last ? new Date(`${last}T12:00`) : new Date();
-		if (last) date.setDate(date.getDate() + 1);
-		const day = {
-			id: createId('day'),
-			date: date.toISOString().slice(0, 10),
-			entries: SAMPLE_DAY.map(([time, activity]) => ({ id: createId('entry'), time, activity }))
-		};
-		panel.days.push(day);
-		openDays = [...openDays, day.id];
-		save();
-	}
-
 	// The photo whose description is open in the sheet. The sheet opens with the cursor at the end of the text, ready to
 	// type: the browser's own autofocus skips a field that appears after a tap on a button.
 	let editing = $state<PhotoType>();
@@ -546,7 +522,7 @@
 					<div class="grid gap-2 sm:grid-cols-2">
 						{@render dropdown('Point', stop.point, POINT_OPTIONS, (point) => setPoint(stop, point))}
 						{@render dropdown(
-							'Transport type',
+							'Transport Type',
 							stop.type,
 							TYPES.map((type) => ({ id: type, label: type, icon: TRANSPORT_TYPES[type].icon })),
 							(type) => setType(stop, type)
@@ -797,12 +773,6 @@
 				type="button"
 				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
 				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
-			>
-			<button
-				type="button"
-				class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
-				onclick={addSampleDay}
-				><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample day</button
 			>
 		</div>
 	{:else}
