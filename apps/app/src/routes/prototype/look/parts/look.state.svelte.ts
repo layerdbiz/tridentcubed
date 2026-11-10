@@ -147,7 +147,7 @@ export class LookState {
 	filter = $state('All');
 	dataset = $state<DatasetType>('projects');
 	range = $state<RangeType>('7d');
-	chart = $state<ChartKindType>('area');
+	chart = $state<ChartKindType>(DEFAULT_CHART.projects);
 	projects = $state<ProjectType[]>(structuredClone(PROJECTS));
 	projectId = $state('p1');
 	tab = $state<TabType>('edit');

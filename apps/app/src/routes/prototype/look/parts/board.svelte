@@ -69,7 +69,7 @@
 >
 	{#each columns as column (column.label)}
 		<div
-			class="flex h-full w-72 shrink-0 snap-start flex-col rounded-t-3xl bg-slate-900/[0.035] p-2 pb-0"
+			class="flex h-full w-80 shrink-0 snap-start flex-col rounded-t-3xl bg-slate-900/[0.035] p-2 pb-0"
 		>
 			<p class="flex shrink-0 items-center gap-2 px-2 py-2 text-xs font-semibold text-slate-600">
 				<span class="size-2 rounded-full {column.tone.bg}"></span>{column.label}

@@ -55,7 +55,8 @@
 </script>
 
 <article class="group/card relative {isArchived ? 'opacity-60' : ''}">
-	<div class="relative aspect-square overflow-hidden rounded-3xl bg-slate-900 sm:aspect-[5/4]">
+	<!-- 16:9, not square, so more cards show at once (run 14, note 8). -->
+	<div class="relative aspect-video overflow-hidden rounded-3xl bg-slate-900">
 		{#if photos.length}
 			<div
 				bind:this={strip}

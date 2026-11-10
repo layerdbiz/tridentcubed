@@ -8,6 +8,8 @@
 	// and Edit, and the icon at the far left is the page it came from, so it leads back there. Run 13 (2026-11-07): a
 	// project has Page, Edit and Preview; the icons are filled everywhere, and the page on show just turns white, with
 	// no circle behind it. A desktop project keeps Edit in its column, so its bar shows there too, with Page and Preview.
+	// Run 14 (note 11): that desktop project is the only place a desktop shows the bar; its dashboard has the sidebar
+	// for the pages and a + of its own at the bottom right (shell.svelte).
 	import { untrack } from 'svelte';
 	import { DATASETS, PAGE_ICONS, PAGES, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -135,10 +137,9 @@
 
 <nav
 	bind:this={nav}
-	class="fixed bottom-[calc(env(safe-area-inset-bottom)+14px)] z-[55] flex w-max -translate-x-1/2 items-center rounded-full bg-black p-1.5 text-white shadow-xl shadow-black/25 {isProject &&
-	!isDesk
-		? 'md:hidden'
-		: ''}"
+	class="fixed bottom-[calc(env(safe-area-inset-bottom)+14px)] z-[55] flex w-max -translate-x-1/2 items-center rounded-full bg-black p-1.5 text-white shadow-xl shadow-black/25 {isDesk
+		? ''
+		: 'md:hidden'}"
 	style="left: {left}"
 	aria-label={isProject ? 'Project' : 'Pages'}
 >

@@ -42,11 +42,18 @@
 	}
 
 	// The picked card, whether tapped or picked from the menu, scrolls to the middle of the row so it shows in full
-	// and the cards beside it show too (run 14, note 10). No snapping, which would pull it back to the row's edge.
+	// and the cards beside it show too (run 14, note 10). No snapping, which would pull it back to the row's edge. Only
+	// the row scrolls: scrollIntoView would also slide the whole page sideways.
 	function reveal(dataset: DatasetType) {
-		row
-			?.querySelector(`[data-set="${dataset}"]`)
-			?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+		const card = row?.querySelector<HTMLElement>(`[data-set="${dataset}"]`);
+		if (!row || !card) return;
+		const box = card.getBoundingClientRect();
+		const left =
+			row.scrollLeft +
+			box.left -
+			row.getBoundingClientRect().left -
+			(row.clientWidth - box.width) / 2;
+		row.scrollTo({ left, behavior: 'smooth' });
 	}
 	$effect(() => {
 		reveal(look.dataset);

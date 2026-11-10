@@ -153,12 +153,14 @@
 		};
 	}
 
+	// An outro's t runs from 1 down to 0, so the page going starts where it is and ends a width away. Run 13 had this
+	// backwards: the page going jumped a width away and slid back over the coming one (run 14, note 4).
 	function slideOut(node: HTMLElement) {
 		const width = node.clientWidth || pagerWidth;
 		const x = -look.slide * (flight || width);
 		return {
 			duration: flight ? 240 : 320,
-			css: (t: number) => `transform: translateX(${(1 - cubicOut(1 - t)) * x}px)`
+			css: (t: number) => `transform: translateX(${cubicOut(1 - t) * x}px)`
 		};
 	}
 
@@ -533,5 +535,17 @@
 				? 'calc(444px + (100vw - 444px) / 2)'
 				: `calc(${side + 24}px + (100vw - ${side + 24}px) / 2)`}
 	/>
+	<!-- Run 14 (note 11): a desktop dashboard has no floating bar (the sidebar has the pages), so its + floats on its
+	     own at the bottom right. -->
+	{#if isWide && look.screen === 'dashboard'}
+		<button
+			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40 transition hover:brightness-110"
+			aria-label="Add"
+			title="Add a project, customer, team member, transport or facility"
+			onclick={() => (look.adding = look.dataset)}
+			transition:scale={{ start: 0.8, duration: 160 }}
+			><span class="icon-[mdi--plus] size-8"></span></button
+		>
+	{/if}
 	<AddSheet {look} />
 </div>

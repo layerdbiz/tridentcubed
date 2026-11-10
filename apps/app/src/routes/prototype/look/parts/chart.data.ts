@@ -46,9 +46,9 @@ export const CHART_KINDS: { id: ChartKindType; label: string; icon: string }[] =
 	{ id: 'map', label: 'Map', icon: 'icon-[mdi--map-marker-radius]' }
 ];
 
-// Each card opens on the chart that suits it (Justin's note 11).
+// Each card opens on the chart that suits it (Justin's note 11). Projects opens on the map since run 14 (note 6).
 export const DEFAULT_CHART: Record<DatasetType, ChartKindType> = {
-	projects: 'area',
+	projects: 'map',
 	customers: 'map',
 	team: 'pie',
 	transport: 'pie',

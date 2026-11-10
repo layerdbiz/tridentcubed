@@ -12,6 +12,8 @@
 	// with the page's icon in its middle, so no word can run over it; on a phone it sits at the right, beside the number,
 	// using the whole height, and on a desktop in the middle. The map is a real one, behind the whole top of
 	// the screen (shell.svelte, world-map.svelte), so this draws only the number over it and lets taps through.
+	// Run 14 (note 7): the pie sits in the middle on a phone too, and the number moves into its hole, with the page's
+	// name (or the tapped slice's) written under it in place of the icon. Only the pie loses the top-left number.
 	import { fade } from 'svelte/transition';
 	import { chartOf, headlineAt, RANGE_NAMES, RANGES, slicesOf } from './chart.data';
 	import { DATASETS } from './look.data';
@@ -147,8 +149,9 @@
 	<!-- Over the map the number gets a soft glow of the page's grey, so a place name under it never muddles it. -->
 	<p
 		class="relative z-10 flex shrink-0 items-baseline gap-2 px-4 md:px-8 {look.chart === 'pie'
-			? 'max-w-[58%] md:max-w-none'
+			? 'invisible'
 			: ''} {look.chart === 'map' ? '[text-shadow:0_0_10px_#f1f5f9,0_0_4px_#f1f5f9]' : ''}"
+		aria-hidden={look.chart === 'pie'}
 	>
 		<span class="text-4xl font-semibold tracking-tight text-slate-900 tabular-nums md:text-5xl"
 			>{value}</span
@@ -187,7 +190,7 @@
 					{@const outer = size / 2 - 8}
 					{@const inner = outer * 0.58}
 					<div
-						class="absolute inset-x-0 bottom-0 flex items-center justify-end gap-10 px-5 md:justify-center md:px-8"
+						class="absolute inset-x-0 bottom-0 flex items-center justify-center gap-10 px-5 md:px-8"
 						style="height: {sectionHeight}px"
 					>
 						<svg
@@ -221,17 +224,27 @@
 								/>
 							{/each}
 							<foreignObject
-								x={-inner * 0.5}
-								y={-inner * 0.5}
-								width={inner}
-								height={inner}
+								x={-inner * 0.7}
+								y={-inner * 0.7}
+								width={inner * 1.4}
+								height={inner * 1.4}
 								class="pointer-events-none"
 							>
 								<span
-									class="{DATASETS[look.dataset].icon} block size-full transition-colors {picked
-										? picked.tone.text
-										: 'text-slate-300'}"
-								></span>
+									class="flex size-full flex-col items-center justify-center px-1 text-center leading-tight"
+								>
+									<span
+										class="font-semibold tracking-tight text-slate-900 tabular-nums"
+										style="font-size: {Math.round(inner * 0.5)}px">{value}</span
+									>
+									<span
+										class="line-clamp-2 font-medium transition-colors {picked
+											? picked.tone.text
+											: 'text-slate-500'}"
+										style="font-size: {Math.max(11, Math.round(inner * 0.16))}px"
+										>{picked?.name ?? DATASETS[look.dataset].label}</span
+									>
+								</span>
 							</foreignObject>
 						</svg>
 						<ul
