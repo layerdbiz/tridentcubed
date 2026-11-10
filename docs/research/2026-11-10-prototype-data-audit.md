@@ -69,6 +69,19 @@ Each heading is a list the prototype keeps in the browser (`LookState`, `look.st
 | photo | Picture behind its Page |
 | contact, phone, email (one person) | Its Page; the stop's report page |
 
+### Place (added in run 17)
+
+One row per place a location field has been given. A customer's city, a team's location, a facility's city and a project's location are words; a place is what those words mean on the map.
+
+| Field | Printed or used |
+| --- | --- |
+| name ("Houston, TX", or a full address) | What the location field saves on the record; matched without regard to capitals |
+| lat, lng | Map pins |
+| detail | The full address the lookup returned; shown under a suggestion |
+| created | When it was first picked |
+
+The location field offers saved places first, at no cost. Only after typing pauses, with three letters or more and no saved place of that name, does it ask the app's own endpoint (`prototype/look/places`), which asks Geoapify's Autocomplete API with a key kept on the server. A picked suggestion is saved once and never looked up again. The endpoint remembers answers and stops at 2,500 calls a day, under the free plan's 3,000. The free plan requires the "Powered by Geoapify" credit the suggestions show.
+
 ### Project
 
 | Field | Printed or used |
@@ -116,7 +129,7 @@ These need a decision or a service before the database is the only source.
 
 1. **Sample rows.** The eight projects, ten transports and nine facilities are invented; the ten customers are real names with real logos and nothing else; the team is the real team. Every sample project's Time Log, items and photos come from one template. They become seed rows or are dropped.
 2. **Who is signed in.** Fixed to one person (`ME` in `look.data.ts`) until sign-in exists. Only that person's `seen` is ever set, so everyone else shows offline.
-3. **Map pins.** A city is placed by a lookup table of about thirty cities (`map.data.ts`). A city not in it gets no pin. The database needs latitude and longitude on customers, team, facilities and projects, filled by a geocoder.
+3. **Map pins.** Done in run 17 for places picked from suggestions (see Place). What is left: a location typed without picking a suggestion has no pin; records hold the place's name, not its id; the thirty starting places come from a table in the code (`map.data.ts`); and the Geoapify key must be added to Vercel before the deployed app can look places up.
 4. **Stock pictures.** A record with no picture of its own shows a stock picture chosen by its type. A display fallback, not data.
 5. **Sent copy, revisions, Trash.** Mark Sent changes the status only. Deleting removes the row; nothing is kept in Trash. The report and revision numbers never go past 01.
 6. **Saving.** "Saved" is shown on a timer. Everything is kept in the browser's `localStorage` under one key.
