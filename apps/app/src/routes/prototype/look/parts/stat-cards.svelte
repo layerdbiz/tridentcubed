@@ -80,7 +80,7 @@
 >
 	<!-- Every card is as wide as the widest needs (Transport Mode on one line), and on a wide screen they share the
 	     row equally; when they cannot all fit, the row scrolls rather than a card squeezing its words out (2026-11-10). -->
-	<div class="grid w-max min-w-full auto-cols-fr grid-flow-col gap-2 md:gap-3">
+	<div class="grid w-max min-w-full auto-cols-fr grid-flow-col gap-2 2xl:gap-3">
 		{#each SETS as dataset (dataset)}
 			{@const info = DATASETS[dataset]}
 			{@const words = info.label.split(' ')}
@@ -90,7 +90,7 @@
 				tabindex="0"
 				aria-selected={isOn}
 				data-set={dataset}
-				class="relative flex cursor-pointer items-center gap-2 rounded-2xl p-2.5 pr-3.5 select-none md:gap-2.5 md:rounded-3xl md:px-3.5 md:py-4 2xl:gap-3 2xl:px-4 2xl:py-5 {isOn
+				class="relative flex cursor-pointer items-center gap-2 rounded-2xl p-2.5 pr-3.5 select-none md:gap-2 md:rounded-3xl md:px-3 md:py-4 2xl:gap-3 2xl:px-4 2xl:py-5 {isOn
 					? 'bg-primary text-white'
 					: 'bg-white text-slate-700'}"
 				onclick={() => {
@@ -99,7 +99,7 @@
 				}}
 				onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && look.pick(dataset)}
 			>
-				<span class="{info.icon} size-7 shrink-0 md:size-8 2xl:size-10 {isOn ? 'text-white' : 'text-primary'}"
+				<span class="{info.icon} size-7 shrink-0 md:size-7 2xl:size-10 {isOn ? 'text-white' : 'text-primary'}"
 				></span>
 				<span class="min-w-0 flex-1">
 					<span class="block text-lg leading-tight font-semibold tabular-nums md:text-2xl 2xl:text-3xl"
@@ -107,7 +107,7 @@
 					>
 					<!-- Run 14 (note 2): the name stays on one line (Transport Mode); the card is as wide as it needs. -->
 					<span
-						class="block text-[11px] leading-tight font-medium whitespace-nowrap md:text-sm 2xl:text-[15px] {isOn
+						class="block text-[11px] leading-tight font-medium whitespace-nowrap md:text-[13px] 2xl:text-[15px] {isOn
 							? 'text-white/85'
 							: 'text-slate-500'}"
 					>
