@@ -16,7 +16,14 @@ export type TeamMemberType = {
 	slug: string;
 	// A photo uploaded on their page (run 15); without one, the Drive copy `profileURL` names shows.
 	photo?: string;
+	// Run 16: when they were added and last changed, and when they were last in the app (their online dot).
+	created?: string;
+	updated?: string;
+	seen?: string;
 };
+
+// The day the sample rows were made: what a record that came with the prototype says for created and updated.
+export const SEEDED = '2026-01-05T09:00';
 
 export const TEAM: TeamMemberType[] = [
 	{
@@ -273,25 +280,6 @@ export const ROLE_LABELS: Record<TeamMemberType['role'], string> = {
 };
 
 export type PresenceType = 'online' | 'idle' | 'offline';
-
-// Made up for the prototype: who is around right now. Everyone else shows as offline.
-const PRESENCE: Record<string, PresenceType> = {
-	'Capt. Cezary Poninski': 'online',
-	'Duncan Cooke': 'idle',
-	'Michael Boone': 'online',
-	'Capt. Hector Ramirez': 'online',
-	'Justin ONeill': 'idle',
-	'Collin Tippit': 'online',
-	'Alfredo Llanes': 'online',
-	'Tynequa Shaw': 'idle',
-	'Aaron Davis': 'online',
-	'Capt. Jim DeStefano': 'idle',
-	'Natzul Reyes Flores': 'online'
-};
-
-export function presenceOf(name: string): PresenceType {
-	return PRESENCE[name] ?? 'offline';
-}
 
 export const PRESENCE_TONES: Record<PresenceType, string> = {
 	online: 'bg-success',

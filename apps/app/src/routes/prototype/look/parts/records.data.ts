@@ -6,6 +6,7 @@
 // record with no label sits under Other. Every count (the cards, the chart, the list) comes from `countOf`, so the
 // numbers agree everywhere (note 13).
 import {
+	agoOf,
 	clientOf,
 	facilitiesOf,
 	personOf,
@@ -16,10 +17,11 @@ import {
 	type ClientType,
 	type DatasetType,
 	type ProjectType,
+	type RecentType,
 	type StatusType
 } from './look.data';
 import type { LookState } from './look.state.svelte';
-import { labelsOf as labelsOfMember, type TeamMemberType } from './team.data';
+import { labelsOf as labelsOfMember, SEEDED, type TeamMemberType } from './team.data';
 
 export type PageType = Exclude<DatasetType, 'projects'>;
 
@@ -225,6 +227,9 @@ export type RecordType = {
 	tone: ToneType;
 	// Its own uploaded picture (run 15), shown behind its Page before any stock picture.
 	photo?: string;
+	// When it was added and last changed (run 16); a record that came with the prototype says the day that was made.
+	created: string;
+	updated: string;
 };
 
 export function isOpen(project: ProjectType) {
@@ -258,6 +263,11 @@ function lastSeenOf(look: LookState, name: string) {
 	return '';
 }
 
+function stamps(item: { created?: string; updated?: string }) {
+	const created = item.created ?? SEEDED;
+	return { created, updated: item.updated ?? created };
+}
+
 function counts(theirs: ProjectType[]) {
 	return {
 		count: theirs.length,
@@ -280,6 +290,7 @@ function baseRecordsOf(look: LookState, page: PageType): Omit<RecordType, 'tone'
 				location: info.city,
 				icon: '',
 				photo: info.photo,
+				...stamps(info),
 				...counts(theirs),
 				logos: [],
 				people: [...new Set(theirs.flatMap((project) => project.team))]
@@ -293,6 +304,7 @@ function baseRecordsOf(look: LookState, page: PageType): Omit<RecordType, 'tone'
 			sub: '',
 			location: member.location,
 			icon: '',
+			...stamps(member),
 			...counts(look.projects.filter((project) => project.team.includes(member.name))),
 			people: [],
 			member
@@ -306,6 +318,7 @@ function baseRecordsOf(look: LookState, page: PageType): Omit<RecordType, 'tone'
 			location: lastSeenOf(look, transport.name),
 			icon: MODE_ICONS[transport.mode] ?? PAGE_ICONS.transport,
 			photo: transport.photo,
+			...stamps(transport),
 			...counts(look.projects.filter((project) => transportsOf(project).includes(transport.name))),
 			people: []
 		}));
@@ -317,6 +330,7 @@ function baseRecordsOf(look: LookState, page: PageType): Omit<RecordType, 'tone'
 		location: facility.city,
 		icon: FACILITY_ICONS[facility.kind],
 		photo: facility.photo,
+		...stamps(facility),
 		...counts(look.projects.filter((project) => facilitiesOf(project).includes(facility.name))),
 		people: []
 	}));
@@ -385,6 +399,40 @@ export function countOf(look: LookState, page: DatasetType, filter = 'All') {
 	return page === 'projects'
 		? shownProjects(look, filter).length
 		: shownRecords(look, page, filter).length;
+}
+
+// When each thing a page shows was made: what its chart counts back through time (run 16). No made-up history.
+export function createdOf(look: LookState, page: DatasetType, filter = 'All') {
+	return page === 'projects'
+		? shownProjects(look, filter).map((project) => project.created)
+		: shownRecords(look, page, filter).map((record) => record.created);
+}
+
+// Recent, for the bell and the menu: the eight things changed last, of any page, newest first, read from their own
+// stamps. Something never changed since it was made says Added.
+export function recentOf(look: LookState): RecentType[] {
+	const records = (['customers', 'team', 'transport', 'facilities'] as const).flatMap((page) =>
+		recordsOf(look, page).map((record) => ({
+			page,
+			name: record.key,
+			created: record.created,
+			updated: record.updated
+		}))
+	);
+	const projects = look.projects.map((project) => ({
+		page: 'projects' as const,
+		name: project.title,
+		id: project.id,
+		created: project.created,
+		updated: project.updated
+	}));
+	return [...projects, ...records]
+		.toSorted((a, b) => b.updated.localeCompare(a.updated))
+		.slice(0, 8)
+		.map(({ created, updated, ...item }) => ({
+			...item,
+			note: `${created === updated ? 'Added' : 'Edited'} · ${agoOf(updated)}`
+		}));
 }
 
 // A count badge never needs more than two characters.

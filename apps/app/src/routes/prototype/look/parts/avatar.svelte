@@ -1,8 +1,8 @@
 <script lang="ts">
 	// PROTOTYPE (#161): one person's photo in a white border, with a presence dot top right (Justin's note 9): green
 	// online, orange idle, grey offline. Presence is made up (team.data.ts).
-	import { personOf } from './look.data';
-	import { presenceOf, PRESENCE_TONES } from './team.data';
+	import { personOf, presenceOf } from './look.data';
+	import { PRESENCE_TONES } from './team.data';
 
 	let {
 		name,

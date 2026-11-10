@@ -4,10 +4,11 @@
 	// about. Run 14 (note 1): each row shows its page's own icon (the folder, the face, the group...), not the photo
 	// or logo, and ends in the same ⋮ menu as the page's rows, so it can be opened, edited or deleted from here. The
 	// icon takes the colour of the project's state, or of the record's first label, as in the lists (2026-11-10).
-	import { PAGE_ICONS, RECENT, STATUS, type RecentType } from './look.data';
+	// Run 16: the list is no longer written here. It is the eight things changed last, from their own stamps.
+	import { PAGE_ICONS, STATUS, type RecentType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
-	import { recordOf } from './records.data';
+	import { recentOf, recordOf } from './records.data';
 
 	let {
 		look,
@@ -41,7 +42,7 @@
 	}
 </script>
 
-{#each RECENT as item (item.name)}
+{#each recentOf(look) as item (`${item.page}-${item.id ?? item.name}`)}
 	<div class="flex w-full items-center rounded-2xl hover:bg-slate-900/[0.04]">
 		<button
 			class="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left"

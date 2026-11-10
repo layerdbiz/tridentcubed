@@ -3,7 +3,8 @@
 	// the cards. Run 11 (2026-10-26 19:22): the chart type and time range menus moved down to the list's heading
 	// (dashboard-list.svelte). Each card opens on its own chart (note 11): projects an area, customers a map of where
 	// they are, the team a pie by label, and pies give numbers, never percents (note 12). A finger (or mouse) scrubs
-	// back in time. The history is made up (chart.data.ts). Run 12 (2026-11-07): the chart ends on the same count as its
+	// back in time. The history was made up until run 16; now each point counts what had been made by then
+	// (chart.data.ts). Run 12 (2026-11-07): the chart ends on the same count as its
 	// card (note 13); the pie has one slice per label, in the board's order and colours, a tap on a slice filters the
 	// list below to it, and a desktop lists the labels beside it.
 	// Run 13 (Justin, 2026-11-07 22:21): the number is back at the top left, with what changed beside it in green (▲3
@@ -18,7 +19,7 @@
 	import { chartOf, headlineAt, RANGE_NAMES, RANGES, slicesOf } from './chart.data';
 	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import { countOf } from './records.data';
+	import { countOf, createdOf } from './records.data';
 
 	let { look }: { look: LookState } = $props();
 
@@ -29,7 +30,7 @@
 	let hovered = $state<string>();
 
 	const total = $derived(countOf(look, look.dataset, look.filter));
-	const data = $derived(chartOf(look.dataset, look.range, total, look.filter));
+	const data = $derived(chartOf(createdOf(look, look.dataset, look.filter), look.range));
 	const count = $derived(data.labels.length);
 	const last = $derived(count - 1);
 	const index = $derived(scrub ?? last);

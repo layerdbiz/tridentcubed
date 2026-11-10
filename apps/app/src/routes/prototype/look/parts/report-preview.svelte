@@ -25,6 +25,7 @@
 	import { onMount, untrack } from 'svelte';
 	import ClientLogo from './client-logo.svelte';
 	import {
+		dayOf,
 		documentIdOf,
 		MODE_ICONS,
 		PAGE_ICONS,
@@ -134,13 +135,18 @@
 	}
 
 	const client = $derived(customerOf(look, company));
+	// Who the report is for: the contact picked in the Project panel, else the customer's first.
+	const contact = $derived(
+		(client.contacts ?? []).find((item) => item.id === team?.contact) ??
+			(client.contacts ?? []).find((item) => item.name)
+	);
 	// The days the team was there: the Time Log's dated days, first to last; before any, the day the project began.
 	const dates = $derived.by(() => {
 		const days = (timelog?.days ?? [])
 			.map((day) => day.date)
 			.filter(Boolean)
 			.toSorted();
-		if (!days.length) return look.project.dates;
+		if (!days.length) return dayOf(look.project.created);
 		return days.length > 1 && days[0] !== days.at(-1)
 			? `${dateOf(days[0])} to ${dateOf(days.at(-1)!)}`
 			: dateOf(days[0]);
@@ -319,7 +325,7 @@
 		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: dates },
 		{ icon: PAGE_ICONS.customers, label: 'Customer', value: detail('Customer') },
 		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Owner', value: team?.owner },
-		{ icon: 'icon-[mdi--package-variant-closed]', label: 'Type', value: detail('Project type') }
+		{ icon: 'icon-[mdi--package-variant-closed]', label: 'Type', value: detail('Project Type') }
 	]);
 </script>
 
@@ -515,7 +521,7 @@
 								<p class="mt-3 text-[10.5px] leading-relaxed text-slate-600">
 									<b class="text-slate-900">Introduction.</b> This is to report that {organization.name}
 									was present at {facility || 'the facility'} – {location} on {dates} for the purpose
-									of conducting a {(detail('Project type') || 'cargo').toLowerCase()} survey{cargoLine
+									of conducting a {(detail('Project Type') || 'cargo').toLowerCase()} survey{cargoLine
 										? ` of ${cargoLine}`
 										: ''}{transport ? ` from the ${transport}` : ''}.
 								</p>
@@ -540,7 +546,7 @@
 									</p>
 								</div>
 								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Customer', detail('Customer')], ['Type', detail('Project type')]] as [label, value] (label)}
+									{#each [['Customer', detail('Customer')], ['Type', detail('Project Type')]] as [label, value] (label)}
 										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
 											<p
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
@@ -550,9 +556,9 @@
 											<p class="mt-0.5 {value ? 'text-slate-900' : 'text-slate-300 italic'}">
 												{value || 'Not filled in yet'}
 											</p>
-											{#if label === 'Customer' && client.contact?.name}
+											{#if label === 'Customer' && contact?.name}
 												<p class="mt-0.5 truncate text-[8.5px] text-slate-500">
-													Attn. {[client.contact.name, client.contact.title, client.contact.email]
+													Attn. {[contact.name, contact.title, contact.email]
 														.filter(Boolean)
 														.join(' · ')}
 												</p>

@@ -12,7 +12,17 @@
 // transport a picture and its operator; a facility a picture, address and contact; and the organization (Trident
 // Cubed) its own details and the report's standard wording, edited in Settings.
 import { seen, touch } from './registry.svelte';
-import { initialsOf, photoOfMember, ROLE_LABELS, TEAM, type TeamMemberType } from './team.data';
+// Run 16 (Justin, 2026-11-10: "no dummy data left ... the next step is connecting a real database"): nothing shown
+// is made up by code any more. A project and every record carry when they were made and last changed (`created`,
+// `updated`), which the charts, Recent and "Updated" read; a project's number comes from its customer's code and its
+// day; a customer has several contacts; the online dot comes from when someone was last in the app.
+import {
+	initialsOf,
+	photoOfMember,
+	TEAM,
+	type PresenceType,
+	type TeamMemberType
+} from './team.data';
 
 export type StatusType =
 	| 'Draft'
@@ -24,11 +34,10 @@ export type StatusType =
 	| 'Complete'
 	| 'Archived';
 
-export type PersonType = { name: string; photo: string };
+export type PersonType = { name: string; photo: string; seen?: string };
 
 export type ProjectType = {
 	id: string;
-	number: string;
 	title: string;
 	subtitle: string;
 	type: string;
@@ -36,12 +45,14 @@ export type ProjectType = {
 	// The trip's stops in order: what happened there, on which transport, at which facility.
 	stops: { point: PointType; transport: string; facility: string }[];
 	location: string;
-	dates: string;
+	// When it was made and last changed, as ISO date-times (run 16). Its number and the day it shows come from
+	// `created`; "Updated 5 min ago" from `updated`.
+	created: string;
+	updated: string;
 	status: StatusType;
 	// The state a project was in before it was marked Sent, so Unsend can put it back (2026-10-26 19:22).
 	before?: StatusType;
 	team: string[];
-	updated: string;
 	progress: number;
 };
 
@@ -95,6 +106,8 @@ export type PanelType = {
 	fields: FieldType[];
 	owner: string;
 	assigned: string[];
+	// The Project panel: which of the customer's contacts the report is for (its id); none picks the first.
+	contact?: string;
 	days: DayType[];
 	groups: GroupType[];
 	stops: StopType[];
@@ -176,13 +189,22 @@ export function personOf(name: string): PersonType {
 	return PEOPLE.find((person) => person.name === name) ?? { name, photo: initialsOf(name) };
 }
 
+// The dot on a face: green within five minutes of being in the app, amber within the hour, grey after. Only the
+// signed-in person is ever "in the app" until there are real sign-ins, so everyone else is grey (run 16).
+export function presenceOf(name: string): PresenceType {
+	const last = personOf(name).seen;
+	if (!last) return 'offline';
+	const minutes = (Date.now() - new Date(last).getTime()) / 60000;
+	return minutes < 5 ? 'online' : minutes < 60 ? 'idle' : 'offline';
+}
+
 // A team member renamed or added in the prototype keeps their photo under the new name; a photo uploaded on their
 // page (run 15) takes over from the one they came with.
 export function registerPerson(member: TeamMemberType) {
 	const photo = member.photo || photoOfMember(member);
 	const person = PEOPLE.find((item) => item.name === member.name);
-	if (person) person.photo = photo;
-	else PEOPLE.push({ name: member.name, photo });
+	if (person) Object.assign(person, { photo, seen: member.seen });
+	else PEOPLE.push({ name: member.name, photo, seen: member.seen });
 	touch();
 }
 
@@ -215,7 +237,6 @@ export function routeOf(project: ProjectType, facilities: { name: string; city: 
 export const PROJECTS: ProjectType[] = [
 	{
 		id: 'p1',
-		number: 'TC-24031',
 		title: 'Terminal Intake Review',
 		subtitle: 'Receiving inspection underway',
 		type: 'Warehousing',
@@ -225,30 +246,28 @@ export const PROJECTS: ProjectType[] = [
 			['End', 'Truck 12', 'Northside Depot']
 		),
 		location: 'Houston, TX',
-		dates: 'Tue, 12 May 2026',
+		created: '2026-05-12T08:00',
+		updated: '2026-05-12T13:48',
 		status: 'In Progress',
 		team: ['Collin Tippit', 'Alfredo Llanes', 'Aaron Davis'],
-		updated: '12 min ago',
 		progress: 64
 	},
 	{
 		id: 'p2',
-		number: 'TC-24030',
 		title: 'Harbor Readiness Survey',
 		subtitle: 'Pre-arrival condition check',
 		type: 'Vessel Condition',
 		client: 'KOGA',
 		stops: trip(['End', 'MV Silver Tern', 'Eastgate Terminal 4']),
 		location: 'Lake Charles, LA',
-		dates: 'Mon, 11 May 2026',
+		created: '2026-05-11T08:00',
+		updated: '2026-05-12T13:00',
 		status: 'Review',
 		team: ['Capt. Jim DeStefano', 'Tynequa Shaw', 'Aaron Davis'],
-		updated: '1 h ago',
 		progress: 88
 	},
 	{
 		id: 'p3',
-		number: 'TC-24029',
 		title: 'Outbound Cargo Condition Report',
 		subtitle: 'Bagged rice loading',
 		type: 'Cargo',
@@ -258,45 +277,42 @@ export const PROJECTS: ProjectType[] = [
 			['End', 'MV Lantern Bay', 'Bulk Dock 8']
 		),
 		location: 'Corpus Christi, TX',
-		dates: 'Fri, 8 May 2026',
+		created: '2026-05-08T08:00',
+		updated: '2026-05-11T16:00',
 		status: 'Sent',
 		team: ['Gustavo Ruiz', 'Ian Derda', 'Natzul Reyes Flores'],
-		updated: 'Yesterday',
 		progress: 96
 	},
 	{
 		id: 'p4',
-		number: 'TC-24028',
 		title: 'Open Starter Project',
 		subtitle: 'Warehouse stock count',
 		type: 'Warehousing',
 		client: 'UTC Overseas',
 		stops: trip(['Start', 'Truck 12', 'Northside Depot']),
 		location: 'Pasadena, TX',
-		dates: 'Thu, 7 May 2026',
+		created: '2026-05-07T08:00',
+		updated: '2026-05-11T10:00',
 		status: 'Draft',
 		team: ['Ian Derda', 'Alfredo Llanes'],
-		updated: 'Yesterday',
 		progress: 18
 	},
 	{
 		id: 'p5',
-		number: 'TC-24027',
 		title: 'Arrival Draft Survey',
 		subtitle: 'Draft and displacement',
 		type: 'Draft Survey',
 		client: 'US Ocean',
 		stops: trip(['End', 'MV Coral Dawn', 'Turning Basin Wharf 3']),
 		location: 'Houston, TX',
-		dates: 'Tue, 5 May 2026',
+		created: '2026-05-05T08:00',
+		updated: '2026-05-10T09:00',
 		status: 'Revision',
 		team: ['Natzul Reyes Flores', 'Collin Tippit'],
-		updated: '2 days ago',
 		progress: 92
 	},
 	{
 		id: 'p6',
-		number: 'TC-24026',
 		title: 'Transformer Lift',
 		subtitle: 'Heavy lift supervision',
 		type: 'Cargo',
@@ -306,15 +322,14 @@ export const PROJECTS: ProjectType[] = [
 			['End', 'Lowboy trailer 3', 'Southpoint Terminal']
 		),
 		location: 'Beaumont, TX',
-		dates: 'Mon, 4 May 2026',
+		created: '2026-05-04T08:00',
+		updated: '2026-05-09T09:00',
 		status: 'Ready',
 		team: ['Tynequa Shaw', 'Gustavo Ruiz'],
-		updated: '3 days ago',
 		progress: 100
 	},
 	{
 		id: 'p7',
-		number: 'TC-24025',
 		title: 'Post-Discharge Review',
 		subtitle: 'Blade discharge, all clear',
 		type: 'Cargo',
@@ -325,25 +340,24 @@ export const PROJECTS: ProjectType[] = [
 			['End', 'Lowboy trailer 3', 'Northside Depot']
 		),
 		location: 'Port Arthur, TX',
-		dates: 'Wed, 29 Apr 2026',
+		created: '2026-04-29T08:00',
+		updated: '2026-05-05T09:00',
 		status: 'Complete',
 		team: ['Alfredo Llanes', 'Capt. Jim DeStefano', 'Aaron Davis'],
-		updated: 'Last week',
 		progress: 100
 	},
 	{
 		id: 'p8',
-		number: 'TC-24024',
 		title: 'Final Cargo Survey Record',
 		subtitle: 'Closed survey archive',
 		type: 'Cargo',
 		client: 'Zurich North America',
 		stops: trip(['End', 'Train 3302', 'Bayside Rail Yard']),
 		location: 'Mobile, AL',
-		dates: 'Mon, 13 Apr 2026',
+		created: '2026-04-13T08:00',
+		updated: '2026-04-20T09:00',
 		status: 'Archived',
 		team: ['Aaron Davis', 'Alfredo Llanes', 'Tynequa Shaw', 'Ian Derda'],
-		updated: 'Last month',
 		progress: 100
 	}
 ];
@@ -364,19 +378,21 @@ export type ClientType = {
 	website?: string;
 	// The picture behind its Page.
 	photo?: string;
-	// Who the report is for at the customer: the report page prints their name and email.
-	contact?: ContactType;
+	// The people there (run 16: several). A project picks the one its report is for; the report page prints their
+	// name, title and email.
+	contacts?: ContactType[];
+	created?: string;
+	updated?: string;
 };
 
 export type ContactType = {
+	id: string;
 	name: string;
 	title: string;
 	email: string;
 	phone: string;
 	photo: string;
 };
-
-export const NO_CONTACT: ContactType = { name: '', title: '', email: '', phone: '', photo: '' };
 
 const ICONS = import.meta.glob<string>('./clients/*.{png,jpg,ico}', {
 	eager: true,
@@ -437,34 +453,57 @@ export function clientOf(name: string): ClientType {
 	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', logo: '', city: '', code };
 }
 
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// "Tue, 12 May 2026" as 2026-05-12; "Today" (a new project) as today.
-function isoOf(dates: string) {
-	const match = dates.match(/(\d{1,2}) (\w{3}) (\d{4})/);
-	if (!match) return new Date().toISOString().slice(0, 10);
-	const month = String(MONTHS.indexOf(match[2]) + 1).padStart(2, '0');
-	return `${match[3]}-${month}-${match[1].padStart(2, '0')}`;
+// Now, as the stamp a record keeps: "2026-11-10T16:20".
+export function nowIso() {
+	const now = new Date();
+	return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
-// The document ID the client picked (format 3, 2026-10-25): client code, date, J = which of that client's jobs that
-// day, FR = final report, R = revision. SGL-2026-02-03-J01-FR01-R01.
+// "2026-05-12T08:00" or "2026-05-12" as "Tue, 12 May 2026".
+export function dayOf(iso: string) {
+	if (!iso) return '';
+	const date = new Date(`${iso.slice(0, 10)}T00:00`);
+	return `${DAYS[date.getDay()]}, ${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+// How long ago a stamp was: "Just now", "12 min ago", "3 h ago", "Yesterday", "5 d ago", "2 mo ago", "1 y ago".
+export function agoOf(iso: string) {
+	if (!iso) return '';
+	const minutes = Math.max(0, (Date.now() - new Date(iso).getTime()) / 60000);
+	if (minutes < 1) return 'Just now';
+	if (minutes < 60) return `${Math.floor(minutes)} min ago`;
+	const hours = minutes / 60;
+	if (hours < 24) return `${Math.floor(hours)} h ago`;
+	const days = hours / 24;
+	if (days < 2) return 'Yesterday';
+	if (days < 30) return `${Math.floor(days)} d ago`;
+	if (days < 365) return `${Math.floor(days / 30)} mo ago`;
+	return `${Math.floor(days / 365)} y ago`;
+}
+
+// The project number (the glossary's): the customer's short code, the day the project was made, and J with which
+// of that customer's jobs that day it is. CVA-2026-05-12-J01. Nothing is stored: it follows the customer's code.
+export function numberOf(project: ProjectType, projects: ProjectType[], client = project.client) {
+	const date = project.created.slice(0, 10);
+	const sameDay = projects.filter(
+		(other) => other.client === project.client && other.created.slice(0, 10) === date
+	);
+	const job = String(Math.max(1, sameDay.indexOf(project) + 1)).padStart(2, '0');
+	return `${clientOf(client).code}-${date}-J${job}`;
+}
+
+// The document ID the client picked (format 3, 2026-10-25): the project number, FR = final report, R = revision.
+// SGL-2026-02-03-J01-FR01-R01.
 export function documentIdOf(
 	project: ProjectType,
 	projects: ProjectType[],
 	client = project.client
 ) {
-	const date = isoOf(project.dates);
-	const sameDay = projects.filter(
-		(other) => other.client === project.client && isoOf(other.dates) === date
-	);
-	const job = String(Math.max(1, sameDay.indexOf(project) + 1)).padStart(2, '0');
-	return `${clientOf(client).code}-${date}-J${job}-FR01-R01`;
+	return `${numberOf(project, projects, client)}-FR01-R01`;
 }
-
-export const ROLES: Record<string, string> = Object.fromEntries(
-	TEAM.map((member) => [member.name, ROLE_LABELS[member.role]])
-);
 
 export type TransportTypeType = 'Sea' | 'Air' | 'Rail' | 'Road';
 // Where a stop sits on the trip: Start, a Stop on the way, or End. Words everyone reads the same way (Justin's run 8
@@ -542,6 +581,8 @@ export type TransportType = {
 	details?: Record<string, string>;
 	// Its own picture, uploaded on its page (run 15); without one its transport mode's stock picture shows.
 	photo?: string;
+	created?: string;
+	updated?: string;
 };
 
 export const TRANSPORTS: TransportType[] = (
@@ -581,6 +622,8 @@ export type FacilityType = {
 	contact?: string;
 	phone?: string;
 	email?: string;
+	created?: string;
+	updated?: string;
 };
 
 export const FACILITIES: FacilityType[] = (
@@ -614,13 +657,14 @@ export const PAGE_ICONS: Record<DatasetType, string> = {
 	facilities: 'icon-[mdi--domain]'
 };
 
-// Each page's name. Transport is "Transport Mode" since run 12 (the Trident team's word, 2026-11-07; capital M from
+// Each page's name, and what one of its records is called. Run 16 (Justin, 2026-11-10): one of the Team is a "Team",
+// one of Transport Mode a "Transport Mode", always with both words capitalised. Transport is "Transport Mode" since run 12 (the Trident team's word, 2026-11-07; capital M from
 // run 13; Justin may want one word later). What a page sorts by (its labels) is in records.data.ts.
 export const DATASETS: Record<DatasetType, { label: string; one: string; icon: string }> = {
 	projects: { label: 'Projects', one: 'Project', icon: PAGE_ICONS.projects },
 	customers: { label: 'Customers', one: 'Customer', icon: PAGE_ICONS.customers },
-	team: { label: 'Team', one: 'Team member', icon: PAGE_ICONS.team },
-	transport: { label: 'Transport Mode', one: 'Transport', icon: PAGE_ICONS.transport },
+	team: { label: 'Team', one: 'Team', icon: PAGE_ICONS.team },
+	transport: { label: 'Transport Mode', one: 'Transport Mode', icon: PAGE_ICONS.transport },
 	facilities: { label: 'Facilities', one: 'Facility', icon: PAGE_ICONS.facilities }
 };
 
@@ -792,17 +836,7 @@ export function stopOf(
 // The project's own panel first, then the app prototype's Items, Time Log and photo panels. Filled in as far as
 // `progress` says, so each project opens at its own percent.
 export function createPanels(project: ProjectType): PanelType[] {
-	const base = {
-		isEnabled: true,
-		isDraggable: false,
-		fields: [],
-		owner: '',
-		assigned: [],
-		days: [],
-		groups: [],
-		stops: [],
-		items: []
-	};
+	const base = BASE;
 	const panels: PanelType[] = [
 		projectPanel(project, base),
 		{
@@ -891,22 +925,15 @@ export function createPanels(project: ProjectType): PanelType[] {
 	];
 
 	// Blank the later inputs, the less done the more, so each project opens at its own percent (LookState then lists
-	// that percent). Title, organization and customer always stay; items empty from the last row up; the stops go last,
-	// from the last one back.
-	const [details, trip, cargo] = panels;
-	const kept = ['Title', 'Organization', 'Customer'];
+	// that percent). The Project panel is never blanked: it is the project itself (run 16), so what its page and
+	// rows show is what Edit holds. Items empty from the last row up; the stops go last, from the last one back.
+	const [, trip, cargo] = panels;
 	let left = Math.round(((100 - project.progress) / 100) * 12);
 	for (let round = 0; left > 0 && round < 12; round += 1) {
 		const row = cargo.items.findLast((item) => item.description);
-		if (row) {
-			row.quantity = row.description = '';
-			left -= 1;
-		}
-		const filled = details.fields.filter((item) => item.value && !kept.includes(item.label));
-		if (left > 0 && filled.length > 0) {
-			filled[filled.length - 1].value = '';
-			left -= 1;
-		}
+		if (!row) break;
+		row.quantity = row.description = '';
+		left -= 1;
 	}
 	for (const stop of trip.stops.toReversed())
 		for (const part of ['facility', 'name', 'mode', 'type'] as const)
@@ -919,10 +946,7 @@ export function createPanels(project: ProjectType): PanelType[] {
 		panels.find((item) => item.id === 'inspection')!.groups[0].photos = [];
 		panels.find((item) => item.id === 'discharge')!.isEnabled = false;
 	}
-	if (project.progress < 25) {
-		details.assigned = [];
-		panels.find((item) => item.id === 'timelog')!.days = [];
-	}
+	if (project.progress < 25) panels.find((item) => item.id === 'timelog')!.days = [];
 	return panels;
 }
 
@@ -941,18 +965,83 @@ function projectPanel(
 		control: 'locked',
 		owner: project.team[0] ?? '',
 		assigned: project.team.slice(1),
+		// Run 16 order (Justin, 2026-11-10): Title, Subtitle, Project Type, then who it is for and where. The
+		// Organization and Customer lists are read live from the organization and the Customers page
+		// (panel-body.svelte), so `options` here is only what they held when the project was made.
 		fields: [
 			field('Title', project.title),
-			field('Organization', ORGANIZATION.name, 'select', {
-				options: [ORGANIZATION.name],
-				isAddable: true
-			}),
+			field('Subtitle', project.subtitle),
+			field('Project Type', project.type, 'select', { options: PROJECT_TYPES }),
+			field('Organization', ORGANIZATION.name, 'select', { options: [ORGANIZATION.name] }),
 			field('Customer', project.client, 'select', { options: [...CLIENTS], isAddable: true }),
-			field('Project type', project.type, 'select', { options: PROJECT_TYPES }),
-			field('Location', project.location),
-			field('Subtitle', project.subtitle)
+			field('Location', project.location)
 		]
 	} satisfies PanelType;
+}
+
+const BASE = {
+	isEnabled: true,
+	isDraggable: false,
+	fields: [],
+	owner: '',
+	assigned: [],
+	days: [],
+	groups: [],
+	stops: [],
+	items: []
+};
+
+// A new project before it is made: the same Project panel a project has, empty, with the signed-in person as its
+// owner. The + sheet fills this in and `LookState.create` makes the project from it (run 16).
+export function draftPanel(organization: string, owner: string): PanelType {
+	const panel = projectPanel(
+		{ title: '', subtitle: '', type: '', client: '', location: '', team: [owner] } as ProjectType,
+		BASE
+	);
+	for (const item of panel.fields)
+		if (item.label === 'Organization')
+			Object.assign(item, { value: organization, options: [organization] });
+	return panel;
+}
+
+// An empty record for a page, with every field its form asks for.
+export function draftOf(page: Exclude<DatasetType, 'projects'>) {
+	if (page === 'customers')
+		return {
+			name: '',
+			kind: '',
+			icon: '',
+			logo: '',
+			city: '',
+			code: '',
+			contacts: []
+		} satisfies ClientType as ClientType;
+	if (page === 'team')
+		return {
+			rank: 9,
+			name: '',
+			title: '',
+			label: '',
+			role: 'team',
+			phone: '',
+			email: '',
+			location: '',
+			href: '',
+			profileURL: '',
+			slug: ''
+		} satisfies TeamMemberType as TeamMemberType;
+	if (page === 'transport')
+		return {
+			name: '',
+			type: 'Sea',
+			mode: 'Vessel',
+			source: 'manual'
+		} satisfies TransportType as TransportType;
+	return { name: '', kind: 'Port', city: '' } satisfies FacilityType as FacilityType;
+}
+
+export function newContact(): ContactType {
+	return { id: createId('contact'), name: '', title: '', email: '', phone: '', photo: '' };
 }
 
 export function newPanel(count: number): PanelType {
@@ -985,16 +1074,6 @@ export const NAV = [
 	}
 ];
 
-// Recent activity, the same in the bell and the menu (run 12 note 14): anything new or changed, of any page.
+// Recent activity, the same in the bell and the menu (run 12 note 14): anything new or changed, of any page. Since
+// run 16 it is read from the projects' and records' own `updated` stamps (records.data.ts `recentOf`).
 export type RecentType = { page: DatasetType; name: string; note: string; id?: string };
-
-export const RECENT: RecentType[] = [
-	{ page: 'projects', name: 'Terminal Intake Review', note: 'Edited · 12 min ago', id: 'p1' },
-	{ page: 'team', name: 'Natzul Reyes Flores', note: 'Joined the team · 40 min ago' },
-	{ page: 'customers', name: 'KOGA', note: 'New customer · 1 h ago' },
-	{ page: 'projects', name: 'Harbor Readiness Survey', note: 'Sent to review · 1 h ago', id: 'p2' },
-	{ page: 'transport', name: 'Air Freighter 210', note: 'New transport · 3 h ago' },
-	{ page: 'facilities', name: 'North Air Cargo Center', note: 'New facility · Yesterday' },
-	{ page: 'projects', name: 'Outbound Cargo Condition Report', note: 'Sent · Yesterday', id: 'p3' },
-	{ page: 'customers', name: 'dship Carriers', note: 'New contact · 3 days ago' }
-];

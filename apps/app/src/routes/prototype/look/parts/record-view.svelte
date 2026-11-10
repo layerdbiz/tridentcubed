@@ -62,22 +62,29 @@
 					? filled([phoneLine(record.member.phone), emailLine(record.member.email)])
 					: []
 	);
-	// The person to reach there: a customer's contact, or a facility's.
-	const person = $derived(
-		customer?.contact
-			? {
-					name: customer.contact.name,
-					title: customer.contact.title,
-					photo: customer.contact.photo,
-					lines: filled([emailLine(customer.contact.email), phoneLine(customer.contact.phone)])
-				}
-			: {
-					name: facility?.contact ?? '',
-					title: '',
-					photo: '',
-					lines: facility ? filled([phoneLine(facility.phone), emailLine(facility.email)]) : []
-				}
+	// The people to reach there: a customer's contacts (any number, run 16), or a facility's one.
+	const everyone = $derived(
+		customer
+			? (customer.contacts ?? []).map((contact) => ({
+					id: contact.id,
+					name: contact.name,
+					title: contact.title,
+					photo: contact.photo,
+					lines: filled([emailLine(contact.email), phoneLine(contact.phone)])
+				}))
+			: facility
+				? [
+						{
+							id: 'facility',
+							name: facility.contact ?? '',
+							title: '',
+							photo: '',
+							lines: filled([phoneLine(facility.phone), emailLine(facility.email)])
+						}
+					]
+				: []
 	);
+	const people = $derived(everyone.filter((person) => person.name || person.lines.length));
 </script>
 
 {#snippet row(line: LineType)}
@@ -117,34 +124,38 @@
 		</section>
 	{/if}
 
-	{#if person.name || person.lines.length}
+	{#if people.length}
 		<section>
-			<h3 class={HEADING}>Contact</h3>
-			<div class="divide-y divide-slate-100 overflow-hidden {CARD}">
-				{#if person.name}
-					<div class="flex items-center gap-3 px-4 py-3">
-						{#if person.photo}
-							<img
-								src={person.photo}
-								alt=""
-								class="size-10 shrink-0 rounded-full object-cover"
-							/>
-						{:else}
-							<span
-								class="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500"
-								><span class="icon-[mdi--account] size-6"></span></span
-							>
-						{/if}
-						<span class="min-w-0">
-							<span class="block truncate text-sm font-semibold text-slate-900">{person.name}</span>
-							{#if person.title}<span class="block truncate text-xs text-slate-500"
-									>{person.title}</span
-								>{/if}
-						</span>
-					</div>
-				{/if}
-				{#each person.lines as line (line.icon)}{@render row(line)}{/each}
-			</div>
+			<h3 class={HEADING}>{people.length > 1 ? 'Contacts' : 'Contact'}</h3>
+			{#each people as person (person.id)}
+				<div class="mb-2 divide-y divide-slate-100 overflow-hidden {CARD}">
+					{#if person.name}
+						<div class="flex items-center gap-3 px-4 py-3">
+							{#if person.photo}
+								<img
+									src={person.photo}
+									alt=""
+									class="size-10 shrink-0 rounded-full object-cover"
+								/>
+							{:else}
+								<span
+									class="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500"
+									><span class="icon-[mdi--account] size-6"></span></span
+								>
+							{/if}
+							<span class="min-w-0">
+								<span class="block truncate text-sm font-semibold text-slate-900"
+									>{person.name}</span
+								>
+								{#if person.title}<span class="block truncate text-xs text-slate-500"
+										>{person.title}</span
+									>{/if}
+							</span>
+						</div>
+					{/if}
+					{#each person.lines as line (line.icon)}{@render row(line)}{/each}
+				</div>
+			{/each}
 		</section>
 	{/if}
 
@@ -200,7 +211,7 @@
 			</div>
 		{:else}
 			<p class="px-4 py-6 text-center text-sm text-slate-400 {CARD}">
-				No projects with this {DATASETS[record.page].one.toLowerCase()} yet.
+				No projects with this {DATASETS[record.page].one} yet.
 			</p>
 		{/if}
 	</section>

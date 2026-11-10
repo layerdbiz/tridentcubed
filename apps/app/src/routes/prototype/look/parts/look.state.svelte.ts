@@ -7,16 +7,22 @@
 // facility (`adding`), and the dashboard's pages slide in from the side they sit on (`slide`). Run 12 (2026-11-07): a
 // customer, team member, transport or facility opens its own screen (`record`, tabs Page and Edit), where it is edited
 // or deleted; a rename follows it into every project that uses it. Run 15 (2026-11-10): the organization's own details
-// and report wording live here too (`organization`), edited on the Settings screen.
+// and report wording live here too (`organization`), edited on the Settings screen. Run 16 (2026-11-10, "no dummy
+// data"): the Project panel is the project (an effect copies its title, subtitle, type, customer, location and team
+// onto the project's row as they change, so its Page, rows and cards follow Edit); every project and record keeps
+// when it was made and last changed; one `add` and one `patch` serve the + sheet and every Edit tab.
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	clientOf as clientOfName,
 	CLIENTS,
 	createId,
 	createPanels,
+	DATASETS,
 	FACILITIES,
 	itemOf,
+	ME,
 	newPanel,
+	nowIso,
 	ORGANIZATION,
 	PAGES,
 	PROJECTS,
@@ -35,6 +41,8 @@ import {
 	type TransportType
 } from './look.data';
 import type { PageType } from './records.data';
+
+export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import { TEAM, type TeamMemberType } from './team.data';
 
 export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings';
@@ -113,7 +121,7 @@ export function percentOf(panels: PanelType[]) {
 // Run 9 (Justin's note 14, edits that "sometimes don't stay"): a phone browser reloads a tab it kept in the background,
 // and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
 // in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
-const KEEP = 'trident-look-161-run-12';
+const KEEP = 'trident-look-161-run-16';
 type KeptType = {
 	projects: ProjectType[];
 	workspaces: Record<string, PanelType[]>;
@@ -204,12 +212,18 @@ export class LookState {
 			this.members = kept.members;
 			if (kept.organization) this.organization = kept.organization;
 			for (const customer of kept.added) registerCustomer(customer);
-			for (const member of kept.members) registerPerson(member);
 		} else
 			for (const project of this.projects) {
 				this.workspaces[project.id] = createPanels(project);
 				project.progress = percentOf(this.workspaces[project.id]);
 			}
+		// Whoever is signed in is in the app now: their dot is green, and it is the only one that can be until there
+		// are real sign-ins.
+		const me = this.members.find((member) => member.name === ME);
+		if (me) me.seen = nowIso();
+		for (const member of this.members) registerPerson(member);
+		// The Project panel is the project: its row follows the panel as it is typed in.
+		$effect(() => this.#syncProject());
 		$effect(() => {
 			const text = JSON.stringify({
 				projects: this.projects,
@@ -297,13 +311,6 @@ export class LookState {
 		this.flash();
 	}
 
-	// A team member's uploaded photo shows wherever their face does.
-	setPhoto(member: TeamMemberType, photo: string) {
-		member.photo = photo;
-		registerPerson(member);
-		this.flash();
-	}
-
 	home() {
 		if (this.screen === 'workspace') this.#keepProject();
 		this.screen = 'dashboard';
@@ -314,14 +321,16 @@ export class LookState {
 	markSent(project: ProjectType) {
 		if (project.status !== 'Sent') project.before = project.status;
 		project.status = 'Sent';
-		this.saved();
+		project.updated = nowIso();
+		this.flash();
 		this.say(`"${project.title}" marked sent. It can't be edited now.`);
 	}
 
 	unsend(project: ProjectType) {
 		project.status = project.before && project.before !== 'Sent' ? project.before : 'Review';
 		project.before = undefined;
-		this.saved();
+		project.updated = nowIso();
+		this.flash();
 		this.say(`"${project.title}" is back to ${project.status}`);
 	}
 
@@ -339,39 +348,59 @@ export class LookState {
 			}));
 	}
 
-	create(title: string, client: string) {
+	// What the Project panel holds, copied onto the project's row: the one place its Page, rows, cards, map pin and
+	// number read from.
+	#syncProject() {
+		const panel = this.panels.find((item) => item.kind === 'project');
+		const project = this.project;
+		if (!panel || !project) return;
+		const value = (label: string) =>
+			panel.fields.find((field) => field.label === label)?.value ?? '';
+		const next = {
+			title: value('Title').trim() || 'Untitled project',
+			subtitle: value('Subtitle'),
+			type: value('Project Type'),
+			client: value('Customer'),
+			location: value('Location')
+		};
+		for (const [key, text] of Object.entries(next) as [keyof typeof next, string][])
+			if (project[key] !== text) project[key] = text;
+		const team = [panel.owner, ...panel.assigned].filter(Boolean);
+		if (team.join('|') !== project.team.join('|')) project.team = team;
+	}
+
+	// A new project, from the Project panel the + sheet filled in: that panel becomes the project's own.
+	create(draft: PanelType) {
 		this.adding = undefined;
 		const id = createId('p');
+		const now = nowIso();
+		const value = (label: string) =>
+			draft.fields.find((field) => field.label === label)?.value ?? '';
 		this.projects.unshift({
 			id,
-			number: `TC-${24032 + this.projects.length}`,
-			title: title.trim() || 'Untitled project',
-			subtitle: '',
-			type: 'Cargo',
-			client,
+			title: value('Title').trim() || 'Untitled project',
+			subtitle: value('Subtitle'),
+			type: value('Project Type'),
+			client: value('Customer'),
 			stops: [],
-			location: 'Houston, TX',
-			dates: 'Today',
+			location: value('Location'),
+			created: now,
+			updated: now,
 			status: 'Draft',
-			team: ['Collin Tippit'],
-			updated: 'Just now',
+			team: [draft.owner, ...draft.assigned].filter(Boolean),
 			progress: 0
 		});
-		this.workspaces[id] = createPanels(this.projects[0]).map((panel) => ({
-			...panel,
-			fields: panel.fields.map((field) =>
-				field.label === 'Organization'
-					? { ...field, value: this.organization.name, options: [this.organization.name] }
-					: ['Title', 'Customer'].includes(field.label)
-						? field
-						: { ...field, value: '' }
-			),
-			assigned: [],
-			days: [],
-			groups: [],
-			stops: panel.kind === 'transport' ? [stopOf()] : [],
-			items: panel.kind === 'items' ? [itemOf()] : []
-		}));
+		this.workspaces[id] = createPanels(this.projects[0]).map((panel) =>
+			panel.kind === 'project'
+				? { ...($state.snapshot(draft) as PanelType), id: panel.id }
+				: {
+						...panel,
+						days: [],
+						groups: [],
+						stops: panel.kind === 'transport' ? [stopOf()] : [],
+						items: panel.kind === 'items' ? [itemOf()] : []
+					}
+		);
 		this.open(id, 'edit');
 	}
 
@@ -388,7 +417,7 @@ export class LookState {
 
 	// Called by every input, so the "Saved" badge shows auto-save at work.
 	saved() {
-		this.project.updated = 'Just now';
+		this.project.updated = nowIso();
 		this.flash();
 	}
 
@@ -417,25 +446,46 @@ export class LookState {
 		return names.includes(name);
 	}
 
-	// "Add new" from the Project panel or the +: the lists grow, as their dashboard pages show.
-	addTransport(transport: Omit<TransportType, 'source'>) {
-		if (this.has('transport', transport.name))
-			return this.say(`${transport.name} is already there`);
-		this.transports.push({ ...transport, source: 'manual' });
-		this.say(`${transport.name} added to Transport Mode`);
+	// One way in for a new customer, team, transport mode or facility (run 16): the + sheet and the panels' "Add new"
+	// both hand over a filled-in draft (look.data.ts draftOf). It is stamped with now and joins its page's list.
+	add(page: PageType, draft: RecordDraftType) {
+		const name = draft.name.trim();
+		if (!name) return false;
+		if (this.has(page, name)) {
+			this.say(`${name} is already there`);
+			return false;
+		}
+		const now = nowIso();
+		const item = { ...$state.snapshot(draft), name, created: now, updated: now };
+		if (page === 'customers') {
+			const customer = item as ClientType;
+			this.added.push(
+				registerCustomer({ ...customer, code: customer.code || clientOfName(name).code })
+			);
+			this.customers.push(name);
+		} else if (page === 'team') {
+			this.members.push(item as TeamMemberType);
+			registerPerson(item as TeamMemberType);
+		} else if (page === 'transport') this.transports.push(item as TransportType);
+		else this.facilities.push(item as FacilityType);
+		this.say(`${name} added to ${DATASETS[page].label}`);
+		return true;
 	}
 
-	addFacility(facility: FacilityType) {
-		if (this.has('facilities', facility.name)) return this.say(`${facility.name} is already there`);
-		this.facilities.push(facility);
-		this.say(`${facility.name} added to Facilities`);
-	}
-
-	addCustomer(name: string, city = '', kind = '') {
-		if (this.has('customers', name)) return this.say(`${name} is already there`);
-		this.setCustomer(name, { city, kind });
-		this.customers.push(name);
-		this.say(`${name} added to Customers`);
+	// One way to change a record from its Edit tab: the change is kept, stamped, and shows wherever the record does.
+	patch(page: PageType, key: string, change: Record<string, unknown>) {
+		const stamped = { ...change, updated: nowIso() };
+		if (page === 'customers') return this.setCustomer(key, stamped as Partial<ClientType>);
+		const item =
+			page === 'team'
+				? this.members.find((member) => member.name === key)
+				: page === 'transport'
+					? this.transports.find((transport) => transport.name === key)
+					: this.facilities.find((facility) => facility.name === key);
+		if (!item) return;
+		Object.assign(item, stamped);
+		if (page === 'team') registerPerson(item as TeamMemberType);
+		this.flash();
 	}
 
 	// A customer's types or city, edited on its page: kept here with the rest of its card.
@@ -503,7 +553,7 @@ export class LookState {
 				}
 			}
 		if (this.record?.page === page && this.record.key === from) this.record = { page, key: name };
-		this.flash();
+		this.patch(page, name, {});
 		return true;
 	}
 
@@ -517,22 +567,6 @@ export class LookState {
 			this.facilities = this.facilities.filter((facility) => facility.name !== key);
 		if (this.screen === 'record' && this.record?.key === key) this.home();
 		this.say(`${key} moved to Trash`);
-	}
-
-	addMember(member: Pick<TeamMemberType, 'name' | 'email' | 'role'>) {
-		if (this.has('team', member.name)) return this.say(`${member.name} is already there`);
-		this.members.push({
-			...member,
-			rank: 9,
-			title: '',
-			label: '',
-			phone: '',
-			location: '',
-			href: '',
-			profileURL: '',
-			slug: ''
-		});
-		this.say(`${member.name} added to the Team`);
 	}
 
 	addPanel() {

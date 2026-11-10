@@ -1,78 +1,74 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 11: what the floating bar's blue + opens (Justin, 2026-10-26 19:22): one sheet from the
-	// bottom to add a project, customer, team member, transport or facility. It opens on the page being looked at; the
-	// chips at its top switch what is added. A new project opens straight away, as New project did; anything else
-	// lands in its page's list, and that page shows. Run 12: it then opens on its own page, on Edit, to fill in.
+	// bottom to add a project, customer, team, transport mode or facility. It opens on the page being looked at; the
+	// chips at its top switch what is added. Run 16 (Justin, 2026-11-10): the sheet asks for everything Edit does,
+	// through the same components. A new project is the Project panel itself (panel-body.svelte, over a draft); the
+	// others are record-fields.svelte over an empty record. Nothing exists until Create or Add; then a project
+	// opens on Edit and anything else on its Page.
 	import BottomSheet from './bottom-sheet.svelte';
 	import {
-		FACILITY_ICONS,
+		DATASETS,
+		draftOf,
+		draftPanel,
+		ME,
 		PAGE_ICONS,
 		PAGES,
-		TRANSPORT_TYPES,
-		type DatasetType,
-		type FacilityKindType,
-		type TransportTypeType
+		type DatasetType
 	} from './look.data';
-	import type { LookState } from './look.state.svelte';
-	import type { TeamMemberType } from './team.data';
+	import type { LookState, RecordDraftType } from './look.state.svelte';
+	import PanelBody from './panel-body.svelte';
+	import RecordFields from './record-fields.svelte';
+	import type { PageType } from './records.data';
 
 	let { look }: { look: LookState } = $props();
 
-	const KINDS: Record<DatasetType, string> = {
-		projects: 'Project',
-		customers: 'Customer',
-		team: 'Team member',
-		transport: 'Transport',
-		facilities: 'Facility'
-	};
 	const HINTS: Record<DatasetType, string> = {
-		projects: "You'll be the Owner. Add the rest inside.",
-		customers: 'A company Trident Cubed works for.',
+		projects: 'The same Project panel it opens with. The rest is added inside.',
+		customers: 'A company the organization works for.',
 		team: 'They get an email to sign in.',
 		transport: 'A ship, barge, plane, train or truck, picked in any project.',
 		facilities: 'A port, airport, rail yard or depot, picked in any project.'
 	};
-	const ROLES: { id: TeamMemberType['role']; label: string }[] = [
-		{ id: 'team', label: 'Team' },
-		{ id: 'manager', label: 'Manager' },
-		{ id: 'admin', label: 'Admin' }
-	];
-	const FIELD =
-		'w-full rounded-xl border border-slate-200 px-3 py-2.5 outline-none focus:border-primary';
-	const LABEL = 'mb-1 block text-xs font-medium text-slate-500';
+
+	function fresh(): Record<PageType, RecordDraftType> {
+		return {
+			customers: draftOf('customers'),
+			team: draftOf('team'),
+			transport: draftOf('transport'),
+			facilities: draftOf('facilities')
+		};
+	}
 
 	let kind = $derived<DatasetType>(look.adding ?? 'projects');
-	let name = $state('');
-	let city = $state('');
-	let email = $state('');
-	let customer = $derived(look.customers[0]);
-	let role = $state<TeamMemberType['role']>('team');
-	let type = $state<TransportTypeType>('Sea');
-	let mode = $derived(TRANSPORT_TYPES[type].modes[0]);
-	let facility = $state<FacilityKindType>('Port');
+	let drafts = $state(fresh());
+	// svelte-ignore state_referenced_locally
+	let panel = $state(draftPanel(look.organization.name, ME));
+
+	// Every time the sheet opens it starts empty, with the organization as it is named now.
+	let wasOpen = false;
+	$effect(() => {
+		const isOpen = Boolean(look.adding);
+		if (isOpen && !wasOpen) {
+			drafts = fresh();
+			panel = draftPanel(look.organization.name, ME);
+		}
+		wasOpen = isOpen;
+	});
+
+	const canAdd = $derived(kind === 'projects' || Boolean(drafts[kind].name.trim()));
 
 	function close() {
 		look.adding = undefined;
-		name = city = email = '';
 	}
 
 	function add() {
-		const title = name.trim();
-		if (kind === 'projects') {
-			look.create(title, customer);
-			name = '';
-			return;
-		}
-		if (!title) return;
-		if (look.has(kind, title)) return look.say(`${title} is already there`);
-		if (kind === 'customers') look.addCustomer(title, city.trim());
-		else if (kind === 'team') look.addMember({ name: title, email: email.trim(), role });
-		else if (kind === 'transport') look.addTransport({ name: title, type, mode });
-		else look.addFacility({ name: title, kind: facility, city: city.trim() });
+		if (kind === 'projects') return look.create(panel);
 		const page = kind;
+		const name = drafts[page].name.trim();
+		if (!look.add(page, drafts[page])) return;
 		close();
 		if (look.dataset !== page) look.pick(page);
-		look.openRecord(page, title, 'edit');
+		look.openRecord(page, name, 'page');
 	}
 </script>
 
@@ -99,97 +95,41 @@
 				add();
 			}}
 		>
-			<div class="-mx-5 mb-5 flex gap-2 overflow-x-auto px-5">
+			<div class="-mx-5 mb-4 flex gap-2 overflow-x-auto px-5">
 				{#each PAGES as id (id)}
-					{@render chip(kind === id, KINDS[id], () => (kind = id), PAGE_ICONS[id])}
+					{@render chip(kind === id, DATASETS[id].one, () => (look.adding = id), PAGE_ICONS[id])}
 				{/each}
 			</div>
-			<div class="mb-5 flex items-center gap-3">
-				<span
-					class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
-					><span class="{PAGE_ICONS[kind]} size-6"></span></span
-				>
-				<div>
-					<p class="text-lg font-semibold text-slate-900">New {KINDS[kind].toLowerCase()}</p>
-					<p class="text-xs text-slate-500">{HINTS[kind]}</p>
-				</div>
-			</div>
-			<label class="mb-3 block">
-				<span class={LABEL}>{kind === 'projects' ? 'Title' : 'Name'}</span>
-				<!-- svelte-ignore a11y_autofocus -->
-				<input
-					class={FIELD}
-					placeholder={kind === 'projects'
-						? 'e.g. Steel coil discharge'
-						: kind === 'customers'
-							? 'e.g. Gulf Coast Metals'
-							: kind === 'team'
-								? 'First and last name'
-								: kind === 'transport'
-									? 'e.g. MV Coral Dawn'
-									: 'e.g. Berth 12'}
-					bind:value={name}
-					autofocus
-				/>
-			</label>
-			{#if kind === 'projects'}
-				<label class="mb-3 block">
-					<span class={LABEL}>Customer</span>
-					<select
-						class={FIELD}
-						bind:value={customer}
+			<!-- The whole form scrolls inside the sheet, so a long one never pushes the buttons off the screen. -->
+			<div class="-mx-5 max-h-[62dvh] touch-pan-y overflow-y-auto overscroll-contain px-5 pb-1">
+				<div class="mb-4 flex items-center gap-3">
+					<span
+						class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary"
+						><span class="{PAGE_ICONS[kind]} size-6"></span></span
 					>
-						{#each look.customers as item (item)}<option>{item}</option>{/each}
-					</select>
-				</label>
-			{:else if kind === 'team'}
-				<label class="mb-3 block">
-					<span class={LABEL}>Email</span>
-					<input
-						class={FIELD}
-						type="email"
-						placeholder="name@tridentcubed.com"
-						bind:value={email}
-					/>
-				</label>
-				<p class={LABEL}>Role</p>
-				<div class="mb-3 flex gap-2">
-					{#each ROLES as item (item.id)}
-						{@render chip(role === item.id, item.label, () => (role = item.id))}
-					{/each}
-				</div>
-			{:else if kind === 'transport'}
-				<p class={LABEL}>Transport type</p>
-				<div class="mb-3 flex flex-wrap gap-2">
-					{#each Object.entries(TRANSPORT_TYPES) as [id, item] (id)}
-						{@render chip(type === id, id, () => (type = id as TransportTypeType), item.icon)}
-					{/each}
-				</div>
-				<p class={LABEL}>Transport Mode</p>
-				<div class="mb-3 flex flex-wrap gap-2">
-					{#each TRANSPORT_TYPES[type].modes as item (item)}
-						{@render chip(mode === item, item, () => (mode = item))}
-					{/each}
-				</div>
-			{:else}
-				{#if kind === 'facilities'}
-					<p class={LABEL}>Kind</p>
-					<div class="mb-3 flex flex-wrap gap-2">
-						{#each Object.entries(FACILITY_ICONS) as [id, icon] (id)}
-							{@render chip(facility === id, id, () => (facility = id as FacilityKindType), icon)}
-						{/each}
+					<div>
+						<p class="text-lg font-semibold text-slate-900">New {DATASETS[kind].one}</p>
+						<p class="text-xs text-slate-500">{HINTS[kind]}</p>
 					</div>
-				{/if}
-				<label class="mb-3 block">
-					<span class={LABEL}>City</span>
-					<input
-						class={FIELD}
-						placeholder="e.g. Houston, TX"
-						bind:value={city}
+				</div>
+				{#if kind === 'projects'}
+					<PanelBody
+						{look}
+						{panel}
+						isDraft
 					/>
-				</label>
-			{/if}
-			<div class="mt-6 flex gap-2">
+				{:else}
+					{#key kind}
+						<RecordFields
+							page={kind}
+							value={drafts[kind]}
+							set={(change) => Object.assign(drafts[kind as PageType], change)}
+							isNew
+						/>
+					{/key}
+				{/if}
+			</div>
+			<div class="mt-4 flex gap-2">
 				<button
 					type="button"
 					class="flex-1 rounded-full border border-slate-200 py-2.5 font-medium text-slate-600"
@@ -198,8 +138,7 @@
 				<button
 					type="submit"
 					class="flex-1 rounded-full bg-primary py-2.5 font-medium text-white disabled:opacity-40"
-					disabled={kind !== 'projects' && !name.trim()}
-					>{kind === 'projects' ? 'Create' : 'Add'}</button
+					disabled={!canAdd}>{kind === 'projects' ? 'Create' : 'Add'}</button
 				>
 			</div>
 		</form>

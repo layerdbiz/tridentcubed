@@ -1,6 +1,8 @@
-// PROTOTYPE (#161): made-up history for the dashboard chart. It walks back in time from today's real count, so the
-// right edge of the chart always matches the card and the list (run 12 note 13: one number everywhere). Seeded, so
-// every load looks the same. The pie's slices are the page's labels, the same as the board's columns (note 11).
+// PROTOTYPE (#161): the dashboard chart's numbers. Until run 15 its history was made up, walked back from today's
+// count. Since run 16 (Justin, 2026-11-10: no dummy data) each point is a real count: how many of the page's
+// projects or records had been made by then, from their `created` stamps, so the right edge still matches the card
+// and the list (run 12 note 13: one number everywhere). The pie's slices are the page's labels, the same as the
+// board's columns (note 11).
 import type { DatasetType } from './look.data';
 import type { LookState } from './look.state.svelte';
 import { PLACES } from './map.data';
@@ -55,12 +57,13 @@ export const DEFAULT_CHART: Record<DatasetType, ChartKindType> = {
 	facilities: 'map'
 };
 
-// The prototype's "now": the day the sample projects are dated.
-const NOW = new Date(2026, 4, 12, 14, 0);
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-function labelsOf(range: RangeType) {
+type BucketType = { label: string; end: number };
+
+// The points along a range, oldest first, the last one now: its label and the moment it counts up to.
+function bucketsOf(range: RangeType): BucketType[] {
 	const shape: Record<RangeType, [number, 'hour' | 'day' | 'week' | 'month' | 'quarter']> = {
 		'24h': [24, 'hour'],
 		'7d': [7, 'day'],
@@ -72,84 +75,43 @@ function labelsOf(range: RangeType) {
 		all: [28, 'quarter']
 	};
 	const [count, unit] = shape[range];
-	const labels: string[] = [];
+	const now = new Date();
+	const buckets: BucketType[] = [];
 	for (let back = count - 1; back >= 0; back -= 1) {
-		const date = new Date(NOW);
+		const date = new Date(now);
 		if (unit === 'hour') date.setHours(date.getHours() - back);
 		if (unit === 'day') date.setDate(date.getDate() - back);
 		if (unit === 'week') date.setDate(date.getDate() - back * 7);
 		if (unit === 'month') date.setMonth(date.getMonth() - back);
 		if (unit === 'quarter') date.setMonth(date.getMonth() - back * 3);
 		const day = `${DAYS[date.getDay()]} ${date.getDate()} ${MONTHS[date.getMonth()]}`;
-		labels.push(
-			unit === 'hour'
-				? `${String(date.getHours()).padStart(2, '0')}:00`
-				: unit === 'day'
-					? day
-					: unit === 'week'
-						? `Week of ${date.getDate()} ${MONTHS[date.getMonth()]}`
-						: unit === 'month'
-							? `${MONTHS[date.getMonth()]} ${date.getFullYear()}`
-							: `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`
-		);
+		buckets.push({
+			end: date.getTime(),
+			label:
+				unit === 'hour'
+					? `${String(date.getHours()).padStart(2, '0')}:00`
+					: unit === 'day'
+						? day
+						: unit === 'week'
+							? `Week of ${date.getDate()} ${MONTHS[date.getMonth()]}`
+							: unit === 'month'
+								? `${MONTHS[date.getMonth()]} ${date.getFullYear()}`
+								: `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`
+		});
 	}
-	return labels;
-}
-
-function random(seed: string) {
-	let hash = 2166136261;
-	for (const char of seed) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
-	return () => {
-		hash = Math.imul(hash ^ (hash >>> 15), 2246822507);
-		hash = Math.imul(hash ^ (hash >>> 13), 3266489909);
-		return ((hash ^= hash >>> 16) >>> 0) / 4294967296;
-	};
-}
-
-// Walk back from today's value; longer ranges move more per step and drift down (the business grew).
-function walk(now: number, count: number, range: RangeType, seed: string) {
-	const next = random(seed);
-	const step = {
-		'24h': 0.4,
-		'7d': 0.8,
-		'30d': 0.9,
-		qtr: 1,
-		'6m': 1.2,
-		'1y': 1.4,
-		'5y': 1.6,
-		all: 1.8
-	}[range];
-	const values = [now];
-	let value = now;
-	// Going back in time the numbers shrink: the business has been growing, more over a longer range.
-	const growth = {
-		'24h': 0.04,
-		'7d': 0.3,
-		'30d': 0.45,
-		qtr: 0.55,
-		'6m': 0.65,
-		'1y': 0.75,
-		'5y': 0.9,
-		all: 0.95
-	}[range];
-	const drift = (growth * Math.max(1, now)) / Math.max(1, count - 1);
-	for (let index = 1; index < count; index += 1) {
-		value = Math.max(0, value + (next() - 0.5) * step - drift);
-		values.unshift(Math.round(value * 10) / 10);
-	}
-	return values;
+	return buckets;
 }
 
 export type ChartDataType = { labels: string[]; values: number[] };
 
-export function chartOf(
-	dataset: DatasetType,
-	range: RangeType,
-	now: number,
-	filter: string
-): ChartDataType {
-	const labels = labelsOf(range);
-	return { labels, values: walk(now, labels.length, range, `${dataset}-${range}-${filter}`) };
+// How many there were at each point of the range: everything made by then (`created`, records.data.ts createdOf).
+export function chartOf(created: string[], range: RangeType): ChartDataType {
+	const buckets = bucketsOf(range);
+	const times = created.map((stamp) => new Date(stamp).getTime());
+	return {
+		labels: buckets.map((bucket) => bucket.label),
+		values: buckets.map((bucket) => times.filter((time) => time <= bucket.end).length)
+	};
 }
 
 // The count at a point in time.

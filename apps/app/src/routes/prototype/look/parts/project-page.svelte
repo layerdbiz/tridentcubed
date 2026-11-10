@@ -8,7 +8,16 @@
 	import { pinsAt } from './chart.data';
 	import ClientLogo from './client-logo.svelte';
 	import Faces from './faces.svelte';
-	import { MODE_ICONS, personOf, POINTS, STATUS, type ProjectType } from './look.data';
+	import {
+		agoOf,
+		dayOf,
+		MODE_ICONS,
+		numberOf,
+		personOf,
+		POINTS,
+		STATUS,
+		type ProjectType
+	} from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import { PLACES } from './map.data';
 	import MoreMenu from './more-menu.svelte';
@@ -142,7 +151,7 @@
 						/>{project.client}
 					</dd>
 				</div>
-				{#each [['Project number', project.number], ['Type', project.type], ['Dates', project.dates], ['Where', project.location], ['Updated', project.updated]] as [label, value] (label)}
+				{#each [['Project Number', numberOf(project, look.projects)], ['Type', project.type], ['Created', dayOf(project.created)], ['Where', project.location], ['Updated', agoOf(project.updated)]] as [label, value] (label)}
 					<div class="flex justify-between gap-3 px-4 py-2.5 text-sm">
 						<dt class="text-slate-500">{label}</dt>
 						<dd class="text-right font-medium text-slate-900">{value || '—'}</dd>

@@ -10,6 +10,10 @@
 	// Run 9: Items is rows of quantity and description, like the time log's entries (note 24); a photo with a
 	// description shows an icon instead of its text (note 16), its ⋮ is bare dots (note 15), and the photos-per-page
 	// buttons draw their own layout (note 17). Uploads are shrunk here, as V1 will, so the browser can keep them.
+	// Run 16 (Justin, 2026-11-10): the Project panel is Title, Subtitle, Project Type, Organization, Customer, the
+	// customer's Contact, the Team and Location, and the + sheet shows this same panel for a new project (`isDraft`:
+	// nothing is saved until Create). Its Organization and Customer lists are read live, and "Add new" makes a real
+	// customer, transport mode or facility through `look.add`, the same as the + sheet.
 	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
 	import Avatar from './avatar.svelte';
@@ -18,6 +22,7 @@
 	import { shrink } from './image';
 	import {
 		createId,
+		draftOf,
 		FACILITY_ICONS,
 		itemOf,
 		LAYOUTS,
@@ -37,9 +42,41 @@
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import Menu, { type OptionType } from './menu.svelte';
+	import { customerOf } from './records.data';
 	import { sortable } from './sortable';
 
-	let { look, panel }: { look: LookState; panel: PanelType } = $props();
+	let {
+		look,
+		panel,
+		isDraft = false
+	}: {
+		look: LookState;
+		panel: PanelType;
+		// A project not made yet (the + sheet): typing saves nothing and no other project's lock applies.
+		isDraft?: boolean;
+	} = $props();
+
+	function save() {
+		if (!isDraft) look.saved();
+	}
+
+	// The Project panel's lists are the live ones: the organization itself, and the Customers page.
+	function optionsOf(field: FieldType) {
+		const options =
+			field.label === 'Organization'
+				? [look.organization.name]
+				: field.label === 'Customer'
+					? look.customers
+					: (field.options ?? []);
+		return field.value && !options.includes(field.value) ? [field.value, ...options] : options;
+	}
+
+	const customerName = $derived(
+		panel.fields.find((field) => field.label === 'Customer')?.value ?? ''
+	);
+	const contacts = $derived(
+		customerName ? (customerOf(look, customerName).contacts ?? []).filter((item) => item.name) : []
+	);
 
 	let openDays = $state<string[]>([panel.days[0]?.id ?? '']);
 	let openGroups = $state<string[]>([panel.groups[0]?.id ?? '']);
@@ -55,7 +92,7 @@
 		input.value = '';
 		for (const file of files)
 			onfile(file.type.startsWith('image/') ? await shrink(file) : '', file.name);
-		look.saved();
+		save();
 	}
 
 	// Asks first, then takes the item out of its list.
@@ -66,7 +103,7 @@
 			onyes: () => {
 				const index = list.indexOf(item);
 				if (index >= 0) list.splice(index, 1);
-				look.saved();
+				save();
 			}
 		});
 	}
@@ -89,13 +126,19 @@
 
 	function choose(field: FieldType, event: Event) {
 		const select = event.currentTarget as HTMLSelectElement;
-		if (select.value !== ADD) return (field.value = select.value);
+		if (select.value !== ADD) {
+			if (field.label === 'Customer' && field.value !== select.value) panel.contact = undefined;
+			return (field.value = select.value);
+		}
 		select.value = field.value;
 		ask({
 			label: field.label,
 			onadd: (name) => {
-				field.options = [...(field.options ?? []), name];
+				// A new customer is a real one: it joins the Customers page, with the rest filled in there.
+				if (field.label === 'Customer') look.add('customers', { ...draftOf('customers'), name });
+				else field.options = [...(field.options ?? []), name];
 				field.value = name;
+				if (field.label === 'Customer') panel.contact = undefined;
 			}
 		});
 	}
@@ -104,7 +147,7 @@
 		if (!asking || !draft.trim()) return;
 		asking.onadd(draft.trim());
 		asking = undefined;
-		look.saved();
+		save();
 	}
 
 	// The Transport panel's stops.
@@ -117,7 +160,7 @@
 
 	function setPoint(stop: StopType, point: string) {
 		stop.point = point as PointType;
-		look.saved();
+		save();
 	}
 
 	function setType(stop: StopType, type: string) {
@@ -126,14 +169,14 @@
 		stop.type = type as TransportTypeType;
 		stop.mode = modes.length === 1 ? modes[0] : '';
 		stop.name = '';
-		look.saved();
+		save();
 	}
 
 	function setMode(stop: StopType, mode: string) {
 		if (stop.mode === mode) return;
 		stop.mode = mode;
 		stop.name = '';
-		look.saved();
+		save();
 	}
 
 	function namesOf(stop: StopType) {
@@ -150,7 +193,12 @@
 		ask({
 			label: stop.mode,
 			onadd: (name) => {
-				look.addTransport({ name, type: stop.type as TransportTypeType, mode: stop.mode });
+				look.add('transport', {
+					...draftOf('transport'),
+					name,
+					type: stop.type as TransportTypeType,
+					mode: stop.mode
+				});
 				stop.name = name;
 			}
 		});
@@ -184,7 +232,12 @@
 				const location = look.panels
 					.find((item) => item.kind === 'project')
 					?.fields.find((item) => item.label === 'Location')?.value;
-				look.addFacility({ name, kind: draftKind, city: location || look.project.location });
+				look.add('facilities', {
+					...draftOf('facilities'),
+					name,
+					kind: draftKind,
+					city: location || look.project.location
+				});
 				stop.facility = name;
 			}
 		});
@@ -197,7 +250,7 @@
 		for (const other of panel.stops) if (other.point === 'End') other.point = 'Stop';
 		panel.stops.push(stop);
 		openStops = [...openStops, stop.id];
-		look.saved();
+		save();
 	}
 
 	function setImage(field: FieldType, event: Event) {
@@ -212,7 +265,7 @@
 		};
 		panel.days.push(day);
 		openDays = [...openDays, day.id];
-		look.saved();
+		save();
 	}
 
 	// A filled-in day the day after the last one, so the time log shows how a real day reads.
@@ -237,7 +290,7 @@
 		};
 		panel.days.push(day);
 		openDays = [...openDays, day.id];
-		look.saved();
+		save();
 	}
 
 	// The photo whose description is open in the sheet. The sheet opens with the cursor at the end of the text, ready to
@@ -250,20 +303,20 @@
 
 	function sortEntries(index: number) {
 		panel.days[index].entries.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
-		look.saved();
+		save();
 	}
 
 	function addGroup() {
 		const group = { id: createId('group'), title: '', description: '', layout: 4, photos: [] };
 		panel.groups.push(group);
 		openGroups = [...openGroups, group.id];
-		look.saved();
+		save();
 	}
 
 	function move<T>(list: T[], from: number, to: number) {
 		const [item] = list.splice(from, 1);
 		list.splice(to, 0, item);
-		look.saved();
+		save();
 	}
 
 	// Run 3: borderless. Inputs are soft filled shapes that light up when you type, nothing boxed in.
@@ -290,8 +343,8 @@
 				onchange={(event) => choose(field, event)}
 			>
 				<option value="">Choose…</option>
-				{#each field.options ?? [] as option (option)}<option>{option}</option>{/each}
-				<option value={ADD}>＋ Add new {field.label.toLowerCase()}…</option>
+				{#each optionsOf(field) as option (option)}<option>{option}</option>{/each}
+				<option value={ADD}>＋ Add new {field.label}…</option>
 			</select>
 		{:else if field.type === 'select'}
 			<select
@@ -300,7 +353,7 @@
 				disabled={field.isReadonly}
 			>
 				<option value="">Choose…</option>
-				{#each field.options ?? [] as option (option)}<option>{option}</option>{/each}
+				{#each optionsOf(field) as option (option)}<option>{option}</option>{/each}
 			</select>
 		{:else if field.type === 'textarea'}
 			<textarea
@@ -392,7 +445,7 @@
 						panel.assigned = isOn
 							? panel.assigned.filter((name) => name !== person.name)
 							: [...panel.assigned, person.name];
-						look.saved();
+						save();
 					}}
 				>
 					<Avatar
@@ -520,7 +573,7 @@
 								>
 									<option value="">Choose…</option>
 									{#each namesOf(stop) as name (name)}<option>{name}</option>{/each}
-									<option value={ADD}>＋ Add new {stop.mode.toLowerCase()}…</option>
+									<option value={ADD}>＋ Add new {stop.mode}…</option>
 								</select>
 							</label>
 						{/if}
@@ -571,15 +624,37 @@
 {/if}
 
 <fieldset
-	disabled={!panel.isEnabled || look.isFrozen}
+	disabled={!panel.isEnabled || (!isDraft && look.isFrozen)}
 	class="min-w-0 space-y-3"
-	oninput={() => look.saved()}
+	oninput={() => save()}
 >
 	{#if panel.kind === 'project'}
 		<div class="grid gap-3 sm:grid-cols-2">
 			{#each panel.fields as field (field.id)}
 				{@render fieldBlock(field)}
 				{#if field.label === 'Customer'}
+					<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
+					<label class="block">
+						<span class={labelClass}>Contact</span>
+						<select
+							class={inputClass}
+							value={panel.contact ?? contacts[0]?.id ?? ''}
+							disabled={!contacts.length}
+							onchange={(event) => (panel.contact = event.currentTarget.value)}
+						>
+							{#each contacts as contact (contact.id)}
+								<option value={contact.id}
+									>{contact.name}{contact.title ? `, ${contact.title}` : ''}</option
+								>
+							{:else}
+								<option value=""
+									>{customerName
+										? 'No contacts on this customer yet'
+										: 'Choose a customer first'}</option
+								>
+							{/each}
+						</select>
+					</label>
 					<div class="space-y-3 rounded-2xl bg-slate-900/[0.025] p-3 sm:col-span-2">
 						<p class="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
 							<span class="icon-[mdi--account-group] size-4 text-primary"></span>Team
@@ -638,7 +713,7 @@
 			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
 			onclick={() => {
 				panel.items.push(itemOf());
-				look.saved();
+				save();
 			}}><span class="icon-[mdi--plus] size-4"></span>Add item</button
 		>
 	{:else if panel.kind === 'timelog'}
@@ -708,7 +783,7 @@
 							class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
 							onclick={() => {
 								day.entries.push({ id: createId('entry'), time: '', activity: '' });
-								look.saved();
+								save();
 							}}><span class="icon-[mdi--plus] size-4"></span>Add entry</button
 						>
 					{/snippet}
@@ -781,7 +856,7 @@
 											: 'bg-white text-slate-500 hover:text-primary'}"
 										onclick={() => {
 											group.layout = layout;
-											look.saved();
+											save();
 										}}
 									>
 										<!-- The page in miniature: one column for one or two, two columns from four up. -->
@@ -914,7 +989,7 @@
 										src: photoOf(createId('demo')),
 										description: ''
 									});
-									look.saved();
+									save();
 								}}><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample photo</button
 							>
 						{/snippet}
@@ -938,7 +1013,7 @@
 </fieldset>
 
 {#if asking}
-	{@const noun = asking.label.toLowerCase()}
+	{@const noun = asking.label}
 	<BottomSheet
 		label="Add a new {noun}"
 		onclose={() => (asking = undefined)}
@@ -964,7 +1039,7 @@
 				/>
 			</label>
 			{#if asking.kinds}
-				<p class="{labelClass} mt-3">Facility kind</p>
+				<p class="{labelClass} mt-3">Facility Kind</p>
 				<div class="grid grid-cols-2 gap-1.5">
 					{#each asking.kinds as kind (kind)}
 						<button
@@ -1016,7 +1091,7 @@
 				<textarea
 					class="{inputClass} min-h-20"
 					bind:value={photo.description}
-					oninput={() => look.saved()}
+					oninput={() => save()}
 					placeholder="e.g. Lashing on the forward stack, seen from the quay"
 					{@attach focusEnd}></textarea>
 			</label>

@@ -30,7 +30,8 @@
 		page === 'projects' ? look.projects.find((item) => item.id === id) : undefined
 	);
 	const name = $derived(project?.title ?? id);
-	const one = $derived(DATASETS[page].one.toLowerCase());
+	// Its page's own word, both words capitalised: "Edit Transport Mode" (run 16).
+	const one = $derived(DATASETS[page].one);
 
 	const options = $derived<OptionType[]>([
 		...(isOpenable
