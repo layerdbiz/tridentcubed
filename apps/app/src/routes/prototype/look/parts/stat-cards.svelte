@@ -73,59 +73,63 @@
 <svelte:window onkeydown={(event) => event.key === 'Escape' && (sheet = hovered = undefined)} />
 
 <div
-	class="-mx-4 -my-4 flex scroll-px-4 gap-2 overflow-x-auto px-4 py-4 md:mx-0 md:scroll-px-0 md:gap-3 md:px-0"
+	class="-mx-4 -my-4 scroll-px-4 overflow-x-auto px-4 py-4 md:mx-0 md:scroll-px-0 md:px-0"
 	role="tablist"
 	aria-label="What to count"
 	bind:this={row}
 >
-	{#each SETS as dataset (dataset)}
-		{@const info = DATASETS[dataset]}
-		{@const words = info.label.split(' ')}
-		{@const isOn = look.dataset === dataset}
-		<div
-			role="tab"
-			tabindex="0"
-			aria-selected={isOn}
-			data-set={dataset}
-			class="relative flex w-max min-w-28 shrink-0 cursor-pointer items-center gap-2 rounded-2xl p-2.5 pr-3.5 select-none md:w-auto md:min-w-44 md:flex-1 md:gap-3 md:rounded-3xl md:px-4 md:py-5 {isOn
-				? 'bg-primary text-white'
-				: 'bg-white text-slate-700'}"
-			onclick={() => {
-				look.pick(dataset);
-				reveal(dataset);
-			}}
-			onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && look.pick(dataset)}
-		>
-			<span class="{info.icon} size-7 shrink-0 md:size-10 {isOn ? 'text-white' : 'text-primary'}"
-			></span>
-			<span class="min-w-0 flex-1">
-				<span class="block text-lg leading-tight font-semibold tabular-nums md:text-3xl"
-					>{countOf(look, dataset)}</span
-				>
-				<!-- Run 14 (note 2): the name stays on one line (Transport Mode); the card is as wide as it needs. -->
-				<span
-					class="block text-[11px] leading-tight font-medium whitespace-nowrap md:text-[15px] {isOn
-						? 'text-white/85'
-						: 'text-slate-500'}"
-				>
-					{words.slice(0, -1).join(' ')}
-					<span class="whitespace-nowrap"
-						>{words.at(-1)}<button
-							type="button"
-							class="relative -my-1 -mr-1 -ml-0.5 inline-flex p-1 align-middle md:ml-0 {isOn
-								? 'text-white'
-								: 'text-slate-300'}"
-							aria-label="What does {info.label} count?"
-							onclick={(event) => ask(event, dataset)}
-							onpointerenter={(event) => hasHover && hover(event, dataset)}
-							onpointerleave={() => hasHover && (hovered = undefined)}
-							><span class="icon-[mdi--help-circle] size-3.5 md:size-5"></span></button
-						></span
+	<!-- Every card is as wide as the widest needs (Transport Mode on one line), and on a wide screen they share the
+	     row equally; when they cannot all fit, the row scrolls rather than a card squeezing its words out (2026-11-10). -->
+	<div class="grid w-max min-w-full auto-cols-fr grid-flow-col gap-2 md:gap-3">
+		{#each SETS as dataset (dataset)}
+			{@const info = DATASETS[dataset]}
+			{@const words = info.label.split(' ')}
+			{@const isOn = look.dataset === dataset}
+			<div
+				role="tab"
+				tabindex="0"
+				aria-selected={isOn}
+				data-set={dataset}
+				class="relative flex cursor-pointer items-center gap-2 rounded-2xl p-2.5 pr-3.5 select-none md:gap-3 md:rounded-3xl md:px-4 md:py-5 {isOn
+					? 'bg-primary text-white'
+					: 'bg-white text-slate-700'}"
+				onclick={() => {
+					look.pick(dataset);
+					reveal(dataset);
+				}}
+				onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && look.pick(dataset)}
+			>
+				<span class="{info.icon} size-7 shrink-0 md:size-10 {isOn ? 'text-white' : 'text-primary'}"
+				></span>
+				<span class="min-w-0 flex-1">
+					<span class="block text-lg leading-tight font-semibold tabular-nums md:text-3xl"
+						>{countOf(look, dataset)}</span
 					>
+					<!-- Run 14 (note 2): the name stays on one line (Transport Mode); the card is as wide as it needs. -->
+					<span
+						class="block text-[11px] leading-tight font-medium whitespace-nowrap md:text-[15px] {isOn
+							? 'text-white/85'
+							: 'text-slate-500'}"
+					>
+						{words.slice(0, -1).join(' ')}
+						<span class="whitespace-nowrap"
+							>{words.at(-1)}<button
+								type="button"
+								class="relative -my-1 -mr-1 -ml-0.5 inline-flex p-1 align-middle md:ml-0 {isOn
+									? 'text-white'
+									: 'text-slate-300'}"
+								aria-label="What does {info.label} count?"
+								onclick={(event) => ask(event, dataset)}
+								onpointerenter={(event) => hasHover && hover(event, dataset)}
+								onpointerleave={() => hasHover && (hovered = undefined)}
+								><span class="icon-[mdi--help-circle] size-3.5 md:size-5"></span></button
+							></span
+						>
+					</span>
 				</span>
-			</span>
-		</div>
-	{/each}
+			</div>
+		{/each}
+	</div>
 </div>
 
 {#if hovered}

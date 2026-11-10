@@ -55,7 +55,9 @@
 	);
 
 	const CANVAS = 'bg-slate-100';
-	const COLUMN = 'mx-auto w-full max-w-5xl';
+	// The cards and the list run the full width of the main part, inside its padding (2026-11-10: "see more"); a very
+	// wide screen stops them at 1600px.
+	const COLUMN = 'mx-auto w-full max-w-[1600px]';
 	const FLOAT =
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
 	const ROUND =

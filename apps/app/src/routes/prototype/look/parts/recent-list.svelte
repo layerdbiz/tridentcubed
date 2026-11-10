@@ -2,10 +2,12 @@
 	// PROTOTYPE (#161) run 12: what happened lately, of any page, the same in the bell's notifications and the menu's
 	// Recent (Justin's run 12 note 14): a new team member, a new customer, an edited project... A tap opens what it is
 	// about. Run 14 (note 1): each row shows its page's own icon (the folder, the face, the group...), not the photo
-	// or logo, and ends in the same ⋮ menu as the page's rows, so it can be opened, edited or deleted from here.
-	import { PAGE_ICONS, RECENT, type RecentType } from './look.data';
+	// or logo, and ends in the same ⋮ menu as the page's rows, so it can be opened, edited or deleted from here. The
+	// icon takes the colour of the project's state, or of the record's first label, as in the lists (2026-11-10).
+	import { PAGE_ICONS, RECENT, STATUS, type RecentType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import { recordOf } from './records.data';
 
 	let {
 		look,
@@ -29,6 +31,14 @@
 		} else if (look.has(item.page, item.name)) look.openRecord(item.page, item.name);
 		else look.say(`${item.name} is no longer there`);
 	}
+
+	function toneOf(item: RecentType) {
+		if (item.page === 'projects') {
+			const project = look.projects.find((one) => one.id === item.id);
+			return project ? STATUS[project.status].tone : 'text-slate-400';
+		}
+		return recordOf(look, item.page, item.name)?.tone.text ?? 'text-slate-400';
+	}
 </script>
 
 {#each RECENT as item (item.name)}
@@ -43,7 +53,7 @@
 				style="width: {width}px"
 			>
 				<span
-					class="flex items-center justify-center rounded-full bg-slate-900/[0.06] text-slate-900"
+					class="flex items-center justify-center rounded-full bg-slate-900/[0.05] {toneOf(item)}"
 					style="width: {size}px; height: {size}px"
 					><span class="{PAGE_ICONS[item.page]} size-[55%]"></span></span
 				>
