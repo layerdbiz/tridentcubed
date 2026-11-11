@@ -5,7 +5,7 @@
 	// card shows (state, customer, title, percent, where the trip runs, the team); and in the sheet below, the rest to
 	// read: its numbers, its details, the team, the trip stop by stop and each panel's progress. A panel opens on Edit.
 	import Avatar from './avatar.svelte';
-	import { pinsAt } from './chart.data';
+	import { pinOfRecord, pinsAt } from './chart.data';
 	import ClientLogo from './client-logo.svelte';
 	import Faces from './faces.svelte';
 	import {
@@ -23,7 +23,7 @@
 	import PageView from './page-view.svelte';
 	import ProjectLogo from './project-logo.svelte';
 	import ProjectRoute from './project-route.svelte';
-	import { projectPhotosOf } from './records.data';
+	import { projectPhotosOf, recordOf } from './records.data';
 
 	let {
 		look,
@@ -47,7 +47,24 @@
 			? stops.map((stop) => [cityOf(stop.facility), stop.facility] as [string, string])
 			: [[project.location, project.title] as [string, string]]
 	);
-	const pins = $derived(pinsAt(look.places, places));
+	// Each stop is its facility, drawn as that facility is on its own page; a project with no stops is its location.
+	const pins = $derived(
+		pinsAt(
+			look.places,
+			places.map(([city, name]) => {
+				const facility = recordOf(look, 'facilities', name);
+				return facility
+					? pinOfRecord(look, facility, city)
+					: {
+							city,
+							name,
+							tone: STATUS[project.status].dot,
+							page: 'projects' as const,
+							id: project.id
+						};
+			})
+		)
+	);
 	const route = $derived(
 		places
 			.map(([city]) => look.placeOf(city))

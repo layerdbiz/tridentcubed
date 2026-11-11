@@ -5,7 +5,7 @@
 	// (page-view.svelte): its picture or a map of where it is on top, its name and labels over the picture, and the
 	// rest in the sheet below. On a desktop the Edit form sits in the floating column on the left and the Page fills
 	// the rest.
-	import { pinsAt } from './chart.data';
+	import { pinOfRecord, pinsAt } from './chart.data';
 	import Chips from './chips.svelte';
 	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -25,7 +25,7 @@
 	const city = $derived(
 		record.page === 'customers' ? customerOf(look, record.key).city : record.location
 	);
-	const pins = $derived(pinsAt(look.places, [[city, record.key]]));
+	const pins = $derived(pinsAt(look.places, [pinOfRecord(look, record, city)]));
 
 	let swiper: HTMLDivElement | undefined = $state();
 	let isLanded = false;

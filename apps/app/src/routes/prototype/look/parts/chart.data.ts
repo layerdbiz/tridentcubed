@@ -3,7 +3,7 @@
 // projects or records had been made by then, from their `created` stamps, so the right edge still matches the card
 // and the list (run 12 note 13: one number everywhere). The pie's slices are the page's labels, the same as the
 // board's columns (note 11).
-import type { DatasetType } from './look.data';
+import { clientOf, personOf, STATUS, type DatasetType } from './look.data';
 import type { LookState } from './look.state.svelte';
 import type { PlaceType } from './map.data';
 import {
@@ -12,6 +12,7 @@ import {
 	customerOf,
 	shownProjects,
 	shownRecords,
+	type RecordType,
 	type ToneType
 } from './records.data';
 
@@ -130,22 +131,74 @@ export function slicesOf(look: LookState, dataset: DatasetType): SliceType[] {
 	}));
 }
 
-export type PinType = { city: string; lng: number; lat: number; count: number; names: string[] };
+// One thing on the map (run 18, Justin 2026-11-10: "show the actual icon associated with it"): what it is called,
+// where it is in words, and how it draws: a picture (a logo or a face) or an icon, on its own colour. `page` and
+// `id` say what a tap opens.
+export type PinItemType = {
+	city: string;
+	name: string;
+	image?: string;
+	icon?: string;
+	// A background class, like 'bg-blue-900': a project's status colour, or a record's label colour.
+	tone?: string;
+	page?: DatasetType;
+	id?: string;
+};
 
-// Pins for the map, one per place with how many are there. Where a place is comes from the saved places (run 17);
+export type PinType = {
+	city: string;
+	lng: number;
+	lat: number;
+	count: number;
+	names: string[];
+	items: PinItemType[];
+};
+
+// Pins for the map, one per place with what is there. Where a place is comes from the saved places (run 17);
 // words that are not a saved place get no pin.
-export function pinsAt(saved: PlaceType[], places: [city: string, name: string][]): PinType[] {
+export function pinsAt(saved: PlaceType[], items: PinItemType[]): PinType[] {
 	const pins = new Map<string, PinType>();
-	for (const [city, name] of places) {
-		const text = city.trim().toLowerCase();
+	for (const item of items) {
+		const text = item.city.trim().toLowerCase();
 		const point = text ? saved.find((place) => place.name.toLowerCase() === text) : undefined;
 		if (!point) continue;
-		const pin = pins.get(city) ?? { city, lng: point.lng, lat: point.lat, count: 0, names: [] };
+		const pin = pins.get(text) ?? {
+			city: point.name,
+			lng: point.lng,
+			lat: point.lat,
+			count: 0,
+			names: [],
+			items: []
+		};
 		pin.count += 1;
-		pin.names.push(name);
-		pins.set(city, pin);
+		pin.names.push(item.name);
+		pin.items.push(item);
+		pins.set(text, pin);
 	}
 	return [...pins.values()].sort((a, b) => a.count - b.count);
+}
+
+// How a record draws on the map: a customer's logo, a team's face, or a transport mode's or facility's icon, on the
+// colour of its first label.
+export function pinOfRecord(
+	look: LookState,
+	record: RecordType,
+	city = record.location
+): PinItemType {
+	return {
+		city,
+		name: record.key,
+		image:
+			record.page === 'customers'
+				? customerOf(look, record.key).icon
+				: record.page === 'team'
+					? personOf(record.key).photo
+					: undefined,
+		icon: record.icon || undefined,
+		tone: record.tone.bg,
+		page: record.page,
+		id: record.key
+	};
 }
 
 // The dashboard map: where the customers' offices, the team, the facilities, the transports (where each was last) or
@@ -154,10 +207,20 @@ export function pinsOf(look: LookState, dataset: DatasetType, filter: string) {
 	return pinsAt(
 		look.places,
 		dataset === 'projects'
-			? shownProjects(look, filter).map((project) => [project.location, project.title])
-			: shownRecords(look, dataset, filter).map((record) => [
-					dataset === 'customers' ? customerOf(look, record.key).city : record.location,
-					record.key
-				])
+			? shownProjects(look, filter).map((project) => ({
+					city: project.location,
+					name: project.title,
+					image: clientOf(project.client).icon || undefined,
+					tone: STATUS[project.status].dot,
+					page: dataset,
+					id: project.id
+				}))
+			: shownRecords(look, dataset, filter).map((record) =>
+					pinOfRecord(
+						look,
+						record,
+						dataset === 'customers' ? customerOf(look, record.key).city : record.location
+					)
+				)
 	);
 }

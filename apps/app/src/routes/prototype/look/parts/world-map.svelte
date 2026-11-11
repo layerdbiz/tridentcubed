@@ -6,15 +6,19 @@
 	// you zoom in. City names hide rather than overlap. `route` draws a trip's line through its stops. The map fits its
 	// pins inside `padding`, the part of it that is not under the cards or the sheet, and fits again when that part
 	// changes size, until someone moves or zooms it themselves. The credit OpenStreetMap is owed sits at the bottom right
-	// of the part that shows.
+	// of the part that shows. Run 18 (Justin, 2026-11-10): a place with one thing in it shows that thing itself, as a
+	// round marker with its logo, face or icon on its own colour, and a tap opens it. Places with several, and
+	// places that crowd together when zoomed out, keep the round number, in the colour its things share (the app's
+	// blue when they differ), until you zoom in far enough for them to come apart.
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
 		LngLatLike,
-		Map as MapType
+		Map as MapType,
+		Marker as MarkerType
 	} from 'maplibre-gl';
 	import { onMount, untrack } from 'svelte';
-	import type { PinType } from './chart.data';
+	import type { PinItemType, PinType } from './chart.data';
 
 	type PaddingType = { top: number; bottom: number; left: number; right: number };
 
@@ -22,9 +26,12 @@
 		pins,
 		route = [],
 		padding = { top: 24, bottom: 24, left: 24, right: 24 },
-		maxZoom = 9
+		maxZoom = 9,
+		onpick
 	}: {
 		pins: PinType[];
+		// A tap on a marker that is one thing.
+		onpick?: (item: PinItemType) => void;
 		route?: [number, number][];
 		padding?: PaddingType;
 		maxZoom?: number;
@@ -48,6 +55,14 @@
 	let isReady = $state(false);
 	let isFree = false;
 	let workerUrl: string | undefined;
+	let blue = '#3b82f6';
+	// The marker class, kept from the library once it has loaded.
+	let Marker: typeof MarkerType | undefined;
+	// The markers on the map now, and the single things they stand for, by key.
+	const markers = new Map<string, MarkerType>();
+	let singles = new Map<string, PinItemType>();
+	// The colours the pins use, as the map needs them, in the order `tone` numbers them.
+	let palette: string[] = [];
 
 	// The theme's blue as rgb, which the map's paint needs.
 	function rgbOf(color: string) {
@@ -78,15 +93,118 @@
 		}
 	}
 
+	// A background class as the colour the map paints with.
+	function colorOf(tone: string) {
+		if (!node) return blue;
+		const probe = document.createElement('span');
+		probe.className = tone;
+		node.append(probe);
+		const color = rgbOf(getComputedStyle(probe).backgroundColor);
+		probe.remove();
+		return color;
+	}
+
+	// The pins as the map's data. A pin whose things share one colour carries its number in `tone`; mixed is -1.
 	function featuresOf(items: PinType[]) {
+		const tones = [
+			...new Set(items.flatMap((pin) => pin.items.map((item) => item.tone ?? '')))
+		].filter(Boolean);
+		palette = tones.map(colorOf);
+		singles = new Map();
 		return {
 			type: 'FeatureCollection' as const,
-			features: items.map((pin) => ({
-				type: 'Feature' as const,
-				properties: { city: pin.city.split(',')[0], count: pin.count },
-				geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] }
-			}))
+			features: items.map((pin) => {
+				const shared = new Set(pin.items.map((item) => item.tone ?? ''));
+				const key = `${pin.city}|${pin.items[0]?.page ?? ''}|${pin.items[0]?.id ?? pin.names[0]}`;
+				if (pin.count === 1 && pin.items[0]) singles.set(key, pin.items[0]);
+				return {
+					type: 'Feature' as const,
+					properties: {
+						key,
+						city: pin.city.split(',')[0],
+						count: pin.count,
+						tone: shared.size === 1 ? tones.indexOf([...shared][0]) : -1
+					},
+					geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] }
+				};
+			})
 		};
+	}
+
+	// The number circles take the colour their things share, else the app's blue.
+	function paintOf(): ExpressionSpecification | string {
+		if (!palette.length) return blue;
+		const low: ExpressionSpecification = ['coalesce', ['get', 'low'], ['get', 'tone']];
+		const high: ExpressionSpecification = ['coalesce', ['get', 'high'], ['get', 'tone']];
+		return [
+			'case',
+			['all', ['==', low, high], ['>=', low, 0]],
+			['match', low, ...palette.flatMap((color, index) => [index, color]), blue],
+			blue
+		] as unknown as ExpressionSpecification;
+	}
+
+	// One thing on the map: its picture or icon in a white-ringed circle of its own colour.
+	function elementOf(item: PinItemType) {
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.title = item.name;
+		button.setAttribute('aria-label', item.name);
+		button.className = `flex size-10 cursor-pointer items-center justify-center overflow-hidden rounded-full text-white shadow-[0_2px_8px_rgb(15_23_42/0.35)] ring-[2.5px] ring-white ${item.image ? 'bg-white' : (item.tone ?? 'bg-primary')}`;
+		if (item.image) {
+			const image = document.createElement('img');
+			image.src = item.image;
+			image.alt = '';
+			image.draggable = false;
+			image.className =
+				item.page === 'team' ? 'size-full object-cover' : 'size-full object-contain';
+			button.append(image);
+		} else if (item.icon) {
+			const icon = document.createElement('span');
+			icon.className = `${item.icon} size-5`;
+			button.append(icon);
+		} else {
+			const letter = document.createElement('span');
+			letter.className = 'text-sm font-semibold';
+			letter.textContent = item.name.slice(0, 1).toUpperCase();
+			button.append(letter);
+		}
+		button.addEventListener('click', (event) => {
+			event.stopPropagation();
+			onpick?.(item);
+		});
+		return button;
+	}
+
+	// Markers follow the map: a single thing that stands alone at this zoom has one; one swallowed by a number does
+	// not.
+	function sync(target: MapType) {
+		if (!Marker || !target.getSource('pins') || !target.isSourceLoaded('pins')) return;
+		const shown = new Set<string>();
+		for (const feature of target.querySourceFeatures('pins')) {
+			const properties = feature.properties ?? {};
+			if (properties.point_count || properties.count !== 1) continue;
+			const key = String(properties.key);
+			const item = singles.get(key);
+			if (!item) continue;
+			shown.add(key);
+			if (markers.has(key)) continue;
+			const [lng, lat] = (feature.geometry as { coordinates: [number, number] }).coordinates;
+			markers.set(
+				key,
+				new Marker({ element: elementOf(item) }).setLngLat([lng, lat]).addTo(target)
+			);
+		}
+		for (const [key, marker] of markers)
+			if (!shown.has(key)) {
+				marker.remove();
+				markers.delete(key);
+			}
+	}
+
+	function clearMarkers() {
+		for (const marker of markers.values()) marker.remove();
+		markers.clear();
 	}
 
 	function lineOf(points: [number, number][]) {
@@ -98,7 +216,7 @@
 	}
 
 	function addLayers(target: MapType) {
-		const blue = rgbOf(getComputedStyle(node!).getPropertyValue('--color-primary') || '#3b82f6');
+		blue = rgbOf(getComputedStyle(node!).getPropertyValue('--color-primary') || '#3b82f6');
 		target.addSource('route', { type: 'geojson', data: lineOf(route) });
 		target.addLayer({
 			id: 'route',
@@ -113,15 +231,22 @@
 			cluster: true,
 			clusterRadius: 36,
 			clusterMaxZoom: 12,
-			clusterProperties: { total: ['+', ['get', 'count']] }
+			clusterProperties: {
+				total: ['+', ['get', 'count']],
+				low: ['min', ['get', 'tone']],
+				high: ['max', ['get', 'tone']]
+			}
 		});
 		const count: ExpressionSpecification = ['coalesce', ['get', 'total'], ['get', 'count']];
+		// A place with one thing draws as that thing's own marker, so the circles are only for numbers.
+		const isNumber: ExpressionSpecification = ['>', count, 1];
 		target.addLayer({
 			id: 'pin-halo',
 			type: 'circle',
 			source: 'pins',
+			filter: isNumber,
 			paint: {
-				'circle-color': blue,
+				'circle-color': paintOf(),
 				'circle-opacity': 0.16,
 				'circle-radius': ['+', 14, ['*', 4, ['sqrt', count]]]
 			}
@@ -130,8 +255,9 @@
 			id: 'pin',
 			type: 'circle',
 			source: 'pins',
+			filter: isNumber,
 			paint: {
-				'circle-color': blue,
+				'circle-color': paintOf(),
 				'circle-radius': ['+', 6, ['*', 3, ['sqrt', count]]],
 				'circle-stroke-color': '#ffffff',
 				'circle-stroke-width': 2.5
@@ -160,7 +286,7 @@
 				'text-font': ['Noto Sans Bold'],
 				'text-size': 12,
 				'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
-				'text-radial-offset': 1.4
+				'text-radial-offset': 1.9
 			},
 			paint: { 'text-color': '#475569', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }
 		});
@@ -219,6 +345,7 @@
 			// Its helper script runs from its own text, untouched by the bundler, which would otherwise lose it.
 			workerUrl ??= URL.createObjectURL(new Blob([worker.default], { type: 'text/javascript' }));
 			maplibre.setWorkerUrl(workerUrl);
+			Marker = maplibre.Marker;
 			const target = new maplibre.Map({
 				container: node,
 				style: STYLE,
@@ -236,6 +363,7 @@
 				isReady = true;
 				fit(0);
 			});
+			target.on('render', () => sync(target));
 			// Once someone moves or zooms it, the map stays where they left it.
 			target.on('movestart', (event) => {
 				if ((event as { originalEvent?: Event }).originalEvent) isFree = true;
@@ -256,6 +384,7 @@
 		return () => {
 			isGone = true;
 			observer?.disconnect();
+			clearMarkers();
 			map?.remove();
 		};
 	});
@@ -265,8 +394,12 @@
 		const data = featuresOf(pins);
 		const line = lineOf(route);
 		if (!map || !isReady) return;
+		// The things may have changed their pictures or colours, so the markers are made again.
+		clearMarkers();
 		(map.getSource('pins') as GeoJSONSource | undefined)?.setData(data);
 		(map.getSource('route') as GeoJSONSource | undefined)?.setData(line);
+		for (const layer of ['pin', 'pin-halo'])
+			if (map.getLayer(layer)) map.setPaintProperty(layer, 'circle-color', paintOf());
 		isFree = false;
 		fit();
 	});

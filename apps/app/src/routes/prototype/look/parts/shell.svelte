@@ -309,6 +309,11 @@
 {#snippet mapBackdrop()}
 	<WorldMap
 		pins={pinsOf(look, look.dataset, look.filter)}
+		onpick={(item) => {
+			if (!item.id) return;
+			if (item.page === 'projects') look.open(item.id);
+			else if (item.page) look.openRecord(item.page, item.id);
+		}}
 		padding={{
 			top: headHeight + 64,
 			bottom: cardsHeight + 76,
