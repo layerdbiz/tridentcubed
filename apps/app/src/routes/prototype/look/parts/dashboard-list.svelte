@@ -156,6 +156,7 @@
 							<th class="w-16 py-3 pl-4"></th>
 							<th class="py-3">{info.one}</th>
 							{#if dataset === 'projects'}
+								<th class="py-3">Labels</th>
 								<th class="py-3">Route</th>
 								<th class="py-3">Team</th>
 								<th class="w-52 py-3">Progress</th>
@@ -191,6 +192,7 @@
 											? 'text-slate-500'
 											: 'text-slate-900'}">{project.title}</td
 									>
+									<td class="py-3"><Chips labels={project.type ? [project.type] : []} /></td>
 									<td class="max-w-56 py-3"
 										><ProjectRoute
 											{look}

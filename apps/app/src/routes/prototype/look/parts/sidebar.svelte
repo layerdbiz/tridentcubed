@@ -9,7 +9,8 @@
 	// notes 14 to 16): Recent is the same list as the bell's notifications (recent-list.svelte), with round icons, and
 	// fades out at its bottom before the profile; the section names and TRIDENT CUBED are bold. Run 13: the pages not
 	// on show have black icons and lighter words. Run 15 (2026-11-10): the logo and name are the organization's own,
-	// and the cog and Admin both open Settings.
+	// and the cog and Admin both open Settings. Run 18 (Justin, 2026-11-10): Admin is out of the menu for now; the
+	// signed-in person's row and the cog both open Settings, where the organization is edited.
 	import Avatar from './avatar.svelte';
 	import { DATASETS, FADE, ME, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -63,7 +64,7 @@
 		>
 	</button>
 	<nav class="w-full space-y-0.5 px-3">
-		{#each NAV as item (item.id)}
+		{#each NAV.filter((item) => item.id !== 'admin') as item (item.id)}
 			{@const isOn = look.navSection === item.id}
 			<button
 				class="flex w-full items-center gap-1 overflow-hidden rounded-xl py-1.5 text-[15px] font-bold transition {isOn
@@ -96,18 +97,24 @@
 	</div>
 
 	<div class="flex w-full items-center gap-1 px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-		<span class={COLUMN}
-			><Avatar
-				name={me.name}
-				size={40}
-				ring="ring-slate-200"
-			/></span
+		<button
+			class="flex min-w-0 flex-1 items-center gap-1 rounded-2xl text-left hover:bg-slate-900/[0.04]"
+			title="Settings"
+			onclick={settings}
 		>
-		<span class="min-w-0 flex-1 text-sm {WORDS}"
-			><b class="block truncate font-medium text-slate-900">{me.name.replace('Capt. ', '')}</b><span
-				class="text-xs text-slate-500">{me.role === 'admin' ? 'Admin' : 'Member'}</span
-			></span
-		>
+			<span class={COLUMN}
+				><Avatar
+					name={me.name}
+					size={40}
+					ring="ring-slate-200"
+				/></span
+			>
+			<span class="min-w-0 flex-1 text-sm {WORDS}"
+				><b class="block truncate font-medium text-slate-900">{me.name.replace('Capt. ', '')}</b
+				><span class="text-xs text-slate-500">{me.role === 'admin' ? 'Admin' : 'Member'}</span
+				></span
+			>
+		</button>
 		<button
 			class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 {WORDS}"
 			aria-label="Settings"

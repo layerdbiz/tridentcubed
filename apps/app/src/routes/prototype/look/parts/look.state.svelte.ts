@@ -169,6 +169,8 @@ export class LookState {
 	projectId = $state('p1');
 	tab = $state<TabType>('edit');
 	panelId = $state('');
+	// The project whose status is being changed in the Change Status sheet, by id.
+	statusFor = $state<string>();
 	// What the + is adding, or nothing while its sheet is shut.
 	adding = $state<DatasetType>();
 	navSection = $state<string>('projects');
@@ -421,6 +423,7 @@ export class LookState {
 					}
 		);
 		this.open(id, 'edit');
+		this.#advance(id);
 	}
 
 	remove(id: string) {
@@ -438,6 +441,33 @@ export class LookState {
 	saved() {
 		this.project.updated = nowIso();
 		this.flash();
+		// After the browser has finished with this input (a drop-down's new value lands a moment later).
+		const id = this.projectId;
+		setTimeout(() => this.#advance(id));
+	}
+
+	// A Draft becomes In Progress by itself once its Project panel is complete (Justin, 2026-11-10): every field
+	// filled, an owner, and someone assigned. Nothing else moves a status automatically.
+	#advance(id: string) {
+		const project = this.projects.find((item) => item.id === id);
+		const panel = this.workspaces[id]?.find((item) => item.kind === 'project');
+		if (!project || !panel || project.status !== 'Draft') return;
+		const { done, total } = metricsOf(panel);
+		if (done < total) return;
+		project.status = 'In Progress';
+		this.say(`"${project.title}" is now In Progress`);
+	}
+
+	// Any status, picked by hand in the Change Status sheet or a ⋮ shortcut. Sent keeps what it was before, so
+	// Unsend can go back.
+	setStatus(project: ProjectType, status: StatusType) {
+		if (project.status === status) return;
+		if (status === 'Sent') return this.markSent(project);
+		project.before = undefined;
+		project.status = status;
+		project.updated = nowIso();
+		this.flash();
+		this.say(`"${project.title}" is now ${status}`);
 	}
 
 	flash() {

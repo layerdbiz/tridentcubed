@@ -120,6 +120,27 @@ const TONES: Record<string, ToneType> = {
 		fill: 'fill-orange-500',
 		text: 'text-orange-500',
 		bg: 'bg-orange-500'
+	},
+	// Run 18 (Justin, 2026-11-10): the colours of how things travel. The deep blue of the sea, the blue of the sky,
+	// the brick red of a rail car and the grey of a road. A facility takes the colour of what calls there.
+	sea: {
+		stroke: 'stroke-blue-900',
+		fill: 'fill-blue-900',
+		text: 'text-blue-900',
+		bg: 'bg-blue-900'
+	},
+	air: { stroke: 'stroke-sky-400', fill: 'fill-sky-400', text: 'text-sky-400', bg: 'bg-sky-400' },
+	rail: {
+		stroke: 'stroke-red-900',
+		fill: 'fill-red-900',
+		text: 'text-red-900',
+		bg: 'bg-red-900'
+	},
+	road: {
+		stroke: 'stroke-zinc-500',
+		fill: 'fill-zinc-500',
+		text: 'text-zinc-500',
+		bg: 'bg-zinc-500'
 	}
 };
 
@@ -175,14 +196,14 @@ const STATE_TONES: Record<StatusType, string> = {
 	Archived: 'muted'
 };
 const KIND_TONES: Record<string, string> = {
-	Sea: 'primary',
-	Air: 'sky',
-	Rail: 'amber',
-	Road: 'teal',
-	Port: 'primary',
-	Airport: 'sky',
-	'Rail yard': 'amber',
-	Depot: 'teal'
+	Sea: 'sea',
+	Air: 'air',
+	Rail: 'rail',
+	Road: 'road',
+	Port: 'sea',
+	Airport: 'air',
+	'Rail yard': 'rail',
+	Depot: 'road'
 };
 const PALETTE = [
 	'primary',

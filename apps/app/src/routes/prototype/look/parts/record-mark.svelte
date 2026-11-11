@@ -15,9 +15,10 @@
 		hasBadge = true
 	}: { record: RecordType; size?: number; hasBadge?: boolean } = $props();
 
+	// No gap between the face and its ring, so a face is exactly as big as every other mark in a list (run 18).
 	const RING = {
-		admin: 'ring-primary ring-offset-2 ring-offset-white',
-		manager: 'ring-violet-500 ring-offset-2 ring-offset-white',
+		admin: 'ring-primary',
+		manager: 'ring-violet-500',
 		team: 'ring-slate-200'
 	};
 	const badge = $derived(Math.max(16, Math.round(size * 0.4)));
@@ -41,7 +42,7 @@
 		/>
 	{:else}
 		<span
-			class="flex items-center justify-center rounded-full bg-linear-to-br from-slate-700 to-slate-900 text-white"
+			class="flex items-center justify-center rounded-full text-white {record.tone.bg}"
 			style="width: {size}px; height: {size}px"><span class="{record.icon} size-1/2"></span></span
 		>
 	{/if}

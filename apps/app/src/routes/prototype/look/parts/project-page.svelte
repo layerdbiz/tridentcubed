@@ -81,9 +81,11 @@
 		/>
 	{/snippet}
 	{#snippet overlay(isLight)}
-		<span
-			class="mb-3 inline-block rounded-full px-3 py-1 text-xs font-semibold text-white {status.bar}"
-			>{project.status}</span
+		<button
+			class="pointer-events-auto mb-3 inline-flex items-center gap-1 rounded-full py-1 pr-2 pl-3 text-xs font-semibold text-white {status.bar}"
+			title="Change Status"
+			onclick={() => (look.statusFor = project.id)}
+			>{project.status}<span class="icon-[mdi--chevron-down] size-4"></span></button
 		>
 		<div class="flex items-center gap-3">
 			<ProjectLogo

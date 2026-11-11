@@ -4,6 +4,7 @@
 	// Unsend, back to its state before) and Delete; a customer, team member, transport or facility offers Edit and
 	// Delete. Every delete asks first. `isOpenable` adds Open first, for the lists; `tone` 'photo' is white dots in a
 	// dark glass circle, readable on any photo; 'bare' just the dots, in the colour around them (a Page's top bar).
+	// Run 18: a project also offers Mark Complete and Change Status, which opens every status (status-sheet.svelte).
 	import { DATASETS, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import Menu, { type OptionType } from './menu.svelte';
@@ -21,7 +22,7 @@
 		// A project's id, or a record's name.
 		id: string;
 		isOpenable?: boolean;
-		tone?: 'plain' | 'photo' | 'bare';
+		tone?: 'plain' | 'photo' | 'bare' | 'light';
 		// Runs after any pick, so a drawer the menu sits in can close (the menu's Recent, run 14).
 		onact?: () => void;
 	} = $props();
@@ -39,10 +40,20 @@
 			: []),
 		...(project
 			? [
-					{ id: 'send', label: 'Send project', icon: 'icon-[mdi--send-outline]' },
+					{ id: 'send', label: 'Send Project', icon: 'icon-[mdi--send-outline]' },
 					project.status === 'Sent'
 						? { id: 'unsend', label: 'Unsend', icon: 'icon-[mdi--undo-variant]' }
-						: { id: 'sent', label: 'Mark sent', icon: 'icon-[mdi--send-check-outline]' }
+						: { id: 'sent', label: 'Mark Sent', icon: 'icon-[mdi--send-check-outline]' },
+					...(project.status === 'Complete'
+						? []
+						: [
+								{
+									id: 'complete',
+									label: 'Mark Complete',
+									icon: 'icon-[mdi--check-decagram-outline]'
+								}
+							]),
+					{ id: 'status', label: 'Change Status', icon: 'icon-[mdi--swap-horizontal]' }
 				]
 			: [{ id: 'edit', label: `Edit ${one}`, icon: 'icon-[mdi--pencil-outline]' }]),
 		{ id: 'delete', label: `Delete ${one}`, icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
@@ -67,6 +78,8 @@
 			look.say('Send opens the send flow in V1. Not wired up in this prototype.');
 		if (choice === 'sent') look.markSent(project);
 		if (choice === 'unsend') look.unsend(project);
+		if (choice === 'complete') look.setStatus(project, 'Complete');
+		if (choice === 'status') look.statusFor = project.id;
 		if (choice === 'delete')
 			look.confirm({
 				title: `Delete ${project.title}?`,
@@ -86,7 +99,13 @@
 	onpick={act}
 >
 	{#snippet trigger(_, isOpen)}
-		{#if tone === 'bare'}
+		{#if tone === 'light'}
+			<!-- Over a photo with no circle behind (run 18): white dots with a soft shadow so they read on any picture. -->
+			<span
+				class="flex size-9 items-center justify-center text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
+				><span class="icon-[mdi--dots-vertical] size-6"></span></span
+			>
+		{:else if tone === 'bare'}
 			<span class="flex size-9 items-center justify-center"
 				><span class="icon-[mdi--dots-vertical] size-[22px]"></span></span
 			>

@@ -20,7 +20,7 @@
 
 <div class="relative">
 	<button
-		class="flex min-h-[72px] w-full items-center gap-3 py-3 pr-12 pl-4 text-left transition active:bg-slate-50"
+		class="flex min-h-[100px] w-full items-center gap-3 py-2.5 pr-12 pl-4 text-left transition active:bg-slate-50"
 		onclick={() => look.openRecord(record.page, record.key)}
 	>
 		<RecordMark
@@ -52,14 +52,17 @@
 					</span>
 				{/if}
 			</span>
-			<Chips labels={record.sub ? [...record.labels, record.sub] : record.labels} />
-			{#if record.location}
-				<span class="flex min-w-0 items-center gap-0.5 text-xs text-slate-500"
-					><span class="icon-[mdi--map-marker] size-3.5 shrink-0 {record.tone.text}"></span><span
+			<!-- The label line and the place line keep their height when empty, so every row is as tall as the next. -->
+			<span class="flex h-[19px] items-center">
+				<Chips labels={record.sub ? [...record.labels, record.sub] : record.labels} />
+			</span>
+			<span class="flex h-4 min-w-0 items-center gap-0.5 text-xs text-slate-500">
+				{#if record.location}
+					<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {record.tone.text}"></span><span
 						class="truncate">{record.location}</span
-					></span
-				>
-			{/if}
+					>
+				{/if}
+			</span>
 		</span>
 	</button>
 	<div class="absolute top-2 right-1.5">

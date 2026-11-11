@@ -4,20 +4,20 @@
 	// your own design"): nothing under the photo; everything the list row shows sits on the photo over a dark fade:
 	// the customer's logo with its state dot, the title and progress, where the trip starts and ends, the team. The
 	// state label is filled with its own colour. A project with no photos shows a dark card with its customer's logo.
+	// Run 18 (Justin, 2026-11-10): the lines over the photo are the list row's own (project-lines.svelte), progress
+	// bar included, so nothing runs along the card's bottom edge; the ⋮ is bare white dots with no circle behind.
 	import ClientLogo from './client-logo.svelte';
-	import Faces from './faces.svelte';
 	import { STATUS, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import ProjectLines from './project-lines.svelte';
 	import ProjectLogo from './project-logo.svelte';
 	import MoreMenu from './more-menu.svelte';
-	import ProjectRoute from './project-route.svelte';
 	import { projectPhotosOf } from './records.data';
 
 	let { look, project }: { look: LookState; project: ProjectType } = $props();
 
 	const DOTS = 5;
 	const status = $derived(STATUS[project.status]);
-	const progress = $derived(look.progressOf(project));
 	const isArchived = $derived(project.status === 'Archived');
 	// The photos the report prints: switched-on photo panels, in order. The sample projects share one set of photos,
 	// so each starts the strip at a different one and the grid does not repeat (prototype only).
@@ -112,10 +112,10 @@
 		{/if}
 		<!-- Everything the list row shows, on a dark fade over the photo's lower half. Taps fall through to the photo. -->
 		<div
-			class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-slate-950/90 via-slate-950/60 to-transparent px-4 pt-14 pb-4"
+			class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-slate-950/90 via-slate-950/60 to-transparent px-4 pt-8 pb-3.5"
 		>
 			{#if photos.length > 1}
-				<span class="mb-3 flex items-center justify-center gap-1.5">
+				<span class="mb-2 flex items-center justify-center gap-1.5">
 					{#each dots as dot (dot)}
 						<span
 							class="rounded-full bg-white transition-all {dot === at
@@ -133,33 +133,13 @@
 					size={44}
 					isMuted={isArchived}
 				/>
-				<span class="min-w-0 flex-1 space-y-1">
-					<span class="flex items-baseline gap-2">
-						<span class="min-w-0 flex-1 truncate font-semibold text-white">{project.title}</span>
-						<span class="shrink-0 text-sm font-semibold text-white tabular-nums">{progress}%</span>
-					</span>
-					<span class="flex items-center justify-between gap-2">
-						<ProjectRoute
-							{look}
-							{project}
-							isLight
-						/>
-						<Faces
-							names={project.team}
-							size={22}
-							max={3}
-							isMuted={isArchived}
-						/>
-					</span>
-				</span>
+				<ProjectLines
+					{look}
+					{project}
+					isLight
+				/>
 			</span>
 		</div>
-		<span class="absolute inset-x-0 bottom-0 h-1 bg-white/15"
-			><span
-				class="block h-full transition-[width] duration-500 {status.bar}"
-				style="width: {progress}%"
-			></span></span
-		>
 	</div>
 	<span
 		class="pointer-events-none absolute top-3 left-3 rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm {status.bar}"
@@ -171,7 +151,7 @@
 			page="projects"
 			id={project.id}
 			isOpenable
-			tone="photo"
+			tone="light"
 		/>
 	</div>
 </article>

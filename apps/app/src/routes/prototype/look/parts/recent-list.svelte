@@ -54,9 +54,13 @@
 				style="width: {width}px"
 			>
 				<span
-					class="flex items-center justify-center rounded-full bg-slate-900/[0.05] {toneOf(item)}"
+					class="relative flex items-center justify-center overflow-hidden rounded-full {toneOf(
+						item
+					)}"
 					style="width: {size}px; height: {size}px"
-					><span class="{PAGE_ICONS[item.page]} size-[55%]"></span></span
+					><!-- The circle is the icon's own colour, let through at a tenth (run 18). --><span
+						class="absolute inset-0 bg-current opacity-[0.12]"
+					></span><span class="{PAGE_ICONS[item.page]} relative size-[55%]"></span></span
 				>
 			</span>
 			<span class="min-w-0 flex-1 {words}">

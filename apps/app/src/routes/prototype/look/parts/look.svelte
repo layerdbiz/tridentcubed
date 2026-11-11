@@ -12,6 +12,7 @@
 	import Confirm from './confirm.svelte';
 	import type { PageType } from './records.data';
 	import Shell from './shell.svelte';
+	import StatusSheet from './status-sheet.svelte';
 
 	let { onready }: { onready: (look: LookState) => void } = $props();
 
@@ -59,6 +60,7 @@
 
 <div class="look font-sans text-slate-900 [color-scheme:light]">
 	<Shell {look} />
+	<StatusSheet {look} />
 	<Confirm {look} />
 </div>
 
