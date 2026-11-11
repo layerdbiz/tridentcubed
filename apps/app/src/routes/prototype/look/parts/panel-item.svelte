@@ -161,7 +161,7 @@
 			{/if}
 			<span class="min-w-0 flex-1">
 				<span
-					class="block truncate font-semibold {panel.isEnabled
+					class="block leading-tight font-semibold {panel.isEnabled
 						? 'text-slate-900'
 						: 'text-slate-400'}">{panel.name}</span
 				>
