@@ -6,7 +6,6 @@
 	// state label is filled with its own colour. A project with no photos shows a dark card with its customer's logo.
 	// Run 18 (Justin, 2026-11-10): the lines over the photo are the list row's own (project-lines.svelte), progress
 	// bar included, so nothing runs along the card's bottom edge; the ⋮ is bare white dots with no circle behind.
-	import ClientLogo from './client-logo.svelte';
 	import { STATUS, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProjectLines from './project-lines.svelte';
@@ -97,16 +96,11 @@
 			{/if}
 		{:else}
 			<button
-				class="flex size-full flex-col items-center gap-2 bg-linear-to-br from-slate-700 to-slate-950 pt-[16%]"
+				class="flex size-full flex-col items-center gap-1.5 bg-linear-to-br from-slate-700 to-slate-950 pt-[4%]"
 				aria-label="Open {project.title}"
 				onclick={() => look.open(project.id)}
 			>
-				<ClientLogo
-					name={project.client}
-					size={72}
-					shape="circle"
-					isMuted={isArchived}
-				/>
+				<span class="icon-[mdi--image-off-outline] size-7 text-white/30"></span>
 				<span class="text-xs font-medium text-white/50">No photos yet</span>
 			</button>
 		{/if}

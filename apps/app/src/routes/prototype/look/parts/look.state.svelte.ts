@@ -266,10 +266,11 @@ export class LookState {
 		if (project && !this.workspaces[id]) this.workspaces[id] = createPanels(project);
 	}
 
+	// A project's percent is always worked out from its panels as they are now (run 18: a new project used to show
+	// 0% in the lists until it had been opened and left).
 	progressOf(project: ProjectType) {
-		return this.workspaces[project.id] && project.id === this.projectId
-			? this.overall
-			: project.progress;
+		const panels = this.workspaces[project.id];
+		return panels ? percentOf(panels) : project.progress;
 	}
 
 	// A count card picks what the chart and the list show, and the chart that suits it. The view (list, cards or
