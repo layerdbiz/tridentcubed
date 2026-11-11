@@ -22,6 +22,10 @@
 	// the footer's logo and code and the contact under Customer from the customer's page; faces, titles and the
 	// owner's sign-off from the team's pages; a stop's address and particulars from the facility's and transport's
 	// pages; the dates from the Time Log's days.
+	// Run 19 (Justin, 2026-11-10): the cover lists the project in the Project panel's own order, with real logos
+	// and faces; the Project Report page is tighter, its personnel are cards like the Team page's (the lead is
+	// first with a blue ring, and nobody is labelled owner), with anyone not on the team under them; and every stop
+	// of the Transport Mode panel prints on one page.
 	import { onMount, untrack } from 'svelte';
 	import ClientLogo from './client-logo.svelte';
 	import {
@@ -94,7 +98,11 @@
 	const team = $derived(look.panels.find((panel) => panel.kind === 'project'));
 	const timelog = $derived(look.panels.find((panel) => panel.id === 'timelog'));
 	const company = $derived(detail('Customer') || look.project.client);
-	const location = $derived(detail('Location') || look.project.location);
+	const location = $derived(look.project.location);
+	const personnel = $derived((team?.personnel ?? []).filter((person) => person.name.trim()));
+	const attachments = $derived(
+		look.panels.find((panel) => panel.kind === 'items' && panel.isEnabled)?.attachments ?? []
+	);
 	const people = $derived(
 		[team?.owner, ...(team?.assigned ?? [])].filter((name): name is string => Boolean(name))
 	);
@@ -165,16 +173,9 @@
 		];
 		for (const panel of look.panels) {
 			if (!panel.isEnabled) continue;
-			if (panel.kind === 'transport')
-				panel.stops.forEach((_, stopIndex) =>
-					list.push({
-						key: 'transport',
-						title: panel.name,
-						kind: 'transport',
-						panel,
-						group: stopIndex
-					})
-				);
+			// Every stop on one page (run 19), not a page each.
+			if (panel.kind === 'transport' && panel.stops.length)
+				list.push({ key: 'transport', title: panel.name, kind: 'transport', panel });
 			if (panel.kind === 'timelog' && panel.days.length)
 				list.push({ key: 'timelog', title: 'Time Log', kind: 'timelog', panel });
 			if (panel.kind === 'photos')
@@ -198,7 +199,7 @@
 	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on and
 	// numbered like an ordered list (1. 2. 3. 3.1); only the Project Report lists its parts (Justin's run 8 notes 16
 	// and 17, run 9 note 4).
-	const REPORT_PARTS = ['Personnel in Attendance', 'Transport', 'Cargo Description'];
+	const REPORT_PARTS = ['Personnel in Attendance', 'Transport Mode', 'Cargo Description'];
 	const contents = $derived(
 		pages
 			.filter((item, index) => pages.findIndex((other) => other.key === item.key) === index)
@@ -315,18 +316,57 @@
 		return () => clearTimeout(timer);
 	});
 
-	const COVER = $derived([
-		{ icon: PAGE_ICONS.facilities, label: 'Facility', value: facility },
+	// The cover's lines, in the Project panel's own order, each with its real picture: a logo, a face, or an icon.
+	type CoverType = { label: string; value: string; images?: string[]; icon?: string };
+	const cover = $derived<CoverType[]>([
 		{
-			icon: stops[0] ? iconOf(stops[0]) : 'icon-[mdi--ferry]',
-			label: 'Transport',
-			value: transport
+			label: 'Project Type',
+			value: detail('Project Type') ?? '',
+			icon: 'icon-[mdi--package-variant-closed]'
 		},
-		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: dates },
-		{ icon: PAGE_ICONS.customers, label: 'Customer', value: detail('Customer') },
-		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Owner', value: team?.owner },
-		{ icon: 'icon-[mdi--package-variant-closed]', label: 'Type', value: detail('Project Type') }
+		{
+			label: 'Organization',
+			value: organization.name,
+			images: organization.logo ? [organization.logo] : [],
+			icon: 'icon-[mdi--domain]'
+		},
+		{
+			label: 'Customer',
+			value: company,
+			images: client.icon ? [client.icon] : [],
+			icon: PAGE_ICONS.customers
+		},
+		{
+			label: 'Contact',
+			value: [contact?.name, contact?.title].filter(Boolean).join(', '),
+			images: contact?.photo ? [contact.photo] : [],
+			icon: 'icon-[mdi--account-outline]'
+		},
+		{
+			label: 'Lead',
+			value: team?.owner ?? '',
+			images: team?.owner ? [personOf(team.owner).photo] : [],
+			icon: 'icon-[mdi--account-tie-outline]'
+		},
+		{
+			label: 'Assigned',
+			value: listOf(team?.assigned ?? []),
+			images: (team?.assigned ?? []).map((name) => personOf(name).photo),
+			icon: PAGE_ICONS.team
+		},
+		{
+			label: 'Transport Mode',
+			value: transport,
+			icon: stops[0] ? iconOf(stops[0]) : PAGE_ICONS.transport
+		},
+		{ label: 'Facility', value: facility, icon: PAGE_ICONS.facilities },
+		{ label: 'Location', value: location, icon: 'icon-[mdi--map-marker]' },
+		{ label: 'Dates', value: dates, icon: 'icon-[mdi--calendar-blank-outline]' }
 	]);
+
+	function memberOf(name: string) {
+		return look.members.find((member) => member.name === name);
+	}
 </script>
 
 <!-- Trident in the header and the customer in the footer, the same way: logo, name, lines under it. -->
@@ -461,18 +501,43 @@
 									/></svg
 								>
 								<dl
-									class="mx-auto mt-12 grid w-fit max-w-[400px] grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-x-2.5 gap-y-2 text-left text-[12px]"
+									class="mx-auto mt-5 grid w-full grid-flow-col grid-cols-2 grid-rows-5 gap-x-8 gap-y-2 px-12 text-left"
 								>
-									{#each COVER as line (line.label)}
-										<span class="{line.icon} mt-px size-4 text-primary"></span>
-										<dt class="font-semibold text-slate-900">{line.label}</dt>
-										<dd
-											class="line-clamp-2 pl-2 leading-snug {line.value
-												? 'text-slate-600'
-												: 'text-slate-300 italic'}"
-										>
-											{line.value || 'Not filled in yet'}
-										</dd>
+									{#each cover as line (line.label)}
+										<div class="flex min-w-0 items-center gap-2.5">
+											<span class="flex w-9 shrink-0 items-center justify-start">
+												{#if line.images?.length}
+													{#each line.images.slice(0, 3) as image, at (at)}
+														<img
+															src={image}
+															alt=""
+															draggable="false"
+															class="size-7 rounded-full bg-white object-cover ring-2 ring-slate-100"
+															style="margin-left: {at ? -18 : 0}px"
+														/>
+													{/each}
+												{:else}
+													<span
+														class="flex size-7 items-center justify-center rounded-full bg-white text-primary ring-2 ring-slate-100"
+														><span class="{line.icon} size-4"></span></span
+													>
+												{/if}
+											</span>
+											<div class="min-w-0">
+												<dt
+													class="text-[7px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
+												>
+													{line.label}
+												</dt>
+												<dd
+													class="truncate text-[11px] leading-tight {line.value
+														? 'font-medium text-slate-800'
+														: 'text-slate-300 italic'}"
+												>
+													{line.value || 'Not filled in yet'}
+												</dd>
+											</div>
+										</div>
 									{/each}
 								</dl>
 							</div>
@@ -518,86 +583,136 @@
 									{/each}
 								</ol>
 							{:else if item.kind === 'report'}
-								<p class="mt-3 text-[10.5px] leading-relaxed text-slate-600">
+								<p class="mt-2 text-[10.5px] leading-relaxed text-slate-600">
 									<b class="text-slate-900">Introduction.</b> This is to report that {organization.name}
-									was present at {facility || 'the facility'} – {location} on {dates} for the purpose
-									of conducting a {(detail('Project Type') || 'cargo').toLowerCase()} survey{cargoLine
-										? ` of ${cargoLine}`
-										: ''}{transport ? ` from the ${transport}` : ''}.
+									was present at {facility || 'the facility'}{location ? ` – ${location}` : ''} on {dates}
+									for the purpose of conducting a {(
+										detail('Project Type') || 'cargo'
+									).toLowerCase()} survey{cargoLine ? ` of ${cargoLine}` : ''}{transport
+										? ` from the ${transport}`
+										: ''}.
 								</p>
-								<div class="mt-4 rounded-xl bg-slate-50 px-4 py-3">
-									<p class="text-[16px] leading-tight font-bold text-slate-950">
-										{detail('Title') || 'Untitled project'}
-									</p>
-									{#if detail('Subtitle')}
-										<p class="mt-0.5 text-[11px] text-slate-500">
-											{detail('Subtitle')}
+								<!-- The project in one strip: what it is, who it is for, where and when. -->
+								<div class="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
+									<div class="flex items-baseline justify-between gap-3">
+										<p class="min-w-0 truncate text-[15px] leading-tight font-bold text-slate-950">
+											{detail('Title') || 'Untitled project'}
 										</p>
-									{/if}
-									<p class="mt-2 flex items-center gap-3 text-[10.5px] text-slate-600">
-										<span class="flex items-center gap-0.5"
-											><span class="icon-[mdi--map-marker] size-3.5 text-slate-400"
-											></span>{location}</span
-										>
-										<span class="flex items-center gap-1"
-											><span class="icon-[mdi--calendar-blank-outline] size-3.5 text-slate-400"
-											></span>{dates}</span
-										>
-									</p>
-								</div>
-								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Customer', detail('Customer')], ['Type', detail('Project Type')]] as [label, value] (label)}
-										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
-											<p
-												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
+										{#if detail('Project Type')}
+											<span
+												class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-slate-600"
+												>{detail('Project Type')}</span
 											>
-												{label}
+										{/if}
+									</div>
+									{#if detail('Subtitle')}
+										<p class="text-[10.5px] text-slate-500">{detail('Subtitle')}</p>
+									{/if}
+									<div
+										class="mt-2 grid grid-cols-[1.4fr_1fr_1fr] gap-3 border-t border-slate-200 pt-2 text-[10px]"
+									>
+										<div class="flex min-w-0 items-center gap-2">
+											{#if client.icon}
+												<img
+													src={client.icon}
+													alt=""
+													draggable="false"
+													class="size-6 shrink-0 rounded-full bg-white object-contain"
+												/>
+											{/if}
+											<div class="min-w-0">
+												<p class="truncate font-semibold text-slate-900">
+													{company || 'No customer yet'}
+												</p>
+												{#if contact?.name}
+													<p class="truncate text-[8.5px] text-slate-500">
+														Attn. {[contact.name, contact.title, contact.email]
+															.filter(Boolean)
+															.join(' · ')}
+													</p>
+												{/if}
+											</div>
+										</div>
+										<p class="flex min-w-0 items-center gap-1 text-slate-600">
+											<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-slate-400"
+											></span><span class="truncate">{location || 'No location yet'}</span>
+										</p>
+										<p class="flex min-w-0 items-center gap-1 text-slate-600">
+											<span
+												class="icon-[mdi--calendar-blank-outline] size-3.5 shrink-0 text-slate-400"
+											></span><span class="truncate">{dates}</span>
+										</p>
+									</div>
+								</div>
+								<h3 class="mt-4 text-[12.5px] font-bold text-slate-950">Personnel in Attendance</h3>
+								<!-- The team as cards, like the Team page's: the lead first, in a blue ring, and nobody labelled. -->
+								<div class="mt-1.5 grid grid-cols-3 gap-1.5">
+									{#each people.slice(0, 9) as name, personIndex (name)}
+										{@const member = memberOf(name)}
+										<div
+											class="flex flex-col items-center rounded-xl bg-slate-50 px-2 py-2 text-center"
+										>
+											<img
+												src={personOf(name).photo}
+												alt=""
+												draggable="false"
+												class="size-9 rounded-full object-cover ring-2 {personIndex === 0
+													? 'ring-primary'
+													: 'ring-white'}"
+											/>
+											<p class="mt-1 w-full truncate text-[10.5px] font-semibold text-slate-900">
+												{name}
 											</p>
-											<p class="mt-0.5 {value ? 'text-slate-900' : 'text-slate-300 italic'}">
-												{value || 'Not filled in yet'}
-											</p>
-											{#if label === 'Customer' && contact?.name}
-												<p class="mt-0.5 truncate text-[8.5px] text-slate-500">
-													Attn. {[contact.name, contact.title, contact.email]
-														.filter(Boolean)
-														.join(' · ')}
+											{#if member?.title}
+												<p class="w-full truncate text-[8px] text-slate-500">{member.title}</p>
+											{/if}
+											{#if member}
+												<p class="mt-1 flex flex-wrap justify-center gap-0.5">
+													{#each labelsOf(member).slice(0, 2) as label (label)}
+														<span
+															class="rounded-full bg-white px-1.5 py-px text-[7px] font-medium text-slate-600"
+															>{label}</span
+														>
+													{/each}
 												</p>
 											{/if}
 										</div>
-									{/each}
-								</div>
-								<h3 class="mt-5 text-[13px] font-bold text-slate-950">Personnel in Attendance</h3>
-								<div class="mt-2 grid grid-cols-2 gap-2">
-									{#each people.slice(0, 6) as name, personIndex (name)}
-										{@const person = personOf(name)}
-										<div class="flex items-center gap-2.5 rounded-xl bg-slate-50 px-2.5 py-2">
-											<img
-												src={person.photo}
-												alt=""
-												draggable="false"
-												class="size-8 rounded-full object-cover {personIndex === 0
-													? 'ring-2 ring-primary ring-offset-1'
-													: ''}"
-											/>
-											<div class="min-w-0">
-												<p class="truncate text-[11.5px] font-semibold text-slate-900">
-													{person.name}
-												</p>
-												<p
-													class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
-												>
-													{[personIndex === 0 ? 'Project owner' : 'Assigned', titleOf(name)]
-														.filter(Boolean)
-														.join(' · ')}
-												</p>
-											</div>
-										</div>
 									{:else}
-										<p class="text-[11px] text-slate-300 italic">No one assigned yet</p>
+										<p class="col-span-3 text-[11px] text-slate-300 italic">No one assigned yet</p>
 									{/each}
 								</div>
-								<h3 class="mt-5 text-[13px] font-bold text-slate-950">Transport</h3>
-								<div class="mt-2 flex flex-wrap items-center gap-1.5">
+								{#if personnel.length}
+									<!-- Anyone else on the job, kept apart from the team. -->
+									<div class="mt-1.5 grid grid-cols-3 gap-1.5 border-t border-slate-100 pt-1.5">
+										{#each personnel.slice(0, 9) as person (person.id)}
+											<div class="flex items-center gap-2 rounded-xl bg-slate-50 px-2 py-1.5">
+												{#if person.photo}
+													<img
+														src={person.photo}
+														alt=""
+														draggable="false"
+														class="size-7 shrink-0 rounded-full object-cover"
+													/>
+												{:else}
+													<span
+														class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600"
+														>{person.name.trim().slice(0, 1).toUpperCase()}</span
+													>
+												{/if}
+												<div class="min-w-0">
+													<p class="truncate text-[10px] font-semibold text-slate-900">
+														{person.name}
+													</p>
+													{#if person.company}
+														<p class="truncate text-[8px] text-slate-500">{person.company}</p>
+													{/if}
+												</div>
+											</div>
+										{/each}
+									</div>
+								{/if}
+								<h3 class="mt-4 text-[12.5px] font-bold text-slate-950">Transport Mode</h3>
+								<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 									{#each stops as stop, stopIndex (stop.id)}
 										{#if stopIndex}<span class="icon-[mdi--arrow-right] size-3.5 text-slate-300"
 											></span>{/if}
@@ -630,12 +745,12 @@
 											</div>
 										</div>
 									{:else}
-										<p class="text-[11px] text-slate-300 italic">No transport yet</p>
+										<p class="text-[11px] text-slate-300 italic">No transport mode yet</p>
 									{/each}
 								</div>
-								<h3 class="mt-5 text-[13px] font-bold text-slate-950">Cargo Description</h3>
+								<h3 class="mt-4 text-[12.5px] font-bold text-slate-950">Cargo Description</h3>
 								{#if cargo.length}
-									<table class="mt-2 w-full text-left text-[11px]">
+									<table class="mt-1 w-full text-left text-[10.5px]">
 										<thead>
 											<tr
 												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
@@ -647,93 +762,116 @@
 										<tbody class="divide-y divide-slate-100">
 											{#each cargo as item (item.id)}
 												<tr>
-													<td class="py-1.5 font-bold text-slate-900 tabular-nums"
+													<td class="py-1 font-bold text-slate-900 tabular-nums"
 														>{item.quantity || '–'}</td
 													>
-													<td class="py-1.5 text-slate-700">{item.description}</td>
+													<td class="py-1 text-slate-700">{item.description}</td>
 												</tr>
 											{/each}
 										</tbody>
 									</table>
-								{:else}
+								{:else if !attachments.length}
 									<p class="mt-1.5 text-[11px] text-slate-300 italic">Not filled in yet</p>
 								{/if}
-							{:else if item.kind === 'transport' && item.panel}
-								{@const stopIndex = item.group ?? 0}
-								{@const stop = item.panel.stops[stopIndex]}
-								{@const place = look.facilities.find((other) => other.name === stop.facility)}
-								{@const carrier = look.transports.find((other) => other.name === stop.name)}
-								<h3 class="mt-2 flex items-center gap-2 text-[13px] font-bold text-slate-950">
-									{#if stop.point}
-										<span
-											class="rounded-full px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase {POINTS[
-												stop.point
-											].solid}">{stop.point}</span
-										>
-									{/if}
-									{stop.facility || `Stop ${stopIndex + 1}`}
-								</h3>
-								<div class="mt-3 flex items-center gap-4 rounded-xl bg-slate-50 px-4 py-4">
-									<span
-										class="flex size-14 shrink-0 items-center justify-center rounded-2xl {stop.point
-											? POINTS[stop.point].chip
-											: 'bg-slate-100 text-slate-400'}"
-										><span class="{iconOf(stop)} size-8"></span></span
-									>
-									<div class="min-w-0 flex-1">
-										<p
-											class="text-[18px] leading-tight font-bold {stop.name
-												? 'text-slate-950'
-												: 'text-slate-300 italic'}"
-										>
-											{stop.name || 'Not filled in yet'}
-										</p>
-										<p
-											class="mt-1 text-[8px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
-										>
-											{[stop.type, stop.mode].filter(Boolean).join(' · ') || 'Transport'}
-										</p>
+								{#if attachments.length}
+									<!-- The item list as it was handed over: photos of it, and the names of any files. -->
+									<div class="mt-2 flex flex-wrap items-start gap-1.5">
+										{#each attachments as file (file.id)}
+											{#if file.kind === 'photo'}
+												<img
+													src={file.src}
+													alt={file.name}
+													draggable="false"
+													class="h-20 rounded-lg object-cover"
+												/>
+											{:else}
+												<span
+													class="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[9px] text-slate-600"
+													><span class="icon-[mdi--file-table-outline] size-3.5 text-primary"
+													></span>{file.name}</span
+												>
+											{/if}
+										{/each}
 									</div>
-								</div>
-								<div class="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-									{#each [['Point', stop.point ? `${stop.point}, ${POINTS[stop.point].hint}` : ''], ['Facility', stop.facility], ['Facility Kind', place?.kind ?? ''], ['City', place?.city ?? ''], ['Address', place?.address ?? ''], ['Facility Contact', [place?.contact, place?.phone]
-												.filter(Boolean)
-												.join(' · ')], ['Transport Type', stop.type], ['Transport Mode', stop.mode]] as [label, value] (label)}
-										<div class="rounded-lg bg-slate-50 px-3 py-1.5">
-											<p
-												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
-											>
-												{label}
-											</p>
-											<p class="mt-0.5 {value ? 'text-slate-900' : 'text-slate-300 italic'}">
-												{value || 'Not filled in yet'}
-											</p>
-										</div>
+								{/if}
+							{:else if item.kind === 'transport' && item.panel}
+								<!-- Every stop on this one page: what moved the items, where, and its particulars. -->
+								<div class="mt-3 space-y-2">
+									{#each item.panel.stops.filter((stop) => stop.name || stop.facility || stop.mode) as stop (stop.id)}
+										{@const place = look.facilities.find((other) => other.name === stop.facility)}
+										{@const carrier = look.transports.find((other) => other.name === stop.name)}
+										<section class="rounded-xl bg-slate-50 px-3.5 py-2.5">
+											<div class="flex items-center gap-3">
+												<span
+													class="flex size-9 shrink-0 items-center justify-center rounded-xl {stop.point
+														? POINTS[stop.point].chip
+														: 'bg-slate-100 text-slate-400'}"
+													><span class="{iconOf(stop)} size-5"></span></span
+												>
+												<div class="min-w-0 flex-1">
+													<p
+														class="truncate text-[13px] leading-tight font-bold {stop.name
+															? 'text-slate-950'
+															: 'text-slate-300 italic'}"
+													>
+														{stop.name || 'Not filled in yet'}
+													</p>
+													<p
+														class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
+													>
+														{#if stop.point}<span class={POINTS[stop.point].text}>{stop.point}</span
+															>{/if}
+														{[stop.type, stop.mode].filter(Boolean).join(' · ')}
+													</p>
+												</div>
+												<div class="max-w-[46%] min-w-0 text-right text-[9px] leading-snug">
+													<p
+														class="truncate text-[10.5px] font-semibold {stop.facility
+															? 'text-slate-900'
+															: 'text-slate-300 italic'}"
+													>
+														{stop.facility || 'No facility yet'}
+													</p>
+													<p class="truncate text-slate-500">
+														{[place?.kind, place?.city].filter(Boolean).join(' · ')}
+													</p>
+													{#if place?.address}<p class="truncate text-slate-500">
+															{place.address}
+														</p>{/if}
+													{#if place?.contact || place?.phone}
+														<p class="truncate text-slate-500">
+															{[place?.contact, place?.phone].filter(Boolean).join(' · ')}
+														</p>
+													{/if}
+												</div>
+											</div>
+											{#if PARTICULARS[stop.mode]}
+												<dl
+													class="mt-2 grid grid-cols-5 gap-x-3 gap-y-1 border-t border-slate-200 pt-1.5"
+												>
+													{#each PARTICULARS[stop.mode] as label (label)}
+														<div class="min-w-0">
+															<dt
+																class="truncate text-[6.5px] font-semibold tracking-[0.1em] text-slate-400 uppercase"
+															>
+																{label}
+															</dt>
+															<dd
+																class="truncate text-[9.5px] {carrier?.details?.[label]
+																	? 'text-slate-900'
+																	: 'text-slate-300'}"
+															>
+																{carrier?.details?.[label] || '–'}
+															</dd>
+														</div>
+													{/each}
+												</dl>
+											{/if}
+										</section>
+									{:else}
+										<p class="text-[11px] text-slate-300 italic">No stops yet</p>
 									{/each}
 								</div>
-								<h3 class="mt-5 text-[13px] font-bold text-slate-950">
-									{stop.mode || 'Transport'} particulars
-								</h3>
-								{#if PARTICULARS[stop.mode]}
-									<dl class="mt-2 divide-y divide-slate-100 text-[11px]">
-										{#each PARTICULARS[stop.mode] as label (label)}
-											<div class="flex justify-between gap-4 py-1.5">
-												<dt class="font-medium text-slate-600">{label}</dt>
-												<dd
-													class={carrier?.details?.[label]
-														? 'text-slate-900'
-														: 'text-slate-300 italic'}
-												>
-													{carrier?.details?.[label] || 'Not filled in yet'}
-												</dd>
-											</div>
-										{/each}
-									</dl>
-								{:else}
-									<p class="mt-1.5 text-[11px] text-slate-300 italic">
-										Pick the Transport Mode to list its particulars
-									</p>
-								{/if}
 							{:else if item.kind === 'timelog'}
 								{#each timelog?.days ?? [] as day, dayIndex (day.id)}
 									{@const entries = [...day.entries].sort((a, b) =>

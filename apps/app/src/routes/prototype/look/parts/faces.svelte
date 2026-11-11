@@ -18,7 +18,7 @@
 	{#each shown as name, index (name)}
 		<span
 			class="relative"
-			title={index === 0 ? `${name} (owner)` : name}
+			title={index === 0 ? `${name} (lead)` : name}
 			style="z-index: {shown.length - index}; margin-left: {index ? -size * 0.32 : 0}px"
 		>
 			<Avatar

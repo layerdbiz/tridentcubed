@@ -6,6 +6,8 @@
 		id: string;
 		label: string;
 		icon?: string;
+		// A round picture in place of an icon: a face or a logo.
+		image?: string;
 		dot?: string;
 		count?: number;
 		// A delete in a ⋮ menu reads red.
@@ -30,7 +32,8 @@
 		onpick,
 		trigger,
 		align = 'right',
-		isWide = false
+		isWide = false,
+		values
 	}: {
 		options: OptionType[];
 		value: string;
@@ -39,6 +42,8 @@
 		trigger: Snippet<[OptionType | undefined, boolean]>;
 		align?: 'left' | 'right';
 		isWide?: boolean;
+		// Given, the menu picks several: every id in it is ticked, and a pick does not close the list (run 19).
+		values?: string[];
 	} = $props();
 
 	let isOpen = $state(false);
@@ -60,7 +65,7 @@
 		const x = align === 'right' ? `right: ${innerWidth - box.right}px` : `left: ${box.left}px`;
 		const y = isUp ? `bottom: ${innerHeight - box.top + 8}px` : `top: ${box.bottom + 8}px`;
 		// Run 14 (note 5): never taller than the room on its side, or 360px; longer lists scroll inside it.
-		const most = Math.min(isUp ? above : below, 360);
+		const most = Math.max(140, Math.min(isUp ? above : below, 360));
 		place = `${x}; ${y}; min-width: ${isWide ? box.width : 192}px; max-height: ${most}px`;
 		isOpen = true;
 	}
@@ -105,20 +110,26 @@
 			{@attach lift}
 		>
 			{#each options as option (option.id)}
+				{@const isOn = values ? values.includes(option.id) : option.id === value}
 				<button
 					type="button"
 					role="option"
-					aria-selected={option.id === value}
+					aria-selected={isOn}
 					class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition {option.isDanger
 						? 'font-medium text-danger hover:bg-danger/10'
-						: option.id === value
+						: isOn
 							? 'bg-primary/[0.08] font-medium text-slate-900'
 							: 'text-slate-600 hover:bg-slate-900/[0.04]'}"
 					onclick={() => {
 						onpick(option.id);
-						isOpen = false;
+						if (!values) isOpen = false;
 					}}
 				>
+					{#if option.image}<img
+							src={option.image}
+							alt=""
+							class="size-7 shrink-0 rounded-full bg-slate-200 object-cover"
+						/>{/if}
 					{#if option.icon}<span
 							class="{option.icon} size-[18px] {option.isDanger ? '' : 'text-slate-500'}"
 						></span>{/if}
@@ -127,7 +138,7 @@
 					{#if option.count !== undefined}<span class="text-xs text-slate-400 tabular-nums"
 							>{option.count}</span
 						>{/if}
-					{#if option.id === value}<span class="icon-[mdi--check] size-4 text-primary"></span>{/if}
+					{#if isOn}<span class="icon-[mdi--check] size-4 text-primary"></span>{/if}
 				</button>
 			{/each}
 		</div>

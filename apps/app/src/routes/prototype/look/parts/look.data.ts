@@ -74,6 +74,12 @@ export type PhotoType = { id: string; src: string; description: string };
 // One row of the Items panel: how many and what (Justin's run 9 note 24), the way the sample reports list cargo
 // ("2x transformers and 27x accessory crates"). A manifest's extra columns may come later.
 export type ItemType = { id: string; quantity: string; description: string };
+// Someone on the job who is not on the team (run 19, Justin 2026-11-10): typed into the Project panel's Team
+// section and printed under the team on the report.
+export type PersonnelType = { id: string; name: string; company: string; photo: string };
+// Something attached to the Items panel in place of typed rows, or beside them: a photo of the item list, or the
+// spreadsheet itself. A photo prints on the report; a file prints its name.
+export type AttachmentType = { id: string; name: string; src: string; kind: 'photo' | 'file' };
 export type GroupType = {
 	id: string;
 	title: string;
@@ -90,6 +96,8 @@ export type StopType = {
 	mode: string;
 	name: string;
 	facility: string;
+	// A stop added beyond the trip's own Start, Stop and End: it has its own section in the panel (run 19).
+	isExtra?: boolean;
 };
 
 export type PanelKindType = 'project' | 'transport' | 'items' | 'timelog' | 'photos';
@@ -108,6 +116,10 @@ export type PanelType = {
 	assigned: string[];
 	// The Project panel: which of the customer's contacts the report is for (its id); none picks the first.
 	contact?: string;
+	// The Project panel: people on the job who are not on the team.
+	personnel?: PersonnelType[];
+	// The Items panel: photos of the item list, or the spreadsheet itself.
+	attachments?: AttachmentType[];
 	days: DayType[];
 	groups: GroupType[];
 	stops: StopType[];
@@ -842,7 +854,7 @@ export function createPanels(project: ProjectType): PanelType[] {
 		{
 			...base,
 			id: 'transport',
-			name: 'Transport',
+			name: 'Transport Mode',
 			icon: 'icon-[mdi--ferry]',
 			kind: 'transport',
 			control: 'locked',
@@ -886,7 +898,7 @@ export function createPanels(project: ProjectType): PanelType[] {
 			name: 'Inspection',
 			icon: 'icon-[mdi--camera-outline]',
 			kind: 'photos',
-			control: 'remove',
+			control: 'switch',
 			isDraggable: true,
 			groups: [
 				group('Warehouse intake', 'Receiving area and intake flow.', ['a1', 'a2', 'a3', 'a4', 'a5'])
@@ -911,16 +923,6 @@ export function createPanels(project: ProjectType): PanelType[] {
 			control: 'switch',
 			isDraggable: true,
 			groups: [group('Hatch 2 discharge', 'Lift sequence from hatch 2.', ['b1', 'b2', 'b3', 'b4'])]
-		},
-		{
-			...base,
-			id: 'custom',
-			name: 'Custom',
-			icon: 'icon-[mdi--puzzle-outline]',
-			kind: 'photos',
-			control: 'switch',
-			isDraggable: true,
-			isEnabled: false
 		}
 	];
 
@@ -965,7 +967,8 @@ function projectPanel(
 		control: 'locked',
 		owner: project.team[0] ?? '',
 		assigned: project.team.slice(1),
-		// Run 16 order (Justin, 2026-11-10): Title, Subtitle, Project Type, then who it is for and where. The
+		// Run 16 order (Justin, 2026-11-10): Title, Subtitle, Project Type, then who it is for. Run 19: no Location
+		// here; where a project is comes from the facility of its first stop (Transport Mode panel). The
 		// Organization and Customer lists are read live from the organization and the Customers page
 		// (panel-body.svelte), so `options` here is only what they held when the project was made.
 		fields: [
@@ -973,8 +976,7 @@ function projectPanel(
 			field('Subtitle', project.subtitle),
 			field('Project Type', project.type, 'select', { options: PROJECT_TYPES }),
 			field('Organization', ORGANIZATION.name, 'select', { options: [ORGANIZATION.name] }),
-			field('Customer', project.client, 'select', { options: [...CLIENTS], isAddable: true }),
-			field('Location', project.location)
+			field('Customer', project.client, 'select', { options: [...CLIENTS], isAddable: true })
 		]
 	} satisfies PanelType;
 }
@@ -1040,6 +1042,10 @@ export function draftOf(page: Exclude<DatasetType, 'projects'>) {
 	return { name: '', kind: 'Port', city: '' } satisfies FacilityType as FacilityType;
 }
 
+export function newPerson(): PersonnelType {
+	return { id: createId('person'), name: '', company: '', photo: '' };
+}
+
 export function newContact(): ContactType {
 	return { id: createId('contact'), name: '', title: '', email: '', phone: '', photo: '' };
 }
@@ -1047,8 +1053,9 @@ export function newContact(): ContactType {
 export function newPanel(count: number): PanelType {
 	return {
 		id: createId('panel'),
-		name: count > 1 ? `Photos ${count}` : 'Photos',
-		icon: 'icon-[mdi--image-multiple-outline]',
+		// Run 19: there is no fixed Custom panel any more; Add panel makes one, and it can be removed.
+		name: count > 1 ? `Custom ${count}` : 'Custom',
+		icon: 'icon-[mdi--puzzle-outline]',
 		kind: 'photos',
 		control: 'remove',
 		isEnabled: true,

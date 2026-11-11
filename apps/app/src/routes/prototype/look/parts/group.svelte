@@ -28,7 +28,8 @@
 		tone?: string;
 		isOpen: boolean;
 		ontoggle: () => void;
-		ondelete: () => void;
+		// Left out for a section that is always there (the Team, the Trip).
+		ondelete?: () => void;
 		deleteLabel?: string;
 		sortKey?: string;
 		index?: number;
@@ -74,12 +75,14 @@
 			{@render children()}
 			<div class="-mx-1 flex flex-wrap items-center gap-2">
 				{@render actions?.()}
-				<button
-					type="button"
-					class="ml-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger/10"
-					onclick={ondelete}
-					><span class="icon-[mdi--trash-can-outline] size-[18px]"></span>{deleteLabel}</button
-				>
+				{#if ondelete}
+					<button
+						type="button"
+						class="ml-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger/10"
+						onclick={ondelete}
+						><span class="icon-[mdi--trash-can-outline] size-[18px]"></span>{deleteLabel}</button
+					>
+				{/if}
 			</div>
 		</div>
 	{/if}

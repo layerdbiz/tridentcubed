@@ -15,12 +15,18 @@
 	// customer's Contact, the Team and Location, and the + sheet shows this same panel for a new project (`isDraft`:
 	// nothing is saved until Create). Its Organization and Customer lists are read live, and "Add new" makes a real
 	// customer, transport mode or facility through `look.add`, the same as the + sheet.
+	// Run 19 (Justin, 2026-11-10): the Team is a section of its own, like a stop: Lead (once Owner) and Assigned are
+	// pickers that show faces, Assigned taking several; Add Personnel adds people who are not on the team, each in a
+	// section of their own. Location is gone: a project is where its first stop's facility is. The Transport Mode
+	// panel opens on one Trip section with Start, Stop and End together, each a transport mode and a facility, and
+	// Add stop still adds a stop with a section of its own. Items takes rows pasted from a spreadsheet and photos or
+	// files of the item list. The Time Log's times are typed on the 24-hour clock.
 	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
-	import Avatar from './avatar.svelte';
 	import BottomSheet from './bottom-sheet.svelte';
 	import Group from './group.svelte';
 	import { shrink } from './image';
+	import ImageField from './image-field.svelte';
 	import {
 		createId,
 		draftOf,
@@ -28,7 +34,8 @@
 		itemOf,
 		LAYOUTS,
 		MODE_ICONS,
-		PEOPLE,
+		newPerson,
+		personOf,
 		photoOf,
 		POINTS,
 		stopOf,
@@ -60,6 +67,75 @@
 
 	function save() {
 		if (!isDraft) look.saved();
+	}
+
+	// The Team section: the lead, the assigned, and anyone else on the job.
+	let isTeamOpen = $state(true);
+	let openPeople = $state<string[]>([]);
+	const personnel = $derived(panel.personnel ?? []);
+	const faces = $derived(
+		look.members.map((member) => ({
+			id: member.name,
+			label: member.name,
+			image: personOf(member.name).photo
+		}))
+	);
+
+	function setLead(name: string) {
+		panel.owner = name;
+		panel.assigned = panel.assigned.filter((other) => other !== name);
+		save();
+	}
+
+	function assign(name: string) {
+		panel.assigned = panel.assigned.includes(name)
+			? panel.assigned.filter((other) => other !== name)
+			: [...panel.assigned, name];
+		save();
+	}
+
+	function addPerson() {
+		const person = newPerson();
+		panel.personnel = [...personnel, person];
+		openPeople = [...openPeople, person.id];
+		save();
+	}
+
+	// Rows pasted from a spreadsheet become items: a first cell that is a number is the quantity, the rest the
+	// description. A single pasted word goes into the field as usual.
+	function pasteItems(event: ClipboardEvent) {
+		const text = event.clipboardData?.getData('text/plain') ?? '';
+		if (!/[\t\n]/.test(text.trim())) return;
+		event.preventDefault();
+		const rows = text
+			.split(/\r?\n/)
+			.map((line) =>
+				line
+					.split('\t')
+					.map((cell) => cell.trim())
+					.filter(Boolean)
+			)
+			.filter((cells) => cells.length);
+		for (const cells of rows) {
+			const hasQuantity = cells.length > 1 && /^[\d.,]+$/.test(cells[0]);
+			panel.items.push(
+				itemOf(hasQuantity ? cells[0] : '', (hasQuantity ? cells.slice(1) : cells).join(' · '))
+			);
+		}
+		const filled = panel.items.filter((item) => item.quantity.trim() || item.description.trim());
+		panel.items.splice(0, panel.items.length, ...filled);
+		save();
+		look.say(`${rows.length} ${rows.length === 1 ? 'row' : 'rows'} pasted`);
+	}
+
+	// The 24-hour clock, typed: "730" and "0730" both become 07:30, "7" becomes 07:00.
+	function clockOf(text: string) {
+		const digits = text.replace(/\D/g, '').slice(0, 4);
+		if (!digits) return '';
+		const padded = digits.length <= 2 ? `${digits.padStart(2, '0')}00` : digits.padStart(4, '0');
+		const hours = Math.min(23, Number(padded.slice(0, 2)));
+		const minutes = Math.min(59, Number(padded.slice(2)));
+		return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 	}
 
 	// The Project panel's lists are the live ones: the organization itself, and the Customers page.
@@ -246,12 +322,57 @@
 	}
 
 	// The first stop starts the trip; a later one ends it, and the stop that ended it becomes a stop on the way.
+	// The trip's own three stops, by point: the first stop of each that was not added as an extra.
+	const TRIP: PointType[] = ['Start', 'Stop', 'End'];
+	const BLANK = stopOf();
+	let isTripOpen = $state(true);
+
+	function tripStop(point: PointType) {
+		return panel.stops.find((stop) => stop.point === point && !stop.isExtra);
+	}
+
+	const extraStops = $derived(
+		panel.stops.filter((stop) => !TRIP.some((point) => tripStop(point)?.id === stop.id))
+	);
+
+	// A stop goes in trip order: Start first, End last, a Stop just before the End.
+	function place(stop: StopType) {
+		const end = panel.stops.findIndex((other) => other.point === 'End');
+		if (stop.point === 'Start') panel.stops.unshift(stop);
+		else if (stop.point === 'End' || end < 0) panel.stops.push(stop);
+		else panel.stops.splice(end, 0, stop);
+		return panel.stops.find((other) => other.id === stop.id)!;
+	}
+
+	// The trip's stop for a point, made the first time something is picked for it.
+	function ensureStop(point: PointType) {
+		const found = tripStop(point);
+		if (found) return found;
+		const stop = stopOf();
+		stop.point = point;
+		return place(stop);
+	}
+
+	// One pick names the transport mode and brings its type and mode with it.
+	function setTripTransport(point: PointType, name: string) {
+		const stop = ensureStop(point);
+		const transport = look.transports.find((item) => item.name === name);
+		stop.name = name;
+		stop.type = transport?.type ?? '';
+		stop.mode = transport?.mode ?? '';
+		save();
+	}
+
+	function cityOf(facility: string) {
+		return look.facilities.find((item) => item.name === facility)?.city ?? '';
+	}
+
+	// A stop beyond the trip's three, with a section of its own.
 	function addStop() {
 		const stop = stopOf();
-		stop.point = panel.stops.length ? 'End' : 'Start';
-		for (const other of panel.stops) if (other.point === 'End') other.point = 'Stop';
-		panel.stops.push(stop);
-		openStops = [...openStops, stop.id];
+		stop.point = 'Stop';
+		stop.isExtra = true;
+		openStops = [...openStops, place(stop).id];
 		save();
 	}
 
@@ -277,6 +398,32 @@
 		node.focus({ preventScroll: true });
 		node.setSelectionRange(node.value.length, node.value.length);
 	};
+
+	// A filled-in day the day after the last one, so the time log shows how a real day reads. Back in run 19:
+	// Justin uses it to try a report out quickly.
+	const SAMPLE_DAY = [
+		['07:00', 'Arrived on site, safety briefing with the terminal'],
+		['07:45', 'Hatches opened, cargo condition checked before work'],
+		['09:30', 'Discharge started, first lift landed on the quay'],
+		['12:00', 'Break, cargo secured'],
+		['13:00', 'Discharge resumed'],
+		['16:15', 'Last lift landed, tally agreed with the stevedores'],
+		['17:00', 'Left site']
+	];
+
+	function addSampleDay() {
+		const last = panel.days.findLast((day) => day.date)?.date;
+		const date = last ? new Date(`${last}T12:00`) : new Date();
+		if (last) date.setDate(date.getDate() + 1);
+		const day = {
+			id: createId('day'),
+			date: date.toISOString().slice(0, 10),
+			entries: SAMPLE_DAY.map(([time, activity]) => ({ id: createId('entry'), time, activity }))
+		};
+		panel.days.push(day);
+		openDays = [...openDays, day.id];
+		save();
+	}
 
 	function sortEntries(index: number) {
 		panel.days[index].entries.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
@@ -422,45 +569,124 @@
 	{/if}
 {/snippet}
 
-{#snippet teamBlock()}
-	<label class="block">
-		<span class={labelClass}>Owner</span>
-		<select
-			class={inputClass}
-			bind:value={panel.owner}
-		>
-			<option value="">Choose…</option>
-			{#each look.members as person (person.name)}<option>{person.name}</option>{/each}
-		</select>
-	</label>
+{#snippet facePicker(
+	label: string,
+	value: string,
+	values: string[] | undefined,
+	options: OptionType[],
+	onpick: (id: string) => void
+)}
+	{@const picked = values ?? (value ? [value] : [])}
 	<div>
-		<p class={labelClass}>Assigned · tap to add or remove</p>
-		<div class="flex flex-wrap gap-2">
-			{#each look.members.filter((person) => person.name !== panel.owner) as person (person.name)}
-				{@const isOn = panel.assigned.includes(person.name)}
-				<button
-					type="button"
-					class="flex items-center gap-2 rounded-full py-1 pr-3 pl-1 text-xs font-medium transition {isOn
-						? 'bg-primary text-white shadow-md shadow-primary/25'
-						: 'bg-slate-900/[0.04] text-slate-600 hover:bg-primary/10'}"
-					aria-pressed={isOn}
-					onclick={() => {
-						panel.assigned = isOn
-							? panel.assigned.filter((name) => name !== person.name)
-							: [...panel.assigned, person.name];
-						save();
-					}}
+		<p class={labelClass}>{label} {@render unpicked(!picked.length)}</p>
+		<Menu
+			{label}
+			{value}
+			{values}
+			{options}
+			{onpick}
+			align="left"
+			isWide
+		>
+			{#snippet trigger(_, isOpen)}
+				<span
+					class="{inputClass} flex min-h-[42px] items-center gap-2 text-left {isOpen
+						? 'bg-white ring-2 ring-primary/40'
+						: ''}"
 				>
-					<Avatar
-						name={person.name}
-						size={24}
-						ring={isOn ? 'ring-primary' : 'ring-white'}
-					/>
-					{person.name}
-				</button>
-			{/each}
-		</div>
+					{#if picked.length}
+						<span class="flex shrink-0 items-center">
+							{#each picked.slice(0, 6) as name, index (name)}
+								<img
+									src={personOf(name).photo}
+									alt=""
+									class="size-6 rounded-full bg-slate-200 object-cover ring-2 ring-white"
+									style="margin-left: {index ? -6 : 0}px"
+								/>
+							{/each}
+						</span>
+						<span class="flex-1 truncate"
+							>{picked.length === 1 ? picked[0] : `${picked.length} people`}</span
+						>
+					{:else}
+						<span class="flex-1 text-slate-400">Choose…</span>
+					{/if}
+					<span class="icon-[mdi--chevron-down] size-4 shrink-0 text-slate-400"></span>
+				</span>
+			{/snippet}
+		</Menu>
 	</div>
+{/snippet}
+
+<!-- The organization's own people on the project: one lead, and whoever else is assigned. -->
+{#snippet teamBlock()}
+	<Group
+		title="Team"
+		note={[panel.owner, ...panel.assigned].filter(Boolean).join(', ') || 'Pick the lead first'}
+		icon="icon-[mdi--account-group]"
+		isOpen={isTeamOpen}
+		ontoggle={() => (isTeamOpen = !isTeamOpen)}
+	>
+		{@render facePicker('Lead', panel.owner, undefined, faces, setLead)}
+		{@render facePicker(
+			'Assigned',
+			'',
+			panel.assigned,
+			faces.filter((face) => face.id !== panel.owner),
+			assign
+		)}
+	</Group>
+	<!-- Anyone else on the job, who is not on the team: each in a section of their own, as a stop is. -->
+	{#each personnel as person, personIndex (person.id)}
+		<Group
+			title={person.name || `Personnel ${personIndex + 1}`}
+			note={person.company || 'Not on the team'}
+			icon="icon-[mdi--account-outline]"
+			tone="bg-slate-900/[0.06] text-slate-600"
+			isOpen={openPeople.includes(person.id)}
+			ontoggle={() => (openPeople = toggle(openPeople, person.id))}
+			ondelete={() =>
+				remove(
+					panel.personnel ?? [],
+					person,
+					`Delete ${person.name || `personnel ${personIndex + 1}`}?`,
+					'They leave the report.'
+				)}
+			deleteLabel="Delete Personnel"
+		>
+			<ImageField
+				label="Photo"
+				shape="face"
+				value={person.photo}
+				onpick={(url) => {
+					person.photo = url;
+					save();
+				}}
+			/>
+			<label class="block">
+				<span class={labelClass}>Name {@render unpicked(!person.name)}</span>
+				<input
+					class={inputClass}
+					bind:value={person.name}
+					placeholder="First and last name"
+				/>
+			</label>
+			<label class="block">
+				<span class={labelClass}>Company</span>
+				<input
+					class={inputClass}
+					bind:value={person.company}
+					placeholder="Who they are with"
+				/>
+			</label>
+		</Group>
+	{/each}
+	<button
+		type="button"
+		class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+		onclick={addPerson}
+		><span class="icon-[mdi--account-plus-outline] size-4"></span>Add Personnel</button
+	>
 {/snippet}
 
 {#snippet dropdown(
@@ -514,20 +740,87 @@
 		></span>{/if}
 {/snippet}
 
+{#snippet facilitySelect(stop: StopType | undefined, onchange: (event: Event) => void)}
+	<label class="block">
+		<span class={labelClass}>Facility {@render unpicked(!stop?.facility)}</span>
+		<select
+			class={inputClass}
+			value={stop?.facility ?? ''}
+			{onchange}
+		>
+			<option value="">Choose…</option>
+			{#each facilitiesOf(stop ?? BLANK) as group (group.kind)}
+				<optgroup label="{group.kind}s">
+					{#each group.names as name (name)}<option>{name}</option>{/each}
+				</optgroup>
+			{/each}
+			<option value={ADD}>＋ Add new Facility…</option>
+		</select>
+	</label>
+{/snippet}
+
 {#snippet stopsBlock()}
 	<p class="flex items-center gap-1.5 text-xs text-slate-400">
 		<span class="icon-[mdi--map-marker-path] size-4"></span>
 		{panel.stops.length}
 		{panel.stops.length === 1 ? 'stop' : 'stops'} in trip order, first to last
 	</p>
-	<div
-		class="space-y-3"
-		{@attach sortable(`stops-${panel.id}`, (from, to) => move(panel.stops, from, to))}
+	<!-- The trip in one place: where it starts, a stop on the way, and where it ends. -->
+	<Group
+		title="Trip"
+		note={TRIP.map((point) => tripStop(point)?.facility)
+			.filter(Boolean)
+			.join(' → ') || 'Pick where the trip starts'}
+		icon="icon-[mdi--map-marker-path]"
+		isOpen={isTripOpen}
+		ontoggle={() => (isTripOpen = !isTripOpen)}
 	>
-		{#each panel.stops as stop, stopIndex (stop.id)}
+		{#each TRIP as point (point)}
+			{@const stop = tripStop(point)}
+			<div class="space-y-2 rounded-2xl bg-white/80 p-2.5">
+				<p class="flex items-center gap-2 text-xs font-semibold text-slate-700">
+					<span class="size-2.5 shrink-0 rounded-full {POINTS[point].dot}"></span>{point}
+					<span class="font-normal text-slate-400"
+						>{POINTS[point].hint}{point === 'Stop' ? ', if there is one' : ''}</span
+					>
+				</p>
+				<div class="grid gap-2 sm:grid-cols-2">
+					<label class="block">
+						<span class={labelClass}>Transport Mode {@render unpicked(!stop?.name)}</span>
+						<select
+							class={inputClass}
+							value={stop?.name ?? ''}
+							onchange={(event) => setTripTransport(point, event.currentTarget.value)}
+						>
+							<option value="">Choose…</option>
+							{#each TYPES as type (type)}
+								{@const list = look.transports.filter((item) => item.type === type)}
+								{#if list.length}
+									<optgroup label={type}>
+										{#each list as item (item.name)}
+											<option value={item.name}>{item.name} · {item.mode}</option>
+										{/each}
+									</optgroup>
+								{/if}
+							{/each}
+						</select>
+					</label>
+					{@render facilitySelect(stop, (event) => chooseFacility(ensureStop(point), event))}
+				</div>
+				{#if stop?.facility}
+					<p class="flex items-center gap-1 text-xs text-slate-500">
+						<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {POINTS[point].text}"></span>
+						{cityOf(stop.facility) || 'This facility has no city yet'}
+					</p>
+				{/if}
+			</div>
+		{/each}
+	</Group>
+	<div class="space-y-3">
+		{#each extraStops as stop, stopIndex (stop.id)}
 			<div animate:flip={{ duration: 200 }}>
 				<Group
-					title={stop.name || `Stop ${stopIndex + 1}`}
+					title={stop.name || `Extra stop ${stopIndex + 1}`}
 					note={[stop.point, stop.mode, stop.facility].filter(Boolean).join(' · ') ||
 						'Pick where this sits on the trip first'}
 					icon={MODE_ICONS[stop.mode] ??
@@ -539,12 +832,10 @@
 						remove(
 							panel.stops,
 							stop,
-							`Delete ${stop.name || `stop ${stopIndex + 1}`}?`,
-							'The stop and its page leave the report.'
+							`Delete ${stop.name || `extra stop ${stopIndex + 1}`}?`,
+							'The stop leaves the report.'
 						)}
 					deleteLabel="Delete stop"
-					sortKey="stops-{panel.id}"
-					index={stopIndex}
 				>
 					<div class="grid gap-2 sm:grid-cols-2">
 						{@render dropdown('Point', stop.point, POINT_OPTIONS, (point) => setPoint(stop, point))}
@@ -556,7 +847,7 @@
 						)}
 						{#if stop.type}
 							{@render dropdown(
-								'Transport Mode',
+								'Mode',
 								stop.mode,
 								TRANSPORT_TYPES[stop.type].modes.map((mode) => ({
 									id: mode,
@@ -568,7 +859,7 @@
 						{/if}
 						{#if stop.mode}
 							<label class="block">
-								<span class={labelClass}>{stop.mode} {@render unpicked(!stop.name)}</span>
+								<span class={labelClass}>Transport Mode {@render unpicked(!stop.name)}</span>
 								<select
 									class={inputClass}
 									value={stop.name}
@@ -581,32 +872,12 @@
 							</label>
 						{/if}
 						{#if stop.type}
-							<label class="block sm:col-span-2">
-								<span class={labelClass}>Facility {@render unpicked(!stop.facility)}</span>
-								<select
-									class={inputClass}
-									value={stop.facility}
-									onchange={(event) => chooseFacility(stop, event)}
-								>
-									<option value="">Choose…</option>
-									{#each facilitiesOf(stop) as group (group.kind)}
-										<optgroup label="{group.kind}s">
-											{#each group.names as name (name)}<option>{name}</option>{/each}
-										</optgroup>
-									{/each}
-									<option value={ADD}>＋ Add new facility…</option>
-								</select>
-							</label>
+							<div class="sm:col-span-2">
+								{@render facilitySelect(stop, (event) => chooseFacility(stop, event))}
+							</div>
 						{/if}
 					</div>
 				</Group>
-			</div>
-		{:else}
-			<div
-				class="flex flex-col items-center gap-1 rounded-2xl bg-slate-900/[0.03] py-6 text-slate-400"
-			>
-				<span class="icon-[mdi--map-marker-path] size-8"></span>
-				<p class="text-sm">No stops yet. Add where the trip starts.</p>
 			</div>
 		{/each}
 	</div>
@@ -658,67 +929,144 @@
 							{/each}
 						</select>
 					</label>
-					<div class="space-y-3 rounded-2xl bg-slate-900/[0.025] p-3 sm:col-span-2">
-						<p class="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
-							<span class="icon-[mdi--account-group] size-4 text-primary"></span>Team
-						</p>
-						{@render teamBlock()}
-					</div>
 				{/if}
 			{/each}
 		</div>
+		<div class="space-y-3">{@render teamBlock()}</div>
 	{:else if panel.kind === 'transport'}
 		{@render stopsBlock()}
 	{:else if panel.kind === 'items'}
-		{#if panel.items.length}
-			<p class="flex gap-2 text-xs font-medium text-slate-500">
-				<span class="w-20 shrink-0 pl-1">Quantity</span><span>Description</span>
-			</p>
-		{/if}
-		{#each panel.items as item, itemIndex (item.id)}
-			<div
-				class="flex items-start gap-2"
-				animate:flip={{ duration: 200 }}
-			>
-				<input
-					class="{inputClass} w-20! shrink-0 text-center tabular-nums"
-					inputmode="numeric"
-					bind:value={item.quantity}
-					placeholder="Qty"
-					aria-label="Quantity of item {itemIndex + 1}"
-				/>
-				<input
-					class={inputClass}
-					bind:value={item.description}
-					placeholder="What it is, e.g. Accessory crates"
-					aria-label="Description of item {itemIndex + 1}"
-				/>
-				<button
-					type="button"
-					class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
-					aria-label="Delete item {itemIndex + 1}"
-					onclick={() =>
-						remove(
-							panel.items,
-							item,
-							'Delete this item?',
-							item.description
-								? `"${item.description}" leaves the cargo description.`
-								: 'It leaves the cargo description.'
-						)}><span class="icon-[mdi--close] size-4"></span></button
-				>
-			</div>
-		{:else}
-			<p class="py-2 text-center text-sm text-slate-400">No items yet. Add the first one.</p>
-		{/each}
-		<button
-			type="button"
-			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-			onclick={() => {
-				panel.items.push(itemOf());
-				save();
-			}}><span class="icon-[mdi--plus] size-4"></span>Add item</button
+		<!-- Rows copied from a spreadsheet can be pasted into any of these fields: each line becomes an item. -->
+		<div
+			class="space-y-3"
+			onpaste={pasteItems}
 		>
+			{#if panel.items.length}
+				<p class="flex gap-2 text-xs font-medium text-slate-500">
+					<span class="w-20 shrink-0 pl-1">Quantity</span><span>Description</span>
+				</p>
+			{/if}
+			{#each panel.items as item, itemIndex (item.id)}
+				<div
+					class="flex items-start gap-2"
+					animate:flip={{ duration: 200 }}
+				>
+					<input
+						class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+						inputmode="numeric"
+						bind:value={item.quantity}
+						placeholder="Qty"
+						aria-label="Quantity of item {itemIndex + 1}"
+					/>
+					<input
+						class={inputClass}
+						bind:value={item.description}
+						placeholder="What it is, e.g. Accessory crates"
+						aria-label="Description of item {itemIndex + 1}"
+					/>
+					<button
+						type="button"
+						class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
+						aria-label="Delete item {itemIndex + 1}"
+						onclick={() =>
+							remove(
+								panel.items,
+								item,
+								'Delete this item?',
+								item.description
+									? `"${item.description}" leaves the cargo description.`
+									: 'It leaves the cargo description.'
+							)}><span class="icon-[mdi--close] size-4"></span></button
+					>
+				</div>
+			{:else}
+				<p class="py-2 text-center text-sm text-slate-400">No items yet. Add the first one.</p>
+			{/each}
+			<button
+				type="button"
+				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+				onclick={() => {
+					panel.items.push(itemOf());
+					save();
+				}}><span class="icon-[mdi--plus] size-4"></span>Add item</button
+			>
+		</div>
+		<p class="flex items-start gap-1.5 text-xs text-slate-400">
+			<span class="mt-px icon-[mdi--content-paste] size-4 shrink-0"></span>
+			Copy rows in a spreadsheet and paste them into any field above. Or attach the list itself:
+		</p>
+		{#if panel.attachments?.length}
+			<div class="flex flex-wrap gap-2">
+				{#each panel.attachments as file (file.id)}
+					<span
+						class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] text-xs text-slate-700 {file.kind ===
+						'photo'
+							? 'size-20'
+							: 'py-2 pr-8 pl-3'}"
+					>
+						{#if file.kind === 'photo'}
+							<img
+								src={file.src}
+								alt={file.name}
+								class="size-full object-cover"
+							/>
+						{:else}
+							<span class="icon-[mdi--file-table-outline] size-4 shrink-0 text-primary"></span>
+							<span class="max-w-40 truncate">{file.name}</span>
+						{/if}
+						<button
+							type="button"
+							class="absolute top-0.5 right-0.5 flex size-6 items-center justify-center rounded-full {file.kind ===
+							'photo'
+								? 'bg-slate-950/50 text-white'
+								: 'text-slate-400 hover:text-danger'}"
+							aria-label="Remove {file.name}"
+							onclick={() =>
+								remove(
+									panel.attachments ?? [],
+									file,
+									`Remove ${file.name}?`,
+									'It leaves the cargo description.'
+								)}><span class="icon-[mdi--close] size-4"></span></button
+						>
+					</span>
+				{/each}
+			</div>
+		{/if}
+		<div class="flex flex-wrap gap-2">
+			<label class="{ghostButton} cursor-pointer bg-primary/10 text-primary hover:bg-primary/15">
+				<span class="icon-[mdi--camera-outline] size-4"></span>Attach a photo
+				<input
+					type="file"
+					accept="image/*"
+					multiple
+					class="sr-only"
+					onchange={(event) =>
+						pick(event, (src, name) => {
+							panel.attachments = [
+								...(panel.attachments ?? []),
+								{ id: createId('file'), name, src, kind: 'photo' }
+							];
+						})}
+				/>
+			</label>
+			<label class="{ghostButton} cursor-pointer bg-primary/10 text-primary hover:bg-primary/15">
+				<span class="icon-[mdi--file-table-outline] size-4"></span>Attach a spreadsheet
+				<input
+					type="file"
+					accept=".xlsx,.xls,.csv,.pdf"
+					multiple
+					class="sr-only"
+					onchange={(event) =>
+						pick(event, (src, name) => {
+							panel.attachments = [
+								...(panel.attachments ?? []),
+								{ id: createId('file'), name, src, kind: 'file' }
+							];
+						})}
+				/>
+			</label>
+		</div>
 	{:else if panel.kind === 'timelog'}
 		{#each panel.days as day, dayIndex (day.id)}
 			<div animate:flip={{ duration: 200 }}>
@@ -752,11 +1100,17 @@
 							animate:flip={{ duration: 200 }}
 						>
 							<input
-								class="{inputClass} w-32! shrink-0"
-								type="time"
-								bind:value={entry.time}
-								onchange={() => sortEntries(dayIndex)}
-								aria-label="Time"
+								class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+								inputmode="numeric"
+								maxlength="5"
+								placeholder="07:30"
+								value={entry.time}
+								onchange={(event) => {
+									entry.time = clockOf(event.currentTarget.value);
+									event.currentTarget.value = entry.time;
+									sortEntries(dayIndex);
+								}}
+								aria-label="Time, on the 24-hour clock"
 							/>
 							<input
 								class={inputClass}
@@ -800,6 +1154,12 @@
 				type="button"
 				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
 				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
+			>
+			<button
+				type="button"
+				class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+				onclick={addSampleDay}
+				><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample day</button
 			>
 		</div>
 	{:else}
@@ -894,6 +1254,10 @@
 											class="pointer-events-none size-full object-cover"
 											draggable="false"
 										/>
+										<!-- A soft shade in the corner, so the white ⋮ reads on a pale photo too (run 19). -->
+										<span
+											class="pointer-events-none absolute top-0 right-0 size-12 bg-[radial-gradient(circle_at_top_right,rgb(0_0_0/0.45),transparent_70%)]"
+										></span>
 										{#if photo.description}
 											<span
 												class="absolute bottom-1 left-1 icon-[mdi--text-box] size-5 text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"

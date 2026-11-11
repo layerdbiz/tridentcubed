@@ -123,7 +123,7 @@ export function percentOf(panels: PanelType[]) {
 // Run 9 (Justin's note 14, edits that "sometimes don't stay"): a phone browser reloads a tab it kept in the background,
 // and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
 // in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
-const KEEP = 'trident-look-161-run-16';
+const KEEP = 'trident-look-161-run-19';
 type KeptType = {
 	projects: ProjectType[];
 	workspaces: Record<string, PanelType[]>;
@@ -378,12 +378,19 @@ export class LookState {
 		if (!panel || !project) return;
 		const value = (label: string) =>
 			panel.fields.find((field) => field.label === label)?.value ?? '';
+		// Where the project is: the city of its first stop's facility (run 19). No stop yet keeps what it had.
+		const first = this.panels
+			.find((item) => item.kind === 'transport')
+			?.stops.find((stop) => stop.facility);
+		const city = first
+			? (this.facilities.find((facility) => facility.name === first.facility)?.city ?? '')
+			: project.location;
 		const next = {
 			title: value('Title').trim() || 'Untitled project',
 			subtitle: value('Subtitle'),
 			type: value('Project Type'),
 			client: value('Customer'),
-			location: value('Location')
+			location: city
 		};
 		for (const [key, text] of Object.entries(next) as [keyof typeof next, string][])
 			if (project[key] !== text) project[key] = text;
