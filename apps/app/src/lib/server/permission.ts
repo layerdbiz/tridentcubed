@@ -3,7 +3,8 @@
 // applies the change through the claims helper; Row Level Security is the net behind it.
 //
 // - A Guest may do nothing.
-// - Manager and Team may change everything in their organization except: the organization and its details, a
+// - Manager and Team may change everything in their organization except: the organization, its details and its
+//   disclaimer points (#184), a
 //   member, a Team record's role, the Archived status, and deleting a project that is not their own Draft.
 // - An Admin (and the Super admin) may do all of it.
 // - Nobody demotes or removes the Super admin or the organization's last Admin.
@@ -54,6 +55,7 @@ const REASONS = {
 	grant: 'Access grants are kept in the database only.',
 	organization: 'Only an Admin can change the organization.',
 	organizationDelete: 'An organization cannot be deleted from the app.',
+	organizationCreate: 'An organization cannot be made from the app.',
 	member: 'Only an Admin can change who is in the organization.',
 	role: 'Only an Admin can change a Team role.',
 	teamEmail:
@@ -94,9 +96,13 @@ const TABLE_RULES: Record<string, RuleType[]> = {
 	access_grant: [() => REASONS.grant],
 	organization: [
 		(_actor, change) => (change.operation === 'delete' ? REASONS.organizationDelete : undefined),
+		(_actor, change) =>
+			change.operation === 'put' && !change.row ? REASONS.organizationCreate : undefined,
 		adminsOnly(REASONS.organization)
 	],
 	organization_details: [adminsOnly(REASONS.organization)],
+	// The disclaimer's points are the organization's wording (#184).
+	disclaimer_point: [adminsOnly(REASONS.organization)],
 	member: [adminsOnly(REASONS.member), keepAdmins],
 	// Team records (#185): staff edit them, but only an Admin changes a role, and an Admin stays one. Staff may add a
 	// record with the Team role. A record nobody has signed in as yet hands its role to whoever signs in with its

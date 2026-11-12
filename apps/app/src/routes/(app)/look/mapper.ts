@@ -7,8 +7,11 @@
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import { type ClientType, type ContactType, resetCustomers, resetPeople } from './look.data';
 import type { LookState } from './look.state.svelte';
+import { takeListRows, toListRows } from './mapper.lists';
 import { customerOf } from './records.data';
 import type { TeamMemberType } from './team.data';
+
+export { toFacilityId, toFacilityName, toTransportId, toTransportName } from './mapper.lists';
 
 /** The screens' state as rows: every table the state holds, parents before their children. */
 export function toRows(look: LookState): RowType[] {
@@ -49,6 +52,7 @@ export function toRows(look: LookState): RowType[] {
 			});
 	}
 	rows.push(...toTeamRows(look));
+	rows.push(...toListRows(look));
 	return rows;
 }
 
@@ -178,6 +182,7 @@ export function takeRows(look: LookState, rows: SavedRowType[]) {
 	look.customers = live.map((customer) => customer.name);
 	look.trashed.customers = trashed;
 	takeTeam(look, rows);
+	takeListRows(look, rows);
 }
 
 /** A customer's id from the name the screens use, in the Trash or not (#186: a project's customer). */

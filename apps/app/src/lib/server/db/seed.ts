@@ -1,11 +1,16 @@
 // The one seed (spec #179): the starting data every database begins with. The in-process database gets it when the
 // server starts, and tests through `createTestSignIn()`; Supabase gets the same rows in the one initial load (#194),
 // never from a Vercel build. Running it twice changes nothing. Later tickets add their starting rows here (the real
-// customers #183, the organization's details #184, the team #185, the places). Access grants are never seeded:
+// customers #183, the organization's details and the places #184, the team #185). Access grants are never seeded:
 // they are filled in the database only.
+import { toStableId } from '#lib/rows/rows.utils.js';
+import { ORGANIZATION } from '#lib/start/organization.js';
+import { PLACES } from '#lib/start/places.js';
 import { customer } from './customer.schema';
 import type { DatabaseType } from './index';
-import { organization, organizationDetails } from './organization.schema';
+import { disclaimerPoint, organizationDetails } from './details.schema';
+import { organization } from './organization.schema';
+import { place } from './place.schema';
 import { team } from './team.schema';
 
 export const TRIDENT_CUBED = {
@@ -368,10 +373,7 @@ export async function seedDatabase(db: DatabaseType) {
 	const { id, name, slug, emailDomain } = TRIDENT_CUBED;
 	await db.transaction(async (tx) => {
 		await tx.insert(organization).values({ id, name, slug }).onConflictDoNothing();
-		await tx
-			.insert(organizationDetails)
-			.values({ organizationId: id, emailDomain })
-			.onConflictDoNothing();
+		await seedDetails(tx, id, emailDomain);
 		await tx
 			.insert(customer)
 			.values(
@@ -394,6 +396,68 @@ export async function seedDatabase(db: DatabaseType) {
 				})
 			)
 			.onConflictDoNothing();
+		await seedPlaces(tx, id);
 	});
 	await seedTeam(db);
+}
+
+type SeedTransactionType = Parameters<Parameters<DatabaseType['transaction']>[0]>[0];
+
+// The organization's real details and report wording (#184), one row with the organization's own id, and the
+// disclaimer's points in order.
+async function seedDetails(tx: SeedTransactionType, organizationId: string, emailDomain: string) {
+	const { disclaimer, ...details } = ORGANIZATION;
+	await tx
+		.insert(organizationDetails)
+		.values({
+			id: organizationId,
+			organizationId,
+			emailDomain,
+			logo: details.logo,
+			address: details.address,
+			phone: details.phone,
+			email: details.email,
+			groupEmail: details.groupEmail,
+			website: details.website,
+			disclaimerOpening: disclaimer.opening,
+			disclaimerNote: disclaimer.note,
+			closing: details.closing,
+			signoff: details.signoff
+		})
+		.onConflictDoNothing();
+	await tx
+		.insert(disclaimerPoint)
+		.values(
+			disclaimer.points.map((point, position) => ({
+				id: toStableId(organizationId, 'disclaimer point', String(position + 1)),
+				organizationId,
+				detailsId: organizationId,
+				position,
+				title: point.title,
+				text: point.text
+			}))
+		)
+		.onConflictDoNothing();
+}
+
+// The starting places (#184), a second apart so they list in this order. A place's id is worked out from its name,
+// as the app does for a place it saves.
+async function seedPlaces(tx: SeedTransactionType, organizationId: string) {
+	await tx
+		.insert(place)
+		.values(
+			Object.entries(PLACES).map(([name, [longitude, latitude]], index) => {
+				const at = new Date(SEEDED_AT + index * 1000);
+				return {
+					id: toStableId(organizationId, 'place', name.toLowerCase()),
+					organizationId,
+					name,
+					latitude,
+					longitude,
+					createdAt: at,
+					updatedAt: at
+				};
+			})
+		)
+		.onConflictDoNothing();
 }

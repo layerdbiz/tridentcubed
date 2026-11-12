@@ -16,12 +16,12 @@ describe('a new app', () => {
 		expect(look.facilities).toEqual([]);
 	});
 
-	it('starts with the real organization and places, and no customers or team until the server sends them', () => {
+	it('starts with the real organization, and no customers, team or places until the server sends them', () => {
 		const look = fresh();
 		expect(look.organization.name).toBe('Trident Cubed');
 		expect(look.members).toEqual([]);
 		expect(look.customers).toEqual([]);
-		expect(look.places.map((place) => place.name)).toContain('Houston, TX');
+		expect(look.places).toEqual([]);
 	});
 
 	it('opens on the dashboard with nothing open', () => {
