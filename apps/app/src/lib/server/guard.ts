@@ -1,24 +1,50 @@
-// The sign-in guard (#181), run by the server hook on every request: a signed-out visitor opening an app address
+// The sign-in guard (#181, #182), run by the server hook on every request: a signed-out visitor opening an app address
 // goes to the login page, which keeps the address in `next` so signing in lands there. Server routes under /api
-// answer 401 instead. Remote functions (/_app/remote) stay open because each one checks the session itself
-// (apps/app/AGENTS.md "Data"); the login page and Better Auth's routes stay open to let someone sign in.
+// answer 401 instead. A signed-in Guest is kept on Waiting for access, and their server-route requests answer 403.
+// Remote functions (/_app/remote) stay open because each one checks the User itself (apps/app/AGENTS.md "Data"),
+// and the claims helper shows a Guest nothing anyway; the login page and Better Auth's routes stay open to let
+// someone sign in and out. Better Auth's organization routes are closed to everyone: memberships change only through
+// the sign-in rule and the app's one permission check.
 
-export type GuardType = { kind: 'login'; location: string } | { kind: 'refuse' };
+export type AccessType = 'signed-out' | 'guest' | 'member';
+
+export type GuardType =
+	| { kind: 'redirect'; location: string }
+	| { kind: 'refuse'; status: 401 | 403 | 404; message: string };
 
 const OPEN = ['/login', '/api/auth/', '/_app/'];
+const CLOSED = '/api/auth/organization/';
+const WAITING = '/waiting';
 
-export function toGuard(url: URL, isSignedIn: boolean): GuardType | undefined {
-	if (isSignedIn) return undefined;
+function isUnder(path: string, prefix: string) {
+	return path === prefix || path.startsWith(prefix.endsWith('/') ? prefix : `${prefix}/`);
+}
+
+/** Better Auth's organization routes, closed before Better Auth can answer them. */
+export function isClosed(url: URL) {
+	return url.pathname.startsWith(CLOSED);
+}
+
+export function toGuard(url: URL, access: AccessType): GuardType | undefined {
 	const path = url.pathname;
-	if (
-		OPEN.some((open) => path === open || path.startsWith(open.endsWith('/') ? open : `${open}/`))
-	) {
-		return undefined;
+	if (isClosed(url)) return { kind: 'refuse', status: 404, message: 'Not found.' };
+	if (OPEN.some((open) => isUnder(path, open))) return undefined;
+
+	if (access === 'member') {
+		return isUnder(path, WAITING) ? { kind: 'redirect', location: '/' } : undefined;
 	}
-	if (path.startsWith('/api/')) return { kind: 'refuse' };
-	const next = `${path}${url.search}`;
+	if (access === 'guest') {
+		if (isUnder(path, WAITING)) return undefined;
+		if (path.startsWith('/api/')) {
+			return { kind: 'refuse', status: 403, message: 'You are waiting for access.' };
+		}
+		return { kind: 'redirect', location: WAITING };
+	}
+
+	if (path.startsWith('/api/')) return { kind: 'refuse', status: 401, message: 'Sign in first.' };
+	const next = isUnder(path, WAITING) ? '/' : `${path}${url.search}`;
 	return {
-		kind: 'login',
+		kind: 'redirect',
 		location: next === '/' ? '/login' : `/login?next=${encodeURIComponent(next)}`
 	};
 }

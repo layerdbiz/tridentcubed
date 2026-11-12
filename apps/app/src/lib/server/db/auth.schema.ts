@@ -1,9 +1,12 @@
 // Better Auth's four tables (ADR 0002, #181), first written by `auth generate` (auth CLI 1.7.22, Drizzle adapter,
 // `generateId: "uuid"`, email OTP plugin) and conformed: times carry their time zone, and Row Level Security is on
 // with no policy, so Supabase's publishable key reads none of them. Only the server, as the database owner, reaches
-// these rows; Better Auth is their only writer.
+// these rows; Better Auth and the sign-in rule (`access.ts`) are their only writers. #182 added the organization
+// plugin's active organization to the session, the Super admin flag to the user, and one policy: the app's
+// restricted role reads the acting User's own user row.
 import { relations, sql } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, pgPolicy, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { appRole, USER_ID } from './policy';
 
 function id() {
 	return uuid('id')
@@ -15,18 +18,26 @@ function time(name: string) {
 	return timestamp(name, { withTimezone: true });
 }
 
-export const user = pgTable('user', {
-	id: id(),
-	name: text('name').notNull(),
-	email: text('email').notNull().unique(),
-	emailVerified: boolean('email_verified').default(false).notNull(),
-	image: text('image'),
-	createdAt: time('created_at').defaultNow().notNull(),
-	updatedAt: time('updated_at')
-		.defaultNow()
-		.$onUpdate(() => new Date())
-		.notNull()
-}).enableRLS();
+export const user = pgTable(
+	'user',
+	{
+		id: id(),
+		name: text('name').notNull(),
+		email: text('email').notNull().unique(),
+		emailVerified: boolean('email_verified').default(false).notNull(),
+		image: text('image'),
+		/** The one User above every organization (glossary), marked at sign-in by their access grant. */
+		isSuperAdmin: boolean('is_super_admin').default(false).notNull(),
+		createdAt: time('created_at').defaultNow().notNull(),
+		updatedAt: time('updated_at')
+			.defaultNow()
+			.$onUpdate(() => new Date())
+			.notNull()
+	},
+	() => [
+		pgPolicy('user is the acting user', { for: 'select', to: appRole, using: sql`id = ${USER_ID}` })
+	]
+).enableRLS();
 
 export const session = pgTable(
 	'session',
@@ -40,6 +51,8 @@ export const session = pgTable(
 			.notNull(),
 		ipAddress: text('ip_address'),
 		userAgent: text('user_agent'),
+		/** Better Auth's organization plugin: the organization this session acts in, set at sign-in. */
+		activeOrganizationId: uuid('active_organization_id'),
 		userId: uuid('user_id')
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' })

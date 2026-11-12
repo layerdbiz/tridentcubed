@@ -9,11 +9,14 @@ Layout confirmed against SvelteKit docs on #42
 
 ```text
 src/env.ts                     the settings the app reads (Kit 3 defineEnvVars), all optional
-src/hooks.server.ts            session into event.locals, Better Auth's /api/auth/*, the sign-in guard
-src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql, clients), auth.ts,
-                               server.ts (the one db + auth), settings.ts, guard.ts, signin.ts, email.ts,
+src/hooks.server.ts            session and actor into event.locals, Better Auth's /api/auth/*, the guard
+src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql, clients, claims.ts the
+                               claims helper, policy.ts its SQL, seed.ts the one seed), auth.ts, server.ts
+                               (the one claims helper + auth), access.ts (the sign-in rule), permission.ts
+                               (the one permission check), settings.ts, guard.ts, signin.ts, email.ts,
                                testing.ts (test helpers), pdf-browser.ts
 src/routes/login/              the login page (server-rendered; emailed code, then Google/Microsoft)
+src/routes/waiting/            Waiting for access, where a Guest is kept (server-rendered)
 src/routes/(app)/              the signed-in app, drawn on the device (ssr off in its +layout.ts)
 src/routes/api/                server routes the app calls: export/pdf, places
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
@@ -67,6 +70,9 @@ the why is in ADR 0002, 0003 and 0005.
   User's claims and switches to the restricted role so Row Level Security
   applies. A test fails the build when another path appears. The one
   permission check runs before it; Row Level Security is the net behind.
+  Get it with `const { claims } = await getServer()` and run work as
+  `claims.run(locals.actor, (tx) => ...)`; a new table's policy is
+  `organizationPolicy('<table>')` from `db/policy.ts`.
 - **One save command.** Every change to a row (records, projects, panels,
   stops, entries, photos, status, Trash, roles) goes to the server through
   the one generic save command as a batch of row changes. Do not add a
