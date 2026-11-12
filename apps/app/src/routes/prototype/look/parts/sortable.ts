@@ -17,6 +17,10 @@ const SLOP = 8;
 const EDGE = 64;
 const SETTLE_MS = 180;
 
+function isSliding(node: HTMLElement) {
+	return node.getAnimations().some((animation) => animation.playState === 'running');
+}
+
 function scrollerOf(node: HTMLElement) {
 	for (let at = node.parentElement; at; at = at.parentElement) {
 		const { overflowY } = getComputedStyle(at);
@@ -58,10 +62,10 @@ export function sortable(
 			const over = itemAt(point.x, point.y);
 			const to = Number(over?.dataset.index);
 			if (!over || !item || Number.isNaN(to) || to === from) return;
-			// A neighbour still sliding to its new place is left alone (the slide may be on a wrapper around it).
+			// A neighbour still sliding to its new place is left alone (the slide may be on a wrapper around it). Only a
+			// slide that is running counts: one that has finished can stay listed on the element.
 			const wrap = over.parentElement;
-			if (over.getAnimations().length || (wrap && wrap !== list && wrap.getAnimations().length))
-				return;
+			if (isSliding(over) || (wrap && wrap !== list && isSliding(wrap))) return;
 			const box = over.getBoundingClientRect();
 			const own = item.getBoundingClientRect();
 			// Beside it in a row (photos), the finger must pass its middle sideways; above or below, up or down.
