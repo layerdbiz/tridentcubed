@@ -50,7 +50,8 @@
 			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
 			<Divider svg="text-white" />
 		</div>
-		<div class="bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
+		<!-- Up one pixel over the wave, so no line of the dark shows between them. -->
+		<div class="relative -mt-px bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
 			<div class="mx-auto w-full max-w-sm space-y-4">
 				<h1 class="text-xl font-semibold tracking-tight text-slate-900">Sign In</h1>
 				<label class="block">
