@@ -55,3 +55,32 @@ selector used to switch (`look.constants.ts` fixes each part's look). They
 change on the UI cleanup after sign-in and the database (spec #179, Out of
 Scope), not mid-feature. The browser-only Report Generator they replaced is
 in `.archive/apps/app`.
+
+## Saving to the database
+
+Decided on "Sign in and save to the real database" (#179), 2026-11-12;
+the why is in ADR 0002, 0003 and 0005.
+
+- **The claims helper is the only way to the database.** App code never
+  imports the Drizzle client or opens a query any other way: every read and
+  write runs inside the claims helper's transaction, which sets the acting
+  User's claims and switches to the restricted role so Row Level Security
+  applies. A test fails the build when another path appears. The one
+  permission check runs before it; Row Level Security is the net behind.
+- **One save command.** Every change to a row (records, projects, panels,
+  stops, entries, photos, status, Trash, roles) goes to the server through
+  the one generic save command as a batch of row changes. Do not add a
+  remote function for a new kind of row. A named `command` is for what is
+  not a row only: an upload address, a place lookup, a PDF export.
+- **Adding a table** is one entry in the row registry: its columns, its
+  parent, its Valibot validation and its rules (who may change which
+  columns, and when the row is frozen). Then teach the mapper both
+  directions (screen state to rows, rows to screen state) and add a round
+  trip test at the save seam: state through the mapper, the save command and
+  the queries back to equal state, order included. The save command and the
+  queries read the registry, so they need no change.
+- **Ids are UUIDs made on the device**, and the server sets created and
+  updated times. The screens keep naming records by name; only the mapper
+  translates names to ids.
+- **Schema changes** are Drizzle schema edits tested on the in-process
+  Postgres. Vercel builds never migrate the Supabase database.
