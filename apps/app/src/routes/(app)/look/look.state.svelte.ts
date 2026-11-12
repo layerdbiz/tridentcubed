@@ -15,7 +15,6 @@
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	clientOf as clientOfName,
-	createId,
 	createPanels,
 	forgetCustomer,
 	DATASETS,
@@ -38,6 +37,7 @@ import {
 	type TransportType
 } from './look.data';
 import type { PlaceType } from './map.data';
+import type { RowType } from '#lib/rows/rows.schema.js';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
@@ -119,29 +119,14 @@ export function percentOf(panels: PanelType[]) {
 	return total ? Math.round((done / total) * 100) : 0;
 }
 
-// Run 9 (Justin's note 14, edits that "sometimes don't stay"): a phone browser reloads a tab it kept in the background,
-// and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
-// in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
-// V1 (#180) takes a key of its own, so what a browser kept from the prototype (its sample projects) never shows.
-// The database replaces this storage table by table: customers are saved there since #183, the team since #185, and
-// the Transport Modes, Facilities, places and the organization since #184, and kept here no more.
+// Run 9 kept the projects, their panels and the lists in this browser. The database replaced that storage table by
+// table: customers (#183), the team (#185), the Transport Modes, Facilities, places and organization (#184), and
+// projects and their panels (#186). Nothing is kept here any more, and what an earlier version kept is cleared.
 const KEEP = 'trident-v1-app';
-type KeptType = {
-	projects: ProjectType[];
-	workspaces: Record<string, PanelType[]>;
-};
 
-// Sent and Complete projects can be looked at, not edited (2026-10-26 19:22).
-export const FROZEN: StatusType[] = ['Sent', 'Complete'];
-
-function readKept(): KeptType | undefined {
-	try {
-		const text = localStorage.getItem(KEEP);
-		return text ? JSON.parse(text) : undefined;
-	} catch {
-		return undefined;
-	}
-}
+// Sent and Complete projects can be looked at, not edited (2026-10-26 19:22); Archived ones too, as the server
+// refuses them (#186).
+export const FROZEN: StatusType[] = ['Sent', 'Complete', 'Archived'];
 
 export function toneOf(status: PanelStatusType) {
 	if (status === 'Complete')
@@ -215,6 +200,11 @@ export class LookState {
 	// server's rows since #184 (the seed's starting places, then every one a member picked).
 	places = $state<PlaceType[]>([]);
 	asking = $state<ConfirmType>();
+	// Each project's row and Team Assigned rows as the server last gave them (#186, mapper.ts): what a project whose
+	// panels have not loaded saves as, since only its status and percent change from the lists.
+	fromServer: Record<string, { values: Record<string, unknown>; team: RowType[] }> = {};
+	// The row ids of the Team Assigned, by project and Team record (mapper.ts).
+	teamRowIds = new Map<string, string>();
 
 	project = $derived(
 		this.projects.find((project) => project.id === this.projectId) ?? this.projects[0]
@@ -225,47 +215,26 @@ export class LookState {
 
 	#saveTimer: ReturnType<typeof setTimeout> | undefined;
 	#toastTimer: ReturnType<typeof setTimeout> | undefined;
-	#keepTimer: ReturnType<typeof setTimeout> | undefined;
-	#isFull = false;
 
-	// What this browser kept, or every project's panels up front, so the list shows the percent each one opens at.
-	// Any change is written back a moment later.
+	// Everything comes from the server: the lists at start, a project's panels as it opens (#186).
 	constructor() {
-		const kept = readKept();
-		if (kept) {
-			this.projects = kept.projects;
-			this.workspaces = kept.workspaces;
-		} else
-			for (const project of this.projects) {
-				this.workspaces[project.id] = createPanels(project);
-				project.progress = percentOf(this.workspaces[project.id]);
-			}
+		try {
+			localStorage.removeItem(KEEP);
+		} catch {
+			// No storage here (a private window, a test): nothing to clear.
+		}
 		// The Project panel is the project: its row follows the panel as it is typed in.
 		$effect(() => this.#syncProject());
-		$effect(() => {
-			const text = JSON.stringify({
-				projects: this.projects,
-				workspaces: this.workspaces
-			} satisfies KeptType);
-			clearTimeout(this.#keepTimer);
-			this.#keepTimer = setTimeout(() => this.#keep(text), 300);
-		});
 	}
 
-	#keep(text: string) {
-		try {
-			localStorage.setItem(KEEP, text);
-			this.#isFull = false;
-		} catch {
-			if (!this.#isFull)
-				this.say('This browser is full, so new changes are not kept after a reload');
-			this.#isFull = true;
-		}
+	// Whether a project's panels have loaded (look.svelte loads them as it opens).
+	isLoaded(id: string) {
+		return Boolean(this.workspaces[id]);
 	}
 
-	#ensure(id: string) {
-		const project = this.projects.find((item) => item.id === id);
-		if (project && !this.workspaces[id]) this.workspaces[id] = createPanels(project);
+	// Who may delete a project (the server refuses the rest): an Admin any, anyone else their own Draft.
+	canDelete(project: ProjectType) {
+		return this.isAdmin || (project.status === 'Draft' && project.createdBy === this.userId);
 	}
 
 	// A project's percent is always worked out from its panels as they are now (run 18: a new project used to show
@@ -289,7 +258,6 @@ export class LookState {
 	// A project opens on its Page, before Edit and Preview (run 13), unless asked for another tab.
 	open(id: string, tab: TabType = 'page') {
 		if (this.screen === 'workspace') this.#keepProject();
-		this.#ensure(id);
 		this.projectId = id;
 		this.panelId = '';
 		this.tab = tab;
@@ -390,6 +358,8 @@ export class LookState {
 
 	// Mark sent remembers the state before, and Unsend goes back to it.
 	markSent(project: ProjectType) {
+		if (project.status === 'Archived' && !this.isAdmin)
+			return this.say('Only an Admin can archive a project or bring it back');
 		if (project.status !== 'Sent') project.before = project.status;
 		project.status = 'Sent';
 		project.updated = nowIso();
@@ -408,7 +378,7 @@ export class LookState {
 	// Leaving a project writes back what the dashboard lists: its progress and its trip's transports and facilities.
 	#keepProject() {
 		const trip = this.workspaces[this.projectId]?.find((panel) => panel.kind === 'transport');
-		if (!trip) return;
+		if (!trip || FROZEN.includes(this.project.status)) return;
 		this.project.progress = this.overall;
 		this.project.stops = trip.stops
 			.filter((stop) => stop.name || stop.facility)
@@ -424,7 +394,7 @@ export class LookState {
 	#syncProject() {
 		const panel = this.panels.find((item) => item.kind === 'project');
 		const project = this.project;
-		if (!panel || !project) return;
+		if (!panel || !project || FROZEN.includes(project.status)) return;
 		const value = (label: string) =>
 			panel.fields.find((field) => field.label === label)?.value ?? '';
 		// Where the project is: the city of its first stop's facility (run 19). No stop yet keeps what it had.
@@ -450,7 +420,7 @@ export class LookState {
 	// A new project, from the Project panel the + sheet filled in: that panel becomes the project's own.
 	create(draft: PanelType) {
 		this.adding = undefined;
-		const id = createId('p');
+		const id = crypto.randomUUID();
 		const now = nowIso();
 		const value = (label: string) =>
 			draft.fields.find((field) => field.label === label)?.value ?? '';
@@ -466,11 +436,13 @@ export class LookState {
 			updated: now,
 			status: 'Draft',
 			team: [draft.owner, ...draft.assigned].filter(Boolean),
-			progress: 0
+			progress: 0,
+			day: now.slice(0, 10),
+			createdBy: this.userId || undefined
 		});
 		this.workspaces[id] = createPanels(this.projects[0]).map((panel) =>
 			panel.kind === 'project'
-				? { ...($state.snapshot(draft) as PanelType), id: panel.id }
+				? { ...($state.snapshot(draft) as PanelType), id: panel.id, key: 'project' }
 				: {
 						...panel,
 						days: [],
@@ -483,9 +455,16 @@ export class LookState {
 		this.#advance(id);
 	}
 
+	// Deleting a project sends it and everything in it to the Trash (#186). Only an Admin deletes a project that is
+	// not their own Draft; the server refuses it too.
 	remove(id: string) {
 		const index = this.projects.findIndex((project) => project.id === id);
+		if (index < 0) return;
+		if (!this.canDelete(this.projects[index]))
+			return this.say('Only an Admin can delete a project that is not your own Draft');
 		const [removed] = this.projects.splice(index, 1);
+		delete this.workspaces[id];
+		if (this.screen === 'workspace' && this.projectId === id) this.home();
 		this.say(`"${removed.title}" moved to Trash`);
 	}
 
@@ -519,6 +498,8 @@ export class LookState {
 	// Unsend can go back.
 	setStatus(project: ProjectType, status: StatusType) {
 		if (project.status === status) return;
+		if ((status === 'Archived' || project.status === 'Archived') && !this.isAdmin)
+			return this.say('Only an Admin can archive a project or bring it back');
 		if (status === 'Sent') return this.markSent(project);
 		project.before = undefined;
 		project.status = status;
@@ -716,7 +697,7 @@ export class LookState {
 	}
 
 	addPanel() {
-		const count = this.panels.filter((panel) => panel.id.startsWith('panel')).length + 1;
+		const count = this.panels.filter((panel) => panel.control === 'remove').length + 1;
 		const panel = newPanel(count);
 		this.panels.push(panel);
 		this.panelId = panel.id;

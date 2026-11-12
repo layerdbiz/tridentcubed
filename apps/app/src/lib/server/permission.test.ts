@@ -315,6 +315,17 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 		[]
 	],
 	[
+		'rename a panel of a project someone moved to the Trash',
+		() => ({
+			table: 'panel',
+			operation: 'put',
+			columns: ['name'],
+			values: { organizationId: ORG, name: 'Lashing' },
+			project: { status: 'Draft', isDeleted: true }
+		}),
+		[]
+	],
+	[
 		'add a stop to a Complete project',
 		() => ({
 			table: 'stop',

@@ -29,13 +29,14 @@ describe('the address', () => {
 	it('lands a reload on the same project, tab and panel', () => {
 		const look = withProject();
 		look.tab = 'preview';
-		look.panelId = 'timelog';
+		const timelog = look.panels.find((panel) => panel.kind === 'timelog')?.id ?? '';
+		look.panelId = timelog;
 		const next = reload(look, toAddress(look, new URL(HOME)));
 		expect(next.screen).toBe('workspace');
 		expect(next.projectId).toBe(look.projectId);
 		expect(next.project?.title).toBe('Hatch survey');
 		expect(next.tab).toBe('preview');
-		expect(next.panelId).toBe('timelog');
+		expect(next.panelId).toBe(timelog);
 	});
 
 	it('lands a reload on the same record and tab', () => {

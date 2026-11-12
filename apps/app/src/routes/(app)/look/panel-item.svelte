@@ -43,7 +43,8 @@
 	const frozen = $derived(look.isFrozen ? look.project.status : undefined);
 	const FROZEN_RINGS: Record<string, string> = {
 		Sent: 'stroke-violet-500',
-		Complete: 'stroke-success'
+		Complete: 'stroke-success',
+		Archived: 'stroke-slate-400'
 	};
 	const TRACKS = {
 		'To do': 'bg-slate-400',

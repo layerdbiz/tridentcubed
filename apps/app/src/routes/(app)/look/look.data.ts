@@ -40,6 +40,12 @@ export type ProjectType = {
 	before?: StatusType;
 	team: string[];
 	progress: number;
+	// The day it was made on the device that made it, which its number shows (#186), and which of its customer's jobs
+	// that day it is: the J count the server gives it once (absent until the server has answered).
+	day?: string;
+	job?: number;
+	// The User who made it (the server sets it): a Manager or Team user may delete their own Draft.
+	createdBy?: string;
 };
 
 export type FieldType = {
@@ -98,7 +104,11 @@ export type PanelKindType = 'project' | 'transport' | 'items' | 'timelog' | 'pho
 export type PanelControlType = 'locked' | 'switch' | 'remove';
 
 export type PanelType = {
+	// Its row's id, made on the device (#186).
 	id: string;
+	// What a built-in panel is (project, transport, items, timelog, inspection, damages, discharge); none for a panel
+	// added on the project.
+	key?: string;
 	name: string;
 	icon: string;
 	kind: PanelKindType;
@@ -354,13 +364,15 @@ export function agoOf(iso: string) {
 
 // The project number (the glossary's): the customer's short code, the day the project was made, and J with which
 // of that customer's jobs that day it is. CVA-2026-05-12-J01. Nothing is stored: it follows the customer's code.
+// Since #186 the day and J count are the project's own, the J count given once by the server, so deleting another
+// project never changes a number. Until the server has answered for a new project, it is counted here.
 export function numberOf(project: ProjectType, projects: ProjectType[], client = project.client) {
-	const date = project.created.slice(0, 10);
+	const date = project.day || project.created.slice(0, 10);
 	const sameDay = projects.filter(
-		(other) => other.client === project.client && other.created.slice(0, 10) === date
+		(other) => other.client === project.client && (other.day || other.created.slice(0, 10)) === date
 	);
-	const job = String(Math.max(1, sameDay.indexOf(project) + 1)).padStart(2, '0');
-	return `${clientOf(client).code}-${date}-J${job}`;
+	const count = project.job ?? Math.max(1, sameDay.length - sameDay.indexOf(project));
+	return `${clientOf(client).code}-${date}-J${String(count).padStart(2, '0')}`;
 }
 
 // The document ID the client picked (format 3, 2026-10-25): the project number, FR = final report, R = revision.
@@ -581,7 +593,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 		projectPanel(project, base),
 		{
 			...base,
-			id: 'transport',
+			id: crypto.randomUUID(),
+			key: 'transport',
 			name: 'Transport Mode',
 			icon: 'icon-[mdi--ferry]',
 			kind: 'transport',
@@ -590,7 +603,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 		},
 		{
 			...base,
-			id: 'items',
+			id: crypto.randomUUID(),
+			key: 'items',
 			name: 'Items',
 			icon: 'icon-[mdi--package-variant-closed]',
 			kind: 'items',
@@ -599,7 +613,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 		},
 		{
 			...base,
-			id: 'timelog',
+			id: crypto.randomUUID(),
+			key: 'timelog',
 			name: 'Time Log',
 			icon: 'icon-[mdi--clock-outline]',
 			kind: 'timelog',
@@ -607,7 +622,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 		},
 		{
 			...base,
-			id: 'inspection',
+			id: crypto.randomUUID(),
+			key: 'inspection',
 			name: 'Inspection',
 			icon: 'icon-[mdi--camera-outline]',
 			kind: 'photos',
@@ -616,7 +632,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 		},
 		{
 			...base,
-			id: 'damages',
+			id: crypto.randomUUID(),
+			key: 'damages',
 			name: 'Damages',
 			icon: 'icon-[mdi--alert-outline]',
 			kind: 'photos',
@@ -626,7 +643,8 @@ export function createPanels(project: ProjectType): PanelType[] {
 		},
 		{
 			...base,
-			id: 'discharge',
+			id: crypto.randomUUID(),
+			key: 'discharge',
 			name: 'Discharge',
 			icon: 'icon-[mdi--crane]',
 			kind: 'photos',
@@ -644,7 +662,8 @@ function projectPanel(
 ) {
 	return {
 		...base,
-		id: 'project',
+		id: crypto.randomUUID(),
+		key: 'project',
 		name: 'Project',
 		icon: 'icon-[mdi--clipboard-text-outline]',
 		kind: 'project',
@@ -676,6 +695,35 @@ const BASE = {
 	stops: [],
 	items: []
 };
+
+// What a panel row names (#186).
+export type PanelRowType = Pick<
+	PanelType,
+	'id' | 'key' | 'name' | 'icon' | 'kind' | 'control' | 'isEnabled'
+>;
+
+// A saved panel as the screens hold it, empty: the Project panel with its fields, the Transport Mode panel with one
+// stop and the Items panel with one row to type into, as a new project's are. What the panels hold fills them after.
+export function panelOf(row: PanelRowType): PanelType {
+	const fields =
+		row.kind === 'project'
+			? projectPanel(
+					{ title: '', subtitle: '', type: '', client: '', team: [] } as unknown as ProjectType,
+					BASE
+				).fields
+			: [];
+	return {
+		...row,
+		isDraggable: row.control !== 'locked',
+		fields,
+		owner: '',
+		assigned: [],
+		days: [],
+		groups: [],
+		stops: row.kind === 'transport' ? [stopOf()] : [],
+		items: row.kind === 'items' ? [itemOf()] : []
+	};
+}
 
 // A new project before it is made: the same Project panel a project has, empty, with the signed-in person as its
 // owner. The + sheet fills this in and `LookState.create` makes the project from it (run 16).
@@ -725,12 +773,12 @@ export function draftOf(page: Exclude<DatasetType, 'projects'>) {
 }
 
 export function newPerson() {
-	return { id: createId('person'), name: '', title: '' };
+	return { id: crypto.randomUUID(), name: '', title: '' };
 }
 
 // A company's people on the job, starting with one empty line to type into.
 export function newPersonnel(): PersonnelType {
-	return { id: createId('company'), company: '', people: [newPerson()] };
+	return { id: crypto.randomUUID(), company: '', people: [newPerson()] };
 }
 
 export function newContact(): ContactType {
@@ -739,7 +787,7 @@ export function newContact(): ContactType {
 
 export function newPanel(count: number): PanelType {
 	return {
-		id: createId('panel'),
+		id: crypto.randomUUID(),
 		// Run 19: there is no fixed Custom panel any more; Add panel makes one, and it can be removed.
 		name: count > 1 ? `Custom ${count}` : 'Custom',
 		icon: 'icon-[mdi--puzzle-outline]',

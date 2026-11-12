@@ -10,8 +10,8 @@
 	import { untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { fetchLists, saveRows } from '#lib/rows/rows.remote.js';
-	import type { SavedRowType } from '#lib/rows/rows.schema.js';
+	import { fetchLists, fetchProject, saveRows } from '#lib/rows/rows.remote.js';
+	import { type RowType, type SavedRowType, TABLES } from '#lib/rows/rows.schema.js';
 	import { SyncLoop } from '#lib/rows/rows.state.svelte.js';
 	import { LookState } from './look.state.svelte';
 	import Confirm from './confirm.svelte';
@@ -19,7 +19,7 @@
 	import Shell from './shell.svelte';
 	import StatusSheet from './status-sheet.svelte';
 	import { openAddress, placeOf, toAddress } from './look.utils';
-	import { takeRows, toRows } from './mapper';
+	import { isOfProject, takeProject, takeReads, takeRows, toRows } from './mapper';
 
 	type SelfType = { userId: string; role: LookState['role'] | null; isSuperAdmin: boolean };
 
@@ -40,6 +40,7 @@
 	const sync = new SyncLoop({
 		read: () => toRows(look),
 		take: (taken) => takeRows(look, taken),
+		takeReads: (reads) => takeReads(look, reads),
 		send: (batch) => saveRows(batch),
 		fetch: async () => {
 			const lists = fetchLists();
@@ -65,6 +66,48 @@
 		if (look.screen !== 'record' || !look.record) return;
 		untrack(() => void sync.refresh());
 	});
+
+	// Opening a project loads its panels and what is in them (#186), and takes in what others saved to it.
+	$effect(() => {
+		if (look.screen !== 'workspace' || !look.projectId) return;
+		const id = look.projectId;
+		untrack(() => void openProject(id));
+	});
+
+	async function openProject(id: string) {
+		const isLoaded = look.isLoaded(id);
+		if (isLoaded && sync.isPending) return;
+		let found: Awaited<ReturnType<typeof fetchProject>>;
+		try {
+			const query = fetchProject(id);
+			if (isLoaded) await query.refresh();
+			found = await query;
+		} catch {
+			if (!look.isLoaded(id))
+				look.say('This project could not load. Check the connection and open it again.');
+			return;
+		}
+		// Not there at all yet is a project made here whose first save has not arrived.
+		if (!found.isFound)
+			return found.isTrashed || !isLoaded ? loseProject(id, found.reason) : undefined;
+		// While a change waits to be sent, the project's row and Team Assigned stay as they are on screen; what is
+		// inside it has nothing waiting, since it had not loaded.
+		const isIdle = !sync.isPending;
+		if (look.isLoaded(id) && !isIdle) return;
+		const isPart = isOfProject(id);
+		const isInside = (row: RowType) => isPart(row) && TABLES[row.table].scope === 'project';
+		const rows = [found.project, ...found.rows].filter((row) => isIdle || isInside(row));
+		sync.merge(rows, isIdle ? isPart : isInside, (taken) => takeProject(look, id, taken));
+	}
+
+	// A project someone else moved to the Trash: the User is told, and it leaves the screens.
+	function loseProject(id: string, reason: string) {
+		look.say(reason);
+		if (look.screen === 'workspace' && look.projectId === id) look.home();
+		look.projects = look.projects.filter((project) => project.id !== id);
+		delete look.workspaces[id];
+		void sync.refresh();
+	}
 
 	// A change that did not save says so wherever the User is, not only beside a cloud.
 	$effect(() => {

@@ -114,6 +114,7 @@
 				shape="face"
 				value={member.photo || (isNew ? '' : personOf(member.name).photo)}
 				canRemove={Boolean(member.photo)}
+				target={{ table: 'team', column: 'photo', id: member.id }}
 				hint="Shows wherever they do, and beside their sign-off on a report they own."
 				onpick={(url) => set({ photo: url })}
 			/>
