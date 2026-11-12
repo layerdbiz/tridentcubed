@@ -98,4 +98,25 @@ describe('reading the deployment settings', () => {
 		expect(settings.missing).toEqual([]);
 		expect(settings.ways).toEqual(['google']);
 	});
+
+	it('keeps files in a local folder with no storage settings, and nowhere in production (#187)', () => {
+		expect(readSettings({}).storage).toBe('local');
+		expect(readSettings({ ...DEPLOYED, DATABASE_URL: 'postgres://pooler' }).storage).toBe('none');
+	});
+
+	it('keeps files in Supabase Storage when its address and secret key are both set', () => {
+		const settings = readSettings({
+			...DEPLOYED,
+			SUPABASE_URL: 'https://abc.supabase.co',
+			SUPABASE_SECRET_KEY: 'sb_secret_x'
+		});
+		const half = readSettings({ SUPABASE_URL: 'https://abc.supabase.co' });
+
+		expect(settings.storage).toBe('supabase');
+		expect(settings.supabase).toEqual({
+			url: 'https://abc.supabase.co',
+			secretKey: 'sb_secret_x'
+		});
+		expect(half.storage).toBe('local');
+	});
 });

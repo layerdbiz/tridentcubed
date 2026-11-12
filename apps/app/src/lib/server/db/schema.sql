@@ -176,6 +176,31 @@ CREATE TABLE "change" (
 --> statement-breakpoint
 ALTER TABLE "change" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "file" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"for_table" text NOT NULL,
+	"for_column" text NOT NULL,
+	"for_id" uuid,
+	"path" text NOT NULL,
+	"name" text DEFAULT '' NOT NULL,
+	"type" text NOT NULL,
+	"size" integer NOT NULL,
+	"width" integer,
+	"height" integer,
+	"taken_at" timestamp with time zone,
+	"latitude" double precision,
+	"longitude" double precision,
+	"taken_from" text DEFAULT '' NOT NULL,
+	"uploaded_by" uuid
+);
+
+--> statement-breakpoint
+ALTER TABLE "file" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
@@ -201,6 +226,10 @@ ALTER TABLE "contact" ADD CONSTRAINT "contact_customer_id_customer_id_fk" FOREIG
 ALTER TABLE "change" ADD CONSTRAINT "change_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "change" ADD CONSTRAINT "change_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "file" ADD CONSTRAINT "file_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "file" ADD CONSTRAINT "file_uploaded_by_user_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
 --> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");
 --> statement-breakpoint
@@ -245,3 +274,5 @@ CREATE POLICY "contact in the acting organization" ON "contact" AS PERMISSIVE FO
 CREATE POLICY "change is read in the acting organization" ON "change" AS PERMISSIVE FOR SELECT TO "trident_app" USING (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "change is added in the acting organization" ON "change" AS PERMISSIVE FOR INSERT TO "trident_app" WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "file in the acting organization" ON "file" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());

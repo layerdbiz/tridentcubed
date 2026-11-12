@@ -12,7 +12,11 @@ export type GuardType =
 	| { kind: 'redirect'; location: string }
 	| { kind: 'refuse'; status: 401 | 403 | 404; message: string };
 
-const OPEN = ['/login', '/api/auth/', '/_app/'];
+// The local folder's file links are signed and short-lived, as Supabase Storage's are, so they answer by their
+// signature alone (#187). The app's own file addresses (/files/<id>) answer like server routes: a refusal, never a
+// page.
+const OPEN = ['/login', '/api/auth/', '/_app/', '/local-files/'];
+const SERVED = ['/api/', '/files/'];
 const CLOSED = '/api/auth/organization/';
 const WAITING = '/waiting';
 
@@ -35,13 +39,15 @@ export function toGuard(url: URL, access: AccessType): GuardType | undefined {
 	}
 	if (access === 'guest') {
 		if (isUnder(path, WAITING)) return undefined;
-		if (path.startsWith('/api/')) {
+		if (SERVED.some((served) => path.startsWith(served))) {
 			return { kind: 'refuse', status: 403, message: 'You are waiting for access.' };
 		}
 		return { kind: 'redirect', location: WAITING };
 	}
 
-	if (path.startsWith('/api/')) return { kind: 'refuse', status: 401, message: 'Sign in first.' };
+	if (SERVED.some((served) => path.startsWith(served))) {
+		return { kind: 'refuse', status: 401, message: 'Sign in first.' };
+	}
 	const next = isUnder(path, WAITING) ? '/' : `${path}${url.search}`;
 	return {
 		kind: 'redirect',

@@ -209,3 +209,25 @@ export async function readRows(
 		return rows;
 	});
 }
+
+/**
+ * The one permission check for a put of `values` on the row `id` of `table`, as the save command would ask it, with
+ * the row as it is now (none for a row not made yet). Asked before a file for that row gets an upload address.
+ */
+export async function checkPut(
+	tx: TransactionType,
+	actor: ActorType,
+	table: TableNameType,
+	id: string | undefined,
+	values: Record<string, unknown>
+) {
+	const row = id ? await findRow(tx, table, id) : undefined;
+	return checkPermission(actor, {
+		table,
+		operation: 'put',
+		columns: Object.keys(values),
+		values: { ...values, organizationId: actor.organizationId },
+		row,
+		project: await findProject(tx, table, { ...row, ...values })
+	});
+}

@@ -1,6 +1,10 @@
 /* ROOT */
 export * from "./auth/auth.remote.ts";
 export * from "./definitions/definitions.ts";
+export * from "./files/files.remote.ts";
+export * from "./files/files.schema.ts";
+export * from "./files/files.state.svelte.ts";
+export * from "./files/files.utils.ts";
 export * from "./definitions/inputs.ts";
 export * from "./definitions/pages.ts";
 export * from "./definitions/panels.ts";

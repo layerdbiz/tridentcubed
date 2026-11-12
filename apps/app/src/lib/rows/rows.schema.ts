@@ -17,9 +17,11 @@
 import * as v from 'valibot';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
-// A picture's address. Until uploads go to storage (#187) a picked picture is kept inline as a data URL, so this is
-// large; #187 makes it the app's file address and tightens it.
-const PICTURE = v.pipe(v.string(), v.maxLength(4_000_000));
+// A picture's address: the app's address of a file in storage (`/files/<id>`, #187), a starting file (`/start/...`)
+// or nothing. A column declared with it holds a file, so a device may ask for an upload address for it
+// (`holdsFile`). Pictures not yet wired to the upload helper still arrive inline as data URLs, so it stays large until
+// every picture uploads (open item after #184, #185 and #187).
+export const PICTURE = v.pipe(v.string(), v.maxLength(4_000_000));
 const NAME = v.pipe(
 	v.string(),
 	v.check((name) => name.trim().length > 0, 'A name is needed.'),
@@ -144,4 +146,10 @@ export function checkValues(table: TableNameType, values: RowValuesType): string
 /** The columns of a table a device may set. */
 export function columnsOf(table: TableNameType) {
 	return Object.keys(TABLES[table].columns);
+}
+
+/** Whether a column of a table that saves keeps a file's address (it is declared with `PICTURE`). */
+export function holdsFile(table: string, column: string) {
+	const spec = (TABLES as Record<string, TableSpecType>)[table];
+	return Boolean(spec && Object.hasOwn(spec.columns, column) && spec.columns[column] === PICTURE);
 }

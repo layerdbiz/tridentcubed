@@ -104,6 +104,7 @@
 				label="Logo"
 				shape="logo"
 				value={customer.icon}
+				target={{ table: 'customer', column: 'logo', id: customer.id }}
 				hint="Shows on its rows and cards, and in the footer of every report page."
 				onpick={(url) => set({ icon: url, logo: url })}
 			/>
@@ -175,6 +176,7 @@
 			<ImageField
 				label="Background Picture"
 				value={customer.photo ?? ''}
+				target={{ table: 'customer', column: 'picture', id: customer.id }}
 				hint="The picture behind its Page. Without one, its type's stock picture shows."
 				onpick={(url) => set({ photo: url })}
 			/>
@@ -266,6 +268,7 @@
 						label="Photo"
 						shape="face"
 						value={contact.photo}
+						target={{ table: 'contact', column: 'photo', id: contact.id }}
 						onpick={(url) => setContact(contact.id, { photo: url })}
 					/>
 					{@render text('Name', contact.name, (name) => setContact(contact.id, { name }))}

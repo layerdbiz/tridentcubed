@@ -15,14 +15,20 @@ src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql
                                (the one claims helper + auth), access.ts (the sign-in rule), permission.ts
                                (the one permission check), settings.ts, guard.ts, signin.ts, email.ts,
                                testing.ts (test helpers), rows.ts (the save command's work and the
-                               queries' reads), pdf-browser.ts
+                               queries' reads), files.ts (upload addresses and file links), store.ts
+                               (the file store: Supabase Storage or a local folder), pdf-browser.ts
 src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.remote.ts (`saveRows`,
                                `fetchLists`), rows.utils.ts (the difference), rows.state.svelte.ts (the sync loop)
+src/lib/files/                 files: files.schema.ts (the upload request), files.remote.ts (`askUpload`),
+                               files.utils.ts (read time and place, shrink), files.state.svelte.ts (the
+                               upload helper: `Upload`, `startUpload`)
 src/lib/start/                 the starting files the seed's rows point at, served at /start/... (routes/start)
 src/routes/login/              the login page (server-rendered; emailed code, then Google/Microsoft)
 src/routes/waiting/            Waiting for access, where a Guest is kept (server-rendered)
 src/routes/(app)/              the signed-in app, drawn on the device (ssr off in its +layout.ts)
 src/routes/api/                server routes the app calls: export/pdf, places
+src/routes/files/[id]/         the app's address of a file: checks the member, sends on to a signed link
+src/routes/local-files/        the local folder store's signed addresses (no Supabase settings only)
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
 src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <route>.<role>.ts beside it
@@ -97,5 +103,11 @@ the why is in ADR 0002, 0003 and 0005.
 - **Ids are UUIDs made on the device**, and the server sets created and
   updated times. The screens keep naming records by name; only the mapper
   translates names to ids.
+- **Files go to private storage, never into a row** (ADR 0004, #187). A
+  picture column is declared with `PICTURE` in the registry and keeps the
+  app's file address (`/files/<id>`). A picture field uploads through the
+  upload helper when given its `target` (`{ table, column, id }`); the
+  server's `createUpload` checks the column holds files and asks the one
+  permission check before it hands out an upload address.
 - **Schema changes** are Drizzle schema edits tested on the in-process
   Postgres. Vercel builds never migrate the Supabase database.
