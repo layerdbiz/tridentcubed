@@ -298,7 +298,7 @@
 							>
 								{#snippet trigger()}
 									<span
-										class="flex h-[44px] items-center gap-0.5 rounded-full pr-2 pl-3.5 text-xs font-semibold whitespace-nowrap {stop.point
+										class="flex h-[44px] min-w-[4.5rem] items-center justify-center gap-0.5 rounded-full pr-2 pl-3.5 text-xs font-semibold whitespace-nowrap {stop.point
 											? POINTS[stop.point].chip
 											: 'bg-slate-900/[0.05] text-slate-500'}"
 										>{stop.point || 'Point'}<span class="icon-[mdi--chevron-down] size-4"
