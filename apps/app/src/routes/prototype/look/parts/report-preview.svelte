@@ -528,6 +528,22 @@
 	let canvas: HTMLDivElement | undefined = $state();
 	let isDownloading = false;
 
+	// A photo far bigger than it prints is sent at three times its printed size, as a JPEG, so the PDF stays small
+	// enough to email. Logos and anything already small go as they are.
+	function slimOf(image: HTMLImageElement) {
+		const wide = image.offsetWidth * 3;
+		if (!image.naturalWidth || image.naturalWidth <= wide * 1.3) return undefined;
+		const board = document.createElement('canvas');
+		board.width = wide;
+		board.height = Math.round((image.naturalHeight * wide) / image.naturalWidth);
+		board.getContext('2d')?.drawImage(image, 0, 0, board.width, board.height);
+		try {
+			return board.toDataURL('image/jpeg', 0.82);
+		} catch {
+			return undefined;
+		}
+	}
+
 	async function download() {
 		if (isDownloading || !canvas) return;
 		isDownloading = true;
@@ -539,6 +555,11 @@
 			const sheetsOfPages = [...canvas.querySelectorAll('article[data-page]')]
 				.map((node) => {
 					const copy = node.cloneNode(true) as HTMLElement;
+					const shown = node.querySelectorAll('img');
+					for (const [index, image] of copy.querySelectorAll('img').entries()) {
+						const slim = slimOf(shown[index]);
+						if (slim) image.src = slim;
+					}
 					copy.style.cssText = `width: ${W}px; height: ${H}px`;
 					copy.classList.remove('ring-4', 'ring-primary/70');
 					return copy.outerHTML;
