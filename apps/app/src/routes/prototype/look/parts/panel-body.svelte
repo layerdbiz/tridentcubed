@@ -1066,7 +1066,6 @@
 			<TransportLegs
 				{look}
 				{panel}
-				isLine={legsLook === 'C'}
 				onsave={save}
 				onaddtransport={addTransport}
 				onaddfacility={addFacility}

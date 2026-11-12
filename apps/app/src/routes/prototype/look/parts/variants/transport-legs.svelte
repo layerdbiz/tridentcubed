@@ -1,5 +1,5 @@
 <script lang="ts">
-	// PROTOTYPE (#161) run 26: the Transport Mode panel as legs, variants B and C (Justin, 2026-11-11: "if you're a
+	// PROTOTYPE (#161) run 26: the Transport Mode panel as legs, variant B (Justin, 2026-11-11: "if you're a
 	// vessel, you always have a start and you always have an end ... without having to repeat ourselves"). The trip
 	// is one leg after another (legs.ts). For each leg you pick, in this order: the Transport Type (Sea, Air, Rail,
 	// Road), then the mode that type has (Vessel or Barge), then which one, from a list of only those. That is
@@ -7,8 +7,8 @@
 	// is one of the three by where it sits, never more. The facility list holds the kind that suits the type (ports
 	// for Sea) and the places the trip already uses, so a truck can start where the vessel ended. Add Transport Mode
 	// starts the next leg at the facility the last one ended at.
-	// B draws each leg as a card of its own that opens and closes. C (`isLine`) draws the whole trip as one line
-	// down the panel, in each transport type's colour, with the transport as a band at the head of its stretch.
+	// Each leg is a card of its own that opens and closes. C, the whole trip as one line down the panel, was
+	// dropped on 2026-11-12: Justin kept B.
 	import { untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import Group from '../group.svelte';
@@ -39,14 +39,12 @@
 	let {
 		look,
 		panel,
-		isLine = false,
 		onsave,
 		onaddtransport,
 		onaddfacility
 	}: {
 		look: LookState;
 		panel: PanelType;
-		isLine?: boolean;
 		onsave: () => void;
 		// "Add new": the panel asks for the name, adds it to its page, and hands the name back.
 		onaddtransport: (type: TransportTypeType, mode: string, done: (name: string) => void) => void;
@@ -56,14 +54,6 @@
 	const TYPES = Object.keys(TRANSPORT_TYPES) as TransportTypeType[];
 	const KINDS = Object.keys(FACILITY_ICONS) as FacilityKindType[];
 	const LABEL = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
-	// Each transport type's colour, the ones its stat card and map marker use.
-	const LINES: Record<TransportTypeType, string> = {
-		Sea: 'bg-blue-900',
-		Air: 'bg-sky-400',
-		Rail: 'bg-red-900',
-		Road: 'bg-zinc-500'
-	};
-
 	const legs = $derived(legsOf(panel.stops));
 	// The legs standing open: the first, and any just added.
 	let open = $state<string[]>(untrack(() => [legsOf(panel.stops)[0]?.id ?? '']));
@@ -329,92 +319,30 @@
 	>
 </p>
 
-{#if isLine}
-	<!-- C: the trip as one line. Each transport is a band at the head of its stretch; a tap opens its three picks. -->
-	<div class="rounded-2xl bg-slate-900/[0.03] p-3">
-		{#each legs as leg, index (leg.id)}
-			{@const head = headOf(leg)}
-			{@const line = head?.type ? LINES[head.type] : 'bg-slate-300'}
-			{@const isOpen = open.includes(leg.id) || !head?.name}
-			{#if index}
-				{@const from = legs[index - 1].stops.at(-1)?.facility}
-				<p class="flex items-center gap-2.5 py-1.5 pl-5 text-[11px] font-medium text-slate-400">
-					<span class="flex w-3 shrink-0 justify-center"
-						><span class="icon-[mdi--dots-vertical] size-4"></span></span
-					>
-					{from && from === head?.facility ? `Handed over at ${from}` : 'Then'}
-				</p>
-			{/if}
-			<button
-				type="button"
-				class="flex w-full items-center gap-2.5 rounded-2xl bg-white py-2 pr-3 pl-2 text-left shadow-[0_1px_2px_rgb(15_23_42/0.06)]"
-				aria-expanded={isOpen}
-				onclick={() => toggle(leg.id)}
-			>
-				<span
-					class="flex size-9 shrink-0 items-center justify-center rounded-full text-white {line}"
-					><span class="{iconOf(leg)} size-5"></span></span
-				>
-				<span class="min-w-0 flex-1">
-					<span class="block truncate text-sm font-semibold text-slate-800"
-						>{titleOf(leg, index)}</span
-					>
-					<span class="block truncate text-[11px] text-slate-400"
-						>{[head?.type, head?.mode].filter(Boolean).join(' · ') ||
-							'Pick how this part of the trip travels'}</span
-					>
-				</span>
-				<span
-					class="icon-[mdi--chevron-down] size-5 shrink-0 text-slate-400 transition {isOpen
-						? 'rotate-180'
-						: ''}"
-				></span>
-			</button>
-			{#if isOpen}
-				<div
-					class="space-y-3 px-1 pt-3"
-					transition:slide={{ duration: 180 }}
-				>
-					{@render transport(leg)}
-					{#if legs.length > 1}
-						<button
-							type="button"
-							class="flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium text-danger transition hover:bg-danger/10"
-							onclick={() => drop(leg, index)}
-							><span class="icon-[mdi--trash-can-outline] size-4"></span>Delete Transport Mode</button
-						>
-					{/if}
+<!-- One card for each leg. -->
+<div class="space-y-3">
+	{#each legs as leg, index (leg.id)}
+		{@const head = headOf(leg)}
+		<Group
+			title={titleOf(leg, index)}
+			note={[head?.type, head?.mode, routeOf(leg)].filter(Boolean).join(' · ') ||
+				'Pick how this part of the trip travels'}
+			icon={iconOf(leg)}
+			isOpen={open.includes(leg.id)}
+			ontoggle={() => toggle(leg.id)}
+			ondelete={legs.length > 1 ? () => drop(leg, index) : undefined}
+			deleteLabel="Delete Transport Mode"
+		>
+			{@render transport(leg)}
+			{#if head?.type}
+				<div>
+					<p class="{LABEL} mb-0">Facilities, in order</p>
+					{@render facilities(leg, 'bg-slate-300')}
 				</div>
 			{/if}
-			<div class="pt-2 pl-5">{@render facilities(leg, line)}</div>
-		{/each}
-	</div>
-{:else}
-	<!-- B: one card for each leg. -->
-	<div class="space-y-3">
-		{#each legs as leg, index (leg.id)}
-			{@const head = headOf(leg)}
-			<Group
-				title={titleOf(leg, index)}
-				note={[head?.type, head?.mode, routeOf(leg)].filter(Boolean).join(' · ') ||
-					'Pick how this part of the trip travels'}
-				icon={iconOf(leg)}
-				isOpen={open.includes(leg.id)}
-				ontoggle={() => toggle(leg.id)}
-				ondelete={legs.length > 1 ? () => drop(leg, index) : undefined}
-				deleteLabel="Delete Transport Mode"
-			>
-				{@render transport(leg)}
-				{#if head?.type}
-					<div>
-						<p class="{LABEL} mb-0">Facilities, in order</p>
-						{@render facilities(leg, 'bg-slate-300')}
-					</div>
-				{/if}
-			</Group>
-		{/each}
-	</div>
-{/if}
+		</Group>
+	{/each}
+</div>
 
 <button
 	type="button"

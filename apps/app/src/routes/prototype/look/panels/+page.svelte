@@ -1,8 +1,8 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 27: the Transport Mode Panel on a page of its own (Justin, 2026-11-12: "an actual
-	// prototype standalone that I can go and click on and make annotations with"). Its two new prototypes, B and C,
-	// sit side by side (one under the other on a phone), each the real panel, so everything in it can be clicked.
-	// Both edit the same project's trip, the one the app has, so a change in one shows in the other and in the app.
+	// prototype standalone that I can go and click on and make annotations with"). Prototype B, the one he kept
+	// (C was dropped the same day), as the real panel, so everything in it can be clicked. It edits the same
+	// project's trip the app has, so a change here shows in the app.
 	// ?project=p2 opens another project. Throwaway, like the rest of the prototype.
 	import '../parts/look.css';
 	import { page } from '$app/state';
@@ -10,10 +10,7 @@
 	import { LookState } from '../parts/look.state.svelte';
 	import PanelBody from '../parts/panel-body.svelte';
 
-	const LOOKS = [
-		['B', 'A card for each leg'],
-		['C', 'One line down the panel']
-	];
+	const LOOKS = [['B', 'A card for each leg']];
 
 	const look = new LookState();
 	const asked = page.url.searchParams.get('project');
@@ -35,8 +32,7 @@
 		>
 		<h1 class="mt-2 text-2xl font-semibold tracking-tight">Transport Mode Panel</h1>
 		<p class="mt-1 text-sm text-slate-500">
-			Both prototypes, each the real panel. They edit the same trip, so a change in one shows in the
-			other.
+			Prototype B, as the real panel. It edits the same trip the app has.
 		</p>
 		<label class="mt-3 block max-w-sm">
 			<span class="mb-1 block text-xs font-medium text-slate-500">Project</span>
@@ -51,7 +47,7 @@
 			</select>
 		</label>
 	</header>
-	<main class="mx-auto grid max-w-5xl items-start gap-6 px-4 pb-20 md:grid-cols-2">
+	<main class="mx-auto grid max-w-5xl items-start gap-6 px-4 pb-20 md:max-w-xl md:px-0">
 		{#each LOOKS as [letter, name] (letter)}
 			<section aria-label="Prototype {letter}">
 				<h2 class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
