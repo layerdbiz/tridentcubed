@@ -9,7 +9,9 @@ Layout confirmed against SvelteKit docs on #42
 
 ```text
 src/hooks.server.ts            session lookup into event.locals (when auth arrives)
-src/lib/server/                server-only code: db/, auth.ts, export-session-store.ts
+src/lib/server/                server-only code: db/ (Drizzle schema), auth.ts, pdf-browser.ts
+src/routes/(app)/              the signed-in app, drawn on the device (ssr off in its +layout.ts)
+src/routes/api/                server routes the app calls: export/pdf, places
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
 src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <route>.<role>.ts beside it
@@ -36,10 +38,16 @@ src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <ro
   `getRequestEvent().locals` and throws or redirects itself. A
   `+page.server.ts` guards the page, not the data; the hook guards many
   routes. `.remote.ts` files import `#lib/server/...` but never live under it.
-- `load` remains for redirects and the print-token page only.
+- `load` remains for redirects only.
 
 ## Known exceptions
 
-The projects list and project detail pages hold their logic inline
-(407 and 1,493 lines) and use `import * as` for their support modules.
-They change on "UI library cleanup" (#33), not mid-feature.
+The signed-in app is the look prototype's screens (#161), carried across
+whole by #180: `src/routes/(app)/look/` holds about ninety parts with one
+state class (`look.state.svelte.ts`), several 1,000-line files, support
+modules named for what they hold (`look.data.ts`, `chart.data.ts`,
+`legs.ts`) rather than by role, and the code of looks the prototype
+selector used to switch (`look.constants.ts` fixes each part's look). They
+change on the UI cleanup after sign-in and the database (spec #179, Out of
+Scope), not mid-feature. The browser-only Report Generator they replaced is
+in `.archive/apps/app`.

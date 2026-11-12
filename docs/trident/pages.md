@@ -16,17 +16,18 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
   - Dashboard ✅ (where Members and Admins land; in V1 it is the same list as Projects)
   - Projects ✅
     - Project ✅ (the Workspace)
+      - Page (photos or a map of the trip, then its details; design prototype run 13)
       - Edit ✅
       - Preview ✅ (zoom, page layouts, Export PDF)
       - Photos
       - History
       - Sent copies
-  - Clients ✅ (list only)
-    - Client
-  - Carriers ✅ (list only, filtered by vessel, airplane, train, truck)
-    - Carrier
-  - Facilities ✅ (list only)
-    - Facility
+  - Customers ✅
+    - Customer (record page, Page and Edit; design prototype run 12)
+  - Transport ✅ (filtered by Sea, Air, Rail, Road; reads Transport Mode in the design prototype from run 12)
+    - Transport (record page, Page and Edit; design prototype run 12)
+  - Facilities ✅
+    - Facility (record page, Page and Edit; design prototype run 12)
   - Notifications
   - Search
   - Profile ✅
@@ -35,11 +36,11 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
 - Admin
   - Users ✅
     - User
-  - Organization ✅
+  - Organization ✅ (its details and the report's disclaimer and sign-off; the design prototype's Settings screen, run 15)
     - Report templates
   - Trash ✅
   - Activity log
-- Client portal
+- Customer portal
   - My projects
   - Request a report
 - Super admin
@@ -53,14 +54,14 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
 
 1. Opening the app goes to Sign in, skipped when already signed in.
 2. A Member or Admin lands on the Dashboard; a Guest lands on Waiting for access.
-3. From the Dashboard a User opens a project, or makes one with New project, a popup (title and client; whoever makes it is the Owner).
+3. From the Dashboard a User opens a project, or makes one with New project, a popup (title and customer; whoever makes it is the Owner).
 4. A project opens on its Workspace, Edit and Preview; Preview exports the PDF.
-5. The navigation always reaches Dashboard, Projects, Clients, Carriers, Facilities, Profile and Settings; admins also reach Users, Organization and Trash.
+5. The navigation always reaches Dashboard, Projects, Customers, Transport, Facilities, Profile and Settings; admins also reach Users, Organization and Trash.
 
 ## Rules
 
-- **One list, three views.** Dashboard, Projects, Clients, Carriers, Facilities, Users and Trash are the same list component with different data. Table, Cards and Board (a column per project status) are all V1, and the User picks the view.
-- **Clients, Carriers and Facilities get their own list pages** on top of being picked and added from dropdowns in the Project details panel (ADR 0005). A single Client, Carrier or Facility page comes later.
+- **One list, three views.** Dashboard, Projects, Customers, Transport, Facilities, Users and Trash are the same list component with different data. Table, Cards and Board (a column per label: project status, customer type, team label, transport type, facility kind) are all V1, and the User picks the view; a change of view applies to every page.
+- **Customers, Transport and Facilities get their own list pages** on top of being picked and added from dropdowns in the Project details panel and the Transport panel's stops (ADR 0005). Each opens its own record page, one screen shared by all four, with a Page tab first and an Edit tab.
 - **New project is a popup,** not a page.
 - **No Welcome walkthrough in V1.** The phone asks for the camera, location or microphone the first time a feature needs it. A walkthrough at first sign-in stays on the list for later.
 - **No Offline page.** Once signed in the app runs from the device (ADR 0007); opening it for the first time with no signal shows a message on Sign in.
