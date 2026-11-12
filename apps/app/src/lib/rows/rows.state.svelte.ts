@@ -139,6 +139,18 @@ export class SyncLoop implements SaveStatusType {
 		this.#settle();
 	}
 
+	/**
+	 * A light heartbeat (story 26): every `every` milliseconds while the tab is shown, take in what others saved. Each
+	 * load also stamps this User as seen (the server does it on any request), so everyone's online dots stay true. It
+	 * skips a beat while anything here waits to be sent. Gives back the function that stops it.
+	 */
+	keepFresh({ every = 60_000, isVisible }: { every?: number; isVisible: () => boolean }) {
+		const timer = setInterval(() => {
+			if (isVisible()) void this.refresh().catch(() => undefined);
+		}, every);
+		return () => clearInterval(timer);
+	}
+
 	// The changes from the confirmed rows to the screens', less those a refusal holds back.
 	#toSend(createId?: () => string) {
 		const { sendable, held } = toSendable(

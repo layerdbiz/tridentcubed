@@ -135,6 +135,10 @@
 		if (sync.isPending) event.preventDefault();
 	}
 
+	// While the tab is shown, take in what others saved once a minute: their online dots come from when they were
+	// last in the app, and this User's own request stamps them as seen (story 26).
+	$effect(() => sync.keepFresh({ isVisible: () => document.visibilityState === 'visible' }));
+
 	// Back on the tab: take in what others saved meanwhile.
 	function onvisibilitychange() {
 		if (document.visibilityState === 'visible') void sync.refresh();

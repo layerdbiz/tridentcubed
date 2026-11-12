@@ -291,4 +291,26 @@ describe('the sync loop', () => {
 
 		expect(app.reads).toEqual([job]);
 	});
+
+	it('takes in what others saved every minute while the tab is shown (the online dots), and stops', async () => {
+		const app = createLoop([]);
+		let isVisible = true;
+		const stop = app.loop.keepFresh({ every: 60_000, isVisible: () => isVisible });
+
+		app.setServer('Rotterdam');
+		await vi.advanceTimersByTimeAsync(59_000);
+		expect(app.screen).toEqual([koga('Houston')]);
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(app.screen).toEqual([koga('Rotterdam')]);
+
+		isVisible = false;
+		app.setServer('Tampa');
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(app.screen).toEqual([koga('Rotterdam')]);
+
+		isVisible = true;
+		stop();
+		await vi.advanceTimersByTimeAsync(120_000);
+		expect(app.screen).toEqual([koga('Rotterdam')]);
+	});
 });
