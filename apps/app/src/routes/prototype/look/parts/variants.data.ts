@@ -32,8 +32,8 @@ export const PART_GROUPS: PartGroupType[] = [
 			part(
 				'bar',
 				'Bottom Bar',
-				['A', 'B', 'C', 'D'],
-				'A: small floating pill. B: edge to edge with names. C: wide floating bar, icons only, + above it; inside a page its name and the tabs slide in. D: C with an arrow after the name.'
+				['A', 'B', 'C', 'D', 'E'],
+				'A: small floating pill. B: edge to edge with names. C: wide floating bar, icons only, + above it; inside a page its name and the tabs slide in. D: C with a chevron after the name. E: D with a straight arrow and larger icons.'
 			),
 			part(
 				'sidebar',
@@ -56,6 +56,12 @@ export const PART_GROUPS: PartGroupType[] = [
 				label: 'Top',
 				note: 'The chart or map, and the stat cards',
 				parts: [
+					part(
+						'dash-header',
+						'Header',
+						['A', 'B'],
+						'The menu and the bell. A: plain icons, the number at the left. B: black round buttons, the number in the centre between them.'
+					),
 					part(
 						'top',
 						'Top Half',
@@ -111,8 +117,8 @@ export const PART_GROUPS: PartGroupType[] = [
 			part(
 				'header',
 				'Header',
-				['A', 'B'],
-				'The top of every tab. A: round glass buttons on Page, Photo and Map at the right. B: one header for every page; on Page only a bare back arrow and ⋮, Photo and Map in the centre.'
+				['A', 'B', 'C'],
+				'The top of every tab. A: round glass buttons on Page, Photo and Map at the right. B: one header for every page; on Page only a bare back arrow and ⋮, Photo and Map in the centre. C: B with a chevron for back.'
 			)
 		],
 		sections: [
@@ -121,6 +127,13 @@ export const PART_GROUPS: PartGroupType[] = [
 				label: 'Page',
 				note: 'The first tab: the picture or map, and the details',
 				parts: [
+					part(
+						'page-picture',
+						'Picture',
+						['A', 'B'],
+						'A: with no photo the map shows; over the map the name sits in a white card. B: a dark placeholder until there is a photo; the name reads the same over photo and map, on a dark fade.'
+					),
+					part('page-map', 'Map', ['A', 'B'], 'A: light. B: dark.'),
 					part('project-page', 'Project'),
 					part('record-page', 'Customer, Team, Transport Mode, Facility')
 				]

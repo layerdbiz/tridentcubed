@@ -5,7 +5,10 @@
 	// over it, the way a project card lays them over its photo. A switch at the top changes the picture for a map of
 	// where it is (a ship's last port, a project's trip). With several photos they swipe sideways. A team member's
 	// photo is too small to fill the screen, so it shows blurred behind them, with their face in front. Without a
-	// photo the map shows first.
+	// photo the map shows first. Run 25 (Justin, 2026-11-11), Picture B: with no photo a dark placeholder stands in,
+	// so the Page always opens on a picture; what is written over the picture is the same over a photo and over the
+	// map, white on a dark fade, with no card behind it. `isDarkMap` is Map B, the dark map. The sheet below holds
+	// only up-and-down scrolling, so a sideways swipe on it reaches the tabs.
 	import type { Snippet } from 'svelte';
 	import type { PinType } from './chart.data';
 	import { FADE } from './look.data';
@@ -22,6 +25,9 @@
 		onback,
 		backLabel,
 		buttons = 'glass',
+		picture = 'A',
+		isDarkMap = false,
+		hasChevron = false,
 		onphoto,
 		actions,
 		overlay,
@@ -40,7 +46,11 @@
 		// right. 'ghost' (Header B): bare icons, Photo and Map in the centre. 'none': the screen's own header
 		// (page-header.svelte) draws the two in the same place, so only Photo and Map are here, in the centre.
 		buttons?: 'glass' | 'ghost' | 'none';
-		// Told whether a photo is showing, so a header over it can turn its icons white.
+		// The Picture and Map letters, and Header C's chevron for back.
+		picture?: string;
+		isDarkMap?: boolean;
+		hasChevron?: boolean;
+		// Told whether the picture is dark (a photo, or the dark map), so a header over it can turn its icons white.
 		onphoto?: (isPhoto: boolean) => void;
 		actions: Snippet;
 		// What sits over the bottom of the picture; `true` while it is over a photo (white words), `false` over the map.
@@ -52,19 +62,23 @@
 	let strip: HTMLDivElement | undefined = $state();
 	let at = $state(0);
 	let overlayHeight = $state(0);
-	const isPhoto = $derived(!isMap && photos.length > 0);
+	const isAlike = $derived(picture !== 'A');
+	const isPhoto = $derived(!isMap && (photos.length > 0 || isAlike));
+	// Dark behind the top buttons; white words over the bottom.
+	const isDark = $derived(isPhoto || isDarkMap);
+	const isOver = $derived(isPhoto || isAlike);
 	const GLASS = $derived(
-		isPhoto
+		isDark
 			? 'bg-slate-950/35 text-white backdrop-blur-md'
 			: 'bg-white/85 text-slate-900 shadow-sm backdrop-blur-md'
 	);
 
 	const GHOST = $derived(
-		isPhoto ? 'text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]' : 'text-slate-900'
+		isDark ? 'text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]' : 'text-slate-900'
 	);
 
 	$effect(() => {
-		onphoto?.(isPhoto);
+		onphoto?.(isDark);
 	});
 
 	function onscroll() {
@@ -92,6 +106,15 @@
 					/>
 				{/each}
 			</div>
+			{#if !photos.length}
+				<!-- No photo yet: the dark card a project with no photos shows in the Cards view. -->
+				<div
+					class="absolute inset-0 flex flex-col items-center gap-1.5 bg-linear-to-br from-slate-700 to-slate-950 pt-[30%] md:pt-[12%]"
+				>
+					<span class="icon-[mdi--image-off-outline] size-9 text-white/30"></span>
+					<span class="text-sm font-medium text-white/50">No photos yet</span>
+				</div>
+			{/if}
 			<div
 				class="pointer-events-none absolute inset-x-0 top-0 h-32 bg-linear-to-b from-slate-950/50 to-transparent"
 			></div>
@@ -100,12 +123,22 @@
 			></div>
 		</div>
 	{:else}
-		<WorldMap
-			{pins}
-			{route}
-			maxZoom={8}
-			padding={{ top: 80, bottom: overlayHeight + 88, left: left + 32, right: 32 }}
-		/>
+		<div class="relative size-full">
+			{#key isDarkMap}
+				<WorldMap
+					{pins}
+					{route}
+					maxZoom={8}
+					isDark={isDarkMap}
+					padding={{ top: 80, bottom: overlayHeight + 88, left: left + 32, right: 32 }}
+				/>
+			{/key}
+			{#if isAlike}
+				<div
+					class="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-slate-950/90 via-slate-950/45 to-transparent"
+				></div>
+			{/if}
+		</div>
 	{/if}
 {/snippet}
 
@@ -130,11 +163,14 @@
 						? GLASS
 						: GHOST}"
 					aria-label={backLabel}
-					onclick={onback}><span class="icon-[mdi--arrow-left] size-6"></span></button
+					onclick={onback}
+					><span
+						class={hasChevron ? 'icon-[mdi--chevron-left] size-7' : 'icon-[mdi--arrow-left] size-6'}
+					></span></button
 				>
 			{/if}
 			<span class="flex-1"></span>
-			{#if photos.length}
+			{#if photos.length || isAlike}
 				<span
 					class="pointer-events-auto flex rounded-full p-1 {GLASS}"
 					role="tablist"
@@ -144,7 +180,7 @@
 						<button
 							class="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-semibold transition {isMap ===
 							value
-								? isPhoto
+								? isDark
 									? 'bg-white text-slate-900'
 									: 'bg-slate-900 text-white'
 								: ''}"
@@ -185,16 +221,16 @@
 				</span>
 			{/if}
 			<div
-				class="max-w-3xl {isPhoto
+				class="max-w-3xl {isOver
 					? ''
 					: 'pointer-events-auto rounded-3xl bg-white/85 p-3 shadow-sm backdrop-blur-md'}"
 			>
-				{@render overlay(isPhoto)}
+				{@render overlay(isOver)}
 			</div>
 		</div>
 	{/snippet}
 	<div
-		class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+96px)] {FADE}"
+		class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+96px)] {FADE}"
 		style="padding-left: {left + 16}px"
 	>
 		<div class="max-w-3xl">{@render children()}</div>

@@ -2,7 +2,7 @@
 	// PROTOTYPE (#161): a project's customer logo with the project's state as a dot at its top right, the way a team
 	// member's photo shows their presence (Justin, 2026-10-26 19:22), so the list needs no state word.
 	import ClientLogo from './client-logo.svelte';
-	import { STATUS, type ProjectType } from './look.data';
+	import { PAGE_ICONS, STATUS, type ProjectType } from './look.data';
 
 	let {
 		project,
@@ -22,6 +22,7 @@
 		name={project.client}
 		{size}
 		shape="circle"
+		fallback={PAGE_ICONS.projects}
 		{isMuted}
 	/>
 	<span

@@ -21,7 +21,9 @@
 	import type { LookState } from './look.state.svelte';
 	import { countOf, createdOf } from './records.data';
 
-	let { look }: { look: LookState } = $props();
+	// `isCentred` (Dashboard Header B): the number and what changed sit in the row above this chart, in the centre
+	// between the menu and the bell, on every chart. The pie then shows the page's icon in its hole, not the number.
+	let { look, isCentred = false }: { look: LookState; isCentred?: boolean } = $props();
 
 	let width = $state(0);
 	let height = $state(0);
@@ -149,13 +151,17 @@
 >
 	<!-- Over the map the number gets a soft glow of the page's grey, so a place name under it never muddles it. -->
 	<p
-		class="relative z-10 flex shrink-0 items-baseline gap-2 px-4 md:px-8 {look.chart === 'pie'
+		class="z-10 flex gap-2 {isCentred
+			? 'absolute inset-x-14 bottom-[calc(100%+0.25rem)] h-10 items-center justify-center md:bottom-full'
+			: 'relative shrink-0 items-baseline px-4 md:px-8'} {look.chart === 'pie' && !isCentred
 			? 'invisible'
 			: ''} {look.chart === 'map' ? '[text-shadow:0_0_10px_#f1f5f9,0_0_4px_#f1f5f9]' : ''}"
-		aria-hidden={look.chart === 'pie'}
+		aria-hidden={look.chart === 'pie' && !isCentred}
 	>
-		<span class="text-4xl font-semibold tracking-tight text-slate-900 tabular-nums md:text-5xl"
-			>{value}</span
+		<span
+			class="font-semibold tracking-tight text-slate-900 tabular-nums {isCentred
+				? 'text-3xl'
+				: 'text-4xl md:text-5xl'}">{value}</span
 		>
 		{#if isScrubbing}
 			<span class="truncate text-sm font-medium text-slate-500">{data.labels[index]}</span>
@@ -234,10 +240,19 @@
 								<span
 									class="flex size-full flex-col items-center justify-center px-1 text-center leading-tight"
 								>
-									<span
-										class="font-semibold tracking-tight text-slate-900 tabular-nums"
-										style="font-size: {Math.round(inner * 0.5)}px">{value}</span
-									>
+									{#if isCentred}
+										<span
+											class="{DATASETS[look.dataset].icon} mb-1 shrink-0 text-slate-400"
+											style="width: {Math.round(inner * 0.5)}px; height: {Math.round(
+												inner * 0.5
+											)}px"
+										></span>
+									{:else}
+										<span
+											class="font-semibold tracking-tight text-slate-900 tabular-nums"
+											style="font-size: {Math.round(inner * 0.5)}px">{value}</span
+										>
+									{/if}
 									<span
 										class="line-clamp-2 font-medium transition-colors {picked
 											? picked.tone.text

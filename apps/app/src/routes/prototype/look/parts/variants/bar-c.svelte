@@ -3,8 +3,9 @@
 	// and with no shadow. On a phone it runs nearly the whole width, with room at each side, and holds the five
 	// pages as icons with no words. The blue + is out of the bar: it floats above it, flush with the bar's right
 	// edge, the same gap over the bar as the bar has under it. Inside a project or a record the bar starts with the
-	// white icon of the page it came from and that page's name, which go back there, then the tabs. D (`hasArrow`)
-	// puts a right arrow after the name, before the tabs; C has none. No save cloud here: it is in the header.
+	// white icon of the page it came from and that page's name, which go back there, then the tabs. D puts a
+	// right chevron after the name, before the tabs; C has none (`arrow`). E (run 25) has a straight arrow there and
+	// larger icons (`isBig`). No save cloud here: it is in the header.
 	// Run 24 (Justin, 2026-11-11: "the folder icon moves and it shouldn't", "it just jumps in"): it moves the way A
 	// does. The first icon keeps a fifth of the bar, the place Projects has on the dashboard, so it never moves; the
 	// other four pages slide off to the left behind it while the name and the tabs slide in from the right, and the
@@ -20,8 +21,15 @@
 		look,
 		isWide,
 		left,
-		hasArrow = false
-	}: { look: LookState; isWide: boolean; left: string; hasArrow?: boolean } = $props();
+		arrow = 'none',
+		isBig = false
+	}: {
+		look: LookState;
+		isWide: boolean;
+		left: string;
+		arrow?: 'none' | 'chevron' | 'arrow';
+		isBig?: boolean;
+	} = $props();
 
 	const TABS = { page: 'Page', edit: 'Edit', preview: 'Preview' };
 	const PROJECT: TabType[] = ['page', 'edit', 'preview'];
@@ -30,6 +38,7 @@
 		'absolute inset-y-0 right-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
 
 	const isInside = $derived(look.screen !== 'dashboard');
+	const icon = $derived(isBig ? 'size-7' : 'size-6');
 	// The far left: Projects on the dashboard; inside, the page it came from.
 	const lead = $derived(isInside ? look.dataset : PAGES[0]);
 	const isLeadOn = $derived(isInside || look.navSection === lead);
@@ -98,7 +107,7 @@
 			onclick={() => go(lead)}
 		>
 			{#key lead}<span
-					class="{PAGE_ICONS[lead]} size-6"
+					class="{PAGE_ICONS[lead]} {icon}"
 					in:fade={{ duration: 200 }}
 				></span>{/key}
 		</button>
@@ -120,7 +129,7 @@
 						aria-label={DATASETS[id].label}
 						aria-current={isOn ? 'page' : undefined}
 						title={DATASETS[id].label}
-						onclick={() => go(id)}><span class="{PAGE_ICONS[id]} size-6"></span></button
+						onclick={() => go(id)}><span class="{PAGE_ICONS[id]} {icon}"></span></button
 					>
 				{/each}
 			</div>
@@ -137,8 +146,12 @@
 					onclick={() => go(look.dataset)}
 				>
 					<span class="truncate text-[13px] font-semibold">{DATASETS[look.dataset].label}</span>
-					{#if hasArrow}
-						<span class="icon-[mdi--chevron-right] size-5 shrink-0 text-white/50"></span>
+					{#if arrow !== 'none'}
+						<span
+							class="{arrow === 'arrow'
+								? 'icon-[mdi--arrow-right] size-4'
+								: 'icon-[mdi--chevron-right] size-5'} shrink-0 text-white/50"
+						></span>
 					{/if}
 				</button>
 				<div

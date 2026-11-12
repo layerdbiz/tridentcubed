@@ -134,6 +134,7 @@
 			reveal={look.tabProgress}
 			isLight={isPhoto}
 			hasCloud={look.variant('bar') !== 'A'}
+			hasChevron={look.variant('header') === 'C'}
 			bind:height={top}
 		/>
 	{:else}

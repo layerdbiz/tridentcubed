@@ -19,6 +19,9 @@
 	} = $props();
 
 	const presence = $derived(presenceOf(name));
+	// Someone with no photo yet shows a person icon on grey, the way a customer with no logo shows its page's icon.
+	const photo = $derived(personOf(name).photo);
+	const hasPhoto = $derived(!photo.startsWith('data:image/svg+xml,'));
 	const dot = $derived(Math.max(8, Math.round(size * 0.28)));
 </script>
 
@@ -26,13 +29,21 @@
 	class="relative inline-block shrink-0"
 	style="width: {size}px; height: {size}px"
 >
-	<img
-		src={personOf(name).photo}
-		alt={name}
-		class="size-full rounded-full bg-slate-200 object-cover ring-2 {ring} {isMuted
-			? 'grayscale'
-			: ''}"
-	/>
+	{#if hasPhoto}
+		<img
+			src={photo}
+			alt={name}
+			class="size-full rounded-full bg-slate-200 object-cover ring-2 {ring} {isMuted
+				? 'grayscale'
+				: ''}"
+		/>
+	{:else}
+		<span
+			class="flex size-full items-center justify-center rounded-full bg-slate-200 text-slate-400 ring-2 {ring}"
+			role="img"
+			aria-label={name}><span class="icon-[mdi--account] size-[62%]"></span></span
+		>
+	{/if}
 	{#if hasPresence}
 		<span
 			class="absolute top-0 right-0 rounded-full ring-2 ring-white {PRESENCE_TONES[presence]}"

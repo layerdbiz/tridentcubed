@@ -77,6 +77,12 @@
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
 	const ROUND =
 		'flex size-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-900/[0.05]';
+	// Dashboard Header B (Justin, 2026-11-11): the menu and the bell are black circles with white icons, and the
+	// number with what changed sits between them, in the centre (hero-chart.svelte draws it there).
+	const ROUND_B =
+		'flex size-10 items-center justify-center rounded-full bg-black text-white transition hover:bg-slate-800';
+	const isTopB = $derived(look.variant('dash-header') === 'B');
+	const round = $derived(isTopB ? ROUND_B : ROUND);
 	const PREVIEW = {
 		days: 'timeline',
 		surface: CANVAS
@@ -291,14 +297,17 @@
 		bind:this={bell}
 	>
 		<button
-			class="{ROUND} relative"
+			class="{round} relative"
 			aria-label="Notifications"
 			aria-expanded={isBellOpen}
 			onclick={ring}
 		>
 			<span class="icon-[mdi--bell-outline] size-6"></span>
 			{#if !seen}
-				<span class="absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 ring-slate-100"
+				<span
+					class="absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isTopB
+						? 'ring-black'
+						: 'ring-slate-100'}"
 				></span>
 			{/if}
 		</button>
@@ -427,18 +436,23 @@
 			>
 				{#snippet head()}
 					<header
-						class="pointer-events-auto flex shrink-0 items-center justify-between px-2 pt-[max(0.25rem,env(safe-area-inset-top))] md:justify-end md:px-6 md:pt-5"
+						class="pointer-events-auto flex shrink-0 items-center justify-between {isTopB
+							? 'px-4 pt-[max(0.5rem,env(safe-area-inset-top))]'
+							: 'px-2 pt-[max(0.25rem,env(safe-area-inset-top))]'} md:justify-end md:px-6 md:pt-5"
 						bind:clientHeight={headHeight}
 					>
 						<button
-							class="{ROUND} md:hidden"
+							class="{round} md:hidden"
 							aria-label="Open menu"
 							onclick={() => (drawer = 1)}><span class="icon-[mdi--menu] size-6"></span></button
 						>
 						{@render bellButton()}
 					</header>
 					<div class="min-h-0 flex-1 pt-1 md:pt-0">
-						<HeroChart {look} />
+						<HeroChart
+							{look}
+							isCentred={isTopB}
+						/>
 					</div>
 					<div
 						class="pointer-events-auto shrink-0 px-4 pt-2 pb-3 md:px-8 md:pt-3 md:pb-4"
@@ -586,7 +600,12 @@
 				{look}
 				{isWide}
 				left={barLeft()}
-				hasArrow={look.variant('bar') === 'D'}
+				arrow={look.variant('bar') === 'C'
+					? 'none'
+					: look.variant('bar') === 'D'
+						? 'chevron'
+						: 'arrow'}
+				isBig={look.variant('bar') === 'E'}
 			/>
 		{:else}
 			<NavBar

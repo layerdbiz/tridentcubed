@@ -18,13 +18,18 @@
 	class="flex min-w-0 items-center gap-1 text-xs {isLight ? 'text-white/85' : 'text-slate-500'}"
 	title={route.to ? `${route.from} to ${route.to}` : route.from}
 >
-	<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {STATUS[project.status].tone}"></span>
+	{#if route.from}
+		<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {STATUS[project.status].tone}"></span>
+	{:else}
+		<!-- No place yet: say so, with no marker pointing at nothing. -->
+		<span class="min-w-0 truncate opacity-60">No location yet</span>
+	{/if}
 	{#if route.to}
 		<span class="min-w-0 truncate">{route.from}</span>
 		<span class="icon-[mdi--arrow-right-thick] size-3.5 shrink-0 {STATUS[project.status].tone}"
 		></span>
 		<span class="min-w-0 truncate">{route.to}</span>
-	{:else}
+	{:else if route.from}
 		<span class="min-w-0 truncate">{route.from}</span>
 	{/if}
 </span>

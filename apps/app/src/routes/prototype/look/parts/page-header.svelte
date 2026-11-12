@@ -6,7 +6,7 @@
 	// runs from 0 to 1 and shows the rest: at 0 (the Page) nothing else, so the picture runs to the top; at 1 (Edit,
 	// Preview) the white blurred bar with the name, the save cloud and, for a project, its percent, state and
 	// progress. In between they fade, so it follows a swipe. `isLight` says the Page is showing a photo, where the
-	// two icons are white.
+	// two icons are white. `hasChevron` (Header C) draws back as a chevron, not an arrow.
 	import type { Snippet } from 'svelte';
 	import { DATASETS, STATUS, type DatasetType, type StatusType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -24,6 +24,7 @@
 		reveal = 1,
 		isLight = false,
 		hasCloud = false,
+		hasChevron = false,
 		height = $bindable(0),
 		mark
 	}: {
@@ -40,6 +41,7 @@
 		reveal?: number;
 		isLight?: boolean;
 		hasCloud?: boolean;
+		hasChevron?: boolean;
 		height?: number;
 		// A logo or a face before the name.
 		mark?: Snippet;
@@ -70,7 +72,10 @@
 		<button
 			class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full transition-colors {ghost}"
 			aria-label="Back to {DATASETS[page].label}"
-			onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
+			onclick={() => look.home()}
+			><span
+				class={hasChevron ? 'icon-[mdi--chevron-left] size-7' : 'icon-[mdi--arrow-left] size-6'}
+			></span></button
 		>
 		<div
 			class="min-w-0 flex-1"

@@ -97,6 +97,9 @@
 	{isWide}
 	{left}
 	{buttons}
+	picture={look.variant('page-picture')}
+	isDarkMap={look.variant('page-map') === 'B'}
+	hasChevron={look.variant('header') === 'C'}
 	{onphoto}
 	onback={() => look.home()}
 	backLabel="Back to Projects"

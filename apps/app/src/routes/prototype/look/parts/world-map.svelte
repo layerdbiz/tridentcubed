@@ -28,6 +28,7 @@
 		padding = { top: 24, bottom: 24, left: 24, right: 24 },
 		maxZoom = 9,
 		isSpread = false,
+		isDark = false,
 		onpick
 	}: {
 		pins: PinType[];
@@ -39,9 +40,12 @@
 		// Map B (run 22): every thing is its own point, set a little way out from its place in a ring, so several in
 		// one city come apart into their own markers once the map is zoomed in far enough.
 		isSpread?: boolean;
+		// Page Map B (run 25): OpenFreeMap's dark style, pulled toward the app's slate. Set once, as the map is made.
+		isDark?: boolean;
 	} = $props();
 
 	const STYLE = 'https://tiles.openfreemap.org/styles/positron';
+	const DARK = 'https://tiles.openfreemap.org/styles/dark';
 	const GREYS: [string, 'background-color' | 'fill-color' | 'line-color', string][] = [
 		['background', 'background-color', '#f1f5f9'],
 		['water', 'fill-color', '#d6e0ea'],
@@ -78,7 +82,24 @@
 		return `rgb(${r},${g},${b})`;
 	}
 
+	// The dark map: slate for land and water, place names kept quiet, road and water names off.
+	function restyleDark(target: MapType) {
+		if (target.getLayer('background'))
+			target.setPaintProperty('background', 'background-color', '#0f172a');
+		if (target.getLayer('water')) target.setPaintProperty('water', 'fill-color', '#1b2740');
+		for (const layer of target.getStyle().layers ?? []) {
+			if (layer.type !== 'symbol') continue;
+			if (/highway|road|shield|airport|water|poi/.test(layer.id))
+				target.setLayoutProperty(layer.id, 'visibility', 'none');
+			else {
+				target.setPaintProperty(layer.id, 'text-color', '#8291a8');
+				target.setPaintProperty(layer.id, 'text-halo-color', '#0f172a');
+			}
+		}
+	}
+
 	function restyle(target: MapType) {
+		if (isDark) return restyleDark(target);
 		for (const [layer, property, value] of GREYS)
 			if (target.getLayer(layer)) target.setPaintProperty(layer, property, value);
 		for (const layer of target.getStyle().layers ?? []) {
@@ -383,7 +404,7 @@
 			Marker = maplibre.Marker;
 			const target = new maplibre.Map({
 				container: node,
-				style: STYLE,
+				style: isDark ? DARK : STYLE,
 				center: [-92, 31],
 				zoom: 3,
 				attributionControl: false,
@@ -456,7 +477,7 @@
 <div class="relative size-full">
 	<div
 		bind:this={node}
-		class="size-full bg-slate-100"
+		class="size-full {isDark ? 'bg-slate-900' : 'bg-slate-100'}"
 		role="region"
 		aria-label="Map"
 	></div>

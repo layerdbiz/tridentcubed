@@ -89,6 +89,9 @@
 		{isWide}
 		{left}
 		buttons={!isShared ? 'glass' : isWide ? 'ghost' : 'none'}
+		picture={look.variant('page-picture')}
+		isDarkMap={look.variant('page-map') === 'B'}
+		hasChevron={look.variant('header') === 'C'}
 		onphoto={(value) => (isPhoto = value)}
 		onback={() => look.home()}
 		backLabel="Back to {DATASETS[record.page].label}"
@@ -171,6 +174,7 @@
 				reveal={look.tabProgress}
 				isLight={isPhoto}
 				hasCloud={look.variant('bar') !== 'A'}
+				hasChevron={look.variant('header') === 'C'}
 				bind:height={top}
 			>
 				{#snippet mark()}
