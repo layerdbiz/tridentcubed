@@ -64,6 +64,10 @@
 	// Add C (Justin, 2026-11-12): the + opens no form, only a small pop-up of what can be added. A pick makes the
 	// thing at once, under a name to be changed ("New Customer"), and opens its Edit to fill in. "Add new" in a
 	// dropdown still opens the form, since what it adds is picked the moment it has a name.
+	// On a phone the pop-up is the sheet every other one is, sliding up from the bottom (bottom-sheet.svelte); on a
+	// desktop it is a small menu over the + button.
+	let innerWidth = $state(0);
+	const isWide = $derived(innerWidth >= 768);
 	const isMenu = $derived(look.variant('add') === 'C' && !look.isAddLocked);
 
 	function start(id: DatasetType) {
@@ -104,7 +108,25 @@
 	>
 {/snippet}
 
-{#if look.adding && isMenu}
+{#snippet kinds()}
+	{#each PAGES as id (id)}
+		<button
+			type="button"
+			role="menuitem"
+			class="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-900/[0.04]"
+			onclick={() => start(id)}
+		>
+			<span
+				class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+				><span class="{PAGE_ICONS[id]} size-5"></span></span
+			>{DATASETS[id].one}
+		</button>
+	{/each}
+{/snippet}
+
+<svelte:window bind:innerWidth />
+
+{#if look.adding && isMenu && isWide}
 	<button
 		type="button"
 		class="fixed inset-0 z-[70] cursor-default"
@@ -112,25 +134,27 @@
 		onclick={close}
 	></button>
 	<div
-		class="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+152px)] z-[71] w-60 origin-bottom-right rounded-3xl bg-white p-1.5 shadow-[0_2px_6px_rgb(15_23_42/0.06),0_24px_50px_-12px_rgb(15_23_42/0.35)] md:right-6 md:bottom-24"
+		class="fixed right-6 bottom-24 z-[71] w-60 origin-bottom-right rounded-3xl bg-white p-1.5 shadow-[0_2px_6px_rgb(15_23_42/0.06),0_24px_50px_-12px_rgb(15_23_42/0.35)]"
 		role="menu"
 		aria-label="Add"
 		transition:scale={{ start: 0.9, duration: 140 }}
 	>
-		{#each PAGES as id (id)}
-			<button
-				type="button"
-				role="menuitem"
-				class="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-900/[0.04]"
-				onclick={() => start(id)}
-			>
-				<span
-					class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-					><span class="{PAGE_ICONS[id]} size-5"></span></span
-				>{DATASETS[id].one}
-			</button>
-		{/each}
+		{@render kinds()}
 	</div>
+{:else if look.adding && isMenu}
+	<BottomSheet
+		label="Add"
+		onclose={close}
+	>
+		<p class="mb-2 px-1 text-lg font-semibold text-slate-900">Add</p>
+		<div
+			class="-mx-2"
+			role="menu"
+			aria-label="Add"
+		>
+			{@render kinds()}
+		</div>
+	</BottomSheet>
 {:else if look.adding}
 	<BottomSheet
 		label="Add"

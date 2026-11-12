@@ -142,20 +142,22 @@ type KeptType = {
 // Sent and Complete projects can be looked at, not edited (2026-10-26 19:22).
 export const FROZEN: StatusType[] = ['Sent', 'Complete'];
 
-const SIGNED_OUT = 'trident-look-161-signed-out';
+// Remembered once someone signs in, and forgotten on Log out: until it is there, the login page shows first
+// (Justin, 2026-11-12).
+const SIGNED_IN = 'trident-look-161-signed-in';
 
 function readSignedIn() {
 	try {
-		return localStorage.getItem(SIGNED_OUT) !== '1';
+		return localStorage.getItem(SIGNED_IN) === '1';
 	} catch {
-		return true;
+		return false;
 	}
 }
 
 function keepSignedIn(isSignedIn: boolean) {
 	try {
-		if (isSignedIn) localStorage.removeItem(SIGNED_OUT);
-		else localStorage.setItem(SIGNED_OUT, '1');
+		if (isSignedIn) localStorage.setItem(SIGNED_IN, '1');
+		else localStorage.removeItem(SIGNED_IN);
 	} catch {
 		// A browser that keeps nothing simply asks again next time.
 	}
@@ -195,8 +197,8 @@ export class LookState {
 	statusFor = $state<string>();
 	// What the + is adding, or nothing while its sheet is shut.
 	adding = $state<DatasetType>();
-	// Whether someone is signed in (run 33): until then the login page stands over the app. Nothing is checked
-	// yet; this browser only remembers that Log out was pressed.
+	// Whether someone is signed in (run 33): until then the login page stands over the app, and it is the first
+	// thing a new browser shows. Nothing is checked yet; this browser remembers a sign-in until Log out.
 	isSignedIn = $state(readSignedIn());
 	// "Add new" in a dropdown opens that same sheet on one page (run 28): what it starts filled with, whether its
 	// page chips are hidden, and who is told the name once it is added.
