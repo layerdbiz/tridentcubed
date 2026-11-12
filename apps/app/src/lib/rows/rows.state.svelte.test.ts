@@ -1,0 +1,162 @@
+// The sync loop with plain data (#183): screens that are one list of rows, a save command and a lists query that are
+// functions, and fake timers. What is checked is what goes to the server, when, and what the cloud says.
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import type { BatchType, RowType, SavedRowType, SaveResultType } from './rows.schema';
+import { SyncLoop } from './rows.state.svelte';
+
+const KOGA = '00000000-0000-4000-8000-000000000001';
+
+function koga(city: string): RowType {
+	return { table: 'customer', id: KOGA, values: { name: 'KOGA', city } };
+}
+
+function saved(row: RowType): SavedRowType {
+	return {
+		...row,
+		createdAt: '2026-11-12T00:00:00Z',
+		updatedAt: '2026-11-12T00:00:00Z',
+		deletedAt: null
+	};
+}
+
+function createLoop(answers: (() => Promise<SaveResultType>)[]) {
+	let screen: RowType[] = [];
+	let server: SavedRowType[] = [saved(koga('Houston'))];
+	const sent: BatchType[] = [];
+	const loop = new SyncLoop({
+		read: () => structuredClone(screen),
+		take: (rows) => (screen = rows.map(({ table, id, values }) => ({ table, id, values }))),
+		fetch: async () => server,
+		send: async (batch) => {
+			sent.push(structuredClone(batch));
+			return (answers.shift() ?? (async () => ({ isSaved: true as const })))();
+		}
+	});
+	loop.load(server);
+	return {
+		loop,
+		sent,
+		type(city: string) {
+			screen = [koga(city)];
+			loop.notice();
+		},
+		setServer(city: string) {
+			server = [saved(koga(city))];
+		},
+		get screen() {
+			return screen;
+		}
+	};
+}
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
+
+describe('the sync loop', () => {
+	it('sends one batch about a second after the last change, with only what changed', async () => {
+		const app = createLoop([]);
+
+		app.type('Hou');
+		await vi.advanceTimersByTimeAsync(500);
+		app.type('Miami');
+		expect(app.loop.state).toBe('saving');
+		await vi.advanceTimersByTimeAsync(999);
+		expect(app.sent).toEqual([]);
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(app.sent).toEqual([
+			{
+				changes: [
+					{
+						changeId: expect.any(String),
+						table: 'customer',
+						id: KOGA,
+						operation: 'put',
+						values: { city: 'Miami' }
+					}
+				]
+			}
+		]);
+		expect(app.loop.state).toBe('saved');
+		expect(app.loop.isPending).toBe(false);
+	});
+
+	it('sends nothing and stays Saved when nothing changed', async () => {
+		const app = createLoop([]);
+
+		app.type('Houston');
+		await vi.advanceTimersByTimeAsync(5000);
+
+		expect(app.sent).toEqual([]);
+		expect(app.loop.state).toBe('saved');
+	});
+
+	it('keeps a batch that could not reach the server and sends the same one again, with growing waits', async () => {
+		const offline = async () => {
+			throw new TypeError('Failed to fetch');
+		};
+		const app = createLoop([offline, offline]);
+
+		app.type('Miami');
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(app.loop.state).toBe('failed');
+		expect(app.loop.reason).toContain('cannot be reached');
+		app.type('Miami Beach');
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(app.sent).toHaveLength(2);
+		await vi.advanceTimersByTimeAsync(1999);
+		expect(app.sent).toHaveLength(2);
+		await vi.advanceTimersByTimeAsync(10);
+
+		expect(app.sent).toHaveLength(4);
+		expect(new Set(app.sent.slice(0, 3).map((batch) => batch.changes[0].changeId)).size).toBe(1);
+		expect(app.sent[3].changes[0].values).toEqual({ city: 'Miami Beach' });
+		expect(app.loop.state).toBe('saved');
+	});
+
+	it('sends the waiting batch at once on Retry', async () => {
+		const app = createLoop([
+			async () => {
+				throw new TypeError('Failed to fetch');
+			}
+		]);
+
+		app.type('Miami');
+		await vi.advanceTimersByTimeAsync(1000);
+		app.loop.retry();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(app.sent).toHaveLength(2);
+		expect(app.sent[1].changes[0].changeId).toBe(app.sent[0].changes[0].changeId);
+		expect(app.loop.state).toBe('saved');
+	});
+
+	it('shows a refusal’s reason, and on Retry takes the server’s rows back', async () => {
+		const app = createLoop([async () => ({ isSaved: false, reason: 'KOGA is already there.' })]);
+
+		app.type('Miami');
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(app.loop.state).toBe('failed');
+		expect(app.loop.reason).toBe('KOGA is already there.');
+		expect(app.loop.isPending).toBe(true);
+		app.loop.retry();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(app.screen).toEqual([koga('Houston')]);
+		expect(app.loop.state).toBe('saved');
+	});
+
+	it('takes in what others saved only while nothing waits to be sent', async () => {
+		const app = createLoop([]);
+		app.setServer('Rotterdam');
+
+		app.type('Miami');
+		await app.loop.refresh();
+		expect(app.screen).toEqual([koga('Miami')]);
+		await vi.advanceTimersByTimeAsync(1000);
+		await app.loop.refresh();
+
+		expect(app.screen).toEqual([koga('Rotterdam')]);
+		expect(app.sent).toHaveLength(1);
+	});
+});

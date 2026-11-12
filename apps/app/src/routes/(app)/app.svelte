@@ -1,7 +1,11 @@
 <script lang="ts">
 	// The Report Generator V1 (#180): the look prototype's screens (#161, branch prototype/161-look-claude-prototype)
-	// carried across whole as the app. This names the browser tab after what is on screen; look/look.svelte is the app.
+	// carried across whole as the app. This names the browser tab after what is on screen and loads the organization's
+	// lists (#183) before the app starts; look/look.svelte is the app.
+	import { fetchLists } from '#lib/rows/rows.remote.js';
 	import Look from './look/look.svelte';
+
+	const lists = (async () => await fetchLists())();
 
 	// What the tab title needs to name the page on screen.
 	type PageType = {
@@ -45,4 +49,28 @@
 
 <svelte:head><title>{name || 'Report Generator'} · Trident Cubed</title></svelte:head>
 
-<Look onready={ready} />
+{#await lists}
+	<div
+		class="flex min-h-dvh items-center justify-center"
+		role="status"
+	>
+		<span class="icon-[svg-spinners--ring-resize] size-8 text-slate-400"></span>
+		<span class="sr-only">Loading</span>
+	</div>
+{:then rows}
+	<Look
+		{rows}
+		onready={ready}
+	/>
+{:catch}
+	<div class="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
+		<p class="text-slate-700">
+			The app could not load its data. Check the connection and try again.
+		</p>
+		<button
+			type="button"
+			class="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
+			onclick={() => location.reload()}>Try again</button
+		>
+	</div>
+{/await}
