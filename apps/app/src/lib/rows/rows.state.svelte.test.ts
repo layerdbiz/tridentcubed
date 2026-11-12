@@ -6,6 +6,13 @@ import { SyncLoop } from './rows.state.svelte';
 
 const KOGA = '00000000-0000-4000-8000-000000000001';
 const PROJECT = '00000000-0000-4000-8000-000000000002';
+const CONTACT = '00000000-0000-4000-8000-000000000003';
+
+function contact(name: string): RowType {
+	return { table: 'contact', id: CONTACT, values: { customerId: KOGA, name } };
+}
+
+const REFUSED = 'KOGA is already there.';
 
 function koga(city: string): RowType {
 	return { table: 'customer', id: KOGA, values: { name: 'KOGA', city } };
@@ -42,6 +49,10 @@ function createLoop(answers: (() => Promise<SaveResultType>)[]) {
 		reads,
 		type(city: string) {
 			screen = [koga(city)];
+			loop.notice();
+		},
+		edit(rows: RowType[]) {
+			screen = structuredClone(rows);
 			loop.notice();
 		},
 		setServer(city: string) {
@@ -143,18 +154,101 @@ describe('the sync loop', () => {
 		expect(app.loop.state).toBe('saved');
 	});
 
-	it('shows a refusal’s reason, and on Retry takes the server’s rows back', async () => {
-		const app = createLoop([async () => ({ isSaved: false, reason: 'KOGA is already there.' })]);
+	it('shows a refusal’s reason, and when Retry is refused too takes the server’s rows back', async () => {
+		const refuse = async () => ({ isSaved: false as const, reason: REFUSED });
+		const app = createLoop([refuse, refuse]);
 
 		app.type('Miami');
 		await vi.advanceTimersByTimeAsync(1000);
 		expect(app.loop.state).toBe('failed');
-		expect(app.loop.reason).toBe('KOGA is already there.');
+		expect(app.loop.reason).toBe(REFUSED);
 		expect(app.loop.isPending).toBe(true);
 		app.loop.retry();
 		await vi.advanceTimersByTimeAsync(0);
 
+		expect(app.sent).toHaveLength(2);
 		expect(app.screen).toEqual([koga('Houston')]);
+		expect(app.loop.state).toBe('saved');
+	});
+
+	it('holds back only the refused change: the rest of the batch and later edits still save', async () => {
+		const app = createLoop([
+			async () => ({
+				isSaved: false,
+				reason: REFUSED,
+				refused: [app.sent[0].changes.find((each) => each.id === KOGA)?.changeId ?? '']
+			})
+		]);
+
+		app.edit([koga('Miami'), contact('Ana')]);
+		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(app.sent).toHaveLength(2);
+		expect(app.sent[1].changes.map(({ id, values }) => ({ id, values }))).toEqual([
+			{ id: CONTACT, values: { customerId: KOGA, name: 'Ana' } }
+		]);
+		expect(app.loop.state).toBe('failed');
+		expect(app.loop.reason).toBe(REFUSED);
+
+		app.edit([koga('Miami'), contact('Ana Ruiz')]);
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(app.sent).toHaveLength(3);
+		expect(app.sent[2].changes.map(({ id, values }) => ({ id, values }))).toEqual([
+			{ id: CONTACT, values: { name: 'Ana Ruiz' } }
+		]);
+		expect(app.loop.state).toBe('failed');
+		expect(app.screen).toEqual([koga('Miami'), contact('Ana Ruiz')]);
+	});
+
+	it('on Retry sends the held change again with what is still unsaved, and keeps it when it saves', async () => {
+		const app = createLoop([
+			async () => ({ isSaved: false, reason: REFUSED, refused: [app.sent[0].changes[0].changeId] })
+		]);
+		app.type('Miami');
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(app.loop.state).toBe('failed');
+
+		app.edit([koga('Miami'), contact('Ana')]);
+		app.loop.retry();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(app.sent).toHaveLength(2);
+		expect(app.sent[1].changes.map(({ id }) => id)).toEqual([KOGA, CONTACT]);
+		expect(app.screen).toEqual([koga('Miami'), contact('Ana')]);
+		expect(app.loop.state).toBe('saved');
+	});
+
+	it('sends a held change once the User changes it again, and is Saved when it saves', async () => {
+		const app = createLoop([
+			async () => ({ isSaved: false, reason: REFUSED, refused: [app.sent[0].changes[0].changeId] })
+		]);
+		app.type('Miami');
+		await vi.advanceTimersByTimeAsync(1000);
+
+		app.type('Tampa');
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(app.sent.map((batch) => batch.changes[0].values)).toEqual([
+			{ city: 'Miami' },
+			{ city: 'Tampa' }
+		]);
+		expect(app.loop.state).toBe('saved');
+		expect(app.loop.isPending).toBe(false);
+	});
+
+	it('is Saved again when the User undoes the held change', async () => {
+		const app = createLoop([
+			async () => ({ isSaved: false, reason: REFUSED, refused: [app.sent[0].changes[0].changeId] })
+		]);
+		app.type('Miami');
+		await vi.advanceTimersByTimeAsync(1000);
+
+		app.type('Houston');
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(app.sent).toHaveLength(1);
 		expect(app.loop.state).toBe('saved');
 	});
 

@@ -365,7 +365,7 @@ describe('the freeze', () => {
 				edit(other.look);
 				const { result, changes } = await save(other);
 				expect(changes.length, what).toBeGreaterThan(0);
-				expect(result, what).toEqual({
+				expect(result, what).toMatchObject({
 					isSaved: false,
 					reason: `This project is ${status}, so only its status can change. Change its status to edit it.`
 				});

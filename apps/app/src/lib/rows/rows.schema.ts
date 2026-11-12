@@ -349,13 +349,18 @@ export type RowChangeType = {
 export type BatchType = { changes: RowChangeType[] };
 
 /**
- * What the save command answers: applied, or refused with a reason the app shows. An applied batch also gives back
+ * What the save command answers: applied, or refused with a reason the app shows and the change it refused. An applied batch also gives back
  * the columns only the server sets (`reads`) of the rows it put, such as a new project's J count, so the screens show
  * them without loading the lists again.
  */
 export type SaveResultType =
 	| { isSaved: true; reads?: RowType[] }
-	| { isSaved: false; reason: string };
+	| {
+			isSaved: false;
+			reason: string;
+			/** The change ids the server refused; absent when it cannot say (then the whole batch is refused). */
+			refused?: string[];
+	  };
 
 /** The batch as it arrives at the save command. Each change's columns are checked after, against its table. */
 export const BATCH = v.object({

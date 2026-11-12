@@ -184,12 +184,12 @@ describe('customers and contacts', () => {
 
 		expect(changed.createdAt).toEqual(made.createdAt);
 		expect(changed.updatedAt.getTime()).toBeGreaterThan(made.updatedAt.getTime());
-		expect(stamped).toEqual({ isSaved: false, reason: expect.stringContaining('createdAt') });
+		expect(stamped).toMatchObject({ isSaved: false, reason: expect.stringContaining('createdAt') });
 	});
 });
 
 describe('names', () => {
-	it('refuses a second customer with the same name whatever its capitals, and saves nothing of that batch', async () => {
+	it('refuses a second customer with the same name whatever its capitals, names that change, and saves nothing of that batch', async () => {
 		const device = await open(team);
 		const other = await open(team);
 		addCustomer(device.look, 'Maersk');
@@ -197,10 +197,15 @@ describe('names', () => {
 		addCustomer(other.look, 'Acme');
 		addCustomer(other.look, 'MAERSK');
 
-		const { result } = await save(other, team);
+		const { result, changes } = await save(other, team);
 		const again = await open(team);
 
-		expect(result).toEqual({ isSaved: false, reason: 'MAERSK is already there.' });
+		const maersk = changes.find((change) => change.values?.name === 'MAERSK');
+		expect(result).toEqual({
+			isSaved: false,
+			reason: 'MAERSK is already there.',
+			refused: [maersk?.changeId]
+		});
 		expect(again.look.customers).not.toContain('Acme');
 		expect(again.look.customers.filter((name) => name.toLowerCase() === 'maersk')).toEqual([
 			'Maersk'
@@ -323,7 +328,7 @@ describe('the change record and repeated changes', () => {
 		const result = await saveBatch(test.claims, team, { changes });
 		const again = await open(team);
 
-		expect(result).toEqual({
+		expect(result).toMatchObject({
 			isSaved: false,
 			reason: expect.stringContaining('A name is needed.')
 		});
@@ -366,7 +371,7 @@ describe('who may', () => {
 		});
 
 		expect(await readRows(test.claims, guest)).toEqual([]);
-		expect(result).toEqual({ isSaved: false, reason: expect.stringContaining('waiting') });
+		expect(result).toMatchObject({ isSaved: false, reason: expect.stringContaining('waiting') });
 		expect((await open(team)).look.customers).not.toContain('Maersk');
 	});
 

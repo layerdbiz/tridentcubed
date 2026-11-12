@@ -6,7 +6,8 @@
 // change record is done and skipped; otherwise its columns are checked against the registry, the one permission check
 // is asked with the row as it is now, a name is checked against its page, and the change is applied with the times
 // set by the server and written to the change record (who, when, table, row, what, before, after). The first refusal
-// rolls everything back and comes back as a plain reason.
+// rolls everything back and comes back as a plain reason, with the change it refused, so the device holds back only
+// that one and sends the rest again (story 36).
 //
 // Projects (#186) add the rules a project's rows need: every row inside a project names it (`projectId`), so the
 // permission check is handed the project's status (the freeze), a change inside it moves its updated time, and
@@ -437,16 +438,24 @@ export async function saveBatch(
 		.filter((change) => change.operation === 'delete')
 		.sort((a, b) => rank(a.table) - rank(b.table));
 	const state = toBatchState();
+	// The change being applied when the batch was refused: the device holds back that one and sends the rest again.
+	let applying: RowChangeType | undefined;
 	try {
 		await claims.run(actor, async (tx) => {
-			for (const change of [...puts, ...deletes]) await applyChange(tx, actor, state, change);
+			for (const change of [...puts, ...deletes]) {
+				applying = change;
+				await applyChange(tx, actor, state, change);
+			}
+			applying = undefined;
 			await advanceDrafts(tx, actor, state);
 		});
 		return state.reads.length > 0 ? { isSaved: true, reads: state.reads } : { isSaved: true };
 	} catch (error) {
 		const reason = toReason(error);
-		if (reason) return { isSaved: false, reason };
-		throw error;
+		if (!reason) throw error;
+		return applying
+			? { isSaved: false, reason, refused: [applying.changeId] }
+			: { isSaved: false, reason };
 	}
 }
 

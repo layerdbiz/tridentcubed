@@ -323,7 +323,7 @@ describe('status', () => {
 			mine.look.setStatus(projectOf(mine.look, id)!, status);
 			expect((await save(mine)).result.isSaved).toBe(true);
 			fill(projectPanel(other.look), { Title: 'Changed' });
-			expect((await save(other)).result).toEqual({
+			expect((await save(other)).result).toMatchObject({
 				isSaved: false,
 				reason: `This project is ${status}, so only its status can change. Change its status to edit it.`
 			});
@@ -355,7 +355,7 @@ describe('status', () => {
 		await save(mine);
 
 		mine.look.projects.find((project) => project.id === id)!.status = 'Archived';
-		expect((await save(mine)).result).toEqual({
+		expect((await save(mine)).result).toMatchObject({
 			isSaved: false,
 			reason: 'Only an Admin can archive a project or bring it back.'
 		});
@@ -394,7 +394,7 @@ describe('deleting', () => {
 
 		const theirs = await open(mia);
 		theirs.look.projects = theirs.look.projects.filter((project) => project.id !== id);
-		expect((await save(theirs)).result).toEqual({
+		expect((await save(theirs)).result).toMatchObject({
 			isSaved: false,
 			reason: 'Only an Admin can delete a project that is not your own Draft.'
 		});
@@ -417,7 +417,7 @@ describe('deleting', () => {
 		await save(mine);
 		fill(projectPanel(other.look), { Title: 'Too late' });
 
-		expect((await save(other)).result).toEqual({
+		expect((await save(other)).result).toMatchObject({
 			isSaved: false,
 			reason: 'Someone moved this project to the Trash, so it cannot change.'
 		});

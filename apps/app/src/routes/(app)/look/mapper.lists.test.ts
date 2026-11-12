@@ -176,7 +176,7 @@ describe('Transport Modes', () => {
 
 		const { result } = await save(other, team);
 
-		expect(result).toEqual({ isSaved: false, reason: 'mv ocean star is already there.' });
+		expect(result).toMatchObject({ isSaved: false, reason: 'mv ocean star is already there.' });
 	});
 });
 
@@ -345,7 +345,7 @@ describe('the organization', () => {
 
 				const { result } = await save(device, actor);
 
-				expect(result).toEqual({
+				expect(result).toMatchObject({
 					isSaved: false,
 					reason: 'Only an Admin can change the organization.'
 				});
