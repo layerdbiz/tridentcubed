@@ -39,7 +39,7 @@ A User with no membership in any organization. A Guest sees only their own accou
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
-A group of Users who share access to its projects. Trident Cubed is the first; client organizations come later. Its details (name, logo, address, email, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report.
+A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15).
 _Avoid_: team, company, workspace
 
 **Membership**:
@@ -64,20 +64,20 @@ _Avoid_: staff, editor, surveyor, team member
 
 ### Projects and reports
 
-**Client**:
-The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A client has many projects.
-_Avoid_: customer, account
+**Customer**:
+The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its logo (printed in every page's footer), types, city, address, email, phone, website, a background picture and any number of contacts. Picking a customer's name in a project fills all of it in. Called Client until 2026-10-26.
+_Avoid_: client, account
 
 **Project**:
-One job for a client. A project owns exactly one report; a job that needs a second report, such as a cargo report split by booking, is not modelled yet.
+One job for a customer. A project owns exactly one report; a job that needs a second report, such as a cargo report split by booking, is not modelled yet.
 _Avoid_: job, survey (alone)
 
 **Project number**:
-A project's reference: the client's short code, the day the project was created and which of that client's projects that day it is, SGL-2026-02-03-01 for the first and -02 for the second. A client sometimes assigns two or three in a day. It can be edited.
+A project's reference: the customer's short code, the day the project was created and J with which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. It can be edited.
 _Avoid_: job number, reference, queue number
 
 **Document ID**:
-The report's identifier and the name of its exported file: the project number, FR for final report, the report number and the revision number, SGL-2026-02-03-01-FR-01-01. The file name may end with the carrier's name after a triple dash, SGL-2026-02-03-01-FR-01-01---BBC-Kimberly.pdf.
+The report's identifier and the name of its exported file: the project number, FR with the report number and R with the revision number, SGL-2026-02-03-J01-FR01-R01 (Trident Cubed's pick, 2026-10-09). The file name may end with the transport's name after a triple dash, SGL-2026-02-03-J01-FR01-R01---BBC-Kimberly.pdf.Every report page prints it in the footer, under the customer's name.
 _Avoid_: file name, job number
 
 **Report number**:
@@ -92,7 +92,7 @@ One of Cargo, Warehousing, Warranty, Vessel Condition, Draft Survey, Bunker, IHM
 _Avoid_: report type, Draft (for the type; Draft is a status)
 
 **Project status**:
-One of Draft, In Progress, Review, Ready, Sent, Revision, Complete, Archived, in that order. Review is Trident's own check; Ready means finished, for the team to export and send. Sent is marked by hand once the report has gone to the client, and freezes a Sent copy. After Sent a project goes to Revision (the client asked for changes; work resumes and it is sent again) or to Complete, marked by hand when the client accepts. Only an admin archives a project. Changes before Sent apply in any status and never move a project to another status.
+One of Draft, In Progress, Review, Ready, Sent, Revision, Complete, Archived, in that order. Review is Trident's own check; Ready means finished, for the team to export and send. Sent is marked by hand once the report has gone to the customer, and freezes a Sent copy. Unsend takes back a Sent mark made by mistake: the project returns to the status it had before. A Sent or Complete project is read only. After Sent a project goes to Revision (the customer asked for changes; work resumes and it is sent again) or to Complete, marked by hand when the customer accepts. Only an admin archives a project. Changes before Sent apply in any status and never move a project to another status, with one exception (Justin, 2026-11-10): a Draft becomes In Progress by itself once its Project panel is complete. Any status can also be set by hand from Change Status.
 _Avoid_: approved, Ready for Review, in-progress, completed
 
 **Sent copy**:
@@ -107,22 +107,51 @@ _Avoid_: log (that is the time log), audit trail
 The document a project produces: its panels rendered as report pages.
 _Avoid_: survey report, document
 
+**Contact**:
+A person at a customer: name, title, email, phone and photo, kept on the customer's record. A customer has any number; a project picks the one its report is for, and the report prints their name, title and email under the customer. A facility has a simpler one: a name, phone and email.
+_Avoid_: client contact, recipient, attendee
+
 **Facility**:
-The port or port terminal where the project takes place, picked from the organization's list.
+Where a stop takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. Its record holds its kind, city, address, a picture and a contact; the stop's report page prints the address and contact. The drop-down lists every facility, the kind that suits the stop's transport type first (ports for Sea).
+
+**Transport**:
+The ship, barge, plane, train or truck that moves the items, like MV Coral Dawn, picked from the organization's Transport list or added on the spot. A project can use several, one per stop. In V1 every transport is typed in by hand, with a picture and its particulars, which each of its stops' report pages print; later a tracking service adds ships and planes to the same list and fills in their particulars.
+_Avoid_: carrier (that is the owner), vehicle, conveyance
+
+**Transport type**:
+Sea, Air, Rail or Road. Picking one offers its transport modes.
+_Avoid_: transport mode (that is Vessel, Barge and the rest)
+
+**Transport mode**:
+What a transport is within its type: Vessel or Barge for Sea, Plane for Air, Train or Railcar for Rail, Truck or Trailer for Road. Each mode has its own icon.
+_Avoid_: kind, transport type (that is Sea, Air, Rail or Road)
+_Open_: the Trident team asked (2026-11-07) for the Transport list page to read Transport Mode, which the design prototype does from run 12 (with a capital M everywhere from run 13); that clashes with this term, and Justin wants one word for the page later. From run 16 (Justin, 2026-11-10) one record of that page is also called a Transport Mode, and one person of the Team page a Team, always with both words capitalised, so the record and this term now share a name. The data audit (`docs/research/2026-11-10-prototype-data-audit.md`) lists it as open before the schema is written.
+
+**Stop**:
+One place on a project's trip: its point, its transport and its facility. The Transport panel lists a project's stops in trip order, so one report can cover the start, the stops on the way and the end; each stop prints its own page with the transport's particulars.
+_Avoid_: leg, row, transport block
+
+**Point**:
+Where a stop sits on the trip: Start, Stop (on the way) or End, words everyone reads the same way. Each has its colour wherever it shows: Start blue, Stop amber, End green.
+_Avoid_: operation, Loading, Transfer, Discharge (those say what happens there), stage (that is the project's)
 
 **Carrier**:
-What carries the items: a vessel, an airplane, a train or a truck, picked from the organization's list.
+The company that owns a transport, like a shipping line; never the ship itself. Not in V1.
 
 **Items**:
-The cargo the project concerns.
+The cargo the project concerns, as rows of a quantity and a description (2, Power transformers on steel cradles), printed as the report's Cargo Description. A manifest's further columns may come later.
 
 **Team**:
-The owner and the assigned members of a project. On the report they appear as Personnel in Attendance, the owner first with a badge; the owner also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile.
+The team lead and the team assigned to a project, all from the organization. On the report they appear as Personnel in Attendance, as cards like the Team page's, the team lead first and marked by a blue ring but not labelled; the team lead also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile. People on the job who are not on the team are Personnel.
 _Avoid_: personnel (as the panel name)
 
-**Owner**:
-The User who created a project, or the one it was handed to. Being owner gives no extra rights.
-_Avoid_: creator, author
+**Team Lead**:
+The team member who runs a project: picked in the Project panel's Team section, first among Personnel in Attendance, and the one who signs off the report. Called Owner until 2026-11-10 and Lead for a day after. Being team lead gives no extra rights. The others picked there are the Team Assigned.
+_Avoid_: owner, project owner, lead, creator, author
+
+**Personnel**:
+People on the job who are not on the organization's team, such as a customer's surveyor. They are added by company in the Project panel's Team section with Add Personnel: a company (typed, or picked from the customers), then each of its people as a name and a title. They print under the team in Personnel in Attendance, each company under its own name.
+_Avoid_: attendees, guests, contacts (those are a customer's)
 
 **Trash**:
 Where a deleted project goes: hidden, restorable by an admin, emptied only by an admin.
@@ -135,7 +164,7 @@ A box in the editor. The project details panel holds the job's facts; every othe
 _Avoid_: section, report section, page
 
 **Project details panel**:
-The panel of the job's facts: client, facility, carrier and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction.
+The panel of the job's facts: organization, customer and team picked from lists, plus title, dates and cargo summary. Its values fill the cover, the page headers and the introduction. The trip has its own Transport panel right after it.
 _Avoid_: project panel, info panel
 
 **Fixed panel**:
@@ -181,7 +210,7 @@ _Avoid_: viewers, online users, collaborators
 Where an input's value comes from: user, system, prefilled, derived, template or external.
 
 **Group repeater**:
-Content made of groups the surveyor adds, reorders and removes: the time log's days and the photo groups.
+Content made of groups the surveyor adds, reorders, collapses and removes: the time log's days, the photo groups and the transport stops. A group's Delete sits at the far right of its bottom row, and removing anything asks first. Groups, photos and panels move by holding and dragging; nothing has a drag handle.
 _Avoid_: repeater panel, grouped repeater
 
 **Time log**:
@@ -192,11 +221,12 @@ One line of a time log day: a time and an activity.
 _Avoid_: description, text (for the activity)
 
 **Photo group**:
-A set of photos in a panel section, with a layout that says how many share a page: 1, 2, 4, 6, 8 or a grid.
+A set of photos in a panel section, with a layout that says how many share a page: 1 or 2 across the page, or 4, 6 or 8 in two columns.
 _Avoid_: section (as a group's name)
 
 **Photo**:
-An image the surveyor adds to a photo group, with a caption. One kind of attachment.
+An image the surveyor adds to a photo group, with its own description, written by tapping the photo; the description prints on the photo, and in the panel an icon on the photo shows it has one. One kind of attachment.
+_Avoid_: caption
 
 **Attachment**:
 A file a User adds to a project: a photo, a video or a document. It keeps the time and place it was taken, and follows its report's rules for deleting and restoring.
@@ -209,7 +239,7 @@ One page of the report: the Cover, Table of Contents, Introduction with Personne
 _Avoid_: page (bare, where the UI's Page could be meant), sheet
 
 **Closing**:
-The last report page: the standard disclaimer and the owner's sign-off, like an email signature.
+The last report page: the standard disclaimer and the team lead's sign-off, like an email signature. It prints under the title Disclaimer.
 _Avoid_: disclaimer page, sign-off page
 
 **Page variant**:
@@ -226,20 +256,36 @@ The page every Member and Admin lands on after signing in, with a little of ever
 _Avoid_: home, overview (the Company overview is another app)
 
 **Workspace**:
-A project's screen in the Report Generator, with two tabs.
+A project's screen in the Report Generator, with three tabs: Page, Edit and Preview (Page from design prototype run 13).
 _Avoid_: details, project details workspace
 
 **Tab**:
-One of the workspace's two views, Edit or Preview.
+One of the workspace's views, Page, Edit or Preview, or one of a record page's two, Page and Edit.
 _Avoid_: pane, mode
 
+**Page tab**:
+The first tab of a project or a record: how it reads. Built like the Dashboard, a big photo or a map of where it is on top, with its name and main facts over it, and a sheet below that is dragged up and down.
+_Avoid_: overview, profile, view
+
 **Edit tab**:
-The workspace tab that shows the panels.
-_Avoid_: editor, create tab
+The workspace tab that shows the panels, and a record page's tab that changes the record.
+_Avoid_: editor, create tab, panels tab
 
 **Preview tab**:
 The workspace tab that shows the report pages as they will export.
 _Avoid_: live preview, print preview
+
+**Record**:
+A customer, team member, transport or facility: anything with its own list page that is not a project. Its row opens its record page.
+_Avoid_: entity, item, resource
+
+**Record page**:
+One record's screen, shared by all four kinds, with two tabs: Page, how it reads with its projects, first, and Edit.
+_Avoid_: detail page, profile (that is the User's own)
+
+**Label**:
+What a list page sorts by: a project's status, a customer's types, a team member's labels, a transport's transport type and a facility's kind. A page's labels are its board columns, its filter options and its chart's slices, in the same colours and order; a record with none sits under Other.
+_Avoid_: tag, category, group
 
 **Export**:
 Producing a file of the report. PDF today; other formats are listed but not built.
