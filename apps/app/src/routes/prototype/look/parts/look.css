@@ -13,6 +13,18 @@ body:has(.look)::-webkit-scrollbar,
 	display: none;
 }
 
+/* The three dots of cut-off text (and any typed "…") sit on the baseline, as dots, never part-way up (Justin,
+   2026-11-12). The app's face draws that one character high, so it alone comes from a face the device has. */
+@font-face {
+	font-family: 'Look Dots';
+	src:
+		local('Arial'), local('Helvetica Neue'), local('Helvetica'), local('Roboto'), local('Segoe UI');
+	unicode-range: U+2026;
+}
+.look {
+	font-family: 'Look Dots', var(--font-sans);
+}
+
 /* A barge in mdi's filled style (none of the icon sets has one): cargo on a flat hull over mdi's ferry waves, drawn
    for Justin's note of 2026-10-25. Masked like the icon-[…] classes, so `icon-barge size-5` works anywhere. */
 @layer components {

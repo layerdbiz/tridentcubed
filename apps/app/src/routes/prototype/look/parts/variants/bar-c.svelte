@@ -10,12 +10,13 @@
 	// does. The first icon keeps a fifth of the bar, the place Projects has on the dashboard, so it never moves; the
 	// other four pages slide off to the left behind it while the name and the tabs slide in from the right, and the
 	// blue highlight follows the panes as they are swiped.
-	// A desktop keeps A's small pill for a project's Page and Preview, without its shadow.
+	// Run 28 (Justin, 2026-11-12: on a desktop "it still has the old view"): an open project on a desktop shows this
+	// same bar, centred in the room beside the panels, with Page and Preview (Edit is the panels' own column there).
+	// A desktop's dashboard has the sidebar for the pages, so no bar.
 	import { untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { DATASETS, PAGE_ICONS, PAGES, type DatasetType } from '../look.data';
 	import type { LookState, TabType } from '../look.state.svelte';
-	import NavBar from '../nav-bar.svelte';
 
 	let {
 		look,
@@ -34,10 +35,14 @@
 	const TABS = { page: 'Page', edit: 'Edit', preview: 'Preview' };
 	const PROJECT: TabType[] = ['page', 'edit', 'preview'];
 	const RECORD: TabType[] = ['page', 'edit'];
+	const DESK: TabType[] = ['page', 'preview'];
 	const SLIDE =
 		'absolute inset-y-0 right-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
 
 	const isInside = $derived(look.screen !== 'dashboard');
+	const isDesk = $derived(isWide && look.screen === 'workspace');
+	// On a desktop project nothing is swiped: Edit is always there, and the rest shows Page or Preview.
+	const shown = $derived(isDesk && look.tab === 'edit' ? 'preview' : look.tab);
 	const icon = $derived(isBig ? 'size-7' : 'size-6');
 	// The far left: Projects on the dashboard; inside, the page it came from.
 	const lead = $derived(isInside ? look.dataset : PAGES[0]);
@@ -49,14 +54,16 @@
 
 	$effect(() => {
 		if (look.screen === 'record') tabs = RECORD;
-		else if (look.screen === 'workspace') tabs = PROJECT;
+		else if (look.screen === 'workspace') tabs = isWide ? DESK : PROJECT;
 	});
 
 	// The blue highlight sits under its tab and follows the panes as they are swiped.
 	function place() {
 		const boxes = [...(list?.querySelectorAll<HTMLElement>('[data-tab]') ?? [])];
 		if (boxes.length < 2) return;
-		const at = Math.min(boxes.length - 1, Math.max(0, look.tabProgress));
+		const at = isDesk
+			? Math.max(0, tabs.indexOf(shown))
+			: Math.min(boxes.length - 1, Math.max(0, look.tabProgress));
 		const from = Math.min(boxes.length - 2, Math.floor(at));
 		const [a, b] = [boxes[from], boxes[from + 1]];
 		const part = at - from;
@@ -68,6 +75,7 @@
 
 	$effect(() => {
 		void look.tabProgress;
+		void shown;
 		void tabs;
 		void list;
 		untrack(place);
@@ -82,18 +90,12 @@
 
 <svelte:window onresize={place} />
 
-{#if isWide}
-	{#if look.screen === 'workspace'}
-		<NavBar
-			{look}
-			{isWide}
-			{left}
-			isFlat
-		/>
-	{/if}
-{:else}
+{#if !isWide || isDesk}
 	<nav
-		class="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+14px)] z-[55] flex h-14 items-center rounded-full bg-black px-1.5 text-white"
+		class="fixed z-[55] flex h-14 items-center rounded-full bg-black px-1.5 text-white {isDesk
+			? 'bottom-6 w-[26rem] -translate-x-1/2'
+			: 'inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+14px)]'}"
+		style:left={isDesk ? left : undefined}
 		aria-label={isInside ? 'Project' : 'Pages'}
 	>
 		<!-- A fifth of the bar, where Projects sits on the dashboard: this icon never moves. -->
@@ -166,7 +168,7 @@
 						aria-hidden="true"
 					></span>
 					{#each tabs as tab (tab)}
-						{@const isOn = look.tab === tab}
+						{@const isOn = shown === tab}
 						<button
 							class="relative flex h-11 items-center justify-center rounded-full px-3 text-[13px] font-medium transition-colors {isOn
 								? 'text-white'
@@ -181,6 +183,8 @@
 			</div>
 		</div>
 	</nav>
+{/if}
+{#if !isWide}
 	<!-- Flush with the bar's right edge, and as far over the bar as the bar is over the bottom. Inside, it goes. -->
 	<button
 		class="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-[55] flex size-14 items-center justify-center rounded-full bg-primary text-white transition duration-300 ease-out hover:brightness-110 {isInside

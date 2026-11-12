@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { addLeg, addRow, legsOf, removeLeg, removeStop, rowsOf, setTransport } from './legs';
+import { addLeg, addRow, legsOf, removeLeg, removeStop, setTransport } from './legs';
 import type { StopType } from './look.data';
 
 let count = 0;
@@ -28,15 +28,6 @@ describe('legsOf', () => {
 			['Depot 4']
 		]);
 	});
-
-	it('shows a Start and an End for a leg with one stop', () => {
-		const [leg] = legsOf([vessel('Start', 'East Harbor')]);
-
-		expect(rowsOf(leg).map((row) => [row.point, row.stop?.facility])).toEqual([
-			['Start', 'East Harbor'],
-			['End', undefined]
-		]);
-	});
 });
 
 describe('changing a trip', () => {
@@ -49,20 +40,7 @@ describe('changing a trip', () => {
 		expect(stops.map((item) => item.name)).toEqual(['MV Blue Tern', 'MV Blue Tern']);
 	});
 
-	it('puts a stop on the way between the Start and the End', () => {
-		const stops = [vessel('Start', 'East Harbor'), vessel('End', 'West Harbor')];
-		const [leg] = legsOf(stops);
-
-		addRow(stops, leg.id, 'Stop', 'Mid Anchorage', stop);
-
-		expect(stops.map((item) => [item.point, item.facility, item.name])).toEqual([
-			['Start', 'East Harbor', 'MV Coral Dawn'],
-			['Stop', 'Mid Anchorage', 'MV Coral Dawn'],
-			['End', 'West Harbor', 'MV Coral Dawn']
-		]);
-	});
-
-	it('starts the next leg where the trip last ended', () => {
+	it('starts a leg with one facility, where the trip last was', () => {
 		const stops = [vessel('Start', 'East Harbor'), vessel('End', 'West Harbor')];
 
 		const id = addLeg(stops, stop);
@@ -71,9 +49,31 @@ describe('changing a trip', () => {
 		expect(legs).toHaveLength(2);
 		expect(legs[1].id).toBe(id);
 		expect(legs[1].stops.map((item) => [item.point, item.facility, item.name])).toEqual([
-			['Start', 'West Harbor', ''],
-			['End', '', '']
+			['Start', 'West Harbor', '']
 		]);
+	});
+
+	it('adds the End second, then Stops before the End, all on the leg’s transport', () => {
+		const stops = [vessel('Start', 'East Harbor')];
+		const [leg] = legsOf(stops);
+
+		addRow(stops, leg.id, stop);
+		addRow(stops, leg.id, stop);
+
+		expect(stops.map((item) => [item.point, item.name])).toEqual([
+			['Start', 'MV Coral Dawn'],
+			['Stop', 'MV Coral Dawn'],
+			['End', 'MV Coral Dawn']
+		]);
+	});
+
+	it('leaves a point as it was picked, whatever is added after', () => {
+		const stops = [vessel('End', 'West Harbor')];
+		const [leg] = legsOf(stops);
+
+		addRow(stops, leg.id, stop);
+
+		expect(stops.map((item) => item.point)).toEqual(['Stop', 'End']);
 	});
 
 	it('keeps two new legs apart though neither has a transport yet', () => {

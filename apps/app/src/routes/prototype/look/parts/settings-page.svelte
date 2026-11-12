@@ -34,7 +34,7 @@
 	function removePoint(id: string) {
 		const point = organization.disclaimer.points.find((item) => item.id === id);
 		look.confirm({
-			title: `Delete ${point?.title || 'this point'}?`,
+			title: 'Delete point?',
 			note: 'It comes off the disclaimer of every report that has not been sent.',
 			onyes: () => {
 				organization.disclaimer.points = organization.disclaimer.points.filter(

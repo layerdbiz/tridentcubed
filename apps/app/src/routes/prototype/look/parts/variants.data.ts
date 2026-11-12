@@ -33,7 +33,7 @@ export const PART_GROUPS: PartGroupType[] = [
 				'bar',
 				'Bottom Bar',
 				['A', 'B', 'C', 'D', 'E'],
-				'A: small floating pill. B: edge to edge with names. C: wide floating bar, icons only, + above it; inside a page its name and the tabs slide in. D: C with a chevron after the name. E: D with a straight arrow and larger icons.'
+				'A: small floating pill. B: edge to edge with names. C: wide floating bar, icons only, + above it; inside a page its name and the tabs slide in. D: C with a chevron after the name. E: D with a straight arrow and larger icons, and on a desktop project too.'
 			),
 			part(
 				'sidebar',
@@ -150,12 +150,7 @@ export const PART_GROUPS: PartGroupType[] = [
 						'B: a panel with nothing done yet has a grey icon and a grey To Do.'
 					),
 					part('panel-project', 'Project Panel'),
-					part(
-						'panel-transport',
-						'Transport Mode Panel',
-						['A', 'B'],
-						'A: Start, Stop and End each pick their own transport. B: the trip in legs, a card for each; pick the type, the mode, then which one, once, then its Start, Stops and End.'
-					),
+					part('panel-transport', 'Transport Mode Panel'),
 					part('panel-items', 'Items Panel'),
 					part('panel-timelog', 'Time Log Panel'),
 					part('panel-photos', 'Photos Panel'),

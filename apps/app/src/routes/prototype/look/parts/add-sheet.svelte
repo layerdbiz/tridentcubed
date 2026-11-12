@@ -4,7 +4,8 @@
 	// chips at its top switch what is added. Run 16 (Justin, 2026-11-10): the sheet asks for everything Edit does,
 	// through the same components. A new project is the Project panel itself (panel-body.svelte, over a draft); the
 	// others are record-fields.svelte over an empty record. Nothing exists until Create or Add; then a project
-	// opens on Edit and anything else on its Page.
+	// opens on Edit and anything else on its Page. Run 28: "Add new" in a dropdown opens this same sheet on that one
+	// page (look.addFor), with no page chips; what is added is picked in the dropdown and nothing else opens.
 	import BottomSheet from './bottom-sheet.svelte';
 	import {
 		DATASETS,
@@ -50,6 +51,8 @@
 		const isOpen = Boolean(look.adding);
 		if (isOpen && !wasOpen) {
 			drafts = fresh();
+			if (look.addSeed && look.adding && look.adding !== 'projects')
+				Object.assign(drafts[look.adding], look.addSeed);
 			panel = draftPanel(look.organization.name, ME);
 		}
 		wasOpen = isOpen;
@@ -58,7 +61,7 @@
 	const canAdd = $derived(kind === 'projects' || Boolean(drafts[kind].name.trim()));
 
 	function close() {
-		look.adding = undefined;
+		look.endAdd();
 	}
 
 	function add() {
@@ -66,7 +69,7 @@
 		const page = kind;
 		const name = drafts[page].name.trim();
 		if (!look.add(page, drafts[page])) return;
-		close();
+		if (look.finishAdd(name)) return;
 		if (look.dataset !== page) look.pick(page);
 		look.openRecord(page, name, 'page');
 	}
@@ -95,11 +98,13 @@
 				add();
 			}}
 		>
-			<div class="-mx-5 mb-4 flex gap-2 overflow-x-auto px-5">
-				{#each PAGES as id (id)}
-					{@render chip(kind === id, DATASETS[id].one, () => (look.adding = id), PAGE_ICONS[id])}
-				{/each}
-			</div>
+			{#if !look.isAddLocked}
+				<div class="-mx-5 mb-4 flex gap-2 overflow-x-auto px-5">
+					{#each PAGES as id (id)}
+						{@render chip(kind === id, DATASETS[id].one, () => (look.adding = id), PAGE_ICONS[id])}
+					{/each}
+				</div>
+			{/if}
 			<!-- The whole form scrolls inside the sheet, so a long one never pushes the buttons off the screen. -->
 			<div class="-mx-5 max-h-[62dvh] touch-pan-y overflow-y-auto overscroll-contain px-5 pb-1">
 				<div class="mb-4 flex items-center gap-3">

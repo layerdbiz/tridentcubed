@@ -19,6 +19,7 @@
 		sortKey = '',
 		index = 0,
 		actions,
+		head,
 		children
 	}: {
 		title: string;
@@ -34,6 +35,8 @@
 		sortKey?: string;
 		index?: number;
 		actions?: Snippet;
+		// Drawn in place of the title and note: a leg's trip, city to city.
+		head?: Snippet;
 		children: Snippet;
 	} = $props();
 </script>
@@ -57,8 +60,12 @@
 			>
 		{/if}
 		<span class="min-w-0 flex-1">
-			<span class="block truncate text-sm font-semibold text-slate-800">{title}</span>
-			{#if note}<span class="block truncate text-[11px] text-slate-400">{note}</span>{/if}
+			{#if head}
+				{@render head()}
+			{:else}
+				<span class="block truncate text-sm font-semibold text-slate-800">{title}</span>
+				{#if note}<span class="block truncate text-[11px] text-slate-400">{note}</span>{/if}
+			{/if}
 		</span>
 		{#if meta}<span class="shrink-0 text-xs text-slate-400">{meta}</span>{/if}
 		<span

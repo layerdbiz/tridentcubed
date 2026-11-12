@@ -7,6 +7,7 @@
 	import ImageField from './image-field.svelte';
 	import {
 		FACILITY_ICONS,
+		MODE_ICONS,
 		newContact,
 		PARTICULARS,
 		personOf,
@@ -19,6 +20,7 @@
 		type TransportTypeType
 	} from './look.data';
 	import type { LookState, RecordDraftType } from './look.state.svelte';
+	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { CUSTOMER_TYPES, TEAM_LABELS, typesOf, type PageType } from './records.data';
 	import { labelsOf, ROLE_LABELS, type TeamMemberType } from './team.data';
@@ -69,18 +71,6 @@
 		});
 	}
 </script>
-
-{#snippet chip(isOn: boolean, label: string, onclick: () => void, icon = '')}
-	<button
-		type="button"
-		class="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition {isOn
-			? 'bg-primary text-white'
-			: 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
-		aria-pressed={isOn}
-		{onclick}
-		>{#if icon}<span class="{icon} size-4"></span>{/if}{label}</button
-	>
-{/snippet}
 
 {#snippet text(label: string, current: string, oninput: (text: string) => void, type = 'text')}
 	<label class="block">
@@ -169,16 +159,14 @@
 						'SGL'}-2026-05-12-J01.{isNew ? ' Left empty, it is made from the name.' : ''}</span
 				>
 			</label>
-			<div>
-				<p class={LABEL}>Type</p>
-				<div class="flex flex-wrap gap-2">
-					{#each CUSTOMER_TYPES as label (label)}
-						{@render chip(typesOf(customer.kind).includes(label), label, () =>
-							set({ kind: toggle(typesOf(customer.kind), label).join(', ') })
-						)}
-					{/each}
-				</div>
-			</div>
+			<Picker
+				label="Type"
+				options={CUSTOMER_TYPES.map((label) => ({ id: label, label }))}
+				values={typesOf(customer.kind)}
+				many="types"
+				icon="icon-[mdi--tag-outline]"
+				onpick={(label) => set({ kind: toggle(typesOf(customer.kind), label).join(', ') })}
+			/>
 			{@render place('City', customer.city, (city) => set({ city }))}
 			{@render text('Address', customer.address ?? '', (address) => set({ address }))}
 			{@render text('Email', customer.email ?? '', (email) => set({ email }), 'email')}
@@ -191,50 +179,52 @@
 				onpick={(url) => set({ photo: url })}
 			/>
 		{:else if member}
-			<div>
-				<p class={LABEL}>Role</p>
-				<div class="flex gap-2">
-					{#each ROLES as role (role)}
-						{@render chip(member.role === role, ROLE_LABELS[role], () => set({ role }))}
-					{/each}
-				</div>
-			</div>
+			<Picker
+				label="Role"
+				options={ROLES.map((role) => ({ id: role, label: ROLE_LABELS[role] }))}
+				value={member.role}
+				icon="icon-[mdi--shield-account-outline]"
+				onpick={(role) => set({ role })}
+			/>
 			{@render text('Title', member.title, (title) => set({ title }))}
-			<div>
-				<p class={LABEL}>Labels</p>
-				<div class="flex flex-wrap gap-2">
-					{#each [...new Set([...TEAM_LABELS, ...labelsOf(member)])] as label (label)}
-						{@render chip(labelsOf(member).includes(label), label, () =>
-							set({ label: toggle(labelsOf(member), label).join(', ') })
-						)}
-					{/each}
-				</div>
-			</div>
+			<Picker
+				label="Labels"
+				options={[...new Set([...TEAM_LABELS, ...labelsOf(member)])].map((label) => ({
+					id: label,
+					label
+				}))}
+				values={labelsOf(member)}
+				many="labels"
+				icon="icon-[mdi--tag-outline]"
+				isRequired={false}
+				onpick={(label) => set({ label: toggle(labelsOf(member), label).join(', ') })}
+			/>
 			{@render text('Phone', member.phone, (phone) => set({ phone }), 'tel')}
 			{@render text('Email', member.email, (email) => set({ email }), 'email')}
 			{@render place('Location', member.location, (location) => set({ location }))}
 		{:else if transport}
-			<div>
-				<p class={LABEL}>Transport Type</p>
-				<div class="flex flex-wrap gap-2">
-					{#each Object.entries(TRANSPORT_TYPES) as [type, item] (type)}
-						{@render chip(
-							transport.type === type,
-							type,
-							() => set({ type, mode: TRANSPORT_TYPES[type as TransportTypeType].modes[0] }),
-							item.icon
-						)}
-					{/each}
-				</div>
-			</div>
-			<div>
-				<p class={LABEL}>Transport Mode</p>
-				<div class="flex flex-wrap gap-2">
-					{#each TRANSPORT_TYPES[transport.type].modes as mode (mode)}
-						{@render chip(transport.mode === mode, mode, () => set({ mode }))}
-					{/each}
-				</div>
-			</div>
+			<Picker
+				label="Transport Type"
+				options={Object.entries(TRANSPORT_TYPES).map(([type, item]) => ({
+					id: type,
+					label: type,
+					icon: item.icon
+				}))}
+				value={transport.type}
+				icon="icon-[mdi--transit-connection-variant]"
+				onpick={(type) => set({ type, mode: TRANSPORT_TYPES[type as TransportTypeType].modes[0] })}
+			/>
+			<Picker
+				label="Transport Mode"
+				options={TRANSPORT_TYPES[transport.type].modes.map((mode) => ({
+					id: mode,
+					label: mode,
+					icon: MODE_ICONS[mode]
+				}))}
+				value={transport.mode}
+				icon="icon-[mdi--cube-send]"
+				onpick={(mode) => set({ mode })}
+			/>
 			<ImageField
 				label="Picture"
 				value={transport.photo ?? ''}
@@ -242,19 +232,17 @@
 				onpick={(url) => set({ photo: url })}
 			/>
 		{:else if facility}
-			<div>
-				<p class={LABEL}>Kind</p>
-				<div class="flex flex-wrap gap-2">
-					{#each Object.entries(FACILITY_ICONS) as [kind, icon] (kind)}
-						{@render chip(
-							facility.kind === kind,
-							kind,
-							() => set({ kind: kind as FacilityKindType }),
-							icon
-						)}
-					{/each}
-				</div>
-			</div>
+			<Picker
+				label="Kind"
+				options={Object.entries(FACILITY_ICONS).map(([kind, icon]) => ({
+					id: kind,
+					label: kind,
+					icon
+				}))}
+				value={facility.kind}
+				icon="icon-[mdi--domain]"
+				onpick={(kind) => set({ kind: kind as FacilityKindType })}
+			/>
 			{@render place('City', facility.city, (city) => set({ city }))}
 			{@render text('Address', facility.address ?? '', (address) => set({ address }))}
 			<ImageField

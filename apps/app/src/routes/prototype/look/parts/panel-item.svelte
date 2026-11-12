@@ -151,7 +151,7 @@
 			title="Delete panel"
 			onclick={() =>
 				look.confirm({
-					title: `Delete ${panel.name}?`,
+					title: 'Delete panel?',
 					note: 'Its photos leave the report.',
 					onyes: () => look.removePanel(panel.id)
 				})}><span class="icon-[mdi--close] size-3.5"></span></button

@@ -56,7 +56,7 @@
 					{ id: 'status', label: 'Change Status', icon: 'icon-[mdi--swap-horizontal]' }
 				]
 			: [{ id: 'edit', label: `Edit ${one}`, icon: 'icon-[mdi--pencil-outline]' }]),
-		{ id: 'delete', label: `Delete ${one}`, icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
+		{ id: 'delete', label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
 	]);
 
 	function act(choice: string) {
@@ -66,7 +66,7 @@
 			if (choice === 'edit') look.openRecord(page, id, 'edit');
 			if (choice === 'delete')
 				look.confirm({
-					title: `Delete ${name}?`,
+					title: `Delete ${one}?`,
 					note: 'It moves to Trash, where an admin can restore it. Projects that use it keep its name.',
 					onyes: () => look.removeRecord(page, id)
 				});
@@ -82,7 +82,7 @@
 		if (choice === 'status') look.statusFor = project.id;
 		if (choice === 'delete')
 			look.confirm({
-				title: `Delete ${project.title}?`,
+				title: 'Delete Project?',
 				note: 'It moves to Trash, where an admin can restore it.',
 				onyes: () => {
 					if (look.screen === 'workspace') look.home();

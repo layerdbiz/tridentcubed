@@ -176,6 +176,13 @@ export class LookState {
 	statusFor = $state<string>();
 	// What the + is adding, or nothing while its sheet is shut.
 	adding = $state<DatasetType>();
+	// "Add new" in a dropdown opens that same sheet on one page (run 28): what it starts filled with, whether its
+	// page chips are hidden, and who is told the name once it is added.
+	addSeed: Record<string, unknown> | undefined;
+	isAddLocked = $state(false);
+	#afterAdd: ((name: string) => void) | undefined;
+	// The project a record was opened from by a dropdown's pencil; back returns there.
+	#backTo: { projectId: string; tab: TabType; panelId: string } | undefined;
 	navSection = $state<string>('projects');
 	// Which way the dashboard's next page slides in: 1 from the right, -1 from the left.
 	slide = $state(0);
@@ -298,6 +305,35 @@ export class LookState {
 		this.screen = 'workspace';
 	}
 
+	addFor(page: PageType, seed: Record<string, unknown>, done: (name: string) => void) {
+		this.addSeed = seed;
+		this.#afterAdd = done;
+		this.isAddLocked = true;
+		this.adding = page;
+	}
+
+	// The + sheet has added `name`: true when a dropdown was waiting for it, which then picks it.
+	finishAdd(name: string) {
+		const done = this.#afterAdd;
+		this.endAdd();
+		done?.(name);
+		return Boolean(done);
+	}
+
+	endAdd() {
+		this.adding = undefined;
+		this.addSeed = undefined;
+		this.#afterAdd = undefined;
+		this.isAddLocked = false;
+	}
+
+	// A dropdown's pencil: the record opens on Edit, and back returns to the project and panel it was opened from.
+	editRecord(page: PageType, key: string) {
+		if (this.screen === 'workspace')
+			this.#backTo = { projectId: this.projectId, tab: this.tab, panelId: this.panelId };
+		this.openRecord(page, key, 'edit');
+	}
+
 	openRecord(page: PageType, key: string, tab: TabType = 'page') {
 		if (this.screen === 'workspace') this.#keepProject();
 		this.record = { page, key };
@@ -352,6 +388,13 @@ export class LookState {
 	}
 
 	home() {
+		const back = this.#backTo;
+		this.#backTo = undefined;
+		if (this.screen === 'record' && back) {
+			this.open(back.projectId, back.tab);
+			this.panelId = back.panelId;
+			return;
+		}
 		if (this.screen === 'workspace') this.#keepProject();
 		this.screen = 'dashboard';
 		this.navSection = this.dataset;

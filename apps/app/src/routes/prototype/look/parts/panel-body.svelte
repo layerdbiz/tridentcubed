@@ -34,29 +34,21 @@
 	import ImageField from './image-field.svelte';
 	import {
 		createId,
-		draftOf,
 		FACILITY_ICONS,
 		itemOf,
 		LAYOUTS,
-		MODE_ICONS,
 		newPerson,
 		newPersonnel,
 		PAGE_ICONS,
 		PROJECT_TYPES,
 		photoOf,
-		POINTS,
-		stopOf,
-		TRANSPORT_TYPES,
 		type FacilityKindType,
 		type FieldType,
 		type PanelType,
-		type PhotoType,
-		type PointType,
-		type StopType,
-		type TransportTypeType
+		type PhotoType
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import Menu, { type OptionType } from './menu.svelte';
+	import Menu from './menu.svelte';
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { addPhotos, hasFiles } from './photos';
@@ -66,14 +58,10 @@
 	let {
 		look,
 		panel,
-		isDraft = false,
-		transport
+		isDraft = false
 	}: {
 		look: LookState;
 		panel: PanelType;
-		// The Transport Mode Panel's letter, when the page showing it picks one (panels/+page.svelte shows B and C
-		// side by side); left out, it is the selector's.
-		transport?: string;
 		// A project not made yet (the + sheet): typing saves nothing and no other project's lock applies.
 		isDraft?: boolean;
 	} = $props();
@@ -81,8 +69,6 @@
 	function save() {
 		if (!isDraft) look.saved();
 	}
-
-	const legsLook = $derived(transport ?? look.variant('panel-transport'));
 
 	// The Project panel's sections, open or folded: Project, Customer, Team, and one per company of personnel.
 	let openSections = $state<string[]>(['project', 'customer', 'team']);
@@ -183,7 +169,6 @@
 
 	let openDays = $state<string[]>([panel.days[0]?.id ?? '']);
 	let openGroups = $state<string[]>([panel.groups[0]?.id ?? '']);
-	let openStops = $state<string[]>([panel.stops[0]?.id ?? '']);
 
 	function toggle(list: string[], id: string) {
 		return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
@@ -213,13 +198,10 @@
 
 	// "Add new" in a drop-down: the quick sheet adds the name to its list and picks it. A new facility also asks its
 	// kind; a new transport takes the stop's type and mode.
-	const ADD = '__add';
 	type AskType = { label: string; kinds?: FacilityKindType[]; onadd: (name: string) => void };
 	let asking = $state<AskType>();
 	let draft = $state('');
 	let draftKind = $state<FacilityKindType>('Port');
-
-	const FACILITY_KINDS = Object.keys(FACILITY_ICONS) as FacilityKindType[];
 
 	function ask(asked: AskType) {
 		draft = '';
@@ -227,21 +209,18 @@
 		asking = asked;
 	}
 
-	function choose(field: FieldType, event: Event) {
-		const select = event.currentTarget as HTMLSelectElement;
-		if (select.value !== ADD) {
-			if (field.label === 'Customer' && field.value !== select.value) panel.contact = undefined;
-			return (field.value = select.value);
-		}
-		select.value = field.value;
+	// A dropdown field of plain words (a Project Type). "Add new" asks for the word in the quick sheet.
+	function pickField(field: FieldType, value: string) {
+		field.value = value;
+		save();
+	}
+
+	function askField(field: FieldType) {
 		ask({
 			label: field.label,
 			onadd: (name) => {
-				// A new customer is a real one: it joins the Customers page, with the rest filled in there.
-				if (field.label === 'Customer') look.add('customers', { ...draftOf('customers'), name });
-				else field.options = [...(field.options ?? []), name];
+				field.options = [...(field.options ?? []), name];
 				field.value = name;
-				if (field.label === 'Customer') panel.contact = undefined;
 			}
 		});
 	}
@@ -250,182 +229,6 @@
 		if (!asking || !draft.trim()) return;
 		asking.onadd(draft.trim());
 		asking = undefined;
-		save();
-	}
-
-	// The Transport panel's stops.
-	const TYPES = Object.keys(TRANSPORT_TYPES) as TransportTypeType[];
-	const POINT_OPTIONS = (Object.keys(POINTS) as PointType[]).map((point) => ({
-		id: point,
-		label: `${point} (${POINTS[point].hint})`,
-		dot: POINTS[point].dot
-	}));
-
-	function setPoint(stop: StopType, point: string) {
-		stop.point = point as PointType;
-		save();
-	}
-
-	function setType(stop: StopType, type: string) {
-		if (stop.type === type) return;
-		const { modes } = TRANSPORT_TYPES[type as TransportTypeType];
-		stop.type = type as TransportTypeType;
-		stop.mode = modes.length === 1 ? modes[0] : '';
-		stop.name = '';
-		save();
-	}
-
-	function setMode(stop: StopType, mode: string) {
-		if (stop.mode === mode) return;
-		stop.mode = mode;
-		stop.name = '';
-		save();
-	}
-
-	function namesOf(stop: StopType) {
-		const names = look.transports
-			.filter((transport) => transport.mode === stop.mode)
-			.map((transport) => transport.name);
-		return stop.name && !names.includes(stop.name) ? [stop.name, ...names] : names;
-	}
-
-	function chooseName(stop: StopType, event: Event) {
-		const select = event.currentTarget as HTMLSelectElement;
-		if (select.value !== ADD) return (stop.name = select.value);
-		select.value = stop.name;
-		ask({
-			label: stop.mode,
-			onadd: (name) => {
-				look.add('transport', {
-					...draftOf('transport'),
-					name,
-					type: stop.type as TransportTypeType,
-					mode: stop.mode
-				});
-				stop.name = name;
-			}
-		});
-	}
-
-	// Every facility, grouped by kind, the kind that suits the stop's transport type first (ports for Sea).
-	function kindsOf(stop: StopType) {
-		const suited = stop.type ? TRANSPORT_TYPES[stop.type].facility : undefined;
-		return suited ? [suited, ...FACILITY_KINDS.filter((kind) => kind !== suited)] : FACILITY_KINDS;
-	}
-
-	function facilitiesOf(stop: StopType) {
-		return kindsOf(stop)
-			.map((kind) => ({
-				kind,
-				names: look.facilities
-					.filter((facility) => facility.kind === kind)
-					.map((facility) => facility.name)
-			}))
-			.filter((group) => group.names.length);
-	}
-
-	function chooseFacility(stop: StopType, event: Event) {
-		const select = event.currentTarget as HTMLSelectElement;
-		if (select.value !== ADD) return (stop.facility = select.value);
-		select.value = stop.facility;
-		ask({
-			label: 'Facility',
-			kinds: kindsOf(stop),
-			onadd: (name) => {
-				const location = look.panels
-					.find((item) => item.kind === 'project')
-					?.fields.find((item) => item.label === 'Location')?.value;
-				look.add('facilities', {
-					...draftOf('facilities'),
-					name,
-					kind: draftKind,
-					city: location || look.project.location
-				});
-				stop.facility = name;
-			}
-		});
-	}
-
-	// "Add new" from the legs editor (variants/transport-legs.svelte): ask for the name, add it to its page, hand
-	// the name back.
-	function addTransport(type: TransportTypeType, mode: string, done: (name: string) => void) {
-		ask({
-			label: mode,
-			onadd: (name) => {
-				look.add('transport', { ...draftOf('transport'), name, type, mode });
-				done(name);
-			}
-		});
-	}
-
-	function addFacility(kinds: FacilityKindType[], done: (name: string) => void) {
-		ask({
-			label: 'Facility',
-			kinds,
-			onadd: (name) => {
-				look.add('facilities', {
-					...draftOf('facilities'),
-					name,
-					kind: draftKind,
-					city: look.project.location
-				});
-				done(name);
-			}
-		});
-	}
-
-	// The first stop starts the trip; a later one ends it, and the stop that ended it becomes a stop on the way.
-	// The trip's own three stops, by point: the first stop of each that was not added as an extra.
-	const TRIP: PointType[] = ['Start', 'Stop', 'End'];
-	const BLANK = stopOf();
-	let isTripOpen = $state(true);
-
-	function tripStop(point: PointType) {
-		return panel.stops.find((stop) => stop.point === point && !stop.isExtra);
-	}
-
-	const extraStops = $derived(
-		panel.stops.filter((stop) => !TRIP.some((point) => tripStop(point)?.id === stop.id))
-	);
-
-	// A stop goes in trip order: Start first, End last, a Stop just before the End.
-	function place(stop: StopType) {
-		const end = panel.stops.findIndex((other) => other.point === 'End');
-		if (stop.point === 'Start') panel.stops.unshift(stop);
-		else if (stop.point === 'End' || end < 0) panel.stops.push(stop);
-		else panel.stops.splice(end, 0, stop);
-		return panel.stops.find((other) => other.id === stop.id)!;
-	}
-
-	// The trip's stop for a point, made the first time something is picked for it.
-	function ensureStop(point: PointType) {
-		const found = tripStop(point);
-		if (found) return found;
-		const stop = stopOf();
-		stop.point = point;
-		return place(stop);
-	}
-
-	// One pick names the transport mode and brings its type and mode with it.
-	function setTripTransport(point: PointType, name: string) {
-		const stop = ensureStop(point);
-		const transport = look.transports.find((item) => item.name === name);
-		stop.name = name;
-		stop.type = transport?.type ?? '';
-		stop.mode = transport?.mode ?? '';
-		save();
-	}
-
-	function cityOf(facility: string) {
-		return look.facilities.find((item) => item.name === facility)?.city ?? '';
-	}
-
-	// A stop beyond the trip's three, with a section of its own.
-	function addStop() {
-		const stop = stopOf();
-		stop.point = 'Stop';
-		stop.isExtra = true;
-		openStops = [...openStops, place(stop).id];
 		save();
 	}
 
@@ -511,7 +314,7 @@
 		const found = group?.photos.find((other) => other.id === photo.id);
 		editing = undefined;
 		if (group && found)
-			remove(group.photos, found, 'Delete this photo?', 'It leaves the group and the report.');
+			remove(group.photos, found, 'Delete photo?', 'It leaves the group and the report.');
 	}
 
 	function addGroup() {
@@ -556,6 +359,16 @@
 				{inputClass}
 			/>
 		</div>
+	{:else if field.type === 'select'}
+		<Picker
+			label={field.label}
+			options={optionsOf(field).map((option) => ({ id: option, label: option }))}
+			value={field.value}
+			icon="icon-[mdi--format-list-bulleted]"
+			isDisabled={field.isReadonly}
+			onpick={(option) => pickField(field, option)}
+			onadd={field.isAddable ? () => askField(field) : undefined}
+		/>
 	{:else}
 		<label
 			class="block {field.type === 'textarea' || field.type === 'image' ? 'sm:col-span-2' : ''}"
@@ -567,26 +380,7 @@
 						title="Not filled in yet"
 					></span>{/if}
 			</span>
-			{#if field.type === 'select' && field.isAddable}
-				<select
-					class={inputClass}
-					value={field.value}
-					onchange={(event) => choose(field, event)}
-				>
-					<option value="">Choose…</option>
-					{#each optionsOf(field) as option (option)}<option>{option}</option>{/each}
-					<option value={ADD}>＋ Add new {field.label}…</option>
-				</select>
-			{:else if field.type === 'select'}
-				<select
-					class={inputClass}
-					bind:value={field.value}
-					disabled={field.isReadonly}
-				>
-					<option value="">Choose…</option>
-					{#each optionsOf(field) as option (option)}<option>{option}</option>{/each}
-				</select>
-			{:else if field.type === 'textarea'}
+			{#if field.type === 'textarea'}
 				<textarea
 					class="{inputClass} min-h-20 resize-y"
 					bind:value={field.value}
@@ -703,13 +497,7 @@
 			isOpen={openSections.includes(company.id)}
 			ontoggle={() => (openSections = toggle(openSections, company.id))}
 			ondelete={() =>
-				remove(
-					panel.personnel ?? [],
-					company,
-					`Delete ${company.company || `personnel ${companyIndex + 1}`}?`,
-					'Its people leave the report.'
-				)}
-			deleteLabel="Delete Personnel"
+				remove(panel.personnel ?? [], company, 'Delete Personnel?', 'Its people leave the report.')}
 		>
 			<label class="block">
 				<span class={labelClass}>Company {@render unpicked(!company.company)}</span>
@@ -745,12 +533,8 @@
 						class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
 						aria-label="Delete person {personIndex + 1}"
 						onclick={() =>
-							remove(
-								company.people,
-								person,
-								`Delete ${person.name || 'this person'}?`,
-								'They leave the report.'
-							)}><span class="icon-[mdi--close] size-4"></span></button
+							remove(company.people, person, 'Delete person?', 'They leave the report.')}
+						><span class="icon-[mdi--close] size-4"></span></button
 					>
 				</div>
 			{/each}
@@ -774,213 +558,12 @@
 	>
 {/snippet}
 
-{#snippet dropdown(
-	label: string,
-	value: string,
-	options: OptionType[],
-	onpick: (id: string) => void
-)}
-	<div>
-		<p class={labelClass}>
-			{label}
-			{#if !value}<span
-					class="size-1.5 rounded-full bg-warning"
-					title="Not picked yet"
-				></span>{/if}
-		</p>
-		<Menu
-			{label}
-			{value}
-			{options}
-			{onpick}
-			align="left"
-			isWide
-		>
-			{#snippet trigger(current, isOpen)}
-				<span
-					class="{inputClass} flex items-center gap-2 text-left {isOpen
-						? 'bg-white ring-2 ring-primary/40'
-						: ''}"
-				>
-					{#if current?.dot}
-						<span class="ml-0.5 size-2.5 shrink-0 rounded-full {current.dot}"></span>
-						<span class="flex-1 truncate">{current.label}</span>
-					{:else if current}
-						<span class="{current.icon} size-[18px] shrink-0 text-primary"></span>
-						<span class="flex-1 truncate">{current.label}</span>
-					{:else}
-						<span class="flex-1 text-slate-400">Choose…</span>
-					{/if}
-					<span class="icon-[mdi--chevron-down] size-4 shrink-0 text-slate-400"></span>
-				</span>
-			{/snippet}
-		</Menu>
-	</div>
-{/snippet}
-
 {#snippet unpicked(isShown: boolean)}
 	{#if isShown}<span
 			class="size-1.5 rounded-full bg-warning"
 			title="Not picked yet"
 		></span>{/if}
 {/snippet}
-
-{#snippet facilitySelect(stop: StopType | undefined, onchange: (event: Event) => void)}
-	<label class="block">
-		<span class={labelClass}>Facility {@render unpicked(!stop?.facility)}</span>
-		<select
-			class={inputClass}
-			value={stop?.facility ?? ''}
-			{onchange}
-		>
-			<option value="">Choose…</option>
-			{#each facilitiesOf(stop ?? BLANK) as group (group.kind)}
-				<optgroup label="{group.kind}s">
-					{#each group.names as name (name)}<option>{name}</option>{/each}
-				</optgroup>
-			{/each}
-			<option value={ADD}>＋ Add new Facility…</option>
-		</select>
-	</label>
-{/snippet}
-
-{#snippet stopsBlock()}
-	<p class="flex items-center gap-1.5 text-xs text-slate-400">
-		<span class="icon-[mdi--map-marker-path] size-4"></span>
-		{panel.stops.length}
-		{panel.stops.length === 1 ? 'stop' : 'stops'} in trip order, first to last
-	</p>
-	<!-- The trip in one place: where it starts, a stop on the way, and where it ends. -->
-	<Group
-		title="Trip"
-		note={TRIP.map((point) => tripStop(point)?.facility)
-			.filter(Boolean)
-			.join(' → ') || 'Pick where the trip starts'}
-		icon="icon-[mdi--map-marker-path]"
-		isOpen={isTripOpen}
-		ontoggle={() => (isTripOpen = !isTripOpen)}
-	>
-		{#each TRIP as point (point)}
-			{@const stop = tripStop(point)}
-			<div class="space-y-2 rounded-2xl bg-white/80 p-2.5">
-				<p class="flex items-center gap-2 text-xs font-semibold text-slate-700">
-					<span class="size-2.5 shrink-0 rounded-full {POINTS[point].dot}"></span>{point}
-					<span class="font-normal text-slate-400"
-						>{POINTS[point].hint}{point === 'Stop' ? ', if there is one' : ''}</span
-					>
-				</p>
-				<div class="grid gap-2 sm:grid-cols-2">
-					<label class="block">
-						<span class={labelClass}>Transport Mode {@render unpicked(!stop?.name)}</span>
-						<select
-							class={inputClass}
-							value={stop?.name ?? ''}
-							onchange={(event) => setTripTransport(point, event.currentTarget.value)}
-						>
-							<option value="">Choose…</option>
-							{#each TYPES as type (type)}
-								{@const list = look.transports.filter((item) => item.type === type)}
-								{#if list.length}
-									<optgroup label={type}>
-										{#each list as item (item.name)}
-											<option value={item.name}>{item.name} · {item.mode}</option>
-										{/each}
-									</optgroup>
-								{/if}
-							{/each}
-						</select>
-					</label>
-					{@render facilitySelect(stop, (event) => chooseFacility(ensureStop(point), event))}
-				</div>
-				{#if stop?.facility}
-					<p class="flex items-center gap-1 text-xs text-slate-500">
-						<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {POINTS[point].text}"></span>
-						{cityOf(stop.facility) || 'This facility has no city yet'}
-					</p>
-				{/if}
-			</div>
-		{/each}
-	</Group>
-	<div class="space-y-3">
-		{#each extraStops as stop, stopIndex (stop.id)}
-			<div animate:flip={{ duration: 200 }}>
-				<Group
-					title={stop.name || `Extra stop ${stopIndex + 1}`}
-					note={[stop.point, stop.mode, stop.facility].filter(Boolean).join(' · ') ||
-						'Pick where this sits on the trip first'}
-					icon={MODE_ICONS[stop.mode] ??
-						(stop.point ? POINTS[stop.point].icon : 'icon-[mdi--map-marker-outline]')}
-					tone={stop.point ? POINTS[stop.point].chip : undefined}
-					isOpen={openStops.includes(stop.id)}
-					ontoggle={() => (openStops = toggle(openStops, stop.id))}
-					ondelete={() =>
-						remove(
-							panel.stops,
-							stop,
-							`Delete ${stop.name || `extra stop ${stopIndex + 1}`}?`,
-							'The stop leaves the report.'
-						)}
-					deleteLabel="Delete stop"
-				>
-					<div class="grid gap-2 sm:grid-cols-2">
-						{@render dropdown('Point', stop.point, POINT_OPTIONS, (point) => setPoint(stop, point))}
-						{@render dropdown(
-							'Transport Type',
-							stop.type,
-							TYPES.map((type) => ({ id: type, label: type, icon: TRANSPORT_TYPES[type].icon })),
-							(type) => setType(stop, type)
-						)}
-						{#if stop.type}
-							{@render dropdown(
-								'Mode',
-								stop.mode,
-								TRANSPORT_TYPES[stop.type].modes.map((mode) => ({
-									id: mode,
-									label: mode,
-									icon: MODE_ICONS[mode]
-								})),
-								(mode) => setMode(stop, mode)
-							)}
-						{/if}
-						{#if stop.mode}
-							<label class="block">
-								<span class={labelClass}>Transport Mode {@render unpicked(!stop.name)}</span>
-								<select
-									class={inputClass}
-									value={stop.name}
-									onchange={(event) => chooseName(stop, event)}
-								>
-									<option value="">Choose…</option>
-									{#each namesOf(stop) as name (name)}<option>{name}</option>{/each}
-									<option value={ADD}>＋ Add new {stop.mode}…</option>
-								</select>
-							</label>
-						{/if}
-						{#if stop.type}
-							<div class="sm:col-span-2">
-								{@render facilitySelect(stop, (event) => chooseFacility(stop, event))}
-							</div>
-						{/if}
-					</div>
-				</Group>
-			</div>
-		{/each}
-	</div>
-	<button
-		type="button"
-		class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-		onclick={addStop}><span class="icon-[mdi--plus] size-4"></span>Add stop</button
-	>
-{/snippet}
-
-{#if !panel.isEnabled}
-	<p
-		class="mb-3 flex items-start gap-2 rounded-xl bg-slate-900/[0.04] px-3 py-2.5 text-xs text-slate-500"
-	>
-		<span class="mt-px icon-[mdi--eye-off-outline] size-4 shrink-0"></span>
-		This panel is off, so it is left out of the report. Switch it on to fill it in.
-	</p>
-{/if}
 
 <fieldset
 	disabled={!panel.isEnabled || (!isDraft && look.isFrozen)}
@@ -1025,15 +608,8 @@
 					options={look.customers.map((name) => ({ id: name, label: name }))}
 					value={customerName}
 					onpick={setCustomer}
-					onadd={() =>
-						ask({
-							label: 'Customer',
-							onadd: (name) => {
-								// A new customer is a real one: it joins the Customers page, with the rest filled in there.
-								look.add('customers', { ...draftOf('customers'), name });
-								setCustomer(name);
-							}
-						})}
+					onadd={() => look.addFor('customers', {}, setCustomer)}
+					onedit={(name) => look.editRecord('customers', name)}
 				/>
 				<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
 				<Picker
@@ -1060,17 +636,11 @@
 			{@render teamBlock()}
 		</div>
 	{:else if panel.kind === 'transport'}
-		{#if legsLook === 'A'}
-			{@render stopsBlock()}
-		{:else}
-			<TransportLegs
-				{look}
-				{panel}
-				onsave={save}
-				onaddtransport={addTransport}
-				onaddfacility={addFacility}
-			/>
-		{/if}
+		<TransportLegs
+			{look}
+			{panel}
+			onsave={save}
+		/>
 	{:else if panel.kind === 'items'}
 		<!-- Rows copied from a spreadsheet can be pasted into any of these fields: each line becomes an item. -->
 		<div
@@ -1108,7 +678,7 @@
 							remove(
 								panel.items,
 								item,
-								'Delete this item?',
+								'Delete item?',
 								item.description
 									? `"${item.description}" leaves the cargo description.`
 									: 'It leaves the cargo description.'
@@ -1217,10 +787,9 @@
 						remove(
 							panel.days,
 							day,
-							`Delete day ${dayIndex + 1}?`,
+							'Delete day?',
 							`Its ${day.entries.length} time log entries go with it.`
 						)}
-					deleteLabel="Delete day"
 				>
 					<label class="block">
 						<span class={labelClass}>Date</span>
@@ -1262,7 +831,7 @@
 									remove(
 										day.entries,
 										entry,
-										'Delete this entry?',
+										'Delete entry?',
 										entry.activity
 											? `"${entry.activity}" leaves the time log.`
 											: 'It leaves the time log.'
@@ -1323,10 +892,9 @@
 							remove(
 								panel.groups,
 								group,
-								`Delete ${group.title || 'this group'}?`,
+								'Delete group?',
 								`Its ${group.photos.length} photos leave the report.`
 							)}
-						deleteLabel="Delete group"
 						sortKey="groups-{panel.id}"
 						index={groupIndex}
 					>
@@ -1436,7 +1004,7 @@
 													: remove(
 															group.photos,
 															photo,
-															'Delete this photo?',
+															'Delete photo?',
 															'It leaves the group and the report.'
 														)}
 										>
@@ -1607,7 +1175,7 @@
 				type="button"
 				class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full py-3 text-sm font-semibold text-danger transition hover:bg-danger/10"
 				onclick={() => deletePhoto(photo)}
-				><span class="icon-[mdi--trash-can-outline] size-[18px]"></span>Delete photo</button
+				><span class="icon-[mdi--trash-can-outline] size-[18px]"></span>Delete</button
 			>
 		</form>
 	</BottomSheet>
