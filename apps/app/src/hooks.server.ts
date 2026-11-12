@@ -1,6 +1,6 @@
 // Every request (#181, #182): Better Auth's own routes (/api/auth/*) are answered by Better Auth; every other request
 // finds its session into `event.locals` (renewing it once a day of use) and who its User is (`locals.actor`: their
-// organization, role and Super admin flag, or a Guest with none), then passes the sign-in guard. A member's use of
+// organization, role and Super admin flag, or a Guest with none), then passes the sign-in guard. A staff User's use of
 // the app stamps their Team record as seen (#185), at most once a minute.
 import { building } from '$app/env';
 import { json } from '@sveltejs/kit';
@@ -29,7 +29,7 @@ const handleSession: Handle = async ({ event, resolve }) => {
 
 function toAccess(locals: App.Locals): AccessType {
 	if (!locals.user) return 'signed-out';
-	return locals.actor?.organizationId ? 'member' : 'guest';
+	return locals.actor?.organizationId ? 'staff' : 'guest';
 }
 
 const handleGuard: Handle = async ({ event, resolve }) => {

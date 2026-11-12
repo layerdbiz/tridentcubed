@@ -32,10 +32,10 @@ describe('the sign-in guard', () => {
 		expect(guard('/_app/remote/abc/submitEmail')).toBeUndefined();
 	});
 
-	it('lets a member of the organization through, and off the waiting page', () => {
-		expect(guard('/?screen=settings', 'member')).toBeUndefined();
-		expect(guard('/api/places?q=Houston', 'member')).toBeUndefined();
-		expect(guard('/waiting', 'member')).toEqual({ kind: 'redirect', location: '/' });
+	it('lets staff of the organization through, and off the waiting page', () => {
+		expect(guard('/?screen=settings', 'staff')).toBeUndefined();
+		expect(guard('/api/places?q=Houston', 'staff')).toBeUndefined();
+		expect(guard('/waiting', 'staff')).toEqual({ kind: 'redirect', location: '/' });
 	});
 
 	it('keeps a Guest on Waiting for access, wherever they go', () => {
@@ -55,11 +55,11 @@ describe('the sign-in guard', () => {
 		expect(guard('/_app/remote/abc/signOut', 'guest')).toBeUndefined();
 	});
 
-	it('gives a file address nothing but a refusal unless a member asks (#187)', () => {
+	it('gives a file address nothing but a refusal unless staff ask (#187)', () => {
 		const file = '/files/0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
 		expect(guard(file)).toEqual({ kind: 'refuse', status: 401, message: 'Sign in first.' });
 		expect(guard(file, 'guest')).toMatchObject({ kind: 'refuse', status: 403 });
-		expect(guard(file, 'member')).toBeUndefined();
+		expect(guard(file, 'staff')).toBeUndefined();
 	});
 
 	it('leaves the local folder’s signed links to their signature, as Storage’s are (#187)', () => {
@@ -67,7 +67,7 @@ describe('the sign-in guard', () => {
 	});
 
 	it('closes Better Auth’s organization routes to everyone: memberships change only through the app', () => {
-		for (const access of ['signed-out', 'guest', 'member'] as const) {
+		for (const access of ['signed-out', 'guest', 'staff'] as const) {
 			expect(guard('/api/auth/organization/update-member-role', access)).toEqual({
 				kind: 'refuse',
 				status: 404,

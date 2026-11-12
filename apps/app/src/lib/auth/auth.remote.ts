@@ -3,8 +3,7 @@
 // Who is signed in (#185), for the screens: the sidebar and account menu show their Team record, and a new project's
 // Team Lead is them.
 import { command, getRequestEvent, query } from '$app/server';
-import { error } from '@sveltejs/kit';
-import { getServer } from '#lib/server/server.js';
+import { getServer, requireSignedIn } from '#lib/server/server.js';
 
 export const signOut = command(async () => {
 	const event = getRequestEvent();
@@ -15,8 +14,7 @@ export const signOut = command(async () => {
 
 /** The signed-in User as the screens need them: their id (their Team record has it), role and Super admin flag. */
 export const fetchSelf = query(async () => {
-	const { locals } = getRequestEvent();
-	if (!locals.user || !locals.actor) error(401, 'Sign in first.');
-	const { userId, role, isSuperAdmin } = locals.actor;
+	const { actor } = await requireSignedIn();
+	const { userId, role, isSuperAdmin } = actor;
 	return { userId, role, isSuperAdmin };
 });

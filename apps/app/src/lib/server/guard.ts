@@ -6,7 +6,7 @@
 // someone sign in and out. Better Auth's organization routes are closed to everyone: memberships change only through
 // the sign-in rule and the app's one permission check.
 
-export type AccessType = 'signed-out' | 'guest' | 'member';
+export type AccessType = 'signed-out' | 'guest' | 'staff';
 
 export type GuardType =
 	| { kind: 'redirect'; location: string }
@@ -34,7 +34,7 @@ export function toGuard(url: URL, access: AccessType): GuardType | undefined {
 	if (isClosed(url)) return { kind: 'refuse', status: 404, message: 'Not found.' };
 	if (OPEN.some((open) => isUnder(path, open))) return undefined;
 
-	if (access === 'member') {
+	if (access === 'staff') {
 		return isUnder(path, WAITING) ? { kind: 'redirect', location: '/' } : undefined;
 	}
 	if (access === 'guest') {
