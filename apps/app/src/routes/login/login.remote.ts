@@ -33,7 +33,11 @@ export const submitEmail = form(v.object({ email: EMAIL }), async ({ email }) =>
 	if (!auth || !settings.ways.includes('email')) {
 		return { ok: false as const, email, message: NOT_CONNECTED };
 	}
-	const sent = await sendCode(auth, email);
+	const event = getRequestEvent();
+	const sent = await sendCode(auth, email, {
+		ip: event.getClientAddress(),
+		origin: event.url.origin
+	});
 	return sent.ok
 		? { ok: true as const, email }
 		: { ok: false as const, email, message: sent.message };

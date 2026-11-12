@@ -3,9 +3,19 @@
 // with no policy, so Supabase's publishable key reads none of them. Only the server, as the database owner, reaches
 // these rows; Better Auth and the sign-in rule (`access.ts`) are their only writers. #182 added the organization
 // plugin's active organization to the session, the Super admin flag to the user, and one policy: the app's
-// restricted role reads the acting User's own user row.
+// restricted role reads the acting User's own user row. The review fixes added the rate limit's table.
 import { relations, sql } from 'drizzle-orm';
-import { boolean, index, pgPolicy, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+	bigint,
+	boolean,
+	index,
+	integer,
+	pgPolicy,
+	pgTable,
+	text,
+	timestamp,
+	uuid
+} from 'drizzle-orm/pg-core';
 import { appRole, ORGANIZATION_ID, USER_ID } from './policy';
 
 function id() {
@@ -110,6 +120,16 @@ export const verification = pgTable(
 	},
 	(table) => [index('verification_identifier_idx').on(table.identifier)]
 ).enableRLS();
+
+// Better Auth's rate limit, kept in the database so every server of a serverless deployment counts the same requests
+// (the sending of codes, open item from #181). One row per address and path: how many in the window, and when the
+// last came (milliseconds). Only Better Auth, as the owner, reads it.
+export const rateLimit = pgTable('rate_limit', {
+	id: id(),
+	key: text('key').notNull().unique(),
+	count: integer('count').notNull(),
+	lastRequest: bigint('last_request', { mode: 'number' }).notNull()
+}).enableRLS();
 
 export const userRelations = relations(user, ({ many }) => ({
 	sessions: many(session),

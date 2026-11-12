@@ -6,7 +6,7 @@
 import { findActor } from './access';
 import { createAuth } from './auth';
 import { createClaims } from './db/claims';
-import { createMemoryDatabase } from './db/index';
+import { createMemoryDatabase, type DatabaseType } from './db/index';
 import { seedDatabase } from './db/seed';
 import { createLogSender } from './email';
 import { sendCode, verifyCode } from './signin';
@@ -17,12 +17,9 @@ const APP = 'http://localhost:5174';
 
 export type TestProviderType = 'google' | 'microsoft';
 
-export async function createTestSignIn() {
-	const db = await createMemoryDatabase();
-	await seedDatabase(db);
-	const claims = createClaims(db);
-	const lines: string[] = [];
-	const auth = createAuth({
+/** Better Auth on a test database, as the app makes it: another server of the same deployment, when given one's db. */
+export function createTestAuth(db: DatabaseType, lines: string[] = []) {
+	return createAuth({
 		db,
 		secret: TEST_SECRET,
 		sender: createLogSender((line) => lines.push(line)),
@@ -31,6 +28,22 @@ export async function createTestSignIn() {
 		google: { clientId: 'test-google-id', clientSecret: 'test-google-secret' },
 		microsoft: { clientId: 'test-microsoft-id', clientSecret: 'test-microsoft-secret' }
 	});
+}
+
+// Each sign-in a test makes comes from an address of its own, so sending codes is never limited unless a test means it.
+let addresses = 0;
+
+function nextAddress() {
+	addresses += 1;
+	return `10.${(addresses >> 16) & 255}.${(addresses >> 8) & 255}.${addresses & 255}`;
+}
+
+export async function createTestSignIn() {
+	const db = await createMemoryDatabase();
+	await seedDatabase(db);
+	const claims = createClaims(db);
+	const lines: string[] = [];
+	const auth = createTestAuth(db, lines);
 
 	// The last code the log shows for this email.
 	function readCode(email: string) {
@@ -50,7 +63,7 @@ export async function createTestSignIn() {
 	// Signs a User in by email the way the login page does, and gives back the user, their Cookie header and who
 	// the server takes them to be.
 	async function signIn(email: string) {
-		const sent = await sendCode(auth, email);
+		const sent = await sendCode(auth, email, { ip: nextAddress() });
 		if (!sent.ok) throw new Error(sent.message);
 		const result = await verifyCode(auth, { email, code: readCode(email) });
 		if (!result.ok) throw new Error(result.message);
@@ -63,7 +76,11 @@ export async function createTestSignIn() {
 		const response = await auth.handler(
 			new Request(`${APP}/api/auth/sign-in/social`, {
 				method: 'POST',
-				headers: { 'content-type': 'application/json', origin: APP },
+				headers: {
+					'content-type': 'application/json',
+					origin: APP,
+					'x-forwarded-for': nextAddress()
+				},
 				body: JSON.stringify({ provider, callbackURL, errorCallbackURL: '/login' })
 			})
 		);
