@@ -17,6 +17,9 @@
 import * as v from 'valibot';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
+// A picture's address. Until uploads go to storage (#187) a picked picture is kept inline as a data URL, so this is
+// large; #187 makes it the app's file address and tightens it.
+const PICTURE = v.pipe(v.string(), v.maxLength(4_000_000));
 const NAME = v.pipe(
 	v.string(),
 	v.check((name) => name.trim().length > 0, 'A name is needed.'),
@@ -40,9 +43,9 @@ export const TABLES = {
 			name: NAME,
 			code: TEXT,
 			types: TEXT,
-			icon: TEXT,
-			logo: TEXT,
-			picture: TEXT,
+			icon: PICTURE,
+			logo: PICTURE,
+			picture: PICTURE,
 			city: TEXT,
 			address: TEXT,
 			email: TEXT,
@@ -60,7 +63,7 @@ export const TABLES = {
 			title: TEXT,
 			email: TEXT,
 			phone: TEXT,
-			photo: TEXT
+			photo: PICTURE
 		}
 	}
 } as const satisfies Record<string, TableSpecType>;

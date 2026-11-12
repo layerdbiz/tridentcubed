@@ -11,9 +11,20 @@ const FILES = import.meta.glob<string>('/src/lib/start/**/*.{png,jpg,jpeg,ico,we
 	import: 'default'
 });
 
-export const GET: RequestHandler = ({ params }) => {
+export const GET: RequestHandler = async ({ params }) => {
 	const url = FILES[`/src/lib/start/${params.path}`];
 	if (!url) error(404, 'No such file.');
+	// The build writes a small file into the code itself, as a data URL, which a browser does not follow a redirect
+	// to: that one is served from here.
+	if (url.startsWith('data:')) {
+		const response = await fetch(url);
+		return new Response(response.body, {
+			headers: {
+				'content-type': response.headers.get('content-type') ?? 'application/octet-stream',
+				'cache-control': 'private, max-age=3600'
+			}
+		});
+	}
 	return new Response(null, {
 		status: 302,
 		headers: { location: url, 'cache-control': 'private, max-age=3600' }

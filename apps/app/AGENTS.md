@@ -14,7 +14,11 @@ src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql
                                claims helper, policy.ts its SQL, seed.ts the one seed), auth.ts, server.ts
                                (the one claims helper + auth), access.ts (the sign-in rule), permission.ts
                                (the one permission check), settings.ts, guard.ts, signin.ts, email.ts,
-                               testing.ts (test helpers), pdf-browser.ts
+                               testing.ts (test helpers), rows.ts (the save command's work and the
+                               queries' reads), pdf-browser.ts
+src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.remote.ts (`saveRows`,
+                               `fetchLists`), rows.utils.ts (the difference), rows.state.svelte.ts (the sync loop)
+src/lib/start/                 the starting files the seed's rows point at, served at /start/... (routes/start)
 src/routes/login/              the login page (server-rendered; emailed code, then Google/Microsoft)
 src/routes/waiting/            Waiting for access, where a Guest is kept (server-rendered)
 src/routes/(app)/              the signed-in app, drawn on the device (ssr off in its +layout.ts)
@@ -73,16 +77,21 @@ the why is in ADR 0002, 0003 and 0005.
   Get it with `const { claims } = await getServer()` and run work as
   `claims.run(locals.actor, (tx) => ...)`; a new table's policy is
   `organizationPolicy('<table>')` from `db/policy.ts`.
-- **One save command.** Every change to a row (records, projects, panels,
-  stops, entries, photos, status, Trash, roles) goes to the server through
-  the one generic save command as a batch of row changes. Do not add a
-  remote function for a new kind of row. A named `command` is for what is
-  not a row only: an upload address, a place lookup, a PDF export.
-- **Adding a table** is one entry in the row registry: its columns, its
-  parent, its Valibot validation and its rules (who may change which
-  columns, and when the row is frozen). Then teach the mapper both
-  directions (screen state to rows, rows to screen state) and add a round
-  trip test at the save seam: state through the mapper, the save command and
+- **One save command: `saveRows`** (`src/lib/rows/rows.remote.ts`). Every
+  change to a row (records, projects, panels, stops, entries, photos, status,
+  Trash, roles) goes to the server through it as a batch of row changes,
+  `{ changes: [{ changeId, table, id, operation: 'put' | 'delete', values }] }`.
+  The lists load through `fetchLists`. Do not add a remote function for a
+  new kind of row. A named `command` is for what is not a row only: an
+  upload address, a place lookup, a PDF export.
+- **Adding a table** is one entry in the row registry
+  (`src/lib/rows/rows.schema.ts`: its columns with their Valibot checks, its
+  parent, its scope), its Drizzle table (with `rowColumns()` and
+  `organizationPolicy`) named in `TABLES` of `src/lib/server/rows.ts`, and a
+  rule in the one permission check only if it has one of its own. Then
+  teach the mapper (`routes/(app)/look/mapper.ts`) both directions (screen
+  state to rows, rows to screen state) and add a round trip test at the save
+  seam (`mapper.test.ts`): state through the mapper, the save command and
   the queries back to equal state, order included. The save command and the
   queries read the registry, so they need no change.
 - **Ids are UUIDs made on the device**, and the server sets created and

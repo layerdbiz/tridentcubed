@@ -33,6 +33,15 @@ export type SyncOptionsType = {
 const OFFLINE =
 	'The server cannot be reached. Your changes are kept here and sent again by themselves.';
 
+/** Why a batch did not arrive: the server's own words when it answered with an error, else the connection. */
+function toFailure(error: unknown) {
+	const { status, body } = (error ?? {}) as { status?: number; body?: { message?: string } };
+	if (!status) return OFFLINE;
+	if (status === 401)
+		return 'You are signed out. Sign in again in another tab; your changes are kept here.';
+	return `${body?.message ?? 'The server could not save it.'} Your changes are kept here and sent again by themselves.`;
+}
+
 /** The wait before the next try after `attempt` failed tries: 2, 4, 8 … up to 30 seconds. */
 export function waitOf(attempt: number) {
 	return Math.min(30_000, 1000 * 2 ** attempt);
@@ -125,10 +134,10 @@ export class SyncLoop implements SaveStatusType {
 		let result: SaveResultType;
 		try {
 			result = await this.#options.send({ changes });
-		} catch {
+		} catch (error) {
 			this.#isSending = false;
 			this.state = 'failed';
-			this.reason = OFFLINE;
+			this.reason = toFailure(error);
 			this.#schedule(waitOf(this.#attempt));
 			this.#attempt += 1;
 			return;
