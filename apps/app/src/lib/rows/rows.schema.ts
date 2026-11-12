@@ -19,11 +19,18 @@
 import * as v from 'valibot';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
-// A picture's address: the app's address of a file in storage (`/files/<id>`, #187), a starting file (`/start/...`)
-// or nothing. A column declared with it holds a file, so a device may ask for an upload address for it
-// (`holdsFile`). Pictures not yet wired to the upload helper still arrive inline as data URLs, so it stays large until
-// every picture uploads (open item after #184, #185 and #187).
-export const PICTURE = v.pipe(v.string(), v.maxLength(4_000_000));
+// A picture's address: the app's address of a file in storage (`/files/<id>`, #187), a starting file (`/start/...`),
+// a picture the app ships with (`/logo-color.svg`), the picture a sign-in provider gave a new Team record (https), or
+// nothing. Every picture uploads to storage, so a row never keeps the picture itself. A column declared with it holds
+// a file, so a device may ask for an upload address for it (`holdsFile`).
+export const PICTURE = v.pipe(
+	v.string(),
+	v.maxLength(2048),
+	v.check(
+		(address) => address === '' || address.startsWith('/') || address.startsWith('https://'),
+		'A picture is kept in storage; the row keeps its address only.'
+	)
+);
 const NAME = v.pipe(
 	v.string(),
 	v.check((name) => name.trim().length > 0, 'A name is needed.'),
@@ -349,13 +356,18 @@ export type RowChangeType = {
 export type BatchType = { changes: RowChangeType[] };
 
 /**
- * What the save command answers: applied, or refused with a reason the app shows. An applied batch also gives back
+ * What the save command answers: applied, or refused with a reason the app shows and the change it refused. An applied batch also gives back
  * the columns only the server sets (`reads`) of the rows it put, such as a new project's J count, so the screens show
  * them without loading the lists again.
  */
 export type SaveResultType =
 	| { isSaved: true; reads?: RowType[] }
-	| { isSaved: false; reason: string };
+	| {
+			isSaved: false;
+			reason: string;
+			/** The change ids the server refused; absent when it cannot say (then the whole batch is refused). */
+			refused?: string[];
+	  };
 
 /** The batch as it arrives at the save command. Each change's columns are checked after, against its table. */
 export const BATCH = v.object({
@@ -407,7 +419,7 @@ export function readsOf(table: TableNameType) {
 }
 
 /** Whether a column of a table that saves keeps a file's address (it is declared with `PICTURE`). */
-export function holdsFile(table: string, column: string) {
+export function holdsFile(table: string, column: string): table is TableNameType {
 	const spec = (TABLES as Record<string, TableSpecType>)[table];
 	return Boolean(spec && Object.hasOwn(spec.columns, column) && spec.columns[column] === PICTURE);
 }

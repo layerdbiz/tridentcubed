@@ -104,7 +104,7 @@ describe('Transport Modes', () => {
 		const mine = await open(team);
 		addTransport(mine.look, 'MV Ocean Star');
 		mine.look.patch('transport', 'MV Ocean Star', {
-			photo: 'data:image/webp;base64,AAAA',
+			photo: '/files/6a1f3c2e-0b7d-4e5f-9a8b-1c2d3e4f5a6b',
 			details: { 'IMO number': '9321483', Flag: 'Panama' }
 		});
 
@@ -118,7 +118,7 @@ describe('Transport Modes', () => {
 			type: 'Sea',
 			mode: 'Vessel',
 			source: 'manual',
-			photo: 'data:image/webp;base64,AAAA',
+			photo: '/files/6a1f3c2e-0b7d-4e5f-9a8b-1c2d3e4f5a6b',
 			details: { 'IMO number': '9321483', Flag: 'Panama' }
 		});
 		expect(listRows(theirs.look)).toEqual(listRows(mine.look));
@@ -176,7 +176,7 @@ describe('Transport Modes', () => {
 
 		const { result } = await save(other, team);
 
-		expect(result).toEqual({ isSaved: false, reason: 'mv ocean star is already there.' });
+		expect(result).toMatchObject({ isSaved: false, reason: 'mv ocean star is already there.' });
 	});
 });
 
@@ -192,7 +192,7 @@ describe('Facilities', () => {
 		addFacility(mine.look, 'Port of Houston');
 		mine.look.patch('facilities', 'Port of Houston', {
 			address: '111 East Loop N, Houston, TX 77029',
-			photo: 'data:image/webp;base64,BBBB',
+			photo: '/files/7b2e4d3f-1c8e-4f6a-8b9c-2d3e4f5a6b7c',
 			contact: 'Dana Wharf',
 			phone: '+1 713 555 0100',
 			email: 'dana@porthouston.example'
@@ -214,7 +214,7 @@ describe('Facilities', () => {
 			kind: 'Depot',
 			city: 'Houston, TX',
 			address: '111 East Loop N, Houston, TX 77029',
-			photo: 'data:image/webp;base64,BBBB',
+			photo: '/files/7b2e4d3f-1c8e-4f6a-8b9c-2d3e4f5a6b7c',
 			contact: 'Dana Wharf',
 			phone: '+1 713 555 0100',
 			email: 'dana@porthouston.example'
@@ -345,7 +345,7 @@ describe('the organization', () => {
 
 				const { result } = await save(device, actor);
 
-				expect(result).toEqual({
+				expect(result).toMatchObject({
 					isSaved: false,
 					reason: 'Only an Admin can change the organization.'
 				});

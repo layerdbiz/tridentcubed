@@ -3,6 +3,7 @@
 // server checks that column holds files and that the User may change that row, then hands back the app's own
 // address of the file (`/files/<id>`), which is all a row ever keeps, and where to send the bytes.
 import * as v from 'valibot';
+import type { TableNameType } from '#lib/rows/rows.schema.js';
 
 /** The app's address of a file: what rows keep and screens show. It checks the session, then hands a signed link. */
 export const FILE_PREFIX = '/files/';
@@ -24,6 +25,18 @@ export const FILE_TYPES: Record<string, string> = {
 
 /** The kinds of file that are not pictures: kept as they came, and only where a column takes them. */
 export const DOCUMENT_TYPES = Object.keys(FILE_TYPES).filter((type) => !type.startsWith('image/'));
+
+/**
+ * The one private Storage bucket, as it must be made in Supabase (#194): the source of truth for its name, the kinds
+ * of file it takes and its size limit. The store (`#lib/server/store.ts`) and the upload check read it, so the bucket
+ * refuses nothing the app lets through, and takes nothing the app would refuse.
+ */
+export const STORAGE_BUCKET = {
+	name: 'files',
+	isPublic: false,
+	fileSizeLimit: MAX_FILE_BYTES,
+	allowedMimeTypes: Object.keys(FILE_TYPES)
+} as const;
 
 /** The columns that take a document as well as a picture: an item attachment (#188). */
 const DOCUMENT_COLUMNS = ['item_attachment/file'];
@@ -57,7 +70,12 @@ export type TakenType = {
  * What a file is for: the table, the column and (for a row already made) the row. A row inside a project not saved
  * yet (a photo, #189) names its project, so a Sent project refuses the upload before the bytes are sent.
  */
-export type FileTargetType = { table: string; column: string; id?: string; projectId?: string };
+export type FileTargetType = {
+	table: TableNameType;
+	column: string;
+	id?: string;
+	projectId?: string;
+};
 
 const UUID = v.pipe(v.string(), v.uuid());
 
@@ -98,4 +116,13 @@ export function toFileAddress(id: string) {
 /** Whether a picture's value is a file in storage (not a starting file, a data URL or nothing). */
 export function isFileAddress(value: string) {
 	return value.startsWith(FILE_PREFIX);
+}
+
+/**
+ * How a report's picture loads (#190, review fixes): a file in storage is fetched with CORS, so the preview may draw
+ * it on a canvas to shrink it before the PDF export even when its signed link is on Supabase Storage's own address
+ * (which allows any origin). Anything else loads as usual.
+ */
+export function toCrossOrigin(address: string) {
+	return isFileAddress(address) ? ('anonymous' as const) : undefined;
 }

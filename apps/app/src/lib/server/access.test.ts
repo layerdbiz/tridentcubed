@@ -257,3 +257,66 @@ describe('the tie to a Team record', () => {
 		expect(await recordsOf(db, user.id)).toEqual([]);
 	});
 });
+
+// Access grants are typed into the database by hand (#194), so the database refuses one the sign-in rule would
+// silently read as nothing: an email with capitals or spaces, a role that is not one, a domain with capitals. (The
+// Team record's email a grant names is matched whatever its capitals, so it may have them.)
+describe('what the database refuses of a grant typed by hand', () => {
+	async function refusal(work: () => Promise<unknown>) {
+		try {
+			await work();
+		} catch (error) {
+			return String((error as { cause?: unknown }).cause ?? error);
+		}
+		return 'saved';
+	}
+
+	it('refuses an email with capitals or spaces and an unknown role, and takes a team email in any capitals', async () => {
+		const { db } = await createTestSignIn();
+		const insert = (values: Partial<typeof schema.accessGrant.$inferInsert>) =>
+			refusal(() =>
+				db.insert(schema.accessGrant).values({
+					email: 'ok@personal.example',
+					organizationId: TRIDENT,
+					role: 'admin',
+					...values
+				})
+			);
+
+		expect(await insert({ email: 'Owner@Personal.example' })).toMatch(/check constraint/);
+		expect(await insert({ email: ' owner@personal.example' })).toMatch(/check constraint/);
+		expect(await insert({ role: 'Admin' as 'admin' })).toMatch(/check constraint/);
+		expect(await insert({ role: 'owner' as 'admin' })).toMatch(/check constraint/);
+		expect(await insert({ teamEmail: 'J.Doe@tridentcubed.com' })).toBe('saved');
+	});
+
+	it('refuses a membership or Team record with an unknown role, and an email domain with capitals or @', async () => {
+		const { db, signIn } = await createTestSignIn();
+		const { user } = await signIn('visitor@elsewhere.example');
+
+		expect(
+			await refusal(() =>
+				db
+					.insert(schema.member)
+					.values({ organizationId: TRIDENT, userId: user.id, role: 'boss' as 'admin' })
+			)
+		).toMatch(/check constraint/);
+		expect(
+			await refusal(() =>
+				db
+					.update(schema.team)
+					.set({ role: 'boss' as 'admin' })
+					.where(eq(schema.team.organizationId, TRIDENT))
+			)
+		).toMatch(/check constraint/);
+		for (const emailDomain of ['TridentCubed.com', '@tridentcubed.com'])
+			expect(
+				await refusal(() =>
+					db
+						.update(schema.organizationDetails)
+						.set({ emailDomain })
+						.where(eq(schema.organizationDetails.organizationId, TRIDENT))
+				)
+			).toMatch(/check constraint/);
+	});
+});

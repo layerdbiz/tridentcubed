@@ -4,6 +4,7 @@
 // it shows on this device and keeps its place, but nothing of it is sent (photos.ts holds its upload).
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import type { GroupType, PanelType, PhotoType } from './look.data';
+import { byPosition, text } from './mapper.utils';
 
 /** Whether a photo's file is in storage yet: a photo on its way shows its own preview (a `blob:` address). */
 export function isStored(photo: PhotoType) {
@@ -42,14 +43,6 @@ export function toPhotoRows(projectId: string, panel: PanelType): RowType[] {
 	return rows;
 }
 
-function byPosition(a: SavedRowType, b: SavedRowType) {
-	return Number(a.values.position) - Number(b.values.position);
-}
-
-function text(row: SavedRowType, column: string) {
-	return String(row.values[column] ?? '');
-}
-
 /** A photo panel's groups and photos, as a project's rows hold them, into the panel. */
 export function takePhotos(panel: PanelType, rows: SavedRowType[]) {
 	const photos = rows.filter((row) => row.table === 'photo').sort(byPosition);
@@ -58,15 +51,15 @@ export function takePhotos(panel: PanelType, rows: SavedRowType[]) {
 		.sort(byPosition)
 		.map((group): GroupType => ({
 			id: group.id,
-			title: text(group, 'title'),
-			description: text(group, 'description'),
+			title: text(group.values, 'title'),
+			description: text(group.values, 'description'),
 			layout: Number(group.values.layout ?? 4),
 			photos: photos
 				.filter((photo) => photo.values.groupId === group.id)
 				.map((photo) => ({
 					id: photo.id,
-					src: text(photo, 'file'),
-					description: text(photo, 'description')
+					src: text(photo.values, 'file'),
+					description: text(photo.values, 'description')
 				}))
 		}));
 }

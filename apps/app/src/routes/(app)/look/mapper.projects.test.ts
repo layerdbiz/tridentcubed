@@ -311,6 +311,45 @@ describe('status', () => {
 		expect(projectOf((await open(tom)).look, id)).toMatchObject({ status: 'Review' });
 	});
 
+	it('unsends, and moves a frozen project on, from a device whose stored percent is out of date', async () => {
+		const ada = await signInAdmin();
+		const mine = await open(tom);
+		const id = create(mine.look, { Title: 'BBC Kimberly' });
+		await save(mine);
+		mine.look.markSent(projectOf(mine.look, id)!);
+		expect((await save(mine)).result.isSaved).toBe(true);
+		// The percent the server keeps no longer matches what the panels work out (another device saved it).
+		const stale = () =>
+			test.db.update(schema.project).set({ progress: 7 }).where(eq(schema.project.id, id));
+		await stale();
+
+		const device = await open(mia);
+		await openProject(device, id);
+		device.look.unsend(projectOf(device.look, id)!);
+		const unsent = await save(device);
+
+		expect(unsent.changes[0].values).toMatchObject({ status: 'Draft' });
+		expect(unsent.changes[0].values).toHaveProperty('progress');
+		expect(unsent.result.isSaved).toBe(true);
+		expect(projectOf((await open(tom)).look, id)).toMatchObject({ status: 'Draft' });
+
+		device.look.markSent(projectOf(device.look, id)!);
+		expect((await save(device)).result.isSaved).toBe(true);
+		await stale();
+		const admin = await open(ada);
+		await openProject(admin, id);
+		admin.look.setStatus(projectOf(admin.look, id)!, 'Complete');
+		projectOf(admin.look, id)!.progress = 55;
+		const moved = await save(admin);
+
+		expect(moved.changes[0].values).toMatchObject({ status: 'Complete', progress: 55 });
+		expect(moved.result.isSaved).toBe(true);
+		expect(projectOf((await open(tom)).look, id)).toMatchObject({
+			status: 'Complete',
+			progress: 7
+		});
+	});
+
 	it('refuses every change to a Sent, Complete or Archived project but its status, and the screen is frozen', async () => {
 		const ada = await signInAdmin();
 		const mine = await open(tom);
@@ -323,7 +362,7 @@ describe('status', () => {
 			mine.look.setStatus(projectOf(mine.look, id)!, status);
 			expect((await save(mine)).result.isSaved).toBe(true);
 			fill(projectPanel(other.look), { Title: 'Changed' });
-			expect((await save(other)).result).toEqual({
+			expect((await save(other)).result).toMatchObject({
 				isSaved: false,
 				reason: `This project is ${status}, so only its status can change. Change its status to edit it.`
 			});
@@ -355,7 +394,7 @@ describe('status', () => {
 		await save(mine);
 
 		mine.look.projects.find((project) => project.id === id)!.status = 'Archived';
-		expect((await save(mine)).result).toEqual({
+		expect((await save(mine)).result).toMatchObject({
 			isSaved: false,
 			reason: 'Only an Admin can archive a project or bring it back.'
 		});
@@ -394,7 +433,7 @@ describe('deleting', () => {
 
 		const theirs = await open(mia);
 		theirs.look.projects = theirs.look.projects.filter((project) => project.id !== id);
-		expect((await save(theirs)).result).toEqual({
+		expect((await save(theirs)).result).toMatchObject({
 			isSaved: false,
 			reason: 'Only an Admin can delete a project that is not your own Draft.'
 		});
@@ -417,7 +456,7 @@ describe('deleting', () => {
 		await save(mine);
 		fill(projectPanel(other.look), { Title: 'Too late' });
 
-		expect((await save(other)).result).toEqual({
+		expect((await save(other)).result).toMatchObject({
 			isSaved: false,
 			reason: 'Someone moved this project to the Trash, so it cannot change.'
 		});

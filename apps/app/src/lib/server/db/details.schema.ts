@@ -3,7 +3,8 @@
 // line and the sign-off) and the email domain whose verified Users join it as staff; the disclaimer's points are
 // ordered rows of it. Its name is the organization's own (organization.schema.ts). Only an Admin changes any of it
 // (the one permission check); the email domain is set in the database only, never from the app.
-import { index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { check, index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { organizationPolicy } from './policy';
 import { rowColumns } from './rows';
 
@@ -33,6 +34,11 @@ export const organizationDetails = pgTable(
 	(table) => [
 		uniqueIndex('organization_details_organization_idx').on(table.organizationId),
 		uniqueIndex('organization_details_email_domain_idx').on(table.emailDomain),
+		// Typed in the database only: a domain with capitals or an `@` would silently let nobody in.
+		check(
+			'organization_details_email_domain_check',
+			sql`email_domain = lower(btrim(email_domain)) and position('@' in email_domain) = 0`
+		),
 		organizationPolicy('organization_details')
 	]
 ).enableRLS();

@@ -44,6 +44,29 @@ export function toChanges(
 	return [...puts, ...deletes].map((change) => ({ ...change, changeId: createId() }));
 }
 
+// Whether `held`, a change the server refused, still holds back `change`: the same row and operation, and for a put,
+// every column the refused change set still set to what it was refused with.
+function isHolding(held: RowChangeType, change: RowChangeType) {
+	if (keyOf(held) !== keyOf(change) || held.operation !== change.operation) return false;
+	return Object.entries(held.values ?? {}).every(
+		([column, value]) =>
+			change.values && column in change.values && isSame(change.values[column], value)
+	);
+}
+
+/**
+ * Splits the changes the screens hold into those to send and those still held back by a refusal (story 36): a change
+ * the server refused stays held while the User leaves it as it was refused; changed again or undone, it is let go.
+ * `held` comes back with only the refusals that still hold something back.
+ */
+export function toSendable(changes: RowChangeType[], held: RowChangeType[]) {
+	const stillHeld = held.filter((refused) => changes.some((change) => isHolding(refused, change)));
+	return {
+		sendable: changes.filter((change) => !stillHeld.some((refused) => isHolding(refused, change))),
+		held: stillHeld
+	};
+}
+
 /**
  * The confirmed rows once part of what the server holds has been taken in later (a project's rows as it opens,
  * #186): the rows `isPart` names are now the server's (`taken`), and every other row stays as it was confirmed, so

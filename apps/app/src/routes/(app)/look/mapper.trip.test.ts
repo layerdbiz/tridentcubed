@@ -3,7 +3,7 @@
 // acting User, the in-process Postgres with the real schema and policies, the lists query and a project's own query,
 // and the mapper again. What is checked is what another device or member would see: the legs and their facilities
 // in order, the items and their attachments, the days and their entries, the route and percent, and the server's
-// freeze of a Sent, Complete or Archived project. The helpers are projects.test.ts's.
+// freeze of a Sent, Complete or Archived project. The helpers are mapper.projects.test.ts's.
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
@@ -365,7 +365,7 @@ describe('the freeze', () => {
 				edit(other.look);
 				const { result, changes } = await save(other);
 				expect(changes.length, what).toBeGreaterThan(0);
-				expect(result, what).toEqual({
+				expect(result, what).toMatchObject({
 					isSaved: false,
 					reason: `This project is ${status}, so only its status can change. Change its status to edit it.`
 				});

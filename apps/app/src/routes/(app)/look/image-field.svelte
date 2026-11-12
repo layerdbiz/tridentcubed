@@ -6,11 +6,9 @@
 	// #187: given `target` (the table, column and row the picture is for), a picked file goes to private storage
 	// through the upload helper: it shows here at once with an uploading mark, the row gets the app's file address
 	// (`onpick`) once the file is there, and a failed upload says so on the picture with Retry. Wiring another
-	// picture is giving its field a `target`. A field without one still keeps the picture inline (image.ts), for the
-	// pictures whose tables do not save yet.
+	// picture is giving its field a `target`; every picture has one, so none is kept inline.
 	import type { FileTargetType } from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
-	import { shrink } from './image';
 
 	let {
 		label,
@@ -25,7 +23,7 @@
 		value: string;
 		onpick: (url: string) => void;
 		// What the picture is for, so it uploads to storage: `{ table: 'customer', column: 'logo', id }`.
-		target?: FileTargetType;
+		target: FileTargetType;
 		shape?: 'logo' | 'face' | 'wide';
 		hint?: string;
 		// False while what shows is the picture it falls back to, which cannot be taken away.
@@ -33,9 +31,9 @@
 	} = $props();
 
 	const SHAPES = {
-		logo: { max: 320, frame: 'size-16 rounded-2xl bg-white', fit: 'object-contain p-1' },
-		face: { max: 320, frame: 'size-16 rounded-full bg-slate-100', fit: 'object-cover' },
-		wide: { max: 1280, frame: 'h-16 w-28 rounded-2xl bg-slate-100', fit: 'object-cover' }
+		logo: { frame: 'size-16 rounded-2xl bg-white', fit: 'object-contain p-1' },
+		face: { frame: 'size-16 rounded-full bg-slate-100', fit: 'object-cover' },
+		wide: { frame: 'h-16 w-28 rounded-2xl bg-slate-100', fit: 'object-cover' }
 	};
 	const look = $derived(SHAPES[shape]);
 
@@ -51,12 +49,11 @@
 		address = '';
 	}
 
-	async function pick(event: Event) {
+	function pick(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		input.value = '';
 		if (!file) return;
-		if (!target) return onpick(await shrink(file, look.max, shape === 'logo' ? 'logo' : 'photo'));
 		forget();
 		upload = startUpload(file, {
 			for: target,

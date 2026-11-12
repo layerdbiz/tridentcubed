@@ -13,7 +13,7 @@ import {
 	type UploadAnswerType,
 	type UploadRequestType
 } from '#lib/files/files.schema.js';
-import { holdsFile, type TableNameType } from '#lib/rows/rows.schema.js';
+import { holdsFile } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType } from './db/claims';
 import { file as files } from './db/schema';
 import { checkPut } from './rows';
@@ -91,7 +91,7 @@ export async function createUpload(
 	const path = `${actor.organizationId}/${id}.${ending}`;
 	const organizationId = actor.organizationId;
 	const verdict = await claims.run(actor, async (tx) => {
-		const allowed = await checkPut(tx, actor, table as TableNameType, rowId, {
+		const allowed = await checkPut(tx, actor, table, rowId, {
 			[column]: address,
 			...(projectId ? { projectId } : {})
 		});

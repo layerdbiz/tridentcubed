@@ -5,7 +5,7 @@
 // Security keeps the table to the acting organization.
 import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { user } from './auth.schema';
-import { ROLES } from './organization.schema';
+import { ROLES, roleCheck } from './organization.schema';
 import { organizationPolicy } from './policy';
 import { lowerName, NOT_IN_TRASH, rowColumns } from './rows';
 
@@ -38,6 +38,7 @@ export const team = pgTable(
 	(table) => [
 		uniqueIndex('team_name_idx').on(table.organizationId, lowerName()).where(NOT_IN_TRASH),
 		uniqueIndex('team_user_idx').on(table.organizationId, table.userId),
+		roleCheck('team'),
 		organizationPolicy('team')
 	]
 ).enableRLS();

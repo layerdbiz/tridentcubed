@@ -73,7 +73,7 @@ describe('starting a sign-in with Google or Microsoft', () => {
 			google: { clientId: 'g-id', clientSecret: 'g-secret' }
 		});
 
-		expect(await sendCode(auth, 'ana@example.com')).toEqual({ ok: true });
+		expect(await sendCode(auth, 'ana@example.com')).toEqual({ isSent: true });
 		const { url } = await auth.api.signInSocial({
 			body: { provider: 'google', callbackURL: '/' },
 			headers: new Headers({ host: '192.168.1.20:5174' })
@@ -92,6 +92,18 @@ describe('starting a sign-in with Google or Microsoft', () => {
 		expect(wizard).toContain('$APP_URL/api/auth/callback/google');
 		expect(wizard).toContain('$APP_URL/api/auth/callback/microsoft');
 		expect(wizard).toContain('xms_edov');
+	});
+
+	it('has the setup wizard put the site address in Vercel as BETTER_AUTH_URL, never in the local .env', () => {
+		const wizard = readFileSync(
+			new URL('../../../../../scripts/setup-dev-app.sh', import.meta.url),
+			'utf8'
+		);
+
+		expect(wizard).toContain('APP_URL="https://dev.app.tridentcubed.com"');
+		expect(wizard).toContain(`BETTER_AUTH_URL) printf '%s' "$APP_URL"`);
+		expect(wizard).toContain('push_to_vercel "${CORE_KEYS[@]}" "${FIXED_KEYS[@]}"');
+		expect(wizard).not.toContain('write_env BETTER_AUTH_URL');
 	});
 });
 
@@ -112,7 +124,7 @@ const MICROSOFT_WORK_BO = {
 	oid: 'microsoft-bo',
 	tid: CONTOSO_TENANT,
 	iss: `https://login.microsoftonline.com/${CONTOSO_TENANT}/v2.0`,
-	email: 'bo@contoso.com',
+	email: 'bo@contoso.example',
 	name: 'Bo Lee',
 	xms_edov: true
 };
@@ -121,7 +133,7 @@ const MICROSOFT_PERSONAL_CY = {
 	oid: 'microsoft-cy',
 	tid: PERSONAL_TENANT,
 	iss: `https://login.microsoftonline.com/${PERSONAL_TENANT}/v2.0`,
-	email: 'cy@outlook.com',
+	email: 'cy@outlook.example',
 	name: 'Cy Park'
 };
 
@@ -149,7 +161,7 @@ describe('coming back from Google or Microsoft', () => {
 
 		expect(result.error).toBeNull();
 		expect(result.user).toMatchObject({
-			email: 'bo@contoso.com',
+			email: 'bo@contoso.example',
 			name: 'Bo Lee',
 			emailVerified: true
 		});
@@ -161,7 +173,7 @@ describe('coming back from Google or Microsoft', () => {
 		const result = await signInWith('microsoft', MICROSOFT_PERSONAL_CY);
 
 		expect(result.error).toBeNull();
-		expect(result.user).toMatchObject({ email: 'cy@outlook.com', emailVerified: true });
+		expect(result.user).toMatchObject({ email: 'cy@outlook.example', emailVerified: true });
 	});
 });
 
@@ -178,7 +190,7 @@ describe('one user, whichever way they sign in', () => {
 
 	it('keeps a User who signed in with a code the same user when they later use Microsoft', async () => {
 		const { signIn, signInWith } = await createTestSignIn();
-		const byCode = await signIn('bo@contoso.com');
+		const byCode = await signIn('bo@contoso.example');
 
 		const byMicrosoft = await signInWith('microsoft', MICROSOFT_WORK_BO);
 

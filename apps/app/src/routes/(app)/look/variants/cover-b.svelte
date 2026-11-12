@@ -2,6 +2,7 @@
 	// PROTOTYPE (#161) Report Cover, variant B: run 19's cover list. Two columns, read down then across, each line
 	// with its real picture (a logo or faces) or an icon, a small label and the value. Kept beside A so Justin can
 	// compare them (2026-11-11); he prefers A's look for now.
+	import { toCrossOrigin } from '#lib/files/files.schema.js';
 	export type CoverPictureType = { label: string; value: string; images?: string[]; icon?: string };
 
 	let { lines }: { lines: CoverPictureType[] } = $props();
@@ -17,6 +18,7 @@
 					{#each line.images.slice(0, 3) as image, at (at)}
 						<img
 							src={image}
+							crossorigin={toCrossOrigin(image)}
 							alt=""
 							draggable="false"
 							class="size-7 rounded-full bg-white object-cover ring-2 ring-slate-100"

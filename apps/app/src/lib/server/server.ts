@@ -6,6 +6,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { getRequestEvent } from '$app/server';
+import { error } from '@sveltejs/kit';
 import * as env from '$app/env/private';
 import { type AuthType, createAuth } from './auth';
 import { type ClaimsType, createClaims } from './db/claims';
@@ -28,7 +29,7 @@ export type ServerType = {
 const LOCAL_FOLDER = join(tmpdir(), 'trident-files');
 
 const KEY = Symbol.for('trident.memory-database');
-const store = globalThis as typeof globalThis & { [KEY]?: Promise<DatabaseType> };
+const kept = globalThis as typeof globalThis & { [KEY]?: Promise<DatabaseType> };
 
 let server: Promise<ServerType> | undefined;
 
@@ -54,7 +55,7 @@ async function start(): Promise<ServerType> {
 
 	const db = settings.databaseUrl
 		? createDatabase(settings.databaseUrl)
-		: await (store[KEY] ??= createSeededMemoryDatabase());
+		: await (kept[KEY] ??= createSeededMemoryDatabase());
 	const auth = createAuth({
 		db,
 		secret: settings.secret,
@@ -80,4 +81,25 @@ function toStore(settings: SettingsType): FileStoreType | undefined {
 export function getServer() {
 	server ??= start();
 	return server;
+}
+
+// Who a remote function acts for. Remote functions are public endpoints, so each one asks before its work: signed out
+// is 401, and an app with no database yet is 503.
+async function requireUser(isGuestRefused: boolean) {
+	const { locals } = getRequestEvent();
+	if (!locals.user || !locals.actor) error(401, 'Sign in first.');
+	if (isGuestRefused && !locals.actor.organizationId) error(403, 'You are waiting for access.');
+	const found = await getServer();
+	if (!found.claims) error(503, 'The app is not connected yet.');
+	return { ...found, actor: locals.actor, claims: found.claims };
+}
+
+/** The signed-in User of this request, a Guest included, with the server's parts; else the request's refusal. */
+export function requireSignedIn() {
+	return requireUser(false);
+}
+
+/** The staff User of this request (a Guest is 403), with the server's parts; else the request's refusal. */
+export function requireStaff() {
+	return requireUser(true);
 }

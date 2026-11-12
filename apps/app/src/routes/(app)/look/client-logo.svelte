@@ -3,6 +3,7 @@
 	// never cropped or recoloured. A customer with no icon shows the Customers icon on grey (Justin, 2026-11-11:
 	// "just use the icon in place of that"); `fallback` names another icon, a project's folder. `isBare` drops the ring and shadow (the report footer,
 	// Justin's run 8 note 20).
+	import { toCrossOrigin } from '#lib/files/files.schema.js';
 	import { clientOf, PAGE_ICONS } from './look.data';
 
 	let {
@@ -38,6 +39,7 @@
 	{#if client.icon}
 		<img
 			src={client.icon}
+			crossorigin={toCrossOrigin(client.icon)}
 			alt=""
 			draggable="false"
 			class="size-full object-contain"

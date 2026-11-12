@@ -20,6 +20,7 @@ import { FROZEN, type LookState, percentOf } from './look.state.svelte';
 import { takeListRows, toListRows } from './mapper.lists';
 import { takePhotos, toPhotoRows } from './mapper.photos';
 import { stopsByProject, takePanelRows, toPanelRows, toTrip } from './mapper.trip';
+import { byPosition, text, toRecordId, toRecordName, toStamp } from './mapper.utils';
 import { customerOf } from './records.data';
 import type { TeamMemberType } from './team.data';
 
@@ -90,16 +91,6 @@ function toTeamRows(look: LookState): RowType[] {
 				rank: member.rank
 			}
 		}));
-}
-
-// A server time as the stamp the screens keep: "2026-11-10T16:20", in this device's time zone.
-function toStamp(iso: string) {
-	const time = new Date(iso);
-	return new Date(time.getTime() - time.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-}
-
-function text(values: SavedRowType['values'], column: string) {
-	return String(values[column] ?? '');
 }
 
 function toContact(row: SavedRowType): ContactType {
@@ -201,24 +192,22 @@ export function takeRows(look: LookState, rows: SavedRowType[]) {
 
 /** A customer's id from the name the screens use, in the Trash or not (#186: a project's customer). */
 export function toCustomerId(look: LookState, name: string) {
-	const live = look.added.find((customer) => customer.name === name);
-	return (live ?? look.trashed.customers.find((customer) => customer.name === name))?.id;
+	return toRecordId(look.added, look.trashed.customers, name);
 }
 
 /** The name the screens use for a customer's id, in the Trash or not. */
 export function toCustomerName(look: LookState, id: string) {
-	return [...look.added, ...look.trashed.customers].find((customer) => customer.id === id)?.name;
+	return toRecordName(look.added, look.trashed.customers, id);
 }
 
 /** A Team record's id from the name the screens use, in the Trash or not (#186: a project's Team Lead and team). */
 export function toTeamId(look: LookState, name: string) {
-	const live = look.members.find((member) => member.name === name);
-	return (live ?? look.trashed.team.find((member) => member.name === name))?.id;
+	return toRecordId(look.members, look.trashed.team, name);
 }
 
 /** The name the screens use for a Team record's id, in the Trash or not. */
 export function toTeamName(look: LookState, id: string) {
-	return [...look.members, ...look.trashed.team].find((member) => member.id === id)?.name;
+	return toRecordName(look.members, look.trashed.team, id);
 }
 
 // Projects (#186). A project's row holds what its Project panel holds, with its customer, contact and Team Lead by
@@ -347,13 +336,6 @@ function toPersonnelRows(projectId: string, personnel: PersonnelType[]): RowType
 			});
 	}
 	return rows;
-}
-
-function byPosition(
-	a: { values: Record<string, unknown> },
-	b: { values: Record<string, unknown> }
-) {
-	return Number(a.values.position) - Number(b.values.position);
 }
 
 function toRow(row: RowType): RowType {

@@ -237,16 +237,16 @@ describe('the freeze', () => {
 			};
 
 			groups()[0].title = 'Changed';
-			expect((await save(other)).result).toEqual(refusal);
+			expect((await save(other)).result).toMatchObject(refusal);
 			groups()[0].title = 'Hatch 2';
 			groups()[0].photos.push(stored());
-			expect((await save(other)).result).toEqual(refusal);
+			expect((await save(other)).result).toMatchObject(refusal);
 			groups()[0].photos.pop();
 			const [photo] = groups()[0].photos.splice(0, 1);
-			expect((await save(other)).result).toEqual(refusal);
+			expect((await save(other)).result).toMatchObject(refusal);
 			groups()[0].photos.push(photo);
 			groups().push(groupOf({ title: 'New' }));
-			expect((await save(other)).result).toEqual(refusal);
+			expect((await save(other)).result).toMatchObject(refusal);
 			groups().pop();
 		}
 

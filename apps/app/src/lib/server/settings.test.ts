@@ -44,6 +44,16 @@ describe('reading the deployment settings', () => {
 		expect(settings.baseURL).toBe('https://dev.app.example.com');
 	});
 
+	it('takes the site address from BETTER_AUTH_URL over Vercel’s production domain (the wizard sets it)', () => {
+		const settings = readSettings({
+			...DEPLOYED,
+			VERCEL_PROJECT_PRODUCTION_URL: 'tridentcubed-dev-app.vercel.app',
+			BETTER_AUTH_URL: 'https://dev.app.example.com'
+		});
+
+		expect(settings.baseURL).toBe('https://dev.app.example.com');
+	});
+
 	it('hides the email way in production when no sender is set, and says no way is set up', () => {
 		const settings = readSettings({
 			...DEPLOYED,

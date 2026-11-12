@@ -25,6 +25,9 @@ const DAY = 60 * 60 * 24;
 
 export const CODE_MINUTES = 10;
 
+/** How many codes one address may ask for, and in how many seconds (Better Auth's own default for the plugin). */
+export const CODE_SENDS = { max: 3, window: 60 };
+
 const AC = createAccessControl({ organization: [], member: [], invitation: [] });
 const ROLES = { admin: AC.newRole({}), manager: AC.newRole({}), team: AC.newRole({}) };
 
@@ -144,6 +147,10 @@ export function createAuth({
 				}
 			}
 		},
+		// On everywhere (Better Auth leaves it off in development), kept in the database so every server of a
+		// serverless deployment counts the same requests. The login page sends codes through Better Auth's own address
+		// (`signin.ts`), so its sends count with any made to that address directly.
+		rateLimit: { enabled: true, storage: 'database' },
 		session: {
 			expiresIn: 30 * DAY,
 			updateAge: DAY,
@@ -155,6 +162,7 @@ export function createAuth({
 				expiresIn: CODE_MINUTES * 60,
 				allowedAttempts: 5,
 				storeOTP: 'hashed',
+				rateLimit: CODE_SENDS,
 				async sendVerificationOTP({ email, otp }) {
 					await sender.send(toCodeEmail(email, otp, CODE_MINUTES));
 				}

@@ -116,7 +116,7 @@ describe('Team records', () => {
 			name: 'duncan cooke'
 		});
 
-		expect(await save(device, tom)).toEqual({
+		expect(await save(device, tom)).toMatchObject({
 			isSaved: false,
 			reason: 'duncan cooke is already there.'
 		});
@@ -151,7 +151,7 @@ describe('Team roles', () => {
 		const device = await open(tom);
 		device.look.patch('team', 'Oziel Lara', { role: 'admin', title: 'Boss' });
 
-		expect(await save(device, tom)).toEqual({
+		expect(await save(device, tom)).toMatchObject({
 			isSaved: false,
 			reason: 'Only an Admin can change a Team role.'
 		});
@@ -197,7 +197,7 @@ describe('Team roles', () => {
 		const ada = (await test.signIn('ada@tridentcubed.com')).actor;
 		const last = await open(ada);
 		last.look.patch('team', 'Ada', { role: 'team' });
-		expect(await save(last, ada)).toEqual({
+		expect(await save(last, ada)).toMatchObject({
 			isSaved: false,
 			reason: 'The organization must keep at least one Admin.'
 		});
@@ -210,7 +210,7 @@ describe('Team roles', () => {
 		const device = await open(ada);
 		expect(device.look.members.filter((member) => member.name === 'Justin ONeill')).toHaveLength(1);
 		device.look.patch('team', 'Justin ONeill', { role: 'manager' });
-		expect(await save(device, ada)).toEqual({
+		expect(await save(device, ada)).toMatchObject({
 			isSaved: false,
 			reason: 'The Super admin is always an Admin.'
 		});

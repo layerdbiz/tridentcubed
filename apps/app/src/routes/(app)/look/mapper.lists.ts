@@ -13,16 +13,7 @@ import {
 } from './look.data';
 import type { LookState } from './look.state.svelte';
 import type { PlaceType } from './map.data';
-
-// A server time as the stamp the screens keep: "2026-11-10T16:20", in this device's time zone.
-function toStamp(iso: string) {
-	const time = new Date(iso);
-	return new Date(time.getTime() - time.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-}
-
-function text(values: SavedRowType['values'], column: string) {
-	return String(values[column] ?? '');
-}
+import { text, toRecordId, toRecordName, toStamp } from './mapper.utils';
 
 /**
  * A Transport Mode's particulars as saved: only the ones its mode has and that are filled in, in its mode's order.
@@ -211,24 +202,20 @@ export function takeListRows(look: LookState, rows: SavedRowType[]) {
 
 /** A Transport Mode's id from the name the screens use, in the Trash or not (#188: a stop's transport). */
 export function toTransportId(look: LookState, name: string) {
-	const live = look.transports.find((transport) => transport.name === name);
-	return (live ?? look.trashed.transports.find((transport) => transport.name === name))?.id;
+	return toRecordId(look.transports, look.trashed.transports, name);
 }
 
 /** The name the screens use for a Transport Mode's id, in the Trash or not. */
 export function toTransportName(look: LookState, id: string) {
-	return [...look.transports, ...look.trashed.transports].find((transport) => transport.id === id)
-		?.name;
+	return toRecordName(look.transports, look.trashed.transports, id);
 }
 
 /** A Facility's id from the name the screens use, in the Trash or not (#188: a stop's facility). */
 export function toFacilityId(look: LookState, name: string) {
-	const live = look.facilities.find((facility) => facility.name === name);
-	return (live ?? look.trashed.facilities.find((facility) => facility.name === name))?.id;
+	return toRecordId(look.facilities, look.trashed.facilities, name);
 }
 
 /** The name the screens use for a Facility's id, in the Trash or not. */
 export function toFacilityName(look: LookState, id: string) {
-	return [...look.facilities, ...look.trashed.facilities].find((facility) => facility.id === id)
-		?.name;
+	return toRecordName(look.facilities, look.trashed.facilities, id);
 }

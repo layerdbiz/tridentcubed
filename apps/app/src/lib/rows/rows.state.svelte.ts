@@ -2,8 +2,11 @@
 // the last change, it asks the mapper for the screens' rows, compares them with the rows the server last confirmed,
 // and sends only the difference through the save command as one batch. A confirmed batch moves the confirmed rows
 // forward. A batch that could not reach the server stays as it is, change ids and all, and is sent again with growing
-// waits, or at once on Retry, so a lost reply never counts twice. A batch the server refused is dropped; Retry then
-// takes the server's rows back in place of the refused change. Its state is what the header's cloud shows.
+// waits, or at once on Retry, so a lost reply never counts twice. When the server refuses a batch, only the change it
+// refused is held back (the state is Not saved, with the reason) and the rest goes again at once; later edits keep
+// saving. A held change goes again once the User changes it, is let go when they undo it, and is sent again on Retry
+// with everything else still unsaved; refused on Retry too, the screens take the server's rows back. Its state is
+// what the header's cloud shows.
 //
 // It knows nothing of the screens: `read` (the mapper's rows), `send` (the save command), `fetch` (the lists query)
 // and `take` (the mapper writing rows into the screens) are handed to it.
@@ -14,7 +17,7 @@ import type {
 	SavedRowType,
 	SaveResultType
 } from './rows.schema';
-import { toApplied, toChanges, toMerged } from './rows.utils';
+import { toApplied, toChanges, toMerged, toSendable } from './rows.utils';
 
 export type SaveStateType = 'saved' | 'saving' | 'failed';
 
@@ -58,7 +61,12 @@ export class SyncLoop implements SaveStatusType {
 	// The batch on its way, or the one that could not reach the server and waits to go again.
 	#batch: RowChangeType[] | undefined;
 	#isSending = false;
-	#isRefused = false;
+	// The changes the server refused, held back until the User changes or undoes them, or presses Retry.
+	#held: RowChangeType[] = [];
+	#heldReason = '';
+	// Retry sent the held changes again; refused again, the screens take the server's rows back.
+	#isRetrying = false;
+	#isGivingUp = false;
 	#attempt = 0;
 	#timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -90,44 +98,81 @@ export class SyncLoop implements SaveStatusType {
 
 	/** Whether something is not on the server yet: closing the tab now would lose it. */
 	get isPending() {
-		return Boolean(this.#batch || this.#timer || this.#isSending || this.#isRefused);
+		return Boolean(this.#batch || this.#timer || this.#isSending || this.#held.length > 0);
 	}
 
 	/** The screens changed: a batch goes about a second after the last change. */
 	notice() {
 		if (this.#batch || this.#isSending) return;
-		if (toChanges(this.#confirmed, this.#options.read(), () => '').length === 0) {
-			if (!this.#isRefused) this.#settle();
+		if (this.#toSend(() => '').length === 0) {
+			if (this.#held.length === 0) this.#settle();
 			return;
 		}
-		this.state = 'saving';
+		if (this.#held.length === 0) this.state = 'saving';
 		this.#schedule(this.#options.delay ?? 1000);
 	}
 
-	/** Retry: send the waiting batch now, or after a refusal take the server's rows back. */
+	/** Retry: send now what waits, the changes the server refused included. */
 	retry() {
 		clearTimeout(this.#timer);
 		this.#timer = undefined;
-		if (this.#isRefused) return void this.refresh(true);
+		if (this.#held.length > 0) {
+			this.#held = [];
+			this.#isRetrying = true;
+		}
 		void this.#flush();
 	}
 
 	/**
 	 * Takes in what others saved (on returning to the tab, on opening a record), only while nothing here waits to be
-	 * sent, so it never overwrites a change of this device. `isForced` drops a refused change for the server's rows.
+	 * sent, so it never overwrites a change of this device. `isForced` drops the refused changes for the server's rows.
 	 */
 	async refresh(isForced = false) {
-		if (this.isPending && !(isForced && this.#isRefused)) return;
+		const isOnlyHeld = !this.#batch && !this.#timer && !this.#isSending;
+		if (this.isPending && !(isForced && isOnlyHeld)) return;
 		const rows = await this.#options.fetch();
 		if (this.#batch || this.#timer || this.#isSending) return;
-		this.#isRefused = false;
+		this.#held = [];
+		this.#isRetrying = false;
+		this.#isGivingUp = false;
 		this.load(rows);
 		this.#settle();
+	}
+
+	/**
+	 * A light heartbeat (story 26): every `every` milliseconds while the tab is shown, take in what others saved. Each
+	 * load also stamps this User as seen (the server does it on any request), so everyone's online dots stay true. It
+	 * skips a beat while anything here waits to be sent. Gives back the function that stops it.
+	 */
+	keepFresh({ every = 60_000, isVisible }: { every?: number; isVisible: () => boolean }) {
+		const timer = setInterval(() => {
+			if (isVisible()) void this.refresh().catch(() => undefined);
+		}, every);
+		return () => clearInterval(timer);
+	}
+
+	// The changes from the confirmed rows to the screens', less those a refusal holds back.
+	#toSend(createId?: () => string) {
+		const { sendable, held } = toSendable(
+			toChanges(this.#confirmed, this.#options.read(), createId),
+			this.#held
+		);
+		this.#held = held;
+		return sendable;
 	}
 
 	#settle() {
 		this.state = 'saved';
 		this.reason = '';
+	}
+
+	// Nothing more to send: Saved, or Not saved while a refused change is held back.
+	#rest() {
+		this.#isRetrying = false;
+		if (this.#isGivingUp) return void this.refresh(true);
+		if (this.#held.length === 0) return this.#settle();
+		this.state = 'failed';
+		this.reason = this.#heldReason;
 	}
 
 	#schedule(wait: number) {
@@ -140,15 +185,14 @@ export class SyncLoop implements SaveStatusType {
 
 	async #flush() {
 		if (this.#isSending) return;
-		this.#batch ??= toChanges(this.#confirmed, this.#options.read());
+		this.#batch ??= this.#toSend();
 		if (this.#batch.length === 0) {
 			this.#batch = undefined;
-			if (!this.#isRefused) this.#settle();
-			return;
+			return this.#rest();
 		}
 		const changes = this.#batch;
 		this.#isSending = true;
-		this.state = 'saving';
+		if (this.#held.length === 0) this.state = 'saving';
 		let result: SaveResultType;
 		try {
 			result = await this.#options.send({ changes });
@@ -164,16 +208,22 @@ export class SyncLoop implements SaveStatusType {
 		this.#attempt = 0;
 		this.#batch = undefined;
 		if (!result.isSaved) {
-			this.#isRefused = true;
+			// Only the refused change is held back (all of them when the server cannot say); the rest goes again.
+			const ids = new Set(result.refused ?? []);
+			const refused = ids.size > 0 ? changes.filter((change) => ids.has(change.changeId)) : changes;
+			this.#held.push(...refused);
+			this.#heldReason = result.reason;
+			if (this.#isRetrying) this.#isGivingUp = true;
 			this.state = 'failed';
 			this.reason = result.reason;
+			if (refused.length < changes.length) this.#schedule(0);
+			else this.#rest();
 			return;
 		}
-		this.#isRefused = false;
 		this.#confirmed = toApplied(this.#confirmed, changes);
 		if (result.reads?.length) this.#options.takeReads?.(result.reads);
 		// Whatever changed while the batch was on its way goes next.
-		if (toChanges(this.#confirmed, this.#options.read(), () => '').length > 0) this.#schedule(0);
-		else this.#settle();
+		if (this.#toSend(() => '').length > 0) this.#schedule(0);
+		else this.#rest();
 	}
 }

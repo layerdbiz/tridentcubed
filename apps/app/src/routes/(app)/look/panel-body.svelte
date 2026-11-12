@@ -31,7 +31,6 @@
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
-	import { shrink } from './image';
 	import ImageField from './image-field.svelte';
 	import {
 		createId,
@@ -175,15 +174,6 @@
 		return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 	}
 
-	async function pick(event: Event, onfile: (url: string, name: string) => void) {
-		const input = event.currentTarget as HTMLInputElement;
-		const files = [...(input.files ?? [])];
-		input.value = '';
-		for (const file of files)
-			onfile(file.type.startsWith('image/') ? await shrink(file) : '', file.name);
-		save();
-	}
-
 	// The item list attached as photos or the spreadsheet itself (#188): each file goes to private storage through the
 	// upload helper, showing in place while it goes, and joins the panel's attachments once it is there.
 	type SendingType = { id: string; name: string; kind: AttachmentType['kind']; upload: Upload };
@@ -255,10 +245,6 @@
 		asking.onadd(draft.trim());
 		asking = undefined;
 		save();
-	}
-
-	function setImage(field: FieldType, event: Event) {
-		pick(event, (url, name) => (field.value = field.type === 'file' ? name : url));
 	}
 
 	function addDay() {
@@ -392,9 +378,7 @@
 			onadd={field.isAddable ? () => askField(field) : undefined}
 		/>
 	{:else}
-		<label
-			class="block {field.type === 'textarea' || field.type === 'image' ? 'sm:col-span-2' : ''}"
-		>
+		<label class="block {field.type === 'textarea' ? 'sm:col-span-2' : ''}">
 			<span class={labelClass}>
 				{field.label}
 				{#if !field.value && !field.isReadonly}<span
@@ -408,54 +392,6 @@
 					bind:value={field.value}
 					disabled={field.isReadonly}
 					placeholder="Type here"></textarea>
-			{:else if field.type === 'image'}
-				<span class="flex items-center gap-3">
-					<span
-						class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-slate-900/[0.04]"
-					>
-						{#if field.value}
-							<img
-								src={field.value}
-								alt=""
-								class="size-full object-cover"
-							/>
-						{:else}
-							<span class="icon-[mdi--image-plus-outline] size-7 text-slate-300"></span>
-						{/if}
-					</span>
-					{#if !field.isReadonly}
-						<span
-							class="{ghostButton} cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200"
-						>
-							<span class="icon-[mdi--upload] size-4"></span>{field.value ? 'Replace' : 'Upload'}
-							<input
-								type="file"
-								accept="image/*"
-								class="sr-only"
-								onchange={(event) => setImage(field, event)}
-							/>
-						</span>
-					{/if}
-				</span>
-			{:else if field.type === 'file'}
-				<span class="flex items-center gap-2">
-					<span class="{inputClass} flex items-center gap-2 truncate">
-						<span class="icon-[mdi--file-document-outline] size-4 shrink-0 text-slate-400"></span>
-						<span class="truncate {field.value ? '' : 'text-slate-300'}"
-							>{field.value || 'No file yet'}</span
-						>
-					</span>
-					<span
-						class="{ghostButton} shrink-0 cursor-pointer bg-slate-100 text-slate-700 hover:bg-slate-200"
-					>
-						<span class="icon-[mdi--paperclip] size-4"></span>Add
-						<input
-							type="file"
-							class="sr-only"
-							onchange={(event) => setImage(field, event)}
-						/>
-					</span>
-				</span>
 			{:else}
 				<input
 					class={inputClass}

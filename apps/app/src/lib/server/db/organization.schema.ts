@@ -8,6 +8,7 @@
 import { sql } from 'drizzle-orm';
 import {
 	boolean,
+	check,
 	index,
 	pgPolicy,
 	pgTable,
@@ -23,6 +24,22 @@ import { appRole, ORGANIZATION_ID, organizationPolicy, USER_ID } from './policy'
 export const ROLES = ['admin', 'manager', 'team'] as const;
 
 export type RoleType = (typeof ROLES)[number];
+
+/**
+ * The database's own refusal of a role that is not one of `ROLES` (#194 types grants by hand): text with an enum is
+ * only a type, so without it a role spelled `Admin` would save and sign its User in as nothing.
+ */
+export function roleCheck(table: string) {
+	return check(
+		`${table}_role_check`,
+		sql.raw(`role in (${ROLES.map((role) => `'${role}'`).join(', ')})`)
+	);
+}
+
+/** The database's own refusal of an address not written as the sign-in rule reads it: lower case, no spaces. */
+export function lowerCheck(table: string, column: string) {
+	return check(`${table}_${column}_check`, sql.raw(`${column} = lower(btrim(${column}))`));
+}
 
 function id() {
 	return uuid('id')
@@ -78,6 +95,7 @@ export const member = pgTable(
 	(table) => [
 		uniqueIndex('member_organization_user_idx').on(table.organizationId, table.userId),
 		index('member_userId_idx').on(table.userId),
+		roleCheck('member'),
 		organizationPolicy('member'),
 		// A User reads their own memberships before they know their organization: that is how they find it.
 		pgPolicy('member is the acting user', {
@@ -116,18 +134,20 @@ export const accessGrant = pgTable(
 	'access_grant',
 	{
 		id: id(),
-		/** Lower case. */
+		/** Lower case, no spaces (the database refuses anything else). */
 		email: text('email').notNull(),
 		organizationId: uuid('organization_id')
 			.notNull()
 			.references(() => organization.id, { onDelete: 'cascade' }),
 		role: text('role', { enum: ROLES }).notNull(),
 		isSuperAdmin: boolean('is_super_admin').default(false).notNull(),
-		/** The email of the Team record this User signs in as, when it is not their own (#185). */
+		/** The email of the Team record this User signs in as, when it is not their own (#185), whatever its capitals. */
 		teamEmail: text('team_email'),
 		createdAt: time('created_at').defaultNow().notNull()
 	},
 	(table) => [
-		uniqueIndex('access_grant_email_organization_idx').on(table.email, table.organizationId)
+		uniqueIndex('access_grant_email_organization_idx').on(table.email, table.organizationId),
+		roleCheck('access_grant'),
+		lowerCheck('access_grant', 'email')
 	]
 ).enableRLS();

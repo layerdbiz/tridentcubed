@@ -2,7 +2,7 @@
 // mark, the row gets the app's file address only once the bytes are there, and a failed upload says so on the
 // picture and can be retried.
 import { describe, expect, it } from 'vite-plus/test';
-import type { UploadAnswerType, UploadRequestType } from './files.schema';
+import type { FileTargetType, UploadAnswerType, UploadRequestType } from './files.schema';
 import { Upload, type UploadStepsType } from './files.state.svelte';
 
 const FILE_ID = '0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
@@ -48,7 +48,11 @@ function pick() {
 	return new File(['raw'], 'IMG_0001.HEIC.jpg', { type: 'image/jpeg' });
 }
 
-const LOGO = { table: 'customer', column: 'logo', id: '5f0e1c2a-3b4d-4e5f-8a9b-0c1d2e3f4a5b' };
+const LOGO: FileTargetType = {
+	table: 'customer',
+	column: 'logo',
+	id: '5f0e1c2a-3b4d-4e5f-8a9b-0c1d2e3f4a5b'
+};
 
 describe('a picture on its way', () => {
 	it('shows in place at once with an uploading mark, then gives the row its file address', async () => {
