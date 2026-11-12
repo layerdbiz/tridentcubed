@@ -27,7 +27,7 @@
 	const PROJECT: TabType[] = ['page', 'edit', 'preview'];
 	const RECORD: TabType[] = ['page', 'edit'];
 	const SLIDE =
-		'absolute inset-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
+		'absolute inset-y-0 right-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
 
 	const isInside = $derived(look.screen !== 'dashboard');
 	// The far left: Projects on the dashboard; inside, the page it came from.
@@ -102,10 +102,11 @@
 					in:fade={{ duration: 200 }}
 				></span>{/key}
 		</button>
-		<div class="relative h-full min-w-0 flex-1 overflow-hidden">
+		<!-- It starts a little inside the first icon's fifth, so the name sits close to the icon without being cut. -->
+		<div class="relative -ml-2.5 h-full min-w-0 flex-1 overflow-hidden">
 			<!-- The other four pages: they slide off to the left, behind the first icon. -->
 			<div
-				class={SLIDE}
+				class="{SLIDE} left-2.5"
 				style:transform={isInside ? 'translateX(-100%)' : undefined}
 				style:opacity={isInside ? 0 : 1}
 				inert={isInside}
@@ -125,13 +126,13 @@
 			</div>
 			<!-- Inside a project or a record: the page's name and the tabs follow them in from the right. -->
 			<div
-				class={SLIDE}
+				class="{SLIDE} left-0"
 				style:transform={isInside ? undefined : 'translateX(100%)'}
 				style:opacity={isInside ? 1 : 0}
 				inert={!isInside}
 			>
 				<button
-					class="-ml-2.5 flex h-11 min-w-0 shrink items-center gap-1 text-white"
+					class="flex h-11 min-w-0 shrink items-center gap-1 text-white"
 					aria-label="Back to {DATASETS[look.dataset].label}"
 					onclick={() => go(look.dataset)}
 				>
