@@ -224,7 +224,7 @@
 			<div>
 				<p class={HEADING}>Sign-off</p>
 				<p class="mt-0.5 text-xs text-slate-400">
-					Under the disclaimer, over the lead's name, photo, phone and email.
+					Under the disclaimer, over the team lead's name, photo, phone and email.
 				</p>
 			</div>
 			{@render area(

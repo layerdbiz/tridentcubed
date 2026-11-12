@@ -101,7 +101,15 @@
 	const timelog = $derived(look.panels.find((panel) => panel.id === 'timelog'));
 	const company = $derived(detail('Customer') || look.project.client);
 	const location = $derived(look.project.location);
-	const personnel = $derived((team?.personnel ?? []).filter((person) => person.name.trim()));
+	// The other companies on the job, each with its people who have a name.
+	const personnel = $derived(
+		(team?.personnel ?? [])
+			.map((company) => ({
+				...company,
+				people: company.people.filter((person) => person.name.trim())
+			}))
+			.filter((company) => company.people.length)
+	);
 	const attachments = $derived(
 		look.panels.find((panel) => panel.kind === 'items' && panel.isEnabled)?.attachments ?? []
 	);
@@ -326,7 +334,7 @@
 			value: detail('Project Type') ?? ''
 		},
 		{ icon: PAGE_ICONS.customers, label: 'Customer', value: company },
-		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Lead', value: team?.owner ?? '' },
+		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Team Lead', value: team?.owner ?? '' },
 		{
 			icon: stops[0] ? iconOf(stops[0]) : PAGE_ICONS.transport,
 			label: 'Transport Mode',
@@ -364,13 +372,13 @@
 			icon: 'icon-[mdi--account-outline]'
 		},
 		{
-			label: 'Lead',
+			label: 'Team Lead',
 			value: team?.owner ?? '',
 			images: team?.owner ? [personOf(team.owner).photo] : [],
 			icon: 'icon-[mdi--account-tie-outline]'
 		},
 		{
-			label: 'Assigned',
+			label: 'Team Assigned',
 			value: listOf(team?.assigned ?? []),
 			images: (team?.assigned ?? []).map((name) => personOf(name).photo),
 			icon: PAGE_ICONS.team
@@ -668,36 +676,32 @@
 										<p class="col-span-3 text-[11px] text-slate-300 italic">No one assigned yet</p>
 									{/each}
 								</div>
-								{#if personnel.length}
-									<!-- Anyone else on the job, kept apart from the team. -->
-									<div class="mt-1.5 grid grid-cols-3 gap-1.5 border-t border-slate-100 pt-1.5">
-										{#each personnel.slice(0, 9) as person (person.id)}
+								<!-- Anyone else on the job, kept apart from the team: each company, then its people. -->
+								{#each personnel as company (company.id)}
+									<p
+										class="mt-2 border-t border-slate-100 pt-1.5 text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
+									>
+										{company.company || 'Other personnel'}
+									</p>
+									<div class="mt-1 grid grid-cols-3 gap-1.5">
+										{#each company.people as person (person.id)}
 											<div class="flex items-center gap-2 rounded-xl bg-slate-50 px-2 py-1.5">
-												{#if person.photo}
-													<img
-														src={person.photo}
-														alt=""
-														draggable="false"
-														class="size-7 shrink-0 rounded-full object-cover"
-													/>
-												{:else}
-													<span
-														class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600"
-														>{person.name.trim().slice(0, 1).toUpperCase()}</span
-													>
-												{/if}
+												<span
+													class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600"
+													>{person.name.trim().slice(0, 1).toUpperCase()}</span
+												>
 												<div class="min-w-0">
 													<p class="truncate text-[10px] font-semibold text-slate-900">
 														{person.name}
 													</p>
-													{#if person.company}
-														<p class="truncate text-[8px] text-slate-500">{person.company}</p>
+													{#if person.title}
+														<p class="truncate text-[8px] text-slate-500">{person.title}</p>
 													{/if}
 												</div>
 											</div>
 										{/each}
 									</div>
-								{/if}
+								{/each}
 								<h3 class="mt-4 text-[12.5px] font-bold text-slate-950">Transport Mode</h3>
 								<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 									{#each stops as stop, stopIndex (stop.id)}

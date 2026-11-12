@@ -21,6 +21,10 @@
 	// panel opens on one Trip section with Start, Stop and End together, each a transport mode and a facility, and
 	// Add stop still adds a stop with a section of its own. Items takes rows pasted from a spreadsheet and photos or
 	// files of the item list. The Time Log's times are typed on the 24-hour clock.
+	// Run 21 (Justin, 2026-11-11): the Project panel is three sections that open like the Team did: Project (title,
+	// subtitle, type), Customer (customer and contact) and Team (organization, Team Lead, Team Assigned). Every
+	// dropdown in them is picker.svelte, so a person is always the app's own Avatar and a company its logo. Add
+	// Personnel adds a company's section: its name, then as many people from it as needed, each a name and a title.
 	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
 	import BottomSheet from './bottom-sheet.svelte';
@@ -35,7 +39,9 @@
 		LAYOUTS,
 		MODE_ICONS,
 		newPerson,
-		personOf,
+		newPersonnel,
+		PAGE_ICONS,
+		PROJECT_TYPES,
 		photoOf,
 		POINTS,
 		stopOf,
@@ -50,6 +56,7 @@
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import Menu, { type OptionType } from './menu.svelte';
+	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { customerOf } from './records.data';
 	import { sortable } from './sortable';
@@ -69,17 +76,26 @@
 		if (!isDraft) look.saved();
 	}
 
-	// The Team section: the lead, the assigned, and anyone else on the job.
-	let isTeamOpen = $state(true);
-	let openPeople = $state<string[]>([]);
+	// The Project panel's sections, open or folded: Project, Customer, Team, and one per company of personnel.
+	let openSections = $state<string[]>(['project', 'customer', 'team']);
 	const personnel = $derived(panel.personnel ?? []);
-	const faces = $derived(
-		look.members.map((member) => ({
-			id: member.name,
-			label: member.name,
-			image: personOf(member.name).photo
-		}))
-	);
+	const members = $derived(look.members.map((member) => ({ id: member.name, label: member.name })));
+
+	function fieldOf(label: string) {
+		return panel.fields.find((field) => field.label === label);
+	}
+
+	function setField(label: string, value: string) {
+		const field = fieldOf(label);
+		if (field) field.value = value;
+		save();
+	}
+
+	// A different customer has different contacts, so the one picked before no longer applies.
+	function setCustomer(name: string) {
+		if (fieldOf('Customer')?.value !== name) panel.contact = undefined;
+		setField('Customer', name);
+	}
 
 	function setLead(name: string) {
 		panel.owner = name;
@@ -94,10 +110,11 @@
 		save();
 	}
 
-	function addPerson() {
-		const person = newPerson();
-		panel.personnel = [...personnel, person];
-		openPeople = [...openPeople, person.id];
+	// Another company's people on the job: its own section, opened ready to type into.
+	function addPersonnel() {
+		const company = newPersonnel();
+		panel.personnel = [...personnel, company];
+		openSections = [...openSections, company.id];
 		save();
 	}
 
@@ -569,123 +586,124 @@
 	{/if}
 {/snippet}
 
-{#snippet facePicker(
-	label: string,
-	value: string,
-	values: string[] | undefined,
-	options: OptionType[],
-	onpick: (id: string) => void
-)}
-	{@const picked = values ?? (value ? [value] : [])}
-	<div>
-		<p class={labelClass}>{label} {@render unpicked(!picked.length)}</p>
-		<Menu
-			{label}
-			{value}
-			{values}
-			{options}
-			{onpick}
-			align="left"
-			isWide
-		>
-			{#snippet trigger(_, isOpen)}
-				<span
-					class="{inputClass} flex min-h-[42px] items-center gap-2 text-left {isOpen
-						? 'bg-white ring-2 ring-primary/40'
-						: ''}"
-				>
-					{#if picked.length}
-						<span class="flex shrink-0 items-center">
-							{#each picked.slice(0, 6) as name, index (name)}
-								<img
-									src={personOf(name).photo}
-									alt=""
-									class="size-6 rounded-full bg-slate-200 object-cover ring-2 ring-white"
-									style="margin-left: {index ? -6 : 0}px"
-								/>
-							{/each}
-						</span>
-						<span class="flex-1 truncate"
-							>{picked.length === 1 ? picked[0] : `${picked.length} people`}</span
-						>
-					{:else}
-						<span class="flex-1 text-slate-400">Choose…</span>
-					{/if}
-					<span class="icon-[mdi--chevron-down] size-4 shrink-0 text-slate-400"></span>
-				</span>
-			{/snippet}
-		</Menu>
-	</div>
-{/snippet}
-
-<!-- The organization's own people on the project: one lead, and whoever else is assigned. -->
+<!-- The organization's own people on the project: who they work for, one team lead, and whoever else is assigned.
+     Under it, a section for each other company with people on the job. -->
 {#snippet teamBlock()}
 	<Group
 		title="Team"
-		note={[panel.owner, ...panel.assigned].filter(Boolean).join(', ') || 'Pick the lead first'}
-		icon="icon-[mdi--account-group]"
-		isOpen={isTeamOpen}
-		ontoggle={() => (isTeamOpen = !isTeamOpen)}
+		note={[panel.owner, ...panel.assigned].filter(Boolean).join(', ') || 'Pick the team lead first'}
+		icon={PAGE_ICONS.team}
+		isOpen={openSections.includes('team')}
+		ontoggle={() => (openSections = toggle(openSections, 'team'))}
 	>
-		{@render facePicker('Lead', panel.owner, undefined, faces, setLead)}
-		{@render facePicker(
-			'Assigned',
-			'',
-			panel.assigned,
-			faces.filter((face) => face.id !== panel.owner),
-			assign
-		)}
+		<Picker
+			label="Organization"
+			icon="icon-[mdi--domain]"
+			options={[
+				{
+					id: look.organization.name,
+					label: look.organization.name,
+					image: look.organization.logo
+				}
+			]}
+			value={fieldOf('Organization')?.value ?? ''}
+			onpick={(id) => setField('Organization', id)}
+		/>
+		<Picker
+			label="Team Lead"
+			kind="person"
+			icon="icon-[mdi--account-tie]"
+			options={members}
+			value={panel.owner}
+			onpick={setLead}
+		/>
+		<Picker
+			label="Team Assigned"
+			kind="person"
+			icon={PAGE_ICONS.team}
+			options={members.filter((member) => member.id !== panel.owner)}
+			values={panel.assigned}
+			onpick={assign}
+		/>
 	</Group>
-	<!-- Anyone else on the job, who is not on the team: each in a section of their own, as a stop is. -->
-	{#each personnel as person, personIndex (person.id)}
+	{#each personnel as company, companyIndex (company.id)}
+		{@const named = company.people.filter((person) => person.name.trim())}
 		<Group
-			title={person.name || `Personnel ${personIndex + 1}`}
-			note={person.company || 'Not on the team'}
-			icon="icon-[mdi--account-outline]"
+			title={company.company || `Personnel ${companyIndex + 1}`}
+			note={named.map((person) => person.name).join(', ') || 'No one added yet'}
+			icon="icon-[mdi--account-multiple-outline]"
 			tone="bg-slate-900/[0.06] text-slate-600"
-			isOpen={openPeople.includes(person.id)}
-			ontoggle={() => (openPeople = toggle(openPeople, person.id))}
+			isOpen={openSections.includes(company.id)}
+			ontoggle={() => (openSections = toggle(openSections, company.id))}
 			ondelete={() =>
 				remove(
 					panel.personnel ?? [],
-					person,
-					`Delete ${person.name || `personnel ${personIndex + 1}`}?`,
-					'They leave the report.'
+					company,
+					`Delete ${company.company || `personnel ${companyIndex + 1}`}?`,
+					'Its people leave the report.'
 				)}
 			deleteLabel="Delete Personnel"
 		>
-			<ImageField
-				label="Photo"
-				shape="face"
-				value={person.photo}
-				onpick={(url) => {
-					person.photo = url;
-					save();
-				}}
-			/>
 			<label class="block">
-				<span class={labelClass}>Name {@render unpicked(!person.name)}</span>
+				<span class={labelClass}>Company {@render unpicked(!company.company)}</span>
+				<!-- Typed freely, with the customers offered as it is typed: both a dropdown and an input. -->
 				<input
 					class={inputClass}
-					bind:value={person.name}
-					placeholder="First and last name"
+					bind:value={company.company}
+					list="companies-{company.id}"
+					placeholder="Type a company, or pick a customer"
 				/>
+				<datalist id="companies-{company.id}">
+					{#each look.customers as name (name)}<option value={name}></option>{/each}
+				</datalist>
 			</label>
-			<label class="block">
-				<span class={labelClass}>Company</span>
-				<input
-					class={inputClass}
-					bind:value={person.company}
-					placeholder="Who they are with"
-				/>
-			</label>
+			{#each company.people as person, personIndex (person.id)}
+				<div class="flex items-start gap-2">
+					<div class="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
+						<input
+							class={inputClass}
+							bind:value={person.name}
+							placeholder="Name"
+							aria-label="Name of person {personIndex + 1}"
+						/>
+						<input
+							class={inputClass}
+							bind:value={person.title}
+							placeholder="Title"
+							aria-label="Title of person {personIndex + 1}"
+						/>
+					</div>
+					<button
+						type="button"
+						class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
+						aria-label="Delete person {personIndex + 1}"
+						onclick={() =>
+							remove(
+								company.people,
+								person,
+								`Delete ${person.name || 'this person'}?`,
+								'They leave the report.'
+							)}><span class="icon-[mdi--close] size-4"></span></button
+					>
+				</div>
+			{/each}
+			{#snippet actions()}
+				<button
+					type="button"
+					class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+					onclick={() => {
+						company.people.push(newPerson());
+						save();
+					}}><span class="icon-[mdi--plus] size-4"></span>Add person</button
+				>
+			{/snippet}
 		</Group>
 	{/each}
 	<button
 		type="button"
 		class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-		onclick={addPerson}
-		><span class="icon-[mdi--account-plus-outline] size-4"></span>Add Personnel</button
+		onclick={addPersonnel}
+		><span class="icon-[mdi--account-multiple-plus-outline] size-4"></span>Add Personnel</button
 	>
 {/snippet}
 
@@ -903,36 +921,77 @@
 	oninput={() => save()}
 >
 	{#if panel.kind === 'project'}
-		<div class="grid gap-3 sm:grid-cols-2">
-			{#each panel.fields as field (field.id)}
-				{@render fieldBlock(field)}
-				{#if field.label === 'Customer'}
-					<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
-					<label class="block">
-						<span class={labelClass}>Contact</span>
-						<select
-							class={inputClass}
-							value={panel.contact ?? contacts[0]?.id ?? ''}
-							disabled={!contacts.length}
-							onchange={(event) => (panel.contact = event.currentTarget.value)}
-						>
-							{#each contacts as contact (contact.id)}
-								<option value={contact.id}
-									>{contact.name}{contact.title ? `, ${contact.title}` : ''}</option
-								>
-							{:else}
-								<option value=""
-									>{customerName
-										? 'No contacts on this customer yet'
-										: 'Choose a customer first'}</option
-								>
-							{/each}
-						</select>
-					</label>
-				{/if}
-			{/each}
+		{@const title = fieldOf('Title')}
+		{@const subtitle = fieldOf('Subtitle')}
+		{@const contact = contacts.find((item) => item.id === panel.contact) ?? contacts[0]}
+		<div class="space-y-3">
+			<Group
+				title="Project"
+				note={[title?.value, fieldOf('Project Type')?.value].filter(Boolean).join(' · ') ||
+					'Title, subtitle and type'}
+				icon={PAGE_ICONS.projects}
+				isOpen={openSections.includes('project')}
+				ontoggle={() => (openSections = toggle(openSections, 'project'))}
+			>
+				{#if title}{@render fieldBlock(title)}{/if}
+				{#if subtitle}{@render fieldBlock(subtitle)}{/if}
+				<Picker
+					label="Project Type"
+					icon="icon-[mdi--package-variant-closed]"
+					options={PROJECT_TYPES.map((type) => ({ id: type, label: type }))}
+					value={fieldOf('Project Type')?.value ?? ''}
+					onpick={(id) => setField('Project Type', id)}
+				/>
+			</Group>
+			<Group
+				title="Customer"
+				note={[customerName, contact?.name].filter(Boolean).join(' · ') ||
+					'Pick who the project is for'}
+				icon={PAGE_ICONS.customers}
+				isOpen={openSections.includes('customer')}
+				ontoggle={() => (openSections = toggle(openSections, 'customer'))}
+			>
+				<Picker
+					label="Customer"
+					kind="customer"
+					icon={PAGE_ICONS.customers}
+					options={look.customers.map((name) => ({ id: name, label: name }))}
+					value={customerName}
+					onpick={setCustomer}
+					onadd={() =>
+						ask({
+							label: 'Customer',
+							onadd: (name) => {
+								// A new customer is a real one: it joins the Customers page, with the rest filled in there.
+								look.add('customers', { ...draftOf('customers'), name });
+								setCustomer(name);
+							}
+						})}
+				/>
+				<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
+				<Picker
+					label="Contact"
+					icon="icon-[mdi--account]"
+					options={contacts.map((item) => ({
+						id: item.id,
+						label: item.name,
+						note: item.title,
+						image: item.photo
+					}))}
+					value={contact?.id ?? ''}
+					placeholder={customerName
+						? 'No contacts on this customer yet'
+						: 'Choose a customer first'}
+					isDisabled={!contacts.length}
+					isRequired={false}
+					onpick={(id) => {
+						panel.contact = id;
+						save();
+					}}
+				/>
+			</Group>
+			{@render teamBlock()}
 		</div>
-		<div class="space-y-3">{@render teamBlock()}</div>
 	{:else if panel.kind === 'transport'}
 		{@render stopsBlock()}
 	{:else if panel.kind === 'items'}

@@ -31,6 +31,7 @@
 		label,
 		onpick,
 		trigger,
+		mark,
 		align = 'right',
 		isWide = false,
 		values
@@ -40,6 +41,8 @@
 		label: string;
 		onpick: (id: string) => void;
 		trigger: Snippet<[OptionType | undefined, boolean]>;
+		// Draws what stands at the left of an option, in place of its icon or image (picker.svelte's faces and logos).
+		mark?: Snippet<[OptionType]>;
 		align?: 'left' | 'right';
 		isWide?: boolean;
 		// Given, the menu picks several: every id in it is ticked, and a pick does not close the list (run 19).
@@ -125,7 +128,7 @@
 						if (!values) isOpen = false;
 					}}
 				>
-					{#if option.image}<img
+					{#if mark}{@render mark(option)}{:else if option.image}<img
 							src={option.image}
 							alt=""
 							class="size-7 shrink-0 rounded-full bg-slate-200 object-cover"

@@ -76,7 +76,13 @@ export type PhotoType = { id: string; src: string; description: string };
 export type ItemType = { id: string; quantity: string; description: string };
 // Someone on the job who is not on the team (run 19, Justin 2026-11-10): typed into the Project panel's Team
 // section and printed under the team on the report.
-export type PersonnelType = { id: string; name: string; company: string; photo: string };
+// Run 21: they are added by company, a company and then the people from it, each a name and a title. No photo:
+// nobody has one to hand on a job.
+export type PersonnelType = {
+	id: string;
+	company: string;
+	people: { id: string; name: string; title: string }[];
+};
 // Something attached to the Items panel in place of typed rows, or beside them: a photo of the item list, or the
 // spreadsheet itself. A photo prints on the report; a file prints its name.
 export type AttachmentType = { id: string; name: string; src: string; kind: 'photo' | 'file' };
@@ -1042,8 +1048,13 @@ export function draftOf(page: Exclude<DatasetType, 'projects'>) {
 	return { name: '', kind: 'Port', city: '' } satisfies FacilityType as FacilityType;
 }
 
-export function newPerson(): PersonnelType {
-	return { id: createId('person'), name: '', company: '', photo: '' };
+export function newPerson() {
+	return { id: createId('person'), name: '', title: '' };
+}
+
+// A company's people on the job, starting with one empty line to type into.
+export function newPersonnel(): PersonnelType {
+	return { id: createId('company'), company: '', people: [newPerson()] };
 }
 
 export function newContact(): ContactType {

@@ -142,15 +142,15 @@ The company that owns a transport, like a shipping line; never the ship itself. 
 The cargo the project concerns, as rows of a quantity and a description (2, Power transformers on steel cradles), printed as the report's Cargo Description. A manifest's further columns may come later.
 
 **Team**:
-The lead and the assigned members of a project, all from the organization. On the report they appear as Personnel in Attendance, as cards like the Team page's, the lead first and marked by a blue ring but not labelled; the lead also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile. People on the job who are not on the team are Personnel.
+The team lead and the team assigned to a project, all from the organization. On the report they appear as Personnel in Attendance, as cards like the Team page's, the team lead first and marked by a blue ring but not labelled; the team lead also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile. People on the job who are not on the team are Personnel.
 _Avoid_: personnel (as the panel name)
 
-**Lead**:
-The team member who runs a project: picked in the Project panel's Team section, first among Personnel in Attendance, and the one who signs off the report. Called Owner until 2026-11-10. Being lead gives no extra rights.
-_Avoid_: owner, project owner, team lead, creator, author
+**Team Lead**:
+The team member who runs a project: picked in the Project panel's Team section, first among Personnel in Attendance, and the one who signs off the report. Called Owner until 2026-11-10 and Lead for a day after. Being team lead gives no extra rights. The others picked there are the Team Assigned.
+_Avoid_: owner, project owner, lead, creator, author
 
 **Personnel**:
-People on the job who are not on the organization's team, such as a customer's surveyor: a name, a company and a photo, typed into the Project panel's Team section with Add Personnel. They print under the team in Personnel in Attendance, kept apart from it.
+People on the job who are not on the organization's team, such as a customer's surveyor. They are added by company in the Project panel's Team section with Add Personnel: a company (typed, or picked from the customers), then each of its people as a name and a title. They print under the team in Personnel in Attendance, each company under its own name.
 _Avoid_: attendees, guests, contacts (those are a customer's)
 
 **Trash**:
@@ -239,7 +239,7 @@ One page of the report: the Cover, Table of Contents, Introduction with Personne
 _Avoid_: page (bare, where the UI's Page could be meant), sheet
 
 **Closing**:
-The last report page: the standard disclaimer and the lead's sign-off, like an email signature. It prints under the title Disclaimer.
+The last report page: the standard disclaimer and the team lead's sign-off, like an email signature. It prints under the title Disclaimer.
 _Avoid_: disclaimer page, sign-off page
 
 **Page variant**:

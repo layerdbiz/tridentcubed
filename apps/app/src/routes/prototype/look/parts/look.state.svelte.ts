@@ -123,7 +123,7 @@ export function percentOf(panels: PanelType[]) {
 // Run 9 (Justin's note 14, edits that "sometimes don't stay"): a phone browser reloads a tab it kept in the background,
 // and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
 // in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
-const KEEP = 'trident-look-161-run-19';
+const KEEP = 'trident-look-161-run-21';
 type KeptType = {
 	projects: ProjectType[];
 	workspaces: Record<string, PanelType[]>;
