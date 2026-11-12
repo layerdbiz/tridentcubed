@@ -6,10 +6,10 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
-import type { UploadTargetType } from '#lib/files/files.schema.js';
+import { STORAGE_BUCKET, type UploadTargetType } from '#lib/files/files.schema.js';
 
-/** The one private bucket. Made once in Supabase (#194): private, 20 MB a file, pictures only for now. */
-export const BUCKET = 'files';
+/** The one private bucket. Made once in Supabase (#194) as `STORAGE_BUCKET` says: private, its size and kinds. */
+export const BUCKET = STORAGE_BUCKET.name;
 
 /** How long an upload address lasts. Supabase's signed upload addresses last two hours whatever is asked. */
 export const UPLOAD_SECONDS = 2 * 60 * 60;

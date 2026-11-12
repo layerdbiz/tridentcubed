@@ -25,6 +25,18 @@ export const FILE_TYPES: Record<string, string> = {
 /** The kinds of file that are not pictures: kept as they came, and only where a column takes them. */
 export const DOCUMENT_TYPES = Object.keys(FILE_TYPES).filter((type) => !type.startsWith('image/'));
 
+/**
+ * The one private Storage bucket, as it must be made in Supabase (#194): the source of truth for its name, the kinds
+ * of file it takes and its size limit. The store (`#lib/server/store.ts`) and the upload check read it, so the bucket
+ * refuses nothing the app lets through, and takes nothing the app would refuse.
+ */
+export const STORAGE_BUCKET = {
+	name: 'files',
+	isPublic: false,
+	fileSizeLimit: MAX_FILE_BYTES,
+	allowedMimeTypes: Object.keys(FILE_TYPES)
+} as const;
+
 /** The columns that take a document as well as a picture: an item attachment (#188). */
 const DOCUMENT_COLUMNS = ['item_attachment/file'];
 

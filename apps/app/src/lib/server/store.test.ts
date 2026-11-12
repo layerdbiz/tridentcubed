@@ -2,6 +2,7 @@
 // Storage's own signed ones, asked for with the secret key, in the one private bucket. Real Storage is checked by
 // hand once the keys exist (spec #179 Testing Decisions).
 import { describe, expect, it } from 'vite-plus/test';
+import { isTypeAllowed, STORAGE_BUCKET } from '#lib/files/files.schema.js';
 import { BUCKET, createSupabaseStore } from './store';
 
 type CallType = { url: string; headers: Record<string, string>; body: unknown };
@@ -22,6 +23,32 @@ function createStorage() {
 	}) as typeof fetch;
 	return { calls, fetcher };
 }
+
+describe('the one bucket (#194 makes it as this says)', () => {
+	it('is private, 20 MB a file, and takes the pictures and the item list’s spreadsheets and PDFs', () => {
+		expect(STORAGE_BUCKET).toEqual({
+			name: 'files',
+			isPublic: false,
+			fileSizeLimit: 20_971_520,
+			allowedMimeTypes: [
+				'image/webp',
+				'image/jpeg',
+				'image/png',
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				'application/vnd.ms-excel',
+				'text/csv',
+				'application/pdf'
+			]
+		});
+		expect(BUCKET).toBe(STORAGE_BUCKET.name);
+	});
+
+	it('takes every kind of file the app lets through', () => {
+		for (const type of STORAGE_BUCKET.allowedMimeTypes)
+			expect(isTypeAllowed(type, 'item_attachment', 'file')).toBe(true);
+		expect(isTypeAllowed('image/gif', 'item_attachment', 'file')).toBe(false);
+	});
+});
 
 describe('the Supabase Storage store', () => {
 	it('hands a device Storage’s signed upload address in the one private bucket', async () => {
