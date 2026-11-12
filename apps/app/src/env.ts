@@ -22,10 +22,14 @@ export const variables = defineEnvVars({
 	RESEND_API_KEY: optional(
 		'Sends sign-in codes from noreply@tridentcubed.com. Unset outside production: codes go to the server log.'
 	),
-	GOOGLE_CLIENT_ID: optional('Continue with Google (#191).'),
-	GOOGLE_CLIENT_SECRET: optional('Continue with Google (#191).'),
-	MICROSOFT_CLIENT_ID: optional('Continue with Microsoft (#191).'),
-	MICROSOFT_CLIENT_SECRET: optional('Continue with Microsoft (#191).'),
+	GOOGLE_CLIENT_ID: optional(
+		"Continue with Google (#191), with the secret. The Google client's redirect URI is <app>/api/auth/callback/google."
+	),
+	GOOGLE_CLIENT_SECRET: optional('Continue with Google (#191), with the client ID.'),
+	MICROSOFT_CLIENT_ID: optional(
+		"Continue with Microsoft (#191), with the secret. The Entra app's redirect URI is <app>/api/auth/callback/microsoft; it needs the optional ID token claims email and xms_edov."
+	),
+	MICROSOFT_CLIENT_SECRET: optional('Continue with Microsoft (#191), with the client ID.'),
 	VERCEL: optional('Set by Vercel: this is a deployment, so production rules apply.'),
 	VERCEL_ENV: optional('Set by Vercel: production, preview or development.'),
 	VERCEL_URL: optional("Set by Vercel: this deployment's own host."),

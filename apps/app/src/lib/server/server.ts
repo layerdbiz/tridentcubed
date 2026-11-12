@@ -49,7 +49,9 @@ async function start(): Promise<ServerType> {
 		baseURL: settings.baseURL,
 		trustedOrigins: settings.trustedOrigins,
 		isSecure: settings.isProduction,
-		getRequestEvent
+		getRequestEvent,
+		google: settings.google,
+		microsoft: settings.microsoft
 	});
 	return { settings, claims: createClaims(db), auth };
 }

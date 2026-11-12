@@ -45,8 +45,13 @@ function toHttps(host?: string) {
 export function readSettings(env: EnvType): SettingsType {
 	const isProduction = Boolean(env.VERCEL);
 	const email = env.RESEND_API_KEY ? 'resend' : isProduction ? 'none' : 'log';
-	// Google and Microsoft join the ways when their sign-in is wired (#191).
-	const ways: SignInWayType[] = email === 'none' ? [] : ['email'];
+	const google = toKeys(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET);
+	const microsoft = toKeys(env.MICROSOFT_CLIENT_ID, env.MICROSOFT_CLIENT_SECRET);
+	// The emailed code first, then Google and Microsoft under it, each only when both its keys are set (#191).
+	const ways: SignInWayType[] = [];
+	if (email !== 'none') ways.push('email');
+	if (google) ways.push('google');
+	if (microsoft) ways.push('microsoft');
 
 	const missing: string[] = [];
 	if (isProduction) {
@@ -72,8 +77,8 @@ export function readSettings(env: EnvType): SettingsType {
 		trustedOrigins: deploymentURLs.filter((url): url is string => Boolean(url)),
 		email,
 		resendApiKey: env.RESEND_API_KEY || undefined,
-		google: toKeys(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET),
-		microsoft: toKeys(env.MICROSOFT_CLIENT_ID, env.MICROSOFT_CLIENT_SECRET),
+		google,
+		microsoft,
 		ways
 	};
 }

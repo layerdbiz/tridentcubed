@@ -57,4 +57,45 @@ describe('reading the deployment settings', () => {
 			'RESEND_API_KEY or GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET'
 		]);
 	});
+
+	it('offers Google and Microsoft under the email way, each only when both its id and secret are set', () => {
+		expect(
+			readSettings({ GOOGLE_CLIENT_ID: 'g-id', GOOGLE_CLIENT_SECRET: 'g-secret' }).ways
+		).toEqual(['email', 'google']);
+		expect(
+			readSettings({ MICROSOFT_CLIENT_ID: 'm-id', MICROSOFT_CLIENT_SECRET: 'm-secret' }).ways
+		).toEqual(['email', 'microsoft']);
+		expect(
+			readSettings({
+				GOOGLE_CLIENT_ID: 'g-id',
+				GOOGLE_CLIENT_SECRET: 'g-secret',
+				MICROSOFT_CLIENT_ID: 'm-id',
+				MICROSOFT_CLIENT_SECRET: 'm-secret'
+			}).ways
+		).toEqual(['email', 'google', 'microsoft']);
+	});
+
+	it('leaves a provider off when only half of its keys are set', () => {
+		const settings = readSettings({
+			GOOGLE_CLIENT_ID: 'g-id',
+			MICROSOFT_CLIENT_SECRET: 'm-secret'
+		});
+
+		expect(settings.ways).toEqual(['email']);
+		expect(settings.google).toBeUndefined();
+		expect(settings.microsoft).toBeUndefined();
+	});
+
+	it('is ready in production with Google alone, and offers only Google', () => {
+		const settings = readSettings({
+			...DEPLOYED,
+			DATABASE_URL: 'postgres://pooler',
+			BETTER_AUTH_SECRET: 'a'.repeat(32),
+			GOOGLE_CLIENT_ID: 'g-id',
+			GOOGLE_CLIENT_SECRET: 'g-secret'
+		});
+
+		expect(settings.missing).toEqual([]);
+		expect(settings.ways).toEqual(['google']);
+	});
 });

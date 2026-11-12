@@ -226,15 +226,18 @@ finish() {
 #              rebuilds with the Production values
 #   confirmed  Microsoft Entra admin center > Entra ID > App registrations >
 #              New registration, "Any Entra ID Tenant + Personal Microsoft
-#              accounts" (learn.microsoft.com, 2026-05-14)
+#              accounts" (learn.microsoft.com, 2026-05-14); optional claim
+#              xms_edov, "email domain owner verified", needs the email claim
+#              (optional-claims-reference, 2026-07-22) (#191)
 #   confirmed  Resend on Cloudflare: Sign in to Cloudflare (Domain Connect) or
 #              three records (MX send, TXT send, TXT resend._domainkey,
 #              DNS only), then Verify DNS Records
 #   not checked, may have moved: the Google "Get started" branding form;
 #              Supabase "Reset database password" and "Generate a password"
 #              wording; the Vercel environment variable form labels and
-#              Redeploy menu; Entra "Certificates & secrets" expiry choices
-#              and whether a personal account must first make a free Azure
+#              Redeploy menu; Entra "Certificates & secrets" expiry choices,
+#              the Token configuration "Add optional claim" labels, and
+#              whether a personal account must first make a free Azure
 #              account; Resend API key permission names; Geoapify pages.
 
 run_wizard() {
@@ -597,6 +600,11 @@ stage_microsoft() {
   step "Click Register, then copy the Application (client) ID from Overview."
   ask MICROSOFT_CLIENT_ID "Paste the Application (client) ID:"
   write_env MICROSOFT_CLIENT_ID "$MICROSOFT_CLIENT_ID"
+  step "Open Token configuration, click Add optional claim, Token type: ID."
+  step "Tick email and xms_edov, click Add. If it offers to turn on the"
+  step "Microsoft Graph email permission, tick that and Add."
+  note "xms_edov tells the app a work email's domain really belongs to that"
+  note "organization; without it, work accounts are refused (personal ones work)."
   step "Open Certificates & secrets, then New client secret. Description: dev app,"
   step "the longest expiry offered, Add. Copy the Value column (not Secret ID) now."
   ask_secret MICROSOFT_CLIENT_SECRET "Paste the secret Value (hidden):"

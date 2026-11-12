@@ -3,10 +3,11 @@
 	// the website's wave, with the white form rising under it. One change, forced by #115 and Justin's 2026-10-24
 	// note ("one dynamic form, never two"): no Password field and no Create Account button. The form is an Email
 	// field with one Continue, which sends a six-digit code, then the code entry; the first sign-in creates the user
-	// (#181). Google and Microsoft show under it only when this deployment has their keys (#191). A deployment
-	// missing a setting says it is not connected yet and names what is missing.
+	// (#181). Google and Microsoft show under it only when this deployment has their keys (#191), and a sign-in
+	// they send back unfinished says why. A deployment missing a setting says it is not connected yet and names
+	// what is missing.
 	import { page } from '$app/state';
-	import { fetchSignInWays, submitCode, submitEmail } from './login.remote';
+	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
 
 	const FIELD =
 		'w-full rounded-xl border-0 bg-slate-900/[0.05] px-3.5 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary/40';
@@ -21,9 +22,26 @@
 		{ id: 'microsoft', name: 'Microsoft', icon: 'icon-[logos--microsoft-icon]' }
 	] as const;
 
+	// Why Google or Microsoft sent the User back without signing them in (Better Auth's `?error=` codes).
+	const PROVIDER_PROBLEMS: Record<string, string> = {
+		email_not_verified:
+			'That account does not show a verified email address. Use another way to sign in.',
+		account_not_linked:
+			'That account does not show a verified email address. Use another way to sign in.',
+		access_denied: 'Sign-in was cancelled.'
+	};
+
 	const signIn = $derived(await fetchSignInWays());
 	const others = $derived(OTHER_WAYS.filter((way) => signIn.ways.includes(way.id)));
 	const next = $derived(page.url.searchParams.get('next') ?? '');
+	const providerError = $derived(page.url.searchParams.get('error'));
+	const providerProblem = $derived(
+		submitProvider.result?.message ??
+			(providerError
+				? (PROVIDER_PROBLEMS[providerError] ??
+					'That sign-in did not work. Try again, or use another way.')
+				: '')
+	);
 
 	// 'email' asks for the address; 'code' asks for the code that was sent to it. They start from the forms' last
 	// results, so the page also works when a form was posted before the page's script ran.
@@ -182,20 +200,33 @@
 					</form>
 				{/if}
 
-				{#if others.length > 0 && step === 'email'}
-					<p class="flex items-center gap-3 text-xs text-slate-400">
-						<span class="h-px flex-1 bg-slate-200"></span>or<span class="h-px flex-1 bg-slate-200"
-						></span>
-					</p>
-					<div class="space-y-2">
+				{#if signIn.isConnected && others.length > 0 && step === 'email'}
+					{#if signIn.ways.includes('email')}
+						<p class="flex items-center gap-3 text-xs text-slate-400">
+							<span class="h-px flex-1 bg-slate-200"></span>or<span class="h-px flex-1 bg-slate-200"
+							></span>
+						</p>
+					{/if}
+					{#if providerProblem}<p
+							class="text-sm text-rose-600"
+							role="alert"
+						>
+							{providerProblem}
+						</p>{/if}
+					<form
+						class="space-y-2"
+						{...submitProvider}
+					>
+						<input {...submitProvider.fields.next.as('hidden', next)} />
 						{#each others as way (way.id)}
 							<button
-								type="button"
 								class={OTHER}
+								disabled={submitProvider.pending > 0}
+								{...submitProvider.fields.provider.as('submit', way.id)}
 								><span class="{way.icon} size-5 shrink-0"></span>Continue with {way.name}</button
 							>
 						{/each}
-					</div>
+					</form>
 				{/if}
 			</div>
 		</div>
