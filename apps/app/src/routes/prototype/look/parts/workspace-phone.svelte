@@ -8,12 +8,18 @@
 	// (note 21). Run 11 (2026-10-26 19:22): Panels and Preview moved into the one floating bar (nav-bar.svelte), which
 	// sets look.tab; the panes follow it, and their scroll drives the bar's highlight through look.tabProgress. Run 13
 	// (2026-11-07 22:21): a Page pane comes first (project-page.svelte), with its own picture and buttons, so the
-	// header shows from Edit on; the left edge of the Page swipes the project away.
+	// header shows from Edit on; the left edge of the Page swipes the project away. Run 23 (Justin, 2026-11-11: "I
+	// don't like how that changes"): Project Header B, C and D keep one top part over all three tabs, with the save
+	// cloud in it. B is the full bar (title, percent, progress), C is floating buttons with no bar, D is one slim
+	// line with the progress as a hairline under it. A is the header that only shows from Edit on.
 	import type { ComponentProps } from 'svelte';
 	import { PROJECT_TABS, type LookState, type TabType } from './look.state.svelte';
 	import ProjectPage from './project-page.svelte';
 	import PanelList from './panel-list.svelte';
+	import { STATUS } from './look.data';
+	import MoreMenu from './more-menu.svelte';
 	import ProjectBar from './project-bar.svelte';
+	import SaveCloud from './save-cloud.svelte';
 	import ReportPreview from './report-preview.svelte';
 
 	let {
@@ -27,6 +33,12 @@
 		preview: Omit<ComponentProps<typeof ReportPreview>, 'look'>;
 		surface?: string;
 	} = $props();
+
+	const header = $derived(look.variant('project-header'));
+	const status = $derived(STATUS[look.project.status]);
+	const BAR =
+		'absolute inset-x-0 top-0 z-20 bg-white/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150';
+	const GLASS = 'pointer-events-auto bg-white/85 text-slate-900 shadow-sm backdrop-blur-md';
 
 	let swiper: HTMLDivElement | undefined = $state();
 	let top = $state(0);
@@ -115,22 +127,94 @@
 		: ''}"
 	style:transform={pull ? `translateX(${pull}px)` : undefined}
 >
-	<header
-		class="absolute inset-x-0 top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 {look.tabProgress <
-		0.5
-			? 'pointer-events-none'
-			: ''}"
-		style:opacity={Math.min(1, Math.max(0, look.tabProgress))}
-		inert={look.tabProgress < 0.5}
-		bind:clientHeight={top}
-	>
-		<div class="py-2 pr-1.5 pl-1.5">
-			<ProjectBar
-				{look}
-				isCloud={look.variant('bar') === 'B'}
-			/>
-		</div>
-	</header>
+	{#if header === 'B'}
+		<!-- The full bar, the same on every tab. -->
+		<header
+			class={BAR}
+			bind:clientHeight={top}
+		>
+			<div class="py-2 pr-1.5 pl-1.5">
+				<ProjectBar
+					{look}
+					isCloud
+				/>
+			</div>
+		</header>
+	{:else if header === 'C'}
+		<!-- No bar: the way back with the title, and the cloud with the ⋮, float over whatever tab is showing. -->
+		<header
+			class="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2"
+			bind:clientHeight={top}
+		>
+			<button
+				class="flex h-10 min-w-0 items-center gap-1.5 rounded-full pr-4 pl-2.5 {GLASS}"
+				aria-label="Back to Projects"
+				onclick={() => look.home()}
+			>
+				<span class="icon-[mdi--arrow-left] size-6 shrink-0"></span>
+				<span class="truncate text-sm font-semibold">{look.project.title}</span>
+			</button>
+			<span class="flex-1"></span>
+			<span class="flex h-10 shrink-0 items-center gap-0.5 rounded-full pr-0.5 pl-3 {GLASS}">
+				<SaveCloud {look} />
+				<MoreMenu
+					{look}
+					page="projects"
+					id={look.project.id}
+					tone="bare"
+				/>
+			</span>
+		</header>
+	{:else if header === 'D'}
+		<!-- One slim line on every tab: back, the title, the cloud, the percent, the ⋮, and the progress as a hairline. -->
+		<header
+			class={BAR}
+			bind:clientHeight={top}
+		>
+			<div class="flex h-12 items-center gap-1 pr-1 pl-1.5">
+				<button
+					class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
+					aria-label="Back to Projects"
+					onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
+				>
+				<span class="min-w-0 flex-1 truncate font-semibold text-slate-900"
+					>{look.project.title}</span
+				>
+				<SaveCloud {look} />
+				<span class="shrink-0 pl-1.5 text-sm font-semibold tabular-nums {status.tone}"
+					>{look.overall}%</span
+				>
+				<MoreMenu
+					{look}
+					page="projects"
+					id={look.project.id}
+				/>
+			</div>
+			<span class="block h-0.5 bg-slate-900/[0.07]"
+				><span
+					class="block h-full transition-[width] duration-500 {status.bar}"
+					style="width: {look.overall}%"
+				></span></span
+			>
+		</header>
+	{:else}
+		<header
+			class="absolute inset-x-0 top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150 {look.tabProgress <
+			0.5
+				? 'pointer-events-none'
+				: ''}"
+			style:opacity={Math.min(1, Math.max(0, look.tabProgress))}
+			inert={look.tabProgress < 0.5}
+			bind:clientHeight={top}
+		>
+			<div class="py-2 pr-1.5 pl-1.5">
+				<ProjectBar
+					{look}
+					isCloud={look.variant('bar') !== 'A'}
+				/>
+			</div>
+		</header>
+	{/if}
 
 	<div
 		bind:this={swiper}
@@ -142,6 +226,7 @@
 				{look}
 				project={look.project}
 				isWide={false}
+				chrome={header === 'A' ? undefined : top}
 			/>
 		</div>
 		<div

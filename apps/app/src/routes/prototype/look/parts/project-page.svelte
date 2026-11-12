@@ -29,8 +29,16 @@
 		look,
 		project,
 		isWide,
-		left = 0
-	}: { look: LookState; project: ProjectType; isWide: boolean; left?: number } = $props();
+		left = 0,
+		chrome
+	}: {
+		look: LookState;
+		project: ProjectType;
+		isWide: boolean;
+		left?: number;
+		// The height of a header the screen draws over every tab; the Page then leaves its own buttons out.
+		chrome?: number;
+	} = $props();
 
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 	const HEADING = 'mb-2 px-1 text-sm font-semibold text-slate-900';
@@ -86,6 +94,7 @@
 	{route}
 	{isWide}
 	{left}
+	{chrome}
 	onback={() => look.home()}
 	backLabel="Back to Projects"
 >

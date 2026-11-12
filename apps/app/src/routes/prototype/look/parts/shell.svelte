@@ -35,6 +35,7 @@
 	import RecordPage from './record-page.svelte';
 	import SettingsPage from './settings-page.svelte';
 	import BarB from './variants/bar-b.svelte';
+	import BarC from './variants/bar-c.svelte';
 	import { recordOf } from './records.data';
 	import ReportPreview from './report-preview.svelte';
 	import Sidebar from './sidebar.svelte';
@@ -579,6 +580,13 @@
 				{isWide}
 				left={barLeft()}
 			/>
+		{:else if look.variant('bar') !== 'A'}
+			<BarC
+				{look}
+				{isWide}
+				left={barLeft()}
+				hasArrow={look.variant('bar') === 'D'}
+			/>
 		{:else}
 			<NavBar
 				{look}
@@ -593,7 +601,7 @@
 		<button
 			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex h-14 items-center justify-center rounded-full bg-primary text-white transition hover:brightness-110 {look.variant(
 				'bar'
-			) === 'B'
+			) !== 'A'
 				? 'gap-1.5 pr-6 pl-4 font-semibold text-base'
 				: 'w-14 shadow-lg shadow-primary/40'}"
 			aria-label="Add"
@@ -601,7 +609,7 @@
 			onclick={() => (look.adding = look.dataset)}
 			transition:scale={{ start: 0.8, duration: 160 }}
 			><span class="icon-[mdi--plus] size-8"
-			></span>{#if look.variant('bar') === 'B'}Add{/if}</button
+			></span>{#if look.variant('bar') !== 'A'}Add{/if}</button
 		>
 	{/if}
 	<AddSheet {look} />

@@ -66,7 +66,7 @@
 			<span class="block truncate text-xs text-slate-500">{DATASETS[record.page].one}</span>
 		</span>
 		<!-- With Bottom Bar B the save cloud is up here, not in the bar. -->
-		{#if look.variant('bar') === 'B'}<SaveCloud {look} />{/if}
+		{#if look.variant('bar') !== 'A'}<SaveCloud {look} />{/if}
 		<MoreMenu
 			{look}
 			page={record.page}

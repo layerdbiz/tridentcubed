@@ -21,6 +21,7 @@
 		left = 0,
 		onback,
 		backLabel,
+		chrome,
 		actions,
 		overlay,
 		children
@@ -34,6 +35,9 @@
 		left?: number;
 		onback: () => void;
 		backLabel: string;
+		// Given, the screen has its own header over every tab (Project Header B, C, D): the Page drops its own back
+		// and ⋮ buttons and starts this far down, keeping only Photo and Map.
+		chrome?: number;
 		actions: Snippet;
 		// What sits over the bottom of the picture; `true` while it is over a photo (white words), `false` over the map.
 		overlay: Snippet<[boolean]>;
@@ -100,14 +104,20 @@
 >
 	{#snippet head()}
 		<div
-			class="flex shrink-0 items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]"
-			style="padding-left: {left + 12}px"
+			class="flex shrink-0 items-center gap-2 px-3 {chrome === undefined
+				? 'pt-[max(0.75rem,env(safe-area-inset-top))]'
+				: ''}"
+			style="padding-left: {left + 12}px; {chrome === undefined
+				? ''
+				: `padding-top: ${chrome + 8}px`}"
 		>
-			<button
-				class="pointer-events-auto flex size-10 items-center justify-center rounded-full {GLASS}"
-				aria-label={backLabel}
-				onclick={onback}><span class="icon-[mdi--arrow-left] size-6"></span></button
-			>
+			{#if chrome === undefined}
+				<button
+					class="pointer-events-auto flex size-10 items-center justify-center rounded-full {GLASS}"
+					aria-label={backLabel}
+					onclick={onback}><span class="icon-[mdi--arrow-left] size-6"></span></button
+				>
+			{/if}
 			<span class="flex-1"></span>
 			{#if photos.length}
 				<span
@@ -130,10 +140,12 @@
 					{/each}
 				</span>
 			{/if}
-			<span
-				class="pointer-events-auto flex size-10 items-center justify-center rounded-full {GLASS}"
-				>{@render actions()}</span
-			>
+			{#if chrome === undefined}
+				<span
+					class="pointer-events-auto flex size-10 items-center justify-center rounded-full {GLASS}"
+					>{@render actions()}</span
+				>
+			{/if}
 		</div>
 		<div class="min-h-0 flex-1"></div>
 		<div

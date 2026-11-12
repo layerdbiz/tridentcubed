@@ -33,8 +33,8 @@ export const PART_GROUPS: PartGroupType[] = [
 			part(
 				'bar',
 				'Bottom Bar',
-				['A', 'B'],
-				'A: floating pill. B: edge to edge with names, + above it, save cloud up top.'
+				['A', 'B', 'C', 'D'],
+				'A: floating pill. B: edge to edge with names. C: wide floating bar, icons only, + above it, page name before the tabs. D: C with an arrow after the page name.'
 			),
 			part('add', 'Add Sheet', ['A', 'B'], 'A: Create for a project. B: Add for everything.'),
 			part('more', '⋮ Menu')
@@ -82,6 +82,12 @@ export const PART_GROUPS: PartGroupType[] = [
 		id: 'project',
 		label: 'Project',
 		parts: [
+			part(
+				'project-header',
+				'Header',
+				['A', 'B', 'C', 'D'],
+				'Phone. A: changes between Page and Edit. Same on every tab: B full bar with progress, C floating buttons, D slim bar.'
+			),
 			part('project-page', 'Page'),
 			part('panels', 'Panel List'),
 			part('panel-project', 'Project Panel'),
