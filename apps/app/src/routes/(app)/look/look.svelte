@@ -21,9 +21,22 @@
 	import { openAddress, placeOf, toAddress } from './look.utils';
 	import { takeRows, toRows } from './mapper';
 
-	let { rows, onready }: { rows: SavedRowType[]; onready: (look: LookState) => void } = $props();
+	type SelfType = { userId: string; role: LookState['role'] | null; isSuperAdmin: boolean };
+
+	let {
+		rows,
+		self,
+		onready
+	}: { rows: SavedRowType[]; self: SelfType; onready: (look: LookState) => void } = $props();
 
 	const look = new LookState();
+	// Who is signed in (#185), before the rows arrive, so their own Team record is known as they are taken in.
+	// svelte-ignore state_referenced_locally
+	look.userId = self.userId;
+	// svelte-ignore state_referenced_locally
+	look.role = self.role ?? '';
+	// svelte-ignore state_referenced_locally
+	look.isSuperAdmin = self.isSuperAdmin;
 	const sync = new SyncLoop({
 		read: () => toRows(look),
 		take: (taken) => takeRows(look, taken),

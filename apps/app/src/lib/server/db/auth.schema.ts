@@ -6,7 +6,7 @@
 // restricted role reads the acting User's own user row.
 import { relations, sql } from 'drizzle-orm';
 import { boolean, index, pgPolicy, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { appRole, USER_ID } from './policy';
+import { appRole, ORGANIZATION_ID, USER_ID } from './policy';
 
 function id() {
 	return uuid('id')
@@ -35,7 +35,18 @@ export const user = pgTable(
 			.notNull()
 	},
 	() => [
-		pgPolicy('user is the acting user', { for: 'select', to: appRole, using: sql`id = ${USER_ID}` })
+		pgPolicy('user is the acting user', {
+			for: 'select',
+			to: appRole,
+			using: sql`id = ${USER_ID}`
+		}),
+		// The acting organization's own Users, so the save command knows whose Team record is the Super admin's
+		// (#185). Read only; nobody changes another User from the app.
+		pgPolicy('user is in the acting organization', {
+			for: 'select',
+			to: appRole,
+			using: sql`exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = ${ORGANIZATION_ID})`
+		})
 	]
 ).enableRLS();
 

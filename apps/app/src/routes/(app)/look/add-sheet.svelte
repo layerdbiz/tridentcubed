@@ -8,15 +8,7 @@
 	// page (look.addFor), with no page chips; what is added is picked in the dropdown and nothing else opens.
 	import { scale } from 'svelte/transition';
 	import BottomSheet from './bottom-sheet.svelte';
-	import {
-		DATASETS,
-		draftOf,
-		draftPanel,
-		ME,
-		PAGE_ICONS,
-		PAGES,
-		type DatasetType
-	} from './look.data';
+	import { DATASETS, draftOf, draftPanel, PAGE_ICONS, PAGES, type DatasetType } from './look.data';
 	import type { LookState, RecordDraftType } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
 	import RecordFields from './record-fields.svelte';
@@ -44,7 +36,7 @@
 	let kind = $derived<DatasetType>(look.adding ?? 'projects');
 	let drafts = $state(fresh());
 	// svelte-ignore state_referenced_locally
-	let panel = $state(draftPanel(look.organization.name, ME));
+	let panel = $state(draftPanel(look.organization.name, look.me?.name ?? ''));
 
 	// Every time the sheet opens it starts empty, with the organization as it is named now.
 	let wasOpen = false;
@@ -54,7 +46,7 @@
 			drafts = fresh();
 			if (look.addSeed && look.adding && look.adding !== 'projects')
 				Object.assign(drafts[look.adding], look.addSeed);
-			panel = draftPanel(look.organization.name, ME);
+			panel = draftPanel(look.organization.name, look.me?.name ?? '');
 		}
 		wasOpen = isOpen;
 	});
@@ -71,7 +63,9 @@
 	const isMenu = $derived(look.variant('add') === 'C' && !look.isAddLocked);
 
 	function start(id: DatasetType) {
-		if (id === 'projects') return look.create(draftPanel(look.organization.name, ME));
+		// A new project's Team Lead is whoever makes it (#185).
+		if (id === 'projects')
+			return look.create(draftPanel(look.organization.name, look.me?.name ?? ''));
 		const base = `New ${DATASETS[id].one}`;
 		let name = base;
 		for (let count = 2; look.has(id, name); count += 1) name = `${base} ${count}`;

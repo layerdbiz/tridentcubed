@@ -2,8 +2,7 @@
 	// PROTOTYPE (#161) run 5: the sidebar and phone menu: logo, the sections, Recent, and the user with settings at
 	// the bottom. Run 11 (2026-10-26 19:22): no Home and no New project button; the floating bar's + adds things. Every icon sits in one centred column (note 16): the logo twice its old size,
 	// the section icons half again bigger, filled (note 17; since run 11 the pages' own icons, the same as on the floating
-	// bar). Signed in as Cezary,
-	// Admin (note 19). `isCollapsed` fades the words, leaving the icons: the desktop sidebar keeps one layout at every
+	// bar). The person at the bottom is whoever is signed in, with their role (#185; note 19 had it fixed to Cezary). `isCollapsed` fades the words, leaving the icons: the desktop sidebar keeps one layout at every
 	// width and clips it, so the words slide out as it is dragged wider (2026-10-26 16:34). `onnavigate` runs after any
 	// pick, so the phone drawer can close itself, even when the pick is the page already open. Run 12 (2026-11-07,
 	// notes 14 to 16): Recent is the same list as the bell's notifications (recent-list.svelte), with round icons, and
@@ -13,10 +12,11 @@
 	// signed-in person's row and the cog both open Settings, where the organization is edited.
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import Avatar from './avatar.svelte';
-	import { DATASETS, FADE, ME, NAV, type DatasetType } from './look.data';
+	import { DATASETS, FADE, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import Menu from './menu.svelte';
 	import RecentList from './recent-list.svelte';
+	import { ROLE_LABELS } from './team.data';
 
 	let {
 		look,
@@ -28,7 +28,8 @@
 		onnavigate?: () => void;
 	} = $props();
 
-	const me = $derived(look.members.find((member) => member.name === ME) ?? { name: ME, role: '' });
+	// The signed-in person's Team record; until it has loaded, their role alone.
+	const me = $derived(look.me ?? { name: '', role: look.role });
 	// The one column every icon centres in.
 	const COLUMN = 'flex w-14 shrink-0 justify-center';
 	// Words never wrap while the sidebar narrows; folded to icons they fade out.
@@ -56,8 +57,9 @@
 
 	function account(id: string) {
 		if (id === 'organization') return settings();
-		if (id === 'profile') look.openRecord('team', me.name, 'page');
-		else void logOut();
+		if (id === 'profile') {
+			if (look.me) look.openRecord('team', look.me.name, 'page');
+		} else void logOut();
 		onnavigate?.();
 	}
 
@@ -145,7 +147,8 @@
 						<span class="min-w-0 flex-1 text-sm {WORDS}"
 							><b class="block truncate font-medium text-slate-900"
 								>{me.name.replace('Capt. ', '')}</b
-							><span class="text-xs text-slate-500">{me.role === 'admin' ? 'Admin' : 'Member'}</span
+							><span class="text-xs text-slate-500"
+								>{look.isSuperAdmin ? 'Super admin' : me.role ? ROLE_LABELS[me.role] : ''}</span
 							></span
 						>
 						<span

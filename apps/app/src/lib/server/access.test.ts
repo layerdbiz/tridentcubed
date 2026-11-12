@@ -146,3 +146,114 @@ describe('a Guest', () => {
 		expect(seen).toEqual({ organizations: [], details: [], members: [], grants: [] });
 	});
 });
+
+// The tie to a Team record (#185; spec #179 stories 16 to 18): a staff User is the Team record with their email, or
+// the one their access grant names, or a new one made from their name, email and picture. The tied record's role is
+// their membership's. Every email here is made up.
+describe('the tie to a Team record', () => {
+	type DbType = Awaited<ReturnType<typeof createTestSignIn>>['db'];
+
+	async function addRecord(
+		db: DbType,
+		name: string,
+		email: string,
+		role: 'admin' | 'manager' | 'team'
+	) {
+		const id = crypto.randomUUID();
+		await db.insert(schema.team).values({ id, organizationId: TRIDENT, name, email, role });
+		return id;
+	}
+
+	async function recordsOf(db: DbType, userId: string) {
+		return db
+			.select({ id: schema.team.id, name: schema.team.name, role: schema.team.role })
+			.from(schema.team)
+			.where(eq(schema.team.userId, userId));
+	}
+
+	it('ties a staff User to the Team record with their email, whatever its capitals, with the role it showed', async () => {
+		const { db, signIn } = await createTestSignIn();
+		const id = await addRecord(db, 'Rosa Vega', 'R.Vega@TridentCubed.com', 'manager');
+
+		const { user, actor } = await signIn('r.vega@tridentcubed.com');
+
+		expect(actor).toMatchObject({ organizationId: TRIDENT, role: 'manager' });
+		expect(await recordsOf(db, user.id)).toEqual([{ id, name: 'Rosa Vega', role: 'manager' }]);
+	});
+
+	it('ties a User to the Team record their access grant names, and gives the grant’s role', async () => {
+		const { db, signIn } = await createTestSignIn();
+		const id = await addRecord(db, 'Sam Ortiz', 's.ortiz@tridentcubed.com', 'team');
+		await db.insert(schema.accessGrant).values({
+			email: 'sam@personal.example',
+			organizationId: TRIDENT,
+			role: 'admin',
+			isSuperAdmin: true,
+			teamEmail: 'S.Ortiz@tridentcubed.com'
+		});
+
+		const { user, actor } = await signIn('sam@personal.example');
+
+		expect(actor).toMatchObject({ organizationId: TRIDENT, role: 'admin', isSuperAdmin: true });
+		expect(await recordsOf(db, user.id)).toEqual([{ id, name: 'Sam Ortiz', role: 'admin' }]);
+		const named = await db.select().from(schema.team).where(eq(schema.team.name, 'Sam Ortiz'));
+		expect(named).toHaveLength(1);
+	});
+
+	it('makes a new Team record from the User’s name, email and picture when none has their email', async () => {
+		const { db, signInWith } = await createTestSignIn();
+
+		const { user } = await signInWith('google', {
+			sub: 'google-kim',
+			email: 'kim.lee@tridentcubed.com',
+			email_verified: true,
+			name: 'Kim Lee',
+			picture: 'https://example.com/kim.png'
+		});
+
+		const [record] = await db.select().from(schema.team).where(eq(schema.team.userId, user!.id));
+		expect(record).toMatchObject({
+			name: 'Kim Lee',
+			email: 'kim.lee@tridentcubed.com',
+			photo: 'https://example.com/kim.png',
+			role: 'team'
+		});
+	});
+
+	it('never duplicates a name: a new User named like a Team record gets a name of their own', async () => {
+		const { db, signIn } = await createTestSignIn();
+		await addRecord(db, 'Tom', 'tom.elsewhere@tridentcubed.com', 'team');
+
+		const { user } = await signIn('tom@tridentcubed.com');
+
+		const [record] = await recordsOf(db, user.id);
+		expect(record.name).not.toBe('Tom');
+		expect(record.name.toLowerCase()).toContain('tom');
+		const names = (await db.select({ name: schema.team.name }).from(schema.team)).map((each) =>
+			each.name.toLowerCase()
+		);
+		expect(new Set(names).size).toBe(names.length);
+	});
+
+	it('changes nothing when the User signs in again: the same record, edited since, and no second one', async () => {
+		const { db, signIn } = await createTestSignIn();
+		const id = await addRecord(db, 'Rosa Vega', 'r.vega@tridentcubed.com', 'team');
+		const first = await signIn('r.vega@tridentcubed.com');
+		await db.update(schema.team).set({ name: 'Rosa M. Vega' }).where(eq(schema.team.id, id));
+
+		const again = await signIn('r.vega@tridentcubed.com');
+
+		expect(again.actor.role).toBe('team');
+		expect(await recordsOf(db, first.user.id)).toEqual([
+			{ id, name: 'Rosa M. Vega', role: 'team' }
+		]);
+	});
+
+	it('gives a Guest no Team record', async () => {
+		const { db, signIn } = await createTestSignIn();
+
+		const { user } = await signIn('visitor@elsewhere.example');
+
+		expect(await recordsOf(db, user.id)).toEqual([]);
+	});
+});

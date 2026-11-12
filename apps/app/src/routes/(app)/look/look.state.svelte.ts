@@ -20,7 +20,6 @@ import {
 	forgetCustomer,
 	DATASETS,
 	itemOf,
-	ME,
 	newPanel,
 	nowIso,
 	ORGANIZATION,
@@ -44,7 +43,7 @@ import { lookOf } from './look.constants';
 import type { PageType } from './records.data';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
-import { TEAM, type TeamMemberType } from './team.data';
+import type { TeamMemberType } from './team.data';
 
 export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings';
 export type ViewType = 'table' | 'cards' | 'board';
@@ -123,14 +122,14 @@ export function percentOf(panels: PanelType[]) {
 // and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
 // in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
 // V1 (#180) takes a key of its own, so what a browser kept from the prototype (its sample projects) never shows.
-// The database replaces this storage table by table: customers are saved there since #183 and kept here no more.
+// The database replaces this storage table by table: customers are saved there since #183, the team since #185, and
+// kept here no more.
 const KEEP = 'trident-v1-app';
 type KeptType = {
 	projects: ProjectType[];
 	workspaces: Record<string, PanelType[]>;
 	transports: TransportType[];
 	facilities: FacilityType[];
-	members: TeamMemberType[];
 	// Since run 15; a browser that kept run 12 to 14 has none yet and starts from Trident Cubed's own.
 	organization?: OrganizationType;
 	// Since run 17.
@@ -196,12 +195,21 @@ export class LookState {
 	// Every customer in `customers`, whole: its id, details and contacts.
 	added = $state<ClientType[]>([]);
 	// Records in the Trash: out of the lists, but a project that used one still shows its name (#183).
-	trashed: { customers: ClientType[] } = { customers: [] };
+	trashed: { customers: ClientType[]; team: TeamMemberType[] } = { customers: [], team: [] };
 	// What the header's cloud shows: the sync loop's save state once look.svelte has started it (#183).
 	sync: SaveStatusType = { state: 'saved', reason: '', retry() {} };
 	// The Not saved sheet, opened from the red cloud.
 	isSaveSheetOpen = $state(false);
-	members = $state<TeamMemberType[]>(structuredClone(TEAM));
+	// The Team records (#185: the server's rows, through mapper.ts).
+	members = $state<TeamMemberType[]>([]);
+	// Who is signed in (#185): their User id and their membership's role, from the server (look.svelte). Their Team
+	// record is `me`; a new project's Team Lead is them.
+	userId = $state('');
+	role = $state<TeamMemberType['role'] | ''>('');
+	isSuperAdmin = $state(false);
+	me = $derived(this.members.find((member) => member.userId && member.userId === this.userId));
+	// Only an Admin changes a Team role (the server refuses it from anyone else).
+	isAdmin = $derived(this.isSuperAdmin || this.role === 'admin');
 	organization = $state<OrganizationType>(structuredClone(ORGANIZATION));
 	// Every place a location field has been given, with where it is: looked up once, then read from here.
 	places = $state<PlaceType[]>(seedPlaces());
@@ -228,7 +236,6 @@ export class LookState {
 			this.workspaces = kept.workspaces;
 			this.transports = kept.transports;
 			this.facilities = kept.facilities;
-			this.members = kept.members;
 			if (kept.organization) this.organization = kept.organization;
 			if (kept.places) this.places = kept.places;
 		} else
@@ -236,11 +243,6 @@ export class LookState {
 				this.workspaces[project.id] = createPanels(project);
 				project.progress = percentOf(this.workspaces[project.id]);
 			}
-		// Whoever is signed in is in the app now: their dot is green, and it is the only one that can be until there
-		// are real sign-ins.
-		const me = this.members.find((member) => member.name === ME);
-		if (me) me.seen = nowIso();
-		for (const member of this.members) registerPerson(member);
 		// The Project panel is the project: its row follows the panel as it is typed in.
 		$effect(() => this.#syncProject());
 		$effect(() => {
@@ -249,7 +251,6 @@ export class LookState {
 				workspaces: this.workspaces,
 				transports: this.transports,
 				facilities: this.facilities,
-				members: this.members,
 				organization: this.organization,
 				places: this.places
 			} satisfies KeptType);
@@ -588,8 +589,11 @@ export class LookState {
 			);
 			this.customers.push(name);
 		} else if (page === 'team') {
-			this.members.push(item as TeamMemberType);
-			registerPerson(item as TeamMemberType);
+			const member = { ...(item as TeamMemberType) };
+			member.id ??= crypto.randomUUID();
+			delete member.userId;
+			this.members.push(member);
+			registerPerson(member);
 		} else if (page === 'transport') this.transports.push(item as TransportType);
 		else this.facilities.push(item as FacilityType);
 		this.say(`${name} added to ${DATASETS[page].label}`);
@@ -691,7 +695,11 @@ export class LookState {
 			if (gone) this.trashed.customers.push(gone);
 			forgetCustomer(key);
 		}
-		if (page === 'team') this.members = this.members.filter((member) => member.name !== key);
+		if (page === 'team') {
+			const gone = this.members.find((member) => member.name === key);
+			this.members = this.members.filter((member) => member.name !== key);
+			if (gone) this.trashed.team.push(gone);
+		}
 		if (page === 'transport')
 			this.transports = this.transports.filter((transport) => transport.name !== key);
 		if (page === 'facilities')

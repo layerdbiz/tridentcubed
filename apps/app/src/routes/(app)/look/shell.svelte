@@ -25,7 +25,7 @@
 	import AddSheet from './add-sheet.svelte';
 	import { pinsOf } from './chart.data';
 	import ListMenus from './list-menus.svelte';
-	import { ME, PAGES } from './look.data';
+	import { PAGES } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
