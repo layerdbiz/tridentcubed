@@ -80,7 +80,8 @@ CREATE TABLE "member" (
 	"organization_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
 	"role" text DEFAULT 'team' NOT NULL,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "member_role_check" CHECK (role in ('admin', 'manager', 'team'))
 );
 
 --> statement-breakpoint
@@ -107,7 +108,9 @@ CREATE TABLE "access_grant" (
 	"role" text NOT NULL,
 	"is_super_admin" boolean DEFAULT false NOT NULL,
 	"team_email" text,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "access_grant_role_check" CHECK (role in ('admin', 'manager', 'team')),
+	CONSTRAINT "access_grant_email_check" CHECK (email = lower(btrim(email)))
 );
 
 --> statement-breakpoint
@@ -185,7 +188,8 @@ CREATE TABLE "team" (
 	"link" text DEFAULT '' NOT NULL,
 	"rank" integer DEFAULT 3 NOT NULL,
 	"user_id" uuid,
-	"last_seen" timestamp with time zone
+	"last_seen" timestamp with time zone,
+	CONSTRAINT "team_role_check" CHECK (role in ('admin', 'manager', 'team'))
 );
 
 --> statement-breakpoint
@@ -257,7 +261,8 @@ CREATE TABLE "organization_details" (
 	"disclaimer_opening" text DEFAULT '' NOT NULL,
 	"disclaimer_note" text DEFAULT '' NOT NULL,
 	"closing" text DEFAULT '' NOT NULL,
-	"signoff" text DEFAULT '' NOT NULL
+	"signoff" text DEFAULT '' NOT NULL,
+	CONSTRAINT "organization_details_email_domain_check" CHECK (email_domain = lower(btrim(email_domain)) and position('@' in email_domain) = 0)
 );
 
 --> statement-breakpoint
