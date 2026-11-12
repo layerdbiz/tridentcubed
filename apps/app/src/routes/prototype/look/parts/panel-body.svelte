@@ -59,16 +59,21 @@
 	import Menu, { type OptionType } from './menu.svelte';
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
+	import { addPhotos, hasFiles } from './photos';
 	import { customerOf } from './records.data';
 	import { sortable } from './sortable';
 
 	let {
 		look,
 		panel,
-		isDraft = false
+		isDraft = false,
+		transport
 	}: {
 		look: LookState;
 		panel: PanelType;
+		// The Transport Mode Panel's letter, when the page showing it picks one (panels/+page.svelte shows B and C
+		// side by side); left out, it is the selector's.
+		transport?: string;
 		// A project not made yet (the + sheet): typing saves nothing and no other project's lock applies.
 		isDraft?: boolean;
 	} = $props();
@@ -76,6 +81,8 @@
 	function save() {
 		if (!isDraft) look.saved();
 	}
+
+	const legsLook = $derived(transport ?? look.variant('panel-transport'));
 
 	// The Project panel's sections, open or folded: Project, Customer, Team, and one per company of personnel.
 	let openSections = $state<string[]>(['project', 'customer', 'team']);
@@ -474,6 +481,37 @@
 	function sortEntries(index: number) {
 		panel.days[index].entries.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
 		save();
+	}
+
+	// Photo files dragged in from the desktop land in the group they are dropped on (photos.ts, run 27).
+	let dropping = $state('');
+
+	function overFiles(event: DragEvent, id: string) {
+		if (!hasFiles(event)) return;
+		event.preventDefault();
+		event.stopPropagation();
+		dropping = id;
+	}
+
+	async function dropFiles(event: DragEvent, group: PanelType['groups'][number]) {
+		if (!hasFiles(event)) return;
+		event.preventDefault();
+		event.stopPropagation();
+		dropping = '';
+		const count = await addPhotos(panel, [...(event.dataTransfer?.files ?? [])], group);
+		if (!count) return;
+		if (!openGroups.includes(group.id)) openGroups = [...openGroups, group.id];
+		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added`);
+		save();
+	}
+
+	// From the photo's own sheet: close it, then ask, as every delete does.
+	function deletePhoto(photo: PhotoType) {
+		const group = panel.groups.find((item) => item.photos.some((other) => other.id === photo.id));
+		const found = group?.photos.find((other) => other.id === photo.id);
+		editing = undefined;
+		if (group && found)
+			remove(group.photos, found, 'Delete this photo?', 'It leaves the group and the report.');
 	}
 
 	function addGroup() {
@@ -1022,13 +1060,13 @@
 			{@render teamBlock()}
 		</div>
 	{:else if panel.kind === 'transport'}
-		{#if look.variant('panel-transport') === 'A'}
+		{#if legsLook === 'A'}
 			{@render stopsBlock()}
 		{:else}
 			<TransportLegs
 				{look}
 				{panel}
-				isLine={look.variant('panel-transport') === 'C'}
+				isLine={legsLook === 'C'}
 				onsave={save}
 				onaddtransport={addTransport}
 				onaddfacility={addFacility}
@@ -1267,7 +1305,15 @@
 			{@attach sortable(`groups-${panel.id}`, (from, to) => move(panel.groups, from, to))}
 		>
 			{#each panel.groups as group, groupIndex (group.id)}
-				<div animate:flip={{ duration: 200 }}>
+				<div
+					class="rounded-2xl transition {dropping === group.id ? 'ring-2 ring-primary' : ''}"
+					role="group"
+					aria-label={group.title || 'Photo group'}
+					animate:flip={{ duration: 200 }}
+					ondragover={(event) => overFiles(event, group.id)}
+					ondragleave={() => (dropping = '')}
+					ondrop={(event) => dropFiles(event, group)}
+				>
 					<Group
 						title={group.title || 'Untitled group'}
 						meta="{group.photos.length} photos"
@@ -1557,6 +1603,12 @@
 			</label>
 			<button class="mt-5 w-full rounded-full bg-primary py-3 text-sm font-semibold text-white"
 				>Done</button
+			>
+			<button
+				type="button"
+				class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full py-3 text-sm font-semibold text-danger transition hover:bg-danger/10"
+				onclick={() => deletePhoto(photo)}
+				><span class="icon-[mdi--trash-can-outline] size-[18px]"></span>Delete photo</button
 			>
 		</form>
 	</BottomSheet>

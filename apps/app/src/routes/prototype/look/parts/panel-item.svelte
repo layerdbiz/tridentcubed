@@ -18,6 +18,7 @@
 	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
+	import { addPhotos, hasFiles } from './photos';
 	import ProgressRing from './progress-ring.svelte';
 
 	let {
@@ -50,6 +51,31 @@
 		Complete: 'bg-success',
 		Off: 'bg-slate-300'
 	};
+
+	// Photo files dragged in from the desktop and dropped on a photo panel, open or shut, join its last group
+	// (photos.ts, run 27). A drop on one of its groups is that group's own.
+	let isOver = $state(false);
+
+	function overFiles(event: DragEvent) {
+		if (panel.kind !== 'photos' || frozen || !hasFiles(event)) return;
+		event.preventDefault();
+		isOver = true;
+	}
+
+	function leaveFiles(event: DragEvent) {
+		const box = event.currentTarget as HTMLElement;
+		if (!box.contains(event.relatedTarget as Node | null)) isOver = false;
+	}
+
+	async function dropFiles(event: DragEvent) {
+		if (panel.kind !== 'photos' || frozen || !hasFiles(event)) return;
+		event.preventDefault();
+		isOver = false;
+		const count = await addPhotos(panel, [...(event.dataTransfer?.files ?? [])]);
+		if (!count) return;
+		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added to ${panel.name}`);
+		look.saved();
+	}
 
 	function toggleOpen() {
 		look.panelId = isOpen ? '' : panel.id;
@@ -103,9 +129,16 @@
 {/snippet}
 
 <div
-	class="relative transition-shadow duration-300 {shell} {panel.isEnabled ? '' : 'opacity-75'}"
+	class="relative transition-shadow duration-300 {shell} {panel.isEnabled
+		? ''
+		: 'opacity-75'} {isOver ? 'ring-2 ring-primary' : ''}"
 	data-sort="panels"
 	data-index={index}
+	role="group"
+	aria-label={panel.name}
+	ondragover={overFiles}
+	ondragleave={leaveFiles}
+	ondrop={dropFiles}
 >
 	{#if style === 'soft'}
 		<div class="absolute -top-2 -right-2 z-10">{@render control(true)}</div>
