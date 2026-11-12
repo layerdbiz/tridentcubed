@@ -169,6 +169,8 @@ export class LookState {
 	projectId = $state('p1');
 	tab = $state<TabType>('edit');
 	panelId = $state('');
+	// Which look each part of the app is showing, by part id (variants.data.ts); a part not listed shows A.
+	variants = $state<Record<string, string>>({});
 	// The project whose status is being changed in the Change Status sheet, by id.
 	statusFor = $state<string>();
 	// What the + is adding, or nothing while its sheet is shut.
@@ -300,6 +302,20 @@ export class LookState {
 		this.tab = tab === 'preview' ? 'page' : tab;
 		this.tabProgress = this.tab === 'page' ? 0 : 1;
 		this.screen = 'record';
+	}
+
+	// The prototype selector: the letter a part is showing, and picking another.
+	variant(id: string) {
+		return this.variants[id] ?? 'A';
+	}
+
+	pickVariant(id: string, letter: string) {
+		if (letter === 'A') delete this.variants[id];
+		else this.variants[id] = letter;
+	}
+
+	resetVariants() {
+		this.variants = {};
 	}
 
 	// The saved place a location's words name, whatever their capitals.

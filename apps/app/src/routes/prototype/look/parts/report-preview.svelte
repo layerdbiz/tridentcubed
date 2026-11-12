@@ -43,6 +43,8 @@
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
+	import CoverA from './variants/cover-a.svelte';
+	import CoverB from './variants/cover-b.svelte';
 	import { Viewport, type RectType } from './viewport.svelte';
 	import ZoomBar from './zoom-bar.svelte';
 
@@ -316,7 +318,26 @@
 		return () => clearTimeout(timer);
 	});
 
-	// The cover's lines, in the Project panel's own order, each with its real picture: a logo, a face, or an icon.
+	// Cover A's lines (variants/cover-a.svelte): the six it had before run 19, now in the Project panel's order.
+	const coverLines = $derived([
+		{
+			icon: 'icon-[mdi--package-variant-closed]',
+			label: 'Project Type',
+			value: detail('Project Type') ?? ''
+		},
+		{ icon: PAGE_ICONS.customers, label: 'Customer', value: company },
+		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Lead', value: team?.owner ?? '' },
+		{
+			icon: stops[0] ? iconOf(stops[0]) : PAGE_ICONS.transport,
+			label: 'Transport Mode',
+			value: transport
+		},
+		{ icon: PAGE_ICONS.facilities, label: 'Facility', value: facility },
+		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: dates }
+	]);
+
+	// Cover B's lines (variants/cover-b.svelte), in the Project panel's own order, each with its real picture: a
+	// logo, a face, or an icon.
 	type CoverType = { label: string; value: string; images?: string[]; icon?: string };
 	const cover = $derived<CoverType[]>([
 		{
@@ -500,46 +521,12 @@
 										d="M0,92.7V120h1200V24.2c-67.8-23.1-144.3-15.5-214.3,3C906.7,48,823.8,89,743.8,105.8 c-82.3,17.3-168.1,16.3-250.5-0.4c-57.8-11.7-114-31.1-172-41.9C213.6,43.7,102.5,53.8,0,92.7z"
 									/></svg
 								>
-								<dl
-									class="mx-auto mt-5 grid w-full grid-flow-col grid-cols-2 grid-rows-5 gap-x-8 gap-y-2 px-12 text-left"
-								>
-									{#each cover as line (line.label)}
-										<div class="flex min-w-0 items-center gap-2.5">
-											<span class="flex w-9 shrink-0 items-center justify-start">
-												{#if line.images?.length}
-													{#each line.images.slice(0, 3) as image, at (at)}
-														<img
-															src={image}
-															alt=""
-															draggable="false"
-															class="size-7 rounded-full bg-white object-cover ring-2 ring-slate-100"
-															style="margin-left: {at ? -18 : 0}px"
-														/>
-													{/each}
-												{:else}
-													<span
-														class="flex size-7 items-center justify-center rounded-full bg-white text-primary ring-2 ring-slate-100"
-														><span class="{line.icon} size-4"></span></span
-													>
-												{/if}
-											</span>
-											<div class="min-w-0">
-												<dt
-													class="text-[7px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
-												>
-													{line.label}
-												</dt>
-												<dd
-													class="truncate text-[11px] leading-tight {line.value
-														? 'font-medium text-slate-800'
-														: 'text-slate-300 italic'}"
-												>
-													{line.value || 'Not filled in yet'}
-												</dd>
-											</div>
-										</div>
-									{/each}
-								</dl>
+								<!-- The prototype selector picks the cover's list: A is the one column, B the two with pictures. -->
+								{#if look.variant('cover') === 'B'}
+									<CoverB lines={cover} />
+								{:else}
+									<CoverA lines={coverLines} />
+								{/if}
 							</div>
 						</div>
 					{:else}
