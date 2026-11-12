@@ -29,6 +29,7 @@
 	import { flip } from 'svelte/animate';
 	import BottomSheet from './bottom-sheet.svelte';
 	import Group from './group.svelte';
+	import TransportLegs from './variants/transport-legs.svelte';
 	import { shrink } from './image';
 	import ImageField from './image-field.svelte';
 	import {
@@ -338,6 +339,34 @@
 		});
 	}
 
+	// "Add new" from the legs editor (variants/transport-legs.svelte): ask for the name, add it to its page, hand
+	// the name back.
+	function addTransport(type: TransportTypeType, mode: string, done: (name: string) => void) {
+		ask({
+			label: mode,
+			onadd: (name) => {
+				look.add('transport', { ...draftOf('transport'), name, type, mode });
+				done(name);
+			}
+		});
+	}
+
+	function addFacility(kinds: FacilityKindType[], done: (name: string) => void) {
+		ask({
+			label: 'Facility',
+			kinds,
+			onadd: (name) => {
+				look.add('facilities', {
+					...draftOf('facilities'),
+					name,
+					kind: draftKind,
+					city: look.project.location
+				});
+				done(name);
+			}
+		});
+	}
+
 	// The first stop starts the trip; a later one ends it, and the stop that ended it becomes a stop on the way.
 	// The trip's own three stops, by point: the first stop of each that was not added as an extra.
 	const TRIP: PointType[] = ['Start', 'Stop', 'End'];
@@ -590,7 +619,7 @@
      Under it, a section for each other company with people on the job. -->
 {#snippet teamBlock()}
 	<Group
-		title="Team"
+		title="Organization"
 		note={[panel.owner, ...panel.assigned].filter(Boolean).join(', ') || 'Pick the team lead first'}
 		icon={PAGE_ICONS.team}
 		isOpen={openSections.includes('team')}
@@ -993,7 +1022,18 @@
 			{@render teamBlock()}
 		</div>
 	{:else if panel.kind === 'transport'}
-		{@render stopsBlock()}
+		{#if look.variant('panel-transport') === 'A'}
+			{@render stopsBlock()}
+		{:else}
+			<TransportLegs
+				{look}
+				{panel}
+				isLine={look.variant('panel-transport') === 'C'}
+				onsave={save}
+				onaddtransport={addTransport}
+				onaddfacility={addFacility}
+			/>
+		{/if}
 	{:else if panel.kind === 'items'}
 		<!-- Rows copied from a spreadsheet can be pasted into any of these fields: each line becomes an item. -->
 		<div

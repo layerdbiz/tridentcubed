@@ -33,7 +33,8 @@
 		isDisabled = false,
 		isRequired = true,
 		onpick,
-		onadd
+		onadd,
+		addLabel
 	}: {
 		label: string;
 		options: PickType[];
@@ -53,6 +54,8 @@
 		onpick: (id: string) => void;
 		// Adds "Add new" as the last choice.
 		onadd?: () => void;
+		// What "Add new" names, when it is not the label: a field called Start adds a Facility.
+		addLabel?: string;
 	} = $props();
 
 	const ADD = '__add';
@@ -64,7 +67,7 @@
 	const picked = $derived(values ?? (value ? [value] : []));
 	const list = $derived<OptionType[]>([
 		...options,
-		...(onadd ? [{ id: ADD, label: `Add new ${label}…` }] : [])
+		...(onadd ? [{ id: ADD, label: `Add new ${addLabel ?? label}…` }] : [])
 	]);
 
 	function optionOf(id: string) {

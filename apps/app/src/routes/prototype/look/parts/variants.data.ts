@@ -143,9 +143,19 @@ export const PART_GROUPS: PartGroupType[] = [
 				label: 'Edit',
 				note: 'The second tab: where things are filled in',
 				parts: [
-					part('panels', 'Panel List'),
+					part(
+						'panels',
+						'Panel List',
+						['A', 'B'],
+						'B: a panel with nothing done yet has a grey icon and a grey To Do.'
+					),
 					part('panel-project', 'Project Panel'),
-					part('panel-transport', 'Transport Mode Panel'),
+					part(
+						'panel-transport',
+						'Transport Mode Panel',
+						['A', 'B', 'C'],
+						'A: Start, Stop and End each pick their own transport. B and C: the trip in legs; pick the type, the mode, then which one, once, then its Start, Stops and End. B: a card for each leg. C: one line down the panel.'
+					),
 					part('panel-items', 'Items Panel'),
 					part('panel-timelog', 'Time Log Panel'),
 					part('panel-photos', 'Photos Panel'),

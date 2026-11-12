@@ -104,6 +104,8 @@ export type StopType = {
 	facility: string;
 	// A stop added beyond the trip's own Start, Stop and End: it has its own section in the panel (run 19).
 	isExtra?: boolean;
+	// The leg it belongs to (legs.ts, run 26): one transport mode and the facilities it calls at.
+	leg?: string;
 };
 
 export type PanelKindType = 'project' | 'transport' | 'items' | 'timelog' | 'photos';

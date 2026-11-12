@@ -12,6 +12,8 @@
 	// Run 11 (Justin, 2026-10-26 19:22): a Sent or Complete project is frozen. Every panel's icon and ring take the
 	// state's colour (Sent purple, Complete green), a lock in that colour stands where the switch was, and nothing
 	// inside opens for editing, drags or deletes (panel-list.svelte says why, with Unsend).
+	// Run 26 (Justin, 2026-11-11), Panel List B: a panel with nothing done yet is quiet, its icon and its "To do"
+	// grey like its empty ring; blue starts with the first thing filled in.
 	import { slide } from 'svelte/transition';
 	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
@@ -33,6 +35,9 @@
 	const metrics = $derived(metricsOf(panel));
 	const tone = $derived(toneOf(metrics.status));
 	const isOpen = $derived(look.panelId === panel.id);
+	const isQuiet = $derived(
+		look.variant('panels') !== 'A' && panel.isEnabled && metrics.status === 'To do'
+	);
 	const isLocked = $derived(panel.control === 'locked');
 	const frozen = $derived(look.isFrozen ? look.project.status : undefined);
 	const FROZEN_RINGS: Record<string, string> = {
@@ -145,7 +150,9 @@
 							: panel.isEnabled
 								? metrics.status === 'Complete'
 									? 'text-success'
-									: 'text-primary'
+									: isQuiet
+										? 'text-slate-400'
+										: 'text-primary'
 								: 'text-slate-300'}"
 					></span>
 				</ProgressRing>
@@ -156,7 +163,9 @@
 						? 'bg-success/10 text-success'
 						: metrics.status === 'Off'
 							? 'bg-slate-100 text-slate-300'
-							: 'bg-primary/10 text-primary'}"><span class="{panel.icon} size-6"></span></span
+							: isQuiet
+								? 'bg-slate-100 text-slate-400'
+								: 'bg-primary/10 text-primary'}"><span class="{panel.icon} size-6"></span></span
 				>
 			{/if}
 			<span class="min-w-0 flex-1">
@@ -177,8 +186,10 @@
 						? 'text-slate-900'
 						: 'text-slate-300'}">{panel.isEnabled ? `${metrics.percent}%` : 'Off'}</span
 				>
-				<span class="block text-[10px] font-semibold tracking-[0.12em] uppercase {tone.text}"
-					>{metrics.status}</span
+				<span
+					class="block text-[10px] font-semibold tracking-[0.12em] uppercase {isQuiet
+						? 'text-slate-400'
+						: tone.text}">{metrics.status}</span
 				>
 			</span>
 		</button>
