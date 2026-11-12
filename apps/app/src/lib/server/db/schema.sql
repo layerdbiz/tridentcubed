@@ -390,6 +390,39 @@ CREATE TABLE "file" (
 --> statement-breakpoint
 ALTER TABLE "file" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "photo_group" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"panel_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"title" text DEFAULT '' NOT NULL,
+	"description" text DEFAULT '' NOT NULL,
+	"layout" integer DEFAULT 4 NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "photo_group" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "photo" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"group_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"file" text DEFAULT '' NOT NULL,
+	"description" text DEFAULT '' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "photo" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
@@ -464,6 +497,18 @@ ALTER TABLE "file" ADD CONSTRAINT "file_organization_id_organization_id_fk" FORE
 --> statement-breakpoint
 ALTER TABLE "file" ADD CONSTRAINT "file_uploaded_by_user_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "photo_group" ADD CONSTRAINT "photo_group_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "photo_group" ADD CONSTRAINT "photo_group_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "photo_group" ADD CONSTRAINT "photo_group_panel_id_panel_id_fk" FOREIGN KEY ("panel_id") REFERENCES "public"."panel"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "photo" ADD CONSTRAINT "photo_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "photo" ADD CONSTRAINT "photo_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "photo" ADD CONSTRAINT "photo_group_id_photo_group_id_fk" FOREIGN KEY ("group_id") REFERENCES "public"."photo_group"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");
 --> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" USING btree ("user_id");
@@ -514,6 +559,10 @@ CREATE INDEX "panel_project_idx" ON "panel" USING btree ("project_id");
 --> statement-breakpoint
 CREATE UNIQUE INDEX "panel_key_idx" ON "panel" USING btree ("project_id","key") WHERE key <> '' and deleted_at is null;
 --> statement-breakpoint
+CREATE INDEX "photo_group_project_idx" ON "photo_group" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX "photo_project_idx" ON "photo" USING btree ("project_id");
+--> statement-breakpoint
 CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.user_id());
 --> statement-breakpoint
 CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
@@ -557,3 +606,7 @@ CREATE POLICY "personnel_person in the acting organization" ON "personnel_person
 CREATE POLICY "panel in the acting organization" ON "panel" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "file in the acting organization" ON "file" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "photo_group in the acting organization" ON "photo_group" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "photo in the acting organization" ON "photo" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());

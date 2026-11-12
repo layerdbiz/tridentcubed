@@ -47,6 +47,7 @@ import {
 	transport,
 	user as users
 } from './db/schema';
+import { photo, photoGroup } from './db/photo.schema';
 import { checkPermission, FROZEN_STATUSES, type ChangeType } from './permission';
 
 function toBatchState(): BatchStateType {
@@ -70,7 +71,10 @@ export const TABLES: Record<TableNameType, PgTable> = {
 	project_team: projectTeam,
 	personnel_company: personnelCompany,
 	personnel_person: personnelPerson,
-	panel
+	panel,
+	// #189
+	photo_group: photoGroup,
+	photo
 };
 
 // What one batch learns as it goes: each project's status before the batch began, the projects it changed and

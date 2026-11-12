@@ -30,8 +30,11 @@ export type TakenType = {
 	longitude?: number;
 };
 
-/** What a file is for: the table, the column and (for a row already made) the row. */
-export type FileTargetType = { table: string; column: string; id?: string };
+/**
+ * What a file is for: the table, the column and (for a row already made) the row. A row inside a project not saved
+ * yet (a photo, #189) names its project, so a Sent project refuses the upload before the bytes are sent.
+ */
+export type FileTargetType = { table: string; column: string; id?: string; projectId?: string };
 
 const UUID = v.pipe(v.string(), v.uuid());
 
@@ -39,7 +42,8 @@ export const UPLOAD_REQUEST = v.object({
 	for: v.object({
 		table: v.pipe(v.string(), v.maxLength(64)),
 		column: v.pipe(v.string(), v.maxLength(64)),
-		id: v.optional(UUID)
+		id: v.optional(UUID),
+		projectId: v.optional(UUID)
 	}),
 	name: v.pipe(v.string(), v.maxLength(300)),
 	type: v.pipe(v.string(), v.maxLength(100)),

@@ -233,6 +233,30 @@ export const TABLES = {
 			isEnabled: v.boolean(),
 			position: POSITION
 		}
+	},
+	// #189: a photo panel's groups and their photos, in order. A photo keeps its file's address (`/files/<id>`).
+	photo_group: {
+		scope: 'project',
+		parent: { table: 'panel', column: 'panelId' },
+		columns: {
+			projectId: ID,
+			panelId: ID,
+			position: POSITION,
+			title: TEXT,
+			description: TEXT,
+			layout: v.picklist([1, 2, 4, 6, 8])
+		}
+	},
+	photo: {
+		scope: 'project',
+		parent: { table: 'photo_group', column: 'groupId' },
+		columns: {
+			projectId: ID,
+			groupId: ID,
+			position: POSITION,
+			file: PICTURE,
+			description: TEXT
+		}
 	}
 } as const satisfies Record<string, TableSpecType>;
 

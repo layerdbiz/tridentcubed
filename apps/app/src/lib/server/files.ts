@@ -76,7 +76,7 @@ export async function createUpload(
 	request: UploadRequestType
 ): Promise<UploadAnswerType> {
 	if (!actor.organizationId) return { isAllowed: false, reason: REASONS.guest };
-	const { table, column, id: rowId } = request.for;
+	const { table, column, id: rowId, projectId } = request.for;
 	if (!holdsFile(table, column)) {
 		return { isAllowed: false, reason: REASONS.notAFile(table, column) };
 	}
@@ -90,7 +90,8 @@ export async function createUpload(
 	const organizationId = actor.organizationId;
 	const verdict = await claims.run(actor, async (tx) => {
 		const allowed = await checkPut(tx, actor, table as TableNameType, rowId, {
-			[column]: address
+			[column]: address,
+			...(projectId ? { projectId } : {})
 		});
 		if (!allowed.isAllowed) return allowed;
 		const { taken } = request;

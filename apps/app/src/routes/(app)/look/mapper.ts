@@ -18,6 +18,7 @@ import {
 } from './look.data';
 import { FROZEN, type LookState, percentOf } from './look.state.svelte';
 import { takeListRows, toListRows } from './mapper.lists';
+import { takePhotos, toPhotoRows } from './mapper.photos';
 import { customerOf } from './records.data';
 import type { TeamMemberType } from './team.data';
 
@@ -309,6 +310,9 @@ function toProjectRows(look: LookState): RowType[] {
 					position
 				}
 			});
+		// #189: a photo panel's groups and photos.
+		for (const panel of panels)
+			if (panel.kind === 'photos') rows.push(...toPhotoRows(project.id, panel));
 	}
 	// Only the assignments on screen keep their ids; one taken off and put back gets a new one.
 	for (const key of look.teamRowIds.keys()) {
@@ -485,6 +489,8 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 	const saved = look.fromServer[projectId];
 	if (own && saved) fillProjectPanel(look, own, saved.values, saved.team);
 	if (own) own.personnel = toPersonnel(rows);
+	// #189: a photo panel's groups and photos.
+	for (const panel of panels) if (panel.kind === 'photos') takePhotos(panel, rows);
 	look.workspaces[projectId] = panels;
 }
 
