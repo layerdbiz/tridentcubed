@@ -3,6 +3,8 @@
 // itself: the preview sends the pages exactly as it has drawn them, with the page's own styles, and this prints
 // them with the same headless browser the app's export uses (#lib/server/pdf-browser). A page is 595 by 842, the
 // size the preview draws it.
+// The pages are written into a blank page of this same site (GET, below), not a bare one, so the fonts and
+// pictures they name load as they do in the app.
 // Not for V1 as it stands: it prints whatever markup it is sent. It only takes requests from this site's own
 // pages, and V1 renders the report on the server from the database instead.
 import { launchBrowser } from '#lib/server/pdf-browser.js';
@@ -10,6 +12,20 @@ import type { RequestHandler } from './$types';
 
 const WIDTH = 595;
 const HEIGHT = 842;
+
+// The blank page the pages are written into.
+export const GET: RequestHandler = () =>
+	new Response('<!doctype html><title>Report</title>', {
+		headers: { 'content-type': 'text/html' }
+	});
+
+// What lets the headless browser open this site the way the person asking can (a preview deployment's protection).
+const FORWARDED = [
+	'cookie',
+	'authorization',
+	'x-vercel-protection-bypass',
+	'x-vercel-set-bypass-cookie'
+];
 
 export const POST: RequestHandler = async ({ request, url }) => {
 	if (request.headers.get('origin') !== url.origin)
@@ -56,6 +72,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		const page = await browser.newPage();
 		await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 2 });
 		await page.emulateMediaType('screen');
+		const headers: Record<string, string> = {};
+		for (const name of FORWARDED) {
+			const value = request.headers.get(name);
+			if (value) headers[name] = value;
+		}
+		if (Object.keys(headers).length) await page.setExtraHTTPHeaders(headers);
+		await page.goto(new URL('/prototype/look/pdf', url).href, { waitUntil: 'domcontentloaded' });
 		await page.setContent(html, { waitUntil: 'networkidle0' });
 		await page.evaluate(async () => {
 			await document.fonts.ready;

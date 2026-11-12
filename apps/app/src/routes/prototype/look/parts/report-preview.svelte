@@ -538,7 +538,15 @@
 		board.height = Math.round((image.naturalHeight * wide) / image.naturalWidth);
 		board.getContext('2d')?.drawImage(image, 0, 0, board.width, board.height);
 		try {
-			return board.toDataURL('image/jpeg', 0.82);
+			// A logo with a see-through ground keeps it (PNG); a photo goes as a JPEG.
+			const probe = document.createElement('canvas');
+			probe.width = probe.height = 24;
+			const pen = probe.getContext('2d');
+			pen?.drawImage(image, 0, 0, 24, 24);
+			const dots = pen?.getImageData(0, 0, 24, 24).data ?? [];
+			let isClear = false;
+			for (let at = 3; at < dots.length; at += 4) if (dots[at] < 250) isClear = true;
+			return isClear ? board.toDataURL('image/png') : board.toDataURL('image/jpeg', 0.82);
 		} catch {
 			return undefined;
 		}

@@ -22,7 +22,7 @@ body:has(.look)::-webkit-scrollbar,
 	unicode-range: U+2026;
 }
 .look {
-	font-family: 'Look Dots', var(--font-sans);
+	font-family: 'Look Dots', var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* A barge in mdi's filled style (none of the icon sets has one): cargo on a flat hull over mdi's ferry waves, drawn
