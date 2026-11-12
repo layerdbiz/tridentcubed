@@ -49,6 +49,7 @@
 		"@sparticuz/chromium-min": "143.0.4",
 		"better-auth": "^1.7.20",
 		"drizzle-orm": "^0.45.4",
+		"exifreader": "4.54.0",
 		"maplibre-gl": "6.16.0",
 		"postgres": "^3.4.9",
 		"puppeteer-core": "24.38.0",
