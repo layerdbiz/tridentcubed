@@ -2,49 +2,16 @@
 // (world-map.svelte, Justin 2026-11-07: "use a real map"). It took over from a drawn map of the United States, so
 // places abroad (London, Cartagena) now show too. Since run 17 this is only the places the prototype starts with:
 // the app keeps its own list (LookState.places, the "places table"), which grows each time a suggestion is picked
-// in a location field, and the pins read that list.
-export const PLACES: Record<string, [number, number]> = {
-	'Houston, TX': [-95.3698, 29.7604],
-	'Beaumont, TX': [-94.1266, 30.0802],
-	'Port Arthur, TX': [-93.9399, 29.885],
-	'Lake Charles, LA': [-93.2174, 30.2266],
-	'New Orleans, LA': [-90.0715, 29.9511],
-	'Baton Rouge, LA': [-91.1871, 30.4515],
-	'Mobile, AL': [-88.0399, 30.6954],
-	'Corpus Christi, TX': [-97.3964, 27.8006],
-	'Galveston, TX': [-94.7977, 29.3013],
-	'Freeport, TX': [-95.3597, 28.9541],
-	'Dallas, TX': [-96.797, 32.7767],
-	'San Antonio, TX': [-98.4936, 29.4241],
-	'Tampa, FL': [-82.4572, 27.9506],
-	'Allentown, PA': [-75.4902, 40.6084],
-	'La Porte, TX': [-95.0194, 29.6658],
-	'Brownsville, TX': [-97.4975, 25.9017],
-	'Houma, LA': [-90.7195, 29.5958],
-	'Fort Myers, FL': [-81.8723, 26.6406],
-	'Spring, TX': [-95.4172, 30.0799],
-	'Pasadena, TX': [-95.2091, 29.6911],
-	'Shreveport, LA': [-93.7502, 32.5252],
-	'Pensacola, FL': [-87.2169, 30.4213],
-	'Savannah, GA': [-81.0912, 32.0809],
-	'Charleston, SC': [-79.9311, 32.7765],
-	'Schaumburg, IL': [-88.0834, 42.0334],
-	'Stamford, CT': [-73.5387, 41.0534],
-	'London, UK': [-0.1276, 51.5072],
-	'Cartagena De Indias': [-75.4794, 10.391],
-	'Georgetown, GY': [-58.1551, 6.8013],
-	'Tampico, TAM': [-97.8611, 22.2331]
-};
+// in a location field, and the pins read that list. Since #184 the places are rows: the starting ones come from the
+// seed (lib/start/places.ts) and a picked one is saved once for every member.
 
-// A saved place: what a location field's text means on the map. `detail` is the full address the lookup gave.
+// A saved place: what a location field's text means on the map. `detail` is the full address the lookup gave. Its id
+// is the saved row's (#184): worked out from its name, so it is the same on every device.
 export type PlaceType = {
+	id?: string;
 	name: string;
 	lat: number;
 	lng: number;
 	detail?: string;
 	created?: string;
 };
-
-export function seedPlaces(): PlaceType[] {
-	return Object.entries(PLACES).map(([name, [lng, lat]]) => ({ name, lat, lng }));
-}

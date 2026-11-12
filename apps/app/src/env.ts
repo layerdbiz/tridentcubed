@@ -30,6 +30,9 @@ export const variables = defineEnvVars({
 		"Continue with Microsoft (#191), with the secret. The Entra app's redirect URI is <app>/api/auth/callback/microsoft; it needs the optional ID token claims email and xms_edov."
 	),
 	MICROSOFT_CLIENT_SECRET: optional('Continue with Microsoft (#191), with the client ID.'),
+	GEOAPIFY_API_KEY: optional(
+		'Looks new places up for the location field (#184). Unset: saved places still work, nothing new is looked up.'
+	),
 	SUPABASE_URL: optional(
 		"Supabase's project address (https://<ref>.supabase.co), with the secret key: files go to its private bucket `files` (#187). Unset outside production: a local folder."
 	),

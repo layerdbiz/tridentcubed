@@ -216,6 +216,7 @@
 			<ImageField
 				label="Picture"
 				value={transport.photo ?? ''}
+				target={{ table: 'transport', column: 'picture', id: transport.id }}
 				hint="The picture behind its Page. Without one, the {transport.mode.toLowerCase()} stock picture shows."
 				onpick={(url) => set({ photo: url })}
 			/>
@@ -236,6 +237,7 @@
 			<ImageField
 				label="Picture"
 				value={facility.photo ?? ''}
+				target={{ table: 'facility', column: 'picture', id: facility.id }}
 				hint="The picture behind its Page. Without one, the {facility.kind.toLowerCase()} stock picture shows."
 				onpick={(url) => set({ photo: url })}
 			/>

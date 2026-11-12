@@ -6,4 +6,7 @@ export * from './organization.schema';
 export * from './customer.schema';
 export * from './change.schema';
 export * from './team.schema';
+export * from './transport.schema';
+export * from './place.schema';
+export * from './details.schema';
 export * from './file.schema';

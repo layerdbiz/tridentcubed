@@ -60,7 +60,7 @@ async function addOrganization() {
 		.values({ id: THEIRS.id, name: 'Theirs', slug: 'theirs' });
 	await test.db
 		.insert(schema.organizationDetails)
-		.values({ organizationId: THEIRS.id, emailDomain: THEIRS.domain });
+		.values({ id: THEIRS.id, organizationId: THEIRS.id, emailDomain: THEIRS.domain });
 	return (await test.signIn(`ana@${THEIRS.domain}`)).actor;
 }
 
