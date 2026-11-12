@@ -5,7 +5,9 @@
 	// Run 34: of the three looks he kept B, the organization on a dark top with a white sheet rising under it, like
 	// the dashboard. The mark is the main website's own dark logo (packages/ui static/branding), with no tile
 	// behind it. Under the fields are Sign In and Create Account, then the two usual other ways in, Google and
-	// Microsoft.
+	// Microsoft. Run 35: the dark top ends in the website's own wave (the Divider its sections use, in the white
+	// of the form under it), the name is in capitals, and nothing is written under it.
+	import { Divider } from '@layerd/ui';
 	import type { LookState } from './look.state.svelte';
 
 	let { look }: { look: LookState } = $props();
@@ -33,21 +35,22 @@
 	}}
 >
 	<div class="flex min-h-full flex-col bg-slate-950">
-		<div
-			class="flex flex-1 flex-col items-center justify-center bg-linear-to-br from-slate-700 to-slate-950 px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-16 text-center text-white"
-		>
-			<img
-				src="/branding/logo-dark.svg"
-				alt=""
-				draggable="false"
-				class="size-28 object-contain"
-			/>
-			<p class="mt-5 text-2xl font-semibold tracking-tight">{organization.name}</p>
-			<p class="mt-1 text-sm text-white/60">Report Generator</p>
+		<div class="flex flex-1 flex-col bg-linear-to-br from-slate-700 to-slate-950 text-white">
+			<div
+				class="flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-6 text-center"
+			>
+				<img
+					src="/branding/logo-dark.svg"
+					alt=""
+					draggable="false"
+					class="size-28 object-contain"
+				/>
+				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase">{organization.name}</p>
+			</div>
+			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
+			<Divider svg="text-white" />
 		</div>
-		<div
-			class="-mt-8 rounded-t-[40px] bg-white px-5 pt-7 pb-[calc(env(safe-area-inset-bottom)+2rem)] shadow-[0_-24px_70px_-8px_rgb(15_23_42/0.5)]"
-		>
+		<div class="bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
 			<div class="mx-auto w-full max-w-sm space-y-4">
 				<h1 class="text-xl font-semibold tracking-tight text-slate-900">Sign In</h1>
 				<label class="block">
