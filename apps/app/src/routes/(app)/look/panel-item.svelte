@@ -68,11 +68,13 @@
 		if (!box.contains(event.relatedTarget as Node | null)) isOver = false;
 	}
 
-	async function dropFiles(event: DragEvent) {
+	function dropFiles(event: DragEvent) {
 		if (panel.kind !== 'photos' || frozen || !hasFiles(event)) return;
 		event.preventDefault();
 		isOver = false;
-		const count = await addPhotos(panel, [...(event.dataTransfer?.files ?? [])]);
+		const count = addPhotos(panel, [...(event.dataTransfer?.files ?? [])], {
+			projectId: look.projectId
+		});
 		if (!count) return;
 		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added to ${panel.name}`);
 		look.saved();
