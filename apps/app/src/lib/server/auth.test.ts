@@ -93,6 +93,18 @@ describe('starting a sign-in with Google or Microsoft', () => {
 		expect(wizard).toContain('$APP_URL/api/auth/callback/microsoft');
 		expect(wizard).toContain('xms_edov');
 	});
+
+	it('has the setup wizard put the site address in Vercel as BETTER_AUTH_URL, never in the local .env', () => {
+		const wizard = readFileSync(
+			new URL('../../../../../scripts/setup-dev-app.sh', import.meta.url),
+			'utf8'
+		);
+
+		expect(wizard).toContain('APP_URL="https://dev.app.tridentcubed.com"');
+		expect(wizard).toContain(`BETTER_AUTH_URL) printf '%s' "$APP_URL"`);
+		expect(wizard).toContain('push_to_vercel "${CORE_KEYS[@]}" "${FIXED_KEYS[@]}"');
+		expect(wizard).not.toContain('write_env BETTER_AUTH_URL');
+	});
 });
 
 const GOOGLE_ANA = {

@@ -254,6 +254,9 @@ VERCEL_TEAM="layerdbusiness"
 VERCEL_PROJECT="tridentcubed-dev-app"
 VERCEL_DASH="https://vercel.com/$VERCEL_TEAM/$VERCEL_PROJECT"
 CORE_KEYS=(DATABASE_URL BETTER_AUTH_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET SUPABASE_URL SUPABASE_SECRET_KEY)
+# Values the wizard knows itself: they go to Vercel only, never into apps/app/.env,
+# where the local dev server would take them for its own (the site address).
+FIXED_KEYS=(BETTER_AUTH_URL)
 VC=()           # the Vercel command line, once found
 VERCEL_DIR=""   # a scratch folder linked to the Vercel project
 VERCEL_STATE="" # empty until checked, then ready or manual
@@ -347,7 +350,7 @@ _copy() {
 
 # _is_secret NAME: whether NAME's value must never be shown on screen.
 _is_secret() {
-  case "$1" in GOOGLE_CLIENT_ID|MICROSOFT_CLIENT_ID|SUPABASE_URL) return 1 ;; esac
+  case "$1" in GOOGLE_CLIENT_ID|MICROSOFT_CLIENT_ID|SUPABASE_URL|BETTER_AUTH_URL) return 1 ;; esac
   return 0
 }
 
@@ -393,11 +396,20 @@ _vercel_setup() {
   fi
 }
 
+# _value_of NAME: the value NAME goes to Vercel with: a fixed one the wizard
+# knows (BETTER_AUTH_URL is the site address), else the one saved in ENV_FILE.
+_value_of() {
+  case "$1" in
+    BETTER_AUTH_URL) printf '%s' "$APP_URL" ;;
+    *) _existing "$1" ;;
+  esac
+}
+
 # _paste NAME shows one value for pasting into the Vercel form. A secret goes
 # to the clipboard, never the screen, unless Justin asks to see it.
 _paste() {
   local name="$1" value
-  value=$(_existing "$name" || true)
+  value=$(_value_of "$name" || true)
   if [[ -z "$value" ]]; then note "$name has no saved value yet, so skip it."; return 0; fi
   printf '\n  %sName:%s  %s\n' "$BOLD" "$RESET" "$name"
   if ! _is_secret "$name"; then
@@ -422,7 +434,7 @@ push_to_vercel() {
   _vercel_setup
   if [[ "$VERCEL_STATE" == ready ]]; then
     for name in "$@"; do
-      value=$(_existing "$name" || true)
+      value=$(_value_of "$name" || true)
       [[ -n "$value" ]] || continue
       if err=$(printf '%s' "$value" | "${VC[@]}" env add "$name" --environment production \
             --force --yes --scope "$VERCEL_TEAM" --cwd "$VERCEL_DIR" 2>&1 >/dev/null); then
@@ -542,8 +554,9 @@ stage_session() {
 
 stage_vercel() {
   stage "Put the values in Vercel"
-  say "The six values go into the Vercel project $VERCEL_PROJECT, Production only."
-  push_to_vercel "${CORE_KEYS[@]}"
+  say "The six values, and the site address as BETTER_AUTH_URL, go into the"
+  say "Vercel project $VERCEL_PROJECT, Production only."
+  push_to_vercel "${CORE_KEYS[@]}" "${FIXED_KEYS[@]}"
   pause "Press Enter to continue."
 }
 
