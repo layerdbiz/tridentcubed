@@ -169,11 +169,26 @@ export const PART_GROUPS: PartGroupType[] = [
 						'A: one list with icons. B: two columns with logos and faces.',
 						'A'
 					),
-					part('report', 'Project Report'),
-					part('report-transport', 'Transport Mode'),
+					part(
+						'report',
+						'Project Report',
+						['A', 'B'],
+						'B: no "Introduction"; the organization in one row with its badge and labels only; the trip as facility, transport, facility.'
+					),
+					part(
+						'report-transport',
+						'Transport Mode',
+						['A', 'B'],
+						'A: a card for each stop. B: a card for each transport, with its photo, its particulars and its facilities.'
+					),
 					part('report-timelog', 'Time Log'),
 					part('report-photos', 'Photos'),
-					part('disclaimer', 'Disclaimer'),
+					part(
+						'disclaimer',
+						'Disclaimer',
+						['A', 'B'],
+						'B: the signature sits at the bottom of the page, above the footer.'
+					),
 					part('zoom', 'Zoom Bar')
 				]
 			}

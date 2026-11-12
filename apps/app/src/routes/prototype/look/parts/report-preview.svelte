@@ -26,11 +26,20 @@
 	// and faces; the Project Report page is tighter, its personnel are cards like the Team page's (the lead is
 	// first with a blue ring, and nobody is labelled owner), with anyone not on the team under them; and every stop
 	// of the Transport Mode panel prints on one page.
+	// Run 32 (Justin, 2026-11-12). A section that grows too long runs on over more pages, each added to the contents
+	// (report-flow.ts): it is a list of blocks, drawn once out of sight to be measured, then dealt onto pages. The
+	// Time Log always prints this way. Project Report B, Transport Mode B and Disclaimer B do too: the report with
+	// no "Introduction", the organization's people in one row with its badge and their labels, and the trip as
+	// facility, transport, facility; a transport's page with its photo, particulars and facilities; the signature
+	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
+	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
+	import { legsOf, type LegType } from './legs';
 	import {
 		dayOf,
 		documentIdOf,
+		FACILITY_ICONS,
 		MODE_ICONS,
 		PAGE_ICONS,
 		PARTICULARS,
@@ -39,7 +48,8 @@
 		type PanelType,
 		type StopType
 	} from './look.data';
-	import { customerOf } from './records.data';
+	import { customerOf, photosOf, recordOf } from './records.data';
+	import { heightOf, paginate } from './report-flow';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -73,6 +83,25 @@
 		panel?: PanelType;
 		group?: number;
 		part?: number;
+		// A page of a section that flows: the blocks that landed on it, and whether the signature sits at its foot.
+		blocks?: BlockType[];
+		hasSignature?: boolean;
+	};
+	// One piece of a flowing section, never cut in two.
+	type BlockType =
+		| { kind: 'intro' | 'strip' | 'team' | 'attachments' }
+		| { kind: 'heading' | 'text' | 'closing' | 'empty'; text: string }
+		| { kind: 'company' | 'point'; id: string }
+		| { kind: 'leg'; id: string; isFull: boolean }
+		| { kind: 'cargo'; from: number; to: number }
+		| { kind: 'day'; id: string; index: number }
+		| { kind: 'entry'; id: string; time: string; activity: string; isLast: boolean };
+	type FlowType = {
+		key: string;
+		title: string;
+		kind: string;
+		panel?: PanelType;
+		blocks: BlockType[];
 	};
 	type EntryType = { title: string; key: string; subs: string[] };
 
@@ -175,19 +204,160 @@
 	}
 	const documentNumber = $derived(documentIdOf(look.project, look.projects, company));
 
+	// The trip as legs (legs.ts): one transport and the facilities it calls at.
+	const legs = $derived(
+		legsOf(trip?.stops ?? []).filter((leg) =>
+			leg.stops.some((stop) => stop.name || stop.mode || stop.facility)
+		)
+	);
+
+	// What a page has under its title, between the header and the footer, and how many cargo rows make a block.
+	const ROOM = 606;
+	const ROWS = 12;
+	const isReportB = $derived(look.variant('report') !== 'A');
+	const isTransportB = $derived(look.variant('report-transport') !== 'A');
+	const isDisclaimerB = $derived(look.variant('disclaimer') !== 'A');
+
+	// The sections that flow, each as its blocks in order.
+	const flows = $derived.by(() => {
+		const list: FlowType[] = [];
+		if (isReportB) {
+			const blocks: BlockType[] = [
+				{ kind: 'intro' },
+				{ kind: 'strip' },
+				{ kind: 'heading', text: 'Personnel in Attendance' },
+				{ kind: 'team' },
+				...personnel.map((item): BlockType => ({ kind: 'company', id: item.id })),
+				{ kind: 'heading', text: 'Transport Mode' },
+				...(legs.length
+					? legs.map((leg): BlockType => ({ kind: 'leg', id: leg.id, isFull: false }))
+					: [{ kind: 'empty', text: 'No transport mode yet' } as BlockType]),
+				{ kind: 'heading', text: 'Cargo Description' }
+			];
+			for (let from = 0; from < cargo.length; from += ROWS)
+				blocks.push({ kind: 'cargo', from, to: from + ROWS });
+			if (attachments.length) blocks.push({ kind: 'attachments' });
+			else if (!cargo.length) blocks.push({ kind: 'empty', text: 'Not filled in yet' });
+			list.push({ key: 'report', title: 'Project Report', kind: 'report', blocks });
+		}
+		if (isTransportB && trip?.isEnabled && trip.stops.length)
+			list.push({
+				key: 'transport',
+				title: trip.name,
+				kind: 'transport',
+				panel: trip,
+				blocks: legs.length
+					? legs.map((leg): BlockType => ({ kind: 'leg', id: leg.id, isFull: true }))
+					: [{ kind: 'empty', text: 'No transport mode yet' }]
+			});
+		if (timelog?.isEnabled && timelog.days.length) {
+			const blocks: BlockType[] = [];
+			for (const [index, day] of timelog.days.entries()) {
+				blocks.push({ kind: 'day', id: day.id, index });
+				const entries = day.entries.toSorted((a, b) =>
+					(a.time || '99').localeCompare(b.time || '99')
+				);
+				for (const [at, entry] of entries.entries())
+					blocks.push({
+						kind: 'entry',
+						id: entry.id,
+						time: entry.time,
+						activity: entry.activity,
+						isLast: at === entries.length - 1
+					});
+			}
+			list.push({ key: 'timelog', title: 'Time Log', kind: 'timelog', panel: timelog, blocks });
+		}
+		if (isDisclaimerB)
+			list.push({
+				key: 'disclaimer',
+				title: 'Disclaimer',
+				kind: 'disclaimer',
+				blocks: [
+					{ kind: 'text', text: organization.disclaimer.opening },
+					...organization.disclaimer.points.map((point): BlockType => ({
+						kind: 'point',
+						id: point.id
+					})),
+					...(organization.disclaimer.note
+						? [{ kind: 'text', text: organization.disclaimer.note } as BlockType]
+						: []),
+					...(organization.closing
+						? [{ kind: 'closing', text: organization.closing } as BlockType]
+						: [])
+				]
+			});
+		return list;
+	});
+
+	// Each flowing block's height as it prints, read from the copy drawn out of sight; the signature's too.
+	let measurer: HTMLDivElement | undefined = $state();
+	let heights = $state<Record<string, number[]>>({});
+	let signatureHeight = $state(0);
+
+	function measure() {
+		if (!measurer) return;
+		const next: Record<string, number[]> = {};
+		for (const flow of measurer.querySelectorAll<HTMLElement>('[data-flow]'))
+			next[flow.dataset.flow!] = [...flow.children].map(
+				(block) => (block as HTMLElement).offsetHeight
+			);
+		if (JSON.stringify(next) !== JSON.stringify(heights)) heights = next;
+		signatureHeight =
+			measurer.querySelector<HTMLElement>('[data-signature]')?.offsetHeight ?? signatureHeight;
+	}
+
+	// Measured again when what is printed changes, and when a picture or a font arrives and changes a height.
+	$effect(() => {
+		void flows;
+		void signer;
+		measure();
+	});
+	onMount(() => {
+		if (!measurer) return;
+		const observer = new ResizeObserver(measure);
+		observer.observe(measurer);
+		return () => observer.disconnect();
+	});
+
+	// A flowing section as pages: its blocks dealt out by height, a heading never left at a page's foot.
+	function pagesOf(flow: FlowType) {
+		const tall = heights[flow.key] ?? [];
+		const dealt = paginate(
+			flow.blocks.map((_, index) => tall[index] ?? 0),
+			ROOM,
+			flow.blocks.map((block) => block.kind === 'heading' || block.kind === 'day')
+		);
+		// The signature stands at the foot of the disclaimer's last page; with no room left there, on one more.
+		if (flow.kind === 'disclaimer' && heightOf(tall, dealt.at(-1)!) + signatureHeight + 28 > ROOM)
+			dealt.push([]);
+		return dealt.map((page, index): PageType => ({
+			key: flow.key,
+			title: index ? `${flow.title} (continued)` : flow.title,
+			kind: flow.kind,
+			panel: flow.panel,
+			blocks: page.map((at) => flow.blocks[at]),
+			hasSignature: flow.kind === 'disclaimer' && index === dealt.length - 1
+		}));
+	}
+
 	const pages = $derived.by(() => {
+		const flowOf = (key: string) => flows.find((flow) => flow.key === key);
 		const list: PageType[] = [
 			{ key: 'cover', title: 'Cover', kind: 'cover' },
-			{ key: 'contents', title: 'Table of Contents', kind: 'contents' },
-			{ key: 'report', title: 'Project Report', kind: 'report' }
+			{ key: 'contents', title: 'Table of Contents', kind: 'contents' }
 		];
+		const report = flowOf('report');
+		if (report) list.push(...pagesOf(report));
+		else list.push({ key: 'report', title: 'Project Report', kind: 'report' });
 		for (const panel of look.panels) {
 			if (!panel.isEnabled) continue;
-			// Every stop on one page (run 19), not a page each.
-			if (panel.kind === 'transport' && panel.stops.length)
+			const flow =
+				panel.kind === 'transport' || panel.kind === 'timelog' ? flowOf(panel.id) : undefined;
+			if (flow) list.push(...pagesOf(flow));
+			// Transport Mode A: every stop on one page (run 19), not a page each.
+			else if (panel.kind === 'transport' && panel.stops.length)
 				list.push({ key: 'transport', title: panel.name, kind: 'transport', panel });
-			if (panel.kind === 'timelog' && panel.days.length)
-				list.push({ key: 'timelog', title: 'Time Log', kind: 'timelog', panel });
 			if (panel.kind === 'photos')
 				panel.groups.forEach((group, groupIndex) => {
 					const parts = Math.max(1, Math.ceil(group.photos.length / group.layout));
@@ -202,7 +372,9 @@
 						});
 				});
 		}
-		list.push({ key: 'disclaimer', title: 'Disclaimer', kind: 'disclaimer' });
+		const disclaimer = flowOf('disclaimer');
+		if (disclaimer) list.push(...pagesOf(disclaimer));
+		else list.push({ key: 'disclaimer', title: 'Disclaimer', kind: 'disclaimer' });
 		return list;
 	});
 
@@ -221,6 +393,16 @@
 	);
 	function pageOf(key: string) {
 		return pages.findIndex((other) => other.key === key) + 1;
+	}
+
+	// The page a part of the Project Report is on: where its heading landed, once the report runs over a page.
+	function partPage(part: string, key: string) {
+		const at = pages.findIndex(
+			(page) =>
+				page.key === key &&
+				page.blocks?.some((block) => block.kind === 'heading' && block.text === part)
+		);
+		return at < 0 ? pageOf(key) : at + 1;
 	}
 
 	// How tall each photo prints for each photos-per-page choice: one or two fill the width; four, six and eight sit in
@@ -396,6 +578,27 @@
 	function memberOf(name: string) {
 		return look.members.find((member) => member.name === name);
 	}
+
+	function legOf(id: string) {
+		return legs.find((leg) => leg.id === id);
+	}
+
+	function carrierOf(leg: LegType) {
+		return look.transports.find((item) => item.name === leg.stops[0]?.name);
+	}
+
+	// A transport's picture: its own, else its mode's stock picture.
+	function pictureOf(leg: LegType) {
+		const record = recordOf(look, 'transport', leg.stops[0]?.name ?? '');
+		return record ? photosOf(record)[0] : undefined;
+	}
+
+	function placeOf(name: string) {
+		return look.facilities.find((item) => item.name === name);
+	}
+
+	// The organization's people on one row: four across, more when there are more, six at most before a second row.
+	const teamColumns = $derived(Math.min(6, Math.max(4, people.length)));
 </script>
 
 <!-- Trident in the header and the customer in the footer, the same way: logo, name, lines under it. -->
@@ -477,6 +680,390 @@
 	</li>
 {/snippet}
 
+<!-- Like the HTML email signatures (packages/ui email): the sign-off, a round photo, the name, the labels in blue
+     capitals, then phone, email and the group email. -->
+{#snippet signature()}
+	<p class="text-[11px] text-slate-950">{organization.signoff}</p>
+	{#if signer}
+		<div class="mt-6 flex items-start gap-3">
+			<img
+				src={personOf(signer.name).photo}
+				alt=""
+				draggable="false"
+				class="size-[76px] shrink-0 rounded-full object-cover"
+			/>
+			<div class="min-w-0 pt-1.5 text-[9px] leading-[1.5] text-slate-500">
+				<p class="text-[17px] leading-tight font-semibold text-slate-950">{signer.name}</p>
+				<p class="text-[7.5px] font-semibold tracking-[0.02em] text-primary-700 uppercase">
+					{labelsOf(signer).join(' · ')}
+				</p>
+				<div class="mt-1.5 space-y-0.5">
+					{#each [['icon-[mdi--phone]', signer.phone], ['icon-[mdi--email]', signer.email], ['icon-[mdi--web]', organization.groupEmail]] as [icon, text] (icon)}
+						{#if text}
+							<p class="flex items-center gap-1.5">
+								<span class="{icon} size-3 text-slate-950"></span>{text}
+							</p>
+						{/if}
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
+{/snippet}
+
+<!-- Someone in attendance: the app's own Avatar, the name, and labels. The organization's people wear its badge. -->
+{#snippet personCard(name: string, labels: string[], isLead: boolean, badge: string | undefined)}
+	<div class="flex min-w-0 flex-col items-center rounded-xl bg-slate-50 px-1.5 py-2 text-center">
+		<Avatar
+			{name}
+			size={36}
+			ring={isLead ? 'ring-primary' : 'ring-white'}
+			hasPresence={false}
+			{badge}
+		/>
+		<p class="mt-1.5 w-full text-[10px] leading-tight font-semibold text-balance text-slate-900">
+			{name}
+		</p>
+		{#if labels.length}
+			<p class="mt-1 flex flex-wrap justify-center gap-0.5">
+				{#each labels as label (label)}
+					<span class="rounded-full bg-white px-1.5 py-px text-[7px] font-medium text-slate-600"
+						>{label}</span
+					>
+				{/each}
+			</p>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet caption(text: string)}
+	<p class="pb-1 text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase">{text}</p>
+{/snippet}
+
+<!-- A transport's mark: its own photo when it has one, else its mode's icon. -->
+{#snippet carrierMark(leg: LegType, size: string)}
+	{@const photo = carrierOf(leg)?.photo}
+	{#if photo}
+		<img
+			src={photo}
+			alt=""
+			draggable="false"
+			class="{size} shrink-0 rounded-full object-cover"
+		/>
+	{:else}
+		<span
+			class="{size} flex shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+			><span class="{MODE_ICONS[leg.stops[0]?.mode] ?? PAGE_ICONS.transport} size-[60%]"
+			></span></span
+		>
+	{/if}
+{/snippet}
+
+<!-- One block of a flowing section. Room above a block is its own padding, so the heights add up. -->
+{#snippet flowBlock(block: BlockType)}
+	{#if block.kind === 'intro'}
+		<p class="pt-2 text-[10.5px] leading-relaxed text-slate-600">
+			This is to report that {organization.name} was present at {facility ||
+				'the facility'}{location ? ` – ${location}` : ''} on {dates} for the purpose of conducting a {(
+				detail('Project Type') || 'cargo'
+			).toLowerCase()} survey{cargoLine ? ` of ${cargoLine}` : ''}{transport
+				? ` from the ${transport}`
+				: ''}.
+		</p>
+	{:else if block.kind === 'strip'}
+		<!-- The project in one strip: what it is, who it is for, where and when. -->
+		<div class="pt-3">
+			<div class="rounded-xl bg-slate-50 px-3.5 py-2.5">
+				<div class="flex items-baseline justify-between gap-3">
+					<p class="min-w-0 text-[15px] leading-tight font-bold text-slate-950">
+						{detail('Title') || 'Untitled project'}
+					</p>
+					{#if detail('Project Type')}
+						<span
+							class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-slate-600"
+							>{detail('Project Type')}</span
+						>
+					{/if}
+				</div>
+				{#if detail('Subtitle')}
+					<p class="text-[10.5px] text-slate-500">{detail('Subtitle')}</p>
+				{/if}
+				<div
+					class="mt-2 grid grid-cols-[1.4fr_1fr_1fr] gap-3 border-t border-slate-200 pt-2 text-[10px]"
+				>
+					<div class="flex min-w-0 items-center gap-2">
+						<ClientLogo
+							name={company}
+							size={24}
+							shape="circle"
+							isBare
+						/>
+						<div class="min-w-0">
+							<p class="truncate font-semibold text-slate-900">{company || 'No customer yet'}</p>
+							{#if contact?.name}
+								<p class="truncate text-[8.5px] text-slate-500">
+									Attn. {[contact.name, contact.title].filter(Boolean).join(' · ')}
+								</p>
+							{/if}
+						</div>
+					</div>
+					<p class="flex min-w-0 items-center gap-1 text-slate-600">
+						<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-slate-400"></span><span
+							class="truncate">{location || 'No location yet'}</span
+						>
+					</p>
+					<p class="flex min-w-0 items-center gap-1 text-slate-600">
+						<span class="icon-[mdi--calendar-blank-outline] size-3.5 shrink-0 text-slate-400"
+						></span><span class="truncate">{dates}</span>
+					</p>
+				</div>
+			</div>
+		</div>
+	{:else if block.kind === 'heading'}
+		<h3 class="pt-4 pb-1.5 text-[12.5px] font-bold text-slate-950">{block.text}</h3>
+	{:else if block.kind === 'team'}
+		<!-- The organization's own people on one row, the lead first in a blue ring, each wearing its badge. -->
+		<div>
+			{@render caption(organization.name)}
+			<div
+				class="grid gap-1.5"
+				style="grid-template-columns: repeat({teamColumns}, minmax(0, 1fr))"
+			>
+				{#each people as name, personIndex (name)}
+					{@const member = memberOf(name)}
+					{@render personCard(
+						name,
+						member ? labelsOf(member) : [],
+						personIndex === 0,
+						organization.logo || undefined
+					)}
+				{:else}
+					<p class="col-span-full text-[11px] text-slate-300 italic">No one assigned yet</p>
+				{/each}
+			</div>
+		</div>
+	{:else if block.kind === 'company'}
+		{@const other = personnel.find((item) => item.id === block.id)}
+		{#if other}
+			<!-- Anyone else on the job, by company, in the same cards with no badge. -->
+			<div class="pt-2">
+				{@render caption(other.company || 'Other personnel')}
+				<div
+					class="grid gap-1.5"
+					style="grid-template-columns: repeat({teamColumns}, minmax(0, 1fr))"
+				>
+					{#each other.people as person (person.id)}
+						{@render personCard(person.name, person.title ? [person.title] : [], false, undefined)}
+					{/each}
+				</div>
+			</div>
+		{/if}
+	{:else if block.kind === 'leg'}
+		{@const leg = legOf(block.id)}
+		{#if leg}
+			{@const lead = leg.stops[0]}
+			{@const calls = leg.stops.filter((stop) => stop.facility)}
+			{#if block.isFull}
+				{@const picture = pictureOf(leg)}
+				{@const carrier = carrierOf(leg)}
+				<!-- The Transport Mode page: the transport once, with its picture and particulars, then its facilities. -->
+				<div class="pt-3">
+					<section class="overflow-hidden rounded-xl bg-slate-50">
+						<div class="flex gap-3 p-3">
+							{#if picture}
+								<img
+									src={picture}
+									alt=""
+									draggable="false"
+									class="h-[104px] w-[156px] shrink-0 rounded-lg object-cover"
+								/>
+							{:else}
+								<span
+									class="flex h-[104px] w-[156px] shrink-0 items-center justify-center rounded-lg bg-slate-200 text-slate-400"
+									><span class="{MODE_ICONS[lead.mode] ?? PAGE_ICONS.transport} size-10"
+									></span></span
+								>
+							{/if}
+							<div class="min-w-0 flex-1">
+								<p
+									class="text-[14px] leading-tight font-bold {lead.name
+										? 'text-slate-950'
+										: 'text-slate-300 italic'}"
+								>
+									{lead.name || 'Not filled in yet'}
+								</p>
+								<p class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase">
+									{lead.mode}
+								</p>
+								{#if PARTICULARS[lead.mode]}
+									<dl class="mt-2 grid grid-cols-3 gap-x-3 gap-y-1">
+										{#each PARTICULARS[lead.mode] as label (label)}
+											<div class="min-w-0">
+												<dt
+													class="truncate text-[6.5px] font-semibold tracking-[0.1em] text-slate-400 uppercase"
+												>
+													{label}
+												</dt>
+												<dd
+													class="truncate text-[9.5px] {carrier?.details?.[label]
+														? 'text-slate-900'
+														: 'text-slate-300'}"
+												>
+													{carrier?.details?.[label] || '–'}
+												</dd>
+											</div>
+										{/each}
+									</dl>
+								{/if}
+							</div>
+						</div>
+						{#if calls.length}
+							<div class="grid grid-cols-2 gap-1.5 border-t border-slate-200 p-3">
+								{#each calls as stop (stop.id)}
+									{@const place = placeOf(stop.facility)}
+									<div class="flex min-w-0 gap-2 rounded-lg bg-white p-2">
+										<span
+											class="flex size-7 shrink-0 items-center justify-center rounded-full {stop.point
+												? POINTS[stop.point].chip
+												: 'bg-slate-100 text-slate-400'}"
+											><span
+												class="{place ? FACILITY_ICONS[place.kind] : PAGE_ICONS.facilities} size-4"
+											></span></span
+										>
+										<div class="min-w-0 text-[8.5px] leading-snug text-slate-500">
+											<p
+												class="text-[7px] font-semibold tracking-[0.12em] uppercase {stop.point
+													? POINTS[stop.point].text
+													: 'text-slate-400'}"
+											>
+												{stop.point || 'Point'}
+											</p>
+											<p class="text-[10.5px] font-semibold text-slate-900">{stop.facility}</p>
+											<p>{[place?.kind, place?.city].filter(Boolean).join(' · ')}</p>
+											{#if place?.address}<p>{place.address}</p>{/if}
+											{#if place?.contact || place?.phone}
+												<p>{[place?.contact, place?.phone].filter(Boolean).join(' · ')}</p>
+											{/if}
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</section>
+				</div>
+			{:else}
+				<!-- On the Project Report: the transport once, then where it goes, facility to facility. -->
+				<div class="pb-1.5">
+					<div class="rounded-xl bg-slate-50 px-3 py-2">
+						<div class="flex items-center gap-2">
+							{@render carrierMark(leg, 'size-7')}
+							<p
+								class="text-[11px] font-semibold {lead.name
+									? 'text-slate-900'
+									: 'text-slate-300 italic'}"
+							>
+								{lead.name || 'Not filled in yet'}
+							</p>
+							<span class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
+								>{lead.mode}</span
+							>
+						</div>
+						{#if calls.length}
+							<div class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[9.5px]">
+								{#each calls as stop, at (stop.id)}
+									{#if at}<span class="icon-[mdi--arrow-right] size-3 text-slate-300"></span>{/if}
+									<span class="flex items-center gap-1">
+										{#if stop.point}
+											<span
+												class="rounded-full px-1.5 py-px text-[7px] font-semibold {POINTS[
+													stop.point
+												].chip}">{stop.point}</span
+											>
+										{/if}
+										<span class="font-medium text-slate-800">{stop.facility}</span>
+										{#if placeOf(stop.facility)?.city}
+											<span class="text-slate-500">{placeOf(stop.facility)?.city}</span>
+										{/if}
+									</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
+		{/if}
+	{:else if block.kind === 'cargo'}
+		<table class="w-full text-left text-[10.5px]">
+			{#if !block.from}
+				<thead>
+					<tr class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
+						<th class="w-14 pb-1 font-semibold">Qty</th>
+						<th class="pb-1 font-semibold">Description</th>
+					</tr>
+				</thead>
+			{/if}
+			<tbody class="divide-y divide-slate-100">
+				{#each cargo.slice(block.from, block.to) as item (item.id)}
+					<tr>
+						<td class="w-14 py-1 font-bold text-slate-900 tabular-nums">{item.quantity || '–'}</td>
+						<td class="py-1 text-slate-700">{item.description}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	{:else if block.kind === 'attachments'}
+		<!-- The item list as it was handed over: photos of it, and the names of any files. -->
+		<div class="flex flex-wrap items-start gap-1.5 pt-2">
+			{#each attachments as file (file.id)}
+				{#if file.kind === 'photo'}
+					<img
+						src={file.src}
+						alt={file.name}
+						draggable="false"
+						class="h-20 rounded-lg object-cover"
+					/>
+				{:else}
+					<span
+						class="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[9px] text-slate-600"
+						><span class="icon-[mdi--file-table-outline] size-3.5 text-primary"
+						></span>{file.name}</span
+					>
+				{/if}
+			{/each}
+		</div>
+	{:else if block.kind === 'day'}
+		{@const day = timelog?.days.find((item) => item.id === block.id)}
+		{#if days === 'newline'}
+			<div class="pt-6 pb-2">
+				<p class="text-[13px] font-bold text-slate-900">Day {block.index + 1}</p>
+				<p class="text-[11px] text-slate-500">{dateOf(day?.date ?? '')}</p>
+			</div>
+		{:else}
+			<p class="pt-6 pb-2 text-[13px] font-bold text-slate-900">
+				Day {block.index + 1}
+				<span class="font-normal text-slate-500">({dateOf(day?.date ?? '')})</span>
+			</p>
+		{/if}
+	{:else if block.kind === 'entry'}
+		<ul>
+			{@render entryRow(block.time, block.activity, block.isLast)}
+		</ul>
+	{:else if block.kind === 'text'}
+		<p class="pt-3 text-[9.5px] leading-[1.5] text-slate-700">{block.text}</p>
+	{:else if block.kind === 'point'}
+		{@const point = organization.disclaimer.points.find((item) => item.id === block.id)}
+		{#if point}
+			<ul class="list-disc pt-1.5 pl-4 text-[9.5px] leading-[1.45] text-slate-700">
+				<li><b class="text-slate-900">{point.title}:</b> {point.text}</li>
+			</ul>
+		{/if}
+	{:else if block.kind === 'closing'}
+		<p class="pt-6 text-[10.5px] text-slate-700 italic">{block.text}</p>
+	{:else if block.kind === 'empty'}
+		<p class="text-[11px] text-slate-300 italic">{block.text}</p>
+	{/if}
+{/snippet}
+
 <div class="relative h-full overflow-hidden {surface}">
 	<div
 		class="absolute inset-0 cursor-grab touch-none select-none [-webkit-touch-callout:none] {viewport.isMoving
@@ -547,7 +1134,9 @@
 						</header>
 						<div class="px-10 pt-6">
 							<h2 class="text-[24px] font-bold tracking-tight text-slate-950">{item.title}</h2>
-							{#if item.kind === 'contents'}
+							{#if item.blocks}
+								{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
+							{:else if item.kind === 'contents'}
 								{#snippet line(number: string, title: string, page: number, isSub: boolean)}
 									<li
 										class="flex items-baseline gap-2 {isSub
@@ -571,7 +1160,7 @@
 											{@render line(
 												`${entryIndex + 1}.${subIndex + 1}`,
 												sub,
-												pageOf(entry.key),
+												partPage(sub, entry.key),
 												true
 											)}
 										{/each}
@@ -863,30 +1452,6 @@
 										<p class="text-[11px] text-slate-300 italic">No stops yet</p>
 									{/each}
 								</div>
-							{:else if item.kind === 'timelog'}
-								{#each timelog?.days ?? [] as day, dayIndex (day.id)}
-									{@const entries = [...day.entries].sort((a, b) =>
-										(a.time || '99').localeCompare(b.time || '99')
-									)}
-									{#if days === 'newline'}
-										<p class="mt-6 text-[13px] font-bold text-slate-900">Day {dayIndex + 1}</p>
-										<p class="text-[11px] text-slate-500">{dateOf(day.date)}</p>
-									{:else}
-										<p class="mt-6 text-[13px] font-bold text-slate-900">
-											Day {dayIndex + 1}
-											<span class="font-normal text-slate-500">({dateOf(day.date)})</span>
-										</p>
-									{/if}
-									<ul class="mt-2">
-										{#each entries as entry, entryIndex (entry.id)}
-											{@render entryRow(
-												entry.time,
-												entry.activity,
-												entryIndex === entries.length - 1
-											)}
-										{/each}
-									</ul>
-								{/each}
 							{:else if item.kind === 'photos' && item.panel}
 								{@const group = item.panel.groups[item.group ?? 0]}
 								{@const shown = group.photos.slice(
@@ -944,38 +1509,13 @@
 								{#if organization.closing}
 									<p class="mt-6 text-[10.5px] text-slate-700 italic">{organization.closing}</p>
 								{/if}
-								<p class="mt-6 text-[11px] text-slate-950">{organization.signoff}</p>
-								{#if signer}
-									<div class="mt-6 flex items-start gap-3">
-										<img
-											src={personOf(signer.name).photo}
-											alt=""
-											draggable="false"
-											class="size-[76px] shrink-0 rounded-full object-cover"
-										/>
-										<div class="min-w-0 pt-1.5 text-[9px] leading-[1.5] text-slate-500">
-											<p class="text-[17px] leading-tight font-semibold text-slate-950">
-												{signer.name}
-											</p>
-											<p
-												class="text-[7.5px] font-semibold tracking-[0.02em] text-primary-700 uppercase"
-											>
-												{labelsOf(signer).join(' · ')}
-											</p>
-											<div class="mt-1.5 space-y-0.5">
-												{#each [['icon-[mdi--phone]', signer.phone], ['icon-[mdi--email]', signer.email], ['icon-[mdi--web]', organization.groupEmail]] as [icon, text] (icon)}
-													{#if text}
-														<p class="flex items-center gap-1.5">
-															<span class="{icon} size-3 text-slate-950"></span>{text}
-														</p>
-													{/if}
-												{/each}
-											</div>
-										</div>
-									</div>
-								{/if}
+								<div class="mt-6">{@render signature()}</div>
 							{/if}
 						</div>
+						{#if item.hasSignature}
+							<!-- Disclaimer B: the signature at the foot of the page, clear of the text above and the footer. -->
+							<div class="absolute inset-x-10 bottom-[96px]">{@render signature()}</div>
+						{/if}
 						<footer
 							class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-white px-10 pt-3 pb-6 text-[9px] text-slate-400"
 						>
@@ -986,6 +1526,24 @@
 				</article>
 			{/each}
 		</div>
+	</div>
+
+	<!-- Every flowing block once more, out of sight, at the width it prints, so its height can be read. -->
+	<div
+		bind:this={measurer}
+		class="pointer-events-none invisible absolute top-0 -left-[9999px] text-slate-800"
+		style="width: {W - 80}px"
+		aria-hidden="true"
+		inert
+	>
+		{#each flows as flow (flow.key)}
+			<div data-flow={flow.key}>
+				{#each flow.blocks as block, at (at)}
+					<div>{@render flowBlock(block)}</div>
+				{/each}
+			</div>
+		{/each}
+		<div data-signature>{@render signature()}</div>
 	</div>
 
 	<div
