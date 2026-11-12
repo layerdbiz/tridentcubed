@@ -11,12 +11,16 @@ Layout confirmed against SvelteKit docs on #42
 src/env.ts                     the settings the app reads (Kit 3 defineEnvVars), all optional
 src/hooks.server.ts            session and actor into event.locals, Better Auth's /api/auth/*, the guard
 src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql, clients, claims.ts the
-                               claims helper, policy.ts its SQL, seed.ts the one seed), auth.ts, server.ts
-                               (the one claims helper + auth), access.ts (the sign-in rule), permission.ts
-                               (the one permission check), settings.ts, guard.ts, signin.ts, email.ts,
-                               testing.ts (test helpers), rows.ts (the save command's work and the
-                               queries' reads), files.ts (upload addresses and file links), store.ts
-                               (the file store: Supabase Storage or a local folder), pdf-browser.ts
+                               claims helper, policy.ts its SQL, seed.ts the one seed and its SQL),
+                               auth.ts, server.ts (the one claims helper + auth, and `requireStaff` /
+                               `requireSignedIn`, the check every remote function starts with),
+                               access.ts (the sign-in rule), permission.ts (the one permission check),
+                               settings.ts, guard.ts, signin.ts, email.ts, testing.ts (test helpers),
+                               rows.ts (the save command's work and the queries' reads), files.ts
+                               (upload addresses and file links), store.ts (the file store: Supabase
+                               Storage or a local folder), export.ts (the PDF export: who may ask, the
+                               print document, the file name), pdf-browser.ts (the export browser)
+scripts/seed-sql.ts            prints the one seed as SQL (`pnpm --silent --filter app db:seed-sql`)
 src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.remote.ts (`saveRows`,
                                `fetchLists`), rows.utils.ts (the difference), rows.state.svelte.ts (the sync loop)
 src/lib/files/                 files: files.schema.ts (the upload request), files.remote.ts (`askUpload`),
@@ -101,7 +105,7 @@ the why is in ADR 0002, 0003 and 0005.
 - **Adding a table** is one entry in the row registry
   (`src/lib/rows/rows.schema.ts`: its columns with their Valibot checks, its
   parent, its scope), its Drizzle table (with `rowColumns()` and
-  `organizationPolicy`) named in `TABLES` of `src/lib/server/rows.ts`, and a
+  `organizationPolicy`) named in `DRIZZLE_TABLES` of `src/lib/server/rows.ts`, and a
   rule in the one permission check only if it has one of its own. Then
   teach the mapper (`routes/(app)/look/mapper.ts`) both directions (screen
   state to rows, rows to screen state) and add a round trip test at the save
