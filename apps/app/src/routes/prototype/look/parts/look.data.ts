@@ -522,7 +522,8 @@ export function documentIdOf(
 	projects: ProjectType[],
 	client = project.client
 ) {
-	return `${numberOf(project, projects, client)}-FR01-R01`;
+	// A revision adds -R01 after this; a first issue has none (Justin, 2026-11-12).
+	return `${numberOf(project, projects, client)}-FR01`;
 }
 
 export type TransportTypeType = 'Sea' | 'Air' | 'Rail' | 'Road';

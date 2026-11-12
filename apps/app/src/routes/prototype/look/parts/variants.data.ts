@@ -41,6 +41,12 @@ export const PART_GROUPS: PartGroupType[] = [
 				['A', 'B'],
 				'Desktop. A: floating panel. B: fixed from top to bottom.'
 			),
+			part(
+				'login',
+				'Login Page',
+				['A', 'B', 'C'],
+				'Log out from the menu on your picture to see it. A: a centred card. B: a dark top and a white sheet. C: glass over a photo.'
+			),
 			part('add', 'Add Sheet', ['A', 'B'], 'A: Create for a project. B: Add for everything.'),
 			part('more', '⋮ Menu')
 		]
@@ -59,8 +65,8 @@ export const PART_GROUPS: PartGroupType[] = [
 					part(
 						'dash-header',
 						'Header',
-						['A', 'B'],
-						'The menu and the bell. A: plain icons, the number at the left. B: black round buttons, the number in the centre between them.'
+						['A', 'B', 'C'],
+						'The menu and the bell. A: plain icons, the number at the left. B: black round buttons, the number in the centre between them. C: B with black icons on white circles that blur what is behind.'
 					),
 					part(
 						'top',

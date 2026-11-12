@@ -1,30 +1,41 @@
 <script lang="ts">
-	// PROTOTYPE (#161) run 15: Settings (Justin, 2026-11-10: "a way to edit the admin page for the organization ...
-	// through the settings"). The organization's own details and the report's standard wording, kept once and printed
-	// on every report (the glossary's Organization): its logo, name, address, phone, email, group email and website,
-	// then the disclaimer and the sign-off. Opened from the menu's cog and from Admin. Built like a record's Edit
-	// tab; on a desktop the form sits in the floating column and the report it changes shows beside it, on the page
-	// the card being edited prints on. The signed-in person's own profile is their Team page, linked at the top.
-	import Avatar from './avatar.svelte';
+	// PROTOTYPE (#161) run 15: the organization's own details and the report's standard wording, kept once and
+	// printed on every report (the glossary's Organization): its logo, name, address, phone, email, group email and
+	// website, then the disclaimer and the sign-off.
+	// Run 33 (Justin, 2026-11-12: "it doesn't really fit with our other designs. Like the page, edit, and
+	// preview"). It is the Organization now, opened from the menu on the profile picture, and built like every
+	// other page: a Page that reads it and an Edit that changes it, swiped between or picked on the bottom bar,
+	// under the same header (page-header.svelte). Edit is the Project panel's own sections (group.svelte) with its
+	// soft fields: Details, Disclaimer, Sign-off. The signed-in person's profile is their Team page, reached from
+	// the same menu. On a desktop Edit keeps its floating column and the report it changes shows beside it.
+	import Group from './group.svelte';
 	import ImageField from './image-field.svelte';
 	import { createId } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import PageHeader from './page-header.svelte';
 	import ReportPreview from './report-preview.svelte';
 
-	let { look, isWide, me }: { look: LookState; isWide: boolean; me: string } = $props();
+	let { look, isWide }: { look: LookState; isWide: boolean } = $props();
 
 	const FLOAT =
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
+	// The panels' soft field (panel-body.svelte).
 	const FIELD =
-		'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-primary';
-	const LABEL = 'mb-1 block text-xs font-medium text-slate-500';
-	const CARD = 'space-y-4 rounded-3xl bg-white p-4 ring-1 ring-slate-900/[0.05]';
-	const HEADING = 'text-sm font-semibold text-slate-900';
+		'w-full rounded-xl border-0 bg-slate-900/[0.04] px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary/40';
+	const LABEL = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
+	const BUTTON =
+		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
+	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 
 	const organization = $derived(look.organization);
-	const profile = $derived(look.members.find((member) => member.name === me));
-	// The card last touched, which picks the report page shown beside the form.
+	// The section last touched, which picks the report page shown beside the form on a desktop.
 	let part = $state<'organization' | 'wording'>('organization');
+	let open = $state<string[]>(['details']);
+	let top = $state(0);
+
+	function toggle(id: string) {
+		open = open.includes(id) ? open.filter((item) => item !== id) : [...open, id];
+	}
 
 	function addPoint() {
 		organization.disclaimer.points.push({ id: createId('point'), title: '', text: '' });
@@ -32,7 +43,6 @@
 	}
 
 	function removePoint(id: string) {
-		const point = organization.disclaimer.points.find((item) => item.id === id);
 		look.confirm({
 			title: 'Delete point?',
 			note: 'It comes off the disclaimer of every report that has not been sent.',
@@ -44,6 +54,26 @@
 			}
 		});
 	}
+
+	let swiper: HTMLDivElement | undefined = $state();
+	let isLanded = false;
+
+	function onscroll() {
+		if (!swiper?.clientWidth) return;
+		look.tabProgress = swiper.scrollLeft / swiper.clientWidth;
+		look.tab = look.tabProgress > 0.5 ? 'edit' : 'page';
+	}
+
+	// The bar's Page and Edit: the panes slide to the one picked; the first time they are simply there.
+	$effect(() => {
+		if (!swiper) return;
+		const left = look.tab === 'edit' ? swiper.clientWidth : 0;
+		if (!isLanded) {
+			isLanded = true;
+			swiper.scrollLeft = left;
+		} else if (Math.abs(swiper.scrollLeft - left) > swiper.clientWidth / 2)
+			swiper.scrollTo({ left, behavior: 'smooth' });
+	});
 </script>
 
 {#snippet text(label: string, value: string, oninput: (value: string) => void, type = 'text')}
@@ -65,7 +95,7 @@
 	<label class="block">
 		<span class={LABEL}>{label}</span>
 		<textarea
-			class="{FIELD} resize-y text-sm leading-relaxed"
+			class="{FIELD} resize-y leading-relaxed"
 			{rows}
 			{value}
 			oninput={(event) => {
@@ -75,165 +105,188 @@
 	</label>
 {/snippet}
 
-{#snippet header()}
-	<div class="flex items-center gap-2">
-		<button
-			class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
-			aria-label="Back"
-			onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
-		>
-		<span
-			class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-white"
-			><span class="icon-[mdi--cog] size-5"></span></span
-		>
-		<span class="min-w-0 flex-1">
-			<span class="block truncate font-semibold text-slate-900">Settings</span>
-			<span class="block truncate text-xs text-slate-500">{organization.name}</span>
-		</span>
+<!-- Edit: the same sections a Project panel has, each opening and closing. -->
+{#snippet form()}
+	<div class="space-y-3">
+		<div onfocusin={() => (part = 'organization')}>
+			<Group
+				title="Details"
+				note="At the top of every report page, and on the cover"
+				icon="icon-[mdi--domain]"
+				isOpen={open.includes('details')}
+				ontoggle={() => toggle('details')}
+			>
+				<ImageField
+					label="Logo"
+					shape="logo"
+					value={organization.logo}
+					onpick={(url) => {
+						organization.logo = url;
+						part = 'organization';
+						look.flash();
+					}}
+				/>
+				{@render text('Name', organization.name, (value) => look.nameOrganization(value))}
+				{@render text('Address', organization.address, (value) => (organization.address = value))}
+				{@render text('Phone', organization.phone, (value) => (organization.phone = value), 'tel')}
+				{@render text(
+					'Email',
+					organization.email,
+					(value) => (organization.email = value),
+					'email'
+				)}
+				{@render text(
+					'Group Email',
+					organization.groupEmail,
+					(value) => (organization.groupEmail = value),
+					'email'
+				)}
+				{@render text(
+					'Website',
+					organization.website,
+					(value) => (organization.website = value),
+					'url'
+				)}
+			</Group>
+		</div>
+		<div onfocusin={() => (part = 'wording')}>
+			<Group
+				title="Disclaimer"
+				note="The last page of every report, word for word"
+				icon="icon-[mdi--shield-alert-outline]"
+				isOpen={open.includes('disclaimer')}
+				ontoggle={() => toggle('disclaimer')}
+			>
+				{@render area(
+					'Opening',
+					organization.disclaimer.opening,
+					(value) => (organization.disclaimer.opening = value),
+					4
+				)}
+				{#each organization.disclaimer.points as point, index (point.id)}
+					<div class="space-y-2 rounded-2xl bg-white/80 p-2.5">
+						<div class="flex items-center gap-2">
+							<input
+								class="{FIELD} font-semibold"
+								value={point.title}
+								placeholder="Title"
+								aria-label="Point {index + 1} title"
+								oninput={(event) => {
+									point.title = event.currentTarget.value;
+									look.flash();
+								}}
+							/>
+							<button
+								type="button"
+								class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-danger/10 hover:text-danger"
+								aria-label="Delete point {index + 1}"
+								onclick={() => removePoint(point.id)}
+								><span class="icon-[mdi--trash-can-outline] size-5"></span></button
+							>
+						</div>
+						<textarea
+							class="{FIELD} resize-y leading-relaxed"
+							rows="3"
+							value={point.text}
+							placeholder="What it says"
+							aria-label="Point {index + 1} text"
+							oninput={(event) => {
+								point.text = event.currentTarget.value;
+								look.flash();
+							}}></textarea>
+					</div>
+				{/each}
+				{@render area(
+					'Closing Note',
+					organization.disclaimer.note,
+					(value) => (organization.disclaimer.note = value),
+					2
+				)}
+				{#snippet actions()}
+					<button
+						type="button"
+						class="{BUTTON} bg-primary/10 text-primary hover:bg-primary/15"
+						onclick={addPoint}><span class="icon-[mdi--plus] size-4"></span>Add Point</button
+					>
+				{/snippet}
+			</Group>
+		</div>
+		<div onfocusin={() => (part = 'wording')}>
+			<Group
+				title="Sign-off"
+				note="Under the disclaimer, over the team lead's name"
+				icon="icon-[mdi--draw]"
+				isOpen={open.includes('signoff')}
+				ontoggle={() => toggle('signoff')}
+			>
+				{@render area(
+					'Thank-you Line',
+					organization.closing,
+					(value) => (organization.closing = value),
+					2
+				)}
+				{@render text('Sign-off', organization.signoff, (value) => (organization.signoff = value))}
+			</Group>
+		</div>
 	</div>
 {/snippet}
 
-{#snippet form()}
-	<div class="space-y-4">
-		{#if profile}
-			<button
-				class="flex w-full items-center gap-3 rounded-3xl bg-white p-4 text-left ring-1 ring-slate-900/[0.05] transition hover:bg-slate-50"
-				onclick={() => look.openRecord('team', profile.name, 'edit')}
-			>
-				<Avatar
-					name={profile.name}
-					size={44}
-					hasPresence={false}
-				/>
-				<span class="min-w-0 flex-1">
-					<span class="block truncate text-sm font-semibold text-slate-900">Your profile</span>
-					<span class="block truncate text-xs text-slate-500"
-						>{profile.name} · photo, title, phone and email</span
-					>
-				</span>
-				<span class="icon-[mdi--chevron-right] size-5 shrink-0 text-slate-400"></span>
-			</button>
-		{/if}
-
+<!-- Page: the organization as it reads, on a dark top with a white sheet under it. -->
+{#snippet page()}
+	<div class="h-full overflow-y-auto overscroll-y-contain bg-white">
 		<div
-			class={CARD}
-			onfocusin={() => (part = 'organization')}
+			class="flex flex-col items-center bg-linear-to-br from-slate-700 to-slate-950 px-6 pt-[calc(env(safe-area-inset-top)+4.5rem)] pb-16 text-center text-white"
 		>
-			<div>
-				<p class={HEADING}>Organization</p>
-				<p class="mt-0.5 text-xs text-slate-400">
-					The logo, name, phone and email print at the top of every report page; the logo is on the
-					cover too.
+			{#if organization.logo}
+				<span class="flex size-24 items-center justify-center rounded-3xl bg-white"
+					><img
+						src={organization.logo}
+						alt=""
+						draggable="false"
+						class="size-[72%] object-contain"
+					/></span
+				>
+			{/if}
+			<h1 class="mt-4 text-2xl leading-tight font-semibold">{organization.name}</h1>
+			{#if organization.address}
+				<p class="mt-1.5 flex items-center gap-1 text-sm text-white/75">
+					<span class="icon-[mdi--map-marker] size-4 shrink-0"></span>{organization.address}
 				</p>
-			</div>
-			<ImageField
-				label="Logo"
-				shape="logo"
-				value={organization.logo}
-				onpick={(url) => {
-					organization.logo = url;
-					part = 'organization';
-					look.flash();
-				}}
-			/>
-			{@render text('Name', organization.name, (value) => look.nameOrganization(value))}
-			{@render text('Address', organization.address, (value) => (organization.address = value))}
-			{@render text('Phone', organization.phone, (value) => (organization.phone = value), 'tel')}
-			{@render text('Email', organization.email, (value) => (organization.email = value), 'email')}
-			{@render text(
-				'Group email',
-				organization.groupEmail,
-				(value) => (organization.groupEmail = value),
-				'email'
-			)}
-			{@render text(
-				'Website',
-				organization.website,
-				(value) => (organization.website = value),
-				'url'
-			)}
+			{/if}
 		</div>
-
 		<div
-			class={CARD}
-			onfocusin={() => (part = 'wording')}
+			class="-mt-8 space-y-5 rounded-t-[40px] bg-white px-4 pt-7 pb-[calc(env(safe-area-inset-bottom)+96px)]"
 		>
-			<div>
-				<p class={HEADING}>Disclaimer</p>
-				<p class="mt-0.5 text-xs text-slate-400">The last page of every report, word for word.</p>
-			</div>
-			{@render area(
-				'Opening',
-				organization.disclaimer.opening,
-				(value) => (organization.disclaimer.opening = value),
-				4
-			)}
-			{#each organization.disclaimer.points as point, index (point.id)}
-				<div class="space-y-2 rounded-2xl bg-slate-50 p-3">
-					<div class="flex items-center gap-2">
-						<span class="w-5 shrink-0 text-center text-xs font-semibold text-slate-400 tabular-nums"
-							>{index + 1}</span
-						>
-						<input
-							class="{FIELD} py-2 text-sm font-semibold"
-							value={point.title}
-							placeholder="Title"
-							aria-label="Point {index + 1} title"
-							oninput={(event) => {
-								point.title = event.currentTarget.value;
-								look.flash();
-							}}
-						/>
-						<button
-							type="button"
-							class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-danger/10 hover:text-danger"
-							aria-label="Delete point {index + 1}"
-							onclick={() => removePoint(point.id)}
-							><span class="icon-[mdi--trash-can-outline] size-5"></span></button
-						>
-					</div>
-					<textarea
-						class="{FIELD} resize-y text-sm leading-relaxed"
-						rows="3"
-						value={point.text}
-						placeholder="What it says"
-						aria-label="Point {index + 1} text"
-						oninput={(event) => {
-							point.text = event.currentTarget.value;
-							look.flash();
-						}}></textarea>
+			<section>
+				<h3 class="mb-2 px-1 text-sm font-semibold text-slate-900">Details</h3>
+				<dl class="divide-y divide-slate-900/[0.05] {CARD}">
+					{#each [['Phone', organization.phone], ['Email', organization.email], ['Group Email', organization.groupEmail], ['Website', organization.website], ['Address', organization.address]] as [label, value] (label)}
+						<div class="flex justify-between gap-3 px-4 py-2.5 text-sm">
+							<dt class="shrink-0 text-slate-500">{label}</dt>
+							<dd class="min-w-0 text-right font-medium break-words text-slate-900">
+								{value || '—'}
+							</dd>
+						</div>
+					{/each}
+				</dl>
+			</section>
+			<section>
+				<h3 class="mb-2 px-1 text-sm font-semibold text-slate-900">Disclaimer</h3>
+				<div class="space-y-2 p-4 text-sm leading-relaxed text-slate-600 {CARD}">
+					<p>{organization.disclaimer.opening || '—'}</p>
+					{#each organization.disclaimer.points as point (point.id)}
+						<p><b class="font-semibold text-slate-900">{point.title}:</b> {point.text}</p>
+					{/each}
+					{#if organization.disclaimer.note}<p>{organization.disclaimer.note}</p>{/if}
 				</div>
-			{/each}
-			<button
-				type="button"
-				class="flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-100 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
-				onclick={addPoint}><span class="icon-[mdi--plus] size-5"></span>Add a point</button
-			>
-			{@render area(
-				'Closing note',
-				organization.disclaimer.note,
-				(value) => (organization.disclaimer.note = value),
-				2
-			)}
-		</div>
-
-		<div
-			class={CARD}
-			onfocusin={() => (part = 'wording')}
-		>
-			<div>
-				<p class={HEADING}>Sign-off</p>
-				<p class="mt-0.5 text-xs text-slate-400">
-					Under the disclaimer, over the team lead's name, photo, phone and email.
-				</p>
-			</div>
-			{@render area(
-				'Thank-you line',
-				organization.closing,
-				(value) => (organization.closing = value),
-				2
-			)}
-			{@render text('Sign-off', organization.signoff, (value) => (organization.signoff = value))}
+			</section>
+			<section>
+				<h3 class="mb-2 px-1 text-sm font-semibold text-slate-900">Sign-off</h3>
+				<div class="space-y-1 p-4 text-sm text-slate-600 {CARD}">
+					{#if organization.closing}<p class="italic">{organization.closing}</p>{/if}
+					<p class="font-medium text-slate-900">{organization.signoff || '—'}</p>
+				</div>
+			</section>
 		</div>
 	</div>
 {/snippet}
@@ -249,16 +302,41 @@
 		/>
 	</div>
 	<aside class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}">
-		<div class="pt-4 pr-3 pb-4 pl-4">{@render header()}</div>
+		<div class="relative h-[72px] shrink-0">
+			<PageHeader
+				{look}
+				title="Organization"
+				kind={organization.name}
+				hasCloud
+				hasChevron={look.variant('header') === 'C'}
+			/>
+		</div>
 		<div class="flex-1 overflow-y-auto px-4 pb-4">{@render form()}</div>
 	</aside>
 {:else}
-	<div class="h-dvh overflow-y-auto bg-slate-100 pb-[calc(env(safe-area-inset-bottom)+24px)]">
-		<header
-			class="sticky top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+	<div class="relative h-dvh overflow-hidden bg-slate-100">
+		<PageHeader
+			{look}
+			title="Organization"
+			kind={organization.name}
+			reveal={look.tabProgress}
+			isLight
+			hasCloud
+			hasChevron={look.variant('header') === 'C'}
+			bind:height={top}
+		/>
+		<div
+			bind:this={swiper}
+			class="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+			{onscroll}
 		>
-			<div class="px-1.5 py-2">{@render header()}</div>
-		</header>
-		<div class="px-4 pt-3">{@render form()}</div>
+			<div class="h-full w-full shrink-0 snap-start">{@render page()}</div>
+			<div
+				class="h-full w-full shrink-0 snap-start overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+96px)]"
+				style:padding-top="{top + 12}px"
+			>
+				{@render form()}
+			</div>
+		</div>
 	</div>
 {/if}

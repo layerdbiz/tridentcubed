@@ -94,8 +94,16 @@
 		| { kind: 'company' | 'point'; id: string }
 		| { kind: 'leg'; id: string; isFull: boolean }
 		| { kind: 'cargo'; from: number; to: number }
-		| { kind: 'day'; id: string; index: number }
-		| { kind: 'entry'; id: string; time: string; activity: string; isLast: boolean };
+		| { kind: 'day'; id: string; index: number; isContinued?: boolean }
+		| {
+				kind: 'entry';
+				id: string;
+				day: string;
+				dayIndex: number;
+				time: string;
+				activity: string;
+				isLast: boolean;
+		  };
 	type FlowType = {
 		key: string;
 		title: string;
@@ -261,6 +269,8 @@
 					blocks.push({
 						kind: 'entry',
 						id: entry.id,
+						day: day.id,
+						dayIndex: index,
 						time: entry.time,
 						activity: entry.activity,
 						isLast: at === entries.length - 1
@@ -320,12 +330,23 @@
 		return () => observer.disconnect();
 	});
 
+	// The blocks on one page. A Time Log page that opens part-way through a day says which day first, the way the
+	// day's own heading does (Justin, 2026-11-12).
+	function blocksOn(flow: FlowType, page: number[]) {
+		const blocks = page.map((at) => flow.blocks[at]);
+		const [first] = blocks;
+		if (first?.kind === 'entry')
+			blocks.unshift({ kind: 'day', id: first.day, index: first.dayIndex, isContinued: true });
+		return blocks;
+	}
+
 	// A flowing section as pages: its blocks dealt out by height, a heading never left at a page's foot.
 	function pagesOf(flow: FlowType) {
 		const tall = heights[flow.key] ?? [];
 		const dealt = paginate(
 			flow.blocks.map((_, index) => tall[index] ?? 0),
-			ROOM,
+			// A Time Log page may open with its day said again, so each keeps room for that line.
+			flow.kind === 'timelog' ? ROOM - 52 : ROOM,
 			flow.blocks.map((block) => block.kind === 'heading' || block.kind === 'day')
 		);
 		// The signature stands at the foot of the disclaimer's last page; with no room left there, on one more.
@@ -336,7 +357,7 @@
 			title: index ? `${flow.title} (continued)` : flow.title,
 			kind: flow.kind,
 			panel: flow.panel,
-			blocks: page.map((at) => flow.blocks[at]),
+			blocks: blocksOn(flow, page),
 			hasSignature: flow.kind === 'disclaimer' && index === dealt.length - 1
 		}));
 	}
@@ -500,6 +521,51 @@
 			'Dec'
 		];
 		return `${DAYS[date.getDay()]}, ${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+	}
+
+	// Download (run 33): the pages as they are drawn here, with this page's own styles, go to the server, which
+	// prints them to a PDF with the app's export browser (pdf/+server.ts) and hands the file back.
+	let canvas: HTMLDivElement | undefined = $state();
+	let isDownloading = false;
+
+	async function download() {
+		if (isDownloading || !canvas) return;
+		isDownloading = true;
+		look.say('Making the PDF');
+		try {
+			const sheets = [...document.querySelectorAll('style, link[rel="stylesheet"]')]
+				.map((node) => node.outerHTML)
+				.join('\n');
+			const sheetsOfPages = [...canvas.querySelectorAll('article[data-page]')]
+				.map((node) => {
+					const copy = node.cloneNode(true) as HTMLElement;
+					copy.style.cssText = `width: ${W}px; height: ${H}px`;
+					copy.classList.remove('ring-4', 'ring-primary/70');
+					return copy.outerHTML;
+				})
+				.join('\n');
+			const filename = `${documentNumber}.pdf`;
+			const response = await fetch('/prototype/look/pdf', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ pages: sheetsOfPages, styles: sheets, filename })
+			});
+			if (!response.ok) {
+				const problem = await response.json().catch(() => undefined);
+				throw new Error(problem?.message ?? 'The PDF could not be made');
+			}
+			const url = URL.createObjectURL(await response.blob());
+			const link = Object.assign(document.createElement('a'), { href: url, download: filename });
+			document.body.append(link);
+			link.click();
+			link.remove();
+			setTimeout(() => URL.revokeObjectURL(url), 60000);
+			look.say('PDF downloaded');
+		} catch (error) {
+			look.say(error instanceof Error ? error.message : 'The PDF could not be made');
+		} finally {
+			isDownloading = false;
+		}
 	}
 
 	let isHintShown = $state(true);
@@ -1036,12 +1102,16 @@
 		{#if days === 'newline'}
 			<div class="pt-6 pb-2">
 				<p class="text-[13px] font-bold text-slate-900">Day {block.index + 1}</p>
-				<p class="text-[11px] text-slate-500">{dateOf(day?.date ?? '')}</p>
+				<p class="text-[11px] text-slate-500">
+					{dateOf(day?.date ?? '')}{block.isContinued ? ', continued' : ''}
+				</p>
 			</div>
 		{:else}
 			<p class="pt-6 pb-2 text-[13px] font-bold text-slate-900">
 				Day {block.index + 1}
-				<span class="font-normal text-slate-500">({dateOf(day?.date ?? '')})</span>
+				<span class="font-normal text-slate-500"
+					>({dateOf(day?.date ?? '')}){block.isContinued ? ' continued' : ''}</span
+				>
 			</p>
 		{/if}
 	{:else if block.kind === 'entry'}
@@ -1074,6 +1144,7 @@
 		{@attach viewport.gestures}
 	>
 		<div
+			bind:this={canvas}
 			class="absolute top-0 left-0 origin-top-left {viewport.isAnimating
 				? 'transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)]'
 				: ''} {viewport.isLayered ? 'will-change-transform' : ''}"
@@ -1554,7 +1625,7 @@
 			{layout}
 			onfit={refit}
 			onlayout={toggleLayout}
-			ondownload={() => look.say('Download makes the PDF in V1. Not wired up in this prototype.')}
+			ondownload={download}
 		/>
 	</div>
 

@@ -29,9 +29,10 @@
 		mark
 	}: {
 		look: LookState;
-		// What the ⋮ acts on: its page, and a project's id or a record's name.
-		page: DatasetType;
-		id: string;
+		// What the ⋮ acts on: its page, and a project's id or a record's name. Left out (the Organization), there is
+		// no ⋮ and back is simply Back.
+		page?: DatasetType;
+		id?: string;
 		title: string;
 		// A second line under the name: "Customer", "Facility".
 		kind?: string;
@@ -71,7 +72,7 @@
 	<div class="relative flex items-start gap-1 px-1.5 py-2">
 		<button
 			class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full transition-colors {ghost}"
-			aria-label="Back to {DATASETS[page].label}"
+			aria-label={page ? `Back to ${DATASETS[page].label}` : 'Back'}
 			onclick={() => look.home()}
 			><span
 				class={hasChevron ? 'icon-[mdi--chevron-left] size-7' : 'icon-[mdi--arrow-left] size-6'}
@@ -112,14 +113,16 @@
 				</span>
 			{/if}
 		</div>
-		<span
-			class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full transition-colors {ghost}"
-			><MoreMenu
-				{look}
-				{page}
-				{id}
-				tone="bare"
-			/></span
-		>
+		{#if page && id}
+			<span
+				class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full transition-colors {ghost}"
+				><MoreMenu
+					{look}
+					{page}
+					{id}
+					tone="bare"
+				/></span
+			>
+		{/if}
 	</div>
 </header>

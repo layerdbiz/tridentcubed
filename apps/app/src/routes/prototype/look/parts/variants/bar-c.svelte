@@ -53,7 +53,7 @@
 	let mark = $state({ x: 0, width: 0 });
 
 	$effect(() => {
-		if (look.screen === 'record') tabs = RECORD;
+		if (look.screen === 'record' || look.screen === 'settings') tabs = RECORD;
 		else if (look.screen === 'workspace') tabs = isWide ? DESK : PROJECT;
 	});
 

@@ -33,6 +33,7 @@
 	import ProjectPage from './project-page.svelte';
 	import RecentList from './recent-list.svelte';
 	import RecordPage from './record-page.svelte';
+	import LoginPage from './login-page.svelte';
 	import SettingsPage from './settings-page.svelte';
 	import BarB from './variants/bar-b.svelte';
 	import BarC from './variants/bar-c.svelte';
@@ -81,8 +82,12 @@
 	// number with what changed sits between them, in the centre (hero-chart.svelte draws it there).
 	const ROUND_B =
 		'flex size-10 items-center justify-center rounded-full bg-black text-white transition hover:bg-slate-800';
-	const isTopB = $derived(look.variant('dash-header') === 'B');
-	const round = $derived(isTopB ? ROUND_B : ROUND);
+	// Dashboard Header C (run 33): back to black icons, each on a white circle that blurs what is behind it.
+	const ROUND_C =
+		'flex size-10 items-center justify-center rounded-full bg-white/70 text-slate-900 shadow-sm backdrop-blur-md transition hover:bg-white';
+	const topLook = $derived(look.variant('dash-header'));
+	const isTopB = $derived(topLook !== 'A');
+	const round = $derived(topLook === 'C' ? ROUND_C : topLook === 'B' ? ROUND_B : ROUND);
 	const PREVIEW = {
 		days: 'timeline',
 		surface: CANVAS
@@ -305,9 +310,11 @@
 			<span class="icon-[mdi--bell-outline] size-6"></span>
 			{#if !seen}
 				<span
-					class="absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isTopB
+					class="absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {topLook === 'B'
 						? 'ring-black'
-						: 'ring-slate-100'}"
+						: topLook === 'C'
+							? 'ring-white'
+							: 'ring-slate-100'}"
 				></span>
 			{/if}
 		</button>
@@ -470,7 +477,7 @@
 				>
 					<!-- White behind the menus, fading in from the left, so a title sliding under them goes out of sight. -->
 					<div
-						class="absolute top-0 right-0 z-10 bg-[linear-gradient(to_right,transparent,white_2.5rem)] pr-2 pl-12 md:pr-0"
+						class="absolute top-0 right-0 z-10 bg-[linear-gradient(to_right,transparent,white_2.5rem)] pr-3.5 pl-12 md:pr-0"
 					>
 						<ListMenus {look} />
 					</div>
@@ -531,7 +538,6 @@
 			<SettingsPage
 				{look}
 				{isWide}
-				me={ME}
 			/>
 		</div>
 	{/if}
@@ -588,7 +594,8 @@
 		</div>
 	{/if}
 
-	{#if look.screen !== 'settings'}
+	<!-- The Organization has Page and Edit on the bar too, in the bars that know it (C, D, E). -->
+	{#if look.screen !== 'settings' || !['A', 'B'].includes(look.variant('bar'))}
 		{#if look.variant('bar') === 'B'}
 			<BarB
 				{look}
@@ -633,4 +640,5 @@
 		>
 	{/if}
 	<AddSheet {look} />
+	{#if !look.isSignedIn}<LoginPage {look} />{/if}
 </div>

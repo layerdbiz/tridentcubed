@@ -14,6 +14,7 @@
 	import Avatar from './avatar.svelte';
 	import { DATASETS, FADE, ME, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import Menu from './menu.svelte';
 	import RecentList from './recent-list.svelte';
 
 	let {
@@ -35,6 +36,20 @@
 	);
 	function settings() {
 		look.openSettings();
+		onnavigate?.();
+	}
+
+	// The menu on the profile picture (run 33): your own Team page, the Organization, and Log out.
+	const ACCOUNT = [
+		{ id: 'profile', label: 'Profile', icon: 'icon-[mdi--account-circle-outline]' },
+		{ id: 'organization', label: 'Organization', icon: 'icon-[mdi--domain]' },
+		{ id: 'logout', label: 'Log out', icon: 'icon-[mdi--logout]', isDanger: true }
+	];
+
+	function account(id: string) {
+		if (id === 'organization') return settings();
+		if (id === 'profile') look.openRecord('team', me.name, 'page');
+		else look.signOut();
 		onnavigate?.();
 	}
 
@@ -97,29 +112,40 @@
 	</div>
 
 	<div class="flex w-full items-center gap-1 px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-		<button
-			class="flex min-w-0 flex-1 items-center gap-1 rounded-2xl text-left hover:bg-slate-900/[0.04]"
-			title="Settings"
-			onclick={settings}
-		>
-			<span class={COLUMN}
-				><Avatar
-					name={me.name}
-					size={40}
-					ring="ring-slate-200"
-				/></span
+		<div class="min-w-0 flex-1">
+			<Menu
+				label="Account"
+				value=""
+				options={ACCOUNT}
+				align="left"
+				isWide
+				onpick={account}
 			>
-			<span class="min-w-0 flex-1 text-sm {WORDS}"
-				><b class="block truncate font-medium text-slate-900">{me.name.replace('Capt. ', '')}</b
-				><span class="text-xs text-slate-500">{me.role === 'admin' ? 'Admin' : 'Member'}</span
-				></span
-			>
-		</button>
-		<button
-			class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 {WORDS}"
-			aria-label="Settings"
-			title="Settings"
-			onclick={settings}><span class="icon-[mdi--cog-outline] size-5"></span></button
-		>
+				{#snippet trigger(_, isOpen)}
+					<span
+						class="flex w-full min-w-0 items-center gap-1 rounded-2xl text-left transition {isOpen
+							? 'bg-slate-900/[0.05]'
+							: 'hover:bg-slate-900/[0.04]'}"
+					>
+						<span class={COLUMN}
+							><Avatar
+								name={me.name}
+								size={40}
+								ring="ring-slate-200"
+							/></span
+						>
+						<span class="min-w-0 flex-1 text-sm {WORDS}"
+							><b class="block truncate font-medium text-slate-900"
+								>{me.name.replace('Capt. ', '')}</b
+							><span class="text-xs text-slate-500">{me.role === 'admin' ? 'Admin' : 'Member'}</span
+							></span
+						>
+						<span
+							class="mr-2 icon-[mdi--unfold-more-horizontal] size-5 shrink-0 text-slate-400 {WORDS}"
+						></span>
+					</span>
+				{/snippet}
+			</Menu>
+		</div>
 	</div>
 </div>
