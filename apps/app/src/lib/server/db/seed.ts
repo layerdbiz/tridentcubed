@@ -3,6 +3,7 @@
 // never from a Vercel build. Running it twice changes nothing. Later tickets add their starting rows here (the real
 // customers #183, the organization's details and the places #184, the team #185). Access grants are never seeded:
 // they are filled in the database only.
+import { sql } from 'drizzle-orm';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import { ORGANIZATION } from '#lib/start/organization.js';
 import { PLACES } from '#lib/start/places.js';
@@ -399,6 +400,42 @@ export async function seedDatabase(db: DatabaseType) {
 		await seedPlaces(tx, id);
 	});
 	await seedTeam(db);
+}
+
+/** The tables the seed fills, parents first: the order its SQL inserts them in. */
+export const SEED_TABLES = [
+	'organization',
+	'organization_details',
+	'disclaimer_point',
+	'customer',
+	'place',
+	'team'
+] as const;
+
+/**
+ * The seed as SQL (#194: Supabase takes its starting rows through the connector, SQL only), from the seed itself:
+ * `db` (a fresh in-process database) is seeded, and each table's rows are printed as one insert that skips a row
+ * already there, so running it twice changes nothing and the ids are the seed's. Access grants are never in it.
+ * Print it with `pnpm --silent --filter app db:seed-sql`.
+ */
+export async function toSeedSql(db: DatabaseType) {
+	await seedDatabase(db);
+	const lines = [
+		'-- The one seed (apps/app/src/lib/server/db/seed.ts), printed by `pnpm --silent --filter app db:seed-sql`.',
+		'-- Safe to run twice: a row already there is skipped.'
+	];
+	for (const table of SEED_TABLES) {
+		const found = await db.execute(
+			sql.raw(
+				`select coalesce(jsonb_agg(t order by t.created_at, t.id), '[]')::text as rows from public."${table}" t`
+			)
+		);
+		const [{ rows }] = ('rows' in found ? found.rows : found) as { rows: string }[];
+		lines.push(
+			`insert into public."${table}" select * from jsonb_populate_recordset(null::public."${table}", '${rows.replaceAll("'", "''")}') on conflict do nothing;`
+		);
+	}
+	return `${lines.join('\n')}\n`;
 }
 
 type SeedTransactionType = Parameters<Parameters<DatabaseType['transaction']>[0]>[0];
