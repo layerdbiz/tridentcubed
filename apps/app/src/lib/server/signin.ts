@@ -6,11 +6,11 @@ import type { AuthType } from './auth';
 
 export type SignInUserType = { id: string; email: string; name: string };
 
-export type SendCodeResultType = { ok: true } | { ok: false; message: string };
+export type SendCodeResultType = { isSent: true } | { isSent: false; message: string };
 
 export type VerifyCodeResultType =
-	| { ok: true; user: SignInUserType; cookie: string }
-	| { ok: false; reason: 'wrong' | 'expired' | 'used-up'; message: string };
+	| { isSignedIn: true; user: SignInUserType; cookie: string }
+	| { isSignedIn: false; reason: 'wrong' | 'expired' | 'used-up'; message: string };
 
 const MESSAGES = {
 	wrong: 'That code is not right. Check it, or send a new code.',
@@ -62,14 +62,14 @@ export async function sendCode(
 		);
 	} catch (error) {
 		console.error('[sign-in] the code could not be sent', error);
-		return { ok: false, message: 'The code could not be sent. Try again in a minute.' };
+		return { isSent: false, message: 'The code could not be sent. Try again in a minute.' };
 	}
-	if (response.ok) return { ok: true };
-	if (response.status === 429) return { ok: false, message: TOO_MANY };
+	if (response.ok) return { isSent: true };
+	if (response.status === 429) return { isSent: false, message: TOO_MANY };
 	const body = (await response.json().catch(() => ({}))) as { code?: string; message?: string };
 	console.error('[sign-in] the code could not be sent', response.status, body.code ?? body.message);
 	return {
-		ok: false,
+		isSent: false,
 		message:
 			body.code === 'INVALID_EMAIL'
 				? 'That email address does not look right.'
@@ -88,11 +88,15 @@ export async function verifyCode(
 			returnHeaders: true
 		});
 		const { id, email: address, name } = result.response.user;
-		return { ok: true, user: { id, email: address, name }, cookie: toCookie(result.headers) };
+		return {
+			isSignedIn: true,
+			user: { id, email: address, name },
+			cookie: toCookie(result.headers)
+		};
 	} catch (error) {
 		const reason = toReason(error);
 		if (!reason) throw error;
-		return { ok: false, reason, message: MESSAGES[reason] };
+		return { isSignedIn: false, reason, message: MESSAGES[reason] };
 	}
 }
 

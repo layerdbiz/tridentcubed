@@ -31,16 +31,16 @@ export const fetchSignInWays = query(async () => {
 export const submitEmail = form(v.object({ email: EMAIL }), async ({ email }) => {
 	const { settings, auth } = await getServer();
 	if (!auth || !settings.ways.includes('email')) {
-		return { ok: false as const, email, message: NOT_CONNECTED };
+		return { isSent: false as const, email, message: NOT_CONNECTED };
 	}
 	const event = getRequestEvent();
 	const sent = await sendCode(auth, email, {
 		ip: event.getClientAddress(),
 		origin: event.url.origin
 	});
-	return sent.ok
-		? { ok: true as const, email }
-		: { ok: false as const, email, message: sent.message };
+	return sent.isSent
+		? { isSent: true as const, email }
+		: { isSent: false as const, email, message: sent.message };
 });
 
 export const submitCode = form(
@@ -57,7 +57,7 @@ export const submitCode = form(
 			code,
 			headers: getRequestEvent().request.headers
 		});
-		if (!result.ok) return { message: result.message };
+		if (!result.isSignedIn) return { message: result.message };
 		redirect(303, toNext(next));
 	}
 );

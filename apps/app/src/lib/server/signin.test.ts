@@ -13,12 +13,12 @@ describe('signing in with a code sent by email', () => {
 	it('signs a new User in with the code that was sent, and the session finds them', async () => {
 		const { auth, readCode } = await createTestSignIn();
 
-		expect(await sendCode(auth, 'Ana@Example.com')).toEqual({ ok: true });
+		expect(await sendCode(auth, 'Ana@Example.com')).toEqual({ isSent: true });
 		const code = readCode('ana@example.com');
 		expect(code).toMatch(/^\d{6}$/);
 
 		const result = await verifyCode(auth, { email: 'ana@example.com', code });
-		if (!result.ok) throw new Error(result.message);
+		if (!result.isSignedIn) throw new Error(result.message);
 		expect(result.user.email).toBe('ana@example.com');
 
 		const session = await auth.api.getSession({ headers: new Headers({ cookie: result.cookie }) });
@@ -43,7 +43,7 @@ describe('signing in with a code sent by email', () => {
 
 		const result = await verifyCode(auth, { email: 'cy@example.com', code: wrong });
 		expect(result).toEqual({
-			ok: false,
+			isSignedIn: false,
 			reason: 'wrong',
 			message: 'That code is not right. Check it, or send a new code.'
 		});
@@ -53,7 +53,7 @@ describe('signing in with a code sent by email', () => {
 			email: 'cy@example.com',
 			code: readCode('cy@example.com')
 		});
-		expect(again.ok).toBe(true);
+		expect(again.isSignedIn).toBe(true);
 	});
 
 	it('says plainly when the code has expired', async () => {
@@ -68,7 +68,7 @@ describe('signing in with a code sent by email', () => {
 		});
 
 		expect(result).toEqual({
-			ok: false,
+			isSignedIn: false,
 			reason: 'expired',
 			message: 'That code has expired. Send a new code to try again.'
 		});
@@ -84,7 +84,7 @@ describe('signing in with a code sent by email', () => {
 			code: `${code.slice(0, 3)} ${code.slice(3)}`
 		});
 
-		expect(result.ok).toBe(true);
+		expect(result.isSignedIn).toBe(true);
 	});
 });
 
@@ -98,21 +98,23 @@ describe('how often codes are sent', () => {
 		const { auth, lines } = await createTestSignIn();
 
 		for (const name of ['fa', 'fb', 'fc'])
-			expect(await sendCode(auth, `${name}@example.com`, { ip: HERE })).toEqual({ ok: true });
+			expect(await sendCode(auth, `${name}@example.com`, { ip: HERE })).toEqual({ isSent: true });
 		expect(await sendCode(auth, 'fd@example.com', { ip: HERE })).toEqual({
-			ok: false,
+			isSent: false,
 			message: TOO_MANY
 		});
 
 		expect(lines.some((line) => line.includes('fd@example.com'))).toBe(false);
-		expect(await sendCode(auth, 'fd@example.com', { ip: '198.51.100.2' })).toEqual({ ok: true });
+		expect(await sendCode(auth, 'fd@example.com', { ip: '198.51.100.2' })).toEqual({
+			isSent: true
+		});
 	});
 
 	it('still says plainly when the address does not look right', async () => {
 		const { auth } = await createTestSignIn();
 
 		expect(await sendCode(auth, 'not-an-email', { ip: HERE })).toEqual({
-			ok: false,
+			isSent: false,
 			message: 'That email address does not look right.'
 		});
 	});
@@ -125,7 +127,7 @@ describe('how often codes are sent', () => {
 
 		vi.setSystemTime(Date.now() + 61 * 1000);
 
-		expect(await sendCode(auth, 'gd@example.com', { ip: HERE })).toEqual({ ok: true });
+		expect(await sendCode(auth, 'gd@example.com', { ip: HERE })).toEqual({ isSent: true });
 	});
 
 	it('counts the sends of every server on the database, and of Better Auth’s own address', async () => {
@@ -145,11 +147,11 @@ describe('how often codes are sent', () => {
 			);
 
 		expect((await post()).status).toBe(200);
-		expect(await sendCode(other, 'hb@example.com', { ip: HERE })).toEqual({ ok: true });
+		expect(await sendCode(other, 'hb@example.com', { ip: HERE })).toEqual({ isSent: true });
 		expect((await post()).status).toBe(200);
 		expect((await post()).status).toBe(429);
 		expect(await sendCode(other, 'hc@example.com', { ip: HERE })).toEqual({
-			ok: false,
+			isSent: false,
 			message: TOO_MANY
 		});
 	});

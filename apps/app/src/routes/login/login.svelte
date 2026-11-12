@@ -45,7 +45,7 @@
 
 	// 'email' asks for the address; 'code' asks for the code that was sent to it. They start from the forms' last
 	// results, so the page also works when a form was posted before the page's script ran.
-	const sent = submitEmail.result?.ok ? submitEmail.result.email : '';
+	const sent = submitEmail.result?.isSent ? submitEmail.result.email : '';
 	let step = $state<'email' | 'code'>(sent ? 'code' : 'email');
 	let email = $state(sent);
 	let notice = $state(sent ? `We sent a 6-digit code to ${sent}.` : '');
@@ -146,7 +146,7 @@
 							await submit();
 							const result = submitEmail.result;
 							if (!result) return;
-							if (!result.ok) {
+							if (!result.isSent) {
 								problem = result.message;
 								return;
 							}

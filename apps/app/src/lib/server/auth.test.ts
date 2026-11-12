@@ -73,7 +73,7 @@ describe('starting a sign-in with Google or Microsoft', () => {
 			google: { clientId: 'g-id', clientSecret: 'g-secret' }
 		});
 
-		expect(await sendCode(auth, 'ana@example.com')).toEqual({ ok: true });
+		expect(await sendCode(auth, 'ana@example.com')).toEqual({ isSent: true });
 		const { url } = await auth.api.signInSocial({
 			body: { provider: 'google', callbackURL: '/' },
 			headers: new Headers({ host: '192.168.1.20:5174' })

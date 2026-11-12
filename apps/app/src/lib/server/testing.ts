@@ -64,9 +64,9 @@ export async function createTestSignIn() {
 	// the server takes them to be.
 	async function signIn(email: string) {
 		const sent = await sendCode(auth, email, { ip: nextAddress() });
-		if (!sent.ok) throw new Error(sent.message);
+		if (!sent.isSent) throw new Error(sent.message);
 		const result = await verifyCode(auth, { email, code: readCode(email) });
-		if (!result.ok) throw new Error(result.message);
+		if (!result.isSignedIn) throw new Error(result.message);
 		return { ...result, actor: await readActor(result.cookie) };
 	}
 
