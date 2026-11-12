@@ -147,9 +147,9 @@ async function isDone(tx: TransactionType, changeId: string) {
 }
 
 // The project a row belongs to (for the project table, itself), for the freeze of a Sent, Complete or Archived
-// project. A batch that changes a project's status and its contents together is judged by whichever of the two
-// statuses (before the batch, or now) is not frozen, so marking Sent right after an edit, or editing right after
-// Unsend, saves as one batch.
+// project. A batch that changes a project's status and its contents together is judged by whichever of the
+// statuses (before the batch, now, or the one the project's own put sets) is not frozen, so marking Sent right after
+// an edit, Unsend with the percent the device works out, or editing right after Unsend, saves as one batch.
 async function findProject(
 	tx: TransactionType,
 	batch: BatchStateType,
@@ -165,7 +165,10 @@ async function findProject(
 	if (!found) return undefined;
 	if (!batch.statusAtStart.has(id)) batch.statusAtStart.set(id, found.status);
 	const before = batch.statusAtStart.get(id) ?? found.status;
-	const status = FROZEN_STATUSES.includes(found.status) ? before : found.status;
+	// A put of the project itself that unfreezes it (Unsend) is judged by the status it sets, with what it carries.
+	const next = table === 'project' && typeof row.status === 'string' ? row.status : found.status;
+	const status =
+		[found.status, before, next].find((each) => !FROZEN_STATUSES.includes(each)) ?? found.status;
 	return { status, createdBy: found.createdBy, isDeleted: Boolean(found.deletedAt) };
 }
 
@@ -340,7 +343,7 @@ async function applyChange(
 ) {
 	if (await isDone(tx, change.changeId)) return;
 	const { table, id, operation } = change;
-	const values = change.values ?? {};
+	let values = change.values ?? {};
 	if (operation === 'put') {
 		const invalid = checkValues(table, values);
 		if (invalid) throw new Refusal(`That change does not fit: ${invalid}`);
@@ -348,13 +351,20 @@ async function applyChange(
 	const row = await findRow(tx, table, id);
 	if (operation === 'delete' && (!row || row.deletedAt)) return;
 
+	const inside = await findProject(tx, batch, table, { ...row, ...values, id });
+	// A frozen project keeps its percent: a status change between Sent, Complete and Archived may carry the
+	// device's percent, out of date or not, and it is set aside rather than refusing the status change.
+	if (table === 'project' && 'status' in values && FROZEN_STATUSES.includes(inside?.status ?? '')) {
+		const { progress: _kept, ...rest } = values;
+		values = rest;
+	}
 	const verdict = checkPermission(actor, {
 		table,
 		operation,
 		columns: Object.keys(values),
 		values: operation === 'put' ? { ...values, organizationId: actor.organizationId } : undefined,
 		row,
-		project: await findProject(tx, batch, table, { ...row, ...values, id }),
+		project: inside,
 		...(await readAdmins(tx, actor, table, row))
 	});
 	if (!verdict.isAllowed) throw new Refusal(verdict.reason);

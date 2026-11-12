@@ -311,6 +311,45 @@ describe('status', () => {
 		expect(projectOf((await open(tom)).look, id)).toMatchObject({ status: 'Review' });
 	});
 
+	it('unsends, and moves a frozen project on, from a device whose stored percent is out of date', async () => {
+		const ada = await signInAdmin();
+		const mine = await open(tom);
+		const id = create(mine.look, { Title: 'BBC Kimberly' });
+		await save(mine);
+		mine.look.markSent(projectOf(mine.look, id)!);
+		expect((await save(mine)).result.isSaved).toBe(true);
+		// The percent the server keeps no longer matches what the panels work out (another device saved it).
+		const stale = () =>
+			test.db.update(schema.project).set({ progress: 7 }).where(eq(schema.project.id, id));
+		await stale();
+
+		const device = await open(mia);
+		await openProject(device, id);
+		device.look.unsend(projectOf(device.look, id)!);
+		const unsent = await save(device);
+
+		expect(unsent.changes[0].values).toMatchObject({ status: 'Draft' });
+		expect(unsent.changes[0].values).toHaveProperty('progress');
+		expect(unsent.result.isSaved).toBe(true);
+		expect(projectOf((await open(tom)).look, id)).toMatchObject({ status: 'Draft' });
+
+		device.look.markSent(projectOf(device.look, id)!);
+		expect((await save(device)).result.isSaved).toBe(true);
+		await stale();
+		const admin = await open(ada);
+		await openProject(admin, id);
+		admin.look.setStatus(projectOf(admin.look, id)!, 'Complete');
+		projectOf(admin.look, id)!.progress = 55;
+		const moved = await save(admin);
+
+		expect(moved.changes[0].values).toMatchObject({ status: 'Complete', progress: 55 });
+		expect(moved.result.isSaved).toBe(true);
+		expect(projectOf((await open(tom)).look, id)).toMatchObject({
+			status: 'Complete',
+			progress: 7
+		});
+	});
+
 	it('refuses every change to a Sent, Complete or Archived project but its status, and the screen is frozen', async () => {
 		const ada = await signInAdmin();
 		const mine = await open(tom);
