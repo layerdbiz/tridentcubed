@@ -6,6 +6,9 @@
 // browser remembers the last mix. When a letter wins, the others are deleted and the part goes back to A alone.
 // Run 22 (Justin, 2026-11-11): every change he asks for is a new letter, and that newest letter is what shows
 // until he picks another, so he can flip back to how it was. `pick` names another default (the Cover stays on A).
+// Run 24 (Justin, 2026-11-11: "it's not easy to navigate"): sections named for where you are in the app, with
+// sub-sections. Dashboard holds Top and Bottom. Pages is anything opened from the dashboard, a project or one of
+// the other four, and holds its three tabs: Page, Edit and Preview.
 export type PartType = {
 	id: string;
 	label: string;
@@ -13,7 +16,8 @@ export type PartType = {
 	note?: string;
 	pick?: string;
 };
-export type PartGroupType = { id: string; label: string; parts: PartType[] };
+export type PartSectionType = { id: string; label: string; note?: string; parts: PartType[] };
+export type PartGroupType = PartSectionType & { sections?: PartSectionType[] };
 
 function part(id: string, label: string, variants = ['A'], note = '', pick?: string): PartType {
 	return { id, label, variants, note, pick };
@@ -23,108 +27,154 @@ export const PART_GROUPS: PartGroupType[] = [
 	{
 		id: 'global',
 		label: 'Global',
+		note: 'On every screen',
 		parts: [
+			part(
+				'bar',
+				'Bottom Bar',
+				['A', 'B', 'C', 'D'],
+				'A: small floating pill. B: edge to edge with names. C: wide floating bar, icons only, + above it; inside a page its name and the tabs slide in. D: C with an arrow after the name.'
+			),
 			part(
 				'sidebar',
 				'Sidebar',
 				['A', 'B'],
 				'Desktop. A: floating panel. B: fixed from top to bottom.'
 			),
-			part(
-				'bar',
-				'Bottom Bar',
-				['A', 'B', 'C', 'D'],
-				'A: floating pill. B: edge to edge with names. C: wide floating bar, icons only, + above it, page name before the tabs. D: C with an arrow after the page name.'
-			),
 			part('add', 'Add Sheet', ['A', 'B'], 'A: Create for a project. B: Add for everything.'),
 			part('more', '⋮ Menu')
 		]
 	},
 	{
-		id: 'top',
-		label: 'Dashboard Top',
-		parts: [
-			part('top', 'Top Half', ['A', 'B'], 'Desktop. B: the chart fades to white at its bottom.'),
-			part(
-				'chart-choice',
-				'Chart Choice',
-				['A', 'B'],
-				'A: each page has its own chart. B: the chart you pick stays for every page.'
-			),
-			part(
-				'stats',
-				'Stat Cards',
-				['A', 'B'],
-				'Desktop. A: scroll sideways. B: wrap, never cut off.'
-			),
-			part('map', 'Map', ['A', 'B'], 'B: things in the same place come apart when you zoom in.'),
-			part('area', 'Area Chart'),
-			part('bars', 'Bar Chart'),
-			part('pie', 'Pie Chart', ['A', 'B'], 'Desktop. B: the list beside it is two columns.')
+		id: 'dashboard',
+		label: 'Dashboard',
+		note: 'The home screen with the five lists',
+		parts: [],
+		sections: [
+			{
+				id: 'top',
+				label: 'Top',
+				note: 'The chart or map, and the stat cards',
+				parts: [
+					part(
+						'top',
+						'Top Half',
+						['A', 'B'],
+						'Desktop. B: the chart fades to white at its bottom.'
+					),
+					part(
+						'chart-choice',
+						'Chart Choice',
+						['A', 'B'],
+						'A: each list has its own chart. B: the chart you pick stays for every list.'
+					),
+					part(
+						'stats',
+						'Stat Cards',
+						['A', 'B'],
+						'Desktop. A: scroll sideways. B: wrap, never cut off.'
+					),
+					part(
+						'map',
+						'Map',
+						['A', 'B'],
+						'B: things in the same place come apart when you zoom in.'
+					),
+					part('area', 'Area Chart'),
+					part('bars', 'Bar Chart'),
+					part('pie', 'Pie Chart', ['A', 'B'], 'Desktop. B: the list beside it is two columns.')
+				]
+			},
+			{
+				id: 'bottom',
+				label: 'Bottom',
+				note: 'The sheet with the list',
+				parts: [
+					part(
+						'half',
+						'Bottom Half',
+						['A', 'B'],
+						'B: more room at the sides, heading higher; on a desktop, flat with no drag.'
+					),
+					part('list', 'List'),
+					part('cards', 'Cards'),
+					part('board', 'Board')
+				]
+			}
 		]
 	},
 	{
-		id: 'bottom',
-		label: 'Dashboard Bottom',
+		id: 'pages',
+		label: 'Pages',
+		note: 'What opens when you tap a Project, Customer, Team, Transport Mode or Facility',
 		parts: [
 			part(
-				'half',
-				'Bottom Half',
-				['A', 'B'],
-				'B: more room at the sides, heading higher; on a desktop, flat with no drag.'
-			),
-			part('list', 'List'),
-			part('cards', 'Cards'),
-			part('board', 'Board')
-		]
-	},
-	{
-		id: 'project',
-		label: 'Project',
-		parts: [
-			part(
-				'project-header',
+				'header',
 				'Header',
-				['A', 'B', 'C', 'D'],
-				'Phone. A: changes between Page and Edit. Same on every tab: B full bar with progress, C floating buttons, D slim bar.'
-			),
-			part('project-page', 'Page'),
-			part('panels', 'Panel List'),
-			part('panel-project', 'Project Panel'),
-			part('panel-transport', 'Transport Mode'),
-			part('panel-items', 'Items'),
-			part('panel-timelog', 'Time Log'),
-			part('panel-photos', 'Photos')
-		]
-	},
-	{
-		id: 'report',
-		label: 'Report',
-		parts: [
-			part(
-				'cover',
-				'Cover',
 				['A', 'B'],
-				'A: one list with icons. B: two columns with logos and faces.',
-				'A'
-			),
-			part('report', 'Project Report'),
-			part('report-transport', 'Transport Mode'),
-			part('report-timelog', 'Time Log'),
-			part('report-photos', 'Photos'),
-			part('disclaimer', 'Disclaimer'),
-			part('zoom', 'Zoom Bar')
+				'The top of every tab. A: round glass buttons on Page, Photo and Map at the right. B: one header for every page; on Page only a bare back arrow and ⋮, Photo and Map in the centre.'
+			)
+		],
+		sections: [
+			{
+				id: 'page',
+				label: 'Page',
+				note: 'The first tab: the picture or map, and the details',
+				parts: [
+					part('project-page', 'Project'),
+					part('record-page', 'Customer, Team, Transport Mode, Facility')
+				]
+			},
+			{
+				id: 'edit',
+				label: 'Edit',
+				note: 'The second tab: where things are filled in',
+				parts: [
+					part('panels', 'Panel List'),
+					part('panel-project', 'Project Panel'),
+					part('panel-transport', 'Transport Mode Panel'),
+					part('panel-items', 'Items Panel'),
+					part('panel-timelog', 'Time Log Panel'),
+					part('panel-photos', 'Photos Panel'),
+					part('record-form', 'Customer, Team, Transport Mode, Facility Form')
+				]
+			},
+			{
+				id: 'preview',
+				label: 'Preview',
+				note: 'The third tab, projects only: the report',
+				parts: [
+					part(
+						'cover',
+						'Cover',
+						['A', 'B'],
+						'A: one list with icons. B: two columns with logos and faces.',
+						'A'
+					),
+					part('report', 'Project Report'),
+					part('report-transport', 'Transport Mode'),
+					part('report-timelog', 'Time Log'),
+					part('report-photos', 'Photos'),
+					part('disclaimer', 'Disclaimer'),
+					part('zoom', 'Zoom Bar')
+				]
+			}
 		]
 	},
 	{
-		id: 'record',
-		label: 'Record',
-		parts: [part('record-page', 'Page'), part('record-form', 'Edit Form')]
-	},
-	{ id: 'settings', label: 'Settings', parts: [part('settings', 'Organization')] }
+		id: 'settings',
+		label: 'Settings',
+		note: 'Opened from the profile picture',
+		parts: [part('settings', 'Organization')]
+	}
 ];
 
-const PARTS = PART_GROUPS.flatMap((group) => group.parts);
+// Every part a section holds, its sub-sections' parts included.
+export function partsOf(group: PartGroupType) {
+	return [...group.parts, ...(group.sections ?? []).flatMap((section) => section.parts)];
+}
+
+const PARTS = PART_GROUPS.flatMap(partsOf);
 
 // The letter a part shows when nothing was picked: the newest one, unless the part names another.
 export function defaultOf(id: string) {

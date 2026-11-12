@@ -21,7 +21,8 @@
 		left = 0,
 		onback,
 		backLabel,
-		chrome,
+		buttons = 'glass',
+		onphoto,
 		actions,
 		overlay,
 		children
@@ -35,9 +36,12 @@
 		left?: number;
 		onback: () => void;
 		backLabel: string;
-		// Given, the screen has its own header over every tab (Project Header B, C, D): the Page drops its own back
-		// and ⋮ buttons and starts this far down, keeping only Photo and Map.
-		chrome?: number;
+		// The back arrow and the ⋮ at the top. 'glass' (Header A): each in a round glass button, Photo and Map at the
+		// right. 'ghost' (Header B): bare icons, Photo and Map in the centre. 'none': the screen's own header
+		// (page-header.svelte) draws the two in the same place, so only Photo and Map are here, in the centre.
+		buttons?: 'glass' | 'ghost' | 'none';
+		// Told whether a photo is showing, so a header over it can turn its icons white.
+		onphoto?: (isPhoto: boolean) => void;
 		actions: Snippet;
 		// What sits over the bottom of the picture; `true` while it is over a photo (white words), `false` over the map.
 		overlay: Snippet<[boolean]>;
@@ -54,6 +58,14 @@
 			? 'bg-slate-950/35 text-white backdrop-blur-md'
 			: 'bg-white/85 text-slate-900 shadow-sm backdrop-blur-md'
 	);
+
+	const GHOST = $derived(
+		isPhoto ? 'text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]' : 'text-slate-900'
+	);
+
+	$effect(() => {
+		onphoto?.(isPhoto);
+	});
 
 	function onscroll() {
 		if (strip?.clientWidth) at = Math.round(strip.scrollLeft / strip.clientWidth);
@@ -104,16 +116,19 @@
 >
 	{#snippet head()}
 		<div
-			class="flex shrink-0 items-center gap-2 px-3 {chrome === undefined
-				? 'pt-[max(0.75rem,env(safe-area-inset-top))]'
-				: ''}"
-			style="padding-left: {left + 12}px; {chrome === undefined
-				? ''
-				: `padding-top: ${chrome + 8}px`}"
+			class="flex shrink-0 items-center {buttons === 'glass'
+				? 'gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]'
+				: 'gap-1 px-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)]'}"
+			style="padding-left: {left + (buttons === 'glass' ? 12 : 6)}px"
 		>
-			{#if chrome === undefined}
+			{#if buttons === 'none'}
+				<span class="size-10 shrink-0"></span>
+			{:else}
 				<button
-					class="pointer-events-auto flex size-10 items-center justify-center rounded-full {GLASS}"
+					class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full {buttons ===
+					'glass'
+						? GLASS
+						: GHOST}"
 					aria-label={backLabel}
 					onclick={onback}><span class="icon-[mdi--arrow-left] size-6"></span></button
 				>
@@ -140,10 +155,15 @@
 					{/each}
 				</span>
 			{/if}
-			{#if chrome === undefined}
+			{#if buttons !== 'glass'}<span class="flex-1"></span>{/if}
+			{#if buttons === 'none'}
+				<span class="size-10 shrink-0"></span>
+			{:else}
 				<span
-					class="pointer-events-auto flex size-10 items-center justify-center rounded-full {GLASS}"
-					>{@render actions()}</span
+					class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full {buttons ===
+					'glass'
+						? GLASS
+						: GHOST}">{@render actions()}</span
 				>
 			{/if}
 		</div>

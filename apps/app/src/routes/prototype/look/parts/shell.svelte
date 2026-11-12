@@ -542,6 +542,7 @@
 							project={look.project}
 							isWide
 							left={444}
+							buttons={look.variant('header') === 'A' ? 'glass' : 'ghost'}
 						/>
 					{:else}
 						<ReportPreview

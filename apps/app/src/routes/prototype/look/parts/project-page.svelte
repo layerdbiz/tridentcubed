@@ -30,14 +30,16 @@
 		project,
 		isWide,
 		left = 0,
-		chrome
+		buttons = 'glass',
+		onphoto
 	}: {
 		look: LookState;
 		project: ProjectType;
 		isWide: boolean;
 		left?: number;
-		// The height of a header the screen draws over every tab; the Page then leaves its own buttons out.
-		chrome?: number;
+		// Both go straight to page-view.svelte: who draws the back arrow and the ⋮, and word of a photo showing.
+		buttons?: 'glass' | 'ghost' | 'none';
+		onphoto?: (isPhoto: boolean) => void;
 	} = $props();
 
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
@@ -94,7 +96,8 @@
 	{route}
 	{isWide}
 	{left}
-	{chrome}
+	{buttons}
+	{onphoto}
 	onback={() => look.home()}
 	backLabel="Back to Projects"
 >

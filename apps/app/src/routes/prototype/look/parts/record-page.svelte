@@ -4,12 +4,14 @@
 	// between or picked on the floating bar. Run 13 (2026-11-07 22:21): the Page is built like the dashboard
 	// (page-view.svelte): its picture or a map of where it is on top, its name and labels over the picture, and the
 	// rest in the sheet below. On a desktop the Edit form sits in the floating column on the left and the Page fills
-	// the rest.
+	// the rest. Run 24 (Justin, 2026-11-11): with Header B the phone's top is page-header.svelte, the one a project
+	// uses, over both tabs: a bare back arrow and ⋮ on the Page, and the bar with the name from Edit on.
 	import { pinOfRecord, pinsAt } from './chart.data';
 	import Chips from './chips.svelte';
 	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import PageHeader from './page-header.svelte';
 	import SaveCloud from './save-cloud.svelte';
 	import PageView from './page-view.svelte';
 	import RecordForm from './record-form.svelte';
@@ -27,6 +29,10 @@
 		record.page === 'customers' ? customerOf(look, record.key).city : record.location
 	);
 	const pins = $derived(pinsAt(look.places, [pinOfRecord(look, record, city)]));
+
+	const isShared = $derived(look.variant('header') !== 'A');
+	let isPhoto = $state(false);
+	let top = $state(0);
 
 	let swiper: HTMLDivElement | undefined = $state();
 	let isLanded = false;
@@ -82,6 +88,8 @@
 		isBlurred={record.page === 'team'}
 		{isWide}
 		{left}
+		buttons={!isShared ? 'glass' : isWide ? 'ghost' : 'none'}
+		onphoto={(value) => (isPhoto = value)}
 		onback={() => look.home()}
 		backLabel="Back to {DATASETS[record.page].label}"
 	>
@@ -153,6 +161,27 @@
 	</aside>
 {:else}
 	<div class="relative h-dvh overflow-hidden bg-slate-100">
+		{#if isShared}
+			<PageHeader
+				{look}
+				page={record.page}
+				id={record.key}
+				title={record.key}
+				kind={DATASETS[record.page].one}
+				reveal={look.tabProgress}
+				isLight={isPhoto}
+				hasCloud={look.variant('bar') !== 'A'}
+				bind:height={top}
+			>
+				{#snippet mark()}
+					<RecordMark
+						{record}
+						size={36}
+						hasBadge={false}
+					/>
+				{/snippet}
+			</PageHeader>
+		{/if}
 		<div
 			bind:this={swiper}
 			class="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
@@ -161,12 +190,15 @@
 			<div class="h-full w-full shrink-0 snap-start">{@render page(0)}</div>
 			<div
 				class="h-full w-full shrink-0 snap-start overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+96px)]"
+				style:padding-top={isShared ? `${top}px` : undefined}
 			>
-				<header
-					class="sticky top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
-				>
-					<div class="px-1.5 py-2">{@render header()}</div>
-				</header>
+				{#if !isShared}
+					<header
+						class="sticky top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+					>
+						<div class="px-1.5 py-2">{@render header()}</div>
+					</header>
+				{/if}
 				<div class="px-4 pt-3">
 					<RecordForm
 						{look}
