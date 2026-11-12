@@ -34,7 +34,8 @@
 	}
 </script>
 
-<!-- A section's name (capitals) or a sub-section's (plain), with a line saying where in the app it is. -->
+<!-- A section's name (capitals) or a sub-section's (plain). No describing lines: Justin knows what each is
+     (2026-11-12); the notes stay in variants.data.ts for whoever reads the code. -->
 {#snippet heading(
 	item: PartSectionType,
 	key: string,
@@ -58,9 +59,6 @@
 					: 'text-[11px] font-semibold tracking-[0.14em] text-white/60 uppercase'}"
 				>{item.label}</span
 			>
-			{#if item.note}
-				<span class="block text-[10px] leading-snug text-white/35">{item.note}</span>
-			{/if}
 		</span>
 		{#if picked}<span class="size-1.5 shrink-0 rounded-full bg-primary"></span>{/if}
 		<span
@@ -77,9 +75,6 @@
 		<div class="flex items-center gap-2 rounded-lg px-2 py-1">
 			<span class="min-w-0 flex-1">
 				<span class="block text-[13px] leading-snug text-white/90">{part.label}</span>
-				{#if part.note}
-					<span class="block text-[10px] leading-snug text-white/40">{part.note}</span>
-				{/if}
 			</span>
 			<span
 				class="flex shrink-0 gap-1"
