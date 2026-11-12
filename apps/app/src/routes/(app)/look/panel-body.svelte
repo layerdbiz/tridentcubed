@@ -30,6 +30,7 @@
 	import BottomSheet from './bottom-sheet.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
+	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { shrink } from './image';
 	import ImageField from './image-field.svelte';
 	import {
@@ -41,6 +42,7 @@
 		newPersonnel,
 		PAGE_ICONS,
 		PROJECT_TYPES,
+		type AttachmentType,
 		type FacilityKindType,
 		type FieldType,
 		type PanelType,
@@ -182,6 +184,30 @@
 		save();
 	}
 
+	// The item list attached as photos or the spreadsheet itself (#188): each file goes to private storage through the
+	// upload helper, showing in place while it goes, and joins the panel's attachments once it is there.
+	type SendingType = { id: string; name: string; kind: AttachmentType['kind']; upload: Upload };
+	let sending = $state<SendingType[]>([]);
+
+	function attach(event: Event, kind: AttachmentType['kind']) {
+		const input = event.currentTarget as HTMLInputElement;
+		const files = [...(input.files ?? [])];
+		input.value = '';
+		for (const file of files) {
+			const id = crypto.randomUUID();
+			const upload = startUpload(file, {
+				for: { table: 'item_attachment', column: 'file', id, projectId: look.projectId },
+				kind: kind === 'photo' ? 'photo' : 'document',
+				ondone: (src) => {
+					sending = sending.filter((other) => other.id !== id);
+					panel.attachments = [...(panel.attachments ?? []), { id, name: file.name, src, kind }];
+					save();
+				}
+			});
+			sending.push({ id, name: file.name, kind, upload });
+		}
+	}
+
 	// Asks first, then takes the item out of its list.
 	function remove<T>(list: T[], item: T, title: string, note?: string) {
 		look.confirm({
@@ -237,9 +263,9 @@
 
 	function addDay() {
 		const day = {
-			id: createId('day'),
+			id: crypto.randomUUID(),
 			date: '',
-			entries: [{ id: createId('entry'), time: '', activity: '' }]
+			entries: [{ id: crypto.randomUUID(), time: '', activity: '' }]
 		};
 		panel.days.push(day);
 		openDays = [...openDays, day.id];
@@ -320,6 +346,19 @@
 	const ghostButton =
 		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 </script>
+
+<!-- A row's handle (#188): hold it, then drag, to move the row. Only a list of two or more has one. -->
+{#snippet handle(key: string, count: number)}
+	<span
+		class="mt-2 flex size-6 shrink-0 cursor-grab items-center justify-center text-slate-300 select-none [-webkit-touch-callout:none] hover:text-slate-500 {count >
+		1
+			? ''
+			: 'invisible'}"
+		data-grip={count > 1 ? key : undefined}
+		title="Hold and drag to reorder"
+		aria-hidden="true"><span class="icon-[mdi--drag-vertical] size-5"></span></span
+	>
+{/snippet}
 
 {#snippet fieldBlock(field: FieldType)}
 	{#if field.label === 'Location'}
@@ -629,17 +668,23 @@
 		<div
 			class="space-y-3"
 			onpaste={pasteItems}
+			{@attach sortable(`items-${panel.id}`, (from, to) => move(panel.items, from, to))}
 		>
 			{#if panel.items.length}
 				<p class="flex gap-2 text-xs font-medium text-slate-500">
-					<span class="w-20 shrink-0 pl-1">Quantity</span><span>Description</span>
+					<span class="w-6 shrink-0"></span><span class="w-20 shrink-0 pl-1">Quantity</span><span
+						>Description</span
+					>
 				</p>
 			{/if}
 			{#each panel.items as item, itemIndex (item.id)}
 				<div
 					class="flex items-start gap-2"
+					data-sort="items-{panel.id}"
+					data-index={itemIndex}
 					animate:flip={{ duration: 200 }}
 				>
+					{@render handle(`items-${panel.id}`, panel.items.length)}
 					<input
 						class="{inputClass} w-20! shrink-0 text-center tabular-nums"
 						inputmode="numeric"
@@ -684,9 +729,9 @@
 			<span class="mt-px icon-[mdi--content-paste] size-4 shrink-0"></span>
 			Copy rows in a spreadsheet and paste them into any field above. Or attach the list itself:
 		</p>
-		{#if panel.attachments?.length}
+		{#if panel.attachments?.length || sending.length}
 			<div class="flex flex-wrap gap-2">
-				{#each panel.attachments as file (file.id)}
+				{#each panel.attachments ?? [] as file (file.id)}
 					<span
 						class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] text-xs text-slate-700 {file.kind ===
 						'photo'
@@ -701,7 +746,12 @@
 							/>
 						{:else}
 							<span class="icon-[mdi--file-table-outline] size-4 shrink-0 text-primary"></span>
-							<span class="max-w-40 truncate">{file.name}</span>
+							<a
+								href={file.src || undefined}
+								target="_blank"
+								rel="noopener"
+								class="max-w-40 truncate hover:underline">{file.name}</a
+							>
 						{/if}
 						<button
 							type="button"
@@ -720,6 +770,47 @@
 						>
 					</span>
 				{/each}
+				<!-- On their way to storage: each shows in place with its mark; a failed one says so, with Retry. -->
+				{#each sending as file (file.id)}
+					<span
+						class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] text-xs text-slate-700 {file.kind ===
+						'photo'
+							? 'size-20'
+							: 'py-2 pr-8 pl-3'}"
+						aria-busy={file.upload.isUploading}
+					>
+						{#if file.kind === 'photo'}
+							<img
+								src={file.upload.preview}
+								alt={file.name}
+								class="size-full object-cover opacity-60"
+							/>
+						{:else}
+							<span class="icon-[mdi--file-table-outline] size-4 shrink-0 text-primary"></span>
+							<span class="max-w-40 truncate">{file.name}</span>
+						{/if}
+						{#if file.upload.isFailed}
+							<button
+								type="button"
+								class="absolute inset-x-0 bottom-0 bg-danger px-1 py-0.5 text-[10px] font-semibold text-white"
+								title={file.upload.reason}
+								onclick={() => file.upload.retry()}>Not uploaded · Retry</button
+							>
+							<button
+								type="button"
+								class="absolute top-0.5 right-0.5 flex size-6 items-center justify-center rounded-full bg-slate-950/50 text-white"
+								aria-label="Remove {file.name}"
+								onclick={() => (sending = sending.filter((other) => other.id !== file.id))}
+								><span class="icon-[mdi--close] size-4"></span></button
+							>
+						{:else}
+							<span
+								class="absolute top-1 right-1 icon-[mdi--loading] size-4 animate-spin text-primary"
+								aria-label="Uploading"
+							></span>
+						{/if}
+					</span>
+				{/each}
 			</div>
 		{/if}
 		<div class="flex flex-wrap gap-2">
@@ -730,13 +821,7 @@
 					accept="image/*"
 					multiple
 					class="sr-only"
-					onchange={(event) =>
-						pick(event, (src, name) => {
-							panel.attachments = [
-								...(panel.attachments ?? []),
-								{ id: createId('file'), name, src, kind: 'photo' }
-							];
-						})}
+					onchange={(event) => attach(event, 'photo')}
 				/>
 			</label>
 			<label class="{ghostButton} cursor-pointer bg-primary/10 text-primary hover:bg-primary/15">
@@ -746,97 +831,106 @@
 					accept=".xlsx,.xls,.csv,.pdf"
 					multiple
 					class="sr-only"
-					onchange={(event) =>
-						pick(event, (src, name) => {
-							panel.attachments = [
-								...(panel.attachments ?? []),
-								{ id: createId('file'), name, src, kind: 'file' }
-							];
-						})}
+					onchange={(event) => attach(event, 'file')}
 				/>
 			</label>
 		</div>
 	{:else if panel.kind === 'timelog'}
-		{#each panel.days as day, dayIndex (day.id)}
-			<div animate:flip={{ duration: 200 }}>
-				<Group
-					title="Day {dayIndex + 1}"
-					note="{day.entries.length} {day.entries.length === 1 ? 'entry' : 'entries'}"
-					meta={day.date || 'No date'}
-					icon="icon-[mdi--calendar-blank-outline]"
-					isOpen={openDays.includes(day.id)}
-					ontoggle={() => (openDays = toggle(openDays, day.id))}
-					ondelete={() =>
-						remove(
-							panel.days,
-							day,
-							'Delete day?',
-							`Its ${day.entries.length} time log entries go with it.`
-						)}
-				>
-					<label class="block">
-						<span class={labelClass}>Date</span>
-						<input
-							class={inputClass}
-							type="date"
-							bind:value={day.date}
-						/>
-					</label>
-					{#each day.entries as entry (entry.id)}
-						<div
-							class="flex items-start gap-2"
-							animate:flip={{ duration: 200 }}
-						>
-							<input
-								class="{inputClass} w-20! shrink-0 text-center tabular-nums"
-								inputmode="numeric"
-								maxlength="5"
-								placeholder="07:30"
-								value={entry.time}
-								onchange={(event) => {
-									entry.time = clockOf(event.currentTarget.value);
-									event.currentTarget.value = entry.time;
-									sortEntries(dayIndex);
-								}}
-								aria-label="Time, on the 24-hour clock"
-							/>
+		<div
+			class="space-y-3"
+			{@attach sortable(`days-${panel.id}`, (from, to) => move(panel.days, from, to))}
+		>
+			{#each panel.days as day, dayIndex (day.id)}
+				<div animate:flip={{ duration: 200 }}>
+					<Group
+						sortKey={panel.days.length > 1 ? `days-${panel.id}` : ''}
+						index={dayIndex}
+						title="Day {dayIndex + 1}"
+						note="{day.entries.length} {day.entries.length === 1 ? 'entry' : 'entries'}"
+						meta={day.date || 'No date'}
+						icon="icon-[mdi--calendar-blank-outline]"
+						isOpen={openDays.includes(day.id)}
+						ontoggle={() => (openDays = toggle(openDays, day.id))}
+						ondelete={() =>
+							remove(
+								panel.days,
+								day,
+								'Delete day?',
+								`Its ${day.entries.length} time log entries go with it.`
+							)}
+					>
+						<label class="block">
+							<span class={labelClass}>Date</span>
 							<input
 								class={inputClass}
-								bind:value={entry.activity}
-								placeholder="What happened"
-								aria-label="Activity"
+								type="date"
+								bind:value={day.date}
 							/>
+						</label>
+						<div
+							class="space-y-3"
+							{@attach sortable(`entries-${day.id}`, (from, to) => move(day.entries, from, to))}
+						>
+							{#each day.entries as entry, entryIndex (entry.id)}
+								<div
+									class="flex items-start gap-2"
+									data-sort="entries-{day.id}"
+									data-index={entryIndex}
+									animate:flip={{ duration: 200 }}
+								>
+									{@render handle(`entries-${day.id}`, day.entries.length)}
+									<input
+										class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+										inputmode="numeric"
+										maxlength="5"
+										placeholder="07:30"
+										value={entry.time}
+										onchange={(event) => {
+											entry.time = clockOf(event.currentTarget.value);
+											event.currentTarget.value = entry.time;
+											sortEntries(dayIndex);
+										}}
+										aria-label="Time, on the 24-hour clock"
+									/>
+									<input
+										class={inputClass}
+										bind:value={entry.activity}
+										placeholder="What happened"
+										aria-label="Activity"
+									/>
+									<button
+										type="button"
+										class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
+										aria-label="Delete entry"
+										onclick={() =>
+											remove(
+												day.entries,
+												entry,
+												'Delete entry?',
+												entry.activity
+													? `"${entry.activity}" leaves the time log.`
+													: 'It leaves the time log.'
+											)}><span class="icon-[mdi--close] size-4"></span></button
+									>
+								</div>
+							{/each}
+						</div>
+						{#snippet actions()}
 							<button
 								type="button"
-								class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
-								aria-label="Delete entry"
-								onclick={() =>
-									remove(
-										day.entries,
-										entry,
-										'Delete entry?',
-										entry.activity
-											? `"${entry.activity}" leaves the time log.`
-											: 'It leaves the time log.'
-									)}><span class="icon-[mdi--close] size-4"></span></button
+								class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+								onclick={() => {
+									day.entries.push({ id: crypto.randomUUID(), time: '', activity: '' });
+									save();
+								}}><span class="icon-[mdi--plus] size-4"></span>Add entry</button
 							>
-						</div>
-					{/each}
-					{#snippet actions()}
-						<button
-							type="button"
-							class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
-							onclick={() => {
-								day.entries.push({ id: createId('entry'), time: '', activity: '' });
-								save();
-							}}><span class="icon-[mdi--plus] size-4"></span>Add entry</button
-						>
-					{/snippet}
-				</Group>
-			</div>
-		{:else}
-			<p class="py-2 text-center text-sm text-slate-400">No days yet. Add the first one.</p>
-		{/each}
+						{/snippet}
+					</Group>
+				</div>
+			{:else}
+				<p class="py-2 text-center text-sm text-slate-400">No days yet. Add the first one.</p>
+			{/each}
+		</div>
 		<div class="flex flex-wrap gap-2">
 			<button
 				type="button"

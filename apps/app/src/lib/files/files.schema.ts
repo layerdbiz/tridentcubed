@@ -10,12 +10,35 @@ export const FILE_PREFIX = '/files/';
 /** The biggest file storage takes. A shrunk photo is far smaller (ADR 0004). */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
-/** The kinds of file storage keeps, with the ending its path takes. Item attachments (#188) add theirs here. */
+/** The kinds of file storage keeps, with the ending its path takes. */
 export const FILE_TYPES: Record<string, string> = {
 	'image/webp': 'webp',
 	'image/jpeg': 'jpg',
-	'image/png': 'png'
+	'image/png': 'png',
+	// #188: the item list itself, attached to the Items panel as it came.
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+	'application/vnd.ms-excel': 'xls',
+	'text/csv': 'csv',
+	'application/pdf': 'pdf'
 };
+
+/** The kinds of file that are not pictures: kept as they came, and only where a column takes them. */
+export const DOCUMENT_TYPES = Object.keys(FILE_TYPES).filter((type) => !type.startsWith('image/'));
+
+/** The columns that take a document as well as a picture: an item attachment (#188). */
+const DOCUMENT_COLUMNS = ['item_attachment/file'];
+
+/** Whether a file of this type may be kept for this table and column. */
+export function isTypeAllowed(type: string, table: string, column: string) {
+	if (!Object.hasOwn(FILE_TYPES, type)) return false;
+	return !DOCUMENT_TYPES.includes(type) || DOCUMENT_COLUMNS.includes(`${table}/${column}`);
+}
+
+/** A document's type from its name, for a browser that hands it over with none (a CSV on some systems). */
+export function toDocumentType(name: string) {
+	const ending = name.split('.').pop()?.toLowerCase() ?? '';
+	return DOCUMENT_TYPES.find((type) => FILE_TYPES[type] === ending) ?? '';
+}
 
 /** Where the time and place came from: the photo's own metadata, the device at that moment, or nowhere. */
 export const TAKEN_FROM = ['file', 'device', ''] as const;

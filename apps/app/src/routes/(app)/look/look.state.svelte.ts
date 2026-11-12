@@ -203,9 +203,12 @@ export class LookState {
 	// server's rows since #184 (the seed's starting places, then every one a member picked).
 	places = $state<PlaceType[]>([]);
 	asking = $state<ConfirmType>();
-	// Each project's row and Team Assigned rows as the server last gave them (#186, mapper.ts): what a project whose
-	// panels have not loaded saves as, since only its status and percent change from the lists.
-	fromServer: Record<string, { values: Record<string, unknown>; team: RowType[] }> = {};
+	// Each project's row, Team Assigned rows and trip's stops (#188) as the server last gave them (#186, mapper.ts):
+	// what a project whose panels have not loaded saves as, since only its status and percent change from the lists.
+	fromServer: Record<
+		string,
+		{ values: Record<string, unknown>; team: RowType[]; stops: RowType[] }
+	> = {};
 	// The row ids of the Team Assigned, by project and Team record (mapper.ts).
 	teamRowIds = new Map<string, string>();
 

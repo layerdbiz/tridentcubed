@@ -120,3 +120,27 @@ describe('a picture on its way', () => {
 		expect(test.done).toEqual([]);
 	});
 });
+
+describe('a document on its way (#188)', () => {
+	it('goes as it came, unshrunk, with its type read from its name when the browser gives none', async () => {
+		const test = createSteps(['ok']);
+		const sheet = new File(['qty,item\n2,Transformers\n'], 'Manifest.CSV', { type: '' });
+		const upload = new Upload(sheet, {
+			for: { table: 'item_attachment', column: 'file', id: FILE_ID },
+			kind: 'document',
+			ondone: (address) => test.done.push(address),
+			steps: test.steps
+		});
+
+		await upload.start();
+
+		expect(test.asked[0]).toEqual({
+			for: { table: 'item_attachment', column: 'file', id: FILE_ID },
+			name: 'Manifest.CSV',
+			type: 'text/csv',
+			size: 24,
+			taken: { from: '' }
+		});
+		expect(test.done).toEqual([`/files/${FILE_ID}`]);
+	});
+});

@@ -176,6 +176,32 @@ describe('who may ask for an upload address', () => {
 		).toMatchObject({ isAllowed: false });
 	});
 
+	it('takes a spreadsheet or PDF for an item attachment only, never for a record’s picture (#188)', async () => {
+		const attachment = (type: string, name: string): UploadRequestType => ({
+			for: { table: 'item_attachment', column: 'file', id: crypto.randomUUID() },
+			name,
+			type,
+			size: PICTURE.byteLength,
+			taken: { from: '' }
+		});
+		for (const [type, name] of [
+			['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'manifest.xlsx'],
+			['application/vnd.ms-excel', 'manifest.xls'],
+			['text/csv', 'manifest.csv'],
+			['application/pdf', 'manifest.pdf'],
+			['image/webp', 'list.webp']
+		])
+			expect((await upload(team, attachment(type, name))).address).toMatch(/^\/files\//);
+
+		expect(
+			await createUpload(test.claims, team, store, {
+				...logoOf(),
+				type: 'application/pdf',
+				name: 'logo.pdf'
+			})
+		).toEqual({ isAllowed: false, reason: 'A application/pdf file cannot be kept here.' });
+	});
+
 	it('never lets a picture for another organization’s record land in theirs', async () => {
 		const theirs = await addOrganization();
 		const customerId = crypto.randomUUID();

@@ -6,6 +6,7 @@
 import { eq } from 'drizzle-orm';
 import {
 	FILE_TYPES,
+	isTypeAllowed,
 	MAX_FILE_BYTES,
 	type TakenType,
 	toFileAddress,
@@ -80,8 +81,9 @@ export async function createUpload(
 	if (!holdsFile(table, column)) {
 		return { isAllowed: false, reason: REASONS.notAFile(table, column) };
 	}
-	const ending = Object.hasOwn(FILE_TYPES, request.type) ? FILE_TYPES[request.type] : undefined;
-	if (!ending) return { isAllowed: false, reason: REASONS.type(request.type) };
+	if (!isTypeAllowed(request.type, table, column))
+		return { isAllowed: false, reason: REASONS.type(request.type) };
+	const ending = FILE_TYPES[request.type];
 	if (request.size > MAX_FILE_BYTES) return { isAllowed: false, reason: REASONS.size };
 
 	const id = crypto.randomUUID();
