@@ -19,11 +19,18 @@
 import * as v from 'valibot';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
-// A picture's address: the app's address of a file in storage (`/files/<id>`, #187), a starting file (`/start/...`)
-// or nothing. A column declared with it holds a file, so a device may ask for an upload address for it
-// (`holdsFile`). Pictures not yet wired to the upload helper still arrive inline as data URLs, so it stays large until
-// every picture uploads (open item after #184, #185 and #187).
-export const PICTURE = v.pipe(v.string(), v.maxLength(4_000_000));
+// A picture's address: the app's address of a file in storage (`/files/<id>`, #187), a starting file (`/start/...`),
+// a picture the app ships with (`/logo-color.svg`), the picture a sign-in provider gave a new Team record (https), or
+// nothing. Every picture uploads to storage, so a row never keeps the picture itself. A column declared with it holds
+// a file, so a device may ask for an upload address for it (`holdsFile`).
+export const PICTURE = v.pipe(
+	v.string(),
+	v.maxLength(2048),
+	v.check(
+		(address) => address === '' || address.startsWith('/') || address.startsWith('https://'),
+		'A picture is kept in storage; the row keeps its address only.'
+	)
+);
 const NAME = v.pipe(
 	v.string(),
 	v.check((name) => name.trim().length > 0, 'A name is needed.'),
