@@ -18,14 +18,14 @@ import {
 	TABLE_NAMES,
 	TABLES as SPECS,
 	type TableNameType,
-	columnsOf
+	readsOf
 } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
-import { change as changes, contact, customer } from './db/schema';
+import { change as changes, contact, customer, member, team, user as users } from './db/schema';
 import { checkPermission, type ChangeType } from './permission';
 
 /** The Drizzle table of each registry entry. */
-export const TABLES: Record<TableNameType, PgTable> = { customer, contact };
+export const TABLES: Record<TableNameType, PgTable> = { customer, contact, team };
 
 type StoredRowType = Record<string, unknown> & {
 	id: string;
@@ -45,7 +45,12 @@ function toSaved(table: TableNameType, row: StoredRowType): SavedRowType {
 	return {
 		table,
 		id: row.id,
-		values: Object.fromEntries(columnsOf(table).map((column) => [column, row[column]])),
+		values: Object.fromEntries(
+			readsOf(table).map((column) => {
+				const value = row[column];
+				return [column, value instanceof Date ? value.toISOString() : value];
+			})
+		),
 		createdAt: row.createdAt.toISOString(),
 		updatedAt: row.updatedAt.toISOString(),
 		deletedAt: row.deletedAt?.toISOString() ?? null
@@ -93,6 +98,49 @@ async function checkName(tx: TransactionType, table: TableNameType, id: string, 
 	if (taken) throw new Refusal(`${name.trim()} is already there.`);
 }
 
+// What the one permission check needs to keep the organization's Admins (#185): for a Team record a User has
+// signed in as, whether it is the Super admin's and how many Admins there are now. A record nobody has signed in as
+// is nobody's membership, so demoting it never leaves the organization without an Admin.
+async function readAdmins(
+	tx: TransactionType,
+	actor: ActorType,
+	table: TableNameType,
+	row: StoredRowType | undefined
+): Promise<Pick<ChangeType, 'isSuperAdmin' | 'adminCount'>> {
+	if (table !== 'team' || !row) return {};
+	const userId = row.userId as string | null;
+	if (!userId) return { isSuperAdmin: false, adminCount: Number.POSITIVE_INFINITY };
+	const [owner] = await tx
+		.select({ isSuperAdmin: users.isSuperAdmin })
+		.from(users)
+		.where(eq(users.id, userId));
+	const admins = await tx
+		.select({ id: member.id })
+		.from(member)
+		.where(and(eq(member.organizationId, actor.organizationId ?? ''), eq(member.role, 'admin')));
+	return { isSuperAdmin: owner?.isSuperAdmin ?? false, adminCount: admins.length };
+}
+
+// A Team record's role is its User's membership's role (#185): changing one changes the other.
+async function moveMembership(
+	tx: TransactionType,
+	actor: ActorType,
+	table: TableNameType,
+	row: StoredRowType | undefined,
+	values: Record<string, unknown>
+) {
+	if (table !== 'team' || !row?.userId || !('role' in values)) return;
+	await tx
+		.update(member)
+		.set({ role: values.role as 'admin' | 'manager' | 'team' })
+		.where(
+			and(
+				eq(member.organizationId, actor.organizationId ?? ''),
+				eq(member.userId, row.userId as string)
+			)
+		);
+}
+
 async function applyChange(tx: TransactionType, actor: ActorType, change: RowChangeType) {
 	if (await isDone(tx, change.changeId)) return;
 	const { table, id, operation } = change;
@@ -110,7 +158,8 @@ async function applyChange(tx: TransactionType, actor: ActorType, change: RowCha
 		columns: Object.keys(values),
 		values: operation === 'put' ? { ...values, organizationId: actor.organizationId } : undefined,
 		row,
-		project: await findProject(tx, table, { ...row, ...values })
+		project: await findProject(tx, table, { ...row, ...values }),
+		...(await readAdmins(tx, actor, table, row))
 	});
 	if (!verdict.isAllowed) throw new Refusal(verdict.reason);
 
@@ -135,6 +184,7 @@ async function applyChange(tx: TransactionType, actor: ActorType, change: RowCha
 					.insert(target)
 					.values({ ...values, id, organizationId: actor.organizationId } as never)
 					.returning();
+		await moveMembership(tx, actor, table, row, values);
 	}
 	await tx.insert(changes).values({
 		id: change.changeId,

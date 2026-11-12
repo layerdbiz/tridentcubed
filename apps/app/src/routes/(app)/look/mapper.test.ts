@@ -93,7 +93,9 @@ describe('customers and contacts', () => {
 			'Bo',
 			'Cy'
 		]);
-		expect(toRows(theirs.look)).toEqual(toRows(mine.look));
+		// The second member signed in after the first device opened, so only the team differs (their own Team record).
+		const customers = (rows: RowType[]) => rows.filter((row) => row.table !== 'team');
+		expect(customers(toRows(theirs.look))).toEqual(customers(toRows(mine.look)));
 	});
 
 	it('saves an edit, a reorder and a removed contact, sending only what changed', async () => {

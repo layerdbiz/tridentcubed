@@ -184,6 +184,7 @@
 				options={ROLES.map((role) => ({ id: role, label: ROLE_LABELS[role] }))}
 				value={member.role}
 				icon="icon-[mdi--shield-account-outline]"
+				isDisabled={!look.isAdmin}
 				onpick={(role) => set({ role })}
 			/>
 			{@render text('Title', member.title, (title) => set({ title }))}
