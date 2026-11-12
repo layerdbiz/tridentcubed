@@ -425,12 +425,15 @@ export async function toSeedSql(db: DatabaseType) {
 		'-- Safe to run twice: a row already there is skipped.'
 	];
 	for (const table of SEED_TABLES) {
-		const found = await db.execute(
+		const found: unknown = await db.execute(
 			sql.raw(
 				`select coalesce(jsonb_agg(t order by t.created_at, t.id), '[]')::text as rows from public."${table}" t`
 			)
 		);
-		const [{ rows }] = ('rows' in found ? found.rows : found) as { rows: string }[];
+		// PGlite answers `{ rows }`, postgres-js the rows themselves.
+		const [{ rows }] = (Array.isArray(found) ? found : (found as { rows: unknown[] }).rows) as {
+			rows: string;
+		}[];
 		lines.push(
 			`insert into public."${table}" select * from jsonb_populate_recordset(null::public."${table}", '${rows.replaceAll("'", "''")}') on conflict do nothing;`
 		);

@@ -5,17 +5,22 @@ import { expect, it } from 'vite-plus/test';
 import { createMemoryDatabase, type DatabaseType } from './index';
 import { toSeedSql } from './seed';
 
+// PGlite answers `{ rows }`, postgres-js the rows themselves.
+function rowsOf<T>(result: unknown) {
+	return (Array.isArray(result) ? result : (result as { rows: unknown[] }).rows) as T[];
+}
+
 async function readAll(db: DatabaseType) {
-	const result = await db.execute(sql`
+	const result: unknown = await db.execute(sql`
 		select table_name from information_schema.tables
 		where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name`);
-	const tables = ('rows' in result ? result.rows : result) as { table_name: string }[];
+	const tables = rowsOf<{ table_name: string }>(result);
 	const all: Record<string, unknown[]> = {};
 	for (const { table_name: table } of tables) {
-		const found = await db.execute(
+		const found: unknown = await db.execute(
 			sql.raw(`select to_jsonb(t) as row from public."${table}" t order by to_jsonb(t)::text`)
 		);
-		const rows = ('rows' in found ? found.rows : found) as { row: unknown }[];
+		const rows = rowsOf<{ row: unknown }>(found);
 		if (rows.length > 0) all[table] = rows.map(({ row }) => row);
 	}
 	return all;
