@@ -8,8 +8,12 @@ Layout confirmed against SvelteKit docs on #42
 ## Layout
 
 ```text
-src/hooks.server.ts            session lookup into event.locals (when auth arrives)
-src/lib/server/                server-only code: db/ (Drizzle schema), auth.ts, pdf-browser.ts
+src/env.ts                     the settings the app reads (Kit 3 defineEnvVars), all optional
+src/hooks.server.ts            session into event.locals, Better Auth's /api/auth/*, the sign-in guard
+src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql, clients), auth.ts,
+                               server.ts (the one db + auth), settings.ts, guard.ts, signin.ts, email.ts,
+                               testing.ts (test helpers), pdf-browser.ts
+src/routes/login/              the login page (server-rendered; emailed code, then Google/Microsoft)
 src/routes/(app)/              the signed-in app, drawn on the device (ssr off in its +layout.ts)
 src/routes/api/                server routes the app calls: export/pdf, places
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts

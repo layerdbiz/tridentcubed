@@ -3,10 +3,16 @@
 
 /// <reference types="unplugin-icons/types/svelte" />
 
+import type { Session, User } from 'better-auth';
+
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		/** The signed-in User and their session, found by `hooks.server.ts`; unset when signed out. */
+		interface Locals {
+			user?: User;
+			session?: Session;
+		}
 		// interface PageData {}
 		interface PageState {
 			projectPane?: 'edit' | 'preview';

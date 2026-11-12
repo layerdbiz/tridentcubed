@@ -1,4 +1,5 @@
 /* ROOT */
+export * from "./auth/auth.remote.ts";
 export * from "./definitions/definitions.ts";
 export * from "./definitions/inputs.ts";
 export * from "./definitions/pages.ts";

@@ -11,6 +11,7 @@
 	// on show have black icons and lighter words. Run 15 (2026-11-10): the logo and name are the organization's own,
 	// and the cog and Admin both open Settings. Run 18 (Justin, 2026-11-10): Admin is out of the menu for now; the
 	// signed-in person's row and the cog both open Settings, where the organization is edited.
+	import { signOut } from '#lib/auth/auth.remote.js';
 	import Avatar from './avatar.svelte';
 	import { DATASETS, FADE, ME, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -46,10 +47,17 @@
 		{ id: 'logout', label: 'Log out', icon: 'icon-[mdi--logout]', isDanger: true }
 	];
 
+	// Log out (#181) ends the session on the server, then loads the login page afresh, so nothing of this User's
+	// stays in the page for whoever has the device next.
+	async function logOut() {
+		await signOut();
+		location.assign('/login');
+	}
+
 	function account(id: string) {
 		if (id === 'organization') return settings();
 		if (id === 'profile') look.openRecord('team', me.name, 'page');
-		else look.signOut();
+		else void logOut();
 		onnavigate?.();
 	}
 
