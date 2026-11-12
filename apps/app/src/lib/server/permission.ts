@@ -33,7 +33,7 @@ export type ChangeType = {
 	/** The row as it is now; absent for a new row. */
 	row?: RowType;
 	/** The project the row belongs to (for the project table, the project itself), as it is now. */
-	project?: { status: string; createdBy?: string | null };
+	project?: { status: string; createdBy?: string | null; isDeleted?: boolean };
 	/** For a member or Team record: whether it is the Super admin's. */
 	isSuperAdmin?: boolean;
 	/** For a member or Team record: how many Admins the organization has now. */
@@ -64,6 +64,7 @@ const REASONS = {
 	lastAdmin: 'The organization must keep at least one Admin.',
 	archived: 'Only an Admin can archive a project or bring it back.',
 	deleteProject: 'Only an Admin can delete a project that is not your own Draft.',
+	trashed: 'Someone moved this project to the Trash, so it cannot change.',
 	frozen: (status: string) =>
 		`This project is ${status}, so only its status can change. Change its status to edit it.`
 };
@@ -135,6 +136,10 @@ const TABLE_RULES: Record<string, RuleType[]> = {
 	]
 };
 
+// A project someone moved to the Trash takes no more changes (#186): the User is told, not silently saved into it.
+const keepTrash: RuleType = (_actor, change) =>
+	change.project?.isDeleted && change.operation === 'put' ? REASONS.trashed : undefined;
+
 // A Sent, Complete or Archived project takes nothing but a change of its own status.
 const keepFrozen: RuleType = (_actor, change) => {
 	const status = change.project?.status;
@@ -163,7 +168,7 @@ export function checkPermission(actor: ActorType, change: ChangeType): VerdictTy
 	if (isOtherOrganization(actor, change)) {
 		return { isAllowed: false, reason: REASONS.otherOrganization };
 	}
-	for (const rule of [...(TABLE_RULES[change.table] ?? []), keepFrozen]) {
+	for (const rule of [...(TABLE_RULES[change.table] ?? []), keepTrash, keepFrozen]) {
 		const reason = rule(actor, change);
 		if (reason) return { isAllowed: false, reason };
 	}

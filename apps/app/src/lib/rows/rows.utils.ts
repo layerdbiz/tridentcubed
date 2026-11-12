@@ -44,6 +44,19 @@ export function toChanges(
 	return [...puts, ...deletes].map((change) => ({ ...change, changeId: createId() }));
 }
 
+/**
+ * The confirmed rows once part of what the server holds has been taken in later (a project's rows as it opens,
+ * #186): the rows `isPart` names are now the server's (`taken`), and every other row stays as it was confirmed, so
+ * taking them in sends nothing back, and nothing else that waits to be sent is lost.
+ */
+export function toMerged(
+	confirmed: RowType[],
+	taken: RowType[],
+	isPart: (row: RowType) => boolean
+): RowType[] {
+	return [...confirmed.filter((row) => !isPart(row)), ...taken.filter(isPart)];
+}
+
 /** The confirmed rows once the server has applied `changes`. */
 export function toApplied(confirmed: RowType[], changes: RowChangeType[]): RowType[] {
 	const rows = new Map(confirmed.map((row) => [keyOf(row), row]));

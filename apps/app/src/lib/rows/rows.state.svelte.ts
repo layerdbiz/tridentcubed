@@ -14,7 +14,7 @@ import type {
 	SavedRowType,
 	SaveResultType
 } from './rows.schema';
-import { toApplied, toChanges } from './rows.utils';
+import { toApplied, toChanges, toMerged } from './rows.utils';
 
 export type SaveStateType = 'saved' | 'saving' | 'failed';
 
@@ -26,6 +26,8 @@ export type SyncOptionsType = {
 	send: (batch: BatchType) => Promise<SaveResultType>;
 	fetch: () => Promise<SavedRowType[]>;
 	take: (rows: SavedRowType[]) => void;
+	/** The mapper writing the columns only the server sets, from an applied batch, into the screens (#186). */
+	takeReads?: (reads: RowType[]) => void;
 	/** How long after the last change a batch goes. */
 	delay?: number;
 };
@@ -68,6 +70,22 @@ export class SyncLoop implements SaveStatusType {
 	load(rows: SavedRowType[]) {
 		this.#options.take(rows);
 		this.#confirmed = this.#options.read();
+	}
+
+	/**
+	 * Takes part of the server's rows into the screens (#186: a project's rows as it opens): `take` writes them in,
+	 * and they count as confirmed, so they are not sent back. `isPart` names the rows the part covers. Whatever else
+	 * waits to be sent still goes, and so does anything the screens work out again from the part (a percent).
+	 */
+	merge(
+		rows: SavedRowType[],
+		isPart: (row: RowType) => boolean,
+		take: (rows: SavedRowType[]) => void
+	) {
+		take(rows);
+		const taken = rows.map(({ table, id, values }) => ({ table, id, values }));
+		this.#confirmed = toMerged(this.#confirmed, taken, isPart);
+		this.notice();
 	}
 
 	/** Whether something is not on the server yet: closing the tab now would lose it. */
@@ -153,6 +171,7 @@ export class SyncLoop implements SaveStatusType {
 		}
 		this.#isRefused = false;
 		this.#confirmed = toApplied(this.#confirmed, changes);
+		if (result.reads?.length) this.#options.takeReads?.(result.reads);
 		// Whatever changed while the batch was on its way goes next.
 		if (toChanges(this.#confirmed, this.#options.read(), () => '').length > 0) this.#schedule(0);
 		else this.#settle();

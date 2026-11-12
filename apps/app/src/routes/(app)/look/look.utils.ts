@@ -23,7 +23,9 @@ export function openAddress(look: LookState, params: AddressType) {
 	look.screen = SCREENS.includes(screen) ? screen : 'dashboard';
 	if (look.screen === 'workspace' && !hasProject) look.screen = 'dashboard';
 	const panel = params.get('panel');
-	if (panel && look.panels.some((item) => item.id === panel)) look.panelId = panel;
+	// A project's panels load after it opens (#186): the panel asked for is kept until they arrive.
+	const isWaiting = Boolean(asked && hasProject && !look.isLoaded(asked));
+	if (panel && (isWaiting || look.panels.some((item) => item.id === panel))) look.panelId = panel;
 	// Old links said ?set=clients (Customers since run 11); anything unknown stays on Projects.
 	const set = params.get('set')?.replace('clients', 'customers') as DatasetType | undefined;
 	if (set && PAGES.includes(set)) look.pick(set);

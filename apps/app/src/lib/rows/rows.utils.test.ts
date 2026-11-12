@@ -2,7 +2,7 @@
 // screens hold now, and the row changes that carry one to the other. Plain data: no database, no screens.
 import { describe, expect, it } from 'vite-plus/test';
 import type { RowType } from './rows.schema';
-import { toApplied, toChanges, toStableId } from './rows.utils';
+import { toApplied, toChanges, toMerged, toStableId } from './rows.utils';
 
 const KOGA = '00000000-0000-4000-8000-000000000001';
 const AXA = '00000000-0000-4000-8000-000000000002';
@@ -79,6 +79,32 @@ describe('toChanges', () => {
 			{ id: AXA, values: { position: 0 } },
 			{ id: ANA, values: { position: 1 } }
 		]);
+	});
+});
+
+describe('toMerged', () => {
+	const isKoga = (row: RowType) => row.id === ANA || row.id === KOGA;
+
+	it('confirms a part taken in later as the screens now hold it, and keeps every other row as confirmed', () => {
+		const confirmed = [customer(AXA, 'AXA XL', 'Houston, TX')];
+		// The screens: AXA XL's city typed but not sent, and KOGA with its contact just taken in.
+		const next = [
+			customer(AXA, 'AXA XL', 'Miami, FL'),
+			customer(KOGA, 'KOGA'),
+			contact(ANA, KOGA, 0, 'Ana')
+		];
+
+		const merged = toMerged(confirmed, next, isKoga);
+
+		expect(toChanges(merged, next, nextId).map(({ id, values }) => ({ id, values }))).toEqual([
+			{ id: AXA, values: { city: 'Miami, FL' } }
+		]);
+	});
+
+	it('forgets a confirmed row of the part that the server no longer has', () => {
+		const confirmed = [customer(KOGA, 'KOGA'), contact(ANA, KOGA, 0, 'Ana')];
+
+		expect(toMerged(confirmed, [customer(KOGA, 'KOGA')], isKoga)).toEqual([customer(KOGA, 'KOGA')]);
 	});
 });
 

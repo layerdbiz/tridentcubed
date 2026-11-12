@@ -123,9 +123,9 @@
 	// svelte-ignore state_referenced_locally
 	let layout = $state<'column' | 'spread'>(start);
 
-	function valueOf(panelId: string, label: string) {
+	function valueOf(kind: string, label: string) {
 		return look.panels
-			.find((panel) => panel.id === panelId)
+			.find((panel) => panel.kind === kind)
 			?.fields.find((field) => field.label === label)?.value;
 	}
 
@@ -135,7 +135,7 @@
 	}
 
 	const team = $derived(look.panels.find((panel) => panel.kind === 'project'));
-	const timelog = $derived(look.panels.find((panel) => panel.id === 'timelog'));
+	const timelog = $derived(look.panels.find((panel) => panel.kind === 'timelog'));
 	const company = $derived(detail('Customer') || look.project.client);
 	const location = $derived(look.project.location);
 	// The other companies on the job, each with its people who have a name.

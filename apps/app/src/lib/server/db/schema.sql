@@ -278,6 +278,93 @@ CREATE TABLE "disclaimer_point" (
 --> statement-breakpoint
 ALTER TABLE "disclaimer_point" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "project" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"title" text DEFAULT '' NOT NULL,
+	"subtitle" text DEFAULT '' NOT NULL,
+	"project_type" text DEFAULT '' NOT NULL,
+	"customer_id" uuid,
+	"contact_id" uuid,
+	"team_lead_id" uuid,
+	"location" text DEFAULT '' NOT NULL,
+	"status" text DEFAULT 'Draft' NOT NULL,
+	"status_before_sent" text DEFAULT '' NOT NULL,
+	"progress" integer DEFAULT 0 NOT NULL,
+	"day" text DEFAULT '' NOT NULL,
+	"job" integer DEFAULT 1 NOT NULL,
+	"created_by" uuid
+);
+
+--> statement-breakpoint
+ALTER TABLE "project" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "project_team" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"team_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "project_team" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "personnel_company" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"company" text DEFAULT '' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "personnel_company" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "personnel_person" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"company_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"name" text DEFAULT '' NOT NULL,
+	"title" text DEFAULT '' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "personnel_person" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "panel" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"kind" text NOT NULL,
+	"key" text DEFAULT '' NOT NULL,
+	"name" text DEFAULT '' NOT NULL,
+	"icon" text DEFAULT '' NOT NULL,
+	"control" text DEFAULT 'locked' NOT NULL,
+	"is_enabled" boolean DEFAULT true NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "panel" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 CREATE TABLE "file" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -343,6 +430,36 @@ ALTER TABLE "disclaimer_point" ADD CONSTRAINT "disclaimer_point_organization_id_
 --> statement-breakpoint
 ALTER TABLE "disclaimer_point" ADD CONSTRAINT "disclaimer_point_details_id_organization_details_id_fk" FOREIGN KEY ("details_id") REFERENCES "public"."organization_details"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "project" ADD CONSTRAINT "project_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "project" ADD CONSTRAINT "project_customer_id_customer_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customer"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "project" ADD CONSTRAINT "project_contact_id_contact_id_fk" FOREIGN KEY ("contact_id") REFERENCES "public"."contact"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "project" ADD CONSTRAINT "project_team_lead_id_team_id_fk" FOREIGN KEY ("team_lead_id") REFERENCES "public"."team"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "project" ADD CONSTRAINT "project_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "project_team" ADD CONSTRAINT "project_team_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "project_team" ADD CONSTRAINT "project_team_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "project_team" ADD CONSTRAINT "project_team_team_id_team_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."team"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "personnel_company" ADD CONSTRAINT "personnel_company_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "personnel_company" ADD CONSTRAINT "personnel_company_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "personnel_person" ADD CONSTRAINT "personnel_person_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "personnel_person" ADD CONSTRAINT "personnel_person_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "personnel_person" ADD CONSTRAINT "personnel_person_company_id_personnel_company_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."personnel_company"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "panel" ADD CONSTRAINT "panel_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "panel" ADD CONSTRAINT "panel_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 ALTER TABLE "file" ADD CONSTRAINT "file_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "file" ADD CONSTRAINT "file_uploaded_by_user_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
@@ -385,6 +502,18 @@ CREATE UNIQUE INDEX "organization_details_email_domain_idx" ON "organization_det
 --> statement-breakpoint
 CREATE INDEX "disclaimer_point_details_idx" ON "disclaimer_point" USING btree ("details_id");
 --> statement-breakpoint
+CREATE INDEX "project_customer_day_idx" ON "project" USING btree ("organization_id","customer_id","day");
+--> statement-breakpoint
+CREATE INDEX "project_team_project_idx" ON "project_team" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX "personnel_company_project_idx" ON "personnel_company" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX "personnel_person_project_idx" ON "personnel_person" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX "panel_project_idx" ON "panel" USING btree ("project_id");
+--> statement-breakpoint
+CREATE UNIQUE INDEX "panel_key_idx" ON "panel" USING btree ("project_id","key") WHERE key <> '' and deleted_at is null;
+--> statement-breakpoint
 CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.user_id());
 --> statement-breakpoint
 CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
@@ -416,5 +545,15 @@ CREATE POLICY "place in the acting organization" ON "place" AS PERMISSIVE FOR AL
 CREATE POLICY "organization_details in the acting organization" ON "organization_details" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "disclaimer_point in the acting organization" ON "disclaimer_point" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "project in the acting organization" ON "project" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "project_team in the acting organization" ON "project_team" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "personnel_company in the acting organization" ON "personnel_company" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "personnel_person in the acting organization" ON "personnel_person" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "panel in the acting organization" ON "panel" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "file in the acting organization" ON "file" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());

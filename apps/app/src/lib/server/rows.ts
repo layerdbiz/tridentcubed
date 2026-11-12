@@ -7,17 +7,24 @@
 // is asked with the row as it is now, a name is checked against its page, and the change is applied with the times
 // set by the server and written to the change record (who, when, table, row, what, before, after). The first refusal
 // rolls everything back and comes back as a plain reason.
-import { and, asc, eq, isNull, ne, sql } from 'drizzle-orm';
+//
+// Projects (#186) add the rules a project's rows need: every row inside a project names it (`projectId`), so the
+// permission check is handed the project's status (the freeze), a change inside it moves its updated time, and
+// deleting it sends its rows to the Trash with it. The server sets who made a project and its J count, remembers its
+// status before Sent, and moves a Draft to In Progress once its Project panel is complete.
+import { and, asc, eq, isNull, max, ne, sql } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import {
 	checkValues,
 	type BatchType,
 	type RowChangeType,
+	type RowType,
 	type SavedRowType,
 	type SaveResultType,
 	TABLE_NAMES,
 	TABLES as SPECS,
 	type TableNameType,
+	type TableSpecType,
 	readsOf
 } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
@@ -30,12 +37,21 @@ import {
 	member,
 	organization,
 	organizationDetails,
+	panel,
+	personnelCompany,
+	personnelPerson,
 	place,
+	project,
+	projectTeam,
 	team,
 	transport,
 	user as users
 } from './db/schema';
-import { checkPermission, type ChangeType } from './permission';
+import { checkPermission, FROZEN_STATUSES, type ChangeType } from './permission';
+
+function toBatchState(): BatchStateType {
+	return { statusAtStart: new Map(), touched: new Set(), statusSet: new Set(), reads: [] };
+}
 
 /** The Drizzle table of each registry entry. */
 export const TABLES: Record<TableNameType, PgTable> = {
@@ -48,7 +64,22 @@ export const TABLES: Record<TableNameType, PgTable> = {
 	place,
 	organization,
 	organization_details: organizationDetails,
-	disclaimer_point: disclaimerPoint
+	disclaimer_point: disclaimerPoint,
+	// #186
+	project,
+	project_team: projectTeam,
+	personnel_company: personnelCompany,
+	personnel_person: personnelPerson,
+	panel
+};
+
+// What one batch learns as it goes: each project's status before the batch began, the projects it changed and
+// those whose status it set, and the server-set columns of the rows it put.
+type BatchStateType = {
+	statusAtStart: Map<string, string>;
+	touched: Set<string>;
+	statusSet: Set<string>;
+	reads: RowType[];
 };
 
 type StoredRowType = Record<string, unknown> & {
@@ -64,6 +95,11 @@ class Refusal extends Error {}
 function columnOf(table: TableNameType, column: string) {
 	return (TABLES[table] as unknown as Record<string, PgColumn>)[column];
 }
+
+/** The tables whose rows sit inside a project (they carry `projectId`), the project itself left out. */
+const INSIDE_PROJECT = TABLE_NAMES.filter(
+	(table) => table !== 'project' && columnOf(table, 'projectId')
+);
 
 function toSaved(table: TableNameType, row: StoredRowType): SavedRowType {
 	return {
@@ -94,15 +130,130 @@ async function isDone(tx: TransactionType, changeId: string) {
 	return Boolean(done);
 }
 
-// The project a row belongs to, for the freeze of a Sent or Complete project. No table in a project saves yet:
-// #186 answers here from the row's `projectId` or its parent's (`SPECS[table].parent`), and moves that project's
-// updated time when a row inside it changes.
+// The project a row belongs to (for the project table, itself), for the freeze of a Sent, Complete or Archived
+// project. A batch that changes a project's status and its contents together is judged by whichever of the two
+// statuses (before the batch, or now) is not frozen, so marking Sent right after an edit, or editing right after
+// Unsend, saves as one batch.
 async function findProject(
-	_tx: TransactionType,
-	_table: TableNameType,
-	_row: Record<string, unknown>
+	tx: TransactionType,
+	batch: BatchStateType,
+	table: TableNameType,
+	row: Record<string, unknown>
 ): Promise<ChangeType['project']> {
-	return undefined;
+	const id = table === 'project' ? row.id : row.projectId;
+	if (typeof id !== 'string') return undefined;
+	const [found] = await tx
+		.select({ status: project.status, createdBy: project.createdBy, deletedAt: project.deletedAt })
+		.from(project)
+		.where(eq(project.id, id));
+	if (!found) return undefined;
+	if (!batch.statusAtStart.has(id)) batch.statusAtStart.set(id, found.status);
+	const before = batch.statusAtStart.get(id) ?? found.status;
+	const status = FROZEN_STATUSES.includes(found.status) ? before : found.status;
+	return { status, createdBy: found.createdBy, isDeleted: Boolean(found.deletedAt) };
+}
+
+// A project's J count: the next of its customer's jobs on its day, the Trash included, so a number once given is
+// never given again when another project is deleted. Two devices adding a job for one customer and day at once wait
+// for each other.
+async function toJob(tx: TransactionType, id: string, customerId: unknown, day: unknown) {
+	const customerKey = typeof customerId === 'string' ? customerId : null;
+	const dayKey = typeof day === 'string' ? day : '';
+	await tx.execute(
+		sql`select pg_advisory_xact_lock(hashtext(${`job/${customerKey ?? ''}/${dayKey}`}))`
+	);
+	const [found] = await tx
+		.select({ last: max(project.job) })
+		.from(project)
+		.where(
+			and(
+				customerKey ? eq(project.customerId, customerKey) : isNull(project.customerId),
+				eq(project.day, dayKey),
+				ne(project.id, id)
+			)
+		);
+	return (found?.last ?? 0) + 1;
+}
+
+// The columns of a project only the server sets, for a put of it: who made a new one, its J count when it is new or
+// its customer or day change, and the status it had before it was marked Sent.
+async function toProjectValues(
+	tx: TransactionType,
+	actor: ActorType,
+	id: string,
+	row: StoredRowType | undefined,
+	values: Record<string, unknown>
+) {
+	const set: Record<string, unknown> = {};
+	if (!row) set.createdBy = actor.userId;
+	const isMoved =
+		!row ||
+		('customerId' in values && values.customerId !== row.customerId) ||
+		('day' in values && values.day !== row.day);
+	if (isMoved) {
+		const next = { ...row, ...values };
+		set.job = await toJob(tx, id, next.customerId, next.day);
+	}
+	if ('status' in values && values.status !== row?.status) {
+		const before = String(row?.status ?? 'Draft');
+		set.statusBeforeSent = values.status === 'Sent' ? before : '';
+	}
+	return set;
+}
+
+// A Draft becomes In Progress once its Project panel is complete (the glossary's Status; Justin, 2026-11-10): a
+// title, subtitle, project type, customer, Team Lead and someone assigned. A batch that set the status by hand keeps
+// what it set.
+async function advanceDrafts(tx: TransactionType, actor: ActorType, batch: BatchStateType) {
+	for (const id of batch.touched) {
+		if (batch.statusSet.has(id)) continue;
+		const [found] = await tx.select().from(project).where(eq(project.id, id));
+		if (!found || found.deletedAt || found.status !== 'Draft') continue;
+		const isFilled = [found.title, found.subtitle, found.projectType].every((text) => text.trim());
+		if (!isFilled || !found.customerId || !found.teamLeadId) continue;
+		const [assigned] = await tx
+			.select({ id: projectTeam.id })
+			.from(projectTeam)
+			.where(and(eq(projectTeam.projectId, id), isNull(projectTeam.deletedAt)));
+		if (!assigned) continue;
+		const [after] = await tx
+			.update(project)
+			.set({ status: 'In Progress', statusBeforeSent: '', updatedAt: sql`now()` })
+			.where(eq(project.id, id))
+			.returning();
+		await tx.insert(changes).values({
+			id: crypto.randomUUID(),
+			organizationId: actor.organizationId ?? '',
+			userId: actor.userId,
+			tableName: 'project',
+			rowId: id,
+			operation: 'put',
+			before: found,
+			after
+		});
+	}
+}
+
+// A project in the Trash takes its rows with it.
+async function trashInside(tx: TransactionType, projectId: string) {
+	for (const table of INSIDE_PROJECT)
+		await tx
+			.update(TABLES[table])
+			.set({ deletedAt: sql`now()`, updatedAt: sql`now()` } as never)
+			.where(
+				and(eq(columnOf(table, 'projectId'), projectId), isNull(columnOf(table, 'deletedAt')))
+			);
+}
+
+// The server-set columns of a put row, when one changed, for the device to take in.
+function toReads(table: TableNameType, before: StoredRowType | undefined, after: StoredRowType) {
+	const spec: TableSpecType = SPECS[table];
+	const { values } = toSaved(table, after);
+	const old = before ? toSaved(table, before).values : {};
+	const isChanged = (spec.reads ?? []).some(
+		(column) => (old[column] ?? null) !== (values[column] ?? null)
+	);
+	return isChanged ? values : undefined;
 }
 
 // A name already on the page, outside the Trash and whatever its capitals, is refused before the database's own
@@ -165,7 +316,12 @@ async function moveMembership(
 		);
 }
 
-async function applyChange(tx: TransactionType, actor: ActorType, change: RowChangeType) {
+async function applyChange(
+	tx: TransactionType,
+	actor: ActorType,
+	batch: BatchStateType,
+	change: RowChangeType
+) {
 	if (await isDone(tx, change.changeId)) return;
 	const { table, id, operation } = change;
 	const values = change.values ?? {};
@@ -182,10 +338,17 @@ async function applyChange(tx: TransactionType, actor: ActorType, change: RowCha
 		columns: Object.keys(values),
 		values: operation === 'put' ? { ...values, organizationId: actor.organizationId } : undefined,
 		row,
-		project: await findProject(tx, table, { ...row, ...values }),
+		project: await findProject(tx, batch, table, { ...row, ...values, id }),
 		...(await readAdmins(tx, actor, table, row))
 	});
 	if (!verdict.isAllowed) throw new Refusal(verdict.reason);
+	const projectId = table === 'project' ? id : (values.projectId ?? row?.projectId);
+	if (typeof projectId === 'string') batch.touched.add(projectId);
+	if (table === 'project' && 'status' in values) batch.statusSet.add(id);
+	const server =
+		table === 'project' && operation === 'put'
+			? await toProjectValues(tx, actor, id, row, values)
+			: {};
 
 	const target = TABLES[table];
 	const where = eq(columnOf(table, 'id'), id);
@@ -196,20 +359,29 @@ async function applyChange(tx: TransactionType, actor: ActorType, change: RowCha
 			.set({ deletedAt: sql`now()`, updatedAt: sql`now()` } as never)
 			.where(where)
 			.returning();
+		if (table === 'project') await trashInside(tx, id);
 	} else {
 		if ('name' in values) await checkName(tx, table, id, values.name);
 		[after] = row
 			? await tx
 					.update(target)
-					.set({ ...values, updatedAt: sql`now()` } as never)
+					.set({ ...values, ...server, updatedAt: sql`now()` } as never)
 					.where(where)
 					.returning()
 			: await tx
 					.insert(target)
-					.values({ ...values, id, organizationId: actor.organizationId } as never)
+					.values({ ...values, ...server, id, organizationId: actor.organizationId } as never)
 					.returning();
 		await moveMembership(tx, actor, table, row, values);
+		const reads = toReads(table, row, after as StoredRowType);
+		if (reads) batch.reads.push({ table, id, values: reads });
 	}
+	// A change inside a project is a change to the project.
+	if (table !== 'project' && typeof projectId === 'string')
+		await tx
+			.update(project)
+			.set({ updatedAt: sql`now()` })
+			.where(eq(project.id, projectId));
 	await tx.insert(changes).values({
 		id: change.changeId,
 		organizationId: actor.organizationId ?? '',
@@ -245,12 +417,17 @@ export async function saveBatch(
 	const puts = batch.changes
 		.filter((change) => change.operation === 'put')
 		.sort((a, b) => rank(a.table) - rank(b.table));
-	const deletes = batch.changes.filter((change) => change.operation === 'delete');
+	// Deletes go parents first: a deleted project takes its rows to the Trash, so theirs are already done.
+	const deletes = batch.changes
+		.filter((change) => change.operation === 'delete')
+		.sort((a, b) => rank(a.table) - rank(b.table));
+	const state = toBatchState();
 	try {
 		await claims.run(actor, async (tx) => {
-			for (const change of [...puts, ...deletes]) await applyChange(tx, actor, change);
+			for (const change of [...puts, ...deletes]) await applyChange(tx, actor, state, change);
+			await advanceDrafts(tx, actor, state);
 		});
-		return { isSaved: true };
+		return state.reads.length > 0 ? { isSaved: true, reads: state.reads } : { isSaved: true };
 	} catch (error) {
 		const reason = toReason(error);
 		if (reason) return { isSaved: false, reason };
@@ -268,19 +445,66 @@ export async function readRows(
 	scope: 'organization' = 'organization'
 ): Promise<SavedRowType[]> {
 	if (!actor.organizationId) return [];
+	return claims.run(actor, (tx) => readScope(tx, scope));
+}
+
+// The rows of every table of a scope, or with `projectId`, of every table inside that project whatever its scope.
+async function readScope(
+	tx: TransactionType,
+	scope: 'organization' | 'project',
+	projectId?: string
+): Promise<SavedRowType[]> {
+	const rows: SavedRowType[] = [];
+	for (const table of TABLE_NAMES) {
+		const spec = SPECS[table];
+		if (projectId ? !INSIDE_PROJECT.includes(table) : spec.scope !== scope) continue;
+		const found = await tx
+			.select()
+			.from(TABLES[table])
+			.where(
+				and(
+					'isNamed' in spec ? undefined : isNull(columnOf(table, 'deletedAt')),
+					projectId ? eq(columnOf(table, 'projectId'), projectId) : undefined
+				)
+			)
+			.orderBy(asc(columnOf(table, 'createdAt')), asc(columnOf(table, 'id')));
+		for (const row of found) rows.push(toSaved(table, row as StoredRowType));
+	}
+	return rows;
+}
+
+/** What opening a project loads: the project as it is now and every row inside it, or why there is none. */
+export type ProjectRowsType =
+	| { isFound: true; project: SavedRowType; rows: SavedRowType[] }
+	| { isFound: false; isTrashed: boolean; reason: string };
+
+/**
+ * One project's rows (#186): the project row and every row inside it (its Team Assigned, personnel and panels, and
+ * what #188 and #189 put in them), or why there are none: it went to the Trash, or it is not there.
+ */
+export async function readProject(
+	claims: ClaimsType,
+	actor: ActorType,
+	id: string
+): Promise<ProjectRowsType> {
+	const gone = 'This project is no longer there.';
+	if (!actor.organizationId) return { isFound: false, isTrashed: false, reason: gone };
 	return claims.run(actor, async (tx) => {
-		const rows: SavedRowType[] = [];
-		for (const table of TABLE_NAMES) {
-			const spec = SPECS[table];
-			if (spec.scope !== scope) continue;
-			const found = await tx
-				.select()
-				.from(TABLES[table])
-				.where('isNamed' in spec ? undefined : isNull(columnOf(table, 'deletedAt')))
-				.orderBy(asc(columnOf(table, 'createdAt')), asc(columnOf(table, 'id')));
-			for (const row of found) rows.push(toSaved(table, row as StoredRowType));
+		const [found] = await tx.select().from(project).where(eq(project.id, id));
+		if (!found) return { isFound: false, isTrashed: false, reason: gone };
+		if (found.deletedAt) {
+			const title = found.title.trim() || 'Untitled project';
+			return {
+				isFound: false,
+				isTrashed: true,
+				reason: `"${title}" was moved to the Trash by someone else.`
+			};
 		}
-		return rows;
+		return {
+			isFound: true,
+			project: toSaved('project', found as StoredRowType),
+			rows: await readScope(tx, 'project', id)
+		};
 	});
 }
 
@@ -302,6 +526,6 @@ export async function checkPut(
 		columns: Object.keys(values),
 		values: { ...values, organizationId: actor.organizationId },
 		row,
-		project: await findProject(tx, table, { ...row, ...values })
+		project: await findProject(tx, toBatchState(), table, { ...row, ...values, id })
 	});
 }

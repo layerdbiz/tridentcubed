@@ -87,7 +87,9 @@ the why is in ADR 0002, 0003 and 0005.
   change to a row (records, projects, panels, stops, entries, photos, status,
   Trash, roles) goes to the server through it as a batch of row changes,
   `{ changes: [{ changeId, table, id, operation: 'put' | 'delete', values }] }`.
-  The lists load through `fetchLists`. Do not add a remote function for a
+  The lists load through `fetchLists`; a project's own rows (registry
+  scope `project`, plus every row carrying its `projectId`) through
+  `fetchProject` as it opens, taken in with the sync loop's `merge`. Do not add a remote function for a
   new kind of row. A named `command` is for what is not a row only: an
   upload address, a place lookup, a PDF export.
 - **Adding a table** is one entry in the row registry

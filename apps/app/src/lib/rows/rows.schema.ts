@@ -32,6 +32,17 @@ const NAME = v.pipe(
 const ID = v.pipe(v.string(), v.uuid());
 const POSITION = v.pipe(v.number(), v.integer(), v.minValue(0));
 const ROLE = v.picklist(['admin', 'manager', 'team']);
+const OPTIONAL_ID = v.nullable(ID);
+const STATUS = v.picklist([
+	'Draft',
+	'In Progress',
+	'Review',
+	'Ready',
+	'Sent',
+	'Revision',
+	'Complete',
+	'Archived'
+]);
 
 /** Every transport mode there is; its type (Sea, Air, Rail, Road) is read from it (look.data.ts TRANSPORT_TYPES). */
 export const TRANSPORT_MODES = [
@@ -173,6 +184,55 @@ export const TABLES = {
 			link: TEXT,
 			rank: POSITION
 		}
+	},
+	// Projects (#186). The list loads at start, so the project and its Team Assigned are `organization` rows; what
+	// is inside it (its personnel and panels, and the panels' contents after #188 and #189) loads when it opens.
+	// Every row inside a project carries `projectId`, which `fetchProject` and the freeze read. Who made it, its J
+	// count and the status it had before Sent are the server's to set.
+	project: {
+		scope: 'organization',
+		reads: ['createdBy', 'job', 'statusBeforeSent'],
+		columns: {
+			title: TEXT,
+			subtitle: TEXT,
+			projectType: TEXT,
+			customerId: OPTIONAL_ID,
+			contactId: OPTIONAL_ID,
+			teamLeadId: OPTIONAL_ID,
+			location: TEXT,
+			status: STATUS,
+			progress: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(100)),
+			day: v.pipe(v.string(), v.regex(/^\d{4}-\d{2}-\d{2}$/, 'A day is YYYY-MM-DD.'))
+		}
+	},
+	project_team: {
+		scope: 'organization',
+		parent: { table: 'project', column: 'projectId' },
+		columns: { projectId: ID, teamId: ID, position: POSITION }
+	},
+	personnel_company: {
+		scope: 'project',
+		parent: { table: 'project', column: 'projectId' },
+		columns: { projectId: ID, position: POSITION, company: TEXT }
+	},
+	personnel_person: {
+		scope: 'project',
+		parent: { table: 'personnel_company', column: 'companyId' },
+		columns: { projectId: ID, companyId: ID, position: POSITION, name: TEXT, title: TEXT }
+	},
+	panel: {
+		scope: 'project',
+		parent: { table: 'project', column: 'projectId' },
+		columns: {
+			projectId: ID,
+			kind: v.picklist(['project', 'transport', 'items', 'timelog', 'photos']),
+			key: TEXT,
+			name: TEXT,
+			icon: TEXT,
+			control: v.picklist(['locked', 'switch', 'remove']),
+			isEnabled: v.boolean(),
+			position: POSITION
+		}
 	}
 } as const satisfies Record<string, TableSpecType>;
 
@@ -208,8 +268,14 @@ export type RowChangeType = {
 
 export type BatchType = { changes: RowChangeType[] };
 
-/** What the save command answers: applied, or refused with a reason the app shows. */
-export type SaveResultType = { isSaved: true } | { isSaved: false; reason: string };
+/**
+ * What the save command answers: applied, or refused with a reason the app shows. An applied batch also gives back
+ * the columns only the server sets (`reads`) of the rows it put, such as a new project's J count, so the screens show
+ * them without loading the lists again.
+ */
+export type SaveResultType =
+	| { isSaved: true; reads?: RowType[] }
+	| { isSaved: false; reason: string };
 
 /** The batch as it arrives at the save command. Each change's columns are checked after, against its table. */
 export const BATCH = v.object({

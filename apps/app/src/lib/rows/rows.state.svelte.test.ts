@@ -5,6 +5,7 @@ import type { BatchType, RowType, SavedRowType, SaveResultType } from './rows.sc
 import { SyncLoop } from './rows.state.svelte';
 
 const KOGA = '00000000-0000-4000-8000-000000000001';
+const PROJECT = '00000000-0000-4000-8000-000000000002';
 
 function koga(city: string): RowType {
 	return { table: 'customer', id: KOGA, values: { name: 'KOGA', city } };
@@ -23,9 +24,11 @@ function createLoop(answers: (() => Promise<SaveResultType>)[]) {
 	let screen: RowType[] = [];
 	let server: SavedRowType[] = [saved(koga('Houston'))];
 	const sent: BatchType[] = [];
+	const reads: RowType[] = [];
 	const loop = new SyncLoop({
 		read: () => structuredClone(screen),
 		take: (rows) => (screen = rows.map(({ table, id, values }) => ({ table, id, values }))),
+		takeReads: (rows) => reads.push(...rows),
 		fetch: async () => server,
 		send: async (batch) => {
 			sent.push(structuredClone(batch));
@@ -36,6 +39,7 @@ function createLoop(answers: (() => Promise<SaveResultType>)[]) {
 	return {
 		loop,
 		sent,
+		reads,
 		type(city: string) {
 			screen = [koga(city)];
 			loop.notice();
@@ -45,6 +49,14 @@ function createLoop(answers: (() => Promise<SaveResultType>)[]) {
 		},
 		get screen() {
 			return screen;
+		},
+		// Part of the server's rows written into the screens, in place of what they held of it.
+		takePart: (rows: SavedRowType[]) => {
+			const ids = new Set(rows.map((row) => row.id));
+			screen = [
+				...screen.filter((row) => !ids.has(row.id)),
+				...rows.map(({ table, id, values }) => ({ table, id, values }))
+			];
 		}
 	};
 }
@@ -158,5 +170,31 @@ describe('the sync loop', () => {
 
 		expect(app.screen).toEqual([koga('Rotterdam')]);
 		expect(app.sent).toHaveLength(1);
+	});
+
+	it('takes in a project’s rows as it opens without sending them back, and still sends what waits', async () => {
+		const app = createLoop([]);
+		const project: RowType = { table: 'project', id: PROJECT, values: { title: 'Kimberly' } };
+
+		app.type('Miami');
+		app.loop.merge([saved(project)], (row) => row.id === PROJECT, app.takePart);
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(app.screen).toEqual([koga('Miami'), project]);
+		expect(app.sent).toHaveLength(1);
+		expect(app.sent[0].changes.map(({ id, values }) => ({ id, values }))).toEqual([
+			{ id: KOGA, values: { city: 'Miami' } }
+		]);
+		expect(app.loop.state).toBe('saved');
+	});
+
+	it('hands what only the server sets, from an applied batch, to the screens', async () => {
+		const job: RowType = { table: 'project', id: PROJECT, values: { job: 2 } };
+		const app = createLoop([async () => ({ isSaved: true, reads: [job] })]);
+
+		app.type('Miami');
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(app.reads).toEqual([job]);
 	});
 });
