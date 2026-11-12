@@ -5,9 +5,9 @@
 	// Run 34: of the three looks he kept B, the organization on a dark top with a white sheet rising under it, like
 	// the dashboard. The mark is the main website's own dark logo (packages/ui static/branding), with no tile
 	// behind it. Under the fields are Sign In and Create Account, then the two usual other ways in, Google and
-	// Microsoft. Run 35: the dark top ends in the website's own wave (the Divider its sections use, in the white
-	// of the form under it), the name is in capitals, and nothing is written under it.
-	import { Divider } from '@layerd/ui';
+	// Microsoft. Run 35: the dark top ends in the website's own wave, in the white of the form under it (the same
+	// path and heights as @layerd/ui's Divider, drawn here: importing that library into the prototype pulls in all of
+	// its components' styles, which broke the panels' layout), the name is in capitals, and nothing is written under it.
 	import type { LookState } from './look.state.svelte';
 
 	let { look }: { look: LookState } = $props();
@@ -48,7 +48,15 @@
 				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase">{organization.name}</p>
 			</div>
 			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
-			<Divider svg="text-white" />
+			<svg
+				class="pointer-events-none block h-[60px] w-full fill-white lg:h-[120px]"
+				viewBox="0 0 1200 120"
+				preserveAspectRatio="none"
+				aria-hidden="true"
+				><path
+					d="M1200,0v120H0C41,68.89,288.87-55.15,578.87,30.29c178.24,53.05,440.37,74.74,621.13-30.29Z"
+				/></svg
+			>
 		</div>
 		<!-- Up one pixel over the wave, so no line of the dark shows between them. -->
 		<div class="relative -mt-px bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
