@@ -55,6 +55,17 @@ describe('the sign-in guard', () => {
 		expect(guard('/_app/remote/abc/signOut', 'guest')).toBeUndefined();
 	});
 
+	it('gives a file address nothing but a refusal unless a member asks (#187)', () => {
+		const file = '/files/0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
+		expect(guard(file)).toEqual({ kind: 'refuse', status: 401, message: 'Sign in first.' });
+		expect(guard(file, 'guest')).toMatchObject({ kind: 'refuse', status: 403 });
+		expect(guard(file, 'member')).toBeUndefined();
+	});
+
+	it('leaves the local folder’s signed links to their signature, as Storage’s are (#187)', () => {
+		expect(guard('/local-files/org/file.webp?op=get&expires=1&sig=x')).toBeUndefined();
+	});
+
 	it('closes Better Auth’s organization routes to everyone: memberships change only through the app', () => {
 		for (const access of ['signed-out', 'guest', 'member'] as const) {
 			expect(guard('/api/auth/organization/update-member-role', access)).toEqual({

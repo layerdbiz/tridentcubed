@@ -137,6 +137,11 @@
 						label="Logo"
 						shape="logo"
 						value={organization.logo}
+						target={{
+							table: 'organization_details',
+							column: 'logo',
+							id: organization.detailsId
+						}}
 						onpick={(url) => {
 							organization.logo = url;
 							part = 'organization';

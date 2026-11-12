@@ -33,6 +33,12 @@ export const variables = defineEnvVars({
 	GEOAPIFY_API_KEY: optional(
 		'Looks new places up for the location field (#184). Unset: saved places still work, nothing new is looked up.'
 	),
+	SUPABASE_URL: optional(
+		"Supabase's project address (https://<ref>.supabase.co), with the secret key: files go to its private bucket `files` (#187). Unset outside production: a local folder."
+	),
+	SUPABASE_SECRET_KEY: optional(
+		"Supabase's secret key (sb_secret_...), kept on the server only: it signs the upload and download addresses of files."
+	),
 	VERCEL: optional('Set by Vercel: this is a deployment, so production rules apply.'),
 	VERCEL_ENV: optional('Set by Vercel: production, preview or development.'),
 	VERCEL_URL: optional("Set by Vercel: this deployment's own host."),

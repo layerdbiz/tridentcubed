@@ -27,6 +27,9 @@ export type SettingsType = {
 	microsoft?: ProviderKeysType;
 	/** The sign-in ways the login page shows, in its order. */
 	ways: SignInWayType[];
+	/** Where files are kept (#187): Supabase Storage, a local folder (outside production only), or nowhere yet. */
+	storage: 'supabase' | 'local' | 'none';
+	supabase?: { url: string; secretKey: string };
 };
 
 export type EnvType = Record<string, string | undefined>;
@@ -63,6 +66,12 @@ export function readSettings(env: EnvType): SettingsType {
 		missing.push('RESEND_API_KEY or GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET');
 	}
 
+	const supabase =
+		env.SUPABASE_URL && env.SUPABASE_SECRET_KEY
+			? { url: env.SUPABASE_URL, secretKey: env.SUPABASE_SECRET_KEY }
+			: undefined;
+	const storage = supabase ? 'supabase' : isProduction ? 'none' : 'local';
+
 	const productionURL =
 		env.VERCEL_ENV === 'production' ? toHttps(env.VERCEL_PROJECT_PRODUCTION_URL) : undefined;
 	const deploymentURLs = [toHttps(env.VERCEL_BRANCH_URL), toHttps(env.VERCEL_URL)];
@@ -79,6 +88,8 @@ export function readSettings(env: EnvType): SettingsType {
 		resendApiKey: env.RESEND_API_KEY || undefined,
 		google,
 		microsoft,
-		ways
+		ways,
+		storage,
+		supabase
 	};
 }
