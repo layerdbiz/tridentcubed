@@ -1,7 +1,7 @@
 // Who belongs where (ADR 0003 and its 2026-11-12 amendment, #182). Organization, member and invitation are the
 // tables of Better Auth's organization plugin, with UUID ids; the app writes memberships itself at sign-in, since
-// the plugin has no email-domain join. An organization's details row holds its email domain (#184 adds the rest of
-// its letterhead). Access grants are a private list filled in the database only, never in this repository.
+// the plugin has no email-domain join. An organization's details (its letterhead and email domain) are in
+// `details.schema.ts`. Access grants are a private list filled in the database only, never in this repository.
 // Row Level Security is on for every table. The app's restricted role sees only its own organization's rows,
 // through the claims the claims helper sets (`policy.ts`, `claims.ts`); access grants have no policy at all, so only
 // the server, as the database owner, reads them.
@@ -42,7 +42,10 @@ export const organization = pgTable(
 		slug: text('slug').notNull().unique(),
 		logo: text('logo'),
 		metadata: text('metadata'),
-		createdAt: time('created_at').defaultNow().notNull()
+		createdAt: time('created_at').defaultNow().notNull(),
+		// What the save command needs to save its name like any other row (#184); it never goes to the Trash.
+		updatedAt: time('updated_at').defaultNow().notNull(),
+		deletedAt: time('deleted_at')
 	},
 	() => [
 		pgPolicy('organization is the acting one', {
@@ -106,26 +109,6 @@ export const invitation = pgTable(
 	(table) => [
 		index('invitation_organizationId_idx').on(table.organizationId),
 		index('invitation_email_idx').on(table.email)
-	]
-).enableRLS();
-
-export const organizationDetails = pgTable(
-	'organization_details',
-	{
-		organizationId: uuid('organization_id')
-			.primaryKey()
-			.references(() => organization.id, { onDelete: 'cascade' }),
-		/** A verified address at this domain joins the organization with the Team role. Lower case, no `@`. */
-		emailDomain: text('email_domain'),
-		createdAt: time('created_at').defaultNow().notNull(),
-		updatedAt: time('updated_at')
-			.defaultNow()
-			.$onUpdate(() => new Date())
-			.notNull()
-	},
-	(table) => [
-		uniqueIndex('organization_details_email_domain_idx').on(table.emailDomain),
-		organizationPolicy('organization_details')
 	]
 ).enableRLS();
 

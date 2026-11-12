@@ -21,7 +21,7 @@ async function createTwoOrganizations() {
 		await db.insert(schema.organization).values({ id: org.id, name, slug: org.slug });
 		await db
 			.insert(schema.organizationDetails)
-			.values({ organizationId: org.id, emailDomain: org.domain });
+			.values({ id: org.id, organizationId: org.id, emailDomain: org.domain });
 		const [made] = await db
 			.insert(schema.user)
 			.values({ name, email: `ana@${org.domain}`, emailVerified: true })

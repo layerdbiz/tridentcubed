@@ -2,7 +2,7 @@
 // screens hold now, and the row changes that carry one to the other. Plain data: no database, no screens.
 import { describe, expect, it } from 'vite-plus/test';
 import type { RowType } from './rows.schema';
-import { toApplied, toChanges } from './rows.utils';
+import { toApplied, toChanges, toStableId } from './rows.utils';
 
 const KOGA = '00000000-0000-4000-8000-000000000001';
 const AXA = '00000000-0000-4000-8000-000000000002';
@@ -90,5 +90,16 @@ describe('toApplied', () => {
 		const confirmed = toApplied(before, toChanges(before, after, nextId));
 
 		expect(toChanges(confirmed, after, nextId)).toEqual([]);
+	});
+});
+
+describe('toStableId', () => {
+	it('gives the same words the same UUID on every device, and other words or organizations another', () => {
+		const paris = toStableId(KOGA, 'place', 'paris, france');
+
+		expect(paris).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+		expect(toStableId(KOGA, 'place', 'paris, france')).toBe(paris);
+		expect(toStableId(AXA, 'place', 'paris, france')).not.toBe(paris);
+		expect(toStableId(KOGA, 'place', 'paris, texas')).not.toBe(paris);
 	});
 });

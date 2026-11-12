@@ -62,3 +62,31 @@ export function toApplied(confirmed: RowType[], changes: RowChangeType[]): RowTy
 	}
 	return [...rows.values()];
 }
+
+/**
+ * A row id worked out from words rather than made at random (#184): the same words always give the same UUID, so
+ * two devices that save the same new thing (a place picked in two location fields) save one row, and the seed's rows
+ * keep their ids. Not a secret and not a security measure: a 128-bit hash shaped as a version 8 UUID. Put the
+ * organization's id first, so organizations never share one.
+ */
+export function toStableId(...parts: string[]) {
+	const hashes = [1779033703, 3144134277, 1013904242, 2773480762];
+	for (const letter of parts.join('\u0000')) {
+		const code = letter.codePointAt(0) ?? 0;
+		const [a, b, c, d] = hashes;
+		hashes[0] = b ^ Math.imul(a ^ code, 597399067);
+		hashes[1] = c ^ Math.imul(b ^ code, 2869860233);
+		hashes[2] = d ^ Math.imul(c ^ code, 951274213);
+		hashes[3] = hashes[0] ^ Math.imul(d ^ code, 2716044179);
+	}
+	const [a, b, c, d] = hashes;
+	const mixed = [
+		Math.imul(c ^ (a >>> 18), 597399067),
+		Math.imul(d ^ (b >>> 22), 2869860233),
+		Math.imul(a ^ (c >>> 17), 951274213),
+		Math.imul(b ^ (d >>> 19), 2716044179)
+	];
+	const hex = mixed.map((hash) => (hash >>> 0).toString(16).padStart(8, '0')).join('');
+	const variant = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-${variant}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}

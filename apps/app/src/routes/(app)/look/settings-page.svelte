@@ -8,9 +8,9 @@
 	// under the same header (page-header.svelte). Edit is the Project panel's own sections (group.svelte) with its
 	// soft fields: Details, Disclaimer, Sign-off. The signed-in person's profile is their Team page, reached from
 	// the same menu. On a desktop Edit keeps its floating column and the report it changes shows beside it.
+	import { page as app } from '$app/state';
 	import Group from './group.svelte';
 	import ImageField from './image-field.svelte';
-	import { createId } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import PageHeader from './page-header.svelte';
 	import ReportPreview from './report-preview.svelte';
@@ -28,6 +28,9 @@
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 
 	const organization = $derived(look.organization);
+	// #184: only an Admin changes the organization. Manager and Team see the same Edit, read-only; the server refuses
+	// their changes too.
+	const isAdmin = $derived(Boolean(app.data.isAdmin));
 	// The section last touched, which picks the report page shown beside the form on a desktop.
 	let part = $state<'organization' | 'wording'>('organization');
 	let open = $state<string[]>(['details']);
@@ -38,7 +41,8 @@
 	}
 
 	function addPoint() {
-		organization.disclaimer.points.push({ id: createId('point'), title: '', text: '' });
+		// A point is a saved row (#184), so its id is a UUID made here.
+		organization.disclaimer.points.push({ id: crypto.randomUUID(), title: '', text: '' });
 		look.flash();
 	}
 
@@ -105,9 +109,19 @@
 	</label>
 {/snippet}
 
-<!-- Edit: the same sections a Project panel has, each opening and closing. -->
+<!-- Edit: the same sections a Project panel has, each opening and closing. For Manager and Team every field inside is
+	 disabled (a fieldset), while the sections still open and close. -->
 {#snippet form()}
 	<div class="space-y-3">
+		{#if !isAdmin}
+			<p
+				class="flex items-center gap-2 rounded-2xl bg-slate-900/[0.04] px-3 py-2.5 text-xs text-slate-500"
+				role="note"
+			>
+				<span class="icon-[mdi--lock-outline] size-4 shrink-0"></span>Only an Admin can change the
+				organization.
+			</p>
+		{/if}
 		<div onfocusin={() => (part = 'organization')}>
 			<Group
 				title="Details"
@@ -116,37 +130,47 @@
 				isOpen={open.includes('details')}
 				ontoggle={() => toggle('details')}
 			>
-				<ImageField
-					label="Logo"
-					shape="logo"
-					value={organization.logo}
-					onpick={(url) => {
-						organization.logo = url;
-						part = 'organization';
-						look.flash();
-					}}
-				/>
-				{@render text('Name', organization.name, (value) => look.nameOrganization(value))}
-				{@render text('Address', organization.address, (value) => (organization.address = value))}
-				{@render text('Phone', organization.phone, (value) => (organization.phone = value), 'tel')}
-				{@render text(
-					'Email',
-					organization.email,
-					(value) => (organization.email = value),
-					'email'
-				)}
-				{@render text(
-					'Group Email',
-					organization.groupEmail,
-					(value) => (organization.groupEmail = value),
-					'email'
-				)}
-				{@render text(
-					'Website',
-					organization.website,
-					(value) => (organization.website = value),
-					'url'
-				)}
+				<fieldset
+					class="contents"
+					disabled={!isAdmin}
+				>
+					<ImageField
+						label="Logo"
+						shape="logo"
+						value={organization.logo}
+						onpick={(url) => {
+							organization.logo = url;
+							part = 'organization';
+							look.flash();
+						}}
+					/>
+					{@render text('Name', organization.name, (value) => look.nameOrganization(value))}
+					{@render text('Address', organization.address, (value) => (organization.address = value))}
+					{@render text(
+						'Phone',
+						organization.phone,
+						(value) => (organization.phone = value),
+						'tel'
+					)}
+					{@render text(
+						'Email',
+						organization.email,
+						(value) => (organization.email = value),
+						'email'
+					)}
+					{@render text(
+						'Group Email',
+						organization.groupEmail,
+						(value) => (organization.groupEmail = value),
+						'email'
+					)}
+					{@render text(
+						'Website',
+						organization.website,
+						(value) => (organization.website = value),
+						'url'
+					)}
+				</fieldset>
 			</Group>
 		</div>
 		<div onfocusin={() => (part = 'wording')}>
@@ -157,57 +181,64 @@
 				isOpen={open.includes('disclaimer')}
 				ontoggle={() => toggle('disclaimer')}
 			>
-				{@render area(
-					'Opening',
-					organization.disclaimer.opening,
-					(value) => (organization.disclaimer.opening = value),
-					4
-				)}
-				{#each organization.disclaimer.points as point, index (point.id)}
-					<div class="space-y-2 rounded-2xl bg-white/80 p-2.5">
-						<div class="flex items-center gap-2">
-							<input
-								class="{FIELD} font-semibold"
-								value={point.title}
-								placeholder="Title"
-								aria-label="Point {index + 1} title"
+				<fieldset
+					class="contents"
+					disabled={!isAdmin}
+				>
+					{@render area(
+						'Opening',
+						organization.disclaimer.opening,
+						(value) => (organization.disclaimer.opening = value),
+						4
+					)}
+					{#each organization.disclaimer.points as point, index (point.id)}
+						<div class="space-y-2 rounded-2xl bg-white/80 p-2.5">
+							<div class="flex items-center gap-2">
+								<input
+									class="{FIELD} font-semibold"
+									value={point.title}
+									placeholder="Title"
+									aria-label="Point {index + 1} title"
+									oninput={(event) => {
+										point.title = event.currentTarget.value;
+										look.flash();
+									}}
+								/>
+								<button
+									type="button"
+									class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-danger/10 hover:text-danger"
+									aria-label="Delete point {index + 1}"
+									onclick={() => removePoint(point.id)}
+									><span class="icon-[mdi--trash-can-outline] size-5"></span></button
+								>
+							</div>
+							<textarea
+								class="{FIELD} resize-y leading-relaxed"
+								rows="3"
+								value={point.text}
+								placeholder="What it says"
+								aria-label="Point {index + 1} text"
 								oninput={(event) => {
-									point.title = event.currentTarget.value;
+									point.text = event.currentTarget.value;
 									look.flash();
-								}}
-							/>
-							<button
-								type="button"
-								class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-danger/10 hover:text-danger"
-								aria-label="Delete point {index + 1}"
-								onclick={() => removePoint(point.id)}
-								><span class="icon-[mdi--trash-can-outline] size-5"></span></button
-							>
+								}}></textarea>
 						</div>
-						<textarea
-							class="{FIELD} resize-y leading-relaxed"
-							rows="3"
-							value={point.text}
-							placeholder="What it says"
-							aria-label="Point {index + 1} text"
-							oninput={(event) => {
-								point.text = event.currentTarget.value;
-								look.flash();
-							}}></textarea>
-					</div>
-				{/each}
-				{@render area(
-					'Closing Note',
-					organization.disclaimer.note,
-					(value) => (organization.disclaimer.note = value),
-					2
-				)}
+					{/each}
+					{@render area(
+						'Closing Note',
+						organization.disclaimer.note,
+						(value) => (organization.disclaimer.note = value),
+						2
+					)}
+				</fieldset>
 				{#snippet actions()}
-					<button
-						type="button"
-						class="{BUTTON} bg-primary/10 text-primary hover:bg-primary/15"
-						onclick={addPoint}><span class="icon-[mdi--plus] size-4"></span>Add Point</button
-					>
+					{#if isAdmin}
+						<button
+							type="button"
+							class="{BUTTON} bg-primary/10 text-primary hover:bg-primary/15"
+							onclick={addPoint}><span class="icon-[mdi--plus] size-4"></span>Add Point</button
+						>
+					{/if}
 				{/snippet}
 			</Group>
 		</div>
@@ -219,13 +250,22 @@
 				isOpen={open.includes('signoff')}
 				ontoggle={() => toggle('signoff')}
 			>
-				{@render area(
-					'Thank-you Line',
-					organization.closing,
-					(value) => (organization.closing = value),
-					2
-				)}
-				{@render text('Sign-off', organization.signoff, (value) => (organization.signoff = value))}
+				<fieldset
+					class="contents"
+					disabled={!isAdmin}
+				>
+					{@render area(
+						'Thank-you Line',
+						organization.closing,
+						(value) => (organization.closing = value),
+						2
+					)}
+					{@render text(
+						'Sign-off',
+						organization.signoff,
+						(value) => (organization.signoff = value)
+					)}
+				</fieldset>
 			</Group>
 		</div>
 	</div>

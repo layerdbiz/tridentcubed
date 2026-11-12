@@ -93,6 +93,37 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 		[]
 	],
 	[
+		'make an organization',
+		() => ({
+			table: 'organization',
+			operation: 'put',
+			columns: ['name'],
+			values: { organizationId: ORG, name: 'Another' }
+		}),
+		[]
+	],
+	[
+		'change or delete a disclaimer point',
+		() => ({
+			table: 'disclaimer_point',
+			operation: 'put',
+			columns: ['text'],
+			row: { organizationId: ORG },
+			values: { organizationId: ORG, text: 'Changed' }
+		}),
+		['admin', 'super']
+	],
+	[
+		'add a Transport Mode, a Facility or a place',
+		() => ({
+			table: 'transport',
+			operation: 'put',
+			columns: ['name', 'mode'],
+			values: { organizationId: ORG, name: 'MV Ocean Star', mode: 'Vessel' }
+		}),
+		['team', 'manager', 'admin', 'super']
+	],
+	[
 		'add an access grant',
 		() => ({
 			table: 'access_grant',

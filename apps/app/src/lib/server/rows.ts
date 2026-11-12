@@ -21,11 +21,31 @@ import {
 	columnsOf
 } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
-import { change as changes, contact, customer } from './db/schema';
+import {
+	change as changes,
+	contact,
+	customer,
+	disclaimerPoint,
+	facility,
+	organization,
+	organizationDetails,
+	place,
+	transport
+} from './db/schema';
 import { checkPermission, type ChangeType } from './permission';
 
 /** The Drizzle table of each registry entry. */
-export const TABLES: Record<TableNameType, PgTable> = { customer, contact };
+export const TABLES: Record<TableNameType, PgTable> = {
+	customer,
+	contact,
+	// #184
+	transport,
+	facility,
+	place,
+	organization,
+	organization_details: organizationDetails,
+	disclaimer_point: disclaimerPoint
+};
 
 type StoredRowType = Record<string, unknown> & {
 	id: string;

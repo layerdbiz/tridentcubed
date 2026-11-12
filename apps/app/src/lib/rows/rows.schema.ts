@@ -28,6 +28,19 @@ const NAME = v.pipe(
 const ID = v.pipe(v.string(), v.uuid());
 const POSITION = v.pipe(v.number(), v.integer(), v.minValue(0));
 
+/** Every transport mode there is; its type (Sea, Air, Rail, Road) is read from it (look.data.ts TRANSPORT_TYPES). */
+export const TRANSPORT_MODES = [
+	'Vessel',
+	'Barge',
+	'Plane',
+	'Train',
+	'Railcar',
+	'Truck',
+	'Trailer'
+] as const;
+
+export const FACILITY_KINDS = ['Port', 'Airport', 'Rail yard', 'Depot'] as const;
+
 export type TableSpecType = {
 	columns: Record<string, v.GenericSchema>;
 	parent?: { table: string; column: string };
@@ -64,6 +77,76 @@ export const TABLES = {
 			email: TEXT,
 			phone: TEXT,
 			photo: PICTURE
+		}
+	},
+	// #184: Transport Modes, Facilities, saved places and the organization's own details.
+	transport: {
+		scope: 'organization',
+		isNamed: true,
+		columns: {
+			name: NAME,
+			mode: v.picklist(TRANSPORT_MODES),
+			picture: PICTURE,
+			source: v.picklist(['manual', 'api']),
+			particulars: v.pipe(
+				v.record(v.pipe(v.string(), v.maxLength(200)), v.pipe(v.string(), v.maxLength(2_000))),
+				v.check((map) => Object.keys(map).length <= 50, 'Too many particulars.')
+			)
+		}
+	},
+	facility: {
+		scope: 'organization',
+		isNamed: true,
+		columns: {
+			name: NAME,
+			kind: v.picklist(FACILITY_KINDS),
+			city: TEXT,
+			address: TEXT,
+			picture: PICTURE,
+			contactName: TEXT,
+			phone: TEXT,
+			email: TEXT
+		}
+	},
+	place: {
+		scope: 'organization',
+		isNamed: true,
+		columns: {
+			name: NAME,
+			latitude: v.pipe(v.number(), v.minValue(-90), v.maxValue(90)),
+			longitude: v.pipe(v.number(), v.minValue(-180), v.maxValue(180)),
+			detail: TEXT
+		}
+	},
+	// The organization itself (Better Auth's table): only its name saves from the app. Only an Admin changes it,
+	// its details or its disclaimer points (the one permission check).
+	organization: {
+		scope: 'organization',
+		columns: { name: NAME }
+	},
+	organization_details: {
+		scope: 'organization',
+		columns: {
+			logo: PICTURE,
+			address: TEXT,
+			phone: TEXT,
+			email: TEXT,
+			groupEmail: TEXT,
+			website: TEXT,
+			disclaimerOpening: TEXT,
+			disclaimerNote: TEXT,
+			closing: TEXT,
+			signoff: TEXT
+		}
+	},
+	disclaimer_point: {
+		scope: 'organization',
+		parent: { table: 'organization_details', column: 'detailsId' },
+		columns: {
+			detailsId: ID,
+			position: POSITION,
+			title: TEXT,
+			text: TEXT
 		}
 	}
 } as const satisfies Record<string, TableSpecType>;
