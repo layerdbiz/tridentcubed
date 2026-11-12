@@ -33,7 +33,6 @@
 	import ProjectPage from './project-page.svelte';
 	import RecentList from './recent-list.svelte';
 	import RecordPage from './record-page.svelte';
-	import LoginPage from './login-page.svelte';
 	import SettingsPage from './settings-page.svelte';
 	import BarB from './variants/bar-b.svelte';
 	import BarC from './variants/bar-c.svelte';
@@ -640,5 +639,4 @@
 		>
 	{/if}
 	<AddSheet {look} />
-	{#if !look.isSignedIn}<LoginPage {look} />{/if}
 </div>
