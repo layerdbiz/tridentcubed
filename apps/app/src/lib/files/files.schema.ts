@@ -111,3 +111,12 @@ export function toFileAddress(id: string) {
 export function isFileAddress(value: string) {
 	return value.startsWith(FILE_PREFIX);
 }
+
+/**
+ * How a report's picture loads (#190, review fixes): a file in storage is fetched with CORS, so the preview may draw
+ * it on a canvas to shrink it before the PDF export even when its signed link is on Supabase Storage's own address
+ * (which allows any origin). Anything else loads as usual.
+ */
+export function toCrossOrigin(address: string) {
+	return isFileAddress(address) ? ('anonymous' as const) : undefined;
+}

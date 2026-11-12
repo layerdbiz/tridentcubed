@@ -33,6 +33,7 @@
 	// facility, transport, facility; a transport's page with its photo, particulars and facilities; the signature
 	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
+	import { toCrossOrigin } from '#lib/files/files.schema.js';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import { legsOf, type LegType } from './legs';
@@ -707,6 +708,7 @@
 		{#if organization.logo}
 			<img
 				src={organization.logo}
+				crossorigin={toCrossOrigin(organization.logo)}
 				alt=""
 				class="size-10 shrink-0 object-contain"
 			/>
@@ -736,6 +738,7 @@
 		{#if client.logo}
 			<img
 				src={client.logo}
+				crossorigin={toCrossOrigin(client.logo)}
 				alt=""
 				draggable="false"
 				class="size-10 shrink-0 object-contain"
@@ -788,6 +791,7 @@
 		<div class="mt-6 flex items-start gap-3">
 			<img
 				src={personOf(signer.name).photo}
+				crossorigin={toCrossOrigin(personOf(signer.name).photo)}
 				alt=""
 				draggable="false"
 				class="size-[76px] shrink-0 rounded-full object-cover"
@@ -846,6 +850,7 @@
 	{#if photo}
 		<img
 			src={photo}
+			crossorigin={toCrossOrigin(photo)}
 			alt=""
 			draggable="false"
 			class="{size} shrink-0 rounded-full object-cover"
@@ -973,6 +978,7 @@
 							{#if picture}
 								<img
 									src={picture}
+									crossorigin={toCrossOrigin(picture)}
 									alt=""
 									draggable="false"
 									class="h-[104px] w-[156px] shrink-0 rounded-lg object-cover"
@@ -1118,6 +1124,7 @@
 				{#if file.kind === 'photo'}
 					<img
 						src={file.src}
+						crossorigin={toCrossOrigin(file.src)}
 						alt={file.name}
 						draggable="false"
 						class="h-20 rounded-lg object-cover"
@@ -1201,6 +1208,7 @@
 								{#if organization.logo}
 									<img
 										src={organization.logo}
+										crossorigin={toCrossOrigin(organization.logo)}
 										alt=""
 										class="size-48 object-contain"
 									/>
@@ -1304,6 +1312,7 @@
 											{#if client.icon}
 												<img
 													src={client.icon}
+													crossorigin={toCrossOrigin(client.icon)}
 													alt=""
 													draggable="false"
 													class="size-6 shrink-0 rounded-full bg-white object-contain"
@@ -1343,6 +1352,7 @@
 										>
 											<img
 												src={personOf(name).photo}
+												crossorigin={toCrossOrigin(personOf(name).photo)}
 												alt=""
 												draggable="false"
 												class="size-9 rounded-full object-cover ring-2 {personIndex === 0
@@ -1465,6 +1475,7 @@
 											{#if file.kind === 'photo'}
 												<img
 													src={file.src}
+													crossorigin={toCrossOrigin(file.src)}
 													alt={file.name}
 													draggable="false"
 													class="h-20 rounded-lg object-cover"
@@ -1574,6 +1585,7 @@
 										<figure class="relative overflow-hidden rounded">
 											<img
 												src={photo.src}
+												crossorigin={toCrossOrigin(photo.src)}
 												alt=""
 												draggable="false"
 												class="w-full object-cover {PHOTO_SIZES[group.layout]}"
