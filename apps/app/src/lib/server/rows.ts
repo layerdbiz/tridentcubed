@@ -45,6 +45,11 @@ import {
 	projectTeam,
 	team,
 	transport,
+	stop,
+	item,
+	itemAttachment,
+	timeLogDay,
+	timeLogEntry,
 	user as users
 } from './db/schema';
 import { checkPermission, FROZEN_STATUSES, type ChangeType } from './permission';
@@ -70,7 +75,13 @@ export const TABLES: Record<TableNameType, PgTable> = {
 	project_team: projectTeam,
 	personnel_company: personnelCompany,
 	personnel_person: personnelPerson,
-	panel
+	panel,
+	// #188
+	stop,
+	item,
+	item_attachment: itemAttachment,
+	time_log_day: timeLogDay,
+	time_log_entry: timeLogEntry
 };
 
 // What one batch learns as it goes: each project's status before the batch began, the projects it changed and

@@ -6,13 +6,28 @@
 //
 // Wiring a picture of a record to it is one line: give the picture field its `target` (`{ table, column, id }`), as
 // `image-field.svelte` does. Code that is not a field calls `startUpload(file, { for, kind, ondone })`.
-import type {
-	FileTargetType,
-	UploadAnswerType,
-	UploadRequestType,
-	UploadTargetType
+import {
+	type FileTargetType,
+	toDocumentType,
+	type UploadAnswerType,
+	type UploadRequestType,
+	type UploadTargetType
 } from './files.schema';
 import type { PictureKindType, PreparedPictureType } from './files.utils';
+
+/** A picture is shrunk first; a document (an item list's spreadsheet or PDF, #188) goes as it came. */
+export type UploadKindType = PictureKindType | 'document';
+
+type PreparedType = Omit<PreparedPictureType, 'width' | 'height'> & {
+	width?: number;
+	height?: number;
+};
+
+// A document is sent as it is, with its type read from its name when the browser gives none.
+function asDocument(file: File): PreparedType {
+	const blob = file.type ? file : new Blob([file], { type: toDocumentType(file.name) });
+	return { blob, taken: { from: '' } };
+}
 
 /** The steps an upload takes, each swappable so tests run without a browser, a server or storage. */
 export type UploadStepsType = {
@@ -25,8 +40,11 @@ export type UploadStepsType = {
 export type UploadOptionsType = {
 	/** The table, column and (when made) row the picture is for. */
 	for: FileTargetType;
-	/** A photo is shrunk to 2048 px as WebP or JPEG; a logo to 1024 px, keeping its clear background. */
-	kind: PictureKindType;
+	/**
+	 * A photo is shrunk to 2048 px as WebP or JPEG; a logo to 1024 px, keeping its clear background; a document is
+	 * sent as it is.
+	 */
+	kind: UploadKindType;
 	/** Gets the app's file address once the file is in storage: put it in the row. */
 	ondone: (address: string) => void;
 	steps?: UploadStepsType;
@@ -60,7 +78,7 @@ export class Upload {
 	#file: File;
 	#options: UploadOptionsType;
 	#steps: UploadStepsType;
-	#prepared?: PreparedPictureType;
+	#prepared?: PreparedType;
 
 	constructor(file: File, options: UploadOptionsType) {
 		this.#file = file;
@@ -75,7 +93,9 @@ export class Upload {
 		this.isFailed = false;
 		this.reason = '';
 		try {
-			this.#prepared ??= await this.#steps.prepare(this.#file, this.#options.kind);
+			const { kind } = this.#options;
+			this.#prepared ??=
+				kind === 'document' ? asDocument(this.#file) : await this.#steps.prepare(this.#file, kind);
 			const { blob, width, height, taken } = this.#prepared;
 			const answer = await this.#steps.ask({
 				for: this.#options.for,

@@ -18,6 +18,7 @@ import {
 } from './look.data';
 import { FROZEN, type LookState, percentOf } from './look.state.svelte';
 import { takeListRows, toListRows } from './mapper.lists';
+import { stopsByProject, takePanelRows, toPanelRows, toTrip } from './mapper.trip';
 import { customerOf } from './records.data';
 import type { TeamMemberType } from './team.data';
 
@@ -275,7 +276,7 @@ function toProjectRows(look: LookState): RowType[] {
 		};
 		rows.push({ table: 'project', id: project.id, values });
 		if (!own) {
-			rows.push(...(saved?.team ?? []));
+			rows.push(...(saved?.team ?? []), ...(saved?.stops ?? []));
 			continue;
 		}
 		// The Team Assigned: one row per Team record, in order. A record assigned again after being taken off is a
@@ -309,6 +310,7 @@ function toProjectRows(look: LookState): RowType[] {
 					position
 				}
 			});
+		for (const panel of panels) rows.push(...toPanelRows(look, project.id, panel));
 	}
 	// Only the assignments on screen keep their ids; one taken off and put back gets a new one.
 	for (const key of look.teamRowIds.keys()) {
@@ -350,7 +352,7 @@ function byPosition(
 	return Number(a.values.position) - Number(b.values.position);
 }
 
-function toRow(row: SavedRowType): RowType {
+function toRow(row: RowType): RowType {
 	return { table: row.table, id: row.id, values: { ...row.values } };
 }
 
@@ -388,7 +390,7 @@ function toProject(
 	look: LookState,
 	row: SavedRowType,
 	team: RowType[],
-	before?: ProjectType
+	stops: RowType[]
 ): ProjectType {
 	const { values } = row;
 	const lead = values.teamLeadId ? toTeamName(look, String(values.teamLeadId)) : undefined;
@@ -400,7 +402,7 @@ function toProject(
 		subtitle: text(values, 'subtitle'),
 		type: text(values, 'projectType'),
 		client: values.customerId ? (toCustomerName(look, String(values.customerId)) ?? '') : '',
-		stops: before?.stops ?? [],
+		stops: toTrip(look, stops),
 		location: text(values, 'location'),
 		created: toStamp(row.createdAt),
 		updated: toStamp(row.updatedAt),
@@ -424,25 +426,26 @@ function teamOf(rows: SavedRowType[]) {
 	return team;
 }
 
-// Takes one project's row and its Team Assigned rows into the lists, and into its Project panel when it has loaded.
-function takeProjectRow(look: LookState, row: SavedRowType, team: RowType[]) {
-	const before = look.projects.find((project) => project.id === row.id);
-	look.fromServer[row.id] = { values: { ...row.values }, team };
+// Takes one project's row, its Team Assigned rows and its trip's stops (#188) into the lists, and into its Project
+// panel when it has loaded.
+function takeProjectRow(look: LookState, row: SavedRowType, team: RowType[], stops: RowType[]) {
+	look.fromServer[row.id] = { values: { ...row.values }, team, stops: stops.map(toRow) };
 	for (const key of look.teamRowIds.keys())
 		if (key.startsWith(`${row.id}/`)) look.teamRowIds.delete(key);
 	for (const item of team) look.teamRowIds.set(`${row.id}/${String(item.values.teamId)}`, item.id);
 	const own = look.workspaces[row.id]?.find((panel) => panel.kind === 'project');
 	if (own) fillProjectPanel(look, own, row.values, team);
-	return toProject(look, row, team, before);
+	return toProject(look, row, team, stops);
 }
 
 // The server's projects into the lists, newest first. A project gone from the server (someone moved it to the
 // Trash) leaves the screens; if it was open, the User is told.
 function takeProjects(look: LookState, rows: SavedRowType[]) {
 	const team = teamOf(rows);
+	const stops = stopsByProject(rows);
 	const projects = rows
 		.filter((row) => row.table === 'project' && !row.deletedAt)
-		.map((row) => takeProjectRow(look, row, team.get(row.id) ?? []))
+		.map((row) => takeProjectRow(look, row, team.get(row.id) ?? [], stops.get(row.id) ?? []))
 		.reverse();
 	const ids = new Set(projects.map((project) => project.id));
 	for (const id of Object.keys(look.workspaces)) if (!ids.has(id)) delete look.workspaces[id];
@@ -462,7 +465,12 @@ function takeProjects(look: LookState, rows: SavedRowType[]) {
 export function takeProject(look: LookState, projectId: string, rows: SavedRowType[]) {
 	const row = rows.find((item) => item.table === 'project' && item.id === projectId);
 	if (row) {
-		const project = takeProjectRow(look, row, teamOf(rows).get(projectId) ?? []);
+		const project = takeProjectRow(
+			look,
+			row,
+			teamOf(rows).get(projectId) ?? [],
+			stopsByProject(rows).get(projectId) ?? []
+		);
 		const index = look.projects.findIndex((item) => item.id === projectId);
 		if (index < 0) look.projects.unshift(project);
 		else look.projects[index] = project;
@@ -485,6 +493,10 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 	const saved = look.fromServer[projectId];
 	if (own && saved) fillProjectPanel(look, own, saved.values, saved.team);
 	if (own) own.personnel = toPersonnel(rows);
+	// What the panels hold (#188). The stops come with the project's row; while a change waits to be sent only the
+	// rows inside it come, and the stops stay as the lists last gave them.
+	const inside = row ? rows : [...rows, ...(saved?.stops ?? [])];
+	for (const panel of panels) takePanelRows(look, panel, inside);
 	look.workspaces[projectId] = panels;
 }
 

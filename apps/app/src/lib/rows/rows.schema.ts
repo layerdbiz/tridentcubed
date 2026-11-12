@@ -233,6 +233,62 @@ export const TABLES = {
 			isEnabled: v.boolean(),
 			position: POSITION
 		}
+	},
+	// #188: the trip's stops, the Items panel's rows and attachments, and the Time Log's days and entries. Stops load
+	// with the lists, since a project's route, its map pin and the Transport Mode and Facility pages read them before
+	// the project opens; the rest loads as it opens. A stop names its transport and facility by id.
+	stop: {
+		scope: 'organization',
+		parent: { table: 'panel', column: 'panelId' },
+		columns: {
+			projectId: ID,
+			panelId: ID,
+			position: POSITION,
+			point: v.picklist(['', 'Start', 'Stop', 'End']),
+			leg: v.pipe(v.string(), v.maxLength(200)),
+			transportId: OPTIONAL_ID,
+			facilityId: OPTIONAL_ID,
+			mode: v.picklist(['', ...TRANSPORT_MODES]),
+			isExtra: v.boolean()
+		}
+	},
+	item: {
+		scope: 'project',
+		parent: { table: 'panel', column: 'panelId' },
+		columns: { projectId: ID, panelId: ID, position: POSITION, quantity: TEXT, description: TEXT }
+	},
+	item_attachment: {
+		scope: 'project',
+		parent: { table: 'panel', column: 'panelId' },
+		columns: {
+			projectId: ID,
+			panelId: ID,
+			position: POSITION,
+			name: v.pipe(v.string(), v.maxLength(300)),
+			file: PICTURE,
+			kind: v.picklist(['photo', 'file'])
+		}
+	},
+	time_log_day: {
+		scope: 'project',
+		parent: { table: 'panel', column: 'panelId' },
+		columns: {
+			projectId: ID,
+			panelId: ID,
+			position: POSITION,
+			date: v.pipe(v.string(), v.regex(/^(\d{4}-\d{2}-\d{2})?$/, 'A date is YYYY-MM-DD.'))
+		}
+	},
+	time_log_entry: {
+		scope: 'project',
+		parent: { table: 'time_log_day', column: 'dayId' },
+		columns: {
+			projectId: ID,
+			dayId: ID,
+			position: POSITION,
+			time: v.pipe(v.string(), v.regex(/^(\d{2}:\d{2})?$/, 'A time is HH:MM.')),
+			activity: TEXT
+		}
 	}
 } as const satisfies Record<string, TableSpecType>;
 

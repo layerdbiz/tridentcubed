@@ -549,7 +549,7 @@ export function createId(prefix: string) {
 }
 
 export function itemOf(quantity = '', description = ''): ItemType {
-	return { id: createId('item'), quantity, description };
+	return { id: crypto.randomUUID(), quantity, description };
 }
 
 function field(
@@ -576,7 +576,7 @@ export function stopOf(
 ): StopType {
 	const transport = transports.find((item) => item.name === name);
 	return {
-		id: createId('stop'),
+		id: crypto.randomUUID(),
 		point: name || facility ? point : '',
 		type: transport?.type ?? '',
 		mode: transport?.mode ?? '',

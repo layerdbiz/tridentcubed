@@ -390,6 +390,90 @@ CREATE TABLE "file" (
 --> statement-breakpoint
 ALTER TABLE "file" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "stop" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"panel_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"point" text DEFAULT '' NOT NULL,
+	"leg" text DEFAULT '' NOT NULL,
+	"transport_id" uuid,
+	"facility_id" uuid,
+	"mode" text DEFAULT '' NOT NULL,
+	"is_extra" boolean DEFAULT false NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "stop" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "item" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"panel_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"quantity" text DEFAULT '' NOT NULL,
+	"description" text DEFAULT '' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "item" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "item_attachment" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"panel_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"name" text DEFAULT '' NOT NULL,
+	"file" text DEFAULT '' NOT NULL,
+	"kind" text DEFAULT 'photo' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "item_attachment" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "time_log_day" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"panel_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"date" text DEFAULT '' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "time_log_day" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
+CREATE TABLE "time_log_entry" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"day_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"time" text DEFAULT '' NOT NULL,
+	"activity" text DEFAULT '' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "time_log_entry" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
@@ -464,6 +548,40 @@ ALTER TABLE "file" ADD CONSTRAINT "file_organization_id_organization_id_fk" FORE
 --> statement-breakpoint
 ALTER TABLE "file" ADD CONSTRAINT "file_uploaded_by_user_id_fk" FOREIGN KEY ("uploaded_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "stop" ADD CONSTRAINT "stop_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "stop" ADD CONSTRAINT "stop_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "stop" ADD CONSTRAINT "stop_panel_id_panel_id_fk" FOREIGN KEY ("panel_id") REFERENCES "public"."panel"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "stop" ADD CONSTRAINT "stop_transport_id_transport_id_fk" FOREIGN KEY ("transport_id") REFERENCES "public"."transport"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "stop" ADD CONSTRAINT "stop_facility_id_facility_id_fk" FOREIGN KEY ("facility_id") REFERENCES "public"."facility"("id") ON DELETE no action ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "item" ADD CONSTRAINT "item_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "item" ADD CONSTRAINT "item_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "item" ADD CONSTRAINT "item_panel_id_panel_id_fk" FOREIGN KEY ("panel_id") REFERENCES "public"."panel"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "item_attachment" ADD CONSTRAINT "item_attachment_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "item_attachment" ADD CONSTRAINT "item_attachment_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "item_attachment" ADD CONSTRAINT "item_attachment_panel_id_panel_id_fk" FOREIGN KEY ("panel_id") REFERENCES "public"."panel"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "time_log_day" ADD CONSTRAINT "time_log_day_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "time_log_day" ADD CONSTRAINT "time_log_day_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "time_log_day" ADD CONSTRAINT "time_log_day_panel_id_panel_id_fk" FOREIGN KEY ("panel_id") REFERENCES "public"."panel"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "time_log_entry" ADD CONSTRAINT "time_log_entry_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "time_log_entry" ADD CONSTRAINT "time_log_entry_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "time_log_entry" ADD CONSTRAINT "time_log_entry_day_id_time_log_day_id_fk" FOREIGN KEY ("day_id") REFERENCES "public"."time_log_day"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");
 --> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" USING btree ("user_id");
@@ -514,6 +632,16 @@ CREATE INDEX "panel_project_idx" ON "panel" USING btree ("project_id");
 --> statement-breakpoint
 CREATE UNIQUE INDEX "panel_key_idx" ON "panel" USING btree ("project_id","key") WHERE key <> '' and deleted_at is null;
 --> statement-breakpoint
+CREATE INDEX "stop_project_idx" ON "stop" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX "item_project_idx" ON "item" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX "item_attachment_project_idx" ON "item_attachment" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX "time_log_day_project_idx" ON "time_log_day" USING btree ("project_id");
+--> statement-breakpoint
+CREATE INDEX "time_log_entry_project_idx" ON "time_log_entry" USING btree ("project_id");
+--> statement-breakpoint
 CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.user_id());
 --> statement-breakpoint
 CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
@@ -557,3 +685,13 @@ CREATE POLICY "personnel_person in the acting organization" ON "personnel_person
 CREATE POLICY "panel in the acting organization" ON "panel" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "file in the acting organization" ON "file" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "stop in the acting organization" ON "stop" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "item in the acting organization" ON "item" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "item_attachment in the acting organization" ON "item_attachment" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "time_log_day in the acting organization" ON "time_log_day" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "time_log_entry in the acting organization" ON "time_log_entry" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());

@@ -166,8 +166,8 @@
 		onsave();
 	}
 
-	function move(leg: LegType, from: number, to: number) {
-		moveRow(panel.stops, leg.id, from, to);
+	function move(legId: string, from: number, to: number) {
+		moveRow(panel.stops, legId, from, to);
 		onsave();
 	}
 
@@ -202,6 +202,8 @@
 <div class="space-y-3">
 	{#each legs as leg, index (leg.id)}
 		{@const first = headOf(leg)}
+		<!-- The leg's id, not the leg: each move makes the legs anew, and a drag must outlive them (#188). -->
+		{@const legId = leg.id}
 		<Group
 			title={first.name || `Transport Mode ${index + 1}`}
 			note={countsOf(leg) || 'Nothing picked yet'}
@@ -234,7 +236,7 @@
 			<!-- One dropdown a facility, its point inside at the left. Hold a row, then drag, to reorder. -->
 			<div
 				class="space-y-2"
-				{@attach sortable(`stops-${leg.id}`, (from, to) => move(leg, from, to))}
+				{@attach sortable(`stops-${legId}`, (from, to) => move(legId, from, to))}
 			>
 				{#each leg.stops as stop, at (stop.id)}
 					<div

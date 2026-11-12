@@ -3,11 +3,14 @@
 // would with Supabase Storage. The signature is the whole check (the guard leaves these open). Anywhere files go to
 // Supabase, or nowhere, these addresses do not exist.
 import { error } from '@sveltejs/kit';
+import { FILE_TYPES } from '#lib/files/files.schema.js';
 import { getServer } from '#lib/server/server.js';
 import type { LocalStoreType } from '#lib/server/store.js';
 import type { RequestHandler } from './$types';
 
-const TYPES: Record<string, string> = { webp: 'image/webp', jpg: 'image/jpeg', png: 'image/png' };
+const TYPES: Record<string, string> = Object.fromEntries(
+	Object.entries(FILE_TYPES).map(([type, ending]) => [ending, type])
+);
 
 async function toLocalStore(): Promise<LocalStoreType> {
 	const { store } = await getServer();
