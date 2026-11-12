@@ -41,6 +41,7 @@ import type { RowType } from '#lib/rows/rows.schema.js';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
+import { isStored } from './mapper.photos';
 import type { PageType } from './records.data';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
@@ -93,10 +94,12 @@ export function metricsOf(panel: PanelType): MetricsType {
 		);
 	} else {
 		// A photo group counts its title and having photos. Its layout always has a value, so it never counts: a new
-		// untitled group with no photos is To do (Justin's run 8 note 8).
+		// untitled group with no photos is To do (Justin's run 8 note 8). #189: a photo counts once its file is
+		// stored, so every device works out the same percent from the same rows.
 		total = Math.max(1, panel.groups.length * 2);
 		done = panel.groups.reduce(
-			(sum, group) => sum + Number(Boolean(group.title.trim())) + Number(group.photos.length > 0),
+			(sum, group) =>
+				sum + Number(Boolean(group.title.trim())) + Number(group.photos.some(isStored)),
 			0
 		);
 	}

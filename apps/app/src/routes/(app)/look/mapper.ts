@@ -18,6 +18,7 @@ import {
 } from './look.data';
 import { FROZEN, type LookState, percentOf } from './look.state.svelte';
 import { takeListRows, toListRows } from './mapper.lists';
+import { takePhotos, toPhotoRows } from './mapper.photos';
 import { stopsByProject, takePanelRows, toPanelRows, toTrip } from './mapper.trip';
 import { customerOf } from './records.data';
 import type { TeamMemberType } from './team.data';
@@ -310,6 +311,9 @@ function toProjectRows(look: LookState): RowType[] {
 					position
 				}
 			});
+		// #189: a photo panel's groups and photos.
+		for (const panel of panels)
+			if (panel.kind === 'photos') rows.push(...toPhotoRows(project.id, panel));
 		for (const panel of panels) rows.push(...toPanelRows(look, project.id, panel));
 	}
 	// Only the assignments on screen keep their ids; one taken off and put back gets a new one.
@@ -493,6 +497,8 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 	const saved = look.fromServer[projectId];
 	if (own && saved) fillProjectPanel(look, own, saved.values, saved.team);
 	if (own) own.personnel = toPersonnel(rows);
+	// #189: a photo panel's groups and photos.
+	for (const panel of panels) if (panel.kind === 'photos') takePhotos(panel, rows);
 	// What the panels hold (#188). The stops come with the project's row; while a change waits to be sent only the
 	// rows inside it come, and the stops stay as the lists last gave them.
 	const inside = row ? rows : [...rows, ...(saved?.stops ?? [])];

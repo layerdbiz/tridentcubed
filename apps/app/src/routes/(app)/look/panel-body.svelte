@@ -52,7 +52,7 @@
 	import Menu from './menu.svelte';
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
-	import { addPhotos, hasFiles } from './photos';
+	import { addGroup as addPhotoGroup, addPhotos, hasFiles, uploadOf } from './photos';
 	import { customerOf } from './records.data';
 	import { sortable } from './sortable';
 
@@ -196,7 +196,7 @@
 		for (const file of files) {
 			const id = crypto.randomUUID();
 			const upload = startUpload(file, {
-				for: { table: 'item_attachment', column: 'file', id },
+				for: { table: 'item_attachment', column: 'file', id, projectId: look.projectId },
 				kind: kind === 'photo' ? 'photo' : 'document',
 				ondone: (src) => {
 					sending = sending.filter((other) => other.id !== id);
@@ -295,12 +295,15 @@
 		dropping = id;
 	}
 
-	async function dropFiles(event: DragEvent, group: PanelType['groups'][number]) {
+	function dropFiles(event: DragEvent, group: PanelType['groups'][number]) {
 		if (!hasFiles(event)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		dropping = '';
-		const count = await addPhotos(panel, [...(event.dataTransfer?.files ?? [])], group);
+		const count = addPhotos(panel, [...(event.dataTransfer?.files ?? [])], {
+			group,
+			projectId: look.projectId
+		});
 		if (!count) return;
 		if (!openGroups.includes(group.id)) openGroups = [...openGroups, group.id];
 		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added`);
@@ -317,10 +320,17 @@
 	}
 
 	function addGroup() {
-		const group = { id: createId('group'), title: '', description: '', layout: 4, photos: [] };
-		panel.groups.push(group);
+		const group = addPhotoGroup(panel);
 		openGroups = [...openGroups, group.id];
 		save();
+	}
+
+	// Photos from the library or the camera: each goes to storage on its own (photos.ts, #189).
+	function pickPhotos(event: Event, group: PanelType['groups'][number]) {
+		const input = event.currentTarget as HTMLInputElement;
+		const files = [...(input.files ?? [])];
+		input.value = '';
+		if (addPhotos(panel, files, { group, projectId: look.projectId })) save();
 	}
 
 	function move<T>(list: T[], from: number, to: number) {
@@ -1008,8 +1018,11 @@
 							{@attach sortable(`photos-${group.id}`, (from, to) => move(group.photos, from, to))}
 						>
 							{#each group.photos as photo, photoIndex (photo.id)}
+								{@const upload = uploadOf(photo)}
 								<div
-									class="relative aspect-square transition"
+									class="relative aspect-square rounded-xl transition {upload?.isFailed
+										? 'ring-2 ring-danger'
+										: ''}"
 									data-sort="photos-{group.id}"
 									data-index={photoIndex}
 									animate:flip={{ duration: 200 }}
@@ -1024,7 +1037,9 @@
 										<img
 											src={photo.src}
 											alt={photo.description}
-											class="pointer-events-none size-full object-cover"
+											class="pointer-events-none size-full object-cover {upload
+												? 'opacity-60'
+												: ''}"
 											draggable="false"
 										/>
 										<!-- A soft shade in the corner, so the white ⋮ reads on a pale photo too (run 19). -->
@@ -1038,6 +1053,26 @@
 											></span>
 										{/if}
 									</button>
+									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. -->
+									{#if upload?.isUploading}
+										<span
+											class="pointer-events-none absolute bottom-1 left-1 flex size-6 items-center justify-center rounded-full bg-white shadow"
+											role="status"
+											aria-label="Uploading photo {photoIndex + 1}"
+											><span class="icon-[svg-spinners--ring-resize] size-4 text-primary"
+											></span></span
+										>
+									{:else if upload?.isFailed}
+										<button
+											type="button"
+											class="absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded-lg bg-danger px-1.5 py-1 text-[11px] font-semibold text-white shadow"
+											aria-label="Not uploaded. Retry photo {photoIndex + 1}"
+											title={upload.reason}
+											data-no-drag
+											onclick={() => upload.retry()}
+											><span class="icon-[mdi--alert] size-3.5"></span>Retry</button
+										>
+									{/if}
 									<div
 										class="absolute top-1 right-1"
 										data-no-drag
@@ -1090,10 +1125,7 @@
 									accept="image/*"
 									multiple
 									class="sr-only"
-									onchange={(event) =>
-										pick(event, (src, name) =>
-											group.photos.push({ id: createId('photo'), src, description: '' })
-										)}
+									onchange={(event) => pickPhotos(event, group)}
 								/>
 							</label>
 							<label
@@ -1106,10 +1138,7 @@
 									accept="image/*"
 									capture="environment"
 									class="sr-only"
-									onchange={(event) =>
-										pick(event, (src, name) =>
-											group.photos.push({ id: createId('photo'), src, description: '' })
-										)}
+									onchange={(event) => pickPhotos(event, group)}
 								/>
 							</label>
 						</div>

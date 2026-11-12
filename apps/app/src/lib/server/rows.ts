@@ -52,6 +52,7 @@ import {
 	timeLogEntry,
 	user as users
 } from './db/schema';
+import { photo, photoGroup } from './db/photo.schema';
 import { checkPermission, FROZEN_STATUSES, type ChangeType } from './permission';
 
 function toBatchState(): BatchStateType {
@@ -76,6 +77,9 @@ export const TABLES: Record<TableNameType, PgTable> = {
 	personnel_company: personnelCompany,
 	personnel_person: personnelPerson,
 	panel,
+	// #189
+	photo_group: photoGroup,
+	photo,
 	// #188
 	stop,
 	item,

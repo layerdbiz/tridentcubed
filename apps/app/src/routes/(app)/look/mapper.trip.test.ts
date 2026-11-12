@@ -4,13 +4,18 @@
 // and the mapper again. What is checked is what another device or member would see: the legs and their facilities
 // in order, the items and their attachments, the days and their entries, the route and percent, and the server's
 // freeze of a Sent, Complete or Archived project. The helpers are projects.test.ts's.
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import type { UploadRequestType } from '#lib/files/files.schema.js';
 import type { RowType } from '#lib/rows/rows.schema.js';
 import { toChanges, toMerged } from '#lib/rows/rows.utils.js';
 import type { ActorType } from '#lib/server/db/claims.js';
 import * as schema from '#lib/server/db/schema.js';
 import { TRIDENT_CUBED } from '#lib/server/db/seed.js';
+import { createUpload } from '#lib/server/files.js';
 import { readProject, readRows, saveBatch } from '#lib/server/rows.js';
+import { createLocalStore } from '#lib/server/store.js';
 import { createTestSignIn } from '#lib/server/testing.js';
 import { addLeg, addRow, moveRow, setTransport } from './legs';
 import {
@@ -366,6 +371,38 @@ describe('the freeze', () => {
 				});
 			}
 		}
+	});
+});
+
+describe('asking to upload an item attachment', () => {
+	it('is refused for a Sent project, and gives a spreadsheet an address once it is unsent', async () => {
+		const store = createLocalStore({
+			folder: join(tmpdir(), 'trident-files-188'),
+			secret: 'test-secret-that-is-at-least-32-characters-long'
+		});
+		const mine = await open(tom);
+		const id = create(mine.look);
+		await save(mine);
+		const request = (): UploadRequestType => ({
+			for: { table: 'item_attachment', column: 'file', id: crypto.randomUUID(), projectId: id },
+			name: 'manifest.xlsx',
+			type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			size: 1000,
+			taken: { from: '' }
+		});
+
+		mine.look.markSent(mine.look.projects.find((item) => item.id === id)!);
+		await save(mine);
+		expect(await createUpload(test.claims, mia, store, request())).toEqual({
+			isAllowed: false,
+			reason: 'This project is Sent, so only its status can change. Change its status to edit it.'
+		});
+		const theirs = await open(mia);
+		theirs.look.unsend(theirs.look.projects.find((item) => item.id === id)!);
+		expect((await save(theirs)).result.isSaved).toBe(true);
+		expect(await createUpload(test.claims, mia, store, request())).toMatchObject({
+			isAllowed: true
+		});
 	});
 });
 
