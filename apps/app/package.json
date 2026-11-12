@@ -43,6 +43,7 @@
 		"@sparticuz/chromium-min": "143.0.4",
 		"maplibre-gl": "6.16.0",
 		"puppeteer-core": "24.38.0",
+		"uqr": "^0.1.3",
 		"valibot": "^1.2.0"
 	}
 }

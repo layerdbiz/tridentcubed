@@ -1,64 +1,33 @@
 <script lang="ts">
-	// PROTOTYPE (#161): a stand-in QR code, drawn from the document number. It does not scan; V1 makes a real one
-	// that opens this report.
+	// PROTOTYPE (#161) run 35: a real QR code (Justin, 2026-11-12: "I just want the QR code to work"). It encodes
+	// the link it is given with uqr and draws the modules as plain black squares in one path, so a phone's camera
+	// reads it off a screen or a printed page. For now every report's code opens the organization's website; a link
+	// to the report itself comes with the database, when a report has an address of its own.
+	import { encode } from 'uqr';
+
 	let { value, size = 56 }: { value: string; size?: number } = $props();
 
-	const N = 25;
-	const cells = $derived.by(() => {
-		let hash = 7;
-		for (const char of value) hash = (hash * 131 + char.charCodeAt(0)) >>> 0;
-		const list: [number, number][] = [];
-		for (let y = 0; y < N; y += 1)
-			for (let x = 0; x < N; x += 1) {
-				const isFinder = (x < 8 && y < 8) || (x > N - 9 && y < 8) || (x < 8 && y > N - 9);
-				if (isFinder) continue;
-				hash = (hash * 1103515245 + 12345) >>> 0;
-				if ((hash >>> 16) % 100 < 46) list.push([x, y]);
-			}
-		return list;
+	// Medium error correction: it still reads with a little of it smudged or cut off in print.
+	const code = $derived(encode(value, { ecc: 'M', border: 0 }));
+	const path = $derived.by(() => {
+		let d = '';
+		for (const [y, row] of code.data.entries())
+			for (const [x, isDark] of row.entries()) if (isDark) d += `M${x} ${y}h1v1h-1z`;
+		return d;
 	});
 </script>
 
-{#snippet finder(x: number, y: number)}
-	<rect
-		x={x + 0.5}
-		y={y + 0.5}
-		width="6"
-		height="6"
-		rx="1.6"
-		fill="none"
-		stroke="currentColor"
-		stroke-width="1"
-	/>
-	<rect
-		x={x + 2}
-		y={y + 2}
-		width="3"
-		height="3"
-		rx="0.8"
-		fill="currentColor"
-	/>
-{/snippet}
-
 <svg
-	viewBox="0 0 {N} {N}"
+	viewBox="0 0 {code.size} {code.size}"
 	width={size}
 	height={size}
-	class="shrink-0 text-slate-900"
+	class="shrink-0 text-slate-950"
+	shape-rendering="crispEdges"
 	role="img"
-	aria-label="QR code for {value} (stand-in)"
+	aria-label="QR code for {value}"
 >
-	{@render finder(0, 0)}
-	{@render finder(N - 7, 0)}
-	{@render finder(0, N - 7)}
-	{#each cells as [x, y] (`${x}-${y}`)}
-		<rect
-			{x}
-			{y}
-			width="1"
-			height="1"
-			rx="0.3"
-			fill="currentColor"
-		/>
-	{/each}
+	<path
+		d={path}
+		fill="currentColor"
+	/>
 </svg>

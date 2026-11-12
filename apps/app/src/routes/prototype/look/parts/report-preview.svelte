@@ -210,6 +210,11 @@
 	function titleOf(name: string) {
 		return look.members.find((member) => member.name === name)?.title ?? '';
 	}
+	// What the QR code opens: the organization's website, as a full link. A report's own link comes with V1.
+	const siteLink = $derived.by(() => {
+		const site = organization.website.trim() || 'tridentcubed.com';
+		return site.toLowerCase().startsWith('http') ? site : `https://${site}`;
+	});
 	const documentNumber = $derived(documentIdOf(look.project, look.projects, company));
 
 	// The trip as legs (legs.ts): one transport and the facilities it calls at.
@@ -752,10 +757,10 @@
 	</div>
 {/snippet}
 
-<!-- The QR code alone: no corners, no logo (run 11). -->
+<!-- The QR code alone: no corners, no logo (run 11). It scans (run 35), and opens the organization's website. -->
 {#snippet code()}
 	<Qr
-		value={documentNumber}
+		value={siteLink}
 		size={44}
 	/>
 {/snippet}
