@@ -124,7 +124,7 @@ const MICROSOFT_WORK_BO = {
 	oid: 'microsoft-bo',
 	tid: CONTOSO_TENANT,
 	iss: `https://login.microsoftonline.com/${CONTOSO_TENANT}/v2.0`,
-	email: 'bo@contoso.com',
+	email: 'bo@contoso.example',
 	name: 'Bo Lee',
 	xms_edov: true
 };
@@ -133,7 +133,7 @@ const MICROSOFT_PERSONAL_CY = {
 	oid: 'microsoft-cy',
 	tid: PERSONAL_TENANT,
 	iss: `https://login.microsoftonline.com/${PERSONAL_TENANT}/v2.0`,
-	email: 'cy@outlook.com',
+	email: 'cy@outlook.example',
 	name: 'Cy Park'
 };
 
@@ -161,7 +161,7 @@ describe('coming back from Google or Microsoft', () => {
 
 		expect(result.error).toBeNull();
 		expect(result.user).toMatchObject({
-			email: 'bo@contoso.com',
+			email: 'bo@contoso.example',
 			name: 'Bo Lee',
 			emailVerified: true
 		});
@@ -173,7 +173,7 @@ describe('coming back from Google or Microsoft', () => {
 		const result = await signInWith('microsoft', MICROSOFT_PERSONAL_CY);
 
 		expect(result.error).toBeNull();
-		expect(result.user).toMatchObject({ email: 'cy@outlook.com', emailVerified: true });
+		expect(result.user).toMatchObject({ email: 'cy@outlook.example', emailVerified: true });
 	});
 });
 
@@ -190,7 +190,7 @@ describe('one user, whichever way they sign in', () => {
 
 	it('keeps a User who signed in with a code the same user when they later use Microsoft', async () => {
 		const { signIn, signInWith } = await createTestSignIn();
-		const byCode = await signIn('bo@contoso.com');
+		const byCode = await signIn('bo@contoso.example');
 
 		const byMicrosoft = await signInWith('microsoft', MICROSOFT_WORK_BO);
 

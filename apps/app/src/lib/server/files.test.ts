@@ -137,7 +137,7 @@ describe('who may ask for an upload address', () => {
 	});
 
 	it('refuses a Guest', async () => {
-		const { actor: guest } = await test.signIn('someone@gmail.com');
+		const { actor: guest } = await test.signIn('someone@personal.example');
 
 		expect(await createUpload(test.claims, guest, store, logoOf())).toEqual({
 			isAllowed: false,
@@ -242,7 +242,7 @@ describe('who may open a file', () => {
 
 	it('gives a Guest, another organization and a guessed address nothing', async () => {
 		const { id } = await upload(team, logoOf());
-		const { actor: guest } = await test.signIn('someone@gmail.com');
+		const { actor: guest } = await test.signIn('someone@personal.example');
 		const theirs = await addOrganization();
 
 		expect(await findFileLink(test.claims, guest, store, id)).toBeUndefined();

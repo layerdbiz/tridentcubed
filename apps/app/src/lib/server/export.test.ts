@@ -50,7 +50,7 @@ describe('the PDF export', () => {
 	});
 
 	it('gives a Guest nothing', async () => {
-		const { actor: guest, cookie } = await test.signIn('someone@gmail.com');
+		const { actor: guest, cookie } = await test.signIn('someone@personal.example');
 		expect(guest.organizationId).toBeNull();
 		const printer = createPrinter();
 		const response = await exportPdf(

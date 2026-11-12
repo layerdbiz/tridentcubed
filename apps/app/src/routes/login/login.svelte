@@ -163,7 +163,7 @@
 									class={FIELD}
 									{...submitEmail.fields.email.as('email')}
 									autocomplete="username"
-									placeholder="you@company.com"
+									placeholder="you@tridentcubed.com"
 									autofocus
 								/>
 							</label>
