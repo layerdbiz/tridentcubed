@@ -2,3 +2,4 @@
 // Drizzle add-on. Every table is declared here (or in a file this one re-exports), so `schema.sql` and, at the end
 // of the run, the one initial migration are written from it.
 export * from './auth.schema';
+export * from './organization.schema';

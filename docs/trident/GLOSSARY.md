@@ -35,7 +35,7 @@ Anyone who can sign in to the Report Generator, identified by a verified email a
 _Avoid_: account, login, member
 
 **Guest**:
-A User with no membership in any organization. A Guest sees only their own account page.
+A User with no membership in any organization. A Guest sees only Waiting for access: their email and Log out.
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
