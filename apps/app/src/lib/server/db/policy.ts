@@ -8,7 +8,9 @@
 //
 // `CLAIMS_SQL` is what drizzle-kit cannot write: the role, the `app` schema with its helpers, and the role's table
 // privileges. It runs before `schema.sql` (the policies name the role and the helpers), on the in-process database
-// at boot and at the head of the one initial migration (#194). It is safe to run twice.
+// at boot and at the head of the one initial migration (#194). It is safe to run twice. The role it grants the
+// restricted role to is the one running it and, by name, `postgres`: the app connects through Supabase's pooler as
+// `postgres`, which must be able to switch to the role even when the migration ran as another (`supabase_admin`).
 import { type SQL, sql } from 'drizzle-orm';
 import { pgPolicy, pgRole } from 'drizzle-orm/pg-core';
 
@@ -42,6 +44,16 @@ DO $$ BEGIN
 	END IF;
 END $$;
 GRANT ${APP_ROLE} TO CURRENT_USER;
+DO $$ BEGIN
+	IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'postgres') AND NOT EXISTS (
+		SELECT FROM pg_catalog.pg_auth_members m
+		JOIN pg_catalog.pg_roles r ON r.oid = m.roleid
+		JOIN pg_catalog.pg_roles u ON u.oid = m.member
+		WHERE r.rolname = '${APP_ROLE}' AND u.rolname = 'postgres'
+	) THEN
+		GRANT ${APP_ROLE} TO postgres;
+	END IF;
+END $$;
 CREATE SCHEMA IF NOT EXISTS app;
 GRANT USAGE ON SCHEMA app TO ${APP_ROLE};
 GRANT USAGE ON SCHEMA public TO ${APP_ROLE};
