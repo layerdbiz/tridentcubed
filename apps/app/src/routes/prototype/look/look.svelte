@@ -30,7 +30,7 @@
 	const name = $derived.by(() => {
 		if (!shown) return '';
 		if (shown.adding) return 'Add';
-		if (shown.screen === 'settings') return 'Settings';
+		if (shown.screen === 'settings') return 'Organization';
 		if (shown.screen === 'record' && shown.record) return shown.record.key;
 		if (shown.screen === 'dashboard') return SECTIONS[shown.navSection] ?? 'Projects';
 		if (shown.tab === 'preview' && innerWidth < 768) return 'Preview';
