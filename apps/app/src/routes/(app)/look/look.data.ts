@@ -1,8 +1,7 @@
 // What the app knows before anything is saved: the shapes of a project and its panels and records, the real
-// starting data (the organization Trident Cubed, its customers here and its team in team.data.ts), and the helpers
-// every screen reads. Carried over from the look prototype (#161); since V1 (#180) no sample projects, transports or
-// facilities ship (Justin's rule of 2026-11-10: every value on screen is real). Customers keep their real names,
-// icons, kinds and office cities; their short codes are placeholders until the customers' own arrive.
+// starting data (the organization Trident Cubed here, its team in team.data.ts; its customers come from the database
+// since #183), and the helpers every screen reads. Carried over from the look prototype (#161); since V1 (#180) no
+// sample projects, transports or facilities ship (Justin's rule of 2026-11-10: every value on screen is real).
 import { seen, touch } from './registry.svelte';
 // Run 16 (Justin, 2026-11-10: "no dummy data left ... the next step is connecting a real database"): nothing shown
 // is made up by code any more. A project and every record carry when they were made and last changed (`created`,
@@ -242,13 +241,15 @@ export function routeOf(project: ProjectType, facilities: { name: string; city: 
 }
 
 export type ClientType = {
+	// Its row's id, made on the device (#183). The screens name a customer by its name; the mapper uses this.
+	id?: string;
 	name: string;
 	kind: string;
 	icon: string;
 	// The same artwork trimmed to its edges, for the report footer (Justin's run 9 note 6).
 	logo: string;
 	city: string;
-	// The short code a document ID starts with. Made up for the prototype; the client's own come with V1.
+	// The short code a document ID starts with. The starting customers' are placeholders until their own arrive.
 	code: string;
 	// Run 15, all typed in or uploaded on the customer's Edit tab. An uploaded logo fills `icon` and `logo`.
 	address?: string;
@@ -273,53 +274,35 @@ export type ContactType = {
 	photo: string;
 };
 
-const ICONS = import.meta.glob<string>('./clients/*.{png,jpg,ico}', {
-	eager: true,
-	query: '?url',
-	import: 'default'
-});
+// The customers this organization has, by name (#183): empty until the server's rows arrive, then filled by the mapper
+// (mapper.ts `takeRows`) and by every customer added or renamed here. A logo or a project number reads a customer by
+// its name from here without knowing the page's state. The starting customers are the seed's (`db/seed.ts`).
+export const CLIENT_INFO: Record<string, ClientType> = {};
 
-const LOGOS = import.meta.glob<string>('./clients/trimmed/*.png', {
-	eager: true,
-	query: '?url',
-	import: 'default'
-});
+export const CLIENTS: string[] = [];
 
-function iconOf(id: string, files = ICONS) {
-	return Object.entries(files).find(([path]) => path.includes(`/${id}.`))?.[1] ?? '';
-}
-
-// [name, icon file, kind, office city, document code]
-const CLIENT_ROWS = [
-	['US Ocean', 'us-ocean', 'Ocean carrier', 'Houston, TX', 'USO'],
-	['KOGA', 'koga', 'Ocean carrier', 'Houston, TX', 'KOG'],
-	['dship Carriers', 'dship-carriers', 'Ocean carrier', 'Houston, TX', 'DSC'],
-	['Oslo Caribbean Carrier', 'oslo-caribbean-carrier', 'Ocean carrier', 'Houston, TX', 'OCC'],
-	['UTC Overseas', 'utc-overseas', 'Freight forwarder', 'Houston, TX', 'UTC'],
-	['CEVA Logistics', 'ceva-logistics', 'Freight forwarder', 'Houston, TX', 'CVA'],
-	['DIX Shipping', 'dix-industries', 'Stevedore, Terminal', 'Brownsville, TX', 'DIX'],
-	['Zurich North America', 'zurich-north-america', 'Insurer', 'Schaumburg, IL', 'ZNA'],
-	['AXA XL', 'axa-xl', 'Insurer', 'Stamford, CT', 'AXA'],
-	['Liberty Specialty Markets', 'liberty-specialty-markets', 'Insurer', 'London, UK', 'LSM']
-] as const;
-
-export const CLIENT_INFO: Record<string, ClientType> = Object.fromEntries(
-	CLIENT_ROWS.map(([name, id, kind, city, code]) => [
-		name,
-		{ name, kind, icon: iconOf(id), logo: iconOf(id, LOGOS), city, code }
-	])
-);
-
-export const CLIENTS: string[] = CLIENT_ROWS.map(([name]) => name);
-
-// A customer added or edited in the prototype (run 12: a customer's own page edits its name, types and city). An
-// added one has no icon or logo yet, so it shows its initial on a colour of its own. It joins the list a new
-// project's Customer drop-down offers.
+// A customer added or edited here joins the list a new project's Customer drop-down offers. An added one has no icon
+// or logo yet, so it shows its initial on a colour of its own.
 export function registerCustomer(customer: ClientType): ClientType {
 	if (!CLIENTS.includes(customer.name)) CLIENTS.push(customer.name);
 	CLIENT_INFO[customer.name] = customer;
 	touch();
 	return customer;
+}
+
+// A customer renamed or moved to the Trash leaves the drop-down's list; its old name still reads it.
+export function forgetCustomer(name: string) {
+	const index = CLIENTS.indexOf(name);
+	if (index >= 0) CLIENTS.splice(index, 1);
+}
+
+// The server's customers replace what was known: `live` are the lists', `trashed` are only read by name, so a project
+// that used one still shows it.
+export function resetCustomers(live: ClientType[], trashed: ClientType[]) {
+	CLIENTS.length = 0;
+	for (const name of Object.keys(CLIENT_INFO)) delete CLIENT_INFO[name];
+	for (const customer of trashed) CLIENT_INFO[customer.name] = customer;
+	for (const customer of live) registerCustomer(customer);
 }
 
 export function clientOf(name: string): ClientType {
@@ -817,7 +800,7 @@ export function newPersonnel(): PersonnelType {
 }
 
 export function newContact(): ContactType {
-	return { id: createId('contact'), name: '', title: '', email: '', phone: '', photo: '' };
+	return { id: crypto.randomUUID(), name: '', title: '', email: '', phone: '', photo: '' };
 }
 
 export function newPanel(count: number): PanelType {

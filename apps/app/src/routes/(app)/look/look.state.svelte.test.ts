@@ -16,13 +16,12 @@ describe('a new app', () => {
 		expect(look.facilities).toEqual([]);
 	});
 
-	it('starts with the real organization, team, customers and places', () => {
+	it('starts with the real organization, team and places, and no customers until the server sends them', () => {
 		const look = fresh();
 		expect(look.organization.name).toBe('Trident Cubed');
 		expect(look.members).toHaveLength(17);
 		expect(look.members.map((member) => member.name)).toContain('Capt. Cezary Poninski');
-		expect(look.customers).toHaveLength(10);
-		expect(look.customers).toContain('CEVA Logistics');
+		expect(look.customers).toEqual([]);
 		expect(look.places.map((place) => place.name)).toContain('Houston, TX');
 	});
 

@@ -15,9 +15,9 @@
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	clientOf as clientOfName,
-	CLIENTS,
 	createId,
 	createPanels,
+	forgetCustomer,
 	DATASETS,
 	itemOf,
 	ME,
@@ -39,6 +39,7 @@ import {
 	type TransportType
 } from './look.data';
 import { seedPlaces, type PlaceType } from './map.data';
+import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
 import type { PageType } from './records.data';
 
@@ -122,15 +123,13 @@ export function percentOf(panels: PanelType[]) {
 // and a reload put the sample data back. The projects, their panels and the Transport and Facility lists are now kept
 // in this browser. A run that changes their shape takes a new key, so older data never breaks the page.
 // V1 (#180) takes a key of its own, so what a browser kept from the prototype (its sample projects) never shows.
-// The database replaces this storage (#183 onwards).
+// The database replaces this storage table by table: customers are saved there since #183 and kept here no more.
 const KEEP = 'trident-v1-app';
 type KeptType = {
 	projects: ProjectType[];
 	workspaces: Record<string, PanelType[]>;
 	transports: TransportType[];
 	facilities: FacilityType[];
-	customers: string[];
-	added: ClientType[];
 	members: TeamMemberType[];
 	// Since run 15; a browser that kept run 12 to 14 has none yet and starts from Trident Cubed's own.
 	organization?: OrganizationType;
@@ -192,9 +191,16 @@ export class LookState {
 	workspaces = $state<Record<string, PanelType[]>>({});
 	transports = $state<TransportType[]>([]);
 	facilities = $state<FacilityType[]>([]);
-	customers = $state<string[]>([...CLIENTS]);
-	// Customers added here, with their city; their names are in `customers` too.
+	// The customers' names, in the order the lists show them (#183: the server's rows, through mapper.ts).
+	customers = $state<string[]>([]);
+	// Every customer in `customers`, whole: its id, details and contacts.
 	added = $state<ClientType[]>([]);
+	// Records in the Trash: out of the lists, but a project that used one still shows its name (#183).
+	trashed: { customers: ClientType[] } = { customers: [] };
+	// What the header's cloud shows: the sync loop's save state once look.svelte has started it (#183).
+	sync: SaveStatusType = { state: 'saved', reason: '', retry() {} };
+	// The Not saved sheet, opened from the red cloud.
+	isSaveSheetOpen = $state(false);
 	members = $state<TeamMemberType[]>(structuredClone(TEAM));
 	organization = $state<OrganizationType>(structuredClone(ORGANIZATION));
 	// Every place a location field has been given, with where it is: looked up once, then read from here.
@@ -222,12 +228,9 @@ export class LookState {
 			this.workspaces = kept.workspaces;
 			this.transports = kept.transports;
 			this.facilities = kept.facilities;
-			this.customers = kept.customers;
-			this.added = kept.added;
 			this.members = kept.members;
 			if (kept.organization) this.organization = kept.organization;
 			if (kept.places) this.places = kept.places;
-			for (const customer of kept.added) registerCustomer(customer);
 		} else
 			for (const project of this.projects) {
 				this.workspaces[project.id] = createPanels(project);
@@ -246,8 +249,6 @@ export class LookState {
 				workspaces: this.workspaces,
 				transports: this.transports,
 				facilities: this.facilities,
-				customers: this.customers,
-				added: this.added,
 				members: this.members,
 				organization: this.organization,
 				places: this.places
@@ -543,15 +544,26 @@ export class LookState {
 
 	// Is that name taken on its page? Records are known by their name.
 	has(page: PageType, name: string) {
-		const names =
-			page === 'customers'
-				? this.customers
-				: page === 'team'
-					? this.members.map((member) => member.name)
-					: page === 'transport'
-						? this.transports.map((transport) => transport.name)
-						: this.facilities.map((facility) => facility.name);
-		return names.includes(name);
+		return this.#namesOf(page).includes(name);
+	}
+
+	// Is that name taken on its page by another record, whatever its capitals? Two records on a page never share a
+	// name (spec #179 story 47); the server refuses it too.
+	isTaken(page: PageType, name: string, except = '') {
+		const text = name.trim().toLowerCase();
+		return this.#namesOf(page).some(
+			(each) => each !== except && each.trim().toLowerCase() === text
+		);
+	}
+
+	#namesOf(page: PageType) {
+		return page === 'customers'
+			? this.customers
+			: page === 'team'
+				? this.members.map((member) => member.name)
+				: page === 'transport'
+					? this.transports.map((transport) => transport.name)
+					: this.facilities.map((facility) => facility.name);
 	}
 
 	// One way in for a new customer, team, transport mode or facility (run 16): the + sheet and the panels' "Add new"
@@ -559,7 +571,7 @@ export class LookState {
 	add(page: PageType, draft: RecordDraftType) {
 		const name = draft.name.trim();
 		if (!name) return false;
-		if (this.has(page, name)) {
+		if (this.isTaken(page, name)) {
 			this.say(`${name} is already there`);
 			return false;
 		}
@@ -568,7 +580,11 @@ export class LookState {
 		if (page === 'customers') {
 			const customer = item as ClientType;
 			this.added.push(
-				registerCustomer({ ...customer, code: customer.code || clientOfName(name).code })
+				registerCustomer({
+					...customer,
+					id: customer.id ?? crypto.randomUUID(),
+					code: customer.code || clientOfName(name).code
+				})
 			);
 			this.customers.push(name);
 		} else if (page === 'team') {
@@ -600,7 +616,7 @@ export class LookState {
 	setCustomer(name: string, patch: Partial<ClientType>) {
 		const index = this.added.findIndex((customer) => customer.name === name);
 		const before = this.added[index] ?? clientOfName(name);
-		const after = registerCustomer({ ...before, ...patch });
+		const after = registerCustomer({ id: crypto.randomUUID(), ...before, ...patch });
 		if (index < 0) this.added.push(after);
 		else this.added[index] = after;
 		this.flash();
@@ -610,7 +626,7 @@ export class LookState {
 	rename(page: PageType, from: string, to: string) {
 		const name = to.trim();
 		if (!name || name === from) return false;
-		if (this.has(page, name)) {
+		if (this.isTaken(page, name, from)) {
 			this.say(`${name} is already there`);
 			return false;
 		}
@@ -618,6 +634,7 @@ export class LookState {
 		if (page === 'customers') {
 			this.customers = this.customers.map(swap);
 			this.setCustomer(from, { name });
+			forgetCustomer(from);
 			this.added = this.added.filter((customer) => customer.name !== from);
 			for (const project of this.projects) project.client = swap(project.client);
 		}
@@ -667,7 +684,13 @@ export class LookState {
 
 	// Deleting a record asks first (the caller's confirm); its projects keep the name they had.
 	removeRecord(page: PageType, key: string) {
-		if (page === 'customers') this.customers = this.customers.filter((name) => name !== key);
+		if (page === 'customers') {
+			const gone = this.added.find((customer) => customer.name === key);
+			this.customers = this.customers.filter((name) => name !== key);
+			this.added = this.added.filter((customer) => customer.name !== key);
+			if (gone) this.trashed.customers.push(gone);
+			forgetCustomer(key);
+		}
 		if (page === 'team') this.members = this.members.filter((member) => member.name !== key);
 		if (page === 'transport')
 			this.transports = this.transports.filter((transport) => transport.name !== key);

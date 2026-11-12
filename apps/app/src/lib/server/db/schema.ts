@@ -3,3 +3,5 @@
 // of the run, the one initial migration are written from it.
 export * from './auth.schema';
 export * from './organization.schema';
+export * from './customer.schema';
+export * from './change.schema';

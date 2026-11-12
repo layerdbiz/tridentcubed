@@ -5,11 +5,14 @@ import { openAddress, placeOf, toAddress } from './look.utils';
 
 const HOME = 'https://dev.app.tridentcubed.com/';
 
-// What a reload does: a new LookState (with what this browser kept) reads the address the last one wrote.
+// What a reload does: a new LookState (with what this browser kept, and the customers the server sends) reads the
+// address the last one wrote.
 function reload(look: LookState, address: URL) {
 	const next = new LookState();
 	next.projects = look.projects;
 	next.workspaces = look.workspaces;
+	next.customers = look.customers;
+	next.added = look.added;
 	openAddress(next, address.searchParams);
 	return next;
 }
@@ -37,6 +40,7 @@ describe('the address', () => {
 
 	it('lands a reload on the same record and tab', () => {
 		const look = new LookState();
+		look.customers = ['KOGA'];
 		look.openRecord('customers', 'KOGA', 'edit');
 		const address = toAddress(look, new URL(HOME));
 		expect(address.searchParams.get('record')).toBe('customers:KOGA');
