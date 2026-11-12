@@ -6,6 +6,7 @@
 	// others are record-fields.svelte over an empty record. Nothing exists until Create or Add; then a project
 	// opens on Edit and anything else on its Page. Run 28: "Add new" in a dropdown opens this same sheet on that one
 	// page (look.addFor), with no page chips; what is added is picked in the dropdown and nothing else opens.
+	import { scale } from 'svelte/transition';
 	import BottomSheet from './bottom-sheet.svelte';
 	import {
 		DATASETS,
@@ -60,6 +61,22 @@
 
 	const canAdd = $derived(kind === 'projects' || Boolean(drafts[kind].name.trim()));
 
+	// Add C (Justin, 2026-11-12): the + opens no form, only a small pop-up of what can be added. A pick makes the
+	// thing at once, under a name to be changed ("New Customer"), and opens its Edit to fill in. "Add new" in a
+	// dropdown still opens the form, since what it adds is picked the moment it has a name.
+	const isMenu = $derived(look.variant('add') === 'C' && !look.isAddLocked);
+
+	function start(id: DatasetType) {
+		if (id === 'projects') return look.create(draftPanel(look.organization.name, ME));
+		const base = `New ${DATASETS[id].one}`;
+		let name = base;
+		for (let count = 2; look.has(id, name); count += 1) name = `${base} ${count}`;
+		if (!look.add(id, { ...draftOf(id), name })) return;
+		look.endAdd();
+		if (look.dataset !== id) look.pick(id);
+		look.openRecord(id, name, 'edit');
+	}
+
 	function close() {
 		look.endAdd();
 	}
@@ -87,7 +104,34 @@
 	>
 {/snippet}
 
-{#if look.adding}
+{#if look.adding && isMenu}
+	<button
+		type="button"
+		class="fixed inset-0 z-[70] cursor-default"
+		aria-label="Close"
+		onclick={close}
+	></button>
+	<div
+		class="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+152px)] z-[71] w-60 origin-bottom-right rounded-3xl bg-white p-1.5 shadow-[0_2px_6px_rgb(15_23_42/0.06),0_24px_50px_-12px_rgb(15_23_42/0.35)] md:right-6 md:bottom-24"
+		role="menu"
+		aria-label="Add"
+		transition:scale={{ start: 0.9, duration: 140 }}
+	>
+		{#each PAGES as id (id)}
+			<button
+				type="button"
+				role="menuitem"
+				class="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-900/[0.04]"
+				onclick={() => start(id)}
+			>
+				<span
+					class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+					><span class="{PAGE_ICONS[id]} size-5"></span></span
+				>{DATASETS[id].one}
+			</button>
+		{/each}
+	</div>
+{:else if look.adding}
 	<BottomSheet
 		label="Add"
 		onclose={close}

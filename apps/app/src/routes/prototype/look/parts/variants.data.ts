@@ -41,13 +41,13 @@ export const PART_GROUPS: PartGroupType[] = [
 				['A', 'B'],
 				'Desktop. A: floating panel. B: fixed from top to bottom.'
 			),
+			part('login', 'Login Page'),
 			part(
-				'login',
-				'Login Page',
+				'add',
+				'Add',
 				['A', 'B', 'C'],
-				'Log out from the menu on your picture to see it. A: a centred card. B: a dark top and a white sheet. C: glass over a photo.'
+				'A: a sheet with the form, Create for a project. B: Add for everything. C: a small pop-up of what can be added; a pick makes it and opens its Edit.'
 			),
-			part('add', 'Add Sheet', ['A', 'B'], 'A: Create for a project. B: Add for everything.'),
 			part('more', '⋮ Menu')
 		]
 	},
