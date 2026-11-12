@@ -8,7 +8,6 @@
 	// under the same header (page-header.svelte). Edit is the Project panel's own sections (group.svelte) with its
 	// soft fields: Details, Disclaimer, Sign-off. The signed-in person's profile is their Team page, reached from
 	// the same menu. On a desktop Edit keeps its floating column and the report it changes shows beside it.
-	import { page as app } from '$app/state';
 	import Group from './group.svelte';
 	import ImageField from './image-field.svelte';
 	import type { LookState } from './look.state.svelte';
@@ -30,7 +29,7 @@
 	const organization = $derived(look.organization);
 	// #184: only an Admin changes the organization. Manager and Team see the same Edit, read-only; the server refuses
 	// their changes too.
-	const isAdmin = $derived(Boolean(app.data.isAdmin));
+	const isAdmin = $derived(look.isAdmin);
 	// The section last touched, which picks the report page shown beside the form on a desktop.
 	let part = $state<'organization' | 'wording'>('organization');
 	let open = $state<string[]>(['details']);

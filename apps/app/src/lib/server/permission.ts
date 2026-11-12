@@ -58,6 +58,8 @@ const REASONS = {
 	organizationCreate: 'An organization cannot be made from the app.',
 	member: 'Only an Admin can change who is in the organization.',
 	role: 'Only an Admin can change a Team role.',
+	teamEmail:
+		'Only an Admin can change the email of an Admin’s or Manager’s Team record before they sign in.',
 	superAdmin: 'The Super admin is always an Admin.',
 	lastAdmin: 'The organization must keep at least one Admin.',
 	archived: 'Only an Admin can archive a project or bring it back.',
@@ -102,9 +104,20 @@ const TABLE_RULES: Record<string, RuleType[]> = {
 	// The disclaimer's points are the organization's wording (#184).
 	disclaimer_point: [adminsOnly(REASONS.organization)],
 	member: [adminsOnly(REASONS.member), keepAdmins],
-	// Team records (#185): staff edit them, but only an Admin changes a role, and an Admin stays one.
+	// Team records (#185): staff edit them, but only an Admin changes a role, and an Admin stays one. Staff may add a
+	// record with the Team role. A record nobody has signed in as yet hands its role to whoever signs in with its
+	// email, so only an Admin moves the email of one with a role above Team.
 	team: [
-		(actor, change) => (touches(change, 'role') && !isAdmin(actor) ? REASONS.role : undefined),
+		(actor, change) => {
+			if (!touches(change, 'role') || isAdmin(actor)) return undefined;
+			const isNewTeam = !change.row && change.values?.role === 'team';
+			return isNewTeam ? undefined : REASONS.role;
+		},
+		(actor, change) => {
+			if (!touches(change, 'email') || isAdmin(actor) || !change.row) return undefined;
+			const isUnclaimed = !change.row.userId && change.row.role !== 'team';
+			return isUnclaimed ? REASONS.teamEmail : undefined;
+		},
 		keepAdmins
 	],
 	// Projects (#186).

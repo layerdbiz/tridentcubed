@@ -16,11 +16,10 @@ describe('a new app', () => {
 		expect(look.facilities).toEqual([]);
 	});
 
-	it('starts with the real organization and team, and no customers or places until the server sends them', () => {
+	it('starts with the real organization, and no customers, team or places until the server sends them', () => {
 		const look = fresh();
 		expect(look.organization.name).toBe('Trident Cubed');
-		expect(look.members).toHaveLength(17);
-		expect(look.members.map((member) => member.name)).toContain('Capt. Cezary Poninski');
+		expect(look.members).toEqual([]);
 		expect(look.customers).toEqual([]);
 		expect(look.places).toEqual([]);
 	});

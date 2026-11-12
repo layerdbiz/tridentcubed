@@ -65,6 +65,20 @@ function addFacility(look: LookState, name: string) {
 	expect(look.add('facilities', draft)).toBe(true);
 }
 
+const LIST_TABLES = [
+	'transport',
+	'facility',
+	'place',
+	'organization',
+	'organization_details',
+	'disclaimer_point'
+];
+
+// The rows of the tables this file is about (a member's first sign-in adds their own Team row, #185).
+function listRows(look: LookState) {
+	return toRows(look).filter((row) => LIST_TABLES.includes(row.table));
+}
+
 // What a screen shows of a record, without the times only the server knows.
 function shown<T extends { created?: string; updated?: string }>(item: T | undefined) {
 	const { created: _created, updated: _updated, ...rest } = item ?? ({} as T);
@@ -107,7 +121,7 @@ describe('Transport Modes', () => {
 			photo: 'data:image/webp;base64,AAAA',
 			details: { 'IMO number': '9321483', Flag: 'Panama' }
 		});
-		expect(toRows(theirs.look)).toEqual(toRows(mine.look));
+		expect(listRows(theirs.look)).toEqual(listRows(mine.look));
 	});
 
 	it('reads its type from its mode, and keeps only the particulars its mode has', async () => {
@@ -205,7 +219,7 @@ describe('Facilities', () => {
 			phone: '+1 713 555 0100',
 			email: 'dana@porthouston.example'
 		});
-		expect(toRows(theirs.look)).toEqual(toRows(mine.look));
+		expect(listRows(theirs.look)).toEqual(listRows(mine.look));
 	});
 
 	it('moves a deleted one to the Trash, where a project can still find its name, and frees the name', async () => {
@@ -255,7 +269,7 @@ describe('places', () => {
 		expect(again.look.places.filter((place) => place.name === 'Paris, France')).toEqual([
 			{ ...paris, id: expect.any(String), created: expect.any(String) }
 		]);
-		expect(toRows(again.look)).toEqual(toRows(mine.look));
+		expect(listRows(again.look)).toEqual(listRows(mine.look));
 	});
 });
 
@@ -312,7 +326,7 @@ describe('the organization', () => {
 			{ id: expect.any(String), title: 'Weather', text: 'Rain stops a survey.' }
 		]);
 		expect(again.look.organization.disclaimer.points).not.toContainEqual(second);
-		expect(toRows(again.look)).toEqual(toRows(device.look));
+		expect(listRows(again.look)).toEqual(listRows(device.look));
 	});
 
 	it('refuses Manager and Team, on the server, and changes nothing', async () => {

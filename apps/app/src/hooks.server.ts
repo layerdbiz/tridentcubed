@@ -1,12 +1,13 @@
 // Every request (#181, #182): Better Auth's own routes (/api/auth/*) are answered by Better Auth; every other request
 // finds its session into `event.locals` (renewing it once a day of use) and who its User is (`locals.actor`: their
-// organization, role and Super admin flag, or a Guest with none), then passes the sign-in guard.
+// organization, role and Super admin flag, or a Guest with none), then passes the sign-in guard. A member's use of
+// the app stamps their Team record as seen (#185), at most once a minute.
 import { building } from '$app/env';
 import { json } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit/hooks';
 import { sequence } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { findActor } from '#lib/server/access.js';
+import { findActor, stampSeen } from '#lib/server/access.js';
 import { type AccessType, isClosed, toGuard } from '#lib/server/guard.js';
 import { getServer } from '#lib/server/server.js';
 
@@ -21,6 +22,7 @@ const handleSession: Handle = async ({ event, resolve }) => {
 		event.locals.user = found.user;
 		event.locals.session = found.session;
 		event.locals.actor = await findActor(claims, found.user, found.session.activeOrganizationId);
+		await stampSeen(claims, event.locals.actor).catch(() => undefined);
 	}
 	return svelteKitHandler({ event, resolve, auth, building });
 };

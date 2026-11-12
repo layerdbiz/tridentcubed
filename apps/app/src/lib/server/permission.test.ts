@@ -145,6 +145,48 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 		['team', 'manager', 'admin', 'super']
 	],
 	[
+		'add a Team record with the Team role',
+		() => ({
+			table: 'team',
+			operation: 'put',
+			columns: ['name', 'role'],
+			values: { organizationId: ORG, name: 'Rosa Vega', role: 'team' }
+		}),
+		['team', 'manager', 'admin', 'super']
+	],
+	[
+		'add a Team record with the Admin role',
+		() => ({
+			table: 'team',
+			operation: 'put',
+			columns: ['name', 'role'],
+			values: { organizationId: ORG, name: 'Rosa Vega', role: 'admin' }
+		}),
+		['admin', 'super']
+	],
+	[
+		'change the email of an Admin’s Team record nobody has signed in as',
+		() => ({
+			table: 'team',
+			operation: 'put',
+			columns: ['email'],
+			row: { organizationId: ORG, role: 'admin', userId: null },
+			values: { email: 'someone@tridentcubed.com' }
+		}),
+		['admin', 'super']
+	],
+	[
+		'change the email of a Team record with the Team role',
+		() => ({
+			table: 'team',
+			operation: 'put',
+			columns: ['email'],
+			row: { organizationId: ORG, role: 'team', userId: null },
+			values: { email: 'someone@tridentcubed.com' }
+		}),
+		['team', 'manager', 'admin', 'super']
+	],
+	[
 		'make a Team record a Manager',
 		() => ({
 			table: 'team',

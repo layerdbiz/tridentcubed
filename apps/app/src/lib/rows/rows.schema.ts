@@ -11,6 +11,8 @@
 //   opens (#186).
 // - `isNamed`: the screens name its rows by `name`, so a name is unique on its page among rows outside the Trash,
 //   and the rows in the Trash still load, so a project that used one still shows its name.
+// - `reads`: columns only the server sets that still load with the row (a Team record's User and last seen), so the
+//   screens can show them. A device never sends them.
 //
 // The order of `TABLES` is the order a batch's puts are applied in: a parent comes before its children.
 // The rules of who may change what are not here: they live in the one permission check (`#lib/server/permission.ts`).
@@ -27,6 +29,7 @@ const NAME = v.pipe(
 );
 const ID = v.pipe(v.string(), v.uuid());
 const POSITION = v.pipe(v.number(), v.integer(), v.minValue(0));
+const ROLE = v.picklist(['admin', 'manager', 'team']);
 
 /** Every transport mode there is; its type (Sea, Air, Rail, Road) is read from it (look.data.ts TRANSPORT_TYPES). */
 export const TRANSPORT_MODES = [
@@ -46,6 +49,7 @@ export type TableSpecType = {
 	parent?: { table: string; column: string };
 	scope: 'organization' | 'project';
 	isNamed?: boolean;
+	reads?: readonly string[];
 };
 
 export const TABLES = {
@@ -148,6 +152,25 @@ export const TABLES = {
 			title: TEXT,
 			text: TEXT
 		}
+	},
+	// Team records (#185). Their role is a membership's once its User has signed in: only an Admin changes it
+	// (`#lib/server/permission.ts`), and the save command moves the membership with it.
+	team: {
+		scope: 'organization',
+		isNamed: true,
+		reads: ['userId', 'lastSeen'],
+		columns: {
+			name: NAME,
+			title: TEXT,
+			labels: TEXT,
+			role: ROLE,
+			phone: TEXT,
+			email: TEXT,
+			location: TEXT,
+			photo: PICTURE,
+			link: TEXT,
+			rank: POSITION
+		}
 	}
 } as const satisfies Record<string, TableSpecType>;
 
@@ -227,4 +250,10 @@ export function checkValues(table: TableNameType, values: RowValuesType): string
 /** The columns of a table a device may set. */
 export function columnsOf(table: TableNameType) {
 	return Object.keys(TABLES[table].columns);
+}
+
+/** The columns of a table that load with its rows: those a device may set, then those only the server sets. */
+export function readsOf(table: TableNameType) {
+	const spec: TableSpecType = TABLES[table];
+	return [...columnsOf(table), ...(spec.reads ?? [])];
 }

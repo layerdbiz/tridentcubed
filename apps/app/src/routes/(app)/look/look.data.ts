@@ -1,6 +1,6 @@
 // What the app knows before anything is saved: the shapes of a project and its panels and records, the real
-// starting data (the organization Trident Cubed here, its team in team.data.ts; its customers come from the database
-// since #183), and the helpers every screen reads. Carried over from the look prototype (#161); since V1 (#180) no
+// starting data (the organization Trident Cubed here; its customers come from the database since #183, its team
+// since #185), and the helpers every screen reads. Carried over from the look prototype (#161); since V1 (#180) no
 // sample projects, transports or facilities ship (Justin's rule of 2026-11-10: every value on screen is real).
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
 import { seen, touch } from './registry.svelte';
@@ -8,13 +8,7 @@ import { seen, touch } from './registry.svelte';
 // is made up by code any more. A project and every record carry when they were made and last changed (`created`,
 // `updated`), which the charts, Recent and "Updated" read; a project's number comes from its customer's code and its
 // day; a customer has several contacts; the online dot comes from when someone was last in the app.
-import {
-	initialsOf,
-	photoOfMember,
-	TEAM,
-	type PresenceType,
-	type TeamMemberType
-} from './team.data';
+import { initialsOf, photoOfMember, type PresenceType, type TeamMemberType } from './team.data';
 
 export type StatusType =
 	| 'Draft'
@@ -191,19 +185,20 @@ export const STATUS: Record<
 	}
 };
 
-export const PEOPLE: PersonType[] = TEAM.map((member) => ({
-	name: member.name,
-	photo: photoOfMember(member)
-}));
+// Every Team record's face by name, for the screens that know a person by name only (avatars, the report). Filled by
+// the mapper from the server's rows (#185), the Trash's too, so a project that named someone since deleted still shows
+// their face.
+export const PEOPLE: PersonType[] = [];
 
 export function personOf(name: string): PersonType {
 	seen();
 	return PEOPLE.find((person) => person.name === name) ?? { name, photo: initialsOf(name) };
 }
 
-// The dot on a face: green within five minutes of being in the app, amber within the hour, grey after. Only the
-// signed-in person is ever "in the app" until there are real sign-ins, so everyone else is grey (run 16).
+// The dot on a face: green within five minutes of being in the app, amber within the hour, grey after. The server
+// stamps when each person was last in the app (#185); the signed-in person is in it now.
 export function presenceOf(name: string): PresenceType {
+	if (name && name === selfName) return 'online';
 	const last = personOf(name).seen;
 	if (!last) return 'offline';
 	const minutes = (Date.now() - new Date(last).getTime()) / 60000;
@@ -218,6 +213,16 @@ export function registerPerson(member: TeamMemberType) {
 	if (person) Object.assign(person, { photo, seen: member.seen });
 	else PEOPLE.push({ name: member.name, photo, seen: member.seen });
 	touch();
+}
+
+// The signed-in person's name: they are using the app, so their dot is green for as long as it is open.
+let selfName = '';
+
+// The server's Team records replace the faces that were known (#185); `self` is the signed-in person's name.
+export function resetPeople(members: TeamMemberType[], self = '') {
+	selfName = self;
+	PEOPLE.length = 0;
+	for (const member of members) registerPerson(member);
 }
 
 // The transports and facilities a project's trip uses, once each.
@@ -547,9 +552,6 @@ function field(
 // Trident Cubed itself (lib/start/organization.ts): what the screens show until the server's rows load (#184).
 export { ORGANIZATION, type OrganizationType };
 
-// Who is signed in until sign-in exists (#181, #185 make it the real User): an admin. Their Team page is their profile.
-export const ME = 'Capt. Cezary Poninski';
-
 export const PROJECT_TYPES = ['Cargo', 'Vessel Condition', 'Warehousing', 'Draft Survey', 'Bunker'];
 
 export function stopOf(
@@ -710,9 +712,7 @@ export function draftOf(page: Exclude<DatasetType, 'projects'>) {
 			phone: '',
 			email: '',
 			location: '',
-			href: '',
-			profileURL: '',
-			slug: ''
+			href: ''
 		} satisfies TeamMemberType as TeamMemberType;
 	if (page === 'transport')
 		return {

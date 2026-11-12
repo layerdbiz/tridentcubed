@@ -168,6 +168,29 @@ CREATE TABLE "change" (
 --> statement-breakpoint
 ALTER TABLE "change" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "team" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"name" text NOT NULL,
+	"title" text DEFAULT '' NOT NULL,
+	"labels" text DEFAULT '' NOT NULL,
+	"role" text DEFAULT 'team' NOT NULL,
+	"phone" text DEFAULT '' NOT NULL,
+	"email" text DEFAULT '' NOT NULL,
+	"location" text DEFAULT '' NOT NULL,
+	"photo" text DEFAULT '' NOT NULL,
+	"link" text DEFAULT '' NOT NULL,
+	"rank" integer DEFAULT 3 NOT NULL,
+	"user_id" uuid,
+	"last_seen" timestamp with time zone
+);
+
+--> statement-breakpoint
+ALTER TABLE "team" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 CREATE TABLE "transport" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -279,6 +302,10 @@ ALTER TABLE "change" ADD CONSTRAINT "change_organization_id_organization_id_fk" 
 --> statement-breakpoint
 ALTER TABLE "change" ADD CONSTRAINT "change_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "team" ADD CONSTRAINT "team_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "team" ADD CONSTRAINT "team_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+--> statement-breakpoint
 ALTER TABLE "transport" ADD CONSTRAINT "transport_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "facility" ADD CONSTRAINT "facility_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
@@ -313,6 +340,10 @@ CREATE INDEX "contact_customer_idx" ON "contact" USING btree ("customer_id");
 --> statement-breakpoint
 CREATE INDEX "change_row_idx" ON "change" USING btree ("table_name","row_id");
 --> statement-breakpoint
+CREATE UNIQUE INDEX "team_name_idx" ON "team" USING btree ("organization_id",lower(name)) WHERE deleted_at is null;
+--> statement-breakpoint
+CREATE UNIQUE INDEX "team_user_idx" ON "team" USING btree ("organization_id","user_id");
+--> statement-breakpoint
 CREATE UNIQUE INDEX "transport_name_idx" ON "transport" USING btree ("organization_id",lower(name)) WHERE deleted_at is null;
 --> statement-breakpoint
 CREATE UNIQUE INDEX "facility_name_idx" ON "facility" USING btree ("organization_id",lower(name)) WHERE deleted_at is null;
@@ -326,6 +357,8 @@ CREATE UNIQUE INDEX "organization_details_email_domain_idx" ON "organization_det
 CREATE INDEX "disclaimer_point_details_idx" ON "disclaimer_point" USING btree ("details_id");
 --> statement-breakpoint
 CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.user_id());
+--> statement-breakpoint
+CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
 --> statement-breakpoint
 CREATE POLICY "organization is the acting one" ON "organization" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.organization_id());
 --> statement-breakpoint
@@ -342,6 +375,8 @@ CREATE POLICY "contact in the acting organization" ON "contact" AS PERMISSIVE FO
 CREATE POLICY "change is read in the acting organization" ON "change" AS PERMISSIVE FOR SELECT TO "trident_app" USING (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "change is added in the acting organization" ON "change" AS PERMISSIVE FOR INSERT TO "trident_app" WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "team in the acting organization" ON "team" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "transport in the acting organization" ON "transport" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
