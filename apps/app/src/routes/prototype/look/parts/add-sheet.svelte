@@ -139,7 +139,8 @@
 				<button
 					type="submit"
 					class="flex-1 rounded-full bg-primary py-2.5 font-medium text-white disabled:opacity-40"
-					disabled={!canAdd}>{kind === 'projects' ? 'Create' : 'Add'}</button
+					disabled={!canAdd}
+					>{kind === 'projects' && look.variant('add') === 'A' ? 'Create' : 'Add'}</button
 				>
 			</div>
 		</form>

@@ -16,7 +16,10 @@
 		isWide,
 		first = 0.35,
 		sheetClass = '',
-		backdropClass = ''
+		backdropClass = '',
+		isTight = false,
+		isFlat = false,
+		hasFade = false
 	}: {
 		head: Snippet;
 		backdrop?: Snippet;
@@ -26,6 +29,11 @@
 		first?: number;
 		sheetClass?: string;
 		backdropClass?: string;
+		// Run 22 variants. Tight: a shorter grip, so the sheet's heading sits higher. Flat: a plain white lower half
+		// with no rounding, shadow or drag (a desktop). Fade: the top half fades to white at its bottom (a desktop).
+		isTight?: boolean;
+		isFlat?: boolean;
+		hasFade?: boolean;
 	} = $props();
 
 	// How far the backdrop runs on under the sheet, past its round corners.
@@ -48,7 +56,7 @@
 
 	function down(event: PointerEvent) {
 		const target = event.target as HTMLElement;
-		if (!target.closest('[data-sheet-handle], [data-sheet-grip]')) return;
+		if (isFlat || !target.closest('[data-sheet-handle], [data-sheet-grip]')) return;
 		if (target.closest('button, a, input, select, textarea, [role="listbox"]')) return;
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		from = { y: event.clientY, t: event.timeStamp, top };
@@ -111,6 +119,12 @@
 			{@render backdrop()}
 		</div>
 	{/if}
+	{#if hasFade}
+		<div
+			class="pointer-events-none absolute inset-x-0 z-[5] h-44 bg-linear-to-t from-white via-white/70 to-transparent {backdropClass}"
+			style="top: {top - 176}px"
+		></div>
+	{/if}
 	<section
 		class="pointer-events-none relative z-10 flex shrink-0 flex-col transition-[height] {motion}"
 		style="height: {top}px"
@@ -118,16 +132,22 @@
 		{@render head()}
 	</section>
 	<section
-		class="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden rounded-t-[40px] bg-white shadow-[0_-24px_70px_-8px_rgb(15_23_42/0.28)] {sheetClass}"
+		class="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-white {isFlat
+			? ''
+			: 'rounded-t-[40px] shadow-[0_-24px_70px_-8px_rgb(15_23_42/0.28)]'} {sheetClass}"
 		{@attach drag}
 	>
-		<div
-			class="flex h-6 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
-			data-sheet-handle
-			aria-hidden="true"
-		>
-			<span class="h-1.5 w-10 rounded-full bg-slate-300"></span>
-		</div>
+		{#if !isFlat}
+			<div
+				class="flex {isTight
+					? 'h-4'
+					: 'h-6'} shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
+				data-sheet-handle
+				aria-hidden="true"
+			>
+				<span class="h-1.5 w-10 rounded-full bg-slate-300"></span>
+			</div>
+		{/if}
 		{@render children()}
 	</section>
 </div>

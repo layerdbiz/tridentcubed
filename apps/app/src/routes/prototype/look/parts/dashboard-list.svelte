@@ -81,7 +81,9 @@
 <div class="flex h-full min-h-0 flex-col">
 	<!-- The title; the menus sit over the right of this row (shell.svelte), so it leaves room for them. -->
 	<div
-		class="mb-2 flex h-10 shrink-0 touch-none items-center pr-44 pl-4 md:pl-0"
+		class="{look.variant('half') === 'B'
+			? 'mb-1'
+			: 'mb-2'} flex h-10 shrink-0 touch-none items-center pr-44 pl-4 md:pl-0"
 		data-sheet-grip
 	>
 		<h2 class="min-w-0 truncate text-xl font-semibold text-slate-900 md:text-2xl">

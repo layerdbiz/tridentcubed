@@ -34,6 +34,7 @@
 	import RecentList from './recent-list.svelte';
 	import RecordPage from './record-page.svelte';
 	import SettingsPage from './settings-page.svelte';
+	import BarB from './variants/bar-b.svelte';
 	import { recordOf } from './records.data';
 	import ReportPreview from './report-preview.svelte';
 	import Sidebar from './sidebar.svelte';
@@ -52,6 +53,17 @@
 	let headHeight = $state(0);
 	let cardsHeight = $state(0);
 	const isWide = $derived(innerWidth >= 768);
+	// Run 22 variants (variants.data.ts). Sidebar B: fixed from top to bottom on a desktop, so nothing sits beside it
+	// and the map stops at its edge. Bottom Half B: more room at the sides and a higher heading; flat on a desktop.
+	const isDocked = $derived(look.variant('sidebar') === 'B');
+	const gutter = $derived(isDocked ? 0 : 24);
+	const isHalfB = $derived(look.variant('half') === 'B');
+	// Where the desktop's bar centres: in what is left beside the sidebar, or beside a project's panels.
+	function barLeft() {
+		if (!isWide) return '50%';
+		if (look.screen === 'workspace') return 'calc(444px + (100vw - 444px) / 2)';
+		return `calc(${side + gutter}px + (100vw - ${side + gutter}px) / 2)`;
+	}
 	const record = $derived(
 		look.record ? recordOf(look, look.record.page, look.record.key) : undefined
 	);
@@ -309,6 +321,7 @@
 {#snippet mapBackdrop()}
 	<WorldMap
 		pins={pinsOf(look, look.dataset, look.filter)}
+		isSpread={look.variant('map') === 'B'}
 		onpick={(item) => {
 			if (!item.id) return;
 			if (item.page === 'projects') look.open(item.id);
@@ -317,7 +330,7 @@
 		padding={{
 			top: headHeight + 64,
 			bottom: cardsHeight + 76,
-			left: isWide ? side + 48 : 28,
+			left: isWide && !isDocked ? side + 48 : 28,
 			right: 28
 		}}
 	/>
@@ -329,7 +342,9 @@
 		style="--side: {side}px"
 	>
 		<aside
-			class="group/side fixed top-3 bottom-3 left-3 z-40 hidden overflow-hidden md:block {FLOAT} {isSizing
+			class="group/side fixed z-40 hidden overflow-hidden md:block {isDocked
+				? 'inset-y-0 left-0 border-r border-slate-200 bg-white'
+				: `top-3 bottom-3 left-3 ${FLOAT}`} {isSizing
 				? ''
 				: 'transition-[width] duration-200 ease-out'}"
 			style="width: {side}px"
@@ -394,14 +409,19 @@
 		></div>
 
 		<main
-			class="h-dvh overflow-hidden md:pl-[calc(var(--side)+24px)] {isSizing
+			class="h-dvh overflow-hidden {isDocked
+				? 'md:pl-[var(--side)]'
+				: 'md:pl-[calc(var(--side)+24px)]'} {isSizing
 				? ''
 				: 'transition-[padding] duration-200 ease-out'}"
 		>
 			<Split
 				{isWide}
 				sheetClass="md:px-8"
-				backdropClass="md:-left-[calc(var(--side)+24px)]"
+				backdropClass={isDocked ? '' : 'md:-left-[calc(var(--side)+24px)]'}
+				isTight={isHalfB}
+				isFlat={isHalfB && isWide}
+				hasFade={isWide && look.variant('top') === 'B'}
 				backdrop={look.chart === 'map' ? mapBackdrop : undefined}
 			>
 				{#snippet head()}
@@ -428,7 +448,11 @@
 				{/snippet}
 				<!-- One page at a time; on a change the new one slides in from its side and the old one out the other. The
 				     four menus sit over the pages' heading row and never move. -->
-				<div class="{COLUMN} relative flex min-h-0 flex-1 flex-col">
+				<div
+					class="{COLUMN} relative flex min-h-0 flex-1 flex-col {isHalfB
+						? 'px-2.5 md:px-0 md:pt-4'
+						: ''}"
+				>
 					<!-- White behind the menus, fading in from the left, so a title sliding under them goes out of sight. -->
 					<div
 						class="absolute top-0 right-0 z-10 bg-[linear-gradient(to_right,transparent,white_2.5rem)] pr-2 pl-12 md:pr-0"
@@ -549,26 +573,35 @@
 	{/if}
 
 	{#if look.screen !== 'settings'}
-		<NavBar
-			{look}
-			{isWide}
-			left={!isWide
-				? '50%'
-				: look.screen === 'workspace'
-					? 'calc(444px + (100vw - 444px) / 2)'
-					: `calc(${side + 24}px + (100vw - ${side + 24}px) / 2)`}
-		/>
+		{#if look.variant('bar') === 'B'}
+			<BarB
+				{look}
+				{isWide}
+				left={barLeft()}
+			/>
+		{:else}
+			<NavBar
+				{look}
+				{isWide}
+				left={barLeft()}
+			/>
+		{/if}
 	{/if}
 	<!-- Run 14 (note 11): a desktop dashboard has no floating bar (the sidebar has the pages), so its + floats on its
 	     own at the bottom right. -->
 	{#if isWide && look.screen === 'dashboard'}
 		<button
-			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40 transition hover:brightness-110"
+			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex h-14 items-center justify-center rounded-full bg-primary text-white transition hover:brightness-110 {look.variant(
+				'bar'
+			) === 'B'
+				? 'gap-1.5 pr-6 pl-4 font-semibold text-base'
+				: 'w-14 shadow-lg shadow-primary/40'}"
 			aria-label="Add"
 			title="Add a Project, Customer, Team, Transport Mode or Facility"
 			onclick={() => (look.adding = look.dataset)}
 			transition:scale={{ start: 0.8, duration: 160 }}
-			><span class="icon-[mdi--plus] size-8"></span></button
+			><span class="icon-[mdi--plus] size-8"
+			></span>{#if look.variant('bar') === 'B'}Add{/if}</button
 		>
 	{/if}
 	<AddSheet {look} />

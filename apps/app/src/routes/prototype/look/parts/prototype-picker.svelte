@@ -67,7 +67,7 @@
 			</div>
 			{#each PART_GROUPS as group (group.id)}
 				{@const isFolded = folded.includes(group.id)}
-				{@const picked = group.parts.filter((part) => look.variant(part.id) !== 'A').length}
+				{@const picked = group.parts.filter((part) => look.variants[part.id]).length}
 				<button
 					type="button"
 					class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[10px] font-semibold tracking-[0.14em] text-white/50 uppercase hover:bg-white/5"

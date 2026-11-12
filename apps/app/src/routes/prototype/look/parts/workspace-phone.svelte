@@ -125,7 +125,10 @@
 		bind:clientHeight={top}
 	>
 		<div class="py-2 pr-1.5 pl-1.5">
-			<ProjectBar {look} />
+			<ProjectBar
+				{look}
+				isCloud={look.variant('bar') === 'B'}
+			/>
 		</div>
 	</header>
 

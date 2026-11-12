@@ -80,7 +80,13 @@
 >
 	<!-- Every card is as wide as the widest needs (Transport Mode on one line), and on a wide screen they share the
 	     row equally; when they cannot all fit, the row scrolls rather than a card squeezing its words out (2026-11-10). -->
-	<div class="grid w-max min-w-full auto-cols-fr grid-flow-col gap-2 2xl:gap-3">
+	<!-- Stat Cards B (run 22): on a desktop the cards wrap onto a second row when they cannot all fit, so none is cut
+	     off at the edge. -->
+	<div
+		class="grid gap-2 2xl:gap-3 {look.variant('stats') === 'B'
+			? 'w-max min-w-full auto-cols-fr grid-flow-col md:w-full md:auto-cols-auto md:grid-flow-row md:grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))]'
+			: 'w-max min-w-full auto-cols-fr grid-flow-col'}"
+	>
 		{#each SETS as dataset (dataset)}
 			{@const info = DATASETS[dataset]}
 			{@const words = info.label.split(' ')}

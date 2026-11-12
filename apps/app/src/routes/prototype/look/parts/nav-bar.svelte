@@ -19,8 +19,9 @@
 	let {
 		look,
 		left = '50%',
-		isWide = false
-	}: { look: LookState; left?: string; isWide?: boolean } = $props();
+		isWide = false,
+		isFlat = false
+	}: { look: LookState; left?: string; isWide?: boolean; isFlat?: boolean } = $props();
 
 	const PROJECT_TABS = [
 		['page', 'Page'],
@@ -137,9 +138,9 @@
 
 <nav
 	bind:this={nav}
-	class="fixed bottom-[calc(env(safe-area-inset-bottom)+14px)] z-[55] flex w-max -translate-x-1/2 items-center rounded-full bg-black p-1.5 text-white shadow-xl shadow-black/25 {isDesk
+	class="fixed bottom-[calc(env(safe-area-inset-bottom)+14px)] z-[55] flex w-max -translate-x-1/2 items-center rounded-full bg-black p-1.5 text-white {isFlat
 		? ''
-		: 'md:hidden'}"
+		: 'shadow-xl shadow-black/25'} {isDesk ? '' : 'md:hidden'}"
 	style="left: {left}"
 	aria-label={isProject ? 'Project' : 'Pages'}
 >

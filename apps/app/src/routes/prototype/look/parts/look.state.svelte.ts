@@ -42,6 +42,7 @@ import {
 	type TransportType
 } from './look.data';
 import { seedPlaces, type PlaceType } from './map.data';
+import { defaultOf } from './variants.data';
 import type { PageType } from './records.data';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
@@ -281,7 +282,8 @@ export class LookState {
 		this.slide = Math.sign(PAGES.indexOf(dataset) - PAGES.indexOf(this.dataset));
 		this.navSection = dataset;
 		this.dataset = dataset;
-		this.chart = DEFAULT_CHART[dataset];
+		// Chart Choice B (run 22): the chart picked stays for every page; A gives each page its own.
+		if (this.variant('chart-choice') === 'A') this.chart = DEFAULT_CHART[dataset];
 		this.filter = 'All';
 	}
 
@@ -306,11 +308,11 @@ export class LookState {
 
 	// The prototype selector: the letter a part is showing, and picking another.
 	variant(id: string) {
-		return this.variants[id] ?? 'A';
+		return this.variants[id] ?? defaultOf(id);
 	}
 
 	pickVariant(id: string, letter: string) {
-		if (letter === 'A') delete this.variants[id];
+		if (letter === defaultOf(id)) delete this.variants[id];
 		else this.variants[id] = letter;
 	}
 

@@ -249,7 +249,11 @@
 							</foreignObject>
 						</svg>
 						<ul
-							class="pointer-events-auto hidden max-h-full w-56 shrink-0 space-y-0.5 overflow-y-auto text-sm md:block"
+							class="pointer-events-auto hidden max-h-full shrink-0 overflow-y-auto text-sm {look.variant(
+								'pie'
+							) === 'B'
+								? 'w-[30rem] grid-cols-2 content-center gap-x-6 gap-y-0.5 md:grid'
+								: 'w-56 space-y-0.5 md:block'}"
 						>
 							{#each slices as slice (slice.name)}
 								<li>

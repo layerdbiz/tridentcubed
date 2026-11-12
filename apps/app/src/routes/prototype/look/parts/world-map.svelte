@@ -27,6 +27,7 @@
 		route = [],
 		padding = { top: 24, bottom: 24, left: 24, right: 24 },
 		maxZoom = 9,
+		isSpread = false,
 		onpick
 	}: {
 		pins: PinType[];
@@ -35,6 +36,9 @@
 		route?: [number, number][];
 		padding?: PaddingType;
 		maxZoom?: number;
+		// Map B (run 22): every thing is its own point, set a little way out from its place in a ring, so several in
+		// one city come apart into their own markers once the map is zoomed in far enough.
+		isSpread?: boolean;
 	} = $props();
 
 	const STYLE = 'https://tiles.openfreemap.org/styles/positron';
@@ -111,6 +115,37 @@
 		].filter(Boolean);
 		palette = tones.map(colorOf);
 		singles = new Map();
+		if (isSpread) {
+			// About five kilometres out: far enough to come apart by zoom 10, near enough to still read as the city.
+			const RING = 0.045;
+			return {
+				type: 'FeatureCollection' as const,
+				features: items.flatMap((pin) =>
+					pin.items.map((item, at) => {
+						const key = `${pin.city}|${item.page ?? ''}|${item.id ?? item.name}|${at}`;
+						const angle = (at / pin.items.length) * Math.PI * 2 - Math.PI / 2;
+						const out = pin.items.length > 1 ? RING : 0;
+						singles.set(key, item);
+						return {
+							type: 'Feature' as const,
+							properties: {
+								key,
+								city: pin.city.split(',')[0],
+								count: 1,
+								tone: tones.indexOf(item.tone ?? '')
+							},
+							geometry: {
+								type: 'Point' as const,
+								coordinates: [
+									pin.lng + (Math.cos(angle) * out) / Math.cos((pin.lat * Math.PI) / 180),
+									pin.lat + Math.sin(angle) * out
+								]
+							}
+						};
+					})
+				)
+			};
+		}
 		return {
 			type: 'FeatureCollection' as const,
 			features: items.map((pin) => {
@@ -391,6 +426,7 @@
 
 	// New pins or a new route: show them, and fit to them again.
 	$effect(() => {
+		void isSpread;
 		const data = featuresOf(pins);
 		const line = lineOf(route);
 		if (!map || !isReady) return;

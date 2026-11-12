@@ -10,6 +10,7 @@
 	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import SaveCloud from './save-cloud.svelte';
 	import PageView from './page-view.svelte';
 	import RecordForm from './record-form.svelte';
 	import RecordMark from './record-mark.svelte';
@@ -64,6 +65,8 @@
 			<span class="block truncate font-semibold text-slate-900">{record.key}</span>
 			<span class="block truncate text-xs text-slate-500">{DATASETS[record.page].one}</span>
 		</span>
+		<!-- With Bottom Bar B the save cloud is up here, not in the bar. -->
+		{#if look.variant('bar') === 'B'}<SaveCloud {look} />{/if}
 		<MoreMenu
 			{look}
 			page={record.page}
