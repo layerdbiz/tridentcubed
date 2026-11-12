@@ -42,8 +42,7 @@
 		isSearchable = false,
 		onadd,
 		addLabel = '',
-		onedit,
-		top
+		onedit
 	}: {
 		options: OptionType[];
 		value: string;
@@ -61,8 +60,6 @@
 		onadd?: () => void;
 		addLabel?: string;
 		onedit?: (id: string) => void;
-		// Drawn at the head of the open list, above the search.
-		top?: Snippet;
 	} = $props();
 
 	let isOpen = $state(false);
@@ -146,9 +143,6 @@
 			transition:scale={{ start: 0.95, duration: 140 }}
 			{@attach lift}
 		>
-			{#if top}
-				<div class="shrink-0 border-b border-slate-900/[0.06] p-1.5">{@render top()}</div>
-			{/if}
 			{#if isSearchable}
 				<label
 					class="flex shrink-0 items-center gap-2 border-b border-slate-900/[0.06] px-3.5 py-2.5 text-slate-400"

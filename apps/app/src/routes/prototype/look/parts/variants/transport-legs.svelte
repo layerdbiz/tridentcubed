@@ -5,18 +5,21 @@
 	// A leg starts with one facility, and each facility is a Start, a Stop or an End, because the job does not
 	// always begin at the Start. Add Stop is at the card's bottom left and Delete at its bottom right, as in every
 	// other card. No line is drawn down the facilities: the report's page will show the trip that way.
-	// Run 29, his second round of notes. There is no Transport Type to pick: the Transport Mode (Vessel, Barge,
-	// Plane) says it, and the type is read from the mode. A card is headed "Transport Mode 1" again, with one line
-	// under it in three versions to choose from (`leg-heading`): A the cities, B the facilities with their cities, C
-	// counts. Start, Stop or End sits on the facility's own line, never cut short, also in three versions
-	// (`leg-facility`): A a dropdown before the facility, B a coloured pill after it, C picked inside the facility's
-	// dropdown and shown as a tag before its name.
+	// Run 29: there is no Transport Type to pick; the Transport Mode (Vessel, Barge, Plane) says it.
+	// Run 30, what he settled on after trying the versions. A card is named for its transport once one is picked
+	// ("MV Coral Dawn", with its own photo in place of the icon when it has one) and is "Transport Mode 1" until
+	// then; the line under the name counts what the leg holds (1 Vessel · 2 Facilities · 2 Locations). On a
+	// facility's line the point comes first, as a pill in its colour (Start blue, Stop amber, End green), then the
+	// facility. The facilities drag into another order (hold, then drag), and the points follow the order: the first
+	// is the Start, the last the End, any between are Stops.
 	import { untrack } from 'svelte';
+	import { flip } from 'svelte/animate';
 	import Group from '../group.svelte';
 	import {
 		addLeg,
 		addRow,
 		legsOf,
+		moveRow,
 		removeLeg,
 		removeStop,
 		setTransport,
@@ -37,6 +40,7 @@
 	import type { LookState } from '../look.state.svelte';
 	import Menu from '../menu.svelte';
 	import Picker from '../picker.svelte';
+	import { sortable } from '../sortable';
 
 	let { look, panel, onsave }: { look: LookState; panel: PanelType; onsave: () => void } = $props();
 
@@ -47,8 +51,6 @@
 		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 
 	const legs = $derived(legsOf(panel.stops));
-	const heading = $derived(look.variant('leg-heading'));
-	const row = $derived(look.variant('leg-facility'));
 	// The legs standing open: the first, and any just added.
 	let open = $state<string[]>(untrack(() => [legsOf(panel.stops)[0]?.id ?? '']));
 
@@ -60,23 +62,10 @@
 		return leg.stops[0];
 	}
 
-	function cityOf(facility: string) {
-		return look.facilities.find((item) => item.name === facility)?.city ?? '';
-	}
-
-	// The places the leg calls at, first to last: its facilities, each with its city.
-	function placesOf(leg: LegType) {
-		return leg.stops
-			.filter((stop) => stop.facility)
-			.map((stop) => ({ facility: stop.facility, city: cityOf(stop.facility) }));
-	}
-
-	// A city twice in a row is said once.
-	function citiesOf(leg: LegType) {
-		const cities = placesOf(leg)
-			.map((place) => place.city)
-			.filter(Boolean);
-		return cities.filter((city, index) => city !== cities[index - 1]);
+	// The transport's own picture, uploaded on its page; none, and the card keeps its mode's icon.
+	function photoOf(leg: LegType) {
+		const name = headOf(leg)?.name;
+		return name ? look.transports.find((item) => item.name === name)?.photo : undefined;
 	}
 
 	function plural(count: number, one: string, many: string) {
@@ -85,13 +74,19 @@
 
 	// "1 Vessel · 2 Facilities · 2 Locations"
 	function countsOf(leg: LegType) {
-		const places = placesOf(leg);
-		const cities = new Set(places.map((place) => place.city).filter(Boolean));
+		const places = leg.stops.map((stop) => stop.facility).filter(Boolean);
+		const cities = new Set(
+			places
+				.map((place) => look.facilities.find((item) => item.name === place)?.city ?? '')
+				.filter(Boolean)
+		);
 		return [
 			headOf(leg)?.mode ? `1 ${headOf(leg).mode}` : '',
 			places.length ? plural(places.length, 'Facility', 'Facilities') : '',
 			cities.size ? plural(cities.size, 'Location', 'Locations') : ''
-		].filter(Boolean);
+		]
+			.filter(Boolean)
+			.join(' · ');
 	}
 
 	// One pick: the mode, and with it the type it belongs to.
@@ -164,6 +159,11 @@
 		onsave();
 	}
 
+	function move(leg: LegType, from: number, to: number) {
+		moveRow(panel.stops, leg.id, from, to);
+		onsave();
+	}
+
 	function add() {
 		open = [...open, addLeg(panel.stops, stopOf)];
 		onsave();
@@ -192,61 +192,18 @@
 	}
 </script>
 
-<!-- The facility itself: the app's dropdown, with Add new and the pencils in its list. -->
-{#snippet facility(leg: LegType, stop: StopType, hasLabel: boolean)}
-	<Picker
-		label="Facility"
-		options={facilitiesOf(leg)}
-		value={stop.facility}
-		icon="icon-[mdi--domain]"
-		{hasLabel}
-		onpick={(name) => pickFacility(stop, name)}
-		onadd={() => addFacility(leg, stop)}
-		onedit={(name) => look.editRecord('facilities', name)}
-	/>
-{/snippet}
-
 <div class="space-y-3">
 	{#each legs as leg, index (leg.id)}
 		{@const first = headOf(leg)}
-		{@const places = placesOf(leg)}
 		<Group
-			title="Transport Mode {index + 1}"
+			title={first.name || `Transport Mode ${index + 1}`}
+			note={countsOf(leg) || 'Nothing picked yet'}
 			icon={MODE_ICONS[first.mode] ?? 'icon-[mdi--transit-connection-variant]'}
+			image={photoOf(leg)}
 			isOpen={open.includes(leg.id)}
 			ontoggle={() => toggle(leg.id)}
 			ondelete={() => drop(leg)}
 		>
-			{#snippet head()}
-				<span class="block truncate text-sm font-semibold text-slate-800"
-					>Transport Mode {index + 1}</span
-				>
-				<span class="flex min-w-0 items-center gap-1 text-[11px] text-slate-400">
-					{#if !places.length}
-						<span class="truncate">No location yet</span>
-					{:else if heading === 'A'}
-						<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-primary"></span>
-						{#each citiesOf(leg) as city, at (at)}
-							{#if at}
-								<span class="icon-[mdi--arrow-right-thick] size-3.5 shrink-0 text-primary"></span>
-							{/if}
-							<span class="min-w-0 truncate">{city}</span>
-						{/each}
-					{:else if heading === 'B'}
-						<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-primary"></span>
-						{#each places as place, at (at)}
-							{#if at}
-								<span class="icon-[mdi--arrow-right-thick] size-3.5 shrink-0 text-primary"></span>
-							{/if}
-							<span class="min-w-0 truncate"
-								>{[place.facility, place.city].filter(Boolean).join(', ')}</span
-							>
-						{/each}
-					{:else}
-						<span class="truncate">{countsOf(leg).join(' · ')}</span>
-					{/if}
-				</span>
-			{/snippet}
 			<div class="grid gap-2 sm:grid-cols-2">
 				<Picker
 					label="Transport Mode"
@@ -267,91 +224,50 @@
 					/>
 				{/if}
 			</div>
-			<div class="space-y-2">
+			<!-- The point first, as a pill in its colour, then the facility. Hold a row, then drag, to reorder. -->
+			<div
+				class="space-y-2"
+				{@attach sortable(`stops-${leg.id}`, (from, to) => move(leg, from, to))}
+			>
 				{#each leg.stops as stop, at (stop.id)}
-					{#if row === 'A'}
-						<!-- A: its own dropdown before the facility, wide enough that the word is never cut. -->
-						<div class="flex items-end gap-2">
-							<div class="w-[6.75rem] shrink-0">
-								<Picker
-									label="Point"
-									options={pointsOf(leg)}
-									value={stop.point}
-									icon="icon-[mdi--map-marker-outline]"
-									hasLabel={at === 0}
-									isCompact
-									isSearchable={false}
-									onpick={(point) => pickPoint(stop, point)}
-								/>
-							</div>
-							<div class="min-w-0 flex-1">{@render facility(leg, stop, at === 0)}</div>
-						</div>
-					{:else if row === 'B'}
-						<!-- B: the facility has the line; its point is a pill in its colour at the right. -->
-						<div class="flex items-end gap-2">
-							<div class="min-w-0 flex-1">{@render facility(leg, stop, at === 0)}</div>
-							<Menu
-								label="Point"
-								value={stop.point}
-								options={pointsOf(leg)}
-								onpick={(point) => pickPoint(stop, point)}
-							>
-								{#snippet trigger()}
-									<span
-										class="flex h-[44px] min-w-[4.5rem] items-center justify-center gap-0.5 rounded-full pr-2 pl-3.5 text-xs font-semibold whitespace-nowrap {stop.point
-											? POINTS[stop.point].chip
-											: 'bg-slate-900/[0.05] text-slate-500'}"
-										>{stop.point || 'Point'}<span class="icon-[mdi--chevron-down] size-4"
-										></span></span
-									>
-								{/snippet}
-							</Menu>
-						</div>
-					{:else}
-						<!-- C: one dropdown. Start, Stop or End is picked at the top of its list and shows as a tag. -->
-						<Picker
-							label="Facility"
-							options={facilitiesOf(leg)}
-							value={stop.facility}
-							hasLabel={at === 0}
-							onpick={(name) => pickFacility(stop, name)}
-							onadd={() => addFacility(leg, stop)}
-							onedit={(name) => look.editRecord('facilities', name)}
+					<div
+						class="flex items-end gap-2 select-none [-webkit-touch-callout:none]"
+						data-sort="stops-{leg.id}"
+						data-index={at}
+						data-grip={leg.stops.length > 1 ? `stops-${leg.id}` : undefined}
+						title={leg.stops.length > 1 ? 'Hold and drag to reorder' : undefined}
+						animate:flip={{ duration: 200 }}
+					>
+						<Menu
+							label="Point"
+							value={stop.point}
+							options={pointsOf(leg)}
+							align="left"
+							onpick={(point) => pickPoint(stop, point)}
 						>
-							{#snippet lead()}
+							{#snippet trigger()}
 								<span
-									class="ml-0.5 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap {stop.point
+									class="flex h-[44px] min-w-[4.5rem] items-center justify-center gap-0.5 rounded-full pr-2 pl-3.5 text-xs font-semibold whitespace-nowrap {stop.point
 										? POINTS[stop.point].chip
-										: 'bg-slate-900/[0.05] text-slate-500'}">{stop.point || 'Point'}</span
+										: 'bg-slate-900/[0.05] text-slate-500'}"
+									>{stop.point || 'Point'}<span class="icon-[mdi--chevron-down] size-4"
+									></span></span
 								>
 							{/snippet}
-							{#snippet top()}
-								<div class="flex items-center gap-1">
-									{#each POINT_NAMES as point (point)}
-										<button
-											type="button"
-											class="flex-1 rounded-full py-1.5 text-xs font-semibold transition {stop.point ===
-											point
-												? POINTS[point].solid
-												: 'bg-slate-900/[0.04] text-slate-600 hover:bg-slate-900/[0.07]'}"
-											aria-pressed={stop.point === point}
-											onclick={() => pickPoint(stop, point)}>{point}</button
-										>
-									{/each}
-									{#if leg.stops.length > 1}
-										<button
-											type="button"
-											class="flex size-8 shrink-0 items-center justify-center rounded-full text-danger transition hover:bg-danger/10"
-											aria-label="Remove"
-											title="Remove"
-											onclick={() => pickPoint(stop, REMOVE)}
-											><span class="icon-[mdi--trash-can-outline] size-[18px]"></span></button
-										>
-									{/if}
-								</div>
-							{/snippet}
-						</Picker>
-					{/if}
+						</Menu>
+						<div class="min-w-0 flex-1">
+							<Picker
+								label="Facility"
+								options={facilitiesOf(leg)}
+								value={stop.facility}
+								icon="icon-[mdi--domain]"
+								hasLabel={at === 0}
+								onpick={(name) => pickFacility(stop, name)}
+								onadd={() => addFacility(leg, stop)}
+								onedit={(name) => look.editRecord('facilities', name)}
+							/>
+						</div>
+					</div>
 				{/each}
 			</div>
 			{#snippet actions()}

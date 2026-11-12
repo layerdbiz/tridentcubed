@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { addLeg, addRow, legsOf, removeLeg, removeStop, setTransport } from './legs';
+import { addLeg, addRow, legsOf, moveRow, removeLeg, removeStop, setTransport } from './legs';
 import type { StopType } from './look.data';
 
 let count = 0;
@@ -74,6 +74,23 @@ describe('changing a trip', () => {
 		addRow(stops, leg.id, stop);
 
 		expect(stops.map((item) => item.point)).toEqual(['Stop', 'End']);
+	});
+
+	it('names the points by the order after a facility is dragged', () => {
+		const stops = [
+			vessel('Start', 'East Harbor'),
+			vessel('Stop', 'Mid Anchorage'),
+			vessel('End', 'West Harbor')
+		];
+		const [leg] = legsOf(stops);
+
+		moveRow(stops, leg.id, 2, 0);
+
+		expect(stops.map((item) => [item.point, item.facility])).toEqual([
+			['Start', 'West Harbor'],
+			['Stop', 'East Harbor'],
+			['End', 'Mid Anchorage']
+		]);
 	});
 
 	it('keeps two new legs apart though neither has a transport yet', () => {

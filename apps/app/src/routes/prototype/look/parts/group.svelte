@@ -19,7 +19,7 @@
 		sortKey = '',
 		index = 0,
 		actions,
-		head,
+		image,
 		children
 	}: {
 		title: string;
@@ -35,8 +35,8 @@
 		sortKey?: string;
 		index?: number;
 		actions?: Snippet;
-		// Drawn in place of the title and note: a leg's trip, city to city.
-		head?: Snippet;
+		// A picture in place of the icon: a transport's own photo.
+		image?: string;
 		children: Snippet;
 	} = $props();
 </script>
@@ -54,18 +54,21 @@
 		title={sortKey ? 'Hold and drag to reorder' : undefined}
 		onclick={ontoggle}
 	>
-		{#if icon}
+		{#if image}
+			<img
+				src={image}
+				alt=""
+				draggable="false"
+				class="size-8 shrink-0 rounded-full bg-white object-cover ring-1 ring-slate-900/10"
+			/>
+		{:else if icon}
 			<span class="flex size-8 shrink-0 items-center justify-center rounded-xl {tone}"
 				><span class="{icon} size-5"></span></span
 			>
 		{/if}
 		<span class="min-w-0 flex-1">
-			{#if head}
-				{@render head()}
-			{:else}
-				<span class="block truncate text-sm font-semibold text-slate-800">{title}</span>
-				{#if note}<span class="block truncate text-[11px] text-slate-400">{note}</span>{/if}
-			{/if}
+			<span class="block truncate text-sm font-semibold text-slate-800">{title}</span>
+			{#if note}<span class="block truncate text-[11px] text-slate-400">{note}</span>{/if}
 		</span>
 		{#if meta}<span class="shrink-0 text-xs text-slate-400">{meta}</span>{/if}
 		<span

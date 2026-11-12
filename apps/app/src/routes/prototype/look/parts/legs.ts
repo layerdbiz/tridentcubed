@@ -62,6 +62,21 @@ export function addRow(stops: StopType[], legId: string, create: () => StopType)
 	return stop.id;
 }
 
+// A facility dragged to another place on its leg (run 30). The points follow the order: the first is the Start,
+// the last the End, any between are Stops.
+export function moveRow(stops: StopType[], legId: string, from: number, to: number) {
+	adopt(stops);
+	const own = stops.filter((stop) => stop.leg === legId);
+	const [moved, target] = [own[from], own[to]];
+	if (!moved || !target || moved.id === target.id) return;
+	const indexOf = (other: StopType) => stops.findIndex((item) => item.id === other.id);
+	const [item] = stops.splice(indexOf(moved), 1);
+	stops.splice(indexOf(target) + (from < to ? 1 : 0), 0, item);
+	const next = stops.filter((stop) => stop.leg === legId);
+	for (const [index, stop] of next.entries())
+		stop.point = index === 0 ? 'Start' : index === next.length - 1 ? 'End' : 'Stop';
+}
+
 export function removeStop(stops: StopType[], id: string) {
 	adopt(stops);
 	const index = stops.findIndex((stop) => stop.id === id);

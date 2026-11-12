@@ -26,9 +26,7 @@
 	// top of the list. `onedit` puts a pencil on each choice and on the field once something is picked, to open it.
 	// In the list one icon marks each choice, grey until it is the one under the pointer or the one picked.
 	// Run 29 (his second round of notes): the field is always one line, the pencil shows only in the open list, and
-	// a short field never cuts its word. `lead` draws in place of the field's mark, and `top` at the head of the
-	// open list (a facility's Start, Stop or End).
-	import type { Snippet } from 'svelte';
+	// a short field never cuts its word.
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import Menu from './menu.svelte';
@@ -50,9 +48,7 @@
 		onpick,
 		onadd,
 		addLabel,
-		onedit,
-		lead,
-		top
+		onedit
 	}: {
 		label: string;
 		options: PickType[];
@@ -82,8 +78,6 @@
 		addLabel?: string;
 		// Opens a choice to edit it: a pencil on each one in the open list.
 		onedit?: (id: string) => void;
-		lead?: Snippet;
-		top?: Snippet;
 	} = $props();
 
 	// The panels' soft field: filled, borderless, lit when open.
@@ -154,9 +148,7 @@
 			? 'opacity-60'
 			: ''}"
 	>
-		{#if lead}
-			{@render lead()}
-		{:else if picked.length}
+		{#if picked.length}
 			<span class="flex shrink-0 items-center pl-0.5">
 				{#each picked.slice(0, 5) as id, index (id)}
 					<span
@@ -208,7 +200,6 @@
 				{onadd}
 				{addLabel}
 				{onedit}
-				{top}
 				isSearchable={isSearchable ?? options.length > 5}
 				align="left"
 				isWide
