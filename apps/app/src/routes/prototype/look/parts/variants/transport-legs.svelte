@@ -8,9 +8,10 @@
 	// Run 29: there is no Transport Type to pick; the Transport Mode (Vessel, Barge, Plane) says it.
 	// Run 30, what he settled on after trying the versions. A card is named for its transport once one is picked
 	// ("MV Coral Dawn", with its own photo in place of the icon when it has one) and is "Transport Mode 1" until
-	// then; the line under the name counts what the leg holds (1 Vessel · 2 Facilities · 2 Locations). On a
-	// facility's line the point comes first, as a pill in its colour (Start blue, Stop amber, End green), then the
-	// facility. The facilities drag into another order (hold, then drag), and the points follow the order: the first
+	// then; the line under the name counts what the leg holds (1 Vessel · 2 Facilities · 2 Locations). A
+	// facility is one dropdown the full width of the card (run 31): its point sits inside it at the left, as a pill
+	// in its colour (Start blue, Stop amber, End green) with the facility's icon and no arrow; a tap on the pill
+	// picks the point, a tap anywhere else on the field opens the facilities. The facilities drag into another order (hold, then drag), and the points follow the order: the first
 	// is the Start, the last the End, any between are Stops.
 	import { untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
@@ -129,6 +130,12 @@
 			}));
 	}
 
+	// The icon of the facility picked, by its kind (an anchor for a port); a building until one is picked.
+	function iconOf(stop: StopType) {
+		const kind = look.facilities.find((item) => item.name === stop.facility)?.kind;
+		return kind ? FACILITY_ICONS[kind] : 'icon-[mdi--domain]';
+	}
+
 	// Start, Stop or End; with more than one facility on the leg, also the way to take this one out.
 	function pointsOf(leg: LegType) {
 		const points = POINT_NAMES.map((point) => ({
@@ -224,7 +231,7 @@
 					/>
 				{/if}
 			</div>
-			<!-- The point first, as a pill in its colour, then the facility. Hold a row, then drag, to reorder. -->
+			<!-- One dropdown a facility, its point inside at the left. Hold a row, then drag, to reorder. -->
 			<div
 				class="space-y-2"
 				{@attach sortable(`stops-${leg.id}`, (from, to) => move(leg, from, to))}
@@ -238,34 +245,36 @@
 						title={leg.stops.length > 1 ? 'Hold and drag to reorder' : undefined}
 						animate:flip={{ duration: 200 }}
 					>
-						<Menu
-							label="Point"
-							value={stop.point}
-							options={pointsOf(leg)}
-							align="left"
-							onpick={(point) => pickPoint(stop, point)}
-						>
-							{#snippet trigger()}
-								<span
-									class="flex h-[44px] min-w-[4.5rem] items-center justify-center gap-0.5 rounded-full pr-2 pl-3.5 text-xs font-semibold whitespace-nowrap {stop.point
-										? POINTS[stop.point].chip
-										: 'bg-slate-900/[0.05] text-slate-500'}"
-									>{stop.point || 'Point'}<span class="icon-[mdi--chevron-down] size-4"
-									></span></span
-								>
-							{/snippet}
-						</Menu>
 						<div class="min-w-0 flex-1">
 							<Picker
 								label="Facility"
 								options={facilitiesOf(leg)}
 								value={stop.facility}
-								icon="icon-[mdi--domain]"
 								hasLabel={at === 0}
 								onpick={(name) => pickFacility(stop, name)}
 								onadd={() => addFacility(leg, stop)}
 								onedit={(name) => look.editRecord('facilities', name)}
-							/>
+							>
+								{#snippet inset()}
+									<Menu
+										label="Point"
+										value={stop.point}
+										options={pointsOf(leg)}
+										align="left"
+										onpick={(point) => pickPoint(stop, point)}
+									>
+										{#snippet trigger()}
+											<span
+												class="flex h-8 items-center gap-1.5 rounded-full pr-3 pl-2 text-xs font-semibold whitespace-nowrap {stop.point
+													? POINTS[stop.point].chip
+													: 'bg-slate-900/[0.06] text-slate-500'}"
+												><span class="{iconOf(stop)} size-4 shrink-0"></span>{stop.point ||
+													'Point'}</span
+											>
+										{/snippet}
+									</Menu>
+								{/snippet}
+							</Picker>
 						</div>
 					</div>
 				{/each}

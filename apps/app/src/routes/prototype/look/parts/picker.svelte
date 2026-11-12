@@ -27,6 +27,7 @@
 	// In the list one icon marks each choice, grey until it is the one under the pointer or the one picked.
 	// Run 29 (his second round of notes): the field is always one line, the pencil shows only in the open list, and
 	// a short field never cuts its word.
+	import type { Snippet } from 'svelte';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import Menu from './menu.svelte';
@@ -48,7 +49,8 @@
 		onpick,
 		onadd,
 		addLabel,
-		onedit
+		onedit,
+		inset
 	}: {
 		label: string;
 		options: PickType[];
@@ -78,6 +80,9 @@
 		addLabel?: string;
 		// Opens a choice to edit it: a pencil on each one in the open list.
 		onedit?: (id: string) => void;
+		// A control of its own inside the field, at its left, in place of the mark: a facility's Start, Stop or End.
+		// A tap on it is its own; a tap anywhere else on the field opens this dropdown.
+		inset?: Snippet;
 	} = $props();
 
 	// The panels' soft field: filled, borderless, lit when open.
@@ -89,6 +94,8 @@
 		'bg-slate-100 text-slate-400 group-hover/option:bg-primary/10 group-hover/option:text-primary';
 
 	const picked = $derived(values ?? (value ? [value] : []));
+	// How wide the inset is, so the field's words start after it.
+	let insetWidth = $state(0);
 
 	function optionOf(id: string) {
 		return options.find((option) => option.id === id);
@@ -147,8 +154,11 @@
 			: 'gap-2.5'} {isOpen ? 'bg-white ring-2 ring-primary/40' : ''} {isDisabled
 			? 'opacity-60'
 			: ''}"
+		style:padding-left={inset ? `${insetWidth + 14}px` : undefined}
 	>
-		{#if picked.length}
+		{#if inset}
+			<!-- The inset sits over this space, as a button of its own. -->
+		{:else if picked.length}
 			<span class="flex shrink-0 items-center pl-0.5">
 				{#each picked.slice(0, 5) as id, index (id)}
 					<span
@@ -207,6 +217,14 @@
 				{#snippet mark(option, isOn)}{@render face(option.id, 28, isOn)}{/snippet}
 				{#snippet trigger(_, isOpen)}{@render field(isOpen)}{/snippet}
 			</Menu>
+			{#if inset}
+				<div
+					class="absolute top-1/2 left-1.5 -translate-y-1/2"
+					bind:clientWidth={insetWidth}
+				>
+					{@render inset()}
+				</div>
+			{/if}
 		</div>
 	{/if}
 </div>
