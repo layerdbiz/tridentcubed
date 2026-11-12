@@ -1,10 +1,16 @@
-// The headless browser both PDF routes print with: the pack Chromium on a serverless host, Chrome or Edge on a
-// developer's machine. Shared by the report export (routes/api/export/pdf) and the look prototype's download
-// (routes/prototype/look/pdf).
+// The export browser (#190): the headless Chromium the PDF export (export.ts) prints with. On Vercel it is the
+// @sparticuz/chromium-min pack, downloaded from the release below into /tmp on a cold start and reused while the
+// function stays warm (nothing of it is in the deployment, so the function stays under its size cap); on a
+// developer's machine it is the local Chrome or Edge.
+//
+// It opens this site as the member who asked: their session headers go on requests to the site's own origin only
+// (`sessionFor`), so /files/<id> opens for them and then sends the browser on to the storage host's signed link with
+// no session attached. Fonts and styles load from the site the same way.
 import { access } from 'node:fs/promises';
 
 import chromium from '@sparticuz/chromium-min';
 import puppeteer from 'puppeteer-core';
+import { PAGE_HEIGHT, PAGE_WIDTH, type PrintJobType } from './export';
 
 const chromiumVersion = '143.0.4';
 const chromiumPackArch = process.arch === 'arm64' ? 'arm64' : 'x64';
@@ -52,8 +58,6 @@ function isServerlessChromiumRuntime() {
 	);
 }
 
-// The PDF browser now navigates directly to the SSR print route, so normal same-origin
-// stylesheet loading should work without the earlier about:blank/setContent workaround.
 const pdfChromiumArgs = ['--no-sandbox', '--disable-setuid-sandbox'];
 
 export async function launchBrowser() {
@@ -81,4 +85,47 @@ export async function launchBrowser() {
 		executablePath,
 		headless: true
 	});
+}
+
+/** The session headers a request of the export browser carries: the asker's, to this site's own origin; none to
+ * any other host, port or scheme. */
+export function sessionFor(address: string, site: string, session: Record<string, string>) {
+	if (!URL.canParse(address)) return {};
+	return new URL(address).origin === site ? session : {};
+}
+
+/** Prints the job's document to a PDF of 595 by 842 pages. The document is written into a blank page of the site
+ * (GET /api/export/pdf), not a bare one, so the fonts and pictures it names load from the site as they do in the
+ * app. */
+export async function printPdf({ html, site, session }: PrintJobType) {
+	const browser = await launchBrowser();
+	try {
+		const page = await browser.newPage();
+		await page.setViewport({ width: PAGE_WIDTH, height: PAGE_HEIGHT, deviceScaleFactor: 2 });
+		await page.emulateMediaType('screen');
+		await page.setRequestInterception(true);
+		page.on('request', (request) => {
+			if (request.isInterceptResolutionHandled()) return;
+			const extra = sessionFor(request.url(), site, session);
+			const headers = Object.keys(extra).length ? { ...request.headers(), ...extra } : undefined;
+			request.continue(headers ? { headers } : undefined).catch(() => undefined);
+		});
+		await page.goto(`${site}/api/export/pdf`, { waitUntil: 'domcontentloaded' });
+		await page.setContent(html, { waitUntil: 'networkidle0' });
+		await page.evaluate(async () => {
+			await document.fonts.ready;
+			await Promise.all(
+				Array.from(document.images, (image) => image.decode().catch(() => undefined))
+			);
+		});
+		return await page.pdf({
+			width: `${PAGE_WIDTH}px`,
+			height: `${PAGE_HEIGHT}px`,
+			margin: { top: '0', right: '0', bottom: '0', left: '0' },
+			printBackground: true,
+			preferCSSPageSize: true
+		});
+	} finally {
+		await browser.close();
+	}
 }
