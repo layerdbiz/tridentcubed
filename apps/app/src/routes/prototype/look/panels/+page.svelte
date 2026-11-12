@@ -40,6 +40,9 @@
 		</label>
 	</header>
 	<main class="mx-auto max-w-xl px-4 pb-20">
-		<PanelStage {look} />
+		<PanelStage
+			{look}
+			parts={['leg-heading', 'leg-facility']}
+		/>
 	</main>
 </div>

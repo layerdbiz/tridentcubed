@@ -1,16 +1,16 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 26: the Transport Mode panel as legs (Justin, 2026-11-11: "without having to repeat
-	// ourselves"). The trip is one leg after another (legs.ts), each a card. A leg's transport is picked once: the
-	// Transport Type (Sea, Air, Rail, Road), then the Transport Mode that type has (Vessel or Barge), then which one,
-	// from a list of only those.
-	// Run 28, from Justin's notes on the artifact (2026-11-12). Every pick is the app's one dropdown (picker.svelte),
-	// not rows of buttons, to save room. A card's heading is only where the leg goes, city to city, as a project's
-	// row shows it. A leg starts with one facility; each facility row is two dropdowns side by side, which point of
-	// the leg it is (Start, Stop or End) and the facility, because the job does not always begin at the Start. The
-	// facility list holds the kind that suits the type (ports for Sea) and the places the trip already uses. Add
-	// Stop is at the card's bottom left and Delete at its bottom right, as in every other card; a facility row is
-	// taken out from its own point dropdown. No line is drawn down the facilities: the report's page will show the
-	// trip that way.
+	// ourselves"). The trip is one leg after another (legs.ts), each a card. A leg's transport is picked once.
+	// Run 28, from Justin's notes on the artifact (2026-11-12). Every pick is the app's one dropdown (picker.svelte).
+	// A leg starts with one facility, and each facility is a Start, a Stop or an End, because the job does not
+	// always begin at the Start. Add Stop is at the card's bottom left and Delete at its bottom right, as in every
+	// other card. No line is drawn down the facilities: the report's page will show the trip that way.
+	// Run 29, his second round of notes. There is no Transport Type to pick: the Transport Mode (Vessel, Barge,
+	// Plane) says it, and the type is read from the mode. A card is headed "Transport Mode 1" again, with one line
+	// under it in three versions to choose from (`leg-heading`): A the cities, B the facilities with their cities, C
+	// counts. Start, Stop or End sits on the facility's own line, never cut short, also in three versions
+	// (`leg-facility`): A a dropdown before the facility, B a coloured pill after it, C picked inside the facility's
+	// dropdown and shown as a tag before its name.
 	import { untrack } from 'svelte';
 	import Group from '../group.svelte';
 	import {
@@ -25,26 +25,30 @@
 	import {
 		FACILITY_ICONS,
 		MODE_ICONS,
+		MODES,
 		POINTS,
 		stopOf,
 		TRANSPORT_TYPES,
+		typeOfMode,
 		type PanelType,
 		type PointType,
-		type StopType,
-		type TransportTypeType
+		type StopType
 	} from '../look.data';
 	import type { LookState } from '../look.state.svelte';
+	import Menu from '../menu.svelte';
 	import Picker from '../picker.svelte';
 
 	let { look, panel, onsave }: { look: LookState; panel: PanelType; onsave: () => void } = $props();
 
-	const TYPES = Object.keys(TRANSPORT_TYPES) as TransportTypeType[];
+	const POINT_NAMES = Object.keys(POINTS) as PointType[];
 	const REMOVE = '__remove';
 	// The panels' own small buttons (panel-body.svelte): tinted inside a card, black under the cards.
 	const BUTTON =
 		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 
 	const legs = $derived(legsOf(panel.stops));
+	const heading = $derived(look.variant('leg-heading'));
+	const row = $derived(look.variant('leg-facility'));
 	// The legs standing open: the first, and any just added.
 	let open = $state<string[]>(untrack(() => [legsOf(panel.stops)[0]?.id ?? '']));
 
@@ -56,32 +60,44 @@
 		return leg.stops[0];
 	}
 
-	function iconOf(leg: LegType) {
-		const head = headOf(leg);
-		return (
-			MODE_ICONS[head?.mode ?? ''] ??
-			(head?.type ? TRANSPORT_TYPES[head.type].icon : 'icon-[mdi--transit-connection-variant]')
-		);
+	function cityOf(facility: string) {
+		return look.facilities.find((item) => item.name === facility)?.city ?? '';
 	}
 
-	// The cities the leg calls at, first to last, a city twice in a row said once.
+	// The places the leg calls at, first to last: its facilities, each with its city.
+	function placesOf(leg: LegType) {
+		return leg.stops
+			.filter((stop) => stop.facility)
+			.map((stop) => ({ facility: stop.facility, city: cityOf(stop.facility) }));
+	}
+
+	// A city twice in a row is said once.
 	function citiesOf(leg: LegType) {
-		const cities = leg.stops
-			.map((stop) => look.facilities.find((item) => item.name === stop.facility)?.city ?? '')
+		const cities = placesOf(leg)
+			.map((place) => place.city)
 			.filter(Boolean);
 		return cities.filter((city, index) => city !== cities[index - 1]);
 	}
 
-	function pickType(leg: LegType, type: TransportTypeType) {
-		if (headOf(leg)?.type === type) return;
-		const { modes } = TRANSPORT_TYPES[type];
-		setTransport(panel.stops, leg.id, { type, mode: modes.length === 1 ? modes[0] : '', name: '' });
-		onsave();
+	function plural(count: number, one: string, many: string) {
+		return `${count} ${count === 1 ? one : many}`;
 	}
 
+	// "1 Vessel · 2 Facilities · 2 Locations"
+	function countsOf(leg: LegType) {
+		const places = placesOf(leg);
+		const cities = new Set(places.map((place) => place.city).filter(Boolean));
+		return [
+			headOf(leg)?.mode ? `1 ${headOf(leg).mode}` : '',
+			places.length ? plural(places.length, 'Facility', 'Facilities') : '',
+			cities.size ? plural(cities.size, 'Location', 'Locations') : ''
+		].filter(Boolean);
+	}
+
+	// One pick: the mode, and with it the type it belongs to.
 	function pickMode(leg: LegType, mode: string) {
 		if (headOf(leg)?.mode === mode) return;
-		setTransport(panel.stops, leg.id, { mode, name: '' });
+		setTransport(panel.stops, leg.id, { mode, type: typeOfMode(mode) ?? '', name: '' });
 		onsave();
 	}
 
@@ -103,7 +119,7 @@
 		return type ? TRANSPORT_TYPES[type].facility : undefined;
 	}
 
-	// The kind of facility the leg's type uses, and every place the trip already calls at.
+	// The kind of facility the leg's mode uses (ports for a Vessel), and every place the trip already calls at.
 	function facilitiesOf(leg: LegType) {
 		const suited = kindOf(leg);
 		const used = panel.stops.map((stop) => stop.facility);
@@ -120,7 +136,7 @@
 
 	// Start, Stop or End; with more than one facility on the leg, also the way to take this one out.
 	function pointsOf(leg: LegType) {
-		const points = (Object.keys(POINTS) as PointType[]).map((point) => ({
+		const points = POINT_NAMES.map((point) => ({
 			id: point,
 			label: point,
 			dot: POINTS[point].dot
@@ -166,8 +182,8 @@
 
 	// "Add new" opens the same sheet the + does, on that page, filled with what the leg already says.
 	function addTransport(leg: LegType) {
-		const head = headOf(leg);
-		look.addFor('transport', { type: head.type, mode: head.mode }, (name) => pickName(leg, name));
+		const { type, mode } = headOf(leg);
+		look.addFor('transport', { type, mode }, (name) => pickName(leg, name));
 	}
 
 	function addFacility(leg: LegType, stop: StopType) {
@@ -176,96 +192,166 @@
 	}
 </script>
 
+<!-- The facility itself: the app's dropdown, with Add new and the pencils in its list. -->
+{#snippet facility(leg: LegType, stop: StopType, hasLabel: boolean)}
+	<Picker
+		label="Facility"
+		options={facilitiesOf(leg)}
+		value={stop.facility}
+		icon="icon-[mdi--domain]"
+		{hasLabel}
+		onpick={(name) => pickFacility(stop, name)}
+		onadd={() => addFacility(leg, stop)}
+		onedit={(name) => look.editRecord('facilities', name)}
+	/>
+{/snippet}
+
 <div class="space-y-3">
 	{#each legs as leg, index (leg.id)}
-		{@const lead = headOf(leg)}
-		{@const cities = citiesOf(leg)}
+		{@const first = headOf(leg)}
+		{@const places = placesOf(leg)}
 		<Group
 			title="Transport Mode {index + 1}"
-			icon={iconOf(leg)}
+			icon={MODE_ICONS[first.mode] ?? 'icon-[mdi--transit-connection-variant]'}
 			isOpen={open.includes(leg.id)}
 			ontoggle={() => toggle(leg.id)}
 			ondelete={() => drop(leg)}
 		>
 			{#snippet head()}
-				<span class="flex min-w-0 items-center gap-1 text-sm font-semibold text-slate-800">
-					{#if cities.length}
-						<span class="icon-[mdi--map-marker] size-4 shrink-0 text-primary"></span>
-						{#each cities as city, at (at)}
+				<span class="block truncate text-sm font-semibold text-slate-800"
+					>Transport Mode {index + 1}</span
+				>
+				<span class="flex min-w-0 items-center gap-1 text-[11px] text-slate-400">
+					{#if !places.length}
+						<span class="truncate">No location yet</span>
+					{:else if heading === 'A'}
+						<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-primary"></span>
+						{#each citiesOf(leg) as city, at (at)}
 							{#if at}
-								<span class="icon-[mdi--arrow-right-thick] size-4 shrink-0 text-primary"></span>
+								<span class="icon-[mdi--arrow-right-thick] size-3.5 shrink-0 text-primary"></span>
 							{/if}
 							<span class="min-w-0 truncate">{city}</span>
 						{/each}
+					{:else if heading === 'B'}
+						<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-primary"></span>
+						{#each places as place, at (at)}
+							{#if at}
+								<span class="icon-[mdi--arrow-right-thick] size-3.5 shrink-0 text-primary"></span>
+							{/if}
+							<span class="min-w-0 truncate"
+								>{[place.facility, place.city].filter(Boolean).join(', ')}</span
+							>
+						{/each}
 					{:else}
-						<span class="truncate font-medium text-slate-400">No location yet</span>
+						<span class="truncate">{countsOf(leg).join(' · ')}</span>
 					{/if}
 				</span>
 			{/snippet}
-			<div class="grid grid-cols-2 gap-2">
-				<Picker
-					label="Transport Type"
-					options={TYPES.map((type) => ({
-						id: type,
-						label: type,
-						icon: TRANSPORT_TYPES[type].icon
-					}))}
-					value={lead.type}
-					icon="icon-[mdi--transit-connection-variant]"
-					onpick={(type) => pickType(leg, type as TransportTypeType)}
-				/>
+			<div class="grid gap-2 sm:grid-cols-2">
 				<Picker
 					label="Transport Mode"
-					options={(lead.type ? TRANSPORT_TYPES[lead.type].modes : []).map((mode) => ({
-						id: mode,
-						label: mode,
-						icon: MODE_ICONS[mode]
-					}))}
-					value={lead.mode}
+					options={MODES.map((mode) => ({ id: mode, label: mode, icon: MODE_ICONS[mode] }))}
+					value={first.mode}
 					icon="icon-[mdi--cube-send]"
-					isDisabled={!lead.type}
 					onpick={(mode) => pickMode(leg, mode)}
 				/>
+				{#if first.mode}
+					<Picker
+						label={first.mode}
+						options={transportsOf(leg)}
+						value={first.name}
+						icon={MODE_ICONS[first.mode]}
+						onpick={(name) => pickName(leg, name)}
+						onadd={() => addTransport(leg)}
+						onedit={(name) => look.editRecord('transport', name)}
+					/>
+				{/if}
 			</div>
-			{#if lead.type && lead.mode}
-				<Picker
-					label={lead.mode}
-					options={transportsOf(leg)}
-					value={lead.name}
-					icon={MODE_ICONS[lead.mode]}
-					onpick={(name) => pickName(leg, name)}
-					onadd={() => addTransport(leg)}
-					onedit={(name) => look.editRecord('transport', name)}
-				/>
-			{/if}
 			<div class="space-y-2">
 				{#each leg.stops as stop, at (stop.id)}
-					<div class="flex items-end gap-2">
-						<div class="w-[6.25rem] shrink-0">
-							<Picker
+					{#if row === 'A'}
+						<!-- A: its own dropdown before the facility, wide enough that the word is never cut. -->
+						<div class="flex items-end gap-2">
+							<div class="w-[6.75rem] shrink-0">
+								<Picker
+									label="Point"
+									options={pointsOf(leg)}
+									value={stop.point}
+									icon="icon-[mdi--map-marker-outline]"
+									hasLabel={at === 0}
+									isCompact
+									isSearchable={false}
+									onpick={(point) => pickPoint(stop, point)}
+								/>
+							</div>
+							<div class="min-w-0 flex-1">{@render facility(leg, stop, at === 0)}</div>
+						</div>
+					{:else if row === 'B'}
+						<!-- B: the facility has the line; its point is a pill in its colour at the right. -->
+						<div class="flex items-end gap-2">
+							<div class="min-w-0 flex-1">{@render facility(leg, stop, at === 0)}</div>
+							<Menu
 								label="Point"
-								options={pointsOf(leg)}
 								value={stop.point}
-								icon="icon-[mdi--map-marker-outline]"
-								hasLabel={at === 0}
-								isCompact
-								isSearchable={false}
+								options={pointsOf(leg)}
 								onpick={(point) => pickPoint(stop, point)}
-							/>
+							>
+								{#snippet trigger()}
+									<span
+										class="flex h-[44px] items-center gap-0.5 rounded-full pr-2 pl-3.5 text-xs font-semibold whitespace-nowrap {stop.point
+											? POINTS[stop.point].chip
+											: 'bg-slate-900/[0.05] text-slate-500'}"
+										>{stop.point || 'Point'}<span class="icon-[mdi--chevron-down] size-4"
+										></span></span
+									>
+								{/snippet}
+							</Menu>
 						</div>
-						<div class="min-w-0 flex-1">
-							<Picker
-								label="Facility"
-								options={facilitiesOf(leg)}
-								value={stop.facility}
-								icon="icon-[mdi--domain]"
-								hasLabel={at === 0}
-								onpick={(name) => pickFacility(stop, name)}
-								onadd={() => addFacility(leg, stop)}
-								onedit={(name) => look.editRecord('facilities', name)}
-							/>
-						</div>
-					</div>
+					{:else}
+						<!-- C: one dropdown. Start, Stop or End is picked at the top of its list and shows as a tag. -->
+						<Picker
+							label="Facility"
+							options={facilitiesOf(leg)}
+							value={stop.facility}
+							hasLabel={at === 0}
+							onpick={(name) => pickFacility(stop, name)}
+							onadd={() => addFacility(leg, stop)}
+							onedit={(name) => look.editRecord('facilities', name)}
+						>
+							{#snippet lead()}
+								<span
+									class="ml-0.5 shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap {stop.point
+										? POINTS[stop.point].chip
+										: 'bg-slate-900/[0.05] text-slate-500'}">{stop.point || 'Point'}</span
+								>
+							{/snippet}
+							{#snippet top()}
+								<div class="flex items-center gap-1">
+									{#each POINT_NAMES as point (point)}
+										<button
+											type="button"
+											class="flex-1 rounded-full py-1.5 text-xs font-semibold transition {stop.point ===
+											point
+												? POINTS[point].solid
+												: 'bg-slate-900/[0.04] text-slate-600 hover:bg-slate-900/[0.07]'}"
+											aria-pressed={stop.point === point}
+											onclick={() => pickPoint(stop, point)}>{point}</button
+										>
+									{/each}
+									{#if leg.stops.length > 1}
+										<button
+											type="button"
+											class="flex size-8 shrink-0 items-center justify-center rounded-full text-danger transition hover:bg-danger/10"
+											aria-label="Remove"
+											title="Remove"
+											onclick={() => pickPoint(stop, REMOVE)}
+											><span class="icon-[mdi--trash-can-outline] size-[18px]"></span></button
+										>
+									{/if}
+								</div>
+							{/snippet}
+						</Picker>
+					{/if}
 				{/each}
 			</div>
 			{#snippet actions()}

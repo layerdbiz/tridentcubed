@@ -8,16 +8,16 @@
 	import {
 		FACILITY_ICONS,
 		MODE_ICONS,
+		MODES,
 		newContact,
 		PARTICULARS,
 		personOf,
-		TRANSPORT_TYPES,
+		typeOfMode,
 		type ClientType,
 		type ContactType,
 		type FacilityKindType,
 		type FacilityType,
-		type TransportType,
-		type TransportTypeType
+		type TransportType
 	} from './look.data';
 	import type { LookState, RecordDraftType } from './look.state.svelte';
 	import Picker from './picker.svelte';
@@ -204,26 +204,11 @@
 			{@render place('Location', member.location, (location) => set({ location }))}
 		{:else if transport}
 			<Picker
-				label="Transport Type"
-				options={Object.entries(TRANSPORT_TYPES).map(([type, item]) => ({
-					id: type,
-					label: type,
-					icon: item.icon
-				}))}
-				value={transport.type}
-				icon="icon-[mdi--transit-connection-variant]"
-				onpick={(type) => set({ type, mode: TRANSPORT_TYPES[type as TransportTypeType].modes[0] })}
-			/>
-			<Picker
 				label="Transport Mode"
-				options={TRANSPORT_TYPES[transport.type].modes.map((mode) => ({
-					id: mode,
-					label: mode,
-					icon: MODE_ICONS[mode]
-				}))}
+				options={MODES.map((mode) => ({ id: mode, label: mode, icon: MODE_ICONS[mode] }))}
 				value={transport.mode}
 				icon="icon-[mdi--cube-send]"
-				onpick={(mode) => set({ mode })}
+				onpick={(mode) => set({ mode, type: typeOfMode(mode) })}
 			/>
 			<ImageField
 				label="Picture"

@@ -25,6 +25,10 @@
 	// dropdown a form uses. A list of more than five can be typed into, to narrow it. `onadd` puts "Add new" at the
 	// top of the list. `onedit` puts a pencil on each choice and on the field once something is picked, to open it.
 	// In the list one icon marks each choice, grey until it is the one under the pointer or the one picked.
+	// Run 29 (his second round of notes): the field is always one line, the pencil shows only in the open list, and
+	// a short field never cuts its word. `lead` draws in place of the field's mark, and `top` at the head of the
+	// open list (a facility's Start, Stop or End).
+	import type { Snippet } from 'svelte';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import Menu from './menu.svelte';
@@ -46,7 +50,9 @@
 		onpick,
 		onadd,
 		addLabel,
-		onedit
+		onedit,
+		lead,
+		top
 	}: {
 		label: string;
 		options: PickType[];
@@ -74,8 +80,10 @@
 		onadd?: () => void;
 		// What "Add new" names, when it is not the label: a field called Start adds a Facility.
 		addLabel?: string;
-		// Opens a choice to edit it: a pencil on each one in the list, and on the field once one is picked.
+		// Opens a choice to edit it: a pencil on each one in the open list.
 		onedit?: (id: string) => void;
+		lead?: Snippet;
+		top?: Snippet;
 	} = $props();
 
 	// The panels' soft field: filled, borderless, lit when open.
@@ -87,7 +95,6 @@
 		'bg-slate-100 text-slate-400 group-hover/option:bg-primary/10 group-hover/option:text-primary';
 
 	const picked = $derived(values ?? (value ? [value] : []));
-	const canEdit = $derived(Boolean(onedit) && !values && Boolean(value) && !isDisabled);
 
 	function optionOf(id: string) {
 		return options.find((option) => option.id === id);
@@ -147,7 +154,9 @@
 			? 'opacity-60'
 			: ''}"
 	>
-		{#if picked.length}
+		{#if lead}
+			{@render lead()}
+		{:else if picked.length}
 			<span class="flex shrink-0 items-center pl-0.5">
 				{#each picked.slice(0, 5) as id, index (id)}
 					<span
@@ -157,27 +166,21 @@
 					>
 				{/each}
 			</span>
-			<span class="min-w-0 flex-1">
-				<span class="block truncate"
-					>{picked.length === 1
-						? (optionOf(picked[0])?.label ?? picked[0])
-						: `${picked.length} ${many}`}</span
-				>
-				{#if picked.length === 1 && optionOf(picked[0])?.note}
-					<span class="block truncate text-[11px] text-slate-400">{optionOf(picked[0])?.note}</span>
-				{/if}
-			</span>
+		{:else if !isCompact}
+			<span
+				class="ml-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-400"
+				><span class="{icon} size-4"></span></span
+			>
+		{/if}
+		{#if picked.length}
+			<span class="min-w-0 flex-1 {isCompact ? 'whitespace-nowrap' : 'truncate'}"
+				>{picked.length === 1
+					? (optionOf(picked[0])?.label ?? picked[0])
+					: `${picked.length} ${many}`}</span
+			>
 		{:else}
-			{#if !isCompact}
-				<span
-					class="ml-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-400"
-					><span class="{icon} size-4"></span></span
-				>
-			{/if}
 			<span class="min-w-0 flex-1 truncate text-slate-400">{placeholder}</span>
 		{/if}
-		<!-- Room for the pencil, which sits over the field as a button of its own. -->
-		{#if canEdit}<span class="size-7 shrink-0"></span>{/if}
 		<span class="mr-1 icon-[mdi--chevron-down] size-4 shrink-0 text-slate-400"></span>
 	</span>
 {/snippet}
@@ -205,6 +208,7 @@
 				{onadd}
 				{addLabel}
 				{onedit}
+				{top}
 				isSearchable={isSearchable ?? options.length > 5}
 				align="left"
 				isWide
@@ -212,16 +216,6 @@
 				{#snippet mark(option, isOn)}{@render face(option.id, 28, isOn)}{/snippet}
 				{#snippet trigger(_, isOpen)}{@render field(isOpen)}{/snippet}
 			</Menu>
-			{#if canEdit}
-				<button
-					type="button"
-					class="absolute top-1/2 right-8 flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-900/[0.06] hover:text-primary"
-					aria-label="Edit {optionOf(value)?.label ?? value}"
-					title="Edit"
-					onclick={() => onedit?.(value)}
-					><span class="icon-[mdi--pencil-outline] size-[18px]"></span></button
-				>
-			{/if}
 		</div>
 	{/if}
 </div>

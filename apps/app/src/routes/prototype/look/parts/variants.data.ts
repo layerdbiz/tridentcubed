@@ -151,6 +151,18 @@ export const PART_GROUPS: PartGroupType[] = [
 					),
 					part('panel-project', 'Project Panel'),
 					part('panel-transport', 'Transport Mode Panel'),
+					part(
+						'leg-heading',
+						'Transport Mode Heading',
+						['A', 'B', 'C'],
+						'The line under "Transport Mode 1". A: the cities, first to last. B: the facilities with their cities. C: counts, like 1 Vessel, 2 Facilities, 2 Locations.'
+					),
+					part(
+						'leg-facility',
+						'Facility Row',
+						['A', 'B', 'C'],
+						'Where a facility is made a Start, Stop or End. A: a dropdown before the facility. B: a coloured pill after it. C: inside the facility dropdown, shown as a tag before the name.'
+					),
 					part('panel-items', 'Items Panel'),
 					part('panel-timelog', 'Time Log Panel'),
 					part('panel-photos', 'Photos Panel'),
@@ -193,6 +205,10 @@ export function partsOf(group: PartGroupType) {
 }
 
 const PARTS = PART_GROUPS.flatMap(partsOf);
+
+export function partOf(id: string) {
+	return PARTS.find((item) => item.id === id);
+}
 
 // The letter a part shows when nothing was picked: the newest one, unless the part names another.
 export function defaultOf(id: string) {

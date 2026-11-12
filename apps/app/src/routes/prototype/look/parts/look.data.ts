@@ -543,6 +543,16 @@ export const TRANSPORT_TYPES: Record<
 	Road: { icon: 'icon-[mdi--road-variant]', modes: ['Truck', 'Trailer'], facility: 'Depot' }
 };
 
+// Every transport mode there is. Run 29 (Justin, 2026-11-12): the mode is what is picked, everywhere; its type is
+// read from it, since "a vessel means sea, a plane means air".
+export const MODES = Object.values(TRANSPORT_TYPES).flatMap((item) => item.modes);
+
+export function typeOfMode(mode: string) {
+	return (Object.keys(TRANSPORT_TYPES) as TransportTypeType[]).find((type) =>
+		TRANSPORT_TYPES[type].modes.includes(mode)
+	);
+}
+
 export const MODE_ICONS: Record<string, string> = {
 	Vessel: 'icon-[mdi--ferry]',
 	Barge: 'icon-barge',
