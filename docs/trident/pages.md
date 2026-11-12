@@ -13,7 +13,7 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
   - Terms ✅ (may live on the Website)
 - Signed in
   - Waiting for access ✅ (what a Guest sees until an admin lets them in)
-  - Dashboard ✅ (where Members and Admins land; in V1 it is the same list as Projects)
+  - Dashboard ✅ (where staff land; in V1 it is the same list as Projects)
   - Projects ✅
     - Project ✅ (the Workspace)
       - Page (photos or a map of the trip, then its details; design prototype run 13)
@@ -24,6 +24,8 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
       - Sent copies
   - Customers ✅
     - Customer (record page, Page and Edit; design prototype run 12)
+  - Team ✅ (one Team record per person; design prototype run 16)
+    - Team (record page, Page and Edit)
   - Transport ✅ (filtered by Sea, Air, Rail, Road; reads Transport Mode in the design prototype from run 12)
     - Transport (record page, Page and Edit; design prototype run 12)
   - Facilities ✅
@@ -53,7 +55,7 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
 ![Report Generator V1 flow](pages-flow.png)
 
 1. Opening the app goes to Sign in, skipped when already signed in.
-2. A Member or Admin lands on the Dashboard; a Guest lands on Waiting for access.
+2. Staff (Admin, Manager or Team) land on the Dashboard; a Guest lands on Waiting for access.
 3. From the Dashboard a User opens a project, or makes one with New project, a popup (title and customer; whoever makes it is the Owner).
 4. A project opens on its Workspace, Edit and Preview; Preview exports the PDF.
 5. The navigation always reaches Dashboard, Projects, Customers, Transport, Facilities, Profile and Settings; admins also reach Users, Organization and Trash.
@@ -68,3 +70,24 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
 - **Still open for the design prototypes:** what the navigation is on a phone (a bottom bar, a floating bar, or none, as in ChatGPT) and on a desktop (a slim icon rail), and whether a desktop shows Edit and Preview side by side as one screen, panels on the left and the live preview on the right.
 
 The flowchart's source is [pages-flow.html](pages-flow.html).
+
+## What "Sign in and save to the real database" ships
+
+Spec [#179](https://github.com/layerdbiz/tridentcubed/issues/179), 2026-11-12, ships the look prototype's screens on the real database. Where the look prototype settled something differently from the lists above (the Page tab, the Team page, a project made by the plus and opened on Edit with its maker as Team Lead, the organization edited on a Settings screen), the look prototype wins.
+
+Ships:
+
+- Sign in, with Enter code: one form, an emailed code, Google and Microsoft each shown once set up; no password.
+- Waiting for access.
+- Dashboard, Projects, Customers, Team, Transport (reads Transport Mode) and Facilities, each in Table, Cards and Board.
+- Project: Page, Edit and Preview, with Download.
+- The record pages of all four kinds, Page and Edit.
+- Settings, as the look prototype's screen: the organization's details, which only an Admin changes. Sign out sits in the account menu.
+- Not found / error.
+
+V1 pages that wait for a later spec:
+
+- Privacy policy and Terms.
+- Profile.
+- Users, and the Trash's screen (deleted things already go to the Trash).
+- Settings' Install app and Remove my data from this device, which come with offline editing (ADR 0007).

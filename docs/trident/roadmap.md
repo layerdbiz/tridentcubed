@@ -28,6 +28,14 @@ Checked items are owner-reported completion, not repository-verified.
 
 ## Phase 5 — Report Generator (`apps/app`)
 
+> **2026-11-12:** sign-in, the database and roles are in V1. "Sign in and
+> save to the real database" ([#179](https://github.com/layerdbiz/tridentcubed/issues/179))
+> builds them on the look prototype's screens: Google, Microsoft or an
+> emailed code; every record, project and photo saved in Supabase; the roles
+> Admin, Manager and Team. So V1 takes the first parts of Phases 6, 7 and 9
+> below. Their admin screens and the client portal come later; offline
+> editing is the next spec.
+
 Milestone 1 (Exhibit B): six weeks from the Effective Date, acceptance under
 Section 7. Authentication, login, roles, dashboards, and client accounts are
 outside Milestone 1 / V1. Milestone 2 direction is agreed pending planning.

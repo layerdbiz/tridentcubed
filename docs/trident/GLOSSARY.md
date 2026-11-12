@@ -25,13 +25,13 @@ tridentcubed.com, the marketing site in `apps/site`.
 _Avoid_: dashboard, report app, slideshow
 
 **Prototype**:
-The Report Generator as built before V1: the `apps/app` that saves to the browser only. Kept under `.archive/apps/app` as reference once the V1 app exists, deleted when V1 ships; concepts are taken from it, code is not.
+The Report Generator as built before V1: the `apps/app` that saves to the browser only. Kept under `.archive/apps/app` as reference once the V1 app exists, deleted when V1 ships; concepts are taken from it, code is not. The look prototype (#161), the last design prototype, is not this: its screens became V1's (2026-11-12, #179).
 _Avoid_: the old app, legacy app, V0
 
 ### Signing in and access
 
 **User**:
-Anyone who can sign in to the Report Generator, identified by a verified email address, whichever way they signed in: an Admin, a Member or a Guest.
+Anyone who can sign in to the Report Generator, identified by a verified email address, whichever way they signed in: an Admin, a Manager, a Team user or a Guest.
 _Avoid_: account, login, member
 
 **Guest**:
@@ -39,11 +39,11 @@ A User with no membership in any organization. A Guest sees only their own accou
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
-A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15).
+A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15). Its details also hold its email domain.
 _Avoid_: team, company, workspace
 
 **Membership**:
-A User's place in an organization, with one role: Admin or Member.
+A User's place in an organization, with one role: Admin, Manager or Team. A User with a membership is staff of that organization.
 _Avoid_: seat, staff record
 
 **Admin**:
@@ -58,9 +58,21 @@ _Avoid_: root, platform owner
 A User who can no longer sign in, kept with their history and shown greyed out. Reactivating undoes it.
 _Avoid_: banned, suspended, removed, deleted
 
-**Member**:
-The role of an organization's staff: opens and edits any of its projects and deletes the Drafts they created, but does not manage its users.
-_Avoid_: staff, editor, surveyor, team member
+**Manager**:
+The role between Admin and Team. For now it may do exactly what the Team role may; it exists so managers are named before they get rights of their own.
+_Avoid_: supervisor, lead (that is the Team Lead)
+
+**Team role**:
+The role of an organization's staff: opens and edits any of its projects and records and deletes the Drafts they created, but does not change the organization's details, anyone's role or the Archived status. Said "Team" where the role is meant, as the role picker shows it. Called Member until 2026-11-12 (#179).
+_Avoid_: Member, staff (that is anyone with a membership), editor, surveyor
+
+**Access grant**:
+A private entry that gives one email address its role at sign-in, whether it is the Super admin, and optionally the Team record that User signs in as. Grants make the first admins; they are kept out of this repository.
+_Avoid_: invite, allow list, bootstrap list
+
+**Email domain**:
+An organization's own email domain, tridentcubed.com for Trident Cubed. A User who signs in with a verified address at it joins the organization with the Team role, unless an access grant says otherwise; anyone else is a Guest.
+_Avoid_: company domain, staff domain
 
 ### Projects and reports
 
@@ -141,12 +153,16 @@ The company that owns a transport, like a shipping line; never the ship itself. 
 **Items**:
 The cargo the project concerns, as rows of a quantity and a description (2, Power transformers on steel cradles), printed as the report's Cargo Description. A manifest's further columns may come later.
 
-**Team**:
-The team lead and the team assigned to a project, all from the organization. On the report they appear as Personnel in Attendance, as cards like the Team page's, the team lead first and marked by a blue ring but not labelled; the team lead also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile. People on the job who are not on the team are Personnel.
-_Avoid_: personnel (as the panel name)
+**Project team**:
+The team lead and the Team Assigned of a project, all Team records of the organization. Said "Team" inside a project (the Project panel's Team section). On the report they appear as Personnel in Attendance, as cards like the Team page's, the team lead first and marked by a blue ring but not labelled; the team lead also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile. People on the job who are not on the team are Personnel.
+_Avoid_: personnel (as the panel name), Team (bare, outside a project)
+
+**Team record**:
+One person on the organization's Team page: name, title, labels, role, phone, email, location and photo. A staff User is tied to the Team record with their email at sign-in, and its role is their membership's role. Said "a Team" in the app, both words capitalised (Justin, 2026-11-10).
+_Avoid_: team member, member, employee, profile (that is the User's own)
 
 **Team Lead**:
-The team member who runs a project: picked in the Project panel's Team section, first among Personnel in Attendance, and the one who signs off the report. Called Owner until 2026-11-10 and Lead for a day after. Being team lead gives no extra rights. The others picked there are the Team Assigned.
+The Team record who runs a project: picked in the Project panel's Team section, first among Personnel in Attendance, and the one who signs off the report. Called Owner until 2026-11-10 and Lead for a day after. Being team lead gives no extra rights. The others picked there are the Team Assigned.
 _Avoid_: owner, project owner, lead, creator, author
 
 **Personnel**:
@@ -195,8 +211,8 @@ _Avoid_: field
 What the surveyor enters for an input. Every value saves by itself as it is typed; there is no Save button. When two people change the same value, the last change to reach the server stays and the other is kept in the history.
 
 **Save state**:
-Where a value is: Saved on this device (only the phone has it), Syncing (on its way), Saved (the server has it, safe if the phone is lost) or Not synced (the server could not take it yet; it stays on the phone and is tried again).
-_Avoid_: pending, offline, uploaded
+Where a change is, as the cloud in the header shows it: Saving (on its way), Saved (the server has it, safe if the device is lost) or Not saved (the server could not take it yet; it stays on screen, is tried again by itself and offers Retry). Offline editing adds a fourth, Saved on this device (only the phone has it). Saving and Not saved were Syncing and Not synced until 2026-11-12 (#179).
+_Avoid_: pending, offline, uploaded, Syncing, Not synced
 
 **Live editing**:
 Other people's saved values appearing on your screen without reloading, a second or two behind.
@@ -229,8 +245,12 @@ An image the surveyor adds to a photo group, with its own description, written b
 _Avoid_: caption
 
 **Attachment**:
-A file a User adds to a project: a photo, a video or a document. It keeps the time and place it was taken, and follows its report's rules for deleting and restoring.
+A File a User adds to a project: a photo, a video or a document. It keeps the time and place it was taken, and follows its report's rules for deleting and restoring.
 _Avoid_: asset (in surveying that is the vessel or cargo surveyed), media, upload, uploaded file
+
+**File**:
+Anything uploaded and kept in private storage: a photo, an attached document, or a logo or picture on a record or the organization. It holds what it is for, its type and size, and for a photo the time and place it was taken. An Attachment is a File added to a project; a record's logo is a File but not an Attachment.
+_Avoid_: upload, asset, blob
 
 ### Report pages
 
@@ -252,7 +272,7 @@ _Avoid_: page section, output section
 ### The workspace
 
 **Dashboard**:
-The page every Member and Admin lands on after signing in, with a little of everything; in V1 it lists the projects, like the Projects page.
+The page every staff User lands on after signing in, with a little of everything; in V1 it lists the projects, like the Projects page.
 _Avoid_: home, overview (the Company overview is another app)
 
 **Workspace**:
@@ -276,7 +296,7 @@ The workspace tab that shows the report pages as they will export.
 _Avoid_: live preview, print preview
 
 **Record**:
-A customer, team member, transport or facility: anything with its own list page that is not a project. Its row opens its record page.
+A Customer, Team record, Transport or Facility: anything with its own list page that is not a project. Its row opens its record page.
 _Avoid_: entity, item, resource
 
 **Record page**:
@@ -284,7 +304,7 @@ One record's screen, shared by all four kinds, with two tabs: Page, how it reads
 _Avoid_: detail page, profile (that is the User's own)
 
 **Label**:
-What a list page sorts by: a project's status, a customer's types, a team member's labels, a transport's transport type and a facility's kind. A page's labels are its board columns, its filter options and its chart's slices, in the same colours and order; a record with none sits under Other.
+What a list page sorts by: a project's status, a customer's types, a Team record's labels, a transport's transport type and a facility's kind. A page's labels are its board columns, its filter options and its chart's slices, in the same colours and order; a record with none sits under Other.
 _Avoid_: tag, category, group
 
 **Export**:
@@ -307,3 +327,29 @@ The Google Sheet where the definitions were first authored: a specification, no 
 **Sheetari**:
 The service that serves a Google Sheet tab as JSON. The website keeps reading through it, since the team's content workflow lives in those sheets. The Report Generator stops reading through it once the definitions live in the code; the sheet and the service stay as they are.
 _Avoid_: local mirror (a copy nothing reads)
+
+### How the app saves
+
+**Row**:
+One stored thing: a record, a project, a panel, a stop, an entry, a photo or any other piece that saves by itself, named by an id made on the device.
+_Avoid_: document, entity, object
+
+**Row change**:
+One put or delete of a row, naming its table, its id, the columns that changed and a change id made on the device, so a change sent twice counts once. Changes travel in batches that apply all or nothing.
+_Avoid_: patch, mutation, diff
+
+**Row registry**:
+The one list of every table that saves: its columns, its parent, its validation and its rules. A new table joins the app by one entry there.
+_Avoid_: schema (that is the database's), table map
+
+**Save command**:
+The one server action every row change goes through, whatever the table. Things that are not rows (asking for an upload address, looking a place up, exporting a PDF) have commands of their own.
+_Avoid_: save endpoint, sync API, persist
+
+**Mapper**:
+What turns the screens' state into rows and rows back into that state; the only part of the app that knows both shapes. It translates the names the screens use into the ids the rows hold.
+_Avoid_: adapter, serializer, converter
+
+**Sync loop**:
+What sends the screens' changes: about a second after the last change it asks the mapper for rows, compares them with what the server last confirmed, and sends only the difference through the save command. It drives the save state.
+_Avoid_: autosave (that is what the User sees), sync engine (that is PowerSync, ADR 0006)
