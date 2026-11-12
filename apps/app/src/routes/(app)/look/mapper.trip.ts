@@ -18,16 +18,7 @@ import {
 } from './look.data';
 import type { LookState } from './look.state.svelte';
 import { toFacilityId, toFacilityName, toTransportId, toTransportName } from './mapper.lists';
-
-type ValuesType = RowType['values'];
-
-function text(values: ValuesType, column: string) {
-	return String(values[column] ?? '');
-}
-
-function byPosition(a: { values: ValuesType }, b: { values: ValuesType }) {
-	return Number(a.values.position) - Number(b.values.position);
-}
+import { byPosition, text } from './mapper.utils';
 
 /** The rows of what one panel holds, by its kind: stops, items and attachments, or days and entries. */
 export function toPanelRows(look: LookState, projectId: string, panel: PanelType): RowType[] {

@@ -69,6 +69,12 @@ change on the UI cleanup after sign-in and the database (spec #179, Out of
 Scope), not mid-feature. The browser-only Report Generator they replaced is
 in `.archive/apps/app`.
 
+The mapper there is split the same way: `mapper.ts` and its parts named for
+what they map (`mapper.lists.ts`, `mapper.trip.ts`, `mapper.photos.ts`),
+with what they share in `mapper.utils.ts`. Each round trip test sits beside
+the mapper as `mapper.<part>.test.ts` (`mapper.projects.test.ts`,
+`mapper.team.test.ts`), even when no `<part>.ts` exists.
+
 ## Saving to the database
 
 Decided on "Sign in and save to the real database" (#179), 2026-11-12;
