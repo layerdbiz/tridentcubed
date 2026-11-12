@@ -3,6 +3,7 @@
 // server checks that column holds files and that the User may change that row, then hands back the app's own
 // address of the file (`/files/<id>`), which is all a row ever keeps, and where to send the bytes.
 import * as v from 'valibot';
+import type { TableNameType } from '#lib/rows/rows.schema.js';
 
 /** The app's address of a file: what rows keep and screens show. It checks the session, then hands a signed link. */
 export const FILE_PREFIX = '/files/';
@@ -69,7 +70,12 @@ export type TakenType = {
  * What a file is for: the table, the column and (for a row already made) the row. A row inside a project not saved
  * yet (a photo, #189) names its project, so a Sent project refuses the upload before the bytes are sent.
  */
-export type FileTargetType = { table: string; column: string; id?: string; projectId?: string };
+export type FileTargetType = {
+	table: TableNameType;
+	column: string;
+	id?: string;
+	projectId?: string;
+};
 
 const UUID = v.pipe(v.string(), v.uuid());
 

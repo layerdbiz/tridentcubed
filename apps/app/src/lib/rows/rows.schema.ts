@@ -419,7 +419,7 @@ export function readsOf(table: TableNameType) {
 }
 
 /** Whether a column of a table that saves keeps a file's address (it is declared with `PICTURE`). */
-export function holdsFile(table: string, column: string) {
+export function holdsFile(table: string, column: string): table is TableNameType {
 	const spec = (TABLES as Record<string, TableSpecType>)[table];
 	return Boolean(spec && Object.hasOwn(spec.columns, column) && spec.columns[column] === PICTURE);
 }

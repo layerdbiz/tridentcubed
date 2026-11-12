@@ -15,23 +15,24 @@
 // Tables are named as in the database; columns by their Drizzle names (`createdBy`, not `created_by`). A table with
 // no rule of its own below is an ordinary organization table that staff may change; a new table needs an entry in
 // `TABLE_RULES` only when it has a rule of its own.
+import type { OperationType, RowValuesType, TableNameType } from '#lib/rows/rows.schema.js';
 import type { ActorType } from './db/claims';
+import type { StatusType } from './db/project.schema';
 
-export type OperationType = 'put' | 'delete';
-
-export type RowType = Record<string, unknown>;
+/** The tables the check rules on: every table that saves, and the memberships and grants that never do. */
+export type CheckedTableType = TableNameType | 'member' | 'access_grant';
 
 export type ChangeType = {
 	/** The table, as named in the database: `customer`, `team`, `project`. */
-	table: string;
+	table: CheckedTableType;
 	/** `put` makes or changes the row; `delete` sends it to the Trash. */
 	operation: OperationType;
 	/** The columns a put sets. */
 	columns?: readonly string[];
 	/** What a put sets them to. */
-	values?: RowType;
+	values?: RowValuesType;
 	/** The row as it is now; absent for a new row. */
-	row?: RowType;
+	row?: RowValuesType;
 	/** The project the row belongs to (for the project table, the project itself), as it is now. */
 	project?: { status: string; createdBy?: string | null; isDeleted?: boolean };
 	/** For a member or Team record: whether it is the Super admin's. */
@@ -44,7 +45,12 @@ export type VerdictType = { isAllowed: true } | { isAllowed: false; reason: stri
 
 type RuleType = (actor: ActorType, change: ChangeType) => string | undefined;
 
-export const FROZEN_STATUSES = ['Sent', 'Complete', 'Archived'];
+export const FROZEN_STATUSES: readonly StatusType[] = ['Sent', 'Complete', 'Archived'];
+
+/** Whether a project in this status is frozen: Sent, Complete or Archived. */
+export function isFrozen(status: string) {
+	return (FROZEN_STATUSES as readonly string[]).includes(status);
+}
 
 /** The project columns a frozen project still takes. */
 export const STATUS_COLUMNS = ['status', 'statusBeforeSent'];
@@ -93,7 +99,7 @@ const adminsOnly =
 	(actor) =>
 		isAdmin(actor) ? undefined : reason;
 
-const TABLE_RULES: Record<string, RuleType[]> = {
+const TABLE_RULES: Partial<Record<CheckedTableType, RuleType[]>> = {
 	access_grant: [() => REASONS.grant],
 	organization: [
 		(_actor, change) => (change.operation === 'delete' ? REASONS.organizationDelete : undefined),
@@ -143,7 +149,7 @@ const keepTrash: RuleType = (_actor, change) =>
 // A Sent, Complete or Archived project takes nothing but a change of its own status.
 const keepFrozen: RuleType = (_actor, change) => {
 	const status = change.project?.status;
-	if (!status || !FROZEN_STATUSES.includes(status)) return undefined;
+	if (!status || !isFrozen(status)) return undefined;
 	// Deleting the project itself is the delete rule's to decide (an Admin deletes any project).
 	if (change.table === 'project' && change.operation === 'delete') return undefined;
 	const isStatusChange =

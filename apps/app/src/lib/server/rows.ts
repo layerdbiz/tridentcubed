@@ -1,6 +1,6 @@
 // The server half of saving (ADR 0005 and its 2026-11-12 amendment; spec #179; #183). `saveBatch` is what the one
 // save command does with a batch of row changes; `readRows` is what the queries load. Both read the row registry
-// (`#lib/rows/rows.schema.ts`), so a new table needs its Drizzle table in `TABLES` below and nothing else here.
+// (`#lib/rows/rows.schema.ts`), so a new table needs its Drizzle table in `DRIZZLE_TABLES` below and nothing else here.
 //
 // A batch, in one transaction through the claims helper, all or nothing: for each change, a change id already in the
 // change record is done and skipped; otherwise its columns are checked against the registry, the one permission check
@@ -54,14 +54,14 @@ import {
 	user as users
 } from './db/schema';
 import { photo, photoGroup } from './db/photo.schema';
-import { checkPermission, FROZEN_STATUSES, type ChangeType } from './permission';
+import { checkPermission, isFrozen, type ChangeType } from './permission';
 
 function toBatchState(): BatchStateType {
 	return { statusAtStart: new Map(), touched: new Set(), statusSet: new Set(), reads: [] };
 }
 
 /** The Drizzle table of each registry entry. */
-export const TABLES: Record<TableNameType, PgTable> = {
+export const DRIZZLE_TABLES: Record<TableNameType, PgTable> = {
 	customer,
 	contact,
 	team,
@@ -109,7 +109,7 @@ type StoredRowType = Record<string, unknown> & {
 class Refusal extends Error {}
 
 function columnOf(table: TableNameType, column: string) {
-	return (TABLES[table] as unknown as Record<string, PgColumn>)[column];
+	return (DRIZZLE_TABLES[table] as unknown as Record<string, PgColumn>)[column];
 }
 
 /** The tables whose rows sit inside a project (they carry `projectId`), the project itself left out. */
@@ -136,7 +136,7 @@ function toSaved(table: TableNameType, row: StoredRowType): SavedRowType {
 async function findRow(tx: TransactionType, table: TableNameType, id: string) {
 	const [row] = await tx
 		.select()
-		.from(TABLES[table])
+		.from(DRIZZLE_TABLES[table])
 		.where(eq(columnOf(table, 'id'), id));
 	return row as StoredRowType | undefined;
 }
@@ -167,8 +167,7 @@ async function findProject(
 	const before = batch.statusAtStart.get(id) ?? found.status;
 	// A put of the project itself that unfreezes it (Unsend) is judged by the status it sets, with what it carries.
 	const next = table === 'project' && typeof row.status === 'string' ? row.status : found.status;
-	const status =
-		[found.status, before, next].find((each) => !FROZEN_STATUSES.includes(each)) ?? found.status;
+	const status = [found.status, before, next].find((each) => !isFrozen(each)) ?? found.status;
 	return { status, createdBy: found.createdBy, isDeleted: Boolean(found.deletedAt) };
 }
 
@@ -257,7 +256,7 @@ async function advanceDrafts(tx: TransactionType, actor: ActorType, batch: Batch
 async function trashInside(tx: TransactionType, projectId: string) {
 	for (const table of INSIDE_PROJECT)
 		await tx
-			.update(TABLES[table])
+			.update(DRIZZLE_TABLES[table])
 			.set({ deletedAt: sql`now()`, updatedAt: sql`now()` } as never)
 			.where(
 				and(eq(columnOf(table, 'projectId'), projectId), isNull(columnOf(table, 'deletedAt')))
@@ -281,7 +280,7 @@ async function checkName(tx: TransactionType, table: TableNameType, id: string, 
 	if (!('isNamed' in SPECS[table]) || typeof name !== 'string') return;
 	const [taken] = await tx
 		.select({ id: columnOf(table, 'id') })
-		.from(TABLES[table])
+		.from(DRIZZLE_TABLES[table])
 		.where(
 			and(
 				sql`lower(${columnOf(table, 'name')}) = lower(${name})`,
@@ -354,7 +353,7 @@ async function applyChange(
 	const inside = await findProject(tx, batch, table, { ...row, ...values, id });
 	// A frozen project keeps its percent: a status change between Sent, Complete and Archived may carry the
 	// device's percent, out of date or not, and it is set aside rather than refusing the status change.
-	if (table === 'project' && 'status' in values && FROZEN_STATUSES.includes(inside?.status ?? '')) {
+	if (table === 'project' && 'status' in values && isFrozen(inside?.status ?? '')) {
 		const { progress: _kept, ...rest } = values;
 		values = rest;
 	}
@@ -376,7 +375,7 @@ async function applyChange(
 			? await toProjectValues(tx, actor, id, row, values)
 			: {};
 
-	const target = TABLES[table];
+	const target = DRIZZLE_TABLES[table];
 	const where = eq(columnOf(table, 'id'), id);
 	let after: unknown;
 	if (operation === 'delete') {
@@ -494,7 +493,7 @@ async function readScope(
 		if (projectId ? !INSIDE_PROJECT.includes(table) : spec.scope !== scope) continue;
 		const found = await tx
 			.select()
-			.from(TABLES[table])
+			.from(DRIZZLE_TABLES[table])
 			.where(
 				and(
 					'isNamed' in spec ? undefined : isNull(columnOf(table, 'deletedAt')),

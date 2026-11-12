@@ -29,7 +29,7 @@ export type ServerType = {
 const LOCAL_FOLDER = join(tmpdir(), 'trident-files');
 
 const KEY = Symbol.for('trident.memory-database');
-const store = globalThis as typeof globalThis & { [KEY]?: Promise<DatabaseType> };
+const kept = globalThis as typeof globalThis & { [KEY]?: Promise<DatabaseType> };
 
 let server: Promise<ServerType> | undefined;
 
@@ -55,7 +55,7 @@ async function start(): Promise<ServerType> {
 
 	const db = settings.databaseUrl
 		? createDatabase(settings.databaseUrl)
-		: await (store[KEY] ??= createSeededMemoryDatabase());
+		: await (kept[KEY] ??= createSeededMemoryDatabase());
 	const auth = createAuth({
 		db,
 		secret: settings.secret,

@@ -30,6 +30,8 @@ export const STATUSES = [
 	'Archived'
 ] as const;
 
+export type StatusType = (typeof STATUSES)[number];
+
 export const project = pgTable(
 	'project',
 	{
