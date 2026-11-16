@@ -3,13 +3,16 @@
 	// stops (Justin, 2026-10-25): a header that opens and closes it, and drags it when the list can be reordered (no
 	// handle, run 8 note 7). Its bottom row holds the caller's `actions` on the left and Delete at the far right (run 8
 	// note 10, in place of the ⋮ menu); the caller's `ondelete` asks first (LookState.confirm).
+	// 2026-11-16 (Justin): under its name every section says how much of it is filled in, the way a panel does
+	// ("1 of 3 complete"), from the `values` its caller says count (tally.ts). No line describes it any more.
 	import type { Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { toTally } from './tally';
 
 	let {
 		title,
 		meta = '',
-		note = '',
+		values,
 		icon = '',
 		tone = 'bg-primary/10 text-primary',
 		isOpen,
@@ -24,7 +27,8 @@
 	}: {
 		title: string;
 		meta?: string;
-		note?: string;
+		// What counts toward the section being complete: each one that holds something is one done.
+		values?: unknown[];
 		icon?: string;
 		tone?: string;
 		isOpen: boolean;
@@ -68,7 +72,7 @@
 		{/if}
 		<span class="min-w-0 flex-1">
 			<span class="block truncate text-sm font-semibold text-slate-800">{title}</span>
-			{#if note}<span class="block truncate text-[11px] text-slate-400">{note}</span>{/if}
+			{#if values}<span class="block truncate text-xs text-slate-500">{toTally(values)}</span>{/if}
 		</span>
 		{#if meta}<span class="shrink-0 text-xs text-slate-400">{meta}</span>{/if}
 		<span

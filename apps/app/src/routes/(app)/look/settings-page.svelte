@@ -124,7 +124,15 @@
 		<div onfocusin={() => (part = 'organization')}>
 			<Group
 				title="Details"
-				note="At the top of every report page, and on the cover"
+				values={[
+					organization.logo,
+					organization.name,
+					organization.address,
+					organization.phone,
+					organization.email,
+					organization.groupEmail,
+					organization.website
+				]}
 				icon="icon-[mdi--domain]"
 				isOpen={open.includes('details')}
 				ontoggle={() => toggle('details')}
@@ -180,7 +188,11 @@
 		<div onfocusin={() => (part = 'wording')}>
 			<Group
 				title="Disclaimer"
-				note="The last page of every report, word for word"
+				values={[
+					organization.disclaimer.opening,
+					...organization.disclaimer.points.map((point) => point.title.trim() && point.text),
+					organization.disclaimer.note
+				]}
 				icon="icon-[mdi--shield-alert-outline]"
 				isOpen={open.includes('disclaimer')}
 				ontoggle={() => toggle('disclaimer')}
@@ -249,7 +261,7 @@
 		<div onfocusin={() => (part = 'wording')}>
 			<Group
 				title="Sign-off"
-				note="Under the disclaimer, over the team lead's name"
+				values={[organization.closing, organization.signoff]}
 				icon="icon-[mdi--draw]"
 				isOpen={open.includes('signoff')}
 				ontoggle={() => toggle('signoff')}

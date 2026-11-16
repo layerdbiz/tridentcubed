@@ -69,27 +69,6 @@
 		return name ? look.transports.find((item) => item.name === name)?.photo : undefined;
 	}
 
-	function plural(count: number, one: string, many: string) {
-		return `${count} ${count === 1 ? one : many}`;
-	}
-
-	// "1 Vessel · 2 Facilities · 2 Locations"
-	function countsOf(leg: LegType) {
-		const places = leg.stops.map((stop) => stop.facility).filter(Boolean);
-		const cities = new Set(
-			places
-				.map((place) => look.facilities.find((item) => item.name === place)?.city ?? '')
-				.filter(Boolean)
-		);
-		return [
-			headOf(leg)?.mode ? `1 ${headOf(leg).mode}` : '',
-			places.length ? plural(places.length, 'Facility', 'Facilities') : '',
-			cities.size ? plural(cities.size, 'Location', 'Locations') : ''
-		]
-			.filter(Boolean)
-			.join(' · ');
-	}
-
 	// One pick: the mode, and with it the type it belongs to.
 	function pickMode(leg: LegType, mode: string) {
 		if (headOf(leg)?.mode === mode) return;
@@ -206,7 +185,7 @@
 		{@const legId = leg.id}
 		<Group
 			title={first.name || `Transport Mode ${index + 1}`}
-			note={countsOf(leg) || 'Nothing picked yet'}
+			values={[first.name, ...leg.stops.map((stop) => stop.facility)]}
 			icon={MODE_ICONS[first.mode] ?? 'icon-[mdi--transit-connection-variant]'}
 			image={photoOf(leg)}
 			isOpen={open.includes(leg.id)}

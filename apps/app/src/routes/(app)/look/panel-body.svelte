@@ -71,7 +71,8 @@
 	}
 
 	// The Project panel's sections, open or folded: Project, Customer, Team, and one per company of personnel.
-	let openSections = $state<string[]>(['project', 'customer', 'team']);
+	// Only the first section starts open (Justin, 2026-11-16: all three open at once was too much).
+	let openSections = $state<string[]>(['project']);
 	const personnel = $derived(panel.personnel ?? []);
 	const members = $derived(look.members.map((member) => ({ id: member.name, label: member.name })));
 
@@ -410,7 +411,7 @@
 {#snippet teamBlock()}
 	<Group
 		title="Organization"
-		note={[panel.owner, ...panel.assigned].filter(Boolean).join(', ') || 'Pick the team lead first'}
+		values={[fieldOf('Organization')?.value, panel.owner, panel.assigned]}
 		icon={PAGE_ICONS.team}
 		isOpen={openSections.includes('team')}
 		ontoggle={() => (openSections = toggle(openSections, 'team'))}
@@ -446,10 +447,9 @@
 		/>
 	</Group>
 	{#each personnel as company, companyIndex (company.id)}
-		{@const named = company.people.filter((person) => person.name.trim())}
 		<Group
 			title={company.company || `Personnel ${companyIndex + 1}`}
-			note={named.map((person) => person.name).join(', ') || 'No one added yet'}
+			values={[company.company, ...company.people.map((person) => person.name)]}
 			icon="icon-[mdi--account-multiple-outline]"
 			tone="bg-slate-900/[0.06] text-slate-600"
 			isOpen={openSections.includes(company.id)}
@@ -535,8 +535,7 @@
 		<div class="space-y-3">
 			<Group
 				title="Project"
-				note={[title?.value, fieldOf('Project Type')?.value].filter(Boolean).join(' · ') ||
-					'Title, subtitle and type'}
+				values={[title?.value, subtitle?.value, fieldOf('Project Type')?.value]}
 				icon={PAGE_ICONS.projects}
 				isOpen={openSections.includes('project')}
 				ontoggle={() => (openSections = toggle(openSections, 'project'))}
@@ -553,8 +552,7 @@
 			</Group>
 			<Group
 				title="Customer"
-				note={[customerName, contact?.name].filter(Boolean).join(' · ') ||
-					'Pick who the project is for'}
+				values={[customerName]}
 				icon={PAGE_ICONS.customers}
 				isOpen={openSections.includes('customer')}
 				ontoggle={() => (openSections = toggle(openSections, 'customer'))}
@@ -786,7 +784,7 @@
 						sortKey={panel.days.length > 1 ? `days-${panel.id}` : ''}
 						index={dayIndex}
 						title="Day {dayIndex + 1}"
-						note="{day.entries.length} {day.entries.length === 1 ? 'entry' : 'entries'}"
+						values={[day.date, ...day.entries.map((entry) => entry.time && entry.activity.trim())]}
 						meta={day.date || 'No date'}
 						icon="icon-[mdi--calendar-blank-outline]"
 						isOpen={openDays.includes(day.id)}
@@ -895,6 +893,7 @@
 				>
 					<Group
 						title={group.title || 'Untitled group'}
+						values={[group.title, group.photos]}
 						meta="{group.photos.length} photos"
 						icon="icon-[mdi--image-multiple-outline]"
 						isOpen={openGroups.includes(group.id)}
