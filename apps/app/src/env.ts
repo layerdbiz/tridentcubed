@@ -39,6 +39,12 @@ export const variables = defineEnvVars({
 	SUPABASE_SECRET_KEY: optional(
 		"Supabase's secret key (sb_secret_...), kept on the server only: it signs the upload and download addresses of files."
 	),
+	DEV_SUPER_ADMIN_EMAIL: optional(
+		'Outside production only, for the in-process database: this email signs in as an Admin and Super admin. A production deployment never reads it.'
+	),
+	DEV_SUPER_ADMIN_TEAM_EMAIL: optional(
+		'With DEV_SUPER_ADMIN_EMAIL: the email of the Team record that Super admin signs in as, when it is not their own.'
+	),
 	VERCEL: optional('Set by Vercel: this is a deployment, so production rules apply.'),
 	VERCEL_ENV: optional('Set by Vercel: production, preview or development.'),
 	VERCEL_URL: optional("Set by Vercel: this deployment's own host."),
