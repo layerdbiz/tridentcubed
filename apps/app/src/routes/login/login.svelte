@@ -8,6 +8,7 @@
 	// what is missing.
 	import { page } from '$app/state';
 	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
+	import { readWaiting, toWaiting } from './waiting';
 
 	const FIELD =
 		'w-full rounded-xl border-0 bg-slate-900/[0.05] px-3.5 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary/40';
@@ -50,6 +51,41 @@
 	let email = $state(sent);
 	let notice = $state(sent ? `We sent a 6-digit code to ${sent}.` : '');
 	let problem = $state(submitCode.result?.message ?? '');
+
+	// The email a code was sent to is kept for this tab while the code works (waiting.ts), so a page that reloads,
+	// as a phone's does when its User comes back from reading the code, still asks for the code.
+	const WAITING = 'trident-sign-in-waiting';
+
+	function remember(address: string) {
+		try {
+			sessionStorage.setItem(WAITING, toWaiting(address));
+		} catch {
+			// No storage (a private window): the page works as before.
+		}
+	}
+
+	function forget() {
+		try {
+			sessionStorage.removeItem(WAITING);
+		} catch {
+			// Nothing was kept.
+		}
+	}
+
+	$effect(() => {
+		if (sent) return remember(sent);
+		let kept: string | null = null;
+		try {
+			kept = sessionStorage.getItem(WAITING);
+		} catch {
+			return;
+		}
+		const waiting = readWaiting(kept, signIn.codeMinutes);
+		if (!waiting) return;
+		email = waiting;
+		notice = `We sent a 6-digit code to ${waiting}.`;
+		step = 'code';
+	});
 </script>
 
 <div class="fixed inset-0 overflow-y-auto font-sans [color-scheme:light]">
@@ -103,6 +139,7 @@
 								problem = '';
 								await submit();
 								if (submitCode.result) problem = submitCode.result.message;
+								else forget();
 							})}
 						>
 							<p class="text-sm text-slate-600">
@@ -153,6 +190,7 @@
 							notice = `${step === 'code' ? 'We sent a new code' : 'We sent a 6-digit code'} to ${result.email}.`;
 							email = result.email;
 							step = 'code';
+							remember(result.email);
 						})}
 					>
 						{#if step === 'email'}
@@ -193,6 +231,7 @@
 									onclick={() => {
 										step = 'email';
 										problem = '';
+										forget();
 									}}>Use a different email</button
 								>
 							</div>
