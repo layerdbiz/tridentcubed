@@ -145,7 +145,7 @@
 		{#if isLined}
 			<!-- A desktop's handle: a grey line that turns blue under the pointer and drags up and down. -->
 			<div
-				class="group/line relative z-20 -mb-2 flex h-2 shrink-0 cursor-row-resize touch-none items-start"
+				class="group/line absolute inset-x-0 top-0 z-20 flex h-2 cursor-row-resize touch-none items-start"
 				data-sheet-handle
 				title="Drag to resize"
 				aria-hidden="true"
