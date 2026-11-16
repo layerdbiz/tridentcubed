@@ -125,14 +125,14 @@
 						<span class="whitespace-nowrap"
 							>{words.at(-1)}<button
 								type="button"
-								class="relative -my-1 -mr-1 -ml-0.5 inline-flex p-1 align-middle md:ml-0 {isOn
+								class="relative -my-2 -mr-2 -ml-1.5 inline-flex p-2 align-middle md:-ml-1 {isOn
 									? 'text-white'
 									: 'text-slate-300'}"
 								aria-label="What does {info.label} count?"
 								onclick={(event) => ask(event, dataset)}
 								onpointerenter={(event) => hasHover && hover(event, dataset)}
 								onpointerleave={() => hasHover && (hovered = undefined)}
-								><span class="icon-[mdi--help-circle] size-3.5 md:size-4 2xl:size-5"></span></button
+								><span class="icon-[mdi--help-circle] size-[18px] 2xl:size-5"></span></button
 							></span
 						>
 					</span>

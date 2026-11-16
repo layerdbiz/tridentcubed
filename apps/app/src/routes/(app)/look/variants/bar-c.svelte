@@ -36,6 +36,8 @@
 	const PROJECT: TabType[] = ['page', 'edit', 'preview'];
 	const RECORD: TabType[] = ['page', 'edit'];
 	const DESK: TabType[] = ['page', 'preview'];
+	// The page on show on the dashboard: its icon sits on the blue of the Add button (Justin, 2026-11-16).
+	const ON = 'bg-primary text-white';
 	const SLIDE =
 		'absolute inset-y-0 right-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
 
@@ -114,7 +116,9 @@
 		<!-- A fifth of the bar, where Projects sits on the dashboard: this icon never moves. -->
 		<button
 			class="flex h-11 shrink-0 basis-1/5 items-center justify-center rounded-full transition-colors {isLeadOn
-				? 'text-white'
+				? isInside
+					? 'text-white'
+					: ON
 				: 'text-white/45 hover:text-white/70'}"
 			aria-label={isInside ? `Back to ${DATASETS[lead].label}` : DATASETS[lead].label}
 			aria-current={isLeadOn && !isInside ? 'page' : undefined}
@@ -139,7 +143,7 @@
 					{@const isOn = look.navSection === id}
 					<button
 						class="flex h-11 flex-1 items-center justify-center rounded-full transition-colors {isOn
-							? 'text-white'
+							? ON
 							: 'text-white/45 hover:text-white/70'}"
 						aria-label={DATASETS[id].label}
 						aria-current={isOn ? 'page' : undefined}

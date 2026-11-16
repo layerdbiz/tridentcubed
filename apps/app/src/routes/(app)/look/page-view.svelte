@@ -11,7 +11,7 @@
 	// only up-and-down scrolling, so a sideways swipe on it reaches the tabs.
 	import type { Snippet } from 'svelte';
 	import type { PinType } from './chart.data';
-	import { FADE } from './look.data';
+	import { FADE, fadeTop } from './fade';
 	import Split from './split.svelte';
 	import WorldMap from './world-map.svelte';
 
@@ -232,6 +232,7 @@
 	<div
 		class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+96px)] {FADE}"
 		style="padding-left: {left + 16}px"
+		{@attach fadeTop}
 	>
 		<div class="max-w-3xl">{@render children()}</div>
 	</div>

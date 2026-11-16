@@ -10,22 +10,26 @@
 	// on show have black icons and lighter words. Run 15 (2026-11-10): the logo and name are the organization's own,
 	// and the cog and Admin both open Settings. Run 18 (Justin, 2026-11-10): Admin is out of the menu for now; the
 	// signed-in person's row and the cog both open Settings, where the organization is edited.
-	import { signOut } from '#lib/auth/auth.remote.js';
+	import type { Snippet } from 'svelte';
+	import AccountMenu from './account-menu.svelte';
 	import Avatar from './avatar.svelte';
-	import { DATASETS, FADE, NAV, type DatasetType } from './look.data';
+	import { FADE, fadeTop } from './fade';
+	import { DATASETS, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import Menu from './menu.svelte';
 	import RecentList from './recent-list.svelte';
 	import { ROLE_LABELS } from './team.data';
 
 	let {
 		look,
 		isCollapsed = false,
-		onnavigate
+		onnavigate,
+		bell
 	}: {
 		look: LookState;
 		isCollapsed?: boolean;
 		onnavigate?: () => void;
+		// The phone's menu: the notification bell, at the top right beside the name (Justin, 2026-11-16).
+		bell?: Snippet;
 	} = $props();
 
 	// The signed-in person's Team record; until it has loaded, their role alone.
@@ -41,28 +45,6 @@
 		onnavigate?.();
 	}
 
-	// The menu on the profile picture (run 33): your own Team page, the Organization, and Log out.
-	const ACCOUNT = [
-		{ id: 'profile', label: 'Profile', icon: 'icon-[mdi--account-circle-outline]' },
-		{ id: 'organization', label: 'Organization', icon: 'icon-[mdi--domain]' },
-		{ id: 'logout', label: 'Log out', icon: 'icon-[mdi--logout]', isDanger: true }
-	];
-
-	// Log out (#181) ends the session on the server, then loads the login page afresh, so nothing of this User's
-	// stays in the page for whoever has the device next.
-	async function logOut() {
-		await signOut();
-		location.assign('/login');
-	}
-
-	function account(id: string) {
-		if (id === 'organization') return settings();
-		if (id === 'profile') {
-			if (look.me) look.openRecord('team', look.me.name, 'page');
-		} else void logOut();
-		onnavigate?.();
-	}
-
 	function go(id: string) {
 		if (id === 'admin') return settings();
 		if (look.screen !== 'dashboard') look.home();
@@ -73,21 +55,24 @@
 </script>
 
 <div class="flex h-full flex-col">
-	<button
-		class="flex w-full items-center gap-1 px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4"
-		onclick={() => go('projects')}
-	>
-		<span class={COLUMN}
-			>{#if look.organization.logo}<img
-					src={look.organization.logo}
-					alt={look.organization.name}
-					class="size-14 object-contain"
-				/>{/if}</span
+	<div class="flex w-full items-center px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">
+		<button
+			class="flex min-w-0 flex-1 items-center gap-1"
+			onclick={() => go('projects')}
 		>
-		<span class="text-[15px] font-extrabold tracking-wide text-slate-900 uppercase {WORDS}"
-			>{look.organization.name}</span
-		>
-	</button>
+			<span class={COLUMN}
+				>{#if look.organization.logo}<img
+						src={look.organization.logo}
+						alt={look.organization.name}
+						class="size-14 object-contain"
+					/>{/if}</span
+			>
+			<span class="text-[15px] font-extrabold tracking-wide text-slate-900 uppercase {WORDS}"
+				>{look.organization.name}</span
+			>
+		</button>
+		{#if bell}<div class="shrink-0">{@render bell()}</div>{/if}
+	</div>
 	<nav class="w-full space-y-0.5 px-3">
 		{#each NAV.filter((item) => item.id !== 'admin') as item (item.id)}
 			{@const isOn =
@@ -113,7 +98,10 @@
 	<p class="mt-6 px-7 text-[11px] font-bold tracking-wide text-slate-500 uppercase {WORDS}">
 		Recent
 	</p>
-	<div class="mt-1 w-full flex-1 space-y-0.5 overflow-y-auto px-3 pb-6 {FADE}">
+	<div
+		class="mt-1 w-full flex-1 space-y-0.5 overflow-y-auto px-3 pb-6 {FADE}"
+		{@attach fadeTop}
+	>
 		<RecentList
 			{look}
 			size={32}
@@ -125,15 +113,12 @@
 
 	<div class="flex w-full items-center gap-1 px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
 		<div class="min-w-0 flex-1">
-			<Menu
-				label="Account"
-				value=""
-				options={ACCOUNT}
-				align="left"
+			<AccountMenu
+				{look}
 				isWide
-				onpick={account}
+				{onnavigate}
 			>
-				{#snippet trigger(_, isOpen)}
+				{#snippet picture(isOpen)}
 					<span
 						class="flex w-full min-w-0 items-center gap-1 rounded-2xl text-left transition {isOpen
 							? 'bg-slate-900/[0.05]'
@@ -158,7 +143,7 @@
 						></span>
 					</span>
 				{/snippet}
-			</Menu>
+			</AccountMenu>
 		</div>
 	</div>
 </div>

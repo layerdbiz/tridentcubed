@@ -20,6 +20,8 @@
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fly, scale } from 'svelte/transition';
+	import AccountMenu from './account-menu.svelte';
+	import Avatar from './avatar.svelte';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
 	import AddSheet from './add-sheet.svelte';
@@ -295,13 +297,15 @@
 	}}
 />
 
-{#snippet bellButton()}
+<!-- The bell: top right of a desktop's dashboard, and in the phone's menu beside the name (`isPlain`: on the menu's
+     white it needs no circle of its own). -->
+{#snippet bellButton(isPlain = false)}
 	<div
 		class="relative"
 		bind:this={bell}
 	>
 		<button
-			class="{round} relative"
+			class="{isPlain ? ROUND : round} relative"
 			aria-label="Notifications"
 			aria-expanded={isBellOpen}
 			onclick={ring}
@@ -309,17 +313,18 @@
 			<span class="icon-[mdi--bell-outline] size-6"></span>
 			{#if !seen}
 				<span
-					class="absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {topLook === 'B'
-						? 'ring-black'
-						: topLook === 'C'
-							? 'ring-white'
+					class="absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isPlain ||
+					topLook === 'C'
+						? 'ring-white'
+						: topLook === 'B'
+							? 'ring-black'
 							: 'ring-slate-100'}"
 				></span>
 			{/if}
 		</button>
 		{#if isBellOpen}
 			<div
-				class="absolute top-full right-0 z-50 mt-2 w-80 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-3xl bg-white p-2 shadow-[0_2px_6px_rgb(15_23_42/0.06),0_24px_50px_-12px_rgb(15_23_42/0.3)]"
+				class="absolute top-full right-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-3xl bg-white p-2 shadow-[0_2px_6px_rgb(15_23_42/0.06),0_24px_50px_-12px_rgb(15_23_42/0.3)] md:w-80"
 				transition:scale={{ start: 0.95, duration: 140 }}
 			>
 				<p class="px-3 pt-2 pb-1 text-sm font-semibold text-slate-900">Notifications</p>
@@ -331,6 +336,8 @@
 		{/if}
 	</div>
 {/snippet}
+
+{#snippet drawerBell()}{@render bellButton(true)}{/snippet}
 
 <!-- The map chart: the whole top of the screen, edge to edge (under the desktop sidebar too), its pins kept in the
      part between the header and the cards. -->
@@ -417,6 +424,7 @@
 			<Sidebar
 				{look}
 				onnavigate={() => (drawer = 0)}
+				bell={isWide ? undefined : drawerBell}
 			/>
 		</aside>
 		<div
@@ -456,7 +464,26 @@
 							aria-label="Open menu"
 							onclick={() => (drawer = 1)}><span class="icon-[mdi--menu] size-6"></span></button
 						>
-						{@render bellButton()}
+						<!-- A phone: your own picture, which opens the menu the sidebar's picture opens (Justin, 2026-11-16);
+						     the bell is in the menu. A desktop keeps the bell here, its picture being in the sidebar. -->
+						{#if isWide}
+							{@render bellButton()}
+						{:else}
+							<AccountMenu
+								{look}
+								align="right"
+							>
+								{#snippet picture(isOpen)}
+									<span
+										class="flex rounded-full transition {isOpen ? 'ring-2 ring-primary/50' : ''}"
+										><Avatar
+											name={look.me?.name ?? ''}
+											size={40}
+										/></span
+									>
+								{/snippet}
+							</AccountMenu>
+						{/if}
 					</header>
 					<div class="min-h-0 flex-1 pt-1 md:pt-0">
 						<HeroChart

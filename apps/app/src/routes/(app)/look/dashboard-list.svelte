@@ -10,7 +10,8 @@
 	import Board from './board.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import Faces from './faces.svelte';
-	import { DATASETS, FADE, type DatasetType, type ProjectType } from './look.data';
+	import { FADE, fadeTop } from './fade';
+	import { DATASETS, type DatasetType, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import ProjectCard from './project-card.svelte';
@@ -95,6 +96,7 @@
 		class={view === 'board'
 			? 'min-h-0 flex-1'
 			: `min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain pb-28 ${FADE}`}
+		{@attach fadeTop}
 	>
 		{#if total === 0}
 			<div class="flex flex-col items-center gap-2 py-16 text-slate-400">

@@ -534,9 +534,6 @@ export const DATASETS: Record<DatasetType, { label: string; one: string; icon: s
 	facilities: { label: 'Facilities', one: 'Facility', icon: PAGE_ICONS.facilities }
 };
 
-// The bottom of anything that scrolls fades out rather than stopping at a hard edge (run 12 note 15).
-export const FADE = '[mask-image:linear-gradient(to_bottom,black_calc(100%-56px),transparent)]';
-
 export const LAYOUTS = [1, 2, 4, 6, 8];
 
 let nextId = 0;

@@ -9,7 +9,7 @@
 	// drags the board sideways from any part of a column but its cards; a finger swipes it.
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { FADE } from './look.data';
+	import { FADE, fadeTop } from './fade';
 	import type { ColumnType } from './records.data';
 
 	let {
@@ -78,7 +78,10 @@
 						.tone.bg}">{column.items.length}</span
 				>
 			</p>
-			<div class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain pb-28 {FADE}">
+			<div
+				class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain pb-28 {FADE}"
+				{@attach fadeTop}
+			>
 				{#each column.items as item (keyOf(item))}
 					<div
 						class="touch-pan-y rounded-2xl bg-white ring-1 ring-slate-900/[0.06] transition hover:shadow-md"
