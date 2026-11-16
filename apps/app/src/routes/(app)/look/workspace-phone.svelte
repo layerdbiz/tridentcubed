@@ -116,7 +116,7 @@
 </script>
 
 <div
-	class="relative h-dvh overflow-hidden md:hidden {surface} {isPulling
+	class="relative h-dvh overflow-clip md:hidden {surface} {isPulling
 		? ''
 		: 'transition-transform duration-300 ease-out'} {pull
 		? 'shadow-[-16px_0_40px_rgb(15_23_42/0.18)]'

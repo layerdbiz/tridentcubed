@@ -750,7 +750,9 @@
 			</div>
 		{/if}
 		<div class="flex flex-wrap gap-2">
-			<label class="{ghostButton} cursor-pointer bg-primary/10 text-primary hover:bg-primary/15">
+			<label
+				class="{ghostButton} relative cursor-pointer bg-primary/10 text-primary hover:bg-primary/15"
+			>
 				<span class="icon-[mdi--camera-outline] size-4"></span>Attach a photo
 				<input
 					type="file"
@@ -760,7 +762,9 @@
 					onchange={(event) => attach(event, 'photo')}
 				/>
 			</label>
-			<label class="{ghostButton} cursor-pointer bg-primary/10 text-primary hover:bg-primary/15">
+			<label
+				class="{ghostButton} relative cursor-pointer bg-primary/10 text-primary hover:bg-primary/15"
+			>
 				<span class="icon-[mdi--file-table-outline] size-4"></span>Attach a spreadsheet
 				<input
 					type="file"
@@ -1052,7 +1056,7 @@
 								</div>
 							{/each}
 							<label
-								class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
+								class="relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
 							>
 								<span class="icon-[mdi--image-plus-outline] size-6"></span>
 								<span class="text-[11px] font-medium">Upload</span>
@@ -1065,7 +1069,7 @@
 								/>
 							</label>
 							<label
-								class="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
+								class="relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
 							>
 								<span class="icon-[mdi--camera-outline] size-6"></span>
 								<span class="text-[11px] font-medium">Camera</span>

@@ -363,7 +363,8 @@
 		<div class="flex-1 overflow-y-auto px-4 pb-4">{@render form()}</div>
 	</aside>
 {:else}
-	<div class="relative h-dvh overflow-hidden bg-slate-100">
+	<!-- Clipped, not hidden: a clipped box can never be slid sideways by the browser. -->
+	<div class="relative h-dvh overflow-clip bg-slate-100">
 		<PageHeader
 			{look}
 			title="Organization"

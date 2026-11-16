@@ -103,8 +103,10 @@
 				>
 			{/if}
 		</span>
+		<!-- The hidden file input stays inside its own button (relative): left to sit against the screen, it stuck out past
+		     the screen's edge, and a tap on the button slid the whole screen sideways to show it (Justin, 2026-11-16). -->
 		<label
-			class="flex cursor-pointer items-center gap-1.5 rounded-full bg-slate-100 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+			class="relative flex cursor-pointer items-center gap-1.5 rounded-full bg-slate-100 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
 		>
 			<span class="icon-[mdi--tray-arrow-up] size-4"></span>{(value || upload) && canRemove
 				? 'Replace'

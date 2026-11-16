@@ -46,6 +46,12 @@
 	const icon = $derived(isBig ? 'size-7' : 'size-6');
 	// The far left: Projects on the dashboard; inside, the page it came from.
 	const lead = $derived(isInside ? look.dataset : PAGES[0]);
+	// The Organization is none of the five pages, so inside it the bar shows its own icon and name; it used to show
+	// the page it was opened from, and read as if that page were open (Justin, 2026-11-16). They are those of the
+	// last thing opened, so they do not change while they slide away.
+	const ORGANIZATION = { name: 'Organization', icon: 'icon-[mdi--domain]' };
+	let inside = $state({ name: DATASETS[PAGES[0]].label, icon: PAGE_ICONS[PAGES[0]] });
+	const leadIcon = $derived(isInside ? inside.icon : PAGE_ICONS[lead]);
 	const isLeadOn = $derived(isInside || look.navSection === lead);
 	// The tabs of the last thing opened, so they do not change while they slide away.
 	let tabs = $state(PROJECT);
@@ -55,6 +61,12 @@
 	$effect(() => {
 		if (look.screen === 'record' || look.screen === 'settings') tabs = RECORD;
 		else if (look.screen === 'workspace') tabs = isWide ? DESK : PROJECT;
+	});
+
+	$effect(() => {
+		if (look.screen === 'settings') inside = ORGANIZATION;
+		else if (isInside)
+			inside = { name: DATASETS[look.dataset].label, icon: PAGE_ICONS[look.dataset] };
 	});
 
 	// The blue highlight sits under its tab and follows the panes as they are swiped.
@@ -105,11 +117,11 @@
 				: 'text-white/45 hover:text-white/70'}"
 			aria-label={isInside ? `Back to ${DATASETS[lead].label}` : DATASETS[lead].label}
 			aria-current={isLeadOn && !isInside ? 'page' : undefined}
-			title={DATASETS[lead].label}
+			title={isInside ? inside.name : DATASETS[lead].label}
 			onclick={() => go(lead)}
 		>
-			{#key lead}<span
-					class="{PAGE_ICONS[lead]} {icon}"
+			{#key leadIcon}<span
+					class="{leadIcon} {icon}"
 					in:fade={{ duration: 200 }}
 				></span>{/key}
 		</button>
@@ -147,7 +159,7 @@
 					aria-label="Back to {DATASETS[look.dataset].label}"
 					onclick={() => go(look.dataset)}
 				>
-					<span class="truncate text-[13px] font-semibold">{DATASETS[look.dataset].label}</span>
+					<span class="truncate text-[13px] font-semibold">{inside.name}</span>
 					{#if arrow !== 'none'}
 						<span
 							class="{arrow === 'arrow'
