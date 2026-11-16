@@ -4,6 +4,7 @@
 	import Chips from './chips.svelte';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import PlaceLine from './place-line.svelte';
 	import RecordMark from './record-mark.svelte';
 	import type { RecordType } from './records.data';
 
@@ -23,13 +24,10 @@
 		<span class="flex max-w-full justify-center">
 			<Chips labels={record.sub ? [...record.labels, record.sub] : record.labels} />
 		</span>
-		{#if record.location}
-			<span class="flex max-w-full items-center gap-0.5 text-xs text-slate-500"
-				><span class="icon-[mdi--map-marker] size-3.5 shrink-0 {record.tone.text}"></span><span
-					class="truncate">{record.location}</span
-				></span
-			>
-		{/if}
+		<PlaceLine
+			place={record.location}
+			tone={record.tone.text}
+		/>
 	</button>
 	<div class="absolute top-1.5 right-1.5">
 		<MoreMenu

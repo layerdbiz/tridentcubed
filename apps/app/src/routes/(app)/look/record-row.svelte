@@ -7,6 +7,7 @@
 	import Faces from './faces.svelte';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import PlaceLine from './place-line.svelte';
 	import RecordMark from './record-mark.svelte';
 	import type { RecordType } from './records.data';
 	import Chips from './chips.svelte';
@@ -56,12 +57,11 @@
 			<span class="flex h-[19px] items-center">
 				<Chips labels={record.sub ? [...record.labels, record.sub] : record.labels} />
 			</span>
-			<span class="flex h-4 min-w-0 items-center gap-0.5 text-xs text-slate-500">
-				{#if record.location}
-					<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {record.tone.text}"></span><span
-						class="truncate">{record.location}</span
-					>
-				{/if}
+			<span class="flex h-4 min-w-0 items-center">
+				<PlaceLine
+					place={record.location}
+					tone={record.tone.text}
+				/>
 			</span>
 		</span>
 	</button>

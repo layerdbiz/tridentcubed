@@ -14,6 +14,7 @@
 	import { DATASETS, type DatasetType, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import PlaceLine from './place-line.svelte';
 	import ProjectCard from './project-card.svelte';
 	import ProjectLogo from './project-logo.svelte';
 	import ProjectProgress from './project-progress.svelte';
@@ -254,7 +255,12 @@
 											isWrapped
 										/></td
 									>
-									<td class="py-3 text-xs text-slate-500">{record.location}</td>
+									<td class="py-3"
+										><PlaceLine
+											place={record.location}
+											tone={record.tone.text}
+										/></td
+									>
 									{#if dataset === 'team'}
 										<td
 											class="py-3 text-xs leading-5"

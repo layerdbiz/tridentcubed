@@ -21,7 +21,8 @@
 	{#if route.from}
 		<span class="icon-[mdi--map-marker] size-3.5 shrink-0 {STATUS[project.status].tone}"></span>
 	{:else}
-		<!-- No place yet: say so, with no marker pointing at nothing. -->
+		<!-- No place yet: the line keeps its look, grey, and says so (Justin, 2026-11-16). -->
+		<span class="icon-[mdi--map-marker-outline] size-3.5 shrink-0 opacity-50"></span>
 		<span class="min-w-0 truncate opacity-60">No location yet</span>
 	{/if}
 	{#if route.to}
