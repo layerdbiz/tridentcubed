@@ -49,3 +49,27 @@ describe('a new app', () => {
 			expect(panel.groups).toEqual([]);
 	});
 });
+
+describe('the page of what is open', () => {
+	it('is the list on show on the dashboard', () => {
+		const look = fresh();
+		look.pick('transport');
+		expect(look.place).toBe('transport');
+	});
+
+	it('is the page a record belongs to, whatever list was last on show', () => {
+		const look = fresh();
+		look.pick('projects');
+		look.openRecord('team', 'Justin ONeill');
+		expect(look.place).toBe('team');
+	});
+
+	it('is Projects for an open project, and the list behind it for the Organization', () => {
+		const look = fresh();
+		look.pick('facilities');
+		look.openSettings();
+		expect(look.place).toBe('facilities');
+		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
+		expect(look.place).toBe('projects');
+	});
+});
