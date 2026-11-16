@@ -90,7 +90,9 @@
 	</button>
 	<nav class="w-full space-y-0.5 px-3">
 		{#each NAV.filter((item) => item.id !== 'admin') as item (item.id)}
-			{@const isOn = look.navSection === item.id}
+			{@const isOn =
+				(look.screen === 'workspace' || look.screen === 'record' ? look.place : look.navSection) ===
+				item.id}
 			<button
 				class="flex w-full items-center gap-1 overflow-hidden rounded-xl py-1.5 text-[15px] font-bold transition {isOn
 					? 'bg-slate-900/[0.06] text-slate-900'

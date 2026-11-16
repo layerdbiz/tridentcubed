@@ -261,6 +261,15 @@ export class LookState {
 		this.filter = 'All';
 	}
 
+	// The page of what is open, never the list last visited (Justin, 2026-11-16: his own Team page, opened from his
+	// picture while on Projects, said Projects). A project belongs to Projects and a record to its own page. The
+	// dashboard and the Organization, which is none of the five pages, give the list on show or last on show.
+	get place(): DatasetType {
+		if (this.screen === 'workspace') return 'projects';
+		if (this.screen === 'record' && this.record) return this.record.page;
+		return this.dataset;
+	}
+
 	// A project opens on its Page, before Edit and Preview (run 13), unless asked for another tab.
 	open(id: string, tab: TabType = 'page') {
 		if (this.screen === 'workspace') this.#keepProject();

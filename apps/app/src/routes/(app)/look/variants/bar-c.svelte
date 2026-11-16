@@ -44,11 +44,12 @@
 	// On a desktop project nothing is swiped: Edit is always there, and the rest shows Page or Preview.
 	const shown = $derived(isDesk && look.tab === 'edit' ? 'preview' : look.tab);
 	const icon = $derived(isBig ? 'size-7' : 'size-6');
-	// The far left: Projects on the dashboard; inside, the page it came from.
-	const lead = $derived(isInside ? look.dataset : PAGES[0]);
-	// The Organization is none of the five pages, so inside it the bar shows its own icon and name; it used to show
-	// the page it was opened from, and read as if that page were open (Justin, 2026-11-16). They are those of the
-	// last thing opened, so they do not change while they slide away.
+	// What is open decides the bar, never the list last visited (`look.place`).
+	const home = $derived(look.place);
+	// The far left: Projects on the dashboard; inside, the page of what is open.
+	const lead = $derived(isInside ? home : PAGES[0]);
+	// Inside the Organization the bar shows its own icon and name. The icon and name are those of the last thing
+	// opened, so they do not change while they slide away.
 	const ORGANIZATION = { name: 'Organization', icon: 'icon-[mdi--domain]' };
 	let inside = $state({ name: DATASETS[PAGES[0]].label, icon: PAGE_ICONS[PAGES[0]] });
 	const leadIcon = $derived(isInside ? inside.icon : PAGE_ICONS[lead]);
@@ -65,8 +66,7 @@
 
 	$effect(() => {
 		if (look.screen === 'settings') inside = ORGANIZATION;
-		else if (isInside)
-			inside = { name: DATASETS[look.dataset].label, icon: PAGE_ICONS[look.dataset] };
+		else if (isInside) inside = { name: DATASETS[home].label, icon: PAGE_ICONS[home] };
 	});
 
 	// The blue highlight sits under its tab and follows the panes as they are swiped.
@@ -96,7 +96,8 @@
 	function go(id: DatasetType) {
 		if (!isInside) return look.pick(id);
 		look.home();
-		if (look.dataset !== id) look.pick(id);
+		// Back from a record opened by a project's pencil lands in that project, and stays there.
+		if (look.screen === 'dashboard' && look.dataset !== id) look.pick(id);
 	}
 </script>
 
@@ -156,8 +157,8 @@
 			>
 				<button
 					class="flex h-11 min-w-0 shrink items-center gap-1 text-white"
-					aria-label="Back to {DATASETS[look.dataset].label}"
-					onclick={() => go(look.dataset)}
+					aria-label="Back to {DATASETS[lead].label}"
+					onclick={() => go(lead)}
 				>
 					<span class="truncate text-[13px] font-semibold">{inside.name}</span>
 					{#if arrow !== 'none'}
