@@ -13,7 +13,7 @@
 	// Run 28 (Justin, 2026-11-12: on a desktop "it still has the old view"): an open project on a desktop shows this
 	// same bar, centred in the room beside the panels, with Page and Preview (Edit is the panels' own column there).
 	// A desktop's dashboard has the sidebar for the pages, so no bar.
-	import { untrack } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { DATASETS, PAGE_ICONS, PAGES, type DatasetType } from '../look.data';
 	import type { LookState, TabType } from '../look.state.svelte';
@@ -36,8 +36,9 @@
 	const PROJECT: TabType[] = ['page', 'edit', 'preview'];
 	const RECORD: TabType[] = ['page', 'edit'];
 	const DESK: TabType[] = ['page', 'preview'];
-	// The page on show on the dashboard: its icon sits on the blue of the Add button (Justin, 2026-11-16).
-	const ON = 'bg-primary text-white';
+	// The page on show on the dashboard: its icon is white, on a circle of the Add button's blue that slides from
+	// page to page the way the tabs' highlight does (Justin, 2026-11-16).
+	const ON = 'text-white';
 	const SLIDE =
 		'absolute inset-y-0 right-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
 
@@ -60,6 +61,31 @@
 	let tabs = $state(PROJECT);
 	let list: HTMLDivElement | undefined = $state();
 	let mark = $state({ x: 0, width: 0 });
+	let bar: HTMLElement | undefined = $state();
+	// The circle: where its middle is along the bar, and whether a page is on show for it to sit under.
+	let seat = $state({ x: 0, isOn: false, isMoving: false });
+
+	// Under the icon of the page on show. Measured from the layout, which a layer's slide does not move.
+	function sit() {
+		const on = bar?.querySelector<HTMLElement>('[aria-current="page"]');
+		if (!on) return (seat = { ...seat, isOn: false });
+		let x = on.offsetWidth / 2;
+		for (
+			let box: HTMLElement | null = on;
+			box && box !== bar;
+			box = box.offsetParent as HTMLElement | null
+		)
+			x += box.offsetLeft;
+		// It slides between pages, but is simply there the first time and when it comes back.
+		seat = { x, isOn: true, isMoving: seat.isOn };
+	}
+
+	$effect(() => {
+		void look.navSection;
+		void isInside;
+		void bar;
+		void tick().then(sit);
+	});
 
 	$effect(() => {
 		if (look.screen === 'record' || look.screen === 'settings') tabs = RECORD;
@@ -103,7 +129,12 @@
 	}
 </script>
 
-<svelte:window onresize={place} />
+<svelte:window
+	onresize={() => {
+		place();
+		sit();
+	}}
+/>
 
 {#if !isWide || isDesk}
 	<nav
@@ -112,10 +143,18 @@
 			: 'inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+14px)]'}"
 		style:left={isDesk ? left : undefined}
 		aria-label={isInside ? 'Project' : 'Pages'}
+		bind:this={bar}
 	>
+		<span
+			class="pointer-events-none absolute top-1/2 left-0 size-11 -translate-y-1/2 rounded-full bg-primary ease-out {seat.isMoving
+				? 'transition-[transform,opacity] duration-300'
+				: 'transition-opacity duration-200'} {seat.isOn ? '' : 'opacity-0'}"
+			style="transform: translateX({seat.x - 22}px)"
+			aria-hidden="true"
+		></span>
 		<!-- A fifth of the bar, where Projects sits on the dashboard: this icon never moves. -->
 		<button
-			class="flex h-11 shrink-0 basis-1/5 items-center justify-center rounded-full transition-colors {isLeadOn
+			class="relative flex h-11 shrink-0 basis-1/5 items-center justify-center rounded-full transition-colors {isLeadOn
 				? isInside
 					? 'text-white'
 					: ON

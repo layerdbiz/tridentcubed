@@ -11,8 +11,8 @@
 	// places that crowd together when zoomed out, keep the round number, in the colour its things share (the app's
 	// blue when they differ), until you zoom in far enough for them to come apart.
 	// 2026-11-16 (Justin): spread (`isSpread`), no number stands in for anything: every logo, face and icon always
-	// shows, on a ring round its place that never shrinks below what keeps them apart (map.utils.ts). And how close
-	// the map looks follows `closeness`, which the dashboard takes from where its sheet rests.
+	// shows. Things that share a place are scattered round it, close together and in no pattern (map.utils.ts);
+	// zoomed in by hand they move apart. The map always fits every place: only a person zooms past that.
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
@@ -22,7 +22,7 @@
 	} from 'maplibre-gl';
 	import { onMount, untrack } from 'svelte';
 	import type { PinItemType, PinType } from './chart.data';
-	import { angleOf, leastRing, placesFor, zoomFor, type ClosenessType } from './map.utils';
+	import { gapOf, reachOf, scatterOf, type SeatType } from './map.utils';
 
 	type PaddingType = { top: number; bottom: number; left: number; right: number };
 
@@ -33,7 +33,6 @@
 		maxZoom = 9,
 		isSpread = false,
 		isDark = false,
-		closeness = 0,
 		onpick
 	}: {
 		pins: PinType[];
@@ -42,11 +41,9 @@
 		route?: [number, number][];
 		padding?: PaddingType;
 		maxZoom?: number;
-		// Map B (run 22): every thing is its own marker, set a little way out from its place in a ring, so several in
-		// one city come apart as the map is zoomed in. No numbers: zoomed out they stay in a ring of their own.
+		// Map B (run 22): every thing is its own marker. Several in one city are scattered round it, and move apart
+		// as the map is zoomed in. No numbers.
 		isSpread?: boolean;
-		// 0 fits every place; 1 moves in on the part where most things are; 2 on the busiest place (map.utils.ts).
-		closeness?: ClosenessType;
 		// Page Map B (run 25): OpenFreeMap's dark style, pulled toward the app's slate. Set once, as the map is made.
 		isDark?: boolean;
 	} = $props();
@@ -76,19 +73,12 @@
 	// The markers on the map now, and the single things they stand for, by key.
 	const markers = new Map<string, MarkerType>();
 	let singles = new Map<string, PinItemType>();
-	// Spread: each marker with the place it rings and its angle on that ring.
-	type SpotType = {
-		marker: MarkerType;
-		centre: [number, number];
-		at: [number, number];
-		angle: number;
-		count: number;
-	};
+	// Spread: each marker with its place, its seat in the scatter round it, and how many share the place.
+	type SpotType = { marker: MarkerType; centre: [number, number]; seat: SeatType; count: number };
 	let spots: SpotType[] = [];
-	// About five kilometres out: far enough to come apart by zoom 10, near enough to still read as the city.
-	const RING = 0.045;
-	// The closeness the map is showing; it follows `closeness` once the sheet has come to rest.
-	let shown: ClosenessType = 0;
+	// A gap of the scatter on the ground, in degrees: about a kilometre, so the gap in pixels (gapOf) is the bigger
+	// one until the map is zoomed in past where it fits a city, and from there the things move apart.
+	const GROUND = 0.012;
 	// The colours the pins use, as the map needs them, in the order `tone` numbers them.
 	let palette: string[] = [];
 
@@ -167,7 +157,7 @@
 						city: pin.city.split(',')[0],
 						count: 1,
 						tone: -1,
-						reach: (leastRing(pin.items.length) + 26) / 12
+						reach: (reachOf(pin.items.length) + 26) / 12
 					},
 					geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] }
 				}))
@@ -271,39 +261,32 @@
 		spots = [];
 	}
 
-	// Spread: a marker for every thing, on the ring round its place.
+	// Spread: a marker for every thing, scattered round its place.
 	function spread(target: MapType) {
 		if (!Marker) return;
 		clearMarkers();
 		for (const pin of pins) {
-			const count = pin.items.length;
+			const keys = pin.items.map((item) => `${item.page ?? ''}|${item.id ?? item.name}`);
+			const seats = scatterOf(keys);
+			const centre: [number, number] = [pin.lng, pin.lat];
 			for (const [index, item] of pin.items.entries()) {
-				const angle = angleOf(index, count);
-				const out = count > 1 ? RING : 0;
-				const at: [number, number] = [
-					pin.lng + (Math.cos(angle) * out) / Math.cos((pin.lat * Math.PI) / 180),
-					pin.lat + Math.sin(angle) * out
-				];
-				const marker = new Marker({ element: elementOf(item) }).setLngLat(at).addTo(target);
-				markers.set(`${pin.city}|${item.page ?? ''}|${item.id ?? item.name}|${index}`, marker);
-				spots.push({ marker, centre: [pin.lng, pin.lat], at, angle, count });
+				const marker = new Marker({ element: elementOf(item) }).setLngLat(centre).addTo(target);
+				markers.set(`${pin.city}|${keys[index]}|${index}`, marker);
+				spots.push({ marker, centre, seat: seats[index], count: keys.length });
 			}
 		}
 		fan(target);
 	}
 
-	// Zoomed out, the ring on the ground is too small to tell its things apart, so each marker is pushed out, in
-	// pixels, to the smallest ring that does. Zoomed in, the ring on the ground is the bigger one and nothing is added.
+	// Each marker's seat, in pixels from its place: a gap is never less than keeps the markers apart, and zoomed
+	// in it is the gap on the ground, so the scatter opens up.
 	function fan(target: MapType) {
 		for (const spot of spots) {
 			if (spot.count < 2) continue;
-			const [centre, at] = [target.project(spot.centre), target.project(spot.at)];
-			const more = Math.max(
-				0,
-				leastRing(spot.count) - Math.hypot(at.x - centre.x, at.y - centre.y)
-			);
-			// North on the map is up the screen, where pixels count down.
-			spot.marker.setOffset([Math.cos(spot.angle) * more, -Math.sin(spot.angle) * more]);
+			const [lng, lat] = spot.centre;
+			const [here, there] = [target.project(spot.centre), target.project([lng + GROUND, lat])];
+			const gap = Math.max(gapOf(spot.count), Math.hypot(there.x - here.x, there.y - here.y));
+			spot.marker.setOffset([spot.seat.x * gap, spot.seat.y * gap]);
 		}
 	}
 
@@ -399,10 +382,8 @@
 		const height = node?.clientHeight ?? 0;
 		const scale = (space: number, a: number, b: number) =>
 			a + b > space - 48 ? Math.max(0, (space - 48) / (a + b)) : 1;
-		// Spread, a place's markers ring it, so the fit leaves that ring and half a marker of room on every side.
-		const ring = isSpread
-			? Math.max(0, ...placesFor(pins, shown).map((pin) => leastRing(pin.items.length))) + 24
-			: 0;
+		// Spread, a place's markers sit round it, so the fit leaves their reach and half a marker on every side.
+		const ring = isSpread ? Math.max(0, ...pins.map((pin) => reachOf(pin.items.length))) + 24 : 0;
 		const [top, bottom] = [padding.top + ring, padding.bottom + ring];
 		const [left, right] = [padding.left + ring, padding.right + ring];
 		const v = scale(height, top, bottom);
@@ -413,13 +394,12 @@
 	function fit(duration = 600) {
 		if (!map || !isReady) return;
 		const points: LngLatLike[] = [
-			...placesFor(pins, shown).map((pin) => [pin.lng, pin.lat] as [number, number]),
+			...pins.map((pin) => [pin.lng, pin.lat] as [number, number]),
 			...route
 		];
-		const closest = zoomFor(maxZoom, shown);
-		const options = { padding: room(), duration, maxZoom: closest };
+		const options = { padding: room(), duration, maxZoom };
 		if (!points.length) return map.easeTo({ center: [-92, 31], zoom: 3, ...options });
-		if (points.length === 1) return map.easeTo({ center: points[0], zoom: closest, ...options });
+		if (points.length === 1) return map.easeTo({ center: points[0], zoom: maxZoom, ...options });
 		let [west, south, east, north] = [180, 90, -180, -90];
 		for (const point of points as [number, number][]) {
 			west = Math.min(west, point[0]);
@@ -517,19 +497,6 @@
 		void padding.left;
 		void padding.right;
 		untrack(() => !isFree && fit(0));
-	});
-
-	// The sheet came to rest somewhere else: once it has settled, the map eases to how close that rest looks, even
-	// if someone had moved the map themselves. Until then it keeps fitting what it was showing, so it does not jump.
-	$effect(() => {
-		const next = closeness;
-		if (next === shown) return;
-		const timer = setTimeout(() => {
-			shown = next;
-			isFree = false;
-			fit(700);
-		}, 320);
-		return () => clearTimeout(timer);
 	});
 
 	export function zoomBy(by: number) {

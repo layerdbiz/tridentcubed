@@ -28,7 +28,6 @@
 	import { pinsOf } from './chart.data';
 	import ListMenus from './list-menus.svelte';
 	import { PAGES } from './look.data';
-	import type { ClosenessType } from './map.utils';
 	import type { LookState } from './look.state.svelte';
 	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
@@ -51,8 +50,6 @@
 
 	let innerWidth = $state(0);
 	let innerHeight = $state(0);
-	// Where the phone's sheet rests (split.svelte): the map looks closer the lower it is (Justin, 2026-11-16).
-	let sheetRest = $state(0);
 	let isBellOpen = $state(false);
 	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
@@ -170,6 +167,9 @@
 	let isSwiping = $state(false);
 	// How far the pages still have to slide when a swipe lets go; 0 when a page is picked by a tap (a whole width).
 	let flight = $state(0);
+	// Where the finger left the page it was dragging, so that page goes on out from there. It used to start again
+	// from the middle and stop short, so it showed behind the coming page for a moment (Justin, 2026-11-16).
+	let leftAt = 0;
 	let swipe = { x: 0, y: 0, t: 0, id: -1, isOn: false, isDragged: false };
 	let pagerWidth = $state(0);
 	const neighbour = $derived(
@@ -189,10 +189,10 @@
 	// backwards: the page going jumped a width away and slid back over the coming one (run 14, note 4).
 	function slideOut(node: HTMLElement) {
 		const width = node.clientWidth || pagerWidth;
-		const x = -look.slide * (flight || width);
+		const [from, to] = [leftAt, -look.slide * width];
 		return {
 			duration: flight ? 240 : 320,
-			css: (t: number) => `transform: translateX(${cubicOut(1 - t) * x}px)`
+			css: (t: number) => `transform: translateX(${from + cubicOut(1 - t) * (to - from)}px)`
 		};
 	}
 
@@ -237,7 +237,11 @@
 			const isFar = Math.abs(dx) > node.clientWidth / 4 || Math.abs(speed) > 0.5;
 			if (event.type === 'pointerup' && isFar && next >= 0 && next < PAGES.length) {
 				flight = node.clientWidth - Math.abs(swipeX);
-				setTimeout(() => (flight = 0), 400);
+				leftAt = swipeX;
+				setTimeout(() => {
+					flight = 0;
+					leftAt = 0;
+				}, 400);
 				look.pick(PAGES[next]);
 			}
 			swipeX = 0;
@@ -348,7 +352,6 @@
 	<WorldMap
 		pins={pinsOf(look, look.dataset, look.filter)}
 		isSpread={look.variant('map') === 'B'}
-		closeness={(isWide ? 0 : sheetRest) as ClosenessType}
 		onpick={(item) => {
 			if (!item.id) return;
 			if (item.page === 'projects') look.open(item.id);
@@ -454,7 +457,6 @@
 				isTight={isHalfB}
 				isFlat={isHalfB && isWide}
 				isLined={isHalfB && isWide}
-				bind:rest={sheetRest}
 				backdrop={look.chart === 'map' ? mapBackdrop : undefined}
 			>
 				{#snippet head()}

@@ -22,8 +22,7 @@
 		backdropClass = '',
 		isTight = false,
 		isFlat = false,
-		isLined = false,
-		rest = $bindable(0)
+		isLined = false
 	}: {
 		head: Snippet;
 		backdrop?: Snippet;
@@ -38,14 +37,13 @@
 		isTight?: boolean;
 		isFlat?: boolean;
 		isLined?: boolean;
-		// Which of its three rests the sheet is at: 0 the highest, 2 the lowest. Whoever binds it can follow the sheet.
-		rest?: number;
 	} = $props();
 
 	// How far the backdrop runs on under the sheet, past its round corners.
 	const UNDER = 56;
 
 	let innerHeight = $state(0);
+	let rest = $state(0);
 	let sheetTop = $state<number>();
 	let from = { y: 0, t: 0, top: 0 };
 	const rests = $derived.by(() => {

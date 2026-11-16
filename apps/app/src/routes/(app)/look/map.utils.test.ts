@@ -1,58 +1,55 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { angleOf, leastRing, placesFor, zoomFor } from './map.utils';
+import { gapOf, reachOf, scatterOf } from './map.utils';
 
-function place(name: string, lng: number, lat: number, count: number) {
-	return { name, lng, lat, items: Array.from({ length: count }, (_, index) => index) };
+const NAMES = [
+	'US Ocean',
+	'KOGA',
+	'dship Carriers',
+	'Oslo Caribbean Carrier',
+	'UTC Overseas',
+	'CEVA'
+];
+
+function apart(a: { x: number; y: number }, b: { x: number; y: number }) {
+	return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-const HOUSTON = place('Houston', -95.37, 29.76, 7);
-const GALVESTON = place('Galveston', -94.8, 29.3, 1);
-const STAMFORD = place('Stamford', -73.54, 41.05, 1);
-const LONDON = place('London', -0.13, 51.51, 1);
-const PLACES = [STAMFORD, HOUSTON, LONDON, GALVESTON];
-
-describe('the ring several things in one place sit on', () => {
-	it('is nothing for one thing, and grows with how many there are', () => {
-		expect(leastRing(1)).toBe(0);
-		expect(leastRing(2)).toBeCloseTo(13.5);
-		expect(leastRing(8)).toBeGreaterThan(leastRing(4));
+describe('the scatter of things that share a place', () => {
+	it('puts one thing on the place itself', () => {
+		expect(scatterOf(['KOGA'])).toEqual([{ x: 0, y: 0 }]);
+		expect(scatterOf([])).toEqual([]);
 	});
 
-	it('starts straight up and goes round evenly', () => {
-		expect(angleOf(0, 4)).toBeCloseTo(-Math.PI / 2);
-		expect(angleOf(1, 4)).toBeCloseTo(0);
-		expect(angleOf(2, 4)).toBeCloseTo(Math.PI / 2);
-	});
-});
-
-describe('how close the map looks, by where the sheet rests', () => {
-	it('shows every place with the sheet at its highest', () => {
-		expect(placesFor(PLACES, 0)).toEqual(PLACES);
+	it('is the same every time it is worked out', () => {
+		expect(scatterOf(NAMES)).toEqual(scatterOf(NAMES));
 	});
 
-	it('moves in on the part where most things are, lower', () => {
-		expect(placesFor(PLACES, 1).map((each) => each.name)).toEqual(['Houston']);
-		const even = [place('A', 0, 0, 2), place('B', 1, 0, 2), place('C', 40, 0, 2)];
-		expect(placesFor(even, 1).map((each) => each.name)).toEqual(['A', 'B']);
+	it('keeps a thing in its seat whatever order the list comes in', () => {
+		const forward = scatterOf(NAMES);
+		const backward = scatterOf(NAMES.toReversed()).toReversed();
+		for (const [index, seat] of forward.entries()) {
+			expect(seat.x).toBeCloseTo(backward[index].x);
+			expect(seat.y).toBeCloseTo(backward[index].y);
+		}
 	});
 
-	it('never keeps every place when it moves in', () => {
-		const two = [place('A', 0, 0, 1), place('B', 1, 0, 1)];
-		expect(placesFor(two, 1)).toHaveLength(1);
+	it('never seats two things on top of each other, and sits evenly round the place', () => {
+		const crowd = Array.from({ length: 17 }, (_, index) => `Person ${index}`);
+		const seats = scatterOf(crowd);
+		for (const [index, seat] of seats.entries())
+			for (const other of seats.slice(index + 1)) expect(apart(seat, other)).toBeGreaterThan(0.9);
+		expect(seats.reduce((sum, seat) => sum + seat.x, 0)).toBeCloseTo(0);
+		expect(seats.reduce((sum, seat) => sum + seat.y, 0)).toBeCloseTo(0);
 	});
 
-	it('shows the busiest place alone with the sheet at its lowest', () => {
-		expect(placesFor(PLACES, 2)).toEqual([HOUSTON]);
+	it('is no ring: its things are at different distances from the place', () => {
+		const far = scatterOf(NAMES).map((seat) => Math.hypot(seat.x, seat.y));
+		expect(Math.max(...far) - Math.min(...far)).toBeGreaterThan(0.8);
 	});
 
-	it('has nothing to choose between with one place or none', () => {
-		expect(placesFor([HOUSTON], 2)).toEqual([HOUSTON]);
-		expect(placesFor([], 1)).toEqual([]);
-	});
-
-	it('may go further in the lower the sheet rests', () => {
-		expect(zoomFor(9, 0)).toBe(9);
-		expect(zoomFor(9, 1)).toBeGreaterThan(9);
-		expect(zoomFor(9, 2)).toBeGreaterThan(zoomFor(9, 1));
+	it('reaches further the more it holds, and a crowd sits closer', () => {
+		expect(reachOf(1)).toBe(0);
+		expect(reachOf(12)).toBeGreaterThan(reachOf(4));
+		expect(gapOf(17)).toBeLessThan(gapOf(4));
 	});
 });
