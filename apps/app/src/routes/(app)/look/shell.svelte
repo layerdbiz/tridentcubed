@@ -359,7 +359,7 @@
 	>
 		<aside
 			class="group/side fixed z-40 hidden overflow-hidden md:block {isDocked
-				? 'inset-y-0 left-0 border-r border-slate-200 bg-white'
+				? 'inset-y-0 left-0 bg-white'
 				: `top-3 bottom-3 left-3 ${FLOAT}`} {isSizing
 				? ''
 				: 'transition-[width] duration-200 ease-out'}"
@@ -369,8 +369,10 @@
 				{look}
 				isCollapsed={side < 150}
 			/>
+			<!-- The sidebar's edge: a grey line that turns blue under the pointer and drags left and right, the way the
+			     line over the list drags up and down (split.svelte). -->
 			<div
-				class="absolute inset-y-6 right-0 flex w-3 cursor-col-resize touch-none items-center justify-center"
+				class="group/edge absolute inset-y-0 right-0 flex w-2.5 cursor-col-resize touch-none justify-end"
 				title="Drag to resize, double-click to fold"
 				aria-hidden="true"
 				onpointerdown={sizeDown}
@@ -380,9 +382,11 @@
 				ondblclick={() => (side = side > RAIL ? RAIL : 288)}
 			>
 				<span
-					class="h-10 w-1 rounded-full bg-slate-400/60 opacity-0 transition group-hover/side:opacity-100 {isSizing
-						? 'opacity-100'
-						: ''}"
+					class="h-full transition-[width,background-color] group-hover/edge:w-0.5 group-hover/edge:bg-primary {isSizing
+						? 'w-0.5 bg-primary'
+						: isDocked
+							? 'w-px bg-slate-200'
+							: 'w-px bg-transparent'}"
 				></span>
 			</div>
 		</aside>
@@ -437,7 +441,7 @@
 				backdropClass={isDocked ? '' : 'md:-left-[calc(var(--side)+24px)]'}
 				isTight={isHalfB}
 				isFlat={isHalfB && isWide}
-				hasFade={isWide && look.variant('top') === 'B'}
+				isLined={isHalfB && isWide}
 				backdrop={look.chart === 'map' ? mapBackdrop : undefined}
 			>
 				{#snippet head()}

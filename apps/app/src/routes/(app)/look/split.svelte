@@ -6,6 +6,9 @@
 	// optional backdrop (a map, a photo) fills the whole width from the very top of the screen down behind the sheet's
 	// round corners, and grows with the top part. The top part lets taps through to the backdrop: whatever in `head`
 	// takes taps says so with pointer-events-auto. The sheet clips what it holds to its corners.
+	// 2026-11-16 (Justin), a desktop: the picture is left as it is, with no fade to white, and runs down to a grey
+	// line along the top of the lower part (`isLined`). The line is the handle: it turns blue under the pointer,
+	// and dragging it up or down makes the lower part bigger or smaller, staying where it is let go.
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 
@@ -19,7 +22,7 @@
 		backdropClass = '',
 		isTight = false,
 		isFlat = false,
-		hasFade = false
+		isLined = false
 	}: {
 		head: Snippet;
 		backdrop?: Snippet;
@@ -29,11 +32,11 @@
 		first?: number;
 		sheetClass?: string;
 		backdropClass?: string;
-		// Run 22 variants. Tight: a shorter grip, so the sheet's heading sits higher. Flat: a plain white lower half
-		// with no rounding, shadow or drag (a desktop). Fade: the top half fades to white at its bottom (a desktop).
+		// Tight: a shorter grip, so the sheet's heading sits higher. Flat: a plain white lower half with no rounding
+		// or shadow (a desktop). Lined: a flat lower half is sized by dragging the grey line along its top.
 		isTight?: boolean;
 		isFlat?: boolean;
-		hasFade?: boolean;
+		isLined?: boolean;
 	} = $props();
 
 	// How far the backdrop runs on under the sheet, past its round corners.
@@ -48,7 +51,9 @@
 		const high = Math.max(low, innerHeight - (isWide ? 116 : 108));
 		return [low, (low + high) / 2, high];
 	});
-	const top = $derived(sheetTop ?? rests[rest]);
+	// Where a desktop's line was let go; it stays there, with no rests to settle at.
+	let held = $state<number>();
+	const top = $derived(sheetTop ?? (isLined ? held : undefined) ?? rests[rest]);
 
 	function clamp(value: number, min: number, max: number) {
 		return Math.min(max, Math.max(min, value));
@@ -56,7 +61,7 @@
 
 	function down(event: PointerEvent) {
 		const target = event.target as HTMLElement;
-		if (isFlat || !target.closest('[data-sheet-handle], [data-sheet-grip]')) return;
+		if ((isFlat && !isLined) || !target.closest('[data-sheet-handle], [data-sheet-grip]')) return;
 		if (target.closest('button, a, input, select, textarea, [role="listbox"]')) return;
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		from = { y: event.clientY, t: event.timeStamp, top };
@@ -65,11 +70,17 @@
 
 	function move(event: PointerEvent) {
 		if (sheetTop === undefined) return;
-		sheetTop = clamp(from.top + event.clientY - from.y, rests[0], rests[2]);
+		const [least, most] = isLined ? [160, innerHeight - 160] : [rests[0], rests[2]];
+		sheetTop = clamp(from.top + event.clientY - from.y, least, most);
 	}
 
 	function up(event: PointerEvent) {
 		if (sheetTop === undefined) return;
+		if (isLined) {
+			held = sheetTop;
+			sheetTop = undefined;
+			return;
+		}
 		const at = sheetTop;
 		const speed = (event.clientY - from.y) / Math.max(1, event.timeStamp - from.t);
 		const nearest = rests.reduce(
@@ -119,12 +130,6 @@
 			{@render backdrop()}
 		</div>
 	{/if}
-	{#if hasFade}
-		<div
-			class="pointer-events-none absolute inset-x-0 z-[5] h-44 bg-linear-to-t from-white via-white/70 to-transparent {backdropClass}"
-			style="top: {top - 176}px"
-		></div>
-	{/if}
 	<section
 		class="pointer-events-none relative z-10 flex shrink-0 flex-col transition-[height] {motion}"
 		style="height: {top}px"
@@ -137,7 +142,22 @@
 			: 'rounded-t-[40px] shadow-[0_-24px_70px_-8px_rgb(15_23_42/0.28)]'} {sheetClass}"
 		{@attach drag}
 	>
-		{#if !isFlat}
+		{#if isLined}
+			<!-- A desktop's handle: a grey line that turns blue under the pointer and drags up and down. -->
+			<div
+				class="group/line relative z-20 -mb-2 flex h-2 shrink-0 cursor-row-resize touch-none items-start"
+				data-sheet-handle
+				title="Drag to resize"
+				aria-hidden="true"
+			>
+				<span
+					class="w-full transition-[height,background-color] group-hover/line:h-0.5 group-hover/line:bg-primary {sheetTop ===
+					undefined
+						? 'h-px bg-slate-200'
+						: 'h-0.5 bg-primary'}"
+				></span>
+			</div>
+		{:else if !isFlat}
 			<div
 				class="flex {isTight
 					? 'h-4'

@@ -79,20 +79,43 @@
 		if (isOpen && root && !root.contains(event.target as Node)) isOpen = false;
 	}
 
-	function toggle() {
-		if (isOpen || !root) return (isOpen = false);
+	// Where the list goes: under its button, or over it when there is more room there. Only the part of the screen
+	// in view counts, so with a phone's keyboard up the list stays above the keyboard. Nothing when the button has
+	// left the view.
+	function placeOf() {
+		if (!root) return '';
 		const box = root.getBoundingClientRect();
+		const view = window.visualViewport;
+		const [viewTop, viewHeight] = [view?.offsetTop ?? 0, view?.height ?? innerHeight];
+		if (box.bottom < viewTop || box.top > viewTop + viewHeight) return '';
 		const tall = options.length * 44 + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
-		const below = innerHeight - box.bottom - 24;
-		const above = box.top - 24;
-		const isUp = below < tall && above > below;
+		const below = viewTop + viewHeight - box.bottom - 24;
+		const above = box.top - viewTop - 24;
+		const isUp = below < Math.min(tall, 220) && above > below;
 		const x = align === 'right' ? `right: ${innerWidth - box.right}px` : `left: ${box.left}px`;
 		const y = isUp ? `bottom: ${innerHeight - box.top + 8}px` : `top: ${box.bottom + 8}px`;
 		// Run 14 (note 5): never taller than the room on its side, or 360px; longer lists scroll inside it.
 		const most = Math.max(140, Math.min(isUp ? above : below, 360));
-		place = `${x}; ${y}; min-width: ${isWide ? box.width : 192}px; max-width: ${innerWidth - 16}px; max-height: ${most}px`;
+		return `${x}; ${y}; min-width: ${isWide ? box.width : 192}px; max-width: ${innerWidth - 16}px; max-height: ${most}px`;
+	}
+
+	function toggle() {
+		if (isOpen || !root) return (isOpen = false);
+		place = placeOf();
 		query = '';
 		isOpen = true;
+	}
+
+	// The page moved or the keyboard came up under an open list: the list follows its button. It closes only once
+	// the button is out of view, and never while its search field is being typed in. (It used to close on any
+	// scroll or change of size, and a tap in the search field does both on a phone, so the field could never be
+	// typed in: Cezary's vessel search, 2026-11-16.)
+	function follow() {
+		if (!isOpen) return;
+		const next = placeOf();
+		if (next) place = next;
+		else if (!root?.contains(document.activeElement) || document.activeElement?.tagName !== 'INPUT')
+			isOpen = false;
 	}
 
 	function pick(id: string) {
@@ -100,18 +123,25 @@
 		if (!values) isOpen = false;
 	}
 
-	// In the top layer, and closed by any scroll outside it, which would leave it behind. Its own scroll keeps it open.
+	// In the top layer. A scroll outside it, a turned phone or the keyboard coming up moves it with its button.
 	const lift: Attachment<HTMLElement> = (node) => {
 		node.showPopover();
-		const close = (event: Event) => {
-			if (!node.contains(event.target as Node)) isOpen = false;
+		const onscroll = (event: Event) => {
+			if (!node.contains(event.target as Node)) follow();
 		};
-		document.addEventListener('scroll', close, { capture: true, passive: true });
-		return () => document.removeEventListener('scroll', close, { capture: true });
+		document.addEventListener('scroll', onscroll, { capture: true, passive: true });
+		window.visualViewport?.addEventListener('resize', follow);
+		window.visualViewport?.addEventListener('scroll', follow);
+		return () => {
+			document.removeEventListener('scroll', onscroll, { capture: true });
+			window.visualViewport?.removeEventListener('resize', follow);
+			window.visualViewport?.removeEventListener('scroll', follow);
+		};
 	};
 
-	// With a mouse the search field is ready to type in at once; on a phone it waits for a tap, so the keyboard does
-	// not cover the list the moment it opens.
+	// With a mouse the search field is ready to type in at once. On a phone it waits for a tap, so opening a list
+	// never brings the keyboard up (Justin, 2026-11-16): the list is there to tap or scroll, and the field is there
+	// for the times it is long.
 	const ready: Attachment<HTMLInputElement> = (node) => {
 		if (matchMedia('(pointer: fine)').matches) node.focus({ preventScroll: true });
 	};
@@ -120,7 +150,7 @@
 <svelte:window
 	{onpointerdown}
 	onkeydown={(event) => event.key === 'Escape' && (isOpen = false)}
-	onresize={() => (isOpen = false)}
+	onresize={follow}
 />
 
 <div
