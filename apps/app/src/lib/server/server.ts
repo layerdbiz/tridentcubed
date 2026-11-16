@@ -8,10 +8,11 @@ import { join } from 'node:path';
 import { getRequestEvent } from '$app/server';
 import { error } from '@sveltejs/kit';
 import * as env from '$app/env/private';
+import { grantDevelopmentSuperAdmin } from './access';
 import { type AuthType, createAuth } from './auth';
 import { type ClaimsType, createClaims } from './db/claims';
 import { createDatabase, createMemoryDatabase, type DatabaseType } from './db/index';
-import { seedDatabase } from './db/seed';
+import { seedDatabase, TRIDENT_CUBED } from './db/seed';
 import { createLogSender, createResendSender, type EmailSenderType } from './email';
 import { readSettings, type SettingsType } from './settings';
 import { createLocalStore, createSupabaseStore, type FileStoreType } from './store';
@@ -43,9 +44,13 @@ function toSender(settings: SettingsType): EmailSenderType {
 	};
 }
 
-async function createSeededMemoryDatabase() {
+// The seed, then the developer's own Super admin grant when their settings name one (settings.ts).
+async function createSeededMemoryDatabase(settings: SettingsType) {
 	const db = await createMemoryDatabase();
 	await seedDatabase(db);
+	if (settings.developmentSuperAdmin) {
+		await grantDevelopmentSuperAdmin(db, TRIDENT_CUBED.id, settings.developmentSuperAdmin);
+	}
 	return db;
 }
 
@@ -55,7 +60,7 @@ async function start(): Promise<ServerType> {
 
 	const db = settings.databaseUrl
 		? createDatabase(settings.databaseUrl)
-		: await (kept[KEY] ??= createSeededMemoryDatabase());
+		: await (kept[KEY] ??= createSeededMemoryDatabase(settings));
 	const auth = createAuth({
 		db,
 		secret: settings.secret,

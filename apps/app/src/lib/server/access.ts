@@ -110,6 +110,27 @@ async function tieTeam(
 	});
 }
 
+/**
+ * The in-process development database only (`developmentSuperAdmin` in settings.ts): an Admin access grant with the
+ * Super admin flag for one email, so a developer signs into their own machine as one. Never called in production.
+ */
+export async function grantDevelopmentSuperAdmin(
+	db: DatabaseType,
+	organizationId: string,
+	who: { email: string; teamEmail?: string }
+) {
+	await db
+		.insert(accessGrant)
+		.values({
+			email: who.email,
+			organizationId,
+			role: 'admin',
+			isSuperAdmin: true,
+			teamEmail: who.teamEmail
+		})
+		.onConflictDoNothing();
+}
+
 /** Gives a User the memberships their verified email earns, and says which organization their session acts in. */
 export async function grantAccess(db: DatabaseType, userId: string): Promise<string | null> {
 	return db.transaction(async (tx) => {

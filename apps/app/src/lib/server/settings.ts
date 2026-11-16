@@ -30,6 +30,12 @@ export type SettingsType = {
 	/** Where files are kept (#187): Supabase Storage, a local folder (outside production only), or nowhere yet. */
 	storage: 'supabase' | 'local' | 'none';
 	supabase?: { url: string; secretKey: string };
+	/**
+	 * Outside production only (DEV_SUPER_ADMIN_EMAIL, and DEV_SUPER_ADMIN_TEAM_EMAIL for the Team record they sign in
+	 * as): the email the in-process database gives a Super admin access grant, so a developer can sign into their own
+	 * machine as one. A production deployment never reads it.
+	 */
+	developmentSuperAdmin?: { email: string; teamEmail?: string };
 };
 
 export type EnvType = Record<string, string | undefined>;
@@ -43,6 +49,10 @@ function toKeys(clientId?: string, clientSecret?: string) {
 
 function toHttps(host?: string) {
 	return host ? `https://${host}` : undefined;
+}
+
+function toLowerEmail(email?: string) {
+	return email?.trim().toLowerCase() || undefined;
 }
 
 export function readSettings(env: EnvType): SettingsType {
@@ -72,6 +82,12 @@ export function readSettings(env: EnvType): SettingsType {
 			: undefined;
 	const storage = supabase ? 'supabase' : isProduction ? 'none' : 'local';
 
+	const superAdminEmail = toLowerEmail(env.DEV_SUPER_ADMIN_EMAIL);
+	const developmentSuperAdmin =
+		!isProduction && superAdminEmail
+			? { email: superAdminEmail, teamEmail: toLowerEmail(env.DEV_SUPER_ADMIN_TEAM_EMAIL) }
+			: undefined;
+
 	const productionURL =
 		env.VERCEL_ENV === 'production' ? toHttps(env.VERCEL_PROJECT_PRODUCTION_URL) : undefined;
 	const deploymentURLs = [toHttps(env.VERCEL_BRANCH_URL), toHttps(env.VERCEL_URL)];
@@ -90,6 +106,7 @@ export function readSettings(env: EnvType): SettingsType {
 		microsoft,
 		ways,
 		storage,
-		supabase
+		supabase,
+		developmentSuperAdmin
 	};
 }

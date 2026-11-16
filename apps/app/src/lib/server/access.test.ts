@@ -3,6 +3,7 @@
 // Every email here is made up; real access grants live only in the database.
 import { count, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vite-plus/test';
+import { grantDevelopmentSuperAdmin } from './access';
 import { TRIDENT_CUBED } from './db/seed';
 import * as schema from './db/schema';
 import { createTestSignIn } from './testing';
@@ -108,6 +109,26 @@ describe('the sign-in rule', () => {
 		const again = await signIn('visitor@elsewhere.example');
 
 		expect(again.actor).toMatchObject({ organizationId: TRIDENT, role: 'team' });
+	});
+});
+
+describe('a development Super admin', () => {
+	it('signs in as an Admin and Super admin, tied to the Team record their grant names', async () => {
+		const { db, signIn } = await createTestSignIn();
+		await grantDevelopmentSuperAdmin(db, TRIDENT, {
+			email: 'owner@personal.example',
+			teamEmail: 'j.oneill@tridentcubed.com'
+		});
+		await grantDevelopmentSuperAdmin(db, TRIDENT, { email: 'owner@personal.example' });
+
+		const { user, actor } = await signIn('owner@personal.example');
+
+		expect(actor).toMatchObject({ organizationId: TRIDENT, role: 'admin', isSuperAdmin: true });
+		const tied = await db
+			.select({ email: schema.team.email })
+			.from(schema.team)
+			.where(eq(schema.team.userId, user.id));
+		expect(tied.map((each) => each.email.toLowerCase())).toEqual(['j.oneill@tridentcubed.com']);
 	});
 });
 

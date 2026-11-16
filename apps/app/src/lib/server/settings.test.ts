@@ -129,4 +129,23 @@ describe('reading the deployment settings', () => {
 		});
 		expect(half.storage).toBe('local');
 	});
+
+	it('names a development Super admin outside production, in lower case, with the Team record they sign in as', () => {
+		const settings = readSettings({
+			DEV_SUPER_ADMIN_EMAIL: ' Owner@Personal.example ',
+			DEV_SUPER_ADMIN_TEAM_EMAIL: 'O.Wner@TridentCubed.com'
+		});
+
+		expect(settings.developmentSuperAdmin).toEqual({
+			email: 'owner@personal.example',
+			teamEmail: 'o.wner@tridentcubed.com'
+		});
+		expect(readSettings({}).developmentSuperAdmin).toBeUndefined();
+	});
+
+	it('never names a development Super admin in production', () => {
+		const settings = readSettings({ ...DEPLOYED, DEV_SUPER_ADMIN_EMAIL: 'owner@personal.example' });
+
+		expect(settings.developmentSuperAdmin).toBeUndefined();
+	});
 });
