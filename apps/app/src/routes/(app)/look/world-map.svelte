@@ -10,6 +10,9 @@
 	// round marker with its logo, face or icon on its own colour, and a tap opens it. Places with several, and
 	// places that crowd together when zoomed out, keep the round number, in the colour its things share (the app's
 	// blue when they differ), until you zoom in far enough for them to come apart.
+	// 2026-11-16 (Justin): spread (`isSpread`), no number stands in for anything: every logo, face and icon always
+	// shows, on a ring round its place that never shrinks below what keeps them apart (map.utils.ts). And how close
+	// the map looks follows `closeness`, which the dashboard takes from where its sheet rests.
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
@@ -19,6 +22,7 @@
 	} from 'maplibre-gl';
 	import { onMount, untrack } from 'svelte';
 	import type { PinItemType, PinType } from './chart.data';
+	import { angleOf, leastRing, placesFor, zoomFor, type ClosenessType } from './map.utils';
 
 	type PaddingType = { top: number; bottom: number; left: number; right: number };
 
@@ -29,6 +33,7 @@
 		maxZoom = 9,
 		isSpread = false,
 		isDark = false,
+		closeness = 0,
 		onpick
 	}: {
 		pins: PinType[];
@@ -37,9 +42,11 @@
 		route?: [number, number][];
 		padding?: PaddingType;
 		maxZoom?: number;
-		// Map B (run 22): every thing is its own point, set a little way out from its place in a ring, so several in
-		// one city come apart into their own markers once the map is zoomed in far enough.
+		// Map B (run 22): every thing is its own marker, set a little way out from its place in a ring, so several in
+		// one city come apart as the map is zoomed in. No numbers: zoomed out they stay in a ring of their own.
 		isSpread?: boolean;
+		// 0 fits every place; 1 moves in on the part where most things are; 2 on the busiest place (map.utils.ts).
+		closeness?: ClosenessType;
 		// Page Map B (run 25): OpenFreeMap's dark style, pulled toward the app's slate. Set once, as the map is made.
 		isDark?: boolean;
 	} = $props();
@@ -69,6 +76,19 @@
 	// The markers on the map now, and the single things they stand for, by key.
 	const markers = new Map<string, MarkerType>();
 	let singles = new Map<string, PinItemType>();
+	// Spread: each marker with the place it rings and its angle on that ring.
+	type SpotType = {
+		marker: MarkerType;
+		centre: [number, number];
+		at: [number, number];
+		angle: number;
+		count: number;
+	};
+	let spots: SpotType[] = [];
+	// About five kilometres out: far enough to come apart by zoom 10, near enough to still read as the city.
+	const RING = 0.045;
+	// The closeness the map is showing; it follows `closeness` once the sheet has come to rest.
+	let shown: ClosenessType = 0;
 	// The colours the pins use, as the map needs them, in the order `tone` numbers them.
 	let palette: string[] = [];
 
@@ -137,34 +157,20 @@
 		palette = tones.map(colorOf);
 		singles = new Map();
 		if (isSpread) {
-			// About five kilometres out: far enough to come apart by zoom 10, near enough to still read as the city.
-			const RING = 0.045;
+			// One point a place, for its name alone, set clear of the ring of markers round it (in ems of the name).
 			return {
 				type: 'FeatureCollection' as const,
-				features: items.flatMap((pin) =>
-					pin.items.map((item, at) => {
-						const key = `${pin.city}|${item.page ?? ''}|${item.id ?? item.name}|${at}`;
-						const angle = (at / pin.items.length) * Math.PI * 2 - Math.PI / 2;
-						const out = pin.items.length > 1 ? RING : 0;
-						singles.set(key, item);
-						return {
-							type: 'Feature' as const,
-							properties: {
-								key,
-								city: pin.city.split(',')[0],
-								count: 1,
-								tone: tones.indexOf(item.tone ?? '')
-							},
-							geometry: {
-								type: 'Point' as const,
-								coordinates: [
-									pin.lng + (Math.cos(angle) * out) / Math.cos((pin.lat * Math.PI) / 180),
-									pin.lat + Math.sin(angle) * out
-								]
-							}
-						};
-					})
-				)
+				features: items.map((pin) => ({
+					type: 'Feature' as const,
+					properties: {
+						key: pin.city,
+						city: pin.city.split(',')[0],
+						count: 1,
+						tone: -1,
+						reach: (leastRing(pin.items.length) + 26) / 12
+					},
+					geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] }
+				}))
 			};
 		}
 		return {
@@ -235,6 +241,7 @@
 	// Markers follow the map: a single thing that stands alone at this zoom has one; one swallowed by a number does
 	// not.
 	function sync(target: MapType) {
+		if (isSpread) return;
 		if (!Marker || !target.getSource('pins') || !target.isSourceLoaded('pins')) return;
 		const shown = new Set<string>();
 		for (const feature of target.querySourceFeatures('pins')) {
@@ -261,6 +268,43 @@
 	function clearMarkers() {
 		for (const marker of markers.values()) marker.remove();
 		markers.clear();
+		spots = [];
+	}
+
+	// Spread: a marker for every thing, on the ring round its place.
+	function spread(target: MapType) {
+		if (!Marker) return;
+		clearMarkers();
+		for (const pin of pins) {
+			const count = pin.items.length;
+			for (const [index, item] of pin.items.entries()) {
+				const angle = angleOf(index, count);
+				const out = count > 1 ? RING : 0;
+				const at: [number, number] = [
+					pin.lng + (Math.cos(angle) * out) / Math.cos((pin.lat * Math.PI) / 180),
+					pin.lat + Math.sin(angle) * out
+				];
+				const marker = new Marker({ element: elementOf(item) }).setLngLat(at).addTo(target);
+				markers.set(`${pin.city}|${item.page ?? ''}|${item.id ?? item.name}|${index}`, marker);
+				spots.push({ marker, centre: [pin.lng, pin.lat], at, angle, count });
+			}
+		}
+		fan(target);
+	}
+
+	// Zoomed out, the ring on the ground is too small to tell its things apart, so each marker is pushed out, in
+	// pixels, to the smallest ring that does. Zoomed in, the ring on the ground is the bigger one and nothing is added.
+	function fan(target: MapType) {
+		for (const spot of spots) {
+			if (spot.count < 2) continue;
+			const [centre, at] = [target.project(spot.centre), target.project(spot.at)];
+			const more = Math.max(
+				0,
+				leastRing(spot.count) - Math.hypot(at.x - centre.x, at.y - centre.y)
+			);
+			// North on the map is up the screen, where pixels count down.
+			spot.marker.setOffset([Math.cos(spot.angle) * more, -Math.sin(spot.angle) * more]);
+		}
 	}
 
 	function lineOf(points: [number, number][]) {
@@ -284,7 +328,8 @@
 		target.addSource('pins', {
 			type: 'geojson',
 			data: featuresOf(pins),
-			cluster: true,
+			// Spread, nothing is ever swallowed by a number.
+			cluster: !isSpread,
 			clusterRadius: 36,
 			clusterMaxZoom: 12,
 			clusterProperties: {
@@ -342,7 +387,7 @@
 				'text-font': ['Noto Sans Bold'],
 				'text-size': 12,
 				'text-variable-anchor': ['left', 'right', 'top', 'bottom'],
-				'text-radial-offset': 1.9
+				'text-radial-offset': ['coalesce', ['get', 'reach'], 1.9]
 			},
 			paint: { 'text-color': '#475569', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 }
 		});
@@ -354,25 +399,27 @@
 		const height = node?.clientHeight ?? 0;
 		const scale = (space: number, a: number, b: number) =>
 			a + b > space - 48 ? Math.max(0, (space - 48) / (a + b)) : 1;
-		const v = scale(height, padding.top, padding.bottom);
-		const h = scale(width, padding.left, padding.right);
-		return {
-			top: padding.top * v,
-			bottom: padding.bottom * v,
-			left: padding.left * h,
-			right: padding.right * h
-		};
+		// Spread, a place's markers ring it, so the fit leaves that ring and half a marker of room on every side.
+		const ring = isSpread
+			? Math.max(0, ...placesFor(pins, shown).map((pin) => leastRing(pin.items.length))) + 24
+			: 0;
+		const [top, bottom] = [padding.top + ring, padding.bottom + ring];
+		const [left, right] = [padding.left + ring, padding.right + ring];
+		const v = scale(height, top, bottom);
+		const h = scale(width, left, right);
+		return { top: top * v, bottom: bottom * v, left: left * h, right: right * h };
 	}
 
 	function fit(duration = 600) {
 		if (!map || !isReady) return;
 		const points: LngLatLike[] = [
-			...pins.map((pin) => [pin.lng, pin.lat] as [number, number]),
+			...placesFor(pins, shown).map((pin) => [pin.lng, pin.lat] as [number, number]),
 			...route
 		];
-		const options = { padding: room(), duration, maxZoom };
+		const closest = zoomFor(maxZoom, shown);
+		const options = { padding: room(), duration, maxZoom: closest };
 		if (!points.length) return map.easeTo({ center: [-92, 31], zoom: 3, ...options });
-		if (points.length === 1) return map.easeTo({ center: points[0], zoom: maxZoom, ...options });
+		if (points.length === 1) return map.easeTo({ center: points[0], zoom: closest, ...options });
 		let [west, south, east, north] = [180, 90, -180, -90];
 		for (const point of points as [number, number][]) {
 			west = Math.min(west, point[0]);
@@ -417,9 +464,11 @@
 				restyle(target);
 				addLayers(target);
 				isReady = true;
+				if (isSpread) spread(target);
 				fit(0);
 			});
 			target.on('render', () => sync(target));
+			target.on('zoom', () => fan(target));
 			// Once someone moves or zooms it, the map stays where they left it.
 			target.on('movestart', (event) => {
 				if ((event as { originalEvent?: Event }).originalEvent) isFree = true;
@@ -453,6 +502,7 @@
 		if (!map || !isReady) return;
 		// The things may have changed their pictures or colours, so the markers are made again.
 		clearMarkers();
+		if (isSpread) spread(map);
 		(map.getSource('pins') as GeoJSONSource | undefined)?.setData(data);
 		(map.getSource('route') as GeoJSONSource | undefined)?.setData(line);
 		for (const layer of ['pin', 'pin-halo'])
@@ -467,6 +517,19 @@
 		void padding.left;
 		void padding.right;
 		untrack(() => !isFree && fit(0));
+	});
+
+	// The sheet came to rest somewhere else: once it has settled, the map eases to how close that rest looks, even
+	// if someone had moved the map themselves. Until then it keeps fitting what it was showing, so it does not jump.
+	$effect(() => {
+		const next = closeness;
+		if (next === shown) return;
+		const timer = setTimeout(() => {
+			shown = next;
+			isFree = false;
+			fit(700);
+		}, 320);
+		return () => clearTimeout(timer);
 	});
 
 	export function zoomBy(by: number) {

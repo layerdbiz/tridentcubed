@@ -129,6 +129,7 @@
 					{pins}
 					{route}
 					maxZoom={8}
+					isSpread
 					isDark={isDarkMap}
 					padding={{ top: 80, bottom: overlayHeight + 88, left: left + 32, right: 32 }}
 				/>
