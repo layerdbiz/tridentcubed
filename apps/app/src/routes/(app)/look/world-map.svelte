@@ -35,6 +35,7 @@
 		isSpread = false,
 		isDark = false,
 		closeness = 1,
+		refit = 0,
 		onpick
 	}: {
 		pins: PinType[];
@@ -48,6 +49,9 @@
 		isSpread?: boolean;
 		// Where the sheet under the map rests (map.utils.ts RESTS); the middle, where there is no sheet.
 		closeness?: ClosenessType;
+		// Any change to this fits the map to its markers again, even after someone moved it themselves: the
+		// dashboard counts each time its sheet is let go.
+		refit?: number;
 		// Page Map B (run 25): OpenFreeMap's dark style, pulled toward the app's slate. Set once, as the map is made.
 		isDark?: boolean;
 	} = $props();
@@ -493,21 +497,26 @@
 		};
 	});
 
-	// New pins or a new route: show them, and fit to them again.
+	// New pins or a new route: show them, and fit to them again, even if someone had moved the map themselves. So
+	// a new page of the dashboard always shows all its markers. Only the pins, the route and the map being ready
+	// set this off: a change of rest must not make the markers anew.
 	$effect(() => {
 		void isSpread;
 		const data = featuresOf(pins);
 		const line = lineOf(route);
-		if (!map || !isReady) return;
-		// The things may have changed their pictures or colours, so the markers are made again.
-		clearMarkers();
-		if (isSpread) spread(map);
-		(map.getSource('pins') as GeoJSONSource | undefined)?.setData(data);
-		(map.getSource('route') as GeoJSONSource | undefined)?.setData(line);
-		for (const layer of ['pin', 'pin-halo'])
-			if (map.getLayer(layer)) map.setPaintProperty(layer, 'circle-color', paintOf());
-		isFree = false;
-		fit();
+		const target = map;
+		if (!target || !isReady) return;
+		untrack(() => {
+			// The things may have changed their pictures or colours, so the markers are made again.
+			clearMarkers();
+			if (isSpread) spread(target);
+			(target.getSource('pins') as GeoJSONSource | undefined)?.setData(data);
+			(target.getSource('route') as GeoJSONSource | undefined)?.setData(line);
+			for (const layer of ['pin', 'pin-halo'])
+				if (target.getLayer(layer)) target.setPaintProperty(layer, 'circle-color', paintOf());
+			isFree = false;
+			fit();
+		});
 	});
 
 	$effect(() => {
@@ -518,12 +527,15 @@
 		untrack(() => !isFree && fit(0));
 	});
 
-	// The sheet came to rest somewhere else: once it has settled, the map eases to how close that rest stands and
-	// the markers to its size, even if someone had moved the map themselves. Until then it keeps fitting what it
-	// was showing, so it does not jump.
+	// The sheet was let go (`refit`), at another rest or the same one: once it has settled, the map eases back to
+	// all its markers at how close that rest stands, and the markers to its size, even if someone had moved the
+	// map themselves. Until then it keeps fitting what it was showing, so it does not jump.
+	let isSettled = false;
 	$effect(() => {
 		const next = closeness;
-		if (next === untrack(() => shown)) return;
+		void refit;
+		// Not as the map is first drawn: there is nothing to come back from.
+		if (!isSettled) return void (isSettled = true);
 		const timer = setTimeout(() => {
 			shown = next;
 			isFree = false;

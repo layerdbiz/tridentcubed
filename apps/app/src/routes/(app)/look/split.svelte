@@ -23,7 +23,8 @@
 		isTight = false,
 		isFlat = false,
 		isLined = false,
-		rest = $bindable(0)
+		rest = $bindable(0),
+		onsettle
 	}: {
 		head: Snippet;
 		backdrop?: Snippet;
@@ -40,6 +41,8 @@
 		isLined?: boolean;
 		// Which of its three rests the sheet is at: 0 the highest, 2 the lowest. Whoever binds it can follow the sheet.
 		rest?: number;
+		// Each time the sheet is let go, wherever it comes to rest.
+		onsettle?: () => void;
 	} = $props();
 
 	// How far the backdrop runs on under the sheet, past its round corners.
@@ -81,6 +84,7 @@
 		if (isLined) {
 			held = sheetTop;
 			sheetTop = undefined;
+			onsettle?.();
 			return;
 		}
 		const at = sheetTop;
@@ -103,6 +107,7 @@
 					: nearest;
 		if (rest < 0) rest = nearest;
 		sheetTop = undefined;
+		onsettle?.();
 	}
 
 	const drag: Attachment<HTMLElement> = (node) => {

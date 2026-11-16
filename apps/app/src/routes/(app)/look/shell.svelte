@@ -54,6 +54,8 @@
 	// Where the phone's sheet rests (split.svelte): the map stands closer, with bigger markers, the lower it is
 	// (Justin, 2026-11-16). A desktop has no rests, so its map stays at the middle one.
 	let sheetRest = $state(0);
+	// Counts each time the sheet is let go, wherever it comes to rest: the map fits its markers again each time.
+	let sheetMoves = $state(0);
 	let isBellOpen = $state(false);
 	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
@@ -357,6 +359,7 @@
 		pins={pinsOf(look, look.dataset, look.filter)}
 		isSpread={look.variant('map') === 'B'}
 		closeness={(isWide ? 1 : sheetRest) as ClosenessType}
+		refit={sheetMoves}
 		onpick={(item) => {
 			if (!item.id) return;
 			if (item.page === 'projects') look.open(item.id);
@@ -463,6 +466,7 @@
 				isFlat={isHalfB && isWide}
 				isLined={isHalfB && isWide}
 				bind:rest={sheetRest}
+				onsettle={() => (sheetMoves += 1)}
 				backdrop={look.chart === 'map' ? mapBackdrop : undefined}
 			>
 				{#snippet head()}
@@ -650,11 +654,6 @@
 				{look}
 				{isWide}
 				left={barLeft()}
-				arrow={look.variant('bar') === 'C'
-					? 'none'
-					: look.variant('bar') === 'D'
-						? 'chevron'
-						: 'arrow'}
 				isBig={look.variant('bar') === 'E'}
 			/>
 		{:else}

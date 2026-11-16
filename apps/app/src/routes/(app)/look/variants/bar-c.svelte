@@ -3,9 +3,9 @@
 	// and with no shadow. On a phone it runs nearly the whole width, with room at each side, and holds the five
 	// pages as icons with no words. The blue + is out of the bar: it floats above it, flush with the bar's right
 	// edge, the same gap over the bar as the bar has under it. Inside a project or a record the bar starts with the
-	// white icon of the page it came from and that page's name, which go back there, then the tabs. D puts a
-	// right chevron after the name, before the tabs; C has none (`arrow`). E (run 25) has a straight arrow there and
-	// larger icons (`isBig`). No save cloud here: it is in the header.
+	// white icon of the page it came from and that page's name, which go back there, then the tabs. E (run 25) has
+	// larger icons (`isBig`). No arrow stands after the name any more (Justin, 2026-11-16). No save cloud here: it
+	// is in the header.
 	// Run 24 (Justin, 2026-11-11: "the folder icon moves and it shouldn't", "it just jumps in"): it moves the way A
 	// does. The first icon keeps a fifth of the bar, the place Projects has on the dashboard, so it never moves; the
 	// other four pages slide off to the left behind it while the name and the tabs slide in from the right, and the
@@ -22,13 +22,11 @@
 		look,
 		isWide,
 		left,
-		arrow = 'none',
 		isBig = false
 	}: {
 		look: LookState;
 		isWide: boolean;
 		left: string;
-		arrow?: 'none' | 'chevron' | 'arrow';
 		isBig?: boolean;
 	} = $props();
 
@@ -37,7 +35,7 @@
 	const RECORD: TabType[] = ['page', 'edit'];
 	const DESK: TabType[] = ['page', 'preview'];
 	// The page on show on the dashboard: its icon is white, on a pill as wide as its place in the bar, in the Add
-	// button's blue seen through (Justin, 2026-11-16: a circle "doesn't look right"). It slides from page to page.
+	// button's blue (Justin, 2026-11-16: a circle "doesn't look right"). It slides from page to page.
 	const ON = 'text-white';
 	const SLIDE =
 		'absolute inset-y-0 right-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
@@ -65,10 +63,12 @@
 	// The pill: where it starts along the bar, how wide it is, and whether a page is on show for it to sit under.
 	let seat = $state({ x: 0, width: 0, isOn: false, isMoving: false });
 
-	// Under the icon of the page on show. Measured from the layout, which a layer's slide does not move.
+	// Under the icon of the page on show. Measured from the layout, which a layer's slide does not move. Inside a
+	// project or a record there is no pill: the pages' layer has slid away, and its page would still count as on
+	// show (the pill sat behind the record's own icon, Justin, 2026-11-16).
 	function sit() {
 		const on = bar?.querySelector<HTMLElement>('[aria-current="page"]');
-		if (!on) return (seat = { ...seat, isOn: false });
+		if (isInside || !on) return (seat = { ...seat, isOn: false });
 		let x = 0;
 		for (
 			let box: HTMLElement | null = on;
@@ -146,7 +146,7 @@
 		bind:this={bar}
 	>
 		<span
-			class="pointer-events-none absolute top-1/2 left-0 h-11 -translate-y-1/2 rounded-full bg-primary/40 ease-out {seat.isMoving
+			class="pointer-events-none absolute top-1/2 left-0 h-11 -translate-y-1/2 rounded-full bg-primary ease-out {seat.isMoving
 				? 'transition-[transform,width,opacity] duration-300'
 				: 'transition-opacity duration-200'} {seat.isOn ? '' : 'opacity-0'}"
 			style="width: {seat.width}px; transform: translateX({seat.x}px)"
@@ -204,13 +204,6 @@
 					onclick={() => go(lead)}
 				>
 					<span class="truncate text-[13px] font-semibold">{inside.name}</span>
-					{#if arrow !== 'none'}
-						<span
-							class="{arrow === 'arrow'
-								? 'icon-[mdi--arrow-right] size-4'
-								: 'icon-[mdi--chevron-right] size-5'} shrink-0 text-white/50"
-						></span>
-					{/if}
 				</button>
 				<div
 					bind:this={list}
