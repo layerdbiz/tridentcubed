@@ -73,3 +73,29 @@ describe('the page of what is open', () => {
 		expect(look.place).toBe('projects');
 	});
 });
+
+describe('where a project opens', () => {
+	it('is Edit while it is still being worked on, and its Page once it is sent', () => {
+		const look = fresh();
+		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
+		const project = look.projects[0];
+		look.home();
+
+		look.open(project.id);
+		expect(look.tab).toBe('edit');
+
+		look.home();
+		look.setStatus(project, 'Sent');
+		look.open(project.id);
+		expect(look.tab).toBe('page');
+	});
+
+	it('is the tab asked for, when one is', () => {
+		const look = fresh();
+		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
+		look.home();
+
+		look.open(look.projects[0].id, 'preview');
+		expect(look.tab).toBe('preview');
+	});
+});

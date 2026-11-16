@@ -12,7 +12,8 @@
 	// blue when they differ), until you zoom in far enough for them to come apart.
 	// 2026-11-16 (Justin): spread (`isSpread`), no number stands in for anything: every logo, face and icon always
 	// shows. Things that share a place are scattered round it, close together and in no pattern (map.utils.ts);
-	// zoomed in by hand they move apart. The map always fits every place: only a person zooms past that.
+	// zoomed in by hand they move apart. The map always fits every place: only a person zooms past that. How
+	// close it stands, and how big its markers are, follow `closeness`: where the sheet under it rests (RESTS).
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
@@ -22,7 +23,7 @@
 	} from 'maplibre-gl';
 	import { onMount, untrack } from 'svelte';
 	import type { PinItemType, PinType } from './chart.data';
-	import { gapOf, reachOf, scatterOf, type SeatType } from './map.utils';
+	import { gapOf, reachOf, RESTS, scatterOf, type ClosenessType, type SeatType } from './map.utils';
 
 	type PaddingType = { top: number; bottom: number; left: number; right: number };
 
@@ -33,6 +34,7 @@
 		maxZoom = 9,
 		isSpread = false,
 		isDark = false,
+		closeness = 1,
 		onpick
 	}: {
 		pins: PinType[];
@@ -44,6 +46,8 @@
 		// Map B (run 22): every thing is its own marker. Several in one city are scattered round it, and move apart
 		// as the map is zoomed in. No numbers.
 		isSpread?: boolean;
+		// Where the sheet under the map rests (map.utils.ts RESTS); the middle, where there is no sheet.
+		closeness?: ClosenessType;
 		// Page Map B (run 25): OpenFreeMap's dark style, pulled toward the app's slate. Set once, as the map is made.
 		isDark?: boolean;
 	} = $props();
@@ -79,6 +83,9 @@
 	// A gap of the scatter on the ground, in degrees: about a kilometre, so the gap in pixels (gapOf) is the bigger
 	// one until the map is zoomed in past where it fits a city, and from there the things move apart.
 	const GROUND = 0.012;
+	// The rest the map is showing; it follows `closeness` once the sheet has settled.
+	let shown = $state<ClosenessType>(untrack(() => closeness));
+	const rest = $derived(RESTS[shown]);
 	// The colours the pins use, as the map needs them, in the order `tone` numbers them.
 	let palette: string[] = [];
 
@@ -202,7 +209,7 @@
 		button.type = 'button';
 		button.title = item.name;
 		button.setAttribute('aria-label', item.name);
-		button.className = `flex size-10 cursor-pointer items-center justify-center overflow-hidden rounded-full text-white shadow-[0_2px_8px_rgb(15_23_42/0.35)] ring-[2.5px] ring-white ${item.image ? 'bg-white' : (item.tone ?? 'bg-primary')}`;
+		button.className = `flex size-10 [scale:var(--pin,1)] cursor-pointer items-center justify-center overflow-hidden rounded-full text-white shadow-[0_2px_8px_rgb(15_23_42/0.35)] ring-[2.5px] ring-white transition-[scale] duration-500 ease-out ${item.image ? 'bg-white' : (item.tone ?? 'bg-primary')}`;
 		if (item.image) {
 			const image = document.createElement('img');
 			image.src = item.image;
@@ -225,7 +232,10 @@
 			event.stopPropagation();
 			onpick?.(item);
 		});
-		return button;
+		// The map moves the box; the button inside grows and shrinks with where the sheet rests (--pin).
+		const box = document.createElement('div');
+		box.append(button);
+		return box;
 	}
 
 	// Markers follow the map: a single thing that stands alone at this zoom has one; one swallowed by a number does
@@ -285,7 +295,10 @@
 			if (spot.count < 2) continue;
 			const [lng, lat] = spot.centre;
 			const [here, there] = [target.project(spot.centre), target.project([lng + GROUND, lat])];
-			const gap = Math.max(gapOf(spot.count), Math.hypot(there.x - here.x, there.y - here.y));
+			const gap = Math.max(
+				gapOf(spot.count) * rest.size,
+				Math.hypot(there.x - here.x, there.y - here.y)
+			);
 			spot.marker.setOffset([spot.seat.x * gap, spot.seat.y * gap]);
 		}
 	}
@@ -383,9 +396,14 @@
 		const scale = (space: number, a: number, b: number) =>
 			a + b > space - 48 ? Math.max(0, (space - 48) / (a + b)) : 1;
 		// Spread, a place's markers sit round it, so the fit leaves their reach and half a marker on every side.
-		const ring = isSpread ? Math.max(0, ...pins.map((pin) => reachOf(pin.items.length))) + 24 : 0;
-		const [top, bottom] = [padding.top + ring, padding.bottom + ring];
-		const [left, right] = [padding.left + ring, padding.right + ring];
+		const ring = isSpread
+			? (Math.max(0, ...pins.map((pin) => reachOf(pin.items.length))) + 24) * rest.size
+			: 0;
+		// The higher the sheet rests, the more of the part that shows is left empty round the places (RESTS).
+		const across = Math.max(0, width - padding.left - padding.right) * rest.inset;
+		const down = Math.max(0, height - padding.top - padding.bottom) * rest.inset;
+		const [top, bottom] = [padding.top + ring + down, padding.bottom + ring + down];
+		const [left, right] = [padding.left + ring + across, padding.right + ring + across];
 		const v = scale(height, top, bottom);
 		const h = scale(width, left, right);
 		return { top: top * v, bottom: bottom * v, left: left * h, right: right * h };
@@ -397,9 +415,10 @@
 			...pins.map((pin) => [pin.lng, pin.lat] as [number, number]),
 			...route
 		];
-		const options = { padding: room(), duration, maxZoom };
+		const closest = maxZoom + rest.zoom;
+		const options = { padding: room(), duration, maxZoom: closest };
 		if (!points.length) return map.easeTo({ center: [-92, 31], zoom: 3, ...options });
-		if (points.length === 1) return map.easeTo({ center: points[0], zoom: maxZoom, ...options });
+		if (points.length === 1) return map.easeTo({ center: points[0], zoom: closest, ...options });
 		let [west, south, east, north] = [180, 90, -180, -90];
 		for (const point of points as [number, number][]) {
 			west = Math.min(west, point[0]);
@@ -499,6 +518,21 @@
 		untrack(() => !isFree && fit(0));
 	});
 
+	// The sheet came to rest somewhere else: once it has settled, the map eases to how close that rest stands and
+	// the markers to its size, even if someone had moved the map themselves. Until then it keeps fitting what it
+	// was showing, so it does not jump.
+	$effect(() => {
+		const next = closeness;
+		if (next === untrack(() => shown)) return;
+		const timer = setTimeout(() => {
+			shown = next;
+			isFree = false;
+			if (map) fan(map);
+			fit(700);
+		}, 320);
+		return () => clearTimeout(timer);
+	});
+
 	export function zoomBy(by: number) {
 		map?.easeTo({ zoom: (map.getZoom() ?? 3) + by });
 	}
@@ -508,6 +542,7 @@
 	<div
 		bind:this={node}
 		class="size-full {isDark ? 'bg-slate-900' : 'bg-slate-100'}"
+		style:--pin={rest.size}
 		role="region"
 		aria-label="Map"
 	></div>

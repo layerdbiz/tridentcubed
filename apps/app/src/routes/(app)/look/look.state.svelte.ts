@@ -59,6 +59,9 @@ export type MetricsType = { done: number; total: number; percent: number; status
 // The "Are you sure?" dialog: what is about to go, and what to do on yes.
 export type ConfirmType = { title: string; note?: string; onyes: () => void };
 
+// The states a project is no longer being worked on in: it opens on its Page, not on Edit (LookState.open).
+const FINISHED: StatusType[] = ['Sent', 'Complete', 'Archived'];
+
 export function metricsOf(panel: PanelType): MetricsType {
 	let done = 0;
 	let total = 0;
@@ -270,13 +273,17 @@ export class LookState {
 		return this.dataset;
 	}
 
-	// A project opens on its Page, before Edit and Preview (run 13), unless asked for another tab.
-	open(id: string, tab: TabType = 'page') {
+	// Unless asked for a tab, a project still being worked on opens on Edit, where its panels are, and one that is
+	// Sent, Complete or Archived on its Page (Justin, 2026-11-16: the Page of an unfinished project is not the
+	// place to land). Every other kind of record opens on its Page.
+	open(id: string, tab?: TabType) {
 		if (this.screen === 'workspace') this.#keepProject();
+		const status = this.projects.find((project) => project.id === id)?.status;
+		const first = tab ?? (status && FINISHED.includes(status) ? 'page' : 'edit');
 		this.projectId = id;
 		this.panelId = '';
-		this.tab = tab;
-		this.tabProgress = PROJECT_TABS.indexOf(tab);
+		this.tab = first;
+		this.tabProgress = PROJECT_TABS.indexOf(first);
 		this.screen = 'workspace';
 	}
 

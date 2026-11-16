@@ -28,6 +28,7 @@
 	import { pinsOf } from './chart.data';
 	import ListMenus from './list-menus.svelte';
 	import { PAGES } from './look.data';
+	import type { ClosenessType } from './map.utils';
 	import type { LookState } from './look.state.svelte';
 	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
@@ -50,6 +51,9 @@
 
 	let innerWidth = $state(0);
 	let innerHeight = $state(0);
+	// Where the phone's sheet rests (split.svelte): the map stands closer, with bigger markers, the lower it is
+	// (Justin, 2026-11-16). A desktop has no rests, so its map stays at the middle one.
+	let sheetRest = $state(0);
 	let isBellOpen = $state(false);
 	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
@@ -352,6 +356,7 @@
 	<WorldMap
 		pins={pinsOf(look, look.dataset, look.filter)}
 		isSpread={look.variant('map') === 'B'}
+		closeness={(isWide ? 1 : sheetRest) as ClosenessType}
 		onpick={(item) => {
 			if (!item.id) return;
 			if (item.page === 'projects') look.open(item.id);
@@ -457,6 +462,7 @@
 				isTight={isHalfB}
 				isFlat={isHalfB && isWide}
 				isLined={isHalfB && isWide}
+				bind:rest={sheetRest}
 				backdrop={look.chart === 'map' ? mapBackdrop : undefined}
 			>
 				{#snippet head()}

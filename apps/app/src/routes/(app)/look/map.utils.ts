@@ -7,6 +7,22 @@
 
 export type SeatType = { x: number; y: number };
 
+/** Where the sheet under the map rests: 0 its highest, 1 the middle, 2 its lowest. */
+export type ClosenessType = 0 | 1 | 2;
+
+/**
+ * What the map does at each rest (Justin, 2026-11-16). It always fits every place into the part that shows, and
+ * takes a step in at each rest down: `inset` is how much of that part it leaves empty on each side, so the higher
+ * the sheet the further out the map stands; `zoom` moves how far in it may go when the places are close together.
+ * The markers follow: half their size with the sheet up, their own size in the middle, a quarter bigger at the
+ * bottom (`size`).
+ */
+export const RESTS = [
+	{ size: 0.5, inset: 0.2, zoom: -1 },
+	{ size: 1, inset: 0.08, zoom: 0 },
+	{ size: 1.25, inset: 0, zoom: 0.75 }
+] as const;
+
 // A number from 0 up to 1 that a text always gives (FNV-1a).
 function chanceOf(text: string) {
 	let hash = 2166136261;

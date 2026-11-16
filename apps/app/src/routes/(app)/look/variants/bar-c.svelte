@@ -36,8 +36,8 @@
 	const PROJECT: TabType[] = ['page', 'edit', 'preview'];
 	const RECORD: TabType[] = ['page', 'edit'];
 	const DESK: TabType[] = ['page', 'preview'];
-	// The page on show on the dashboard: its icon is white, on a circle of the Add button's blue that slides from
-	// page to page the way the tabs' highlight does (Justin, 2026-11-16).
+	// The page on show on the dashboard: its icon is white, on a pill as wide as its place in the bar, in the Add
+	// button's blue seen through (Justin, 2026-11-16: a circle "doesn't look right"). It slides from page to page.
 	const ON = 'text-white';
 	const SLIDE =
 		'absolute inset-y-0 right-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
@@ -62,14 +62,14 @@
 	let list: HTMLDivElement | undefined = $state();
 	let mark = $state({ x: 0, width: 0 });
 	let bar: HTMLElement | undefined = $state();
-	// The circle: where its middle is along the bar, and whether a page is on show for it to sit under.
-	let seat = $state({ x: 0, isOn: false, isMoving: false });
+	// The pill: where it starts along the bar, how wide it is, and whether a page is on show for it to sit under.
+	let seat = $state({ x: 0, width: 0, isOn: false, isMoving: false });
 
 	// Under the icon of the page on show. Measured from the layout, which a layer's slide does not move.
 	function sit() {
 		const on = bar?.querySelector<HTMLElement>('[aria-current="page"]');
 		if (!on) return (seat = { ...seat, isOn: false });
-		let x = on.offsetWidth / 2;
+		let x = 0;
 		for (
 			let box: HTMLElement | null = on;
 			box && box !== bar;
@@ -77,7 +77,7 @@
 		)
 			x += box.offsetLeft;
 		// It slides between pages, but is simply there the first time and when it comes back.
-		seat = { x, isOn: true, isMoving: seat.isOn };
+		seat = { x, width: on.offsetWidth, isOn: true, isMoving: seat.isOn };
 	}
 
 	$effect(() => {
@@ -146,10 +146,10 @@
 		bind:this={bar}
 	>
 		<span
-			class="pointer-events-none absolute top-1/2 left-0 size-11 -translate-y-1/2 rounded-full bg-primary ease-out {seat.isMoving
-				? 'transition-[transform,opacity] duration-300'
+			class="pointer-events-none absolute top-1/2 left-0 h-11 -translate-y-1/2 rounded-full bg-primary/40 ease-out {seat.isMoving
+				? 'transition-[transform,width,opacity] duration-300'
 				: 'transition-opacity duration-200'} {seat.isOn ? '' : 'opacity-0'}"
-			style="transform: translateX({seat.x - 22}px)"
+			style="width: {seat.width}px; transform: translateX({seat.x}px)"
 			aria-hidden="true"
 		></span>
 		<!-- A fifth of the bar, where Projects sits on the dashboard: this icon never moves. -->
