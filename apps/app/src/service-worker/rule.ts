@@ -1,7 +1,9 @@
 // The service worker's rule (#201), kept apart from the worker so it can be tested: what it stores when it
-// installs, what it does with a request, and what it removes when a new version takes over. It keeps files, never
-// data: remote functions, server routes, file addresses and anything that is not a plain read are left alone.
+// installs, what it does with a request, what it removes when a new version takes over, and the one message that
+// lets it take over an open app (#202). It keeps files, never data: remote functions, server routes, file
+// addresses and anything that is not a plain read are left alone.
 import { KEPT_STATIC, MANIFEST_PATH, OFFLINE_PATH } from '#lib/install/install.constants.js';
+import { TAKE_OVER } from '#lib/update/update.constants.js';
 
 /** What the rule reads of a request; a real `Request` fits. */
 export type AskedType = Pick<Request, 'method' | 'mode' | 'url'>;
@@ -83,6 +85,11 @@ export async function store(shelf: ShelfType, { needed, wanted }: StoreType) {
 export function toOld(names: string[], version: string) {
 	const current = toStoreName(version);
 	return names.filter((name) => name.startsWith(STORE_PREFIX) && name !== current);
+}
+
+/** Whether a message asks a waiting version to take over the open app: the update note's, sent on the User's tap. */
+export function isTakeOver(message: unknown) {
+	return message === TAKE_OVER;
 }
 
 async function fromDevice(path: string, { read, ask }: DeviceType) {
