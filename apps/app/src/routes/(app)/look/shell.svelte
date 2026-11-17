@@ -70,7 +70,9 @@
 	// Where the desktop's bar centres: in what is left beside the sidebar, or beside a project's panels.
 	function barLeft() {
 		if (!isWide) return '50%';
-		if (look.screen === 'workspace') return 'calc(444px + (100vw - 444px) / 2)';
+		// Inside something open, Edit keeps its column on the left, so the bar centres in what is beside it.
+		if (look.screen !== 'dashboard')
+			return look.tab === 'edit' ? 'calc(444px + (100vw - 444px) / 2)' : '50%';
 		return `calc(${side + gutter}px + (100vw - ${side + gutter}px) / 2)`;
 	}
 	const record = $derived(
@@ -522,9 +524,10 @@
 						? 'px-2.5 md:px-0 md:pt-4'
 						: ''}"
 				>
-					<!-- White behind the menus, fading in from the left, so a title sliding under them goes out of sight. -->
+					<!-- White behind the menus, fading in from the left, so a title sliding under them goes out of sight. On a
+					     desktop they sit lower, on the line of the heading (Justin, 2026-11-16). -->
 					<div
-						class="absolute top-0 right-0 z-10 bg-[linear-gradient(to_right,transparent,white_2.5rem)] pr-3.5 pl-12 md:pr-0"
+						class="absolute top-0 right-0 z-10 bg-[linear-gradient(to_right,transparent,white_2.5rem)] pr-3.5 pl-12 md:top-4 md:pr-0"
 					>
 						<ListMenus {look} />
 					</div>
@@ -601,42 +604,52 @@
 				preview={{ ...PREVIEW, start: 'column' }}
 			/>
 			{#if isWide}
-				<!-- Run 13: on a desktop the panels keep their column (Edit), and the rest shows the project's Page or its Preview, picked on the floating bar. -->
+				<!-- A desktop project has the three views a phone has (Justin, 2026-11-16). Page: the project as it reads,
+				     with no panels. Edit: the panels in their column, the report beside them, starting from the left.
+				     Preview: the report alone. -->
 				<div class="fixed inset-0 bg-slate-100">
 					{#if look.tab === 'page'}
 						<ProjectPage
 							{look}
 							project={look.project}
 							isWide
-							left={444}
 							buttons={look.variant('header') === 'A' ? 'glass' : 'ghost'}
 						/>
-					{:else}
+					{:else if look.tab === 'edit'}
 						<ReportPreview
 							{look}
 							highlight={look.panelId}
 							{...PREVIEW}
 							start="spread"
 							left={444}
+							isLeft
+						/>
+					{:else}
+						<ReportPreview
+							{look}
+							{...PREVIEW}
+							start="spread"
 						/>
 					{/if}
 				</div>
-				<aside
-					class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
-				>
-					<div class="pt-4 pr-3 pb-4 pl-4">
-						<ProjectBar
-							{look}
-							isCloud
-						/>
-					</div>
-					<div class="flex-1 overflow-y-auto px-4 pb-4">
-						<PanelList
-							{look}
-							style="ring"
-						/>
-					</div>
-				</aside>
+				{#if look.tab === 'edit'}
+					<aside
+						class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
+					>
+						<div class="pt-4 pr-3 pb-4 pl-4">
+							<ProjectBar
+								{look}
+								isCloud
+							/>
+						</div>
+						<div class="flex-1 overflow-y-auto px-4 pb-4">
+							<PanelList
+								{look}
+								style="ring"
+							/>
+						</div>
+					</aside>
+				{/if}
 			{/if}
 		</div>
 	{/if}

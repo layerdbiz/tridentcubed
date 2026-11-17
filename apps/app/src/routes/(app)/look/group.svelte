@@ -5,6 +5,8 @@
 	// note 10, in place of the ⋮ menu); the caller's `ondelete` asks first (LookState.confirm).
 	// 2026-11-16 (Justin): under its name every section says how much of it is filled in, the way a panel does
 	// ("1 of 3 complete"), from the `values` its caller says count (tally.ts). No line describes it any more.
+	// Its header is not a button: a Sent or Complete project switches its panels' fields off, and a button would
+	// go off with them, so its sections could not be opened to read (Justin, 2026-11-16).
 	import type { Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { toTally } from './tally';
@@ -50,13 +52,19 @@
 	data-sort={sortKey || undefined}
 	data-index={index}
 >
-	<button
-		type="button"
-		class="flex w-full min-w-0 items-center gap-2.5 py-3 pr-3 pl-3 text-left select-none [-webkit-touch-callout:none]"
+	<div
+		role="button"
+		tabindex="0"
+		class="flex w-full min-w-0 cursor-pointer items-center gap-2.5 py-3 pr-3 pl-3 text-left select-none [-webkit-touch-callout:none]"
 		aria-expanded={isOpen}
 		data-grip={sortKey || undefined}
 		title={sortKey ? 'Hold and drag to reorder' : undefined}
 		onclick={ontoggle}
+		onkeydown={(event) => {
+			if (event.key !== 'Enter' && event.key !== ' ') return;
+			event.preventDefault();
+			ontoggle();
+		}}
 	>
 		{#if image}
 			<img
@@ -80,7 +88,7 @@
 				? 'rotate-180'
 				: ''}"
 		></span>
-	</button>
+	</div>
 	{#if isOpen}
 		<div
 			class="space-y-3 px-4 pb-3"

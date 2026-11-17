@@ -151,7 +151,10 @@
 	</PageView>
 {/snippet}
 
-{#if isWide}
+{#if isWide && look.tab !== 'edit'}
+	<!-- A desktop's Page: the record as it reads, alone (Justin, 2026-11-16: Page and Edit are two views). -->
+	<div class="fixed inset-0 bg-slate-100">{@render page(0)}</div>
+{:else if isWide}
 	<div class="fixed inset-0 bg-slate-100">{@render page(444)}</div>
 	<aside class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}">
 		<div class="pt-4 pr-3 pb-4 pl-4">{@render header()}</div>

@@ -58,7 +58,10 @@
 		children: Snippet;
 	} = $props();
 
-	let isMap = $state(false);
+	// Map or Photo, as picked; until someone picks, the map when there is a place to show on it (Justin,
+	// 2026-11-16: "instead of defaulting to the photo view, I want to default to the map view").
+	let picked = $state<boolean>();
+	const isMap = $derived(picked ?? (pins.length > 0 || route.length > 0));
 	let strip: HTMLDivElement | undefined = $state();
 	let at = $state(0);
 	let overlayHeight = $state(0);
@@ -187,7 +190,7 @@
 								: ''}"
 							role="tab"
 							aria-selected={isMap === value}
-							onclick={() => (isMap = value)}><span class="{icon} size-4"></span>{label}</button
+							onclick={() => (picked = value)}><span class="{icon} size-4"></span>{label}</button
 						>
 					{/each}
 				</span>

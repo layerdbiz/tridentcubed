@@ -30,6 +30,9 @@ export class Viewport {
 	left = 0;
 	top = 0;
 	right = 0;
+	// Beside a column of panels the pages start from the left, next to it, in place of centring (Justin,
+	// 2026-11-16).
+	isLeft = false;
 
 	#animationTimer: ReturnType<typeof setTimeout> | undefined;
 	#sharpTimer: ReturnType<typeof setTimeout> | undefined;
@@ -101,7 +104,8 @@ export class Viewport {
 			this.zoom = clampZoom(fits);
 			this.#sharpen();
 		}
-		this.x = this.left + (room - rect.width * this.zoom) / 2 - rect.x * this.zoom;
+		const gap = this.isLeft ? 24 : (room - rect.width * this.zoom) / 2;
+		this.x = this.left + gap - rect.x * this.zoom;
 		this.y = this.top + 24 - rect.y * this.zoom;
 		this.#clamp();
 	}
@@ -121,7 +125,8 @@ export class Viewport {
 			Math.min((room - 64) / this.content.width, (tall - 64) / this.content.height)
 		);
 		this.#sharpen();
-		this.x = this.left + Math.max(32, (room - this.content.width * this.zoom) / 2);
+		this.x =
+			this.left + (this.isLeft ? 24 : Math.max(32, (room - this.content.width * this.zoom) / 2));
 		this.y = this.top + 32;
 	}
 

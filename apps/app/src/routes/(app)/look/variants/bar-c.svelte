@@ -33,7 +33,6 @@
 	const TABS = { page: 'Page', edit: 'Edit', preview: 'Preview' };
 	const PROJECT: TabType[] = ['page', 'edit', 'preview'];
 	const RECORD: TabType[] = ['page', 'edit'];
-	const DESK: TabType[] = ['page', 'preview'];
 	// The page on show on the dashboard: its icon is white, on a pill as wide as its place in the bar, in the Add
 	// button's blue (Justin, 2026-11-16: a circle "doesn't look right"). It slides from page to page.
 	const ON = 'text-white';
@@ -41,9 +40,11 @@
 		'absolute inset-y-0 right-0 flex items-center transition-[transform,opacity] duration-300 ease-out';
 
 	const isInside = $derived(look.screen !== 'dashboard');
-	const isDesk = $derived(isWide && look.screen === 'workspace');
-	// On a desktop project nothing is swiped: Edit is always there, and the rest shows Page or Preview.
-	const shown = $derived(isDesk && look.tab === 'edit' ? 'preview' : look.tab);
+	// On a desktop the bar shows inside a project, a record or the Organization, with the same tabs a phone has
+	// (Justin, 2026-11-16: Page, Edit and Preview are three views, never Edit beside another). Nothing is swiped
+	// there: a tab is picked.
+	const isDesk = $derived(isWide && isInside);
+	const shown = $derived(look.tab);
 	const icon = $derived(isBig ? 'size-7' : 'size-6');
 	// What is open decides the bar, never the list last visited (`look.place`).
 	const home = $derived(look.place);
@@ -89,7 +90,7 @@
 
 	$effect(() => {
 		if (look.screen === 'record' || look.screen === 'settings') tabs = RECORD;
-		else if (look.screen === 'workspace') tabs = isWide ? DESK : PROJECT;
+		else if (look.screen === 'workspace') tabs = PROJECT;
 	});
 
 	$effect(() => {

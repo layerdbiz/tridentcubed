@@ -66,7 +66,8 @@
 		start = 'column',
 		surface = 'bg-slate-100',
 		left = 0,
-		top = 0
+		top = 0,
+		isLeft = false
 	}: {
 		look: LookState;
 		highlight?: string;
@@ -75,6 +76,8 @@
 		surface?: string;
 		left?: number;
 		top?: number;
+		// The pages start from the left, next to the panels, in place of centring.
+		isLeft?: boolean;
 	} = $props();
 
 	type PageType = {
@@ -120,6 +123,7 @@
 	$effect.pre(() => {
 		viewport.left = left;
 		viewport.top = top;
+		viewport.isLeft = isLeft;
 	});
 	// svelte-ignore state_referenced_locally
 	let layout = $state<'column' | 'spread'>(start);

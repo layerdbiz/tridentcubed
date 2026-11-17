@@ -347,7 +347,10 @@
 	</div>
 {/snippet}
 
-{#if isWide}
+{#if isWide && look.tab !== 'edit'}
+	<!-- A desktop's Page: the organization as it reads, alone (Justin, 2026-11-16: Page and Edit are two views). -->
+	<div class="fixed inset-0 bg-slate-100">{@render page()}</div>
+{:else if isWide}
 	<div class="fixed inset-0 bg-slate-100">
 		{#if look.project}
 			<ReportPreview

@@ -18,8 +18,8 @@
 		ring?: string;
 		isMuted?: boolean;
 		hasPresence?: boolean;
-		// A logo to wear at the top right, white on a black circle, in place of the presence dot: on the report it
-		// marks the organization's own people (run 32).
+		// A logo to wear at the top right, in place of the presence dot: on the report it marks the organization's
+		// own people (run 32). It shows in its own colours on white (Justin, 2026-11-16), half as wide as the face.
 		badge?: string;
 	} = $props();
 
@@ -52,13 +52,13 @@
 	{/if}
 	{#if badge}
 		<span
-			class="absolute -top-0.5 -right-0.5 flex items-center justify-center rounded-full bg-black ring-1 ring-white"
-			style="width: {Math.round(size * 0.42)}px; height: {Math.round(size * 0.42)}px"
+			class="absolute -top-1 -right-1 flex items-center justify-center rounded-full bg-white ring-1 ring-slate-900/10"
+			style="width: {Math.round(size * 0.5)}px; height: {Math.round(size * 0.5)}px"
 			><img
 				src={badge}
 				alt=""
 				draggable="false"
-				class="size-[68%] object-contain brightness-0 invert"
+				class="size-[78%] object-contain"
 			/></span
 		>
 	{:else if hasPresence}

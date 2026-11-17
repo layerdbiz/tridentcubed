@@ -144,9 +144,9 @@
 		{@render head()}
 	</section>
 	<section
-		class="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-white {isFlat
+		class="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-white shadow-[0_-24px_70px_-8px_rgb(15_23_42/0.28)] {isFlat
 			? ''
-			: 'rounded-t-[40px] shadow-[0_-24px_70px_-8px_rgb(15_23_42/0.28)]'} {sheetClass}"
+			: 'rounded-t-[40px]'} {sheetClass}"
 		{@attach drag}
 	>
 		{#if isLined}

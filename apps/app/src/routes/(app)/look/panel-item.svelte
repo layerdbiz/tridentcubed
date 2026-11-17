@@ -46,6 +46,22 @@
 		Complete: 'stroke-success',
 		Archived: 'stroke-slate-400'
 	};
+	// Inside an open panel everything the app draws in its blue takes the state's colour instead (Justin,
+	// 2026-11-16: "all those colors need to update as the status changes for every icon, not just some"): the
+	// project's while it is Sent, Complete or Archived, else green once the panel is complete. The theme's colours
+	// are read where they are used (@theme inline), so it is the theme's own variable that is set here.
+	const RECOLOURS: Record<string, string> = {
+		Sent: '[--theme-color-primary:var(--color-violet-500)]',
+		Complete: '[--theme-color-primary:var(--theme-color-success)]',
+		Archived: '[--theme-color-primary:var(--color-slate-400)]'
+	};
+	const recolour = $derived(
+		frozen && panel.isEnabled
+			? RECOLOURS[frozen]
+			: metrics.status === 'Complete'
+				? RECOLOURS.Complete
+				: ''
+	);
 	const TRACKS = {
 		'To do': 'bg-slate-400',
 		'In progress': 'bg-primary',
@@ -243,7 +259,7 @@
 	{/if}
 	{#if isOpen}
 		<div
-			class="px-4 pt-1 pb-5"
+			class="px-4 pt-1 pb-5 {recolour}"
 			transition:slide={{ duration: 200 }}
 		>
 			<PanelBody
