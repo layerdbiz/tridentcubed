@@ -39,7 +39,7 @@ A User with no membership in any organization. A Guest sees only Waiting for acc
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
-A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15). Its details also hold its email domain.
+A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, legal name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15). Its details also hold its email domain.
 _Avoid_: team, company, workspace
 
 **Membership**:
@@ -77,7 +77,7 @@ _Avoid_: company domain, staff domain
 ### Projects and reports
 
 **Customer**:
-The company a project is done for, kept once in the organization's list with its full name and a short code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its logo (printed in every page's footer), types, city, address, email, phone, website, a background picture and any number of contacts. Picking a customer's name in a project fills all of it in. Called Client until 2026-10-26.
+The company a project is done for, kept once in the organization's list with its name and a code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its legal name, type, labels, logo (printed in every page's footer), location, address, main email and phone, website, a cover and any number of contacts. Picking a customer's name in a project fills all of it in. Called Client until 2026-10-26.
 _Avoid_: client, account
 
 **Project**:
@@ -120,18 +120,19 @@ The document a project produces: its panels rendered as report pages.
 _Avoid_: survey report, document
 
 **Contact**:
-A person at a customer: name, title, email, phone and photo, kept on the customer's record. A customer has any number; a project picks the one its report is for, and the report prints their name, title and email under the customer. A facility has a simpler one: a name, phone and email.
+A person at a company: name, title, email, phone and photo, kept on the company's record. A customer has any number; a project picks the one its report is for, and the report prints their name, title and email under the customer. A company's other email addresses and phone numbers belong to its contacts, not to the company. A facility has one for now, as a name, phone and email; it takes the same contacts as a customer when it needs more (Justin, 2026-11-17).
 _Avoid_: client contact, recipient, attendee
 
 **Facility**:
-Where a stop takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. Its record holds its kind, city, address, a picture and a contact; the stop's report page prints the address and contact. The drop-down lists every facility, the kind that suits the stop's transport type first (ports for Sea).
+Where a stop takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. Its record holds its type (Port, Airport, Rail yard or Depot), location, address, a cover and a contact; the stop's report page prints the address and contact. A facility is a company too, so its record takes any other company field (legal, code, logo, website) when it needs one. The drop-down lists every facility, the type that suits the stop's transport type first (ports for Sea).
+_Avoid_: kind (for its type)
 
 **Transport**:
-The ship, barge, plane, train or truck that moves the items, like MV Coral Dawn, picked from the organization's Transport list or added on the spot. A project can use several, one per stop. In V1 every transport is typed in by hand, with a picture and its particulars, which each of its stops' report pages print; later a tracking service adds ships and planes to the same list and fills in their particulars.
+The ship, barge, plane, train or truck that moves the items, like MV Coral Dawn, picked from the organization's Transport list or added on the spot. A project can use several, one per stop. In V1 every transport is typed in by hand, with a cover and its particulars, which each of its stops' report pages print; later a tracking service adds ships and planes to the same list and fills in their particulars.
 _Avoid_: carrier (that is the owner), vehicle, conveyance
 
 **Transport type**:
-Sea, Air, Rail or Road. Picking one offers its transport modes.
+Sea, Air, Rail or Road: a transport's type, read from its transport mode. Picking one offers its transport modes.
 _Avoid_: transport mode (that is Vessel, Barge and the rest)
 
 **Transport mode**:
@@ -249,7 +250,7 @@ A File a User adds to a project: a photo, a video or a document. It keeps the ti
 _Avoid_: asset (in surveying that is the vessel or cargo surveyed), media, upload, uploaded file
 
 **File**:
-Anything uploaded and kept in private storage: a photo, an attached document, or a logo or picture on a record or the organization. It holds what it is for, its type and size, and for a photo the time and place it was taken. An Attachment is a File added to a project; a record's logo is a File but not an Attachment.
+Anything uploaded and kept in private storage: a photo, an attached document, or a logo, cover or photo on a record or the organization. It holds what it is for, its type and size, and for a photo the time and place it was taken. An Attachment is a File added to a project; a record's logo is a File but not an Attachment.
 _Avoid_: upload, asset, blob
 
 ### Report pages
@@ -304,12 +305,87 @@ One record's screen, shared by all four kinds, with two tabs: Page, how it reads
 _Avoid_: detail page, profile (that is the User's own)
 
 **Label**:
-What a list page sorts by: a project's status, a customer's types, a Team record's labels, a transport's transport type and a facility's kind. A page's labels are its board columns, its filter options and its chart's slices, in the same colours and order; a record with none sits under Other.
+What a list page sorts by: a project's status, a customer's type, a Team record's labels, a transport's transport type and a facility's type. A page's labels are its board columns, its filter options and its chart's slices, in the same colours and order; a record with none sits under Other.
 _Avoid_: tag, category, group
+_Open_: since 2026-11-17 labels is also the field for a record's free tags, which any record may have beside its type. Whether a page with a type also sorts by those is not decided.
 
 **Export**:
 Producing a file of the report. PDF today; other formats are listed but not built.
 _Avoid_: download
+
+### Record fields
+
+**Record field**:
+One named fact kept on a record, a project, a contact or the organization. Each field word below means the same thing wherever it is used; any kind of record may use any of them, and none is required because another kind has it. A field is spelled the same in the database and on the screens (Justin, 2026-11-17).
+_Avoid_: field (bare, where an Input could be meant), property, attribute, column
+
+**name**:
+What the app shows for it: a company's everyday name, a person's full name.
+_Avoid_: title (that is a project's, or a person's job title), display name
+
+**legal**:
+A company's formal registered name, like AXA XL, a division of AXA. A report prints it where it is filled, and the name where it is not.
+_Avoid_: legal name (as the field word), company name, full name
+
+**code**:
+A company's abbreviation, like SGL: a few capital letters, three when the app or the team makes one up, that start its project numbers and document IDs.
+_Avoid_: abbreviation, short code (as the field word), prefix
+
+**type**:
+The one thing a record is, picked from its page's fixed list: a customer's Freight Forwarder, a facility's Port, a project's Cargo, a transport's Sea. A record has at most one. A transport also has its mode.
+_Avoid_: kind, category, types (several belong in labels)
+
+**labels**:
+Any number of free tags on a record, whatever its kind, beside its type: a customer's Crane Services, a Team record's Port Captain.
+_Avoid_: tags, types, categories
+
+**icon**:
+The symbol the app shows for a record that has no image of its own: its page's symbol in the main menu (a face for customers, a folder for projects, three people for team), or its type's or mode's where those have one. It belongs to the app and is never a field of a record.
+_Avoid_: logo, avatar, placeholder
+
+**logo**:
+A company's mark, as an image a User added or the app took from the company's website.
+_Avoid_: icon, brand, picture
+
+**photo**:
+A person's face, on a Team record or a contact. Not a Photo, which is an image in a report's photo group.
+_Avoid_: avatar, picture, headshot
+
+**cover**:
+The one big image on top of a record's Page tab. Called picture until 2026-11-17. Not the report's Cover, which is a report page.
+_Avoid_: picture, background, banner
+
+**photos**:
+More images of a record beside its cover; the cover is one picked from them. Not in V1.
+_Avoid_: gallery, pictures
+
+**location**:
+Where a record is, picked from the list of places as it is typed and shown on the map: Houston, TX. Called city on customers and facilities until 2026-11-17.
+_Avoid_: city, place (that is the saved lookup behind it), region
+
+**address**:
+The postal address as typed, one block, as it prints: street, suite, city, state, zip and country together, never as fields of their own.
+_Avoid_: street, billing address, state, zip, country (as fields)
+
+**email**:
+A company's one main address, or a person's own. A company's other addresses belong to its contacts.
+_Avoid_: emails, default email, contact email
+
+**phone**:
+A company's one main number, or a person's own. A company's other numbers belong to its contacts.
+_Avoid_: phones, mobile, telephone
+
+**website**:
+A company's own site.
+_Avoid_: url, link (that is a person's)
+
+**link**:
+A person's profile page elsewhere, such as LinkedIn.
+_Avoid_: website, url
+
+**title**:
+A person's job title; on a project, the title its report's cover prints.
+_Avoid_: position, role (that is a membership's), name
 
 ### Definitions and data
 
