@@ -22,7 +22,11 @@ const KEPT = toKept([{ path: BUILT.slice(1) }, { path: '_app/immutable/assets/ap
 const NO_SIGNAL = new TypeError('Failed to fetch');
 
 /** A device holding the files it should, in front of a network that answers, or fails when `isCut`. */
-function device({ isCut = false, stored = [...KEPT, OFFLINE_PATH] } = {}) {
+function device({
+	isCut = false,
+	stored = [...KEPT, OFFLINE_PATH],
+	browser = undefined as 'asks' | 'asks nothing' | undefined
+} = {}) {
 	const asked: string[] = [];
 	const read: string[] = [];
 	return {
@@ -43,7 +47,15 @@ function device({ isCut = false, stored = [...KEPT, OFFLINE_PATH] } = {}) {
 						asked.push(full.url);
 						if (isCut) throw NO_SIGNAL;
 						return new Response(`network:${full.url}`);
-					}
+					},
+					// The browser's own request for a page load (navigation preload), where the browser makes one.
+					preload: browser
+						? async () => {
+								if (browser === 'asks nothing') return undefined;
+								if (isCut) throw NO_SIGNAL;
+								return new Response(`browser:${full.url}`);
+							}
+						: undefined
 				}
 			);
 		}
@@ -134,7 +146,7 @@ describe('the service worker’s rule', () => {
 		await expect(phone.answer({ url: '/', mode: 'navigate' })).rejects.toBe(NO_SIGNAL);
 	});
 
-	it('never answers a remote function, a server route or a file address, even opened as a page', () => {
+	it('never answers a remote function, a server route or a file address, even opened as a page, when the browser asked nothing itself', () => {
 		const phone = device({ isCut: true });
 
 		for (const mode of ['cors', 'same-origin', 'navigate'] as const) {
@@ -149,6 +161,70 @@ describe('the service worker’s rule', () => {
 		}
 		expect(phone.read).toEqual([]);
 		expect(phone.asked).toEqual([]);
+	});
+
+	// A page load the service worker asks for itself reaches the server as a plain read, not as a page load. A host
+	// that keeps a visitor on the version they started with (Vercel's Skew Protection) moves them to the newest
+	// version on a page load only, so the update note came back after every tap. The browser's own request is one.
+	it('answers a page request with the browser’s own request, and asks nothing itself', async () => {
+		const phone = device({ browser: 'asks' });
+
+		expect(await text(phone.answer({ url: '/?screen=workspace', mode: 'navigate' }))).toBe(
+			'browser:/?screen=workspace'
+		);
+		expect(await text(phone.answer({ url: '/login', mode: 'navigate' }))).toBe('browser:/login');
+		expect(phone.asked).toEqual([]);
+		expect(phone.read).toEqual([]);
+	});
+
+	it('asks the network for a page itself when the browser made no request of its own', async () => {
+		const phone = device({ browser: 'asks nothing' });
+
+		expect(await text(phone.answer({ url: '/login', mode: 'navigate' }))).toBe('network:/login');
+	});
+
+	it('answers with the Needs Internet screen when the browser’s own request fails', async () => {
+		const phone = device({ browser: 'asks', isCut: true });
+
+		expect(await text(phone.answer({ url: '/login', mode: 'navigate' }))).toBe(
+			`device:${OFFLINE_PATH}`
+		);
+		expect(phone.asked).toEqual([]);
+	});
+
+	// The browser has already asked: left alone, it would ask a second time, and a sign-in code works once.
+	it('hands back the browser’s own request for an address that is not a page, so it is asked once', async () => {
+		const phone = device({ browser: 'asks' });
+
+		for (const url of [
+			'/api/auth/callback/google?code=1',
+			'/api/export/pdf',
+			'/files/5f0c1d6e',
+			'/manifest.webmanifest'
+		])
+			expect(await text(phone.answer({ url, mode: 'navigate' }))).toBe(`browser:${url}`);
+		expect(phone.asked).toEqual([]);
+		expect(phone.read).toEqual([]);
+	});
+
+	it('never shows the Needs Internet screen for an address that is not a page', async () => {
+		const phone = device({ browser: 'asks', isCut: true });
+
+		await expect(phone.answer({ url: '/api/export/pdf', mode: 'navigate' })).rejects.toBe(
+			NO_SIGNAL
+		);
+		expect(phone.read).toEqual([]);
+	});
+
+	it('leaves every request that is not a page load alone, whatever the browser can do', () => {
+		const phone = device({ browser: 'asks' });
+
+		for (const mode of ['cors', 'same-origin', 'no-cors'] as const) {
+			expect(phone.answer({ url: '/_app/remote/abc123/fetchLists', mode })).toBeUndefined();
+			expect(phone.answer({ url: '/api/places?q=Houston', mode })).toBeUndefined();
+			expect(phone.answer({ url: '/_app/version.json', mode })).toBeUndefined();
+		}
+		expect(phone.answer({ url: '/login', method: 'POST', mode: 'navigate' })).toBeUndefined();
 	});
 
 	it('never answers a request that is not a plain read', () => {

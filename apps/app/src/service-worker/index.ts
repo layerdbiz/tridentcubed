@@ -5,6 +5,11 @@
 // request is in service-worker.utils.ts: a kept file comes from the device, a page that cannot be reached gets the
 // Needs Internet screen, the rest is left alone. It never calls `skipWaiting()` on install: a new version waits until the app is closed,
 // or until the User taps the update note (#202), whose message is the only thing that lets it take over an open app.
+//
+// A page load is answered with the browser's own request (navigation preload, turned on when this version takes
+// over). A request sent from here reaches the server as a plain read, not as a page load, and Vercel's Skew
+// Protection moves a visitor to the newest version on a page load only: without this an open app stayed on the old
+// version after every deployment, and the update note came back after every tap.
 import { version } from '$app/env';
 import { immutable } from '$app/manifest';
 import { self } from '$app/service-worker';
@@ -20,6 +25,8 @@ import {
 
 const STORE = toStoreName(version);
 const KEPT = toKept(immutable);
+// Not in every browser: without it a page load is sent from here, as before.
+const PRELOAD = self.registration.navigationPreload as NavigationPreloadManager | undefined;
 
 async function install() {
 	const cache = await caches.open(STORE);
@@ -41,7 +48,9 @@ async function read(path: string) {
 
 self.addEventListener('install', (event) => event.waitUntil(install()));
 
-self.addEventListener('activate', (event) => event.waitUntil(removeOld()));
+self.addEventListener('activate', (event) =>
+	event.waitUntil(Promise.all([removeOld(), PRELOAD?.enable()]))
+);
 
 self.addEventListener('message', (event) => {
 	if (isTakeOver(event.data)) event.waitUntil(self.skipWaiting());
@@ -52,7 +61,8 @@ self.addEventListener('fetch', (event) => {
 		origin: self.location.origin,
 		kept: KEPT,
 		read,
-		ask: () => fetch(event.request)
+		ask: () => fetch(event.request),
+		preload: PRELOAD && (() => event.preloadResponse as Promise<Response | undefined>)
 	});
 	if (answered) event.respondWith(answered);
 });

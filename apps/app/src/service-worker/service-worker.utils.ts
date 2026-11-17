@@ -17,6 +17,12 @@ export type DeviceType = {
 	read: (path: string) => Promise<Response | undefined>;
 	/** Sends the request on to the network. */
 	ask: () => Promise<Response>;
+	/**
+	 * The browser's own request for a page load (navigation preload), where the browser makes one; it gives nothing
+	 * for a request that is not a page load. A request the service worker sends reaches the server as a plain read,
+	 * and only the browser's own arrives as a page load.
+	 */
+	preload?: () => Promise<Response | undefined>;
 };
 
 export type FilesType = {
@@ -96,11 +102,19 @@ async function fromDevice(path: string, { read, ask }: DeviceType) {
 	return (await read(path)) ?? ask();
 }
 
-async function fromNetwork({ read, ask }: DeviceType) {
+// A page load is the browser's own request where it made one. A host that keeps a visitor on the version they
+// started with (Vercel's Skew Protection, by a cookie) moves them to the newest version on a page load only, and
+// a request sent from here does not arrive as one: the visitor stayed on the old version, and the update note came
+// back after every tap.
+async function load({ preload, ask }: DeviceType) {
+	return (await preload?.()) ?? ask();
+}
+
+async function fromNetwork(device: DeviceType) {
 	try {
-		return await ask();
+		return await load(device);
 	} catch (error) {
-		const screen = await read(OFFLINE_PATH);
+		const screen = await device.read(OFFLINE_PATH);
 		if (screen) return screen;
 		throw error;
 	}
@@ -110,12 +124,17 @@ async function fromNetwork({ read, ask }: DeviceType) {
  * Where a request's answer comes from. A kept file comes from the device; a page request goes to the network and
  * gets the Needs Internet screen only when the network fails. `undefined` leaves the request alone: the browser
  * sends it as if there were no service worker.
+ *
+ * A page load of an address that is not a page (a sign-in callback, a download) is never answered from here. Where
+ * the browser has already made its own request for it, that request is handed back as it came: left alone, the
+ * browser would ask a second time, and a sign-in code works once.
  */
 export function answer(asked: AskedType, device: DeviceType): Promise<Response> | undefined {
 	if (asked.method !== 'GET') return undefined;
 	const url = new URL(asked.url);
 	if (url.origin !== device.origin) return undefined;
 	if (device.kept.has(url.pathname)) return fromDevice(url.pathname, device);
-	if (asked.mode !== 'navigate' || !isPage(url.pathname)) return undefined;
-	return fromNetwork(device);
+	if (asked.mode !== 'navigate') return undefined;
+	if (isPage(url.pathname)) return fromNetwork(device);
+	return device.preload ? load(device) : undefined;
 }
