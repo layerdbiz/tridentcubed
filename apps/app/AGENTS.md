@@ -135,8 +135,8 @@ src/routes/manifest.webmanifest/   the manifest: a server route, with its builde
 src/app.html                       the page head's links to the manifest and the Apple touch icon
 packages/ui/static/install/        the icons (shared static files)
 scripts/icons.ts                   remakes the icons from the dark logo on black (`pnpm --filter app icons`)
-src/service-worker/                the service worker: index.ts, its own tsconfig, and its request rule
-                                   as a plain tested function beside it
+src/service-worker/                the service worker: index.ts, its own tsconfig, and rule.ts, what it
+                                   stores and what a request gets, as plain tested functions
 src/routes/offline/                the Needs Internet screen the service worker shows
 src/lib/install/                   Install App: install.constants.ts, install.state.svelte.ts, the
                                    component and its how-to; used by routes/(app)/look/account-menu.svelte
@@ -180,7 +180,12 @@ src/lib/update/                    the update note: its rule, its test and the n
   install was offered, whether an install just happened. Nothing reads the
   user agent or the platform; the User picks iPhone or Android in the
   how-to.
-- **Run it on a production build.** SvelteKit registers the service worker
-  in production builds only: `pnpm exec vp build`, then
-  `pnpm exec vp preview --host --port 4174`.
+- **Run it on a production build.** The service worker is registered from
+  a build only: `pnpm exec vp build`, then
+  `pnpm exec vp preview --host --port 4174`. SvelteKit 3 would register it
+  from the dev server too; the shared config (`packages/config/vite`) turns
+  that off, so a dev page is never answered from stored files.
+- **Pages link their files from the root** (`paths: { relative: false }` in
+  `vite.config.ts`), because the Needs Internet screen is shown at addresses
+  it was not made for.
 - Labels are Title Case: "Install App", "Needs Internet", "Try Again".
