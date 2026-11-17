@@ -424,6 +424,9 @@ export const MODE_ICONS: Record<string, string> = {
 	Trailer: 'icon-[mdi--truck-trailer]'
 };
 
+// Start, Stop and End each keep a colour of their own, the same in every state: blue, amber and green. They are
+// told apart by it, so Start is the blue itself and not the app's blue, which an open panel turns to its state's
+// colour (panel-item.svelte; Justin, 2026-11-16).
 export const POINTS: Record<
 	PointType,
 	{ icon: string; hint: string; text: string; chip: string; dot: string; solid: string }
@@ -431,10 +434,10 @@ export const POINTS: Record<
 	Start: {
 		icon: 'icon-[mdi--ray-start-arrow]',
 		hint: 'where the trip starts',
-		text: 'text-primary',
-		chip: 'bg-primary/10 text-primary',
-		dot: 'bg-primary',
-		solid: 'bg-primary text-white'
+		text: 'text-blue-600',
+		chip: 'bg-blue-600/10 text-blue-600',
+		dot: 'bg-blue-600',
+		solid: 'bg-blue-600 text-white'
 	},
 	Stop: {
 		icon: 'icon-[mdi--ray-vertex]',
