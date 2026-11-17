@@ -19,6 +19,9 @@ const OPEN = ['/login', '/api/auth/', '/_app/', '/local-files/'];
 const SERVED = ['/api/', '/files/'];
 const CLOSED = '/api/auth/organization/';
 const WAITING = '/waiting';
+// Where the look prototype lived until the app took its place (#180). Its bookmarks and links lead to the app
+// (Justin, 2026-11-17: the old address gave "Whoops" once the app was live).
+const OLD_PROTOTYPE = '/prototype';
 
 function isUnder(path: string, prefix: string) {
 	return path === prefix || path.startsWith(prefix.endsWith('/') ? prefix : `${prefix}/`);
@@ -32,6 +35,7 @@ export function isClosed(url: URL) {
 export function toGuard(url: URL, access: AccessType): GuardType | undefined {
 	const path = url.pathname;
 	if (isClosed(url)) return { kind: 'refuse', status: 404, message: 'Not found.' };
+	if (isUnder(path, OLD_PROTOTYPE)) return { kind: 'redirect', location: '/' };
 	if (OPEN.some((open) => isUnder(path, open))) return undefined;
 
 	if (access === 'staff') {
@@ -59,5 +63,6 @@ export function toGuard(url: URL, access: AccessType): GuardType | undefined {
 export function toNext(next: string | null | undefined) {
 	if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return '/';
 	if (next === '/login' || next.startsWith('/login?') || next.startsWith('/login/')) return '/';
+	if (isUnder(next.split(/[?#]/)[0], OLD_PROTOTYPE)) return '/';
 	return next;
 }

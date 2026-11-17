@@ -5,7 +5,9 @@
 	// field with one Continue, which sends a six-digit code, then the code entry; the first sign-in creates the user
 	// (#181). Google and Microsoft show under it only when this deployment has their keys (#191), and a sign-in
 	// they send back unfinished says why. A deployment missing a setting says it is not connected yet and names
-	// what is missing.
+	// what is missing. On a desktop the dark top is shorter than a phone's, under half of the height, with the logo and the name
+	// side by side (Justin, 2026-11-17: "that header is way too big", then, of a quarter, "twice the size and height"); a phone
+	// keeps the tall top.
 	import { page } from '$app/state';
 	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
 	import { readWaiting, toWaiting } from './waiting';
@@ -90,17 +92,21 @@
 
 <div class="fixed inset-0 overflow-y-auto font-sans [color-scheme:light]">
 	<div class="flex min-h-full flex-col bg-slate-950">
-		<div class="flex flex-1 flex-col bg-linear-to-br from-slate-700 to-slate-950 text-white">
+		<div
+			class="flex flex-1 flex-col bg-linear-to-br from-slate-700 to-slate-950 text-white md:flex-none"
+		>
 			<div
-				class="flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-6 text-center"
+				class="flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-6 text-center md:flex-row md:gap-6 md:pt-20 md:pb-14"
 			>
 				<img
 					src="/branding/logo-dark.svg"
 					alt=""
 					draggable="false"
-					class="size-28 object-contain"
+					class="size-28 object-contain md:size-32"
 				/>
-				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase">Trident Cubed</p>
+				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase md:mt-0 md:text-4xl">
+					Trident Cubed
+				</p>
 			</div>
 			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
 			<svg
@@ -114,7 +120,9 @@
 			>
 		</div>
 		<!-- Up one pixel over the wave, so no line of the dark shows between them. -->
-		<div class="relative -mt-px bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
+		<div
+			class="relative -mt-px bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] md:flex-1 md:pt-10"
+		>
 			<div class="mx-auto w-full max-w-sm space-y-4">
 				<h1 class="text-xl font-semibold tracking-tight text-slate-900">Sign In</h1>
 

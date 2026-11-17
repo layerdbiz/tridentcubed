@@ -2,10 +2,12 @@
 // starting rows through the connector, SQL only; the SQL comes from the seed itself (`toSeedSql` in
 // src/lib/server/db/seed.ts), so its rows and ids cannot drift from it. A bare Vite server loads the app's code as
 // the app and its tests do (`?raw` imports, the `#lib` subpath). The output is not committed.
+import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
 
 const server = await createServer({
-	root: new URL('..', import.meta.url).pathname,
+	// As a path of this machine: a URL's own pathname is not one on Windows (/V:/...), where Vite then finds nothing.
+	root: fileURLToPath(new URL('..', import.meta.url)),
 	configFile: false,
 	logLevel: 'silent',
 	server: { middlewareMode: true, hmr: false, ws: false },

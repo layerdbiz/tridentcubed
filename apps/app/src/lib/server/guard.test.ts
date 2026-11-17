@@ -18,6 +18,15 @@ describe('the sign-in guard', () => {
 		expect(guard('/waiting')).toEqual({ kind: 'redirect', location: '/login' });
 	});
 
+	it('sends the look prototype’s old address to the app, signed in or not', () => {
+		const home = { kind: 'redirect', location: '/' };
+
+		expect(guard('/prototype/look')).toEqual(home);
+		expect(guard('/prototype/look?screen=workspace&project=p1', 'staff')).toEqual(home);
+		expect(guard('/prototype', 'guest')).toEqual(home);
+		expect(guard('/prototypes', 'staff')).toBeUndefined();
+	});
+
 	it('refuses a signed-out request to the app’s server routes instead of sending it to a page', () => {
 		expect(guard('/api/places?q=Houston')).toEqual({
 			kind: 'refuse',
@@ -83,6 +92,11 @@ describe('where signing in lands', () => {
 		expect(toNext('/?screen=record&record=customers%3AAcme')).toBe(
 			'/?screen=record&record=customers%3AAcme'
 		);
+	});
+
+	it('lands on the app when the address asked for was the old prototype’s', () => {
+		expect(toNext('/prototype/look')).toBe('/');
+		expect(toNext('/prototype/look?screen=workspace&tab=edit')).toBe('/');
 	});
 
 	it('lands on the app for anything that is not an address of this app', () => {
