@@ -16,6 +16,9 @@ export type GuardType =
 // signature alone (#187). The app's own file addresses (/files/<id>) answer like server routes: a refusal, never a
 // page.
 const OPEN = ['/login', '/api/auth/', '/_app/', '/local-files/'];
+// What a browser asks for to install the app, with no session (#199): the manifest, and the Needs Internet screen the
+// service worker keeps on the device. A signed-out visitor can install too. Each is one address, nothing under it.
+const INSTALL = ['/manifest.webmanifest', '/offline'];
 const SERVED = ['/api/', '/files/'];
 const CLOSED = '/api/auth/organization/';
 const WAITING = '/waiting';
@@ -37,6 +40,7 @@ export function toGuard(url: URL, access: AccessType): GuardType | undefined {
 	if (isClosed(url)) return { kind: 'refuse', status: 404, message: 'Not found.' };
 	if (isUnder(path, OLD_PROTOTYPE)) return { kind: 'redirect', location: '/' };
 	if (OPEN.some((open) => isUnder(path, open))) return undefined;
+	if (INSTALL.includes(path)) return undefined;
 
 	if (access === 'staff') {
 		return isUnder(path, WAITING) ? { kind: 'redirect', location: '/' } : undefined;

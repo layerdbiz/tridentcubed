@@ -41,6 +41,16 @@ describe('the sign-in guard', () => {
 		expect(guard('/_app/remote/abc/submitEmail')).toBeUndefined();
 	});
 
+	it('lets anyone reach the manifest and the Needs Internet screen, so the app installs before sign-in (#199)', () => {
+		for (const access of ['signed-out', 'guest', 'staff'] as const) {
+			expect(guard('/manifest.webmanifest', access)).toBeUndefined();
+			expect(guard('/offline', access)).toBeUndefined();
+		}
+		// Only those two addresses: a lookalike is still closed.
+		expect(guard('/manifest.webmanifest.map')).toMatchObject({ kind: 'redirect' });
+		expect(guard('/offline-projects')).toMatchObject({ kind: 'redirect' });
+	});
+
 	it('lets staff of the organization through, and off the waiting page', () => {
 		expect(guard('/?screen=settings', 'staff')).toBeUndefined();
 		expect(guard('/api/places?q=Houston', 'staff')).toBeUndefined();
