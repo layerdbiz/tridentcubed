@@ -134,6 +134,7 @@ it belongs here.
 src/routes/manifest.webmanifest/   the manifest: a server route, with its builder and test beside it
 src/app.html                       the page head's links to the manifest and the Apple touch icon
 packages/ui/static/install/        the icons (shared static files)
+scripts/icons.ts                   remakes the icons from the dark logo on black (`pnpm --filter app icons`)
 src/service-worker/                the service worker: index.ts, its own tsconfig, and its request rule
                                    as a plain tested function beside it
 src/routes/offline/                the Needs Internet screen the service worker shows

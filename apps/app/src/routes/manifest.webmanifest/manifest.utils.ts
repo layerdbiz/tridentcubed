@@ -32,8 +32,8 @@ export type ManifestType = {
 };
 
 /**
- * The manifest for the address it was asked on. No `orientation`: naming one, even "any", has Android turn the app
- * against the phone's own rotation lock, and leaving it out lets the app turn as the phone is set to.
+ * The manifest for the address it was asked on. No `orientation` member: left out, nothing is locked, so the app
+ * turns upright and sideways as the phone is set to (spec #199, story 8).
  */
 export function toManifest(url: URL): ManifestType {
 	const isReal = url.hostname === REAL_HOST;
