@@ -60,6 +60,17 @@ export function scatterOf(keys: string[]): SeatType[] {
 	return seats.map((seat) => ({ x: seat.x - middle.x, y: seat.y - middle.y }));
 }
 
+/** How far a scatter goes each way from its place, in gaps: what a fit must leave free on that side. */
+export function extentOf(keys: string[]) {
+	const seats = scatterOf(keys);
+	return {
+		left: Math.max(0, ...seats.map((seat) => -seat.x)),
+		right: Math.max(0, ...seats.map((seat) => seat.x)),
+		up: Math.max(0, ...seats.map((seat) => -seat.y)),
+		down: Math.max(0, ...seats.map((seat) => seat.y))
+	};
+}
+
 /** A gap in pixels at the scatter's tightest: neighbours overlap a little but each shows; a crowd sits closer. */
 export function gapOf(count: number) {
 	return Math.min(22, Math.max(15, 24 - count * 0.4));

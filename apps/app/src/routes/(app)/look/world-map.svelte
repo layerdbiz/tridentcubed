@@ -23,7 +23,15 @@
 	} from 'maplibre-gl';
 	import { onMount, untrack } from 'svelte';
 	import type { PinItemType, PinType } from './chart.data';
-	import { gapOf, reachOf, RESTS, scatterOf, type ClosenessType, type SeatType } from './map.utils';
+	import {
+		extentOf,
+		gapOf,
+		reachOf,
+		RESTS,
+		scatterOf,
+		type ClosenessType,
+		type SeatType
+	} from './map.utils';
 
 	type PaddingType = { top: number; bottom: number; left: number; right: number };
 
@@ -275,12 +283,17 @@
 		spots = [];
 	}
 
+	// What each thing at a place is known by: its seat in the scatter comes from it.
+	function keysOf(pin: PinType) {
+		return pin.items.map((item) => `${item.page ?? ''}|${item.id ?? item.name}`);
+	}
+
 	// Spread: a marker for every thing, scattered round its place.
 	function spread(target: MapType) {
 		if (!Marker) return;
 		clearMarkers();
 		for (const pin of pins) {
-			const keys = pin.items.map((item) => `${item.page ?? ''}|${item.id ?? item.name}`);
+			const keys = keysOf(pin);
 			const seats = scatterOf(keys);
 			const centre: [number, number] = [pin.lng, pin.lat];
 			for (const [index, item] of pin.items.entries()) {
@@ -399,15 +412,34 @@
 		const height = node?.clientHeight ?? 0;
 		const scale = (space: number, a: number, b: number) =>
 			a + b > space - 48 ? Math.max(0, (space - 48) / (a + b)) : 1;
-		// Spread, a place's markers sit round it, so the fit leaves their reach and half a marker on every side.
-		const ring = isSpread
-			? (Math.max(0, ...pins.map((pin) => reachOf(pin.items.length))) + 24) * rest.size
-			: 0;
+		// Spread, a place's markers sit round it, so each side of the fit leaves room for the scatters on its half of
+		// the map, as far as they go that way, and half a marker: a crowd in the west takes its room on the left,
+		// not on the right as well.
+		const free = { top: 0, bottom: 0, left: 0, right: 0 };
+		if (isSpread && pins.length) {
+			const lngs = pins.map((pin) => pin.lng);
+			const lats = pins.map((pin) => pin.lat);
+			const middle = {
+				lng: (Math.min(...lngs) + Math.max(...lngs)) / 2,
+				lat: (Math.min(...lats) + Math.max(...lats)) / 2
+			};
+			const half = 24 * rest.size;
+			for (const pin of pins) {
+				const far = extentOf(keysOf(pin));
+				const gap = gapOf(pin.items.length) * rest.size;
+				if (pin.lng <= middle.lng) free.left = Math.max(free.left, far.left * gap + half);
+				if (pin.lng >= middle.lng) free.right = Math.max(free.right, far.right * gap + half);
+				if (pin.lat >= middle.lat) free.top = Math.max(free.top, far.up * gap + half);
+				if (pin.lat <= middle.lat) free.bottom = Math.max(free.bottom, far.down * gap + half);
+			}
+		}
 		// The higher the sheet rests, the more of the part that shows is left empty round the places (RESTS).
 		const across = Math.max(0, width - padding.left - padding.right) * rest.inset;
 		const down = Math.max(0, height - padding.top - padding.bottom) * rest.inset;
-		const [top, bottom] = [padding.top + ring + down, padding.bottom + ring + down];
-		const [left, right] = [padding.left + ring + across, padding.right + ring + across];
+		const top = padding.top + down + free.top;
+		const bottom = padding.bottom + down + free.bottom;
+		const left = padding.left + across + free.left;
+		const right = padding.right + across + free.right;
 		const v = scale(height, top, bottom);
 		const h = scale(width, left, right);
 		return { top: top * v, bottom: bottom * v, left: left * h, right: right * h };
@@ -420,9 +452,18 @@
 			...route
 		];
 		const closest = maxZoom + rest.zoom;
-		const options = { padding: room(), duration, maxZoom: closest };
-		if (!points.length) return map.easeTo({ center: [-92, 31], zoom: 3, ...options });
-		if (points.length === 1) return map.easeTo({ center: points[0], zoom: closest, ...options });
+		const space = room();
+		// No place, or one: the map is moved to it with an offset that puts it in the middle of the part that shows.
+		// It used to be given the padding, which the map then keeps as its own; every fit after that had the padding
+		// counted twice, found no room, and left the map where it was (Justin's phone, 2026-11-16: after Projects,
+		// which had no place, Customers never came into view).
+		const offset: [number, number] = [
+			(space.left - space.right) / 2,
+			(space.top - space.bottom) / 2
+		];
+		if (!points.length) return map.easeTo({ center: [-92, 31], zoom: 3, duration, offset });
+		if (points.length === 1)
+			return map.easeTo({ center: points[0], zoom: closest, duration, offset });
 		let [west, south, east, north] = [180, 90, -180, -90];
 		for (const point of points as [number, number][]) {
 			west = Math.min(west, point[0]);
@@ -435,7 +476,7 @@
 				[west, south],
 				[east, north]
 			],
-			options
+			{ padding: space, duration, maxZoom: closest }
 		);
 	}
 

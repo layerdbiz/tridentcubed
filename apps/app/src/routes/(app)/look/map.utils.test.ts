@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { gapOf, reachOf, RESTS, scatterOf } from './map.utils';
+import { extentOf, gapOf, reachOf, RESTS, scatterOf } from './map.utils';
 
 const NAMES = [
 	'US Ocean',
@@ -45,6 +45,14 @@ describe('the scatter of things that share a place', () => {
 	it('is no ring: its things are at different distances from the place', () => {
 		const far = scatterOf(NAMES).map((seat) => Math.hypot(seat.x, seat.y));
 		expect(Math.max(...far) - Math.min(...far)).toBeGreaterThan(0.8);
+	});
+
+	it('goes as far each way as its furthest thing that way', () => {
+		const seats = scatterOf(NAMES);
+		const far = extentOf(NAMES);
+		expect(far.left).toBeCloseTo(-Math.min(...seats.map((seat) => seat.x)));
+		expect(far.down).toBeCloseTo(Math.max(...seats.map((seat) => seat.y)));
+		expect(extentOf(['KOGA'])).toEqual({ left: 0, right: 0, up: 0, down: 0 });
 	});
 
 	it('reaches further the more it holds, and a crowd sits closer', () => {
