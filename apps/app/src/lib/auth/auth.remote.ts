@@ -1,4 +1,4 @@
-// Signing out (#181), for the account menu's Log out and, from #182, the Waiting for access page. A command may
+// Signing out (#181), for the account menu's Log Out and, from #182, the Waiting for access page. A command may
 // write cookies, so Better Auth's cleared session cookie reaches the browser through its SvelteKit cookie plugin.
 // Who is signed in (#185), for the screens: the sidebar and account menu show their Team record, and a new project's
 // Team Lead is them.

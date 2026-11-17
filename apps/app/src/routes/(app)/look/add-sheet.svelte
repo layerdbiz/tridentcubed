@@ -7,7 +7,7 @@
 	// opens on Edit and anything else on its Page. Run 28: "Add new" in a dropdown opens this same sheet on that one
 	// page (look.addFor), with no page chips; what is added is picked in the dropdown and nothing else opens.
 	import { scale } from 'svelte/transition';
-	import BottomSheet from './bottom-sheet.svelte';
+	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import { DATASETS, draftOf, draftPanel, PAGE_ICONS, PAGES, type DatasetType } from './look.data';
 	import type { LookState, RecordDraftType } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
@@ -62,7 +62,7 @@
 	// Add C (Justin, 2026-11-12): the + opens no form, only a small pop-up of what can be added. A pick makes the
 	// thing at once, under a name to be changed ("New Customer"), and opens its Edit to fill in. "Add new" in a
 	// dropdown still opens the form, since what it adds is picked the moment it has a name.
-	// On a phone the pop-up is the sheet every other one is, sliding up from the bottom (bottom-sheet.svelte); on a
+	// On a phone the pop-up is the sheet every other one is, sliding up from the bottom (sheet.svelte); on a
 	// desktop it is a small menu over the + button.
 	let innerWidth = $state(0);
 	const isWide = $derived(innerWidth >= 768);

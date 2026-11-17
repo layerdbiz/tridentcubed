@@ -1,9 +1,10 @@
 <script lang="ts">
-	// PROTOTYPE (#161): every sheet on the phone (Justin's note 14). It slides up from the bottom; drag it down (or
+	// Every sheet on the phone (Justin's note 14, from the look prototype #161). It slides up from the bottom; drag it down (or
 	// flick it) or tap outside to close; dragging up only stretches a little and springs back. No close button. From
 	// md up it is a centred dialog. Run 12 (Justin's note 17): it opens in the browser's top layer (a popover), so it
 	// covers the floating bar wherever it is opened from (a count card's ? sat behind the bar), and white runs on below
 	// its bottom edge, so dragging it up never shows a gap.
+	// It lives in lib since #203: the login page's Install App how-to opens in it too.
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { fade, fly } from 'svelte/transition';

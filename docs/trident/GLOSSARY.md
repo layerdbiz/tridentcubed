@@ -35,7 +35,7 @@ Anyone who can sign in to the Report Generator, identified by a verified email a
 _Avoid_: account, login, member
 
 **Guest**:
-A User with no membership in any organization. A Guest sees only Waiting for access: their email and Log out.
+A User with no membership in any organization. A Guest sees only Waiting for access: their email and Log Out.
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
@@ -310,6 +310,28 @@ _Avoid_: tag, category, group
 **Export**:
 Producing a file of the report. PDF today; other formats are listed but not built.
 _Avoid_: download
+
+### The installed app
+
+**Installed app**:
+The Report Generator put on a phone's home screen, or on a computer, with its own icon and name. It opens full screen with no browser bars. It belongs to the address it was installed from, and it needs a connection until offline editing arrives.
+_Avoid_: PWA, native app, download
+
+**Install App**:
+The line in the profile picture menu, between Organization and Log Out, and the small link on the login page that put the Report Generator on the device. It installs with one tap where the browser offers that; otherwise it shows three short steps for iPhone or for Android, and the User picks which phone. It is not shown inside the installed app.
+_Avoid_: Download, Get the app, Add to Home Screen (that is one of the iPhone's own steps)
+
+**Test copy**:
+The installed app taken from the dev address. It reads Trident Dev under its icon, where the real one reads Trident, and what it saves is test data. The team uses it until the real address goes live, then installs once more from there and signs in.
+_Avoid_: dev app, beta, staging app
+
+**Needs Internet screen**:
+What the Report Generator shows when it is opened with no signal: the logo, Needs Internet, a line saying that working with no signal is coming, and Try Again. The page that was asked for comes back by itself when the signal returns. Not the "Needs internet" written on a single greyed button, which comes with offline editing.
+_Avoid_: offline page, error page, no connection screen
+
+**Update note**:
+The small "New version, tap to update" note an open Report Generator shows when a newer version is ready. A tap switches to it, and only once every change is Saved.
+_Avoid_: update banner, update prompt, popup
 
 ### Definitions and data
 

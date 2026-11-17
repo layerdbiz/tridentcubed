@@ -2,6 +2,7 @@
 // signing in lands there; the sign-in pages and Better Auth's own routes stay open. A signed-in Guest waits for
 // access (#182).
 import { describe, expect, it } from 'vite-plus/test';
+import { KEPT_STATIC, WORKER_PATH } from '#lib/install/install.constants.js';
 import { type AccessType, toGuard, toNext } from './guard';
 
 function guard(path: string, access: AccessType = 'signed-out') {
@@ -39,6 +40,26 @@ describe('the sign-in guard', () => {
 		expect(guard('/login?next=%2F')).toBeUndefined();
 		expect(guard('/api/auth/callback/google')).toBeUndefined();
 		expect(guard('/_app/remote/abc/submitEmail')).toBeUndefined();
+	});
+
+	it('lets anyone reach the manifest and the Needs Internet screen, so the app installs before sign-in (#199)', () => {
+		for (const access of ['signed-out', 'guest', 'staff'] as const) {
+			expect(guard('/manifest.webmanifest', access)).toBeUndefined();
+			expect(guard('/offline', access)).toBeUndefined();
+		}
+		// Only those two addresses: a lookalike is still closed.
+		expect(guard('/manifest.webmanifest.map')).toMatchObject({ kind: 'redirect' });
+		expect(guard('/offline-projects')).toMatchObject({ kind: 'redirect' });
+	});
+
+	it('lets anyone reach the service worker, the icons and the logo, which a browser fetches with no session (#200)', () => {
+		for (const access of ['signed-out', 'guest', 'staff'] as const) {
+			expect(guard(WORKER_PATH, access)).toBeUndefined();
+			for (const file of KEPT_STATIC) expect(guard(file, access)).toBeUndefined();
+		}
+		// A file beside them is not opened with them.
+		expect(guard('/install/other.png')).toMatchObject({ kind: 'redirect' });
+		expect(guard('/service-worker.js.map')).toMatchObject({ kind: 'redirect' });
 	});
 
 	it('lets staff of the organization through, and off the waiting page', () => {

@@ -18,6 +18,8 @@ export type AppConfigType = {
 	root: string;
 	/** Merged over the shared prerender settings (`handleMissingId: 'ignore'`). */
 	prerender?: Config['prerender'];
+	/** SvelteKit's `paths`, for an app whose pages are served at addresses they were not made for. */
+	paths?: Config['paths'];
 	/** Vitest settings, for the apps that have tests. */
 	test?: ViteUserConfig['test'];
 };
@@ -26,8 +28,8 @@ export type AppConfigType = {
  * The one Vite config for the SvelteKit apps (app, site, play, overview). SvelteKit 3 reads only
  * `vite.config.ts`, so an app's file is this call plus its overrides.
  */
-export function createAppConfig({ root, prerender, test }: AppConfigType) {
-	return defineConfig({
+export function createAppConfig({ root, prerender, paths, test }: AppConfigType) {
+	return defineConfig(({ command }) => ({
 		root,
 		plugins: lazyPlugins(() => [
 			tailwindcss(),
@@ -39,7 +41,11 @@ export function createAppConfig({ root, prerender, test }: AppConfigType) {
 				// Every app serves packages/ui/static at the same URLs (invariant 9)
 				files: { assets: UI_STATIC },
 				experimental: { remoteFunctions: true },
-				prerender: { handleMissingId: 'ignore', ...prerender }
+				prerender: { handleMissingId: 'ignore', ...prerender },
+				paths,
+				// SvelteKit 3 registers an app's service worker (`src/service-worker`) from the dev server as well,
+				// where it would keep and answer files that change under it. A build only.
+				serviceWorker: { register: command === 'build' }
 			}),
 			devtoolsJson()
 		]),
@@ -65,5 +71,5 @@ export function createAppConfig({ root, prerender, test }: AppConfigType) {
 			}
 		},
 		test
-	});
+	}));
 }
