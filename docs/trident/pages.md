@@ -33,7 +33,7 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
   - Notifications
   - Search
   - Profile ✅
-  - Settings ✅ (Install app, Sign out, Remove my data from this device; ADR 0007)
+  - Settings ✅ (Install app, Sign out, Remove my data from this device; ADR 0007. Since 2026-11-17, #199, there is no general Settings screen: Install App and Log Out are in the profile picture menu, and the offline spec places Remove my data from this device)
   - Help
 - Admin
   - Users ✅
@@ -66,7 +66,7 @@ The pages (routes) of the Report Generator: the end goal, and the part that ship
 - **Customers, Transport and Facilities get their own list pages** on top of being picked and added from dropdowns in the Project details panel and the Transport panel's stops (ADR 0005). Each opens its own record page, one screen shared by all four, with a Page tab first and an Edit tab.
 - **New project is a popup,** not a page.
 - **No Welcome walkthrough in V1.** The phone asks for the camera, location or microphone the first time a feature needs it. A walkthrough at first sign-in stays on the list for later.
-- **No Offline page.** Once signed in the app runs from the device (ADR 0007); opening it for the first time with no signal shows a message on Sign in.
+- **No Offline page.** Once signed in the app runs from the device (ADR 0007); opening it for the first time with no signal shows a message on Sign in. Until offline editing ships, the app needs a connection and shows its Needs Internet screen with no signal (2026-11-17, #199).
 - **Still open for the design prototypes:** what the navigation is on a phone (a bottom bar, a floating bar, or none, as in ChatGPT) and on a desktop (a slim icon rail), and whether a desktop shows Edit and Preview side by side as one screen, panels on the left and the live preview on the right.
 
 The flowchart's source is [pages-flow.html](pages-flow.html).
@@ -90,4 +90,12 @@ V1 pages that wait for a later spec:
 - Privacy policy and Terms.
 - Profile.
 - Users, and the Trash's screen (deleted things already go to the Trash).
-- Settings' Install app and Remove my data from this device, which come with offline editing (ADR 0007).
+- Remove my data from this device, which comes with offline editing (ADR 0007). Install App does not wait for it: see below.
+
+## What "Install the app on phones" ships
+
+Spec [#199](https://github.com/layerdbiz/tridentcubed/issues/199), 2026-11-17, makes the app installable ahead of offline editing (ADR 0007). It adds nothing to the navigation.
+
+- Install App: a line in the profile picture menu, between Organization and Log Out, and a small link on Sign in. It is hidden inside the installed app.
+- The Needs Internet screen, shown with no signal at whatever page was asked for. It needs no sign-in.
+- The update note, "New version, tap to update", in the signed-in app.

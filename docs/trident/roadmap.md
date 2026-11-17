@@ -35,6 +35,11 @@ Checked items are owner-reported completion, not repository-verified.
 > Admin, Manager and Team. So V1 takes the first parts of Phases 6, 7 and 9
 > below. Their admin screens and the client portal come later; offline
 > editing is the next spec.
+>
+> **2026-11-17:** installing comes before offline editing. "Install the app
+> on phones" ([#199](https://github.com/layerdbiz/tridentcubed/issues/199),
+> ADR 0007) puts the app on the team's home screens now, while it still
+> needs a connection; offline editing is the spec after it.
 
 Milestone 1 (Exhibit B): six weeks from the Effective Date, acceptance under
 Section 7. Authentication, login, roles, dashboards, and client accounts are
