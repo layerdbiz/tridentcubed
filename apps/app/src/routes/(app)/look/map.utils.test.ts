@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { extentOf, gapOf, reachOf, RESTS, scatterOf } from './map.utils';
+import { extentOf, gapOf, PIN_SIZES, reachOf, RESTS, scatterOf } from './map.utils';
 
 const NAMES = [
 	'US Ocean',
@@ -63,8 +63,9 @@ describe('the scatter of things that share a place', () => {
 });
 
 describe('what the map does at each rest of the sheet', () => {
-	it('stands further in, with bigger markers, the lower the sheet rests', () => {
-		expect(RESTS.map((rest) => rest.size)).toEqual([0.5, 1, 1.25]);
+	it('stands further in the lower the sheet rests, with markers of one size', () => {
+		expect(RESTS.every((rest) => !('size' in rest))).toBe(true);
+		expect(PIN_SIZES.phone).toBeLessThan(PIN_SIZES.desktop);
 		expect(RESTS[0].inset).toBeGreaterThan(RESTS[1].inset);
 		expect(RESTS[1].inset).toBeGreaterThan(RESTS[2].inset);
 		expect(RESTS[0].zoom).toBeLessThan(RESTS[1].zoom);

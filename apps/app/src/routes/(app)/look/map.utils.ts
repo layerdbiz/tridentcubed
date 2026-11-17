@@ -14,14 +14,17 @@ export type ClosenessType = 0 | 1 | 2;
  * What the map does at each rest (Justin, 2026-11-16). It always fits every place into the part that shows, and
  * takes a step in at each rest down: `inset` is how much of that part it leaves empty on each side, so the higher
  * the sheet the further out the map stands; `zoom` moves how far in it may go when the places are close together.
- * The markers follow: half their size with the sheet up, their own size in the middle, a quarter bigger at the
- * bottom (`size`).
+ * The markers do not follow: they keep one size on a phone and one on a desktop (`PIN_SIZES`), whatever the
+ * rest (he tried sizes that changed with the sheet the same day, and preferred one).
  */
 export const RESTS = [
-	{ size: 0.5, inset: 0.2, zoom: -1 },
-	{ size: 1, inset: 0.08, zoom: 0 },
-	{ size: 1.25, inset: 0, zoom: 0.75 }
+	{ inset: 0.2, zoom: -1 },
+	{ inset: 0.08, zoom: 0 },
+	{ inset: 0, zoom: 0.75 }
 ] as const;
+
+/** How big a marker is, as a share of its full 40 pixels: a little smaller on a phone, where the map is small. */
+export const PIN_SIZES = { phone: 0.8, desktop: 1 } as const;
 
 // A number from 0 up to 1 that a text always gives (FNV-1a).
 function chanceOf(text: string) {

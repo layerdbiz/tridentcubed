@@ -28,7 +28,7 @@
 	import { pinsOf } from './chart.data';
 	import ListMenus from './list-menus.svelte';
 	import { PAGES } from './look.data';
-	import type { ClosenessType } from './map.utils';
+	import { PIN_SIZES, type ClosenessType } from './map.utils';
 	import type { LookState } from './look.state.svelte';
 	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
@@ -362,6 +362,7 @@
 		isSpread={look.variant('map') === 'B'}
 		closeness={(isWide ? 1 : sheetRest) as ClosenessType}
 		refit={sheetMoves}
+		size={isWide ? PIN_SIZES.desktop : PIN_SIZES.phone}
 		onpick={(item) => {
 			if (!item.id) return;
 			if (item.page === 'projects') look.open(item.id);

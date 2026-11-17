@@ -13,7 +13,7 @@
 	// 2026-11-16 (Justin): spread (`isSpread`), no number stands in for anything: every logo, face and icon always
 	// shows. Things that share a place are scattered round it, close together and in no pattern (map.utils.ts);
 	// zoomed in by hand they move apart. The map always fits every place: only a person zooms past that. How
-	// close it stands, and how big its markers are, follow `closeness`: where the sheet under it rests (RESTS).
+	// close it stands follows `closeness`: where the sheet under it rests (RESTS). Its markers keep one size (`size`).
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
@@ -43,6 +43,7 @@
 		isSpread = false,
 		isDark = false,
 		closeness = 1,
+		size = 1,
 		refit = 0,
 		onpick
 	}: {
@@ -57,6 +58,8 @@
 		isSpread?: boolean;
 		// Where the sheet under the map rests (map.utils.ts RESTS); the middle, where there is no sheet.
 		closeness?: ClosenessType;
+		// How big its markers are, as a share of their full size (map.utils.ts PIN_SIZES).
+		size?: number;
 		// Any change to this fits the map to its markers again, even after someone moved it themselves: the
 		// dashboard counts each time its sheet is let go.
 		refit?: number;
@@ -313,7 +316,7 @@
 			const [lng, lat] = spot.centre;
 			const [here, there] = [target.project(spot.centre), target.project([lng + GROUND, lat])];
 			const gap = Math.max(
-				gapOf(spot.count) * rest.size,
+				gapOf(spot.count) * size,
 				Math.hypot(there.x - here.x, there.y - here.y)
 			);
 			spot.marker.setOffset([spot.seat.x * gap, spot.seat.y * gap]);
@@ -410,8 +413,10 @@
 	function room(): PaddingType {
 		const width = node?.clientWidth ?? 0;
 		const height = node?.clientHeight ?? 0;
+		// What the fit must always keep for the places themselves. Spread, the markers' own room is counted apart.
+		const keep = isSpread ? 16 : 48;
 		const scale = (space: number, a: number, b: number) =>
-			a + b > space - 48 ? Math.max(0, (space - 48) / (a + b)) : 1;
+			a + b > space - keep ? Math.max(0, (space - keep) / (a + b)) : 1;
 		// Spread, a place's markers sit round it, so each side of the fit leaves room for the scatters on its half of
 		// the map, as far as they go that way, and half a marker: a crowd in the west takes its room on the left,
 		// not on the right as well.
@@ -423,10 +428,10 @@
 				lng: (Math.min(...lngs) + Math.max(...lngs)) / 2,
 				lat: (Math.min(...lats) + Math.max(...lats)) / 2
 			};
-			const half = 24 * rest.size;
+			const half = 24 * size;
 			for (const pin of pins) {
 				const far = extentOf(keysOf(pin));
-				const gap = gapOf(pin.items.length) * rest.size;
+				const gap = gapOf(pin.items.length) * size;
 				if (pin.lng <= middle.lng) free.left = Math.max(free.left, far.left * gap + half);
 				if (pin.lng >= middle.lng) free.right = Math.max(free.right, far.right * gap + half);
 				if (pin.lat >= middle.lat) free.top = Math.max(free.top, far.up * gap + half);
@@ -434,8 +439,17 @@
 			}
 		}
 		// The higher the sheet rests, the more of the part that shows is left empty round the places (RESTS).
-		const across = Math.max(0, width - padding.left - padding.right) * rest.inset;
-		const down = Math.max(0, height - padding.top - padding.bottom) * rest.inset;
+		// It is taken only from what is left once the markers have their room: in a short strip the markers come
+		// first, so none of them slips behind the cards or the header.
+		const spare = (space: number, used: number) => Math.max(0, (space - used - keep) / 2);
+		const across = Math.min(
+			Math.max(0, width - padding.left - padding.right) * rest.inset,
+			spare(width, padding.left + padding.right + free.left + free.right)
+		);
+		const down = Math.min(
+			Math.max(0, height - padding.top - padding.bottom) * rest.inset,
+			spare(height, padding.top + padding.bottom + free.top + free.bottom)
+		);
 		const top = padding.top + down + free.top;
 		const bottom = padding.bottom + down + free.bottom;
 		const left = padding.left + across + free.left;
@@ -569,7 +583,7 @@
 	});
 
 	// The sheet was let go (`refit`), at another rest or the same one: once it has settled, the map eases back to
-	// all its markers at how close that rest stands, and the markers to its size, even if someone had moved the
+	// all its markers at how close that rest stands, even if someone had moved the
 	// map themselves. Until then it keeps fitting what it was showing, so it does not jump.
 	let isSettled = false;
 	$effect(() => {
@@ -595,7 +609,7 @@
 	<div
 		bind:this={node}
 		class="size-full {isDark ? 'bg-slate-900' : 'bg-slate-100'}"
-		style:--pin={rest.size}
+		style:--pin={size}
 		role="region"
 		aria-label="Map"
 	></div>
