@@ -5,10 +5,15 @@
 	// field with one Continue, which sends a six-digit code, then the code entry; the first sign-in creates the user
 	// (#181). Google and Microsoft show under it only when this deployment has their keys (#191), and a sign-in
 	// they send back unfinished says why. A deployment missing a setting says it is not connected yet and names
-	// what is missing.
+	// what is missing. On a desktop the dark top is shorter than a phone's, under half of the height, the logo over the
+	// name over the version (Justin, 2026-11-17: "that header is way too big", then, of a quarter, "twice the size
+	// and height", then "underneath it"); a phone keeps the tall top.
 	import { page } from '$app/state';
 	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
 	import { readWaiting, toWaiting } from './waiting';
+
+	// Written here until it comes from the release on GitHub (Justin, 2026-11-17: "for now, just do v1.0.0").
+	const VERSION = 'v1.0.0';
 
 	const FIELD =
 		'w-full rounded-xl border-0 bg-slate-900/[0.05] px-3.5 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary/40';
@@ -90,17 +95,20 @@
 
 <div class="fixed inset-0 overflow-y-auto font-sans [color-scheme:light]">
 	<div class="flex min-h-full flex-col bg-slate-950">
-		<div class="flex flex-1 flex-col bg-linear-to-br from-slate-700 to-slate-950 text-white">
+		<div
+			class="flex flex-1 flex-col bg-linear-to-br from-slate-700 to-slate-950 text-white md:flex-none"
+		>
 			<div
-				class="flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-6 text-center"
+				class="flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-6 text-center md:pt-10 md:pb-4"
 			>
 				<img
 					src="/branding/logo-dark.svg"
 					alt=""
 					draggable="false"
-					class="size-28 object-contain"
+					class="size-28 object-contain md:size-32"
 				/>
-				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase">Trident Cubed</p>
+				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase md:text-4xl">Trident Cubed</p>
+				<p class="mt-2 font-mono text-sm text-slate-400">{VERSION}</p>
 			</div>
 			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
 			<svg
@@ -114,7 +122,9 @@
 			>
 		</div>
 		<!-- Up one pixel over the wave, so no line of the dark shows between them. -->
-		<div class="relative -mt-px bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
+		<div
+			class="relative -mt-px bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] md:flex-1 md:pt-10"
+		>
 			<div class="mx-auto w-full max-w-sm space-y-4">
 				<h1 class="text-xl font-semibold tracking-tight text-slate-900">Sign In</h1>
 

@@ -204,6 +204,9 @@ finish() {
 #   bash scripts/setup-dev-app.sh             the whole setup, optional parts last
 #   bash scripts/setup-dev-app.sh microsoft   one optional part on its own, later
 #                                             (geoapify, microsoft or resend)
+#   bash scripts/setup-dev-app.sh switch seed the last two steps on their own, once
+#                                             the work is in dev: point the app at
+#                                             dev, then load the starting data
 #
 # Values are kept in apps/app/.env (ignored by git, mode 0600), so a re-run
 # offers each saved value again: press Enter to keep it. Secrets are typed
@@ -266,13 +269,13 @@ local parts=("$@") part
 (( ${#parts[@]} )) || parts=(all)
 for part in "${parts[@]}"; do
   case "$part" in
-    all|geoapify|microsoft|resend) ;;
-    *) printf 'Unknown part "%s". Use: all, geoapify, microsoft or resend.\n' "$part"; return 1 ;;
+    all|switch|seed|geoapify|microsoft|resend) ;;
+    *) printf 'Unknown part "%s". Use: all, switch, seed, geoapify, microsoft or resend.\n' "$part"; return 1 ;;
   esac
 done
 if [[ " ${parts[*]} " == *" all "* ]]; then
   parts=(core geoapify microsoft resend)
-  TOTAL_STAGES=10
+  TOTAL_STAGES=11
 else
   TOTAL_STAGES=${#parts[@]}
 fi
@@ -289,7 +292,10 @@ for part in "${parts[@]}"; do
       stage_vercel
       stage_merge
       stage_switch
+      stage_seed
       ;;
+    switch)    stage_switch ;;
+    seed)      stage_seed ;;
     geoapify)  stage_geoapify ;;
     microsoft) stage_microsoft ;;
     resend)    stage_resend ;;
@@ -583,6 +589,57 @@ stage_switch() {
   open_url "$APP_URL"
   step "Sign in with Google. You should land on the Dashboard as Super admin."
   step "Add a customer, a project and a photo; reload; download the PDF."
+  note "Anything off? Tell the build thread what the screen said."
+  pause "Press Enter to continue."
+}
+
+# stage_seed loads the starting data into trident-dev (#194): the SQL comes from
+# the app's own seed (apps/app/src/lib/server/db/seed.ts), so its rows cannot
+# drift from it. Every insert skips a row already there, so running it twice
+# changes nothing. Vercel builds never touch the database, so new starting rows
+# (the transport modes and facilities, 2026-11-16) arrive only through this.
+stage_seed() {
+  stage "Load the starting data"
+  say "The app starts with real transport modes and facilities. This puts them,"
+  say "and any other starting row still missing, into the trident-dev database."
+  note "Rows already there are skipped, so nothing you have is changed."
+  if ! confirm "Load the starting data into trident-dev now?"; then
+    SKIPPED+=("Starting data: run  bash scripts/setup-dev-app.sh seed")
+    return 0
+  fi
+  if ! command -v pnpm >/dev/null 2>&1; then
+    warn "pnpm isn't available here, so the SQL can't be made."
+    SKIPPED+=("Starting data: needs pnpm, then  bash scripts/setup-dev-app.sh seed")
+    return 0
+  fi
+  local sql_file
+  sql_file=$(mktemp "${TMPDIR:-/tmp}/trident-seed.XXXXXX")
+  say "Making the SQL from the app's own starting data (up to a minute)..."
+  if ! (cd "$ROOT" && pnpm --silent --filter app db:seed-sql) > "$sql_file" 2>/dev/null \
+      || ! grep -q "insert into public" "$sql_file"; then
+    rm -f "$sql_file"
+    warn "Couldn't make the SQL. Tell the build thread what this said."
+    SKIPPED+=("Starting data: the SQL could not be made")
+    return 0
+  fi
+  # The Windows clipboard tool can damage a letter outside plain ASCII, so the
+  # clipboard is used only when there is none; otherwise the file is opened.
+  if ! LC_ALL=C grep -q "[^[:print:][:space:]]" "$sql_file" && _copy "$(cat "$sql_file")" 2>/dev/null; then
+    printf '  %s✓ copied%s the SQL to your clipboard (%s lines)\n' "$GREEN" "$RESET" "$(wc -l < "$sql_file" | tr -d ' ')"
+  else
+    note "The SQL is in this file. Open it, select all, and copy:"
+    note "$sql_file"
+    pause "Press Enter once it's copied."
+  fi
+  open_url "$SUPABASE_DASH/sql/new"
+  step "Click in the big editor, paste (Ctrl+V), then click Run."
+  step "If it warns about a destructive query, it isn't one: every line only"
+  step "adds rows that are missing. Confirm and run."
+  step "It should finish with: Success. No rows returned."
+  pause "Press Enter once it ran without an error."
+  rm -f "$sql_file"
+  open_url "$APP_URL"
+  step "Reload the app. Transport Mode and Facilities should each show 9."
   note "Anything off? Tell the build thread what the screen said."
   pause "Press Enter to continue."
 }
