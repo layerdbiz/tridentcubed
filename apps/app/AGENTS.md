@@ -123,3 +123,63 @@ the why is in ADR 0002, 0003 and 0005.
   permission check before it hands out an upload address.
 - **Schema changes** are Drizzle schema edits tested on the in-process
   Postgres. Vercel builds never migrate the Supabase database.
+
+## The installed app
+
+Decided on "Install the app on phones" (#199), 2026-11-17; the why is in
+ADR 0007. Working with no signal is the offline spec's (ADR 0006): none of
+it belongs here.
+
+```text
+src/routes/manifest.webmanifest/   the manifest: a server route, with its builder and test beside it
+src/app.html                       the page head's links to the manifest and the Apple touch icon
+packages/ui/static/install/        the icons (shared static files)
+src/service-worker/                the service worker: index.ts, its own tsconfig, and its request rule
+                                   as a plain tested function beside it
+src/routes/offline/                the Needs Internet screen the service worker shows
+src/lib/install/                   Install App: install.constants.ts, install.state.svelte.ts, the
+                                   component and its how-to; used by routes/(app)/look/account-menu.svelte
+                                   and routes/login/login.svelte
+src/lib/update/                    the update note: its rule, its test and the note, wired into the
+                                   signed-in app only
+```
+
+- **Data always comes from the server.** The service worker never stores
+  or answers data. It answers this version's built files from the device
+  and gives a page request that fails the Needs Internet screen. Every
+  other request goes to the network untouched: remote functions, server
+  routes, file addresses and anything that is not a plain read. That rule
+  is the one tested function beside `index.ts`; change what a request gets
+  there, test first.
+- **The service worker keeps a named list.** On install it stores this
+  version's built files, the Needs Internet screen and `KEPT_STATIC`,
+  nothing else. Every app serves the same static folder
+  (`packages/ui/static`, 99 MB with the Website's videos and photos), so a
+  static file the installed app needs is added to `KEPT_STATIC` by name.
+- **The app answers the manifest; it is not a static file.** A file in the
+  shared static folder would be the Website's manifest too. The name
+  follows the address the manifest was asked on: `app.tridentcubed.com`
+  gives "Trident Cubed" and "Trident", any other address gives "Trident
+  Cubed Dev" and "Trident Dev". No setting and no environment variable.
+- **Addresses and icon names are written once,** in
+  `src/lib/install/install.constants.ts` (`MANIFEST_PATH`, `OFFLINE_PATH`,
+  the icon URLs, `LOGO`, `KEPT_STATIC`). Import them. The sign-in guard
+  (`src/lib/server/guard.ts`) opens the same two paths to a signed-out
+  browser, which asks for the manifest with no session.
+- **The Needs Internet screen works alone.** The service worker answers
+  with it at whatever address was asked for, so it is prerendered and
+  starts no SvelteKit router, which would try to draw the asked-for route.
+  Try Again and the browser's `online` event are a plain reload.
+- **Updates use the default handover.** A new service worker waits until
+  the app is closed; it does not call `skipWaiting()` on install. A tap on
+  the update note asks the waiting worker to take over and reloads, and the
+  tap waits while the Save state is Saving or Not saved.
+- **Ask the browser what it can do.** Install App knows three things, each
+  asked of the browser: whether the app runs installed, whether a one-tap
+  install was offered, whether an install just happened. Nothing reads the
+  user agent or the platform; the User picks iPhone or Android in the
+  how-to.
+- **Run it on a production build.** SvelteKit registers the service worker
+  in production builds only: `pnpm exec vp build`, then
+  `pnpm exec vp preview --host --port 4174`.
+- Labels are Title Case: "Install App", "Needs Internet", "Try Again".
