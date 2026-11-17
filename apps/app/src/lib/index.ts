@@ -9,6 +9,7 @@ export { default as HowTo } from "./install/how-to.svelte";
 export * from "./definitions/inputs.ts";
 export * from "./install/install.constants.ts";
 export * from "./install/install.state.svelte.ts";
+export * from "./install/install.utils.ts";
 export { default as Note } from "./update/note.svelte";
 export * from "./start/organization.ts";
 export * from "./definitions/pages.ts";

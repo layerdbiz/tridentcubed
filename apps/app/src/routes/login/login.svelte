@@ -7,8 +7,9 @@
 	// they send back unfinished says why. A deployment missing a setting says it is not connected yet and names
 	// what is missing. On a desktop the dark top is shorter than a phone's, under half of the height, the logo over the
 	// name over the version (Justin, 2026-11-17: "that header is way too big", then, of a quarter, "twice the size
-	// and height", then "underneath it"); a phone keeps the tall top. Under everything is a small Install App link
-	// (#203), for a visitor who wants the app on their phone before signing in.
+	// and height", then "underneath it"); a phone keeps the tall top. Under the version, on a phone only, is the
+	// Install App button (#203; Justin, 2026-11-17: in the header, a real button, not on larger screens), for a
+	// visitor who wants the app on their phone before signing in.
 	import { page } from '$app/state';
 	import HowTo from '#lib/install/how-to.svelte';
 	import { install } from '#lib/install/install.state.svelte.js';
@@ -118,6 +119,20 @@
 				/>
 				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase md:text-4xl">Trident Cubed</p>
 				<p class="mt-2 font-mono text-sm text-slate-400">{VERSION}</p>
+				<!-- The server cannot know whether it is drawing for the installed app, so it always sends the button,
+				     and the display mode hides it in the stylesheet before the first paint: it never flashes in the
+				     installed app and never arrives late in a tab, so the page does not move. Once the page runs, the
+				     state takes it away right after an install too. A phone only: from tablet width up it is not drawn. -->
+				{#if install.isShown}
+					<p class="mt-5 md:hidden [@media(display-mode:standalone)]:hidden">
+						<button
+							type="button"
+							class="inline-flex h-11 items-center gap-2 rounded-full bg-white/10 pr-5 pl-4 text-sm font-semibold text-white shadow-lg ring-1 shadow-black/20 ring-white/25 backdrop-blur transition hover:bg-white/15 active:scale-95"
+							onclick={installApp}
+							><span class="icon-[mdi--cellphone-arrow-down] size-5 text-sky-300"></span>Install App</button
+						>
+					</p>
+				{/if}
 			</div>
 			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
 			<svg
@@ -285,21 +300,6 @@
 							>
 						{/each}
 					</form>
-				{/if}
-
-				<!-- The server cannot know whether it is drawing for the installed app, so it always sends the link,
-				     and the display mode hides it in the stylesheet before the first paint: the link never flashes in
-				     the installed app and never arrives late in a tab, so the form does not move. Once the page runs,
-				     the state takes it away right after an install too. -->
-				{#if install.isShown}
-					<p class="text-center [@media(display-mode:standalone)]:hidden">
-						<button
-							type="button"
-							class="inline-flex items-center gap-1.5 py-1 text-sm font-medium text-slate-500 transition hover:text-primary"
-							onclick={installApp}
-							><span class="icon-[mdi--cellphone-arrow-down] size-4"></span>Install App</button
-						>
-					</p>
 				{/if}
 			</div>
 		</div>

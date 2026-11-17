@@ -140,7 +140,8 @@ src/service-worker/                the service worker: index.ts, its own tsconfi
                                    plain tested functions
 src/routes/offline/                the Needs Internet screen the service worker shows
 src/lib/install/                   Install App: install.constants.ts, install.state.svelte.ts (it starts
-                                   hearing the browser in src/hooks.client.ts) and how-to.svelte; used by
+                                   hearing the browser in src/hooks.client.ts), install.utils.ts (which
+                                   phone the how-to opens on) and how-to.svelte; used by
                                    routes/(app)/look/account-menu.svelte and routes/login/login.svelte
 src/lib/components/sheet/          the one sheet (slides up on a phone, a pop-up from tablet width up),
                                    here because the login page's how-to opens in it too
@@ -188,9 +189,10 @@ src/lib/update/                    the update note: its rule, its test and the n
   (`src/lib/update/update.state.svelte.ts`); change it there, test first.
 - **Ask the browser what it can do.** Install App knows three things, each
   asked of the browser: whether the app runs installed, whether a one-tap
-  install was offered, whether an install just happened. Nothing reads the
-  user agent or the platform; the User picks iPhone or Android in the
-  how-to.
+  install was offered, whether an install just happened. The user agent is
+  read in one place, `toPhone` in `install.utils.ts`, and only to pick the
+  tab the how-to opens on (Justin, 2026-11-17); nothing else may follow
+  it, and both tabs stay one tap away.
 - **Run it on a production build.** The service worker is registered from
   a build only: `pnpm exec vp build`, then
   `pnpm exec vp preview --host --port 4174`. SvelteKit 3 would register it

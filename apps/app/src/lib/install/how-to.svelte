@@ -1,8 +1,10 @@
 <script lang="ts">
 	// The how-to behind Install App (#203), for a browser that offers no one-tap install: three short steps for an
 	// iPhone and three for an Android phone, in the sheet every other one is (it slides up on a phone and is a
-	// centred pop-up from tablet width up). The User picks their phone; nothing here guesses it. iPhone comes first.
+	// centred pop-up from tablet width up). It opens on the tab of the phone it is read on (Justin, 2026-11-17: no
+	// extra tap to reach your own steps), and on iPhone when the browser names neither; the other tab is one tap away.
 	import Sheet from '#lib/components/sheet/sheet.svelte';
+	import { toPhone, type PhoneType } from './install.utils';
 
 	let { onclose }: { onclose: () => void } = $props();
 	const uid = $props.id();
@@ -28,9 +30,10 @@
 				{ text: 'Tap Install', icon: '' }
 			]
 		}
-	] as const;
+	] as const satisfies { id: PhoneType; label: string; icon: string; steps: unknown[] }[];
 
-	let picked = $state<(typeof PHONES)[number]['id']>('iphone');
+	// The how-to is only ever drawn after a tap, so the browser is there to ask.
+	let picked = $state<PhoneType>(toPhone(navigator.userAgent) ?? 'iphone');
 	const phone = $derived(PHONES.find((item) => item.id === picked) ?? PHONES[0]);
 </script>
 
