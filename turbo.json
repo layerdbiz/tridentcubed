@@ -8,6 +8,19 @@
 		},
 		"build": {
 			"dependsOn": ["//#barrels", "^build"],
+			"env": [
+				"BETTER_AUTH_SECRET",
+				"BETTER_AUTH_URL",
+				"DATABASE_URL",
+				"GEOAPIFY_API_KEY",
+				"GOOGLE_CLIENT_ID",
+				"GOOGLE_CLIENT_SECRET",
+				"MICROSOFT_CLIENT_ID",
+				"MICROSOFT_CLIENT_SECRET",
+				"RESEND_API_KEY",
+				"SUPABASE_SECRET_KEY",
+				"SUPABASE_URL"
+			],
 			"outputs": ["dist/**", ".svelte-kit/**", "!**/.svelte-kit/cache/**"]
 		},
 		"styles": {

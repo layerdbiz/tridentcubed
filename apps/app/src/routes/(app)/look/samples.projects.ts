@@ -22,7 +22,7 @@ type SampleType = {
 	location: string;
 	/** The trip: a transport mode and the facilities it starts and ends at. */
 	trip?: { transport: string; start: string; end?: string };
-	/** Whether Items, the Time Log and the photo panels are filled in too. */
+	/** Whether Items and the Time Log are filled in too. Every sample has photos. */
 	isFull?: boolean;
 };
 
@@ -124,6 +124,25 @@ export function hasSamples(look: LookState) {
 	return look.projects.some((project) => project.title.startsWith(SAMPLE_MARK));
 }
 
+/**
+ * The samples that were made but never given their state (Justin, 2026-11-17: on the live site every sample's bar
+ * was blue). That is what is left when the first save takes too long and the step after it never runs. Only when
+ * none of them has its state yet: a sample someone has since moved back is theirs to leave where it is.
+ */
+export function unfinishedSamples(look: LookState) {
+	const waiting: { project: LookState['projects'][number]; status: StatusType }[] = [];
+	for (const sample of SAMPLE_PROJECTS) {
+		if (sample.status === 'Draft' || sample.status === 'In Progress') continue;
+		// Archiving is an Admin's to do.
+		if (sample.status === 'Archived' && !look.isAdmin) continue;
+		const project = look.projects.find((each) => each.title === `${SAMPLE_MARK}${sample.title}`);
+		if (!project) continue;
+		if (project.status !== 'Draft' && project.status !== 'In Progress') return [];
+		waiting.push({ project, status: sample.status });
+	}
+	return waiting;
+}
+
 function setField(panel: PanelType, label: string, value: string) {
 	const field = panel.fields.find((each) => each.label === label);
 	if (field) field.value = value;
@@ -158,14 +177,9 @@ function make(look: LookState, sample: SampleType, lead: string, assigned: strin
 				}));
 			}
 		}
-		if (!sample.isFull || !panel.isEnabled) continue;
-		if (panel.kind === 'items')
-			panel.items = SAMPLE_ITEMS.map(([quantity, description]) => itemOf(quantity, description));
-		if (panel.kind === 'timelog') {
-			const first = toSampleDay(undefined, () => crypto.randomUUID(), new Date(project.created));
-			panel.days = [first, toSampleDay(first.date, () => crypto.randomUUID())];
-		}
-		if (panel.kind === 'photos')
+		// Every sample has photos, so its card and its report show what a project looks like (Justin, 2026-11-17:
+		// "We need to have photos on these projects").
+		if (panel.kind === 'photos' && panel.isEnabled)
 			panel.groups = [
 				{
 					id: crypto.randomUUID(),
@@ -175,20 +189,28 @@ function make(look: LookState, sample: SampleType, lead: string, assigned: strin
 					photos: toSamplePhotos(panel.name.length, 4, () => crypto.randomUUID())
 				}
 			];
+		if (!sample.isFull || !panel.isEnabled) continue;
+		if (panel.kind === 'items')
+			panel.items = SAMPLE_ITEMS.map(([quantity, description]) => itemOf(quantity, description));
+		if (panel.kind === 'timelog') {
+			const first = toSampleDay(undefined, () => crypto.randomUUID(), new Date(project.created));
+			panel.days = [first, toSampleDay(first.date, () => crypto.randomUUID())];
+		}
 	}
 	return id;
 }
 
 /**
  * Adds the sample projects. `settle` waits until what has been made is saved; it answers whether it was. Gives how
- * many were added: none when they are already here, or when the first step could not be saved.
+ * many were added: none when they are already here, or when the first step was not saved in time (the samples are
+ * then finished by `finishSampleProjects` once it is).
  */
 export async function addSampleProjects(look: LookState, settle: () => Promise<boolean>) {
 	if (hasSamples(look)) return 0;
 	const names = look.members.map((member) => member.name);
 	const lead = look.me?.name ?? names[0] ?? '';
 	const others = names.filter((name) => name !== lead);
-	const made: { id: string; status: StatusType }[] = [];
+	let made = 0;
 	for (const [index, sample] of SAMPLE_PROJECTS.entries()) {
 		// Archiving is an Admin's to do, so only an Admin gets the Archived sample.
 		if (sample.status === 'Archived' && !look.isAdmin) continue;
@@ -198,14 +220,20 @@ export async function addSampleProjects(look: LookState, settle: () => Promise<b
 		const id = make(look, sample, lead, [...new Set(assigned)]);
 		// Home writes the trip and the progress onto the project's row, as leaving a project does.
 		look.home();
-		if (id) made.push({ id, status: sample.status });
+		if (id) made += 1;
 	}
 	if (!(await settle())) return 0;
-	for (const { id, status } of made) {
-		const project = look.projects.find((each) => each.id === id);
-		if (project && project.status !== status && status !== 'Draft' && status !== 'In Progress')
-			look.setStatus(project, status);
-	}
-	await settle();
-	return made.length;
+	await finishSampleProjects(look, settle);
+	return made;
+}
+
+/**
+ * The second step on its own: gives each sample that was made its state. For samples whose first save came through
+ * after `addSampleProjects` had given up waiting. Gives how many it changed.
+ */
+export async function finishSampleProjects(look: LookState, settle: () => Promise<boolean>) {
+	const waiting = unfinishedSamples(look);
+	for (const { project, status } of waiting) look.setStatus(project, status);
+	if (waiting.length) await settle();
+	return waiting.length;
 }

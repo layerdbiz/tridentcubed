@@ -74,7 +74,31 @@
 		untrack(() => void openProject(id));
 	});
 
-	async function openProject(id: string) {
+	// The Cards view shows each project's photos, and those are among the rows a project loads as it opens. So
+	// while the cards are on screen, every project not loaded yet is loaded, three at a time, saying nothing if one
+	// does not come (Justin, 2026-11-17: after a reload, "all I see is a bunch of no photos yet").
+	let isFilling = false;
+	$effect(() => {
+		if (look.screen !== 'dashboard' || look.dataset !== 'projects' || look.view !== 'cards') return;
+		const ids = look.projects
+			.filter((project) => !look.isLoaded(project.id))
+			.map((each) => each.id);
+		if (ids.length) untrack(() => void fill(ids));
+	});
+
+	async function fill(ids: string[]) {
+		if (isFilling) return;
+		isFilling = true;
+		const waiting = [...ids];
+		async function next() {
+			for (let id = waiting.shift(); id; id = waiting.shift()) await openProject(id, true);
+		}
+		await Promise.all([next(), next(), next()]);
+		isFilling = false;
+	}
+
+	// Quiet: for the Cards view, which asks for projects nobody opened. It says nothing and takes nothing away.
+	async function openProject(id: string, isQuiet = false) {
 		const isLoaded = look.isLoaded(id);
 		if (isLoaded && sync.isPending) return;
 		let found: Awaited<ReturnType<typeof fetchProject>>;
@@ -83,10 +107,11 @@
 			if (isLoaded) await query.refresh();
 			found = await query;
 		} catch {
-			if (!look.isLoaded(id))
+			if (!look.isLoaded(id) && !isQuiet)
 				look.say('This project could not load. Check the connection and open it again.');
 			return;
 		}
+		if (!found.isFound && isQuiet) return;
 		// Not there at all yet is a project made here whose first save has not arrived.
 		if (!found.isFound)
 			return found.isTrashed || !isLoaded ? loseProject(id, found.reason) : undefined;

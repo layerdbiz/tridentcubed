@@ -10,7 +10,14 @@ import { readProject, readRows, saveBatch } from '#lib/server/rows.js';
 import { createTestSignIn } from '#lib/server/testing.js';
 import { LookState, metricsOf } from './look.state.svelte';
 import { isOfProject, takeProject, takeReads, takeRows, toRows } from './mapper';
-import { addSampleProjects, hasSamples, SAMPLE_MARK, SAMPLE_PROJECTS } from './samples.projects';
+import {
+	addSampleProjects,
+	finishSampleProjects,
+	hasSamples,
+	SAMPLE_MARK,
+	SAMPLE_PROJECTS,
+	unfinishedSamples
+} from './samples.projects';
 
 type TestType = Awaited<ReturnType<typeof createTestSignIn>>;
 type DeviceType = { look: LookState; confirmed: RowType[]; actor: ActorType };
@@ -110,7 +117,9 @@ describe('the sample projects', () => {
 				.map((panel) => metricsOf(panel).status);
 		expect(new Set(statuses(complete.id))).toEqual(new Set(['Complete']));
 		expect(complete.progress).toBe(100);
-		expect(statuses(draft.id)).not.toContain('Complete');
+		// The Draft's Project panel is the unfinished one; its photo panels have their photos like every sample's.
+		expect(statuses(draft.id)[0]).not.toBe('Complete');
+		expect(draft.status).toBe('Draft');
 	});
 
 	it('are never made twice', async () => {
@@ -121,6 +130,54 @@ describe('the sample projects', () => {
 		expect(hasSamples(mine.look)).toBe(true);
 		expect(await addSampleProjects(mine.look, settle)).toBe(0);
 		expect(mine.look.projects).toHaveLength(SAMPLE_PROJECTS.length);
+	});
+
+	it('get their states afterwards when the first save was not in time', async () => {
+		const mine = await open(await signIn('ada@tridentcubed.com', 'admin'));
+		// The save comes through, but too late for the one who waited.
+		const added = await addSampleProjects(mine.look, async () => {
+			await save(mine);
+			return false;
+		});
+		const waiting = unfinishedSamples(mine.look).length;
+
+		const finished = await finishSampleProjects(mine.look, async () => (await save(mine)).isSaved);
+		const theirs = await open(await signIn('mia@tridentcubed.com'));
+
+		expect(added).toBe(0);
+		expect(waiting).toBe(6);
+		expect(finished).toBe(6);
+		expect(unfinishedSamples(mine.look)).toEqual([]);
+		expect(new Set(theirs.look.projects.map((project) => project.status)).size).toBe(8);
+	});
+
+	it('leave a sample alone that someone moved back, once the samples have their states', async () => {
+		const mine = await open(await signIn('ada@tridentcubed.com', 'admin'));
+		const settle = async () => (await save(mine)).isSaved;
+		await addSampleProjects(mine.look, settle);
+		const review = mine.look.projects.find((project) => project.status === 'Review')!;
+
+		mine.look.setStatus(review, 'In Progress');
+
+		expect(unfinishedSamples(mine.look)).toEqual([]);
+		expect(await finishSampleProjects(mine.look, settle)).toBe(0);
+	});
+
+	it('all have photos, so every card and report shows some', async () => {
+		const mine = await open(await signIn('ada@tridentcubed.com', 'admin'));
+		await addSampleProjects(mine.look, async () => (await save(mine)).isSaved);
+		const theirs = await open(await signIn('mia@tridentcubed.com'));
+		for (const project of theirs.look.projects) await openProject(theirs, project.id);
+
+		const counts = theirs.look.projects.map(
+			(project) =>
+				theirs.look.workspaces[project.id]
+					.filter((panel) => panel.kind === 'photos' && panel.isEnabled)
+					.flatMap((panel) => panel.groups.flatMap((group) => group.photos)).length
+		);
+
+		expect(counts).toHaveLength(8);
+		expect(counts.every((count) => count >= 4)).toBe(true);
 	});
 
 	it('leave out the Archived one for someone who is not an Admin', async () => {

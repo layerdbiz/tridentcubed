@@ -9,6 +9,9 @@
 	// 2026-11-16 (Justin), a desktop: the picture is left as it is, with no fade to white, and runs down to a grey
 	// line along the top of the lower part (`isLined`). The line is the handle: it turns blue under the pointer,
 	// and dragging it up or down makes the lower part bigger or smaller, staying where it is let go.
+	// 2026-11-17 (Justin): the line never rises over what the top part holds. `least` is the lowest height the top
+	// part can take, and `at` tells whoever binds it how tall the top part is now, so it can put away what no
+	// longer fits (the dashboard's cards). Before, the cards came to lie over the line and it could not be grabbed.
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 
@@ -24,6 +27,9 @@
 		isFlat = false,
 		isLined = false,
 		rest = $bindable(0),
+		least = 160,
+		room = 0,
+		at = $bindable(0),
 		onsettle
 	}: {
 		head: Snippet;
@@ -41,6 +47,11 @@
 		isLined?: boolean;
 		// Which of its three rests the sheet is at: 0 the highest, 2 the lowest. Whoever binds it can follow the sheet.
 		rest?: number;
+		// Lined: the least height the top part is dragged to, the height it wants before it is dragged, and how tall
+		// it is now.
+		least?: number;
+		room?: number;
+		at?: number;
 		// Each time the sheet is let go, wherever it comes to rest.
 		onsettle?: () => void;
 	} = $props();
@@ -52,13 +63,24 @@
 	let sheetTop = $state<number>();
 	let from = { y: 0, t: 0, top: 0 };
 	const rests = $derived.by(() => {
-		const low = Math.max(innerHeight * first, isWide ? 368 : 256);
+		const low = Math.max(
+			innerHeight * first,
+			isWide ? 368 : 256,
+			Math.min(room, innerHeight - 160)
+		);
 		const high = Math.max(low, innerHeight - (isWide ? 116 : 108));
 		return [low, (low + high) / 2, high];
 	});
 	// Where a desktop's line was let go; it stays there, with no rests to settle at.
 	let held = $state<number>();
-	const top = $derived(sheetTop ?? (isLined ? held : undefined) ?? rests[rest]);
+	// The line stays between what the top part needs and a strip of the lower part, also when the window changes.
+	const span = $derived([least, Math.max(least, innerHeight - 160)] as const);
+	const top = $derived(
+		sheetTop ?? (isLined && held !== undefined ? clamp(held, ...span) : undefined) ?? rests[rest]
+	);
+	$effect(() => {
+		at = top;
+	});
 
 	function clamp(value: number, min: number, max: number) {
 		return Math.min(max, Math.max(min, value));
@@ -75,8 +97,8 @@
 
 	function move(event: PointerEvent) {
 		if (sheetTop === undefined) return;
-		const [least, most] = isLined ? [160, innerHeight - 160] : [rests[0], rests[2]];
-		sheetTop = clamp(from.top + event.clientY - from.y, least, most);
+		const [low, high] = isLined ? span : [rests[0], rests[2]];
+		sheetTop = clamp(from.top + event.clientY - from.y, low, high);
 	}
 
 	function up(event: PointerEvent) {
