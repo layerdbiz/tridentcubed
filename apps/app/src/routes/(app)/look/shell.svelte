@@ -19,7 +19,7 @@
 	// the menu's cog or Admin, and slides in like a record.
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
-	import { fly, scale } from 'svelte/transition';
+	import { fade, fly, scale } from 'svelte/transition';
 	import AccountMenu from './account-menu.svelte';
 	import Avatar from './avatar.svelte';
 	import DashboardList from './dashboard-list.svelte';
@@ -62,11 +62,20 @@
 	let headHeight = $state(0);
 	let cardsHeight = $state(0);
 	const isWide = $derived(innerWidth >= 768);
+	// A desktop's line (split.svelte) dragged up: the cards are put away once the top part cannot hold the header, the
+	// cards and this much of the chart, and the line stops while the chart still has that much (Justin, 2026-11-17:
+	// "after a certain point of dragging up, we need to automatically hide the stat cards", and the line is never
+	// "above" them). `cardsHeight` keeps the cards' last height while they are away.
+	const CHART_ROOM = 96;
+	let sheetAt = $state(0);
 	// Run 22 variants (look.constants.ts). Sidebar B: fixed from top to bottom on a desktop, so nothing sits beside it
 	// and the map stops at its edge. Bottom Half B: more room at the sides and a higher heading; flat on a desktop.
 	const isDocked = $derived(look.variant('sidebar') === 'B');
 	const gutter = $derived(isDocked ? 0 : 24);
 	const isHalfB = $derived(look.variant('half') === 'B');
+	const hasCards = $derived(
+		!(isHalfB && isWide) || !sheetAt || sheetAt >= headHeight + cardsHeight + CHART_ROOM
+	);
 	// Where the desktop's bar centres: in what is left beside the sidebar, or beside a project's panels.
 	function barLeft() {
 		if (!isWide) return '50%';
@@ -299,12 +308,27 @@
 		isSizing = false;
 		side = side < (RAIL + SIDE_MIN) / 2 ? RAIL : Math.max(SIDE_MIN, side);
 	}
+
+	// No text is selected while something is dragged (Justin, 2026-11-17: dragging the lower half "will
+	// automatically select all the text in there"). Every drag in the app takes the pointer (setPointerCapture):
+	// the sheet, the desktop's line, the sidebar's edge, the drawer, a board's card, the preview, the zoom bar.
+	// So these two events cover them all, and whatever is dragged next. Fields keep their own selection.
+	function holdText() {
+		document.documentElement.classList.add('select-none');
+		getSelection()?.removeAllRanges();
+	}
+
+	function freeText() {
+		document.documentElement.classList.remove('select-none');
+	}
 </script>
 
 <svelte:window
 	bind:innerWidth
 	bind:innerHeight
 	{onpointerdown}
+	ongotpointercapture={holdText}
+	onlostpointercapture={freeText}
 	onkeydown={(event) => {
 		if (event.key !== 'Escape') return;
 		isBellOpen = false;
@@ -370,7 +394,7 @@
 		}}
 		padding={{
 			top: headHeight + 64,
-			bottom: cardsHeight + 76,
+			bottom: (hasCards ? cardsHeight : 0) + 76,
 			left: isWide && !isDocked ? side + 48 : 28,
 			right: 28
 		}}
@@ -469,6 +493,9 @@
 				isFlat={isHalfB && isWide}
 				isLined={isHalfB && isWide}
 				bind:rest={sheetRest}
+				bind:at={sheetAt}
+				least={headHeight + CHART_ROOM}
+				room={isHalfB && isWide ? headHeight + cardsHeight + CHART_ROOM : 0}
 				onsettle={() => (sheetMoves += 1)}
 				backdrop={look.chart === 'map' ? mapBackdrop : undefined}
 			>
@@ -511,12 +538,15 @@
 							isCentred={isTopB}
 						/>
 					</div>
-					<div
-						class="pointer-events-auto shrink-0 px-4 pt-2 pb-3 md:px-8 md:pt-3 md:pb-4"
-						bind:clientHeight={cardsHeight}
-					>
-						<div class={COLUMN}><StatCards {look} /></div>
-					</div>
+					{#if hasCards}
+						<div
+							class="pointer-events-auto shrink-0 px-4 pt-2 pb-3 md:px-8 md:pt-3 md:pb-4"
+							bind:clientHeight={cardsHeight}
+							transition:fade={{ duration: 150 }}
+						>
+							<div class={COLUMN}><StatCards {look} /></div>
+						</div>
+					{/if}
 				{/snippet}
 				<!-- One page at a time; on a change the new one slides in from its side and the old one out the other. The
 				     four menus sit over the pages' heading row and never move. -->

@@ -13,7 +13,12 @@
 	import PanelBody from './panel-body.svelte';
 	import RecordFields from './record-fields.svelte';
 	import type { PageType } from './records.data';
-	import { addSampleProjects, hasSamples } from './samples.projects';
+	import {
+		addSampleProjects,
+		finishSampleProjects,
+		hasSamples,
+		unfinishedSamples
+	} from './samples.projects';
 
 	let { look }: { look: LookState } = $props();
 
@@ -84,9 +89,11 @@
 	// sends about a second after the last change, so each step waits for the cloud to say saved.
 	async function settle() {
 		await new Promise((resolve) => setTimeout(resolve, 1500));
+		let failed = 0;
 		for (let tries = 0; tries < 150; tries += 1) {
 			if (look.sync.state === 'saved') return true;
-			if (look.sync.state === 'failed') return false;
+			// A save that failed is sent again by the sync loop, so it gets ten seconds to come through.
+			if (look.sync.state === 'failed' && (failed += 1) > 50) return false;
 			await new Promise((resolve) => setTimeout(resolve, 200));
 		}
 		return false;
@@ -97,11 +104,32 @@
 		look.endAdd();
 		if (isSampling) return;
 		isSampling = true;
-		const added = await addSampleProjects(look, settle);
+		// Made already but left without their states (the first save took too long): only that step is done.
+		const isMade = hasSamples(look);
+		const count = isMade
+			? await finishSampleProjects(look, settle)
+			: await addSampleProjects(look, settle);
 		isSampling = false;
 		if (look.dataset !== 'projects') look.pick('projects');
-		look.say(added ? `${added} sample projects added` : 'The sample projects could not be saved');
+		look.say(
+			isMade
+				? 'The sample projects have their statuses'
+				: count
+					? `${count} sample projects added`
+					: 'Still saving the sample projects'
+		);
 	}
+
+	// Samples that were saved without their states get them as soon as nothing waits to be saved, with no tap
+	// (Justin, 2026-11-17: "That should be a state change. Automatically"). Once in a visit.
+	let hasFinished = false;
+	$effect(() => {
+		if (hasFinished || isSampling || look.sync.state !== 'saved') return;
+		if (!unfinishedSamples(look).length) return;
+		hasFinished = true;
+		isSampling = true;
+		void finishSampleProjects(look, settle).finally(() => (isSampling = false));
+	});
 
 	function add() {
 		if (kind === 'projects') return look.create(panel);
@@ -140,8 +168,8 @@
 			>{DATASETS[id].one}
 		</button>
 	{/each}
-	<!-- One sample project for every state, until they are there (Justin, 2026-11-16). -->
-	{#if !hasSamples(look)}
+	<!-- One sample project for every state, until they are there with their states (Justin, 2026-11-16). -->
+	{#if !hasSamples(look) || unfinishedSamples(look).length}
 		<button
 			type="button"
 			role="menuitem"
