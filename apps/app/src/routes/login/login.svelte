@@ -5,12 +5,15 @@
 	// field with one Continue, which sends a six-digit code, then the code entry; the first sign-in creates the user
 	// (#181). Google and Microsoft show under it only when this deployment has their keys (#191), and a sign-in
 	// they send back unfinished says why. A deployment missing a setting says it is not connected yet and names
-	// what is missing. On a desktop the dark top is shorter than a phone's, under half of the height, with the logo and the name
-	// side by side (Justin, 2026-11-17: "that header is way too big", then, of a quarter, "twice the size and height"); a phone
-	// keeps the tall top.
+	// what is missing. On a desktop the dark top is shorter than a phone's, under half of the height, the logo over the
+	// name over the version (Justin, 2026-11-17: "that header is way too big", then, of a quarter, "twice the size
+	// and height", then "underneath it"); a phone keeps the tall top.
 	import { page } from '$app/state';
 	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
 	import { readWaiting, toWaiting } from './waiting';
+
+	// Written here until it comes from the release on GitHub (Justin, 2026-11-17: "for now, just do v1.0.0").
+	const VERSION = 'v1.0.0';
 
 	const FIELD =
 		'w-full rounded-xl border-0 bg-slate-900/[0.05] px-3.5 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary/40';
@@ -96,7 +99,7 @@
 			class="flex flex-1 flex-col bg-linear-to-br from-slate-700 to-slate-950 text-white md:flex-none"
 		>
 			<div
-				class="flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-6 text-center md:flex-row md:gap-6 md:pt-20 md:pb-14"
+				class="flex flex-1 flex-col items-center justify-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-6 text-center md:pt-10 md:pb-4"
 			>
 				<img
 					src="/branding/logo-dark.svg"
@@ -104,9 +107,8 @@
 					draggable="false"
 					class="size-28 object-contain md:size-32"
 				/>
-				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase md:mt-0 md:text-4xl">
-					Trident Cubed
-				</p>
+				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase md:text-4xl">Trident Cubed</p>
+				<p class="mt-2 font-mono text-sm text-slate-400">{VERSION}</p>
 			</div>
 			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
 			<svg
