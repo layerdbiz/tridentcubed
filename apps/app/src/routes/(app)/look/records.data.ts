@@ -162,7 +162,20 @@ export const OTHER = 'Other';
 // rest of the sheet's labels come after.
 const LABELS: Record<DatasetType, string[]> = {
 	projects: STATES,
-	customers: ['Ocean carrier', 'Freight forwarder', 'Stevedore', 'Terminal', 'Insurer'],
+	customers: [
+		'Carrier',
+		'Freight Forwarder',
+		'Agent',
+		'Insurer',
+		'Marine Surveyor',
+		'Logistics Provider',
+		'Contractor',
+		'Manufacturer',
+		'Terminal',
+		'Stevedore',
+		'Shipper',
+		'Consultant'
+	],
 	team: [
 		'Partner',
 		'Finance',
@@ -473,8 +486,8 @@ const PHOTOS: Record<string, string> = {
 	Port: 'terminal-surveys.webp',
 	Airport: 'cargo-surveys.webp',
 	Depot: 'warehouse-surveys.webp',
-	'Ocean carrier': 'engineering-planning.png',
-	'Freight forwarder': 'compliance-solutions.png',
+	Carrier: 'engineering-planning.png',
+	'Freight Forwarder': 'compliance-solutions.png',
 	Stevedore: 'project-cargo.webp',
 	Terminal: 'terminal-surveys.webp',
 	Insurer: 'marine-warranty.png'
