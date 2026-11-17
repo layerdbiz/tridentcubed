@@ -2,7 +2,7 @@
 	// Not saved (#183): why the last changes did not reach the server, and Retry. A lost connection is retried by
 	// itself, so Retry only sends it now. A refused change is held back while other changes still save; Retry sends
 	// it again with the rest, and if the server refuses it again it is put back to what the server has (story 36).
-	import BottomSheet from './bottom-sheet.svelte';
+	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import type { LookState } from './look.state.svelte';
 
 	let { look }: { look: LookState } = $props();

@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Waiting for access (#182): where a Guest (signed in, in no organization) is kept. Plain on purpose: their
-	// email, what happens next, and Log out. It wears the login page's dark top and wave so it reads as the same door.
+	// email, what happens next, and Log Out. It wears the login page's dark top and wave so it reads as the same door.
 	// The server hook sends a Guest here from every other page, and a member away from it.
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import { fetchWaiting } from './waiting.remote';
@@ -53,7 +53,7 @@
 					type="button"
 					class="w-full rounded-full bg-slate-900/[0.05] py-3 font-semibold text-base text-slate-800 transition hover:bg-slate-900/[0.08] disabled:opacity-60"
 					disabled={isLeaving}
-					onclick={logOut}>Log out</button
+					onclick={logOut}>Log Out</button
 				>
 			</div>
 		</div>
