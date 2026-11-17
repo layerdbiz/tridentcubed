@@ -3,7 +3,7 @@
 	// multiple different areas"). One sheet with every status in the order a project moves through them, opened
 	// from any project's ⋮ menu and from the status on its Page. The ⋮ menu keeps its shortcuts (Mark Sent, Mark
 	// Complete); this is for everything else, such as back to Review or on to Archived.
-	import BottomSheet from './bottom-sheet.svelte';
+	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import { STATUS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { STATES } from './records.data';

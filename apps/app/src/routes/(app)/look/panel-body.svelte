@@ -27,7 +27,7 @@
 	// Personnel adds a company's section: its name, then as many people from it as needed, each a name and a title.
 	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
-	import BottomSheet from './bottom-sheet.svelte';
+	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
