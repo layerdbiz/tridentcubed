@@ -53,6 +53,7 @@
 	import PlaceField from './place-field.svelte';
 	import { addGroup as addPhotoGroup, addPhotos, hasFiles, uploadOf } from './photos';
 	import { customerOf } from './records.data';
+	import { toSampleDay, toSamplePhotos } from './samples';
 	import { sortable } from './sortable';
 
 	let {
@@ -256,6 +257,20 @@
 		};
 		panel.days.push(day);
 		openDays = [...openDays, day.id];
+		save();
+	}
+
+	// Sample fill, back from the prototype (samples.ts): a filled-in day after the last one, and stand-in photos.
+	function addSampleDay() {
+		const last = panel.days.findLast((each) => each.date)?.date;
+		const day = toSampleDay(last, () => crypto.randomUUID());
+		panel.days.push(day);
+		openDays = [...openDays, day.id];
+		save();
+	}
+
+	function addSamplePhotos(group: PanelType['groups'][number]) {
+		group.photos.push(...toSamplePhotos(group.photos.length, 4, () => crypto.randomUUID()));
 		save();
 	}
 
@@ -875,6 +890,12 @@
 				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
 				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
 			>
+			<button
+				type="button"
+				class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+				onclick={addSampleDay}
+				><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample day</button
+			>
 		</div>
 	{:else}
 		<div
@@ -1081,6 +1102,14 @@
 								/>
 							</label>
 						</div>
+						{#snippet actions()}
+							<button
+								type="button"
+								class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+								onclick={() => addSamplePhotos(group)}
+								><span class="icon-[mdi--auto-fix] size-4"></span>Add sample photos</button
+							>
+						{/snippet}
 					</Group>
 				</div>
 			{:else}
