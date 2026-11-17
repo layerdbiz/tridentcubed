@@ -1,1 +1,0 @@
-<div class="sr-only">Redirecting to projects.</div>
