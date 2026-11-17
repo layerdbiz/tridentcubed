@@ -242,6 +242,7 @@
 										value={stop.point}
 										options={pointsOf(leg)}
 										align="left"
+										isSearchable
 										onpick={(point) => pickPoint(stop, point)}
 									>
 										{#snippet trigger()}

@@ -22,7 +22,10 @@
 	// (ClientLogo); anything else is its own image, an icon or a dot of colour. The list shows the same marks. Given
 	// `values` it picks several and stays open. The list itself is menu.svelte.
 	// Run 28 (Justin, 2026-11-12: "this needs to happen for every select menu in the entire app"): it is the only
-	// dropdown a form uses. A list of more than five can be typed into, to narrow it. `onadd` puts "Add new" at the
+	// dropdown a form uses. Every one has a search field at the top of its list, however short the list (Justin,
+	// 2026-11-16: the transport's own dropdown had none, because it held three vessels and the field only showed
+	// past five; "add a search field to every drop down"). On a phone the field waits for a tap, so opening a
+	// dropdown never brings the keyboard up. `onadd` puts "Add new" at the
 	// top of the list. `onedit` puts a pencil on each choice and on the field once something is picked, to open it.
 	// In the list one icon marks each choice, grey until it is the one under the pointer or the one picked.
 	// Run 29 (his second round of notes): the field is always one line, the pencil shows only in the open list, and
@@ -71,7 +74,7 @@
 		isDisabled?: boolean;
 		// Shows the amber dot while nothing is picked.
 		isRequired?: boolean;
-		// A field to type in at the top of the list. Left out, a list of more than five has one.
+		// A field to type in at the top of the list: every dropdown has one unless this says false.
 		isSearchable?: boolean;
 		onpick: (id: string) => void;
 		// Puts "Add new" at the top of the list.
@@ -210,7 +213,7 @@
 				{onadd}
 				{addLabel}
 				{onedit}
-				isSearchable={isSearchable ?? options.length > 5}
+				isSearchable={isSearchable ?? true}
 				align="left"
 				isWide
 			>
