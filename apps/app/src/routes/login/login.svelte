@@ -7,8 +7,11 @@
 	// they send back unfinished says why. A deployment missing a setting says it is not connected yet and names
 	// what is missing. On a desktop the dark top is shorter than a phone's, under half of the height, the logo over the
 	// name over the version (Justin, 2026-11-17: "that header is way too big", then, of a quarter, "twice the size
-	// and height", then "underneath it"); a phone keeps the tall top.
+	// and height", then "underneath it"); a phone keeps the tall top. Under everything is a small Install App link
+	// (#203), for a visitor who wants the app on their phone before signing in.
 	import { page } from '$app/state';
+	import HowTo from '#lib/install/how-to.svelte';
+	import { install } from '#lib/install/install.state.svelte.js';
 	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
 	import { readWaiting, toWaiting } from './waiting';
 
@@ -75,6 +78,12 @@
 		} catch {
 			// Nothing was kept.
 		}
+	}
+
+	let isHowToOpen = $state(false);
+
+	async function installApp() {
+		if ((await install.tap()) === 'how-to') isHowToOpen = true;
 	}
 
 	$effect(() => {
@@ -277,7 +286,23 @@
 						{/each}
 					</form>
 				{/if}
+
+				<!-- The server cannot know whether it is drawing for the installed app, so it always sends the link,
+				     and the display mode hides it in the stylesheet before the first paint: the link never flashes in
+				     the installed app and never arrives late in a tab, so the form does not move. Once the page runs,
+				     the state takes it away right after an install too. -->
+				{#if install.isShown}
+					<p class="text-center [@media(display-mode:standalone)]:hidden">
+						<button
+							type="button"
+							class="inline-flex items-center gap-1.5 py-1 text-sm font-medium text-slate-500 transition hover:text-primary"
+							onclick={installApp}
+							><span class="icon-[mdi--cellphone-arrow-down] size-4"></span>Install App</button
+						>
+					</p>
+				{/if}
 			</div>
 		</div>
 	</div>
+	{#if isHowToOpen}<HowTo onclose={() => (isHowToOpen = false)} />{/if}
 </div>

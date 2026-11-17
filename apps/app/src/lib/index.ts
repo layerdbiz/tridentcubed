@@ -5,6 +5,7 @@ export * from "./files/files.remote.ts";
 export * from "./files/files.schema.ts";
 export * from "./files/files.state.svelte.ts";
 export * from "./files/files.utils.ts";
+export { default as HowTo } from "./install/how-to.svelte";
 export * from "./definitions/inputs.ts";
 export * from "./install/install.constants.ts";
 export * from "./install/install.state.svelte.ts";
