@@ -1,18 +1,21 @@
 // The one seed (spec #179): the starting data every database begins with. The in-process database gets it when the
 // server starts, and tests through `createTestSignIn()`; Supabase gets the same rows in the one initial load (#194),
 // never from a Vercel build. Running it twice changes nothing. Later tickets add their starting rows here (the real
-// customers #183, the organization's details and the places #184, the team #185). Access grants are never seeded:
+// customers #183, the organization's details and the places #184, the team #185, and the real Transport Modes and
+// Facilities with their pictures, lib/start/transport.ts, 2026-11-16). Access grants are never seeded:
 // they are filled in the database only.
 import { sql } from 'drizzle-orm';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import { ORGANIZATION } from '#lib/start/organization.js';
 import { PLACES } from '#lib/start/places.js';
+import { FACILITIES, TRANSPORTS } from '#lib/start/transport.js';
 import { customer } from './customer.schema';
 import type { DatabaseType } from './index';
 import { disclaimerPoint, organizationDetails } from './details.schema';
 import { organization } from './organization.schema';
 import { place } from './place.schema';
 import { team } from './team.schema';
+import { facility, transport } from './transport.schema';
 
 export const TRIDENT_CUBED = {
 	id: 'f94512cb-9fa2-4581-a2c0-c63611ce2d9f',
@@ -398,6 +401,7 @@ export async function seedDatabase(db: DatabaseType) {
 			)
 			.onConflictDoNothing();
 		await seedPlaces(tx, id);
+		await seedTransports(tx, id);
 	});
 	await seedTeam(db);
 }
@@ -409,7 +413,9 @@ export const SEED_TABLES = [
 	'disclaimer_point',
 	'customer',
 	'place',
-	'team'
+	'team',
+	'transport',
+	'facility'
 ] as const;
 
 /**
@@ -494,6 +500,49 @@ async function seedPlaces(tx: SeedTransactionType, organizationId: string) {
 					name,
 					latitude,
 					longitude,
+					createdAt: at,
+					updatedAt: at
+				};
+			})
+		)
+		.onConflictDoNothing();
+}
+
+// The starting Transport Modes and Facilities (lib/start/transport.ts), a second apart so they list in that order.
+// Each one's id is worked out from its name, so seeding twice changes nothing; a name already taken is left alone.
+async function seedTransports(tx: SeedTransactionType, organizationId: string) {
+	await tx
+		.insert(transport)
+		.values(
+			TRANSPORTS.map(({ name, mode, file, particulars }, index) => {
+				const at = new Date(SEEDED_AT + index * 1000);
+				return {
+					id: toStableId(organizationId, 'transport', name.toLowerCase()),
+					organizationId,
+					name,
+					mode,
+					picture: `/start/transport/${file}`,
+					particulars,
+					createdAt: at,
+					updatedAt: at
+				};
+			})
+		)
+		.onConflictDoNothing();
+	await tx
+		.insert(facility)
+		.values(
+			FACILITIES.map(({ name, kind, city, address, phone, file }, index) => {
+				const at = new Date(SEEDED_AT + index * 1000);
+				return {
+					id: toStableId(organizationId, 'facility', name.toLowerCase()),
+					organizationId,
+					name,
+					kind,
+					city,
+					address,
+					phone,
+					picture: `/start/facility/${file}`,
 					createdAt: at,
 					updatedAt: at
 				};

@@ -43,10 +43,12 @@ it('prints SQL that gives a fresh database exactly the seed’s rows, twice over
 	expect(Object.keys(rows)).toEqual([
 		'customer',
 		'disclaimer_point',
+		'facility',
 		'organization',
 		'organization_details',
 		'place',
-		'team'
+		'team',
+		'transport'
 	]);
 	expect(await readAll(fresh)).toEqual(rows);
 });

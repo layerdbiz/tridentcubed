@@ -27,6 +27,7 @@
 		<PlaceLine
 			place={record.location}
 			tone={record.tone.text}
+			isPlaced={record.page !== 'transport'}
 		/>
 	</button>
 	<div class="absolute top-1.5 right-1.5">

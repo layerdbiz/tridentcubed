@@ -61,6 +61,7 @@
 				<PlaceLine
 					place={record.location}
 					tone={record.tone.text}
+					isPlaced={record.page !== 'transport'}
 				/>
 			</span>
 		</span>

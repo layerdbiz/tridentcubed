@@ -9,6 +9,7 @@ import type { ActorType } from '#lib/server/db/claims.js';
 import * as schema from '#lib/server/db/schema.js';
 import { readRows, saveBatch } from '#lib/server/rows.js';
 import { createTestSignIn } from '#lib/server/testing.js';
+import { FACILITIES, TRANSPORTS } from '#lib/start/transport.js';
 import { draftOf, type FacilityType, type TransportType } from './look.data';
 import { LookState } from './look.state.svelte';
 import {
@@ -94,10 +95,18 @@ function facilityOf(look: LookState, name: string) {
 }
 
 describe('Transport Modes', () => {
-	it('starts with none: the seed has no sample transports', async () => {
+	it('starts with the real ones the seed gives, each with its picture and particulars', async () => {
 		const { look } = await open(team);
 
-		expect(look.transports).toEqual([]);
+		expect(look.transports.map((each) => each.name).toSorted()).toEqual(
+			TRANSPORTS.map((each) => each.name).toSorted()
+		);
+		expect(transportOf(look, 'Jumbo Kinetic')).toMatchObject({
+			type: 'Sea',
+			mode: 'Vessel',
+			photo: '/start/transport/jumbo-kinetic.jpg',
+			details: { 'IMO number': '9634165', Flag: 'Netherlands' }
+		});
 	});
 
 	it('saves a new one with its picture and particulars, and another member sees the same', async () => {
@@ -162,7 +171,7 @@ describe('Transport Modes', () => {
 
 		expect(toTransportName(renamed.look, id!)).toBe('MV Ocean Queen');
 		expect(toChanges(renamed.confirmed, toRows(renamed.look))).toEqual([]);
-		expect(again.look.transports).toEqual([]);
+		expect(again.look.transports.map((each) => each.name)).not.toContain('MV Ocean Queen');
 		expect(toTransportName(again.look, id!)).toBe('MV Ocean Queen');
 		expect(row.deletedAt).toBeInstanceOf(Date);
 	});
@@ -181,10 +190,20 @@ describe('Transport Modes', () => {
 });
 
 describe('Facilities', () => {
-	it('starts with none: the seed has no sample facilities', async () => {
+	it('starts with the real ones the seed gives, each with its place, address and picture', async () => {
 		const { look } = await open(team);
 
-		expect(look.facilities).toEqual([]);
+		expect(look.facilities.map((each) => each.name).toSorted()).toEqual(
+			FACILITIES.map((each) => each.name).toSorted()
+		);
+		expect(facilityOf(look, 'Port of Beaumont')).toMatchObject({
+			kind: 'Port',
+			city: 'Beaumont, TX',
+			address: '1225 Main St, Beaumont, TX 77701',
+			photo: '/start/facility/port-of-beaumont.jpg'
+		});
+		// Every one is at a saved place, so it shows on the map.
+		for (const each of look.facilities) expect(look.placeOf(each.city)).toBeDefined();
 	});
 
 	it('saves a new one with every field, an edit and a rename, and another member sees the same', async () => {
@@ -236,7 +255,11 @@ describe('Facilities', () => {
 
 		expect(toFacilityName(again.look, id!)).toBe('Port of Houston');
 		expect(result).toEqual({ isSaved: true });
-		expect(again.look.facilities.map((facility) => facility.name)).toEqual(['Port of Houston']);
+		expect(
+			again.look.facilities
+				.map((facility) => facility.name)
+				.filter((name) => name === 'Port of Houston')
+		).toEqual(['Port of Houston']);
 	});
 });
 

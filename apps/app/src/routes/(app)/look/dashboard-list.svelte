@@ -259,6 +259,7 @@
 										><PlaceLine
 											place={record.location}
 											tone={record.tone.text}
+											isPlaced={record.page !== 'transport'}
 										/></td
 									>
 									{#if dataset === 'team'}
