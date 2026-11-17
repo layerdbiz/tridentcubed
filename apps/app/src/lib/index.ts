@@ -17,3 +17,7 @@ export * from "./rows/rows.state.svelte.ts";
 export * from "./rows/rows.utils.ts";
 export * from "./start/transport.ts";
 export * from "./definitions/types.ts";
+
+/* COMPONENTS */
+// sheet
+export { default as Sheet } from "./components/sheet/sheet.svelte";

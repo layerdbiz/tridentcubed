@@ -1,7 +1,7 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the one "Are you sure?" before anything is deleted (Justin, 2026-10-25): a project, a panel, a
 	// transport stop, a photo group or photo, a time log day or entry. Cancel keeps it.
-	import BottomSheet from './bottom-sheet.svelte';
+	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import type { LookState } from './look.state.svelte';
 
 	let { look }: { look: LookState } = $props();
