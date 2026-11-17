@@ -7,7 +7,7 @@
 	// over the pages and the bar, and under the menus and the sheets.
 	import { updated } from '$app/state';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
-	import { Update, type UpdateStepType } from './update.state.svelte';
+	import { UpdateState, type UpdateStepType } from './update.state.svelte';
 	import { downloadWorker, takeOver } from './update.utils';
 
 	let { save }: { save: Pick<SaveStatusType, 'state'> } = $props();
@@ -18,7 +18,7 @@
 		switching: 'Updating…'
 	};
 
-	const update = new Update({
+	const update = new UpdateState({
 		isNew: () => updated.current,
 		save: () => save.state,
 		takeOver,

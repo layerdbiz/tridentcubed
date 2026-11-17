@@ -1,6 +1,6 @@
 // The update note's two words with the browser's service worker (#202). Neither decides anything: whether a new
 // version exists is SvelteKit's version check, and when to switch is the update rule (update.state.svelte.ts).
-import { TAKE_OVER } from './update.constants';
+import { TAKE_OVER, TAKE_OVER_WAIT } from './update.constants';
 
 // No service worker in a browser without one, or on a plain http address: the note then only reloads.
 async function findRegistration() {
@@ -25,13 +25,17 @@ export async function downloadWorker() {
  * Asks the waiting service worker to take over; done once it has. With none waiting (the browser has not fetched
  * it yet, or has no service worker) it is done at once: the reload that follows still lands on the new version,
  * because a page always comes from the network, and the new service worker then waits for the app to be closed.
+ * The same holds for a worker that does not answer in time, so the note is never left on "Updating…".
  */
 export async function takeOver() {
 	const worker = (await findRegistration())?.waiting;
 	if (!worker) return;
 	await new Promise<void>((resolve) => {
+		const timer = setTimeout(resolve, TAKE_OVER_WAIT);
 		worker.addEventListener('statechange', () => {
-			if (worker.state === 'activated' || worker.state === 'redundant') resolve();
+			if (worker.state !== 'activated' && worker.state !== 'redundant') return;
+			clearTimeout(timer);
+			resolve();
 		});
 		worker.postMessage(TAKE_OVER);
 	});

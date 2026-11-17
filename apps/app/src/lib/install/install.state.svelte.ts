@@ -25,15 +25,14 @@ export type InstallTapType = 'installed' | 'dismissed' | 'how-to';
 const STANDALONE = '(display-mode: standalone)';
 
 export class InstallState {
-	/** The page is in the installed app's own window. */
-	isInstalled = $state(false);
-	/** An install happened while this page was open. */
-	hasInstalled = $state(false);
+	// The page is in the installed app's own window.
+	#isInstalled = $state(false);
+	// An install happened while this page was open.
+	#hasInstalled = $state(false);
 	#offer = $state.raw<InstallOfferType>();
 
 	/** Until the browser says otherwise, as on the server, Install App shows. */
-	isShown = $derived(!this.isInstalled && !this.hasInstalled);
-	hasOffer = $derived(this.#offer !== undefined);
+	isShown = $derived(!this.#isInstalled && !this.#hasInstalled);
 
 	/**
 	 * Starts hearing the browser. The offer is kept and never cancelled (no `preventDefault()`), so the browser
@@ -41,14 +40,17 @@ export class InstallState {
 	 */
 	listen(browser: InstallBrowserType) {
 		const display = browser.matchMedia(STANDALONE);
-		this.isInstalled = display.matches;
-		// Chrome on a computer moves the tab into the app's window as it installs.
-		display.addEventListener('change', (event) => (this.isInstalled = event.matches));
+		this.#isInstalled = display.matches;
+		// Chrome on a computer moves the tab into the app's window as it installs. Only ever to installed: an
+		// installed window made full screen stops being "standalone" to the browser, and is still the installed app.
+		display.addEventListener('change', (event) => {
+			if (event.matches) this.#isInstalled = true;
+		});
 		browser.addEventListener('beforeinstallprompt', (event) => {
 			this.#offer = event as unknown as InstallOfferType;
 		});
 		browser.addEventListener('appinstalled', () => {
-			this.hasInstalled = true;
+			this.#hasInstalled = true;
 			this.#offer = undefined;
 		});
 	}
@@ -62,7 +64,7 @@ export class InstallState {
 			await offer.prompt();
 			const { outcome } = await offer.userChoice;
 			if (outcome !== 'accepted') return 'dismissed';
-			this.hasInstalled = true;
+			this.#hasInstalled = true;
 			return 'installed';
 		} catch {
 			// The browser took its offer back: the steps still get the User there.

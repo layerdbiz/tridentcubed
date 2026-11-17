@@ -3,20 +3,24 @@
 // Saving or Not saved.
 import { describe, expect, it } from 'vite-plus/test';
 import type { SaveStateType } from '#lib/rows/rows.state.svelte.js';
-import { Update } from './update.state.svelte';
+import { UpdateState } from './update.state.svelte';
 
 function createApp(save: SaveStateType = 'saved') {
 	let isNew = false;
 	let handOver: (() => void) | undefined;
+	let refuse: ((reason: Error) => void) | undefined;
 	const app = {
 		handovers: 0,
 		reloads: 0,
-		update: new Update({
+		update: new UpdateState({
 			isNew: () => isNew,
 			save: () => save,
 			takeOver: () => {
 				app.handovers += 1;
-				return new Promise<void>((resolve) => (handOver = resolve));
+				return new Promise<void>((resolve, reject) => {
+					handOver = resolve;
+					refuse = reject;
+				});
 			},
 			reload: () => (app.reloads += 1)
 		}),
@@ -36,6 +40,11 @@ function createApp(save: SaveStateType = 'saved') {
 		/** The new version's service worker has taken over. */
 		async finishHandover() {
 			handOver?.();
+			await Promise.resolve();
+		},
+		/** The new version's service worker could not be asked. */
+		async failHandover() {
+			refuse?.(new Error('No service worker answered.'));
 			await Promise.resolve();
 		}
 	};
@@ -144,6 +153,16 @@ describe('the update rule', () => {
 		expect(app.handovers).toBe(1);
 
 		await app.finishHandover();
+
+		expect(app.reloads).toBe(1);
+	});
+
+	it('still reloads when the new version cannot be asked to take over, and is not left on Updating', async () => {
+		const app = createApp();
+		app.deploy();
+		app.tap();
+
+		await app.failHandover();
 
 		expect(app.reloads).toBe(1);
 	});

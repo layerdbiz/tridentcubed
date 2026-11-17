@@ -20,10 +20,10 @@ const PLAIN_SHARE = 0.68;
 const MASKABLE_SHARE = 0.6;
 const SAFE_REACH = 0.4;
 
-function toPage(logo: string, share: number) {
+function toPage(logo: string, share: number, background: string) {
 	return `<!doctype html>
 		<style>
-			html, body { margin: 0; height: 100%; background: #000000; }
+			html, body { margin: 0; height: 100%; background: ${background}; }
 			body { display: grid; place-items: center; }
 			svg { width: ${share * 100}vw; height: auto; }
 		</style>
@@ -81,7 +81,7 @@ try {
 		for (const { path, size, share, isMaskable } of icons) {
 			const file = join(STATIC, path);
 			await page.setViewport({ width: size, height: size, deviceScaleFactor: 1 });
-			await page.setContent(toPage(logo, share));
+			await page.setContent(toPage(logo, share, install.BLACK));
 			const png = Buffer.from(await page.screenshot({ type: 'png' }));
 			const reach = await page.evaluate(readReach, png.toString('base64'));
 			if (isMaskable && reach > SAFE_REACH) {

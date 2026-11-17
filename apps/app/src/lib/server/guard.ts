@@ -6,7 +6,12 @@
 // someone sign in and out. Better Auth's organization routes are closed to everyone: memberships change only through
 // the sign-in rule and the app's one permission check.
 
-import { MANIFEST_PATH, OFFLINE_PATH } from '#lib/install/install.constants.js';
+import {
+	KEPT_STATIC,
+	MANIFEST_PATH,
+	OFFLINE_PATH,
+	WORKER_PATH
+} from '#lib/install/install.constants.js';
 
 export type AccessType = 'signed-out' | 'guest' | 'staff';
 
@@ -18,9 +23,12 @@ export type GuardType =
 // signature alone (#187). The app's own file addresses (/files/<id>) answer like server routes: a refusal, never a
 // page.
 const OPEN = ['/login', '/api/auth/', '/_app/', '/local-files/'];
-// What a browser asks for to install the app, with no session (#199): the manifest, and the Needs Internet screen the
-// service worker keeps on the device. A signed-out visitor can install too. Each is one address, nothing under it.
-const INSTALL = [MANIFEST_PATH, OFFLINE_PATH];
+// What a browser asks for to install the app, with no session (#199): the manifest, the service worker, and what the
+// service worker keeps on the device (the Needs Internet screen, the icons and the logo). A signed-out visitor can
+// install too. Each is one address, nothing under it. The icons and the service worker are files, which a host
+// serves before this guard is asked; naming them here keeps them open wherever the app runs, and a missing one
+// answers "not found", never the login page.
+const INSTALL = [MANIFEST_PATH, OFFLINE_PATH, WORKER_PATH, ...KEPT_STATIC];
 const SERVED = ['/api/', '/files/'];
 const CLOSED = '/api/auth/organization/';
 const WAITING = '/waiting';

@@ -19,7 +19,7 @@ export type DeviceType = {
 	ask: () => Promise<Response>;
 };
 
-export type StoreType = {
+export type FilesType = {
 	/** Stored together or not at all: without them the app or the Needs Internet screen would not open. */
 	needed: string[];
 	/** Stored one by one: a missing one is skipped. */
@@ -31,7 +31,7 @@ type BuiltType = { path: string };
 
 /** Where the install step gets a file and where it puts it. */
 export type ShelfType = {
-	ask: (path: string) => Promise<Response>;
+	get: (path: string) => Promise<Response>;
 	put: (path: string, response: Response) => Promise<unknown>;
 };
 
@@ -55,7 +55,7 @@ export function toStoreName(version: string) {
 }
 
 /** What the install step stores: this version's built files, the Needs Internet screen and the named static files. */
-export function toStore(built: BuiltType[]): StoreType {
+export function toFiles(built: BuiltType[]): FilesType {
 	return { needed: [...toPaths(built), OFFLINE_PATH], wanted: KEPT_STATIC };
 }
 
@@ -64,10 +64,10 @@ export function toKept(built: BuiltType[]): ReadonlySet<string> {
 	return new Set([...toPaths(built), ...KEPT_STATIC]);
 }
 
-// Only the file itself is kept. An address the server has no file for is an app address to it, which the sign-in
-// guard sends on to the login page: that page must never be kept under the file's name.
-async function keep(path: string, { ask, put }: ShelfType) {
-	const response = await ask(path);
+// Only the file itself is kept. A server may send an address it has no file for on to another page (a sign-in
+// guard does, to its login page): that page must never be kept under the file's name.
+async function keep(path: string, { get, put }: ShelfType) {
+	const response = await get(path);
 	if (!response.ok || response.redirected) throw new Error(`Could not store ${path}`);
 	await put(path, response);
 }
@@ -76,7 +76,7 @@ async function keep(path: string, { ask, put }: ShelfType) {
  * Fills a store. Without a built file or the Needs Internet screen the install fails; a named static file that is
  * missing is skipped, so one missing icon never stops an install.
  */
-export async function store(shelf: ShelfType, { needed, wanted }: StoreType) {
+export async function fill(shelf: ShelfType, { needed, wanted }: FilesType) {
 	await Promise.all(needed.map((path) => keep(path, shelf)));
 	await Promise.all(wanted.map((path) => keep(path, shelf).catch(() => undefined)));
 }

@@ -135,8 +135,9 @@ src/routes/manifest.webmanifest/   the manifest: a server route, with its builde
 src/app.html                       the page head's links to the manifest and the Apple touch icon
 packages/ui/static/install/        the icons (shared static files)
 scripts/icons.ts                   remakes the icons from the dark logo on black (`pnpm --filter app icons`)
-src/service-worker/                the service worker: index.ts, its own tsconfig, and rule.ts, what it
-                                   stores and what a request gets, as plain tested functions
+src/service-worker/                the service worker: index.ts, its own tsconfig, and
+                                   service-worker.utils.ts, what it stores and what a request gets, as
+                                   plain tested functions
 src/routes/offline/                the Needs Internet screen the service worker shows
 src/lib/install/                   Install App: install.constants.ts, install.state.svelte.ts (it starts
                                    hearing the browser in src/hooks.client.ts) and how-to.svelte; used by
@@ -144,12 +145,14 @@ src/lib/install/                   Install App: install.constants.ts, install.st
 src/lib/components/sheet/          the one sheet (slides up on a phone, a pop-up from tablet width up),
                                    here because the login page's how-to opens in it too
 src/lib/update/                    the update note: its rule, its test and the note, wired into the
-                                   signed-in app only
+                                   signed-in app only; in lib because the service worker reads its
+                                   one message (update.constants.ts) too
 ```
 
 - **Data always comes from the server.** The service worker never stores
-  or answers data. It answers this version's built files from the device
-  and gives a page request that fails the Needs Internet screen. Every
+  or answers data. It answers this version's built files and the named
+  static files (`KEPT_STATIC`) from the device, and gives a page request
+  that fails the Needs Internet screen. Every
   other request goes to the network untouched: remote functions, server
   routes, file addresses and anything that is not a plain read. That rule
   is the one tested function beside `index.ts`; change what a request gets
@@ -166,9 +169,10 @@ src/lib/update/                    the update note: its rule, its test and the n
   Cubed Dev" and "Trident Dev". No setting and no environment variable.
 - **Addresses and icon names are written once,** in
   `src/lib/install/install.constants.ts` (`MANIFEST_PATH`, `OFFLINE_PATH`,
-  the icon URLs, `LOGO`, `KEPT_STATIC`). Import them. The sign-in guard
-  (`src/lib/server/guard.ts`) opens the same two paths to a signed-out
-  browser, which asks for the manifest with no session.
+  `WORKER_PATH`, the icon URLs, `LOGO`, `KEPT_STATIC`, `BLACK`). Import
+  them. The sign-in guard (`src/lib/server/guard.ts`) opens those paths
+  and files, each by its one address, to a signed-out browser, which asks
+  for the manifest, the icons and the service worker with no session.
 - **The Needs Internet screen works alone.** The service worker answers
   with it at whatever address was asked for, so it is prerendered and
   starts no SvelteKit router, which would try to draw the asked-for route.

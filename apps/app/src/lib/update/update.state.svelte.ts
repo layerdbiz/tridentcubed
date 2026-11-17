@@ -21,7 +21,7 @@ export type UpdateOptionsType = {
 	reload: () => void;
 };
 
-export class Update {
+export class UpdateState {
 	#isAsked = $state(false);
 	#isTakingOver = false;
 	#options: UpdateOptionsType;
@@ -49,8 +49,13 @@ export class Update {
 	async #switch() {
 		if (this.#isTakingOver) return;
 		this.#isTakingOver = true;
-		await this.#options.takeOver();
-		this.#isTakingOver = false;
+		try {
+			await this.#options.takeOver();
+		} catch {
+			// The new version could not be asked. The reload still lands on it: a page always comes from the network.
+		} finally {
+			this.#isTakingOver = false;
+		}
 		// A change made while the new version took over is saved first; `follow` runs again once it is.
 		if (this.step === 'switching') this.#options.reload();
 	}

@@ -7,6 +7,12 @@ export const MANIFEST_PATH = '/manifest.webmanifest';
 /** The Needs Internet screen's address (routes/offline), kept on the device by the service worker. */
 export const OFFLINE_PATH = '/offline';
 
+/** The service worker's address, where SvelteKit builds src/service-worker to. */
+export const WORKER_PATH = '/service-worker.js';
+
+/** The black behind the logo: the icons' background and the manifest's two colors. */
+export const BLACK = '#000000';
+
 export const ICON_192 = '/install/icon-192.png';
 export const ICON_512 = '/install/icon-512.png';
 export const ICON_MASKABLE_192 = '/install/maskable-192.png';

@@ -1,11 +1,20 @@
-// What the service worker does with a request (#201): a built file of this version comes from the device, a page
+// What the service worker does with a request (#201): a kept file (a built file of this version, or one of the
+// named static files) comes from the device, a page
 // request goes to the network and gets the Needs Internet screen only when the network fails, and everything else
 // is left alone. Also what it stores when it installs, what it removes when a new version takes over, and the one
 // message that lets a waiting version take over an open app (#202).
 import { describe, expect, it } from 'vite-plus/test';
 import { KEPT_STATIC, LOGO, OFFLINE_PATH } from '#lib/install/install.constants.js';
 import { TAKE_OVER } from '#lib/update/update.constants.js';
-import { type AskedType, answer, isTakeOver, store, toKept, toOld, toStore } from './rule';
+import {
+	type AskedType,
+	answer,
+	fill,
+	isTakeOver,
+	toFiles,
+	toKept,
+	toOld
+} from './service-worker.utils';
 
 const ORIGIN = 'https://app.tridentcubed.com';
 const BUILT = '/_app/immutable/chunks/app.abc123.js';
@@ -48,7 +57,7 @@ function shelve(serve: (path: string) => Response) {
 	const kept: string[] = [];
 	return {
 		kept,
-		ask: async (path: string) => serve(path),
+		get: async (path: string) => serve(path),
 		put: async (path: string) => void kept.push(path)
 	};
 }
@@ -168,7 +177,7 @@ describe('what the service worker stores', () => {
 	it('is this version’s built files, the Needs Internet screen and the named static files only', () => {
 		const built = [{ path: BUILT.slice(1) }, { path: '_app/immutable/assets/app.def456.css' }];
 
-		expect(toStore(built)).toEqual({
+		expect(toFiles(built)).toEqual({
 			needed: [BUILT, '/_app/immutable/assets/app.def456.css', OFFLINE_PATH],
 			wanted: KEPT_STATIC
 		});
@@ -181,19 +190,19 @@ describe('what the service worker stores', () => {
 	it('installs when a named static file is missing, keeping the rest', async () => {
 		const shelf = shelve((path) => (path === KEPT_STATIC[0] ? MISSING : new Response(path)));
 
-		await store(shelf, toStore([{ path: BUILT.slice(1) }]));
+		await fill(shelf, toFiles([{ path: BUILT.slice(1) }]));
 
 		expect(shelf.kept.sort()).toEqual([BUILT, OFFLINE_PATH, ...KEPT_STATIC.slice(1)].sort());
 	});
 
 	it('never keeps the page a missing file’s address was sent on to', async () => {
-		// A missing icon is an app address to the server, so the sign-in guard sends it to the login page.
+		// A server may send an address it has no file for on to its login page.
 		const login = Object.defineProperty(new Response('<h1>Sign In</h1>'), 'redirected', {
 			value: true
 		});
 		const shelf = shelve((path) => (path === KEPT_STATIC[0] ? login : new Response(path)));
 
-		await store(shelf, toStore([]));
+		await fill(shelf, toFiles([]));
 
 		expect(shelf.kept.sort()).toEqual([OFFLINE_PATH, ...KEPT_STATIC.slice(1)].sort());
 	});
@@ -204,7 +213,7 @@ describe('what the service worker stores', () => {
 			return new Response(path);
 		});
 
-		await store(shelf, toStore([]));
+		await fill(shelf, toFiles([]));
 
 		expect(shelf.kept).not.toContain(KEPT_STATIC[0]);
 		expect(shelf.kept).toContain(OFFLINE_PATH);
@@ -215,8 +224,8 @@ describe('what the service worker stores', () => {
 		const noFile = shelve((path) => (path === BUILT ? MISSING : new Response(path)));
 		const noScreen = shelve((path) => (path === OFFLINE_PATH ? MISSING : new Response(path)));
 
-		await expect(store(noFile, toStore(built))).rejects.toThrow(BUILT);
-		await expect(store(noScreen, toStore(built))).rejects.toThrow(OFFLINE_PATH);
+		await expect(fill(noFile, toFiles(built))).rejects.toThrow(BUILT);
+		await expect(fill(noScreen, toFiles(built))).rejects.toThrow(OFFLINE_PATH);
 	});
 });
 

@@ -122,7 +122,7 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   committed. `vp check --fix` formats and applies safe lint fixes.
 - **One config file per app.** SvelteKit 3 reads only `vite.config.ts`; no
   `svelte.config.js` exists in this repository, and none is added. The four
-  apps get theirs from `createAppConfig({ root, prerender?, test? })` in
+  apps get theirs from `createAppConfig({ root, prerender?, paths?, test? })` in
   `@layerd/config-vite` (decided 2026-10-05 on #22, built on #101): the file
   is the import plus the app's overrides, and a new app, including one from
   `sv create`, replaces its generated `vite.config.ts` with that import.

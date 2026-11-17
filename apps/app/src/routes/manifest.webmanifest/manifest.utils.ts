@@ -2,6 +2,7 @@
 // built from the address it was asked on, so the copy at any address but the real one names itself the test copy,
 // with no setting to change at go-live (spec #199, "The test copy").
 import {
+	BLACK,
 	ICON_192,
 	ICON_512,
 	ICON_MASKABLE_192,
@@ -10,7 +11,6 @@ import {
 
 /** The one address of the real app (ADR 0007). Every other address is a test copy. */
 const REAL_HOST = 'app.tridentcubed.com';
-const BLACK = '#000000';
 
 export type ManifestIconType = {
 	src: string;

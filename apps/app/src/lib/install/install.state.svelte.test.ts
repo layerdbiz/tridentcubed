@@ -42,7 +42,7 @@ function createBrowser({ isStandalone = false } = {}) {
 		install() {
 			send('appinstalled', {});
 		},
-		/** The page moves into, or out of, the installed app's own window. */
+		/** The browser says the display is now standalone, or no longer is. */
 		turn(isNowStandalone: boolean) {
 			send('display', { matches: isNowStandalone });
 		}
@@ -75,12 +75,16 @@ describe('whether Install App shows', () => {
 		expect(browser.queries).toEqual(['(display-mode: standalone)']);
 	});
 
-	it('hides when the page moves into the installed app, and shows again when it moves back to a tab', () => {
+	it('hides when the page moves into the installed app', () => {
 		const { install, browser } = fresh();
 		browser.turn(true);
 		expect(install.isShown).toBe(false);
+	});
+
+	it('stays hidden when the installed app goes full screen, which the browser no longer calls standalone', () => {
+		const { install, browser } = fresh(createBrowser({ isStandalone: true }));
 		browser.turn(false);
-		expect(install.isShown).toBe(true);
+		expect(install.isShown).toBe(false);
 	});
 
 	it('hides right after an install, with no reload', () => {
@@ -151,13 +155,6 @@ describe('a tap on Install App', () => {
 		};
 		expect(await install.tap()).toBe('how-to');
 		expect(install.isShown).toBe(true);
-	});
-
-	it('knows a one-tap install is on offer', () => {
-		const { install, browser } = fresh();
-		expect(install.hasOffer).toBe(false);
-		browser.offer();
-		expect(install.hasOffer).toBe(true);
 	});
 });
 
