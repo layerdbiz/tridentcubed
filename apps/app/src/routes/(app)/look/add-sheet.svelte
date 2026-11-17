@@ -13,6 +13,7 @@
 	import PanelBody from './panel-body.svelte';
 	import RecordFields from './record-fields.svelte';
 	import type { PageType } from './records.data';
+	import { addSampleProjects, hasSamples } from './samples.projects';
 
 	let { look }: { look: LookState } = $props();
 
@@ -79,6 +80,29 @@
 		look.endAdd();
 	}
 
+	// Sample projects, one for every state (samples.projects.ts): made here, saved like any other. The sync loop
+	// sends about a second after the last change, so each step waits for the cloud to say saved.
+	async function settle() {
+		await new Promise((resolve) => setTimeout(resolve, 1500));
+		for (let tries = 0; tries < 150; tries += 1) {
+			if (look.sync.state === 'saved') return true;
+			if (look.sync.state === 'failed') return false;
+			await new Promise((resolve) => setTimeout(resolve, 200));
+		}
+		return false;
+	}
+
+	let isSampling = $state(false);
+	async function addSamples() {
+		look.endAdd();
+		if (isSampling) return;
+		isSampling = true;
+		const added = await addSampleProjects(look, settle);
+		isSampling = false;
+		if (look.dataset !== 'projects') look.pick('projects');
+		look.say(added ? `${added} sample projects added` : 'The sample projects could not be saved');
+	}
+
 	function add() {
 		if (kind === 'projects') return look.create(panel);
 		const page = kind;
@@ -116,6 +140,21 @@
 			>{DATASETS[id].one}
 		</button>
 	{/each}
+	<!-- One sample project for every state, until they are there (Justin, 2026-11-16). -->
+	{#if !hasSamples(look)}
+		<button
+			type="button"
+			role="menuitem"
+			class="mt-1 flex w-full items-center gap-3 rounded-2xl border-t border-slate-900/[0.06] px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-900/[0.04]"
+			disabled={isSampling}
+			onclick={addSamples}
+		>
+			<span
+				class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-500"
+				><span class="icon-[mdi--auto-fix] size-5"></span></span
+			>Sample projects
+		</button>
+	{/if}
 {/snippet}
 
 <svelte:window bind:innerWidth />
