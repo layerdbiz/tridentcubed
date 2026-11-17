@@ -9,6 +9,7 @@ export { default as HowTo } from "./install/how-to.svelte";
 export * from "./definitions/inputs.ts";
 export * from "./install/install.constants.ts";
 export * from "./install/install.state.svelte.ts";
+export { default as Note } from "./update/note.svelte";
 export * from "./start/organization.ts";
 export * from "./definitions/pages.ts";
 export * from "./definitions/panels.ts";
@@ -19,6 +20,9 @@ export * from "./rows/rows.state.svelte.ts";
 export * from "./rows/rows.utils.ts";
 export * from "./start/transport.ts";
 export * from "./definitions/types.ts";
+export * from "./update/update.constants.ts";
+export * from "./update/update.state.svelte.ts";
+export * from "./update/update.utils.ts";
 
 /* COMPONENTS */
 // sheet

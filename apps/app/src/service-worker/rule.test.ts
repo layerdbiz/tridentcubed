@@ -1,9 +1,11 @@
 // What the service worker does with a request (#201): a built file of this version comes from the device, a page
 // request goes to the network and gets the Needs Internet screen only when the network fails, and everything else
-// is left alone. Also what it stores when it installs and what it removes when a new version takes over.
+// is left alone. Also what it stores when it installs, what it removes when a new version takes over, and the one
+// message that lets a waiting version take over an open app (#202).
 import { describe, expect, it } from 'vite-plus/test';
 import { KEPT_STATIC, LOGO, OFFLINE_PATH } from '#lib/install/install.constants.js';
-import { type AskedType, answer, store, toKept, toOld, toStore } from './rule';
+import { TAKE_OVER } from '#lib/update/update.constants.js';
+import { type AskedType, answer, isTakeOver, store, toKept, toOld, toStore } from './rule';
 
 const ORIGIN = 'https://app.tridentcubed.com';
 const BUILT = '/_app/immutable/chunks/app.abc123.js';
@@ -225,4 +227,17 @@ describe('old versions’ stored files', () => {
 		expect(toOld(names, '3')).toEqual(['trident-files-1', 'trident-files-2']);
 		expect(toOld(['trident-files-3'], '3')).toEqual([]);
 	});
+});
+
+describe('a waiting version', () => {
+	it('takes over an open app on the update note’s message', () => {
+		expect(isTakeOver(TAKE_OVER)).toBe(true);
+	});
+
+	it.each([undefined, null, '', 'skip-waiting', { type: TAKE_OVER }, [TAKE_OVER], 1, true])(
+		'keeps waiting on any other message: %j',
+		(message) => {
+			expect(isTakeOver(message)).toBe(false);
+		}
+	);
 });

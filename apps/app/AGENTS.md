@@ -177,6 +177,11 @@ src/lib/update/                    the update note: its rule, its test and the n
   the app is closed; it does not call `skipWaiting()` on install. A tap on
   the update note asks the waiting worker to take over and reloads, and the
   tap waits while the Save state is Saving or Not saved.
+  SvelteKit's own version check (`updated` of `$app/state`) is the only
+  thing that says a new version exists; the note then asks the browser to
+  fetch the new service worker, since an open app loads no page and the
+  browser looks for one only then. When to switch is the update rule
+  (`src/lib/update/update.state.svelte.ts`); change it there, test first.
 - **Ask the browser what it can do.** Install App knows three things, each
   asked of the browser: whether the app runs installed, whether a one-tap
   install was offered, whether an install just happened. Nothing reads the
