@@ -32,23 +32,16 @@ const CUSTOMERS = [
 		'444021cf-3044-551d-b7c8-b7bef53ffa5c',
 		'US Ocean',
 		'us-ocean.png',
-		'Ocean carrier',
+		'Carrier',
 		'Houston, TX',
 		'USO'
 	],
-	[
-		'981530d8-6aac-55cf-8ee6-81a86079ce0d',
-		'KOGA',
-		'koga.png',
-		'Ocean carrier',
-		'Houston, TX',
-		'KOG'
-	],
+	['981530d8-6aac-55cf-8ee6-81a86079ce0d', 'KOGA', 'koga.png', 'Carrier', 'Houston, TX', 'KOG'],
 	[
 		'f91a4408-4d0f-57cb-922d-63b22329d706',
 		'dship Carriers',
 		'dship-carriers.jpg',
-		'Ocean carrier',
+		'Carrier',
 		'Houston, TX',
 		'DSC'
 	],
@@ -56,7 +49,7 @@ const CUSTOMERS = [
 		'9a24e777-d077-5cad-8874-d6b89ed95c89',
 		'Oslo Caribbean Carrier',
 		'oslo-caribbean-carrier.png',
-		'Ocean carrier',
+		'Carrier',
 		'Houston, TX',
 		'OCC'
 	],
@@ -64,7 +57,7 @@ const CUSTOMERS = [
 		'3c299506-9878-5019-9c06-4abb500502d1',
 		'UTC Overseas',
 		'utc-overseas.jpg',
-		'Freight forwarder',
+		'Freight Forwarder',
 		'Houston, TX',
 		'UTC'
 	],
@@ -72,7 +65,7 @@ const CUSTOMERS = [
 		'e6597928-9995-5789-a770-d7679fa3fee0',
 		'CEVA Logistics',
 		'ceva-logistics.jpg',
-		'Freight forwarder',
+		'Freight Forwarder',
 		'Houston, TX',
 		'CVA'
 	],
