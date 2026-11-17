@@ -6,6 +6,8 @@
 // someone sign in and out. Better Auth's organization routes are closed to everyone: memberships change only through
 // the sign-in rule and the app's one permission check.
 
+import { MANIFEST_PATH, OFFLINE_PATH } from '#lib/install/install.constants.js';
+
 export type AccessType = 'signed-out' | 'guest' | 'staff';
 
 export type GuardType =
@@ -18,7 +20,7 @@ export type GuardType =
 const OPEN = ['/login', '/api/auth/', '/_app/', '/local-files/'];
 // What a browser asks for to install the app, with no session (#199): the manifest, and the Needs Internet screen the
 // service worker keeps on the device. A signed-out visitor can install too. Each is one address, nothing under it.
-const INSTALL = ['/manifest.webmanifest', '/offline'];
+const INSTALL = [MANIFEST_PATH, OFFLINE_PATH];
 const SERVED = ['/api/', '/files/'];
 const CLOSED = '/api/auth/organization/';
 const WAITING = '/waiting';
