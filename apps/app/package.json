@@ -26,7 +26,8 @@
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",
 		"db:sql": "vp test run src/lib/server/db/schema.test.ts -u",
-		"db:seed-sql": "node scripts/seed-sql.ts"
+		"db:seed-sql": "node scripts/seed-sql.ts",
+		"icons": "node scripts/icons.ts"
 	},
 	"devDependencies": {
 		"@csstools/postcss-light-dark-function": "^3.0.0",
