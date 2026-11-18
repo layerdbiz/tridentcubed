@@ -8,9 +8,10 @@
 // check, as a remote function makes its own).
 //
 // The report's photos and logos are the app's file addresses (/files/<id>), which open only for a signed-in member.
-// The export browser opens them as the member who asked: it is handed that request's Cookie header (the session) and
-// sends it only on requests to this site's own origin, never to another host. /files/<id> then checks the member
-// and sends the browser on to a short-lived signed link, as it does in the app.
+// The export browser opens them as the member who asked: it is handed that request's session (its cookies and the
+// headers below), keeps the cookies for this site alone and sends the headers only on requests to this site's own
+// origin, never to another host (pdf-browser.ts). /files/<id> then checks the member and sends the browser on to a
+// short-lived signed link, as it does in the app.
 //
 // Limits, until rendering the report on the server from the database (#145) replaces this:
 // - It prints whatever markup a signed-in member's browser sends; nothing checks the pages are the report's. A member
