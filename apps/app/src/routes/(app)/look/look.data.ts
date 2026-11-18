@@ -215,6 +215,12 @@ export function presenceOf(name: string): PresenceType {
 	return minutes < 5 ? 'online' : minutes < 60 ? 'idle' : 'offline';
 }
 
+// The menu's Online panel (#212): the Team records with a green dot, in the team's order, the signed-in person first.
+export function onlineOf(members: TeamMemberType[]) {
+	const online = members.filter((member) => presenceOf(member.name) === 'online');
+	return online.toSorted((a, b) => Number(b.name === selfName) - Number(a.name === selfName));
+}
+
 // A team member renamed or added in the prototype keeps their photo under the new name; a photo uploaded on their
 // page (run 15) takes over from the one they came with.
 export function registerPerson(member: TeamMemberType) {

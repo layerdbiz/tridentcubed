@@ -9,13 +9,16 @@
 	// fades out at its bottom before the profile; the section names and TRIDENT CUBED are bold. Run 13: the pages not
 	// on show have black icons and lighter words. Run 15 (2026-11-10): the logo and name are the organization's own,
 	// and the cog and Admin both open Settings. Run 18 (Justin, 2026-11-10): Admin is out of the menu for now; the
-	// signed-in person's row and the cog both open Settings, where the organization is edited.
+	// signed-in person's row and the cog both open Settings, where the organization is edited. #212 (Justin,
+	// 2026-11-18): Recent is "Recents", a panel that slides open and shut (menu-panel.svelte), with Online under it.
 	import type { Snippet } from 'svelte';
 	import AccountMenu from './account-menu.svelte';
 	import Avatar from './avatar.svelte';
 	import { FADE, fadeTop } from './fade';
 	import { DATASETS, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import MenuPanel from './menu-panel.svelte';
+	import OnlineList from './online-list.svelte';
 	import RecentList from './recent-list.svelte';
 	import { ROLE_LABELS } from './team.data';
 
@@ -95,20 +98,38 @@
 		{/each}
 	</nav>
 
-	<p class="mt-6 px-7 text-[11px] font-bold tracking-wide text-slate-500 uppercase {WORDS}">
-		Recent
-	</p>
 	<div
-		class="mt-1 w-full flex-1 space-y-0.5 overflow-y-auto px-3 pb-6 {FADE}"
+		class="mt-4 w-full flex-1 overflow-y-auto px-3 pb-6 {FADE}"
 		{@attach fadeTop}
 	>
-		<RecentList
-			{look}
-			size={32}
-			width={56}
+		<MenuPanel
+			title="Recents"
+			isOpen={look.menuPanels.recents}
+			ontoggle={() => look.toggleMenuPanel('recents')}
 			words={WORDS}
-			onpick={onnavigate}
-		/>
+		>
+			<RecentList
+				{look}
+				size={32}
+				width={56}
+				words={WORDS}
+				onpick={onnavigate}
+			/>
+		</MenuPanel>
+		<MenuPanel
+			title="Online"
+			isOpen={look.menuPanels.online}
+			ontoggle={() => look.toggleMenuPanel('online')}
+			words={WORDS}
+		>
+			<OnlineList
+				{look}
+				size={32}
+				width={56}
+				words={WORDS}
+				onpick={onnavigate}
+			/>
+		</MenuPanel>
 	</div>
 
 	<div class="flex w-full items-center gap-1 px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
