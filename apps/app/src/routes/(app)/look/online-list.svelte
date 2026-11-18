@@ -1,7 +1,8 @@
 <script lang="ts">
-	// The menu's Online panel (#212; Justin, 2026-11-18): the team members in the app right now, the signed-in person
-	// first. It reads the same stamp as the green dot on a face (`onlineOf`, look.data.ts), which the server sets when
-	// someone uses the app (#185), so nobody here is made up. A tap opens their Team record.
+	// The menu's Online panel (#212, #226; Justin, 2026-11-18): the team members in the app, whoever came online last
+	// at the top, then the ones who have left with their orange dot, until it ends. It reads the same stamps as the dot
+	// on a face (`onlineOf`, look.data.ts), which the server sets when someone uses the app (#185), so nobody here is
+	// made up. A tap opens their Team record.
 	import Avatar from './avatar.svelte';
 	import { onlineOf } from './look.data';
 	import type { LookState } from './look.state.svelte';

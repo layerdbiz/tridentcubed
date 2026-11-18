@@ -200,6 +200,7 @@ CREATE TABLE "team" (
 	"rank" integer DEFAULT 3 NOT NULL,
 	"user_id" uuid,
 	"last_seen" timestamp with time zone,
+	"online_since" timestamp with time zone,
 	CONSTRAINT "team_role_check" CHECK (role in ('admin', 'manager', 'team'))
 );
 

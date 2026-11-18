@@ -1,7 +1,7 @@
 // Team records (spec #179 "Tables", #185; the glossary's Team record): one person on the organization's Team page.
 // A staff User is tied to one at sign-in (`user_id`, set by the server only), and a tied record's role is their
 // membership's role. `last_seen` is stamped by the server when its User uses the app, at most once a minute; the
-// online dots read it. Names are unique among the records outside the Trash, whatever their capitals. Row Level
+// online dots read it, and `online_since` is when that visit began, which orders the menu's Online panel (#226). Names are unique among the records outside the Trash, whatever their capitals. Row Level
 // Security keeps the table to the acting organization.
 import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { user } from './auth.schema';
@@ -33,7 +33,9 @@ export const team = pgTable(
 		/** The User this record is, once they have signed in. Set by the server only. */
 		userId: uuid('user_id').references(() => user.id, { onDelete: 'set null' }),
 		/** When its User last used the app. Set by the server only. */
-		lastSeen: timestamp('last_seen', { withTimezone: true })
+		lastSeen: timestamp('last_seen', { withTimezone: true }),
+		/** When its User came online: the start of the visit `lastSeen` is part of (#226). Set by the server only. */
+		onlineSince: timestamp('online_since', { withTimezone: true })
 	},
 	(table) => [
 		uniqueIndex('team_name_idx').on(table.organizationId, lowerName()).where(NOT_IN_TRASH),

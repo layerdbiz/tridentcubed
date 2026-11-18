@@ -50,6 +50,10 @@ function memberOf(look: LookState, name: string) {
 	return look.members.find((member) => member.name === name);
 }
 
+function toTime(stamp?: string) {
+	return stamp ? new Date(stamp).getTime() : undefined;
+}
+
 function addMember(look: LookState, name: string, extra: Partial<TeamMemberType> = {}) {
 	const draft = { ...(draftOf('team') as TeamMemberType), name, title: 'Surveyor', ...extra };
 	expect(look.add('team', draft)).toBe(true);
@@ -142,6 +146,24 @@ describe('Team records', () => {
 		expect(first).toBeTruthy();
 		expect(second).toBe(first);
 		expect(memberOf((await open(other)).look, 'Duncan Cooke')?.seen).toBeFalsy();
+	});
+
+	it('stamps when someone came online, keeps it while they stay, and stamps it anew after five minutes away', async () => {
+		const { actor } = await test.signIn('tom@tridentcubed.com');
+		const other = (await test.signIn('mia@tridentcubed.com')).actor;
+		const start = Date.parse('2026-11-18T09:00:00Z');
+		const minutes = (count: number) => start + count * 60_000;
+		const tomAt = async (now: number) => {
+			await stampSeen(test.claims, actor, now);
+			const tom = memberOf((await open(other)).look, 'Tom');
+			return { seen: toTime(tom?.seen), since: toTime(tom?.since) };
+		};
+
+		expect(await tomAt(minutes(0))).toEqual({ seen: minutes(0), since: minutes(0) });
+		expect(await tomAt(minutes(2))).toEqual({ seen: minutes(2), since: minutes(0) });
+		expect(await tomAt(minutes(6))).toEqual({ seen: minutes(6), since: minutes(0) });
+		expect(await tomAt(minutes(12))).toEqual({ seen: minutes(12), since: minutes(12) });
+		expect(memberOf((await open(other)).look, 'Duncan Cooke')?.since).toBeFalsy();
 	});
 });
 

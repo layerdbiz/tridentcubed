@@ -1,4 +1,5 @@
-// The menu's Online panel (#212): who is in the app right now, from when the server last saw each Team record.
+// The menu's Online panel (#212, #226): who is in the app, and who just left, from the server's stamps on each Team
+// record.
 // The project number's typed parts and the customer's own number for the job (#217).
 import { describe, expect, it } from 'vite-plus/test';
 import {
@@ -6,6 +7,7 @@ import {
 	nextJobOf,
 	numberOf,
 	onlineOf,
+	presenceOf,
 	resetPeople,
 	toJobCode,
 	toReference,
@@ -13,7 +15,8 @@ import {
 } from './look.data';
 import type { TeamMemberType } from './team.data';
 
-function member(name: string, minutesAgo?: number): TeamMemberType {
+// A Team record last seen `seenAgo` minutes ago, on a visit that began `sinceAgo` minutes ago.
+function member(name: string, seenAgo?: number, sinceAgo?: number): TeamMemberType {
 	return {
 		rank: 0,
 		name,
@@ -24,9 +27,15 @@ function member(name: string, minutesAgo?: number): TeamMemberType {
 		email: '',
 		location: '',
 		href: '',
-		seen:
-			minutesAgo === undefined ? undefined : new Date(Date.now() - minutesAgo * 60000).toISOString()
+		seen: toStamp(seenAgo),
+		since: toStamp(sinceAgo)
 	};
+}
+
+function toStamp(minutesAgo?: number) {
+	return minutesAgo === undefined
+		? undefined
+		: new Date(Date.now() - minutesAgo * 60000).toISOString();
 }
 
 function namesOf(members: TeamMemberType[]) {
@@ -34,22 +43,40 @@ function namesOf(members: TeamMemberType[]) {
 }
 
 describe('who is online', () => {
-	it('lists the Team records seen in the last five minutes, in the order of the team', () => {
-		const team = [member('Ana', 1), member('Ben', 10), member('Cy'), member('Dee', 4)];
+	it('lists the people in the app with whoever came online last at the top', () => {
+		const team = [member('Ana', 1, 30), member('Ben', 2, 3), member('Cy'), member('Dee', 4, 10)];
 		resetPeople(team);
-		expect(namesOf(onlineOf(team))).toEqual(['Ana', 'Dee']);
+		expect(namesOf(onlineOf(team))).toEqual(['Ben', 'Dee', 'Ana']);
 	});
 
-	it('puts the signed-in person first: they are in the app now, whatever their stamp says', () => {
-		const team = [member('Ana', 1), member('Ben', 90)];
+	it('moves someone no longer in the app under everyone who is, in the same order among themselves', () => {
+		const team = [
+			member('Ana', 1, 50),
+			member('Ben', 30, 40),
+			member('Cy', 10, 20),
+			member('Dee', 2, 5)
+		];
+		resetPeople(team);
+		expect(namesOf(onlineOf(team))).toEqual(['Dee', 'Ana', 'Cy', 'Ben']);
+	});
+
+	it('takes someone off the list when their idle dot ends, an hour after they were last in the app', () => {
+		const team = [member('Ana', 59, 80), member('Ben', 61, 90), member('Cy')];
+		resetPeople(team);
+		expect(namesOf(onlineOf(team))).toEqual(['Ana']);
+		expect(team.map((one) => presenceOf(one.name))).toEqual(['idle', 'offline', 'offline']);
+	});
+
+	it('orders the signed-in person like everyone else: they are in the app now, whatever their stamp says', () => {
+		const team = [member('Ben', 90, 20), member('Ana', 1, 5), member('Cy', 10, 2)];
 		resetPeople(team, 'Ben');
-		expect(namesOf(onlineOf(team))).toEqual(['Ben', 'Ana']);
+		expect(namesOf(onlineOf(team))).toEqual(['Ana', 'Ben', 'Cy']);
 	});
 
-	it('is empty when nobody has been in the app', () => {
-		const team = [member('Ana'), member('Ben', 61)];
+	it('orders a record the server has not stamped as come online by when it was last seen', () => {
+		const team = [member('Ana', 3), member('Ben', 1, 4), member('Cy', 2)];
 		resetPeople(team);
-		expect(onlineOf(team)).toEqual([]);
+		expect(namesOf(onlineOf(team))).toEqual(['Cy', 'Ana', 'Ben']);
 	});
 });
 

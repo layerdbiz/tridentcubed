@@ -179,7 +179,7 @@ export const TABLES = {
 	team: {
 		scope: 'organization',
 		isNamed: true,
-		reads: ['userId', 'lastSeen'],
+		reads: ['userId', 'lastSeen', 'onlineSince'],
 		columns: {
 			name: NAME,
 			title: TEXT,

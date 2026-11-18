@@ -2,6 +2,7 @@
 // starting data (the organization Trident Cubed here; its customers come from the database since #183, its team
 // since #185), and the helpers every screen reads. Carried over from the look prototype (#161); since V1 (#180) no
 // sample projects, transports or facilities ship (Justin's rule of 2026-11-10: every value on screen is real).
+import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
 import { seen, touch } from './registry.svelte';
 // Run 16 (Justin, 2026-11-10: "no dummy data left ... the next step is connecting a real database"): nothing shown
@@ -224,13 +225,26 @@ export function presenceOf(name: string): PresenceType {
 	const last = personOf(name).seen;
 	if (!last) return 'offline';
 	const minutes = (Date.now() - new Date(last).getTime()) / 60000;
-	return minutes < 5 ? 'online' : minutes < 60 ? 'idle' : 'offline';
+	return minutes < ONLINE_MINUTES ? 'online' : minutes < IDLE_MINUTES ? 'idle' : 'offline';
 }
 
-// The menu's Online panel (#212): the Team records with a green dot, in the team's order, the signed-in person first.
+// The menu's Online panel (#212; #226, Justin, 2026-11-18): the Team records with a green dot, whoever came online
+// last at the top; under them the ones who have left, their dot orange, in that same order. Someone is off the list
+// when their orange dot ends. The signed-in person is ordered like everyone else.
 export function onlineOf(members: TeamMemberType[]) {
-	const online = members.filter((member) => presenceOf(member.name) === 'online');
-	return online.toSorted((a, b) => Number(b.name === selfName) - Number(a.name === selfName));
+	return [...arrivalsOf(members, 'online'), ...arrivalsOf(members, 'idle')];
+}
+
+function arrivalsOf(members: TeamMemberType[], presence: PresenceType) {
+	return members
+		.filter((member) => presenceOf(member.name) === presence)
+		.toSorted((a, b) => toArrival(b) - toArrival(a));
+}
+
+// When someone came online, as the server stamped it; a record it has not stamped that way says when it was last
+// seen.
+function toArrival(member: TeamMemberType) {
+	return new Date(member.since ?? member.seen ?? 0).getTime();
 }
 
 // A team member renamed or added in the prototype keeps their photo under the new name; a photo uploaded on their
