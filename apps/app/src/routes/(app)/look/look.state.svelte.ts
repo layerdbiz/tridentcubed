@@ -155,7 +155,7 @@ export class LookState {
 	tab = $state<TabType>('edit');
 	panelId = $state('');
 	// The page of the open project's Preview a report link asked for (the QR code on a report page, #216), from 1;
-	// 0 for none. The Preview opens there while no panel is open; opening a project by hand forgets it.
+	// 0 for none. The Preview opens there; opening a panel, or a project by hand, forgets it.
 	pageAsked = $state(0);
 	// The project whose status is being changed in the Change Status sheet, by id.
 	statusFor = $state<string>();

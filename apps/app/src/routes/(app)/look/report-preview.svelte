@@ -224,7 +224,8 @@
 		return site.toLowerCase().startsWith('http') ? site : `https://${site}`;
 	});
 	function linkOf(page: number) {
-		return look.projectId ? toReportLink(document.location.origin, look.projectId, page) : siteLink;
+		const id = look.project?.id;
+		return id ? toReportLink(document.location.origin, id, page) : siteLink;
 	}
 	const documentNumber = $derived(documentIdOf(look.project, look.projects, company));
 
@@ -483,9 +484,15 @@
 		wording: 'disclaimer'
 	};
 	const target = $derived(KEY_OF[highlight] ?? `photos-${highlight}`);
-	// The page to open at: the open panel's; with none open, the one a report link asked for (#216).
-	const found = $derived(pages.findIndex((item) => item.key === target));
-	const targetIndex = $derived(targetOf(found, look.pageAsked, pages.length));
+	// The page to open at: the open panel's; with none open, the one a report link asked for (#216), which only
+	// a project's own Preview follows (Settings shows a report too).
+	const panelIndex = $derived(pages.findIndex((item) => item.key === target));
+	const pageAsked = $derived(panelIndex < 0 && look.screen === 'workspace' ? look.pageAsked : 0);
+	const targetIndex = $derived(targetOf(panelIndex, pageAsked, pages.length));
+	// Opening a panel follows the panel from then on: the page a link asked for is forgotten.
+	$effect(() => {
+		if (panelIndex >= 0 && look.screen === 'workspace') look.pageAsked = 0;
+	});
 
 	// Follow the open panel: glide to the page it feeds. The first move is instant and fits the page across.
 	// When the header over the canvas changes height (it is measured after the first paint), place it again.
@@ -500,7 +507,7 @@
 			if (isPlaced && inset === placedTop) return viewport.focus(rect);
 			placedTop = inset;
 			// A page a report link asked for opens across the view, whichever way the pages are laid out.
-			if (layout === 'column' || (found < 0 && look.pageAsked)) viewport.fitWidth(rect, false);
+			if (layout === 'column' || pageAsked) viewport.fitWidth(rect, false);
 			else viewport.fitAll(false);
 			isPlaced = true;
 		});
@@ -769,14 +776,15 @@
 {/snippet}
 
 <!-- The QR code alone: no corners, no logo (run 11). It scans (run 35) and, in the PDF, is a link to click: both
-     open this project's Preview at the page the code is on (#216). In the app it is not a link to follow: the
-     Preview is already on screen. -->
+     open this project's Preview at the page the code is on (#216). In the app it is not a link to follow or to
+     tab to: the Preview is already on screen. -->
 {#snippet code(page: number)}
 	{@const link = linkOf(page)}
 	<a
 		href={link}
 		class="block shrink-0"
 		draggable="false"
+		tabindex="-1"
 		onclick={(event) => event.preventDefault()}
 	>
 		<Qr

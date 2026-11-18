@@ -33,6 +33,9 @@ src/routes/(app)/              the signed-in app, drawn on the device (ssr off i
 src/routes/api/                server routes the app calls: export/pdf, places
 src/routes/files/[id]/         the app's address of a file: checks the member, sends on to a signed link
 src/routes/local-files/        the local folder store's signed addresses (no Supabase settings only)
+src/routes/report/             a report's link, /report/<project>/<page>: what a report page's QR code
+                               holds; sends the browser on to that project's Preview (behind sign-in)
+src/lib/report/                the report link: report.utils.ts builds it and the app address it opens
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
 src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <route>.<role>.ts beside it

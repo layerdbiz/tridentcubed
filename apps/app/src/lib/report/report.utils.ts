@@ -18,7 +18,7 @@ export function toReportLink(origin: string, project: string, page: number) {
 /** The app address a report link opens: the project's Preview, at the page asked for when it names one. */
 export function toReportAddress(project: string, page?: string) {
 	const search = new URLSearchParams({ screen: 'workspace', tab: 'preview', project });
-	const number = toPageNumber(page);
-	if (number) search.set('page', String(number));
+	const pageNumber = toPageNumber(page);
+	if (pageNumber) search.set('page', String(pageNumber));
 	return `/?${search}`;
 }

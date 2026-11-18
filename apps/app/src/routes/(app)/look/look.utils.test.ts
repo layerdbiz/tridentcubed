@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
+import { toReportAddress } from '#lib/report/report.utils.js';
 import { draftPanel } from './look.data';
 import { LookState } from './look.state.svelte';
 import { openAddress, placeOf, toAddress } from './look.utils';
@@ -71,10 +72,8 @@ describe('the address', () => {
 		const next = new LookState();
 		next.projects = look.projects;
 		next.workspaces = look.workspaces;
-		openAddress(
-			next,
-			new URLSearchParams(`screen=workspace&tab=preview&project=${look.projectId}&page=5`)
-		);
+		// The address the report link's route sends the browser on to.
+		openAddress(next, new URL(toReportAddress(look.projectId, '5'), HOME).searchParams);
 		expect(next.screen).toBe('workspace');
 		expect(next.tab).toBe('preview');
 		expect(next.pageAsked).toBe(5);

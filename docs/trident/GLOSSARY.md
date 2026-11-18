@@ -263,6 +263,10 @@ _Avoid_: page (bare, where the UI's Page could be meant), sheet
 The last report page: the standard disclaimer and the team lead's sign-off, like an email signature. It prints under the title Disclaimer.
 _Avoid_: disclaimer page, sign-off page
 
+**Report link**:
+The app's short address of one report page, `/report/<project>/<page>`. Every report page's QR code holds it, and in the PDF the code is a link to it. It opens that project's Preview at that page, for a signed-in User of the organization only.
+_Avoid_: QR link, share link
+
 **Page variant**:
 How a report page renders: full, toc, list, template, team, table or photo.
 
