@@ -107,14 +107,11 @@ export function metricsOf(panel: PanelType): MetricsType {
 			0
 		);
 	}
+	// A panel switched off is not planned: it reads like any other panel, with nothing of its total done, 0% (#225).
+	if (!panel.isEnabled) return { done: 0, total, percent: 0, status: 'Not planned' };
 	const percent = total ? Math.round((done / total) * 100) : 0;
-	const status: PanelStatusType = !panel.isEnabled
-		? 'Off'
-		: percent >= 100
-			? 'Complete'
-			: percent === 0
-				? 'To do'
-				: 'In progress';
+	const status: PanelStatusType =
+		percent >= 100 ? 'Complete' : percent === 0 ? 'To do' : 'In progress';
 	return { done, total, percent, status };
 }
 
@@ -138,7 +135,7 @@ export const FROZEN: StatusType[] = ['Sent', 'Complete', 'Archived'];
 export function toneOf(status: PanelStatusType) {
 	if (status === 'Complete')
 		return { bar: 'bg-success', text: 'text-success', ring: 'stroke-success' };
-	if (status === 'Off')
+	if (status === 'Not planned')
 		return { bar: 'bg-slate-300', text: 'text-slate-400', ring: 'stroke-slate-300' };
 	return { bar: 'bg-primary', text: 'text-primary', ring: 'stroke-primary' };
 }

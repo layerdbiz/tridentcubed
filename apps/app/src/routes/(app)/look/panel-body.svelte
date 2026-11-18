@@ -27,8 +27,8 @@
 	// Personnel adds a company's section: its name, then as many people from it as needed, each a name and a title.
 	// #217 (Justin, 2026-11-18): the Project section ends with the two parts of the project number a User may type,
 	// side by side: Project Creation Date (today on a new project) and Job Sequence Number (the server's next for
-	// that customer and day, until one is typed), with the number they make under them. The Customer section takes
-	// the customer's own number for the job, the Customer Reference Number.
+	// that customer and day, until one is typed); the number they make is not shown here (#225). The Customer section takes
+	// the customer's own number for the job, the Customer Reference Number, labelled Reference Number (#225).
 	// #215 (Justin, 2026-11-18): a photo panel opens on its own title, filled in and editable, so Operations or an
 	// added panel can be called what the job calls it; the report and its contents print that title. Its groups
 	// (the Operations panel's stages) each have a switch that leaves them out of the report.
@@ -53,7 +53,6 @@
 		panelNameOf,
 		PROJECT_TYPES,
 		todayIso,
-		toJobCode,
 		type AttachmentType,
 		type FacilityKindType,
 		type FieldType,
@@ -182,16 +181,12 @@
 		customerName ? (customerOf(look, customerName).contacts ?? []).filter((item) => item.name) : []
 	);
 
-	// The project number as the Project panel's two inputs make it (#217). A project not made yet has no number of
-	// its own, so it is worked out here the way the server will: the next J count of that customer and day.
+	// The two inputs of the project number (#217). A project not made yet has no J count of its own, so the one it
+	// will get is worked out here the way the server will: the next of that customer and day. The number itself is
+	// not shown in the panel (Justin, 2026-11-18, #225); it prints in the report's footer.
 	const day = $derived(panel.day || (isDraft ? todayIso() : createdDayOf(look.project)));
 	const nextJob = $derived(
 		nextJobOf(look.projects, customerName, day, isDraft ? undefined : look.projectId)
-	);
-	const projectNumber = $derived(
-		customerName
-			? `${customerOf(look, customerName).code}-${day}-${toJobCode(panel.job ?? nextJob)}`
-			: ''
 	);
 
 	// A date field that is cleared keeps the date it had: a project always has a Project Creation Date.
@@ -644,18 +639,6 @@
 						/>
 					</label>
 				</div>
-				<p class="flex items-center gap-1.5 text-xs text-slate-500">
-					<span class="icon-[mdi--barcode] size-4 shrink-0 text-slate-400"></span>
-					{#if projectNumber}
-						<span
-							>File number <span class="font-semibold text-slate-700 tabular-nums"
-								>{projectNumber}</span
-							></span
-						>
-					{:else}
-						Pick a customer to see the file number.
-					{/if}
-				</p>
 			</Group>
 			<Group
 				title="Customer"
@@ -697,7 +680,7 @@
 				/>
 				<!-- The customer's own number for the job (#217): optional, so it shows no "not filled in" dot. -->
 				<label class="block">
-					<span class={labelClass}>Customer Reference Number</span>
+					<span class={labelClass}>Reference Number</span>
 					<input
 						class={inputClass}
 						bind:value={panel.customerReference}

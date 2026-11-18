@@ -141,7 +141,8 @@ export type PanelType = {
 	items: ItemType[];
 };
 
-export type PanelStatusType = 'To do' | 'In progress' | 'Complete' | 'Off';
+// Not planned is a panel switched off: it is left out of the report (Justin's word for it, 2026-11-18, #225).
+export type PanelStatusType = 'To do' | 'In progress' | 'Complete' | 'Not planned';
 
 // Full class strings so Tailwind's scanner finds every icon and colour.
 export const STATUS: Record<

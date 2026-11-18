@@ -46,14 +46,17 @@ export function photoPagesOf(
 	return pages;
 }
 
-// The flowing section a panel prints as: the Time Log's (#223); none for a panel that prints pages of its own (a
-// photo panel, and Transport Mode's one page). It is found by what the panel is: a panel's id is the database's
-// (#196), and looking the section up by that id left the Time Log out of every report.
+// The flowing section a panel prints as: the Time Log's (#223) and Transport Mode's (#225), each keyed by its
+// panel's kind; none for a panel that prints pages of its own (a photo panel). It is found by what the panel is: a
+// panel's id is the database's (#196), and looking the section up by that id left the Time Log out of every report
+// and put Transport Mode back on its plain one page, without the transport's photo.
+const FLOWING = ['transport', 'timelog'];
+
 export function flowOf<FlowType extends { key: string }>(
 	panel: { kind: string },
 	flows: FlowType[]
 ) {
-	return panel.kind === 'timelog' ? flows.find((flow) => flow.key === 'timelog') : undefined;
+	return FLOWING.includes(panel.kind) ? flows.find((flow) => flow.key === panel.kind) : undefined;
 }
 
 // The page the preview opens at, by index: the open panel's page (`found`, -1 with none open); else the page a
