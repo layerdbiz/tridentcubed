@@ -40,10 +40,13 @@ export type ProjectType = {
 	before?: StatusType;
 	team: string[];
 	progress: number;
-	// The day it was made on the device that made it, which its number shows (#186), and which of its customer's jobs
-	// that day it is: the J count the server gives it once (absent until the server has answered).
+	// Its Project Creation Date, which its number shows (#186): the day it was made on the device that made it, until
+	// someone types another (#217). And its Job Sequence Number, which of its customer's jobs that day it is: the J
+	// count the server gives it (absent until the server has answered), or the one someone typed.
 	day?: string;
 	job?: number;
+	// The customer's own number for the job (#217), printed after the customer's name: "SO025484".
+	customerReference?: string;
 	// The User who made it (the server sets it): a Manager or Team user may delete their own Draft.
 	createdBy?: string;
 };
@@ -120,6 +123,11 @@ export type PanelType = {
 	assigned: string[];
 	// The Project panel: which of the customer's contacts the report is for (its id); none picks the first.
 	contact?: string;
+	// The Project panel (#217): the project's Project Creation Date (YYYY-MM-DD), its Job Sequence Number (none
+	// asks the server for the next) and the customer's own number for the job.
+	day?: string;
+	job?: number;
+	customerReference?: string;
 	// The Project panel: people on the job who are not on the team.
 	personnel?: PersonnelType[];
 	// The Items panel: photos of the item list, or the spreadsheet itself.
@@ -368,17 +376,51 @@ export function agoOf(iso: string) {
 	return `${Math.floor(days / 365)} y ago`;
 }
 
-// The project number (the glossary's): the customer's short code, the day the project was made, and J with which
-// of that customer's jobs that day it is. CVA-2026-05-12-J01. Nothing is stored: it follows the customer's code.
-// Since #186 the day and J count are the project's own, the J count given once by the server, so deleting another
-// project never changes a number. Until the server has answered for a new project, it is counted here.
+/** A project's Project Creation Date (YYYY-MM-DD): the one saved with it, else the day it was made. */
+export function createdDayOf(project: Pick<ProjectType, 'day' | 'created'>) {
+	return project.day || project.created.slice(0, 10);
+}
+
+/** Today on this device, as a date field holds it: 2026-11-18. */
+export function todayIso() {
+	return nowIso().slice(0, 10);
+}
+
+/** The J count as the number prints it: J01. */
+export function toJobCode(job: number) {
+	return `J${String(job).padStart(2, '0')}`;
+}
+
+// The Job Sequence Number a customer's next job of a day would get (#217): one more than the highest of its others
+// that day. The server decides (it also counts the Trash); this is what the screens show until it has answered.
+export function nextJobOf(projects: ProjectType[], client: string, day: string, exceptId?: string) {
+	const taken = projects
+		.filter(
+			(other) => other.id !== exceptId && other.client === client && createdDayOf(other) === day
+		)
+		.map((other) => other.job ?? 0);
+	return Math.max(0, ...taken) + 1;
+}
+
+// The project number (the glossary's): the customer's short code, the Project Creation Date, and J with which of
+// that customer's jobs that day it is. CVA-2026-05-12-J01. Nothing is stored: it follows the customer's code.
+// Since #186 the day and J count are the project's own, so deleting another project never changes a number; since
+// #217 both can be typed in the Project panel, and the server gives the next J count when none is typed. Until the
+// server has answered for a new project, it is counted here.
 export function numberOf(project: ProjectType, projects: ProjectType[], client = project.client) {
-	const date = project.day || project.created.slice(0, 10);
+	const date = createdDayOf(project);
 	const sameDay = projects.filter(
-		(other) => other.client === project.client && (other.day || other.created.slice(0, 10)) === date
+		(other) => other.client === project.client && createdDayOf(other) === date
 	);
 	const count = project.job ?? Math.max(1, sameDay.length - sameDay.indexOf(project));
-	return `${clientOf(client).code}-${date}-J${String(count).padStart(2, '0')}`;
+	return `${clientOf(client).code}-${date}-${toJobCode(count)}`;
+}
+
+// The customer's own number for the job as the report prints it (#217): "#SO025484", whether or not it was typed
+// with its "#"; nothing for none.
+export function toReference(value: string | undefined) {
+	const text = (value ?? '').trim().replace(/^#+\s*/, '');
+	return text ? `#${text}` : '';
 }
 
 // The document ID the client picked (format 3, 2026-10-25): the project number, FR = final report, R = revision.
@@ -676,6 +718,9 @@ function projectPanel(
 		control: 'locked',
 		owner: project.team[0] ?? '',
 		assigned: project.team.slice(1),
+		day: project.day,
+		job: project.job,
+		customerReference: project.customerReference ?? '',
 		// Run 16 order (Justin, 2026-11-10): Title, Subtitle, Project Type, then who it is for. Run 19: no Location
 		// here; where a project is comes from the facility of its first stop (Transport Mode panel). The
 		// Organization and Customer lists are read live from the organization and the Customers page
@@ -735,7 +780,15 @@ export function panelOf(row: PanelRowType): PanelType {
 // owner. The + sheet fills this in and `LookState.create` makes the project from it (run 16).
 export function draftPanel(organization: string, owner: string): PanelType {
 	const panel = projectPanel(
-		{ title: '', subtitle: '', type: '', client: '', location: '', team: [owner] } as ProjectType,
+		{
+			title: '',
+			subtitle: '',
+			type: '',
+			client: '',
+			location: '',
+			team: [owner],
+			day: todayIso()
+		} as ProjectType,
 		BASE
 	);
 	for (const item of panel.fields)

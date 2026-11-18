@@ -25,6 +25,10 @@
 	// subtitle, type), Customer (customer and contact) and Team (organization, Team Lead, Team Assigned). Every
 	// dropdown in them is picker.svelte, so a person is always the app's own Avatar and a company its logo. Add
 	// Personnel adds a company's section: its name, then as many people from it as needed, each a name and a title.
+	// #217 (Justin, 2026-11-18): the Project section ends with the two parts of the project number a User may type,
+	// side by side: Project Creation Date (today on a new project) and Job Sequence Number (the server's next for
+	// that customer and day, until one is typed), with the number they make under them. The Customer section takes
+	// the customer's own number for the job, the Customer Reference Number.
 	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
@@ -33,14 +37,18 @@
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import ImageField from './image-field.svelte';
 	import {
+		createdDayOf,
 		createId,
 		FACILITY_ICONS,
 		itemOf,
 		LAYOUTS,
 		newPerson,
 		newPersonnel,
+		nextJobOf,
 		PAGE_ICONS,
 		PROJECT_TYPES,
+		todayIso,
+		toJobCode,
 		type AttachmentType,
 		type FacilityKindType,
 		type FieldType,
@@ -168,6 +176,35 @@
 	const contacts = $derived(
 		customerName ? (customerOf(look, customerName).contacts ?? []).filter((item) => item.name) : []
 	);
+
+	// The project number as the Project panel's two inputs make it (#217). A project not made yet has no number of
+	// its own, so it is worked out here the way the server will: the next J count of that customer and day.
+	const day = $derived(panel.day || (isDraft ? todayIso() : createdDayOf(look.project)));
+	const nextJob = $derived(
+		nextJobOf(look.projects, customerName, day, isDraft ? undefined : look.projectId)
+	);
+	const projectNumber = $derived(
+		customerName
+			? `${customerOf(look, customerName).code}-${day}-${toJobCode(panel.job ?? nextJob)}`
+			: ''
+	);
+
+	// A date field that is cleared keeps the date it had: a project always has a Project Creation Date.
+	function setDay(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		if (input.value) panel.day = input.value;
+		else input.value = day;
+		save();
+	}
+
+	// Digits only, 1 to 999. Cleared, the server gives the next one of that customer and day.
+	function setJob(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const count = Number(input.value.replace(/\D/g, '').slice(0, 3));
+		panel.job = count > 0 ? count : undefined;
+		input.value = panel.job ? String(panel.job) : '';
+		save();
+	}
 
 	let openDays = $state<string[]>([panel.days[0]?.id ?? '']);
 	let openGroups = $state<string[]>([panel.groups[0]?.id ?? '']);
@@ -564,6 +601,41 @@
 					value={fieldOf('Project Type')?.value ?? ''}
 					onpick={(id) => setField('Project Type', id)}
 				/>
+				<!-- The two parts of the project number a User may type (#217), and the number they make. -->
+				<div class="grid grid-cols-2 gap-3">
+					<label class="block min-w-0">
+						<span class={labelClass}>Project Creation Date</span>
+						<input
+							class="{inputClass} min-w-0"
+							type="date"
+							value={day}
+							onchange={setDay}
+						/>
+					</label>
+					<label class="block min-w-0">
+						<span class={labelClass}>Job Sequence Number</span>
+						<input
+							class="{inputClass} tabular-nums"
+							inputmode="numeric"
+							maxlength="3"
+							value={panel.job ?? ''}
+							placeholder={String(nextJob)}
+							oninput={setJob}
+						/>
+					</label>
+				</div>
+				<p class="flex items-center gap-1.5 text-xs text-slate-500">
+					<span class="icon-[mdi--barcode] size-4 shrink-0 text-slate-400"></span>
+					{#if projectNumber}
+						<span
+							>File number <span class="font-semibold text-slate-700 tabular-nums"
+								>{projectNumber}</span
+							></span
+						>
+					{:else}
+						Pick a customer to see the file number.
+					{/if}
+				</p>
 			</Group>
 			<Group
 				title="Customer"
@@ -603,6 +675,16 @@
 						save();
 					}}
 				/>
+				<!-- The customer's own number for the job (#217): optional, so it shows no "not filled in" dot. -->
+				<label class="block">
+					<span class={labelClass}>Customer Reference Number</span>
+					<input
+						class={inputClass}
+						bind:value={panel.customerReference}
+						maxlength="100"
+						placeholder="Optional, e.g. SO025484"
+					/>
+				</label>
 			</Group>
 			{@render teamBlock()}
 		</div>

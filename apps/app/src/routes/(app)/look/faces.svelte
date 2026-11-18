@@ -3,12 +3,20 @@
 	// its presence dot (Justin's note 9).
 	import Avatar from './avatar.svelte';
 
+	// The report's cover shows them with no presence dots (#217): a printed page says nothing of who is online.
 	let {
 		names,
 		size = 32,
 		isMuted = false,
-		max = 4
-	}: { names: string[]; size?: number; isMuted?: boolean; max?: number } = $props();
+		max = 4,
+		hasPresence = true
+	}: {
+		names: string[];
+		size?: number;
+		isMuted?: boolean;
+		max?: number;
+		hasPresence?: boolean;
+	} = $props();
 
 	const shown = $derived(names.filter(Boolean).slice(0, max));
 	const more = $derived(names.filter(Boolean).length - shown.length);
@@ -25,6 +33,7 @@
 				{name}
 				{size}
 				{isMuted}
+				{hasPresence}
 				ring={index === 0 ? 'ring-primary ring-offset-2 ring-offset-white' : 'ring-white'}
 			/>
 		</span>

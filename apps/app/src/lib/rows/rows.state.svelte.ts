@@ -17,7 +17,7 @@ import type {
 	SavedRowType,
 	SaveResultType
 } from './rows.schema';
-import { toApplied, toChanges, toMerged, toSendable } from './rows.utils';
+import { toApplied, toChanges, toMerged, toRead, toSendable } from './rows.utils';
 
 export type SaveStateType = 'saved' | 'saving' | 'failed';
 
@@ -221,7 +221,11 @@ export class SyncLoop implements SaveStatusType {
 			return;
 		}
 		this.#confirmed = toApplied(this.#confirmed, changes);
-		if (result.reads?.length) this.#options.takeReads?.(result.reads);
+		if (result.reads?.length) {
+			// What the server set of a column this device sends too is confirmed as the server made it.
+			this.#confirmed = toRead(this.#confirmed, result.reads);
+			this.#options.takeReads?.(result.reads);
+		}
 		// Whatever changed while the batch was on its way goes next.
 		if (this.#toSend(() => '').length > 0) this.#schedule(0);
 		else this.#rest();

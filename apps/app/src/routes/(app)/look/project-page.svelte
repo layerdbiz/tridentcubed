@@ -12,6 +12,7 @@
 		agoOf,
 		dayOf,
 		MODE_ICONS,
+		createdDayOf,
 		numberOf,
 		personOf,
 		POINTS,
@@ -185,7 +186,7 @@
 						/>{project.client}
 					</dd>
 				</div>
-				{#each [['Project Number', numberOf(project, look.projects)], ['Type', project.type], ['Created', dayOf(project.created)], ['Where', project.location], ['Updated', agoOf(project.updated)]] as [label, value] (label)}
+				{#each [['Project Number', numberOf(project, look.projects)], ['Type', project.type], ['Created', dayOf(createdDayOf(project))], ['Where', project.location], ['Updated', agoOf(project.updated)]] as [label, value] (label)}
 					<div class="flex justify-between gap-3 px-4 py-2.5 text-sm">
 						<dt class="text-slate-500">{label}</dt>
 						<dd class="text-right font-medium text-slate-900">{value || '—'}</dd>

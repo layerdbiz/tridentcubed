@@ -11,8 +11,8 @@
 //
 // Projects (#186) add the rules a project's rows need: every row inside a project names it (`projectId`), so the
 // permission check is handed the project's status (the freeze), a change inside it moves its updated time, and
-// deleting it sends its rows to the Trash with it. The server sets who made a project and its J count, remembers its
-// status before Sent, and moves a Draft to In Progress once its Project panel is complete.
+// deleting it sends its rows to the Trash with it. The server sets who made a project and its J count (unless one
+// was typed, #217), remembers its status before Sent, and moves a Draft to In Progress once its Project panel is complete.
 import { and, asc, eq, isNull, max, ne, sql } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import {
@@ -193,8 +193,9 @@ async function toJob(tx: TransactionType, id: string, customerId: unknown, day: 
 	return (found?.last ?? 0) + 1;
 }
 
-// The columns of a project only the server sets, for a put of it: who made a new one, its J count when it is new or
-// its customer or day change, and the status it had before it was marked Sent.
+// The columns of a project the server sets, for a put of it: who made a new one, the status it had before it was
+// marked Sent, and its J count when the put sets none: the next one when the project is new, when its customer or
+// day change, or when its J count was cleared. A J count the put sets (#217: typed in the Project panel) is kept.
 async function toProjectValues(
 	tx: TransactionType,
 	actor: ActorType,
@@ -208,7 +209,8 @@ async function toProjectValues(
 		!row ||
 		('customerId' in values && values.customerId !== row.customerId) ||
 		('day' in values && values.day !== row.day);
-	if (isMoved) {
+	const isTyped = typeof values.job === 'number';
+	if (!isTyped && (isMoved || 'job' in values)) {
 		const next = { ...row, ...values };
 		set.job = await toJob(tx, id, next.customerId, next.day);
 	}

@@ -85,8 +85,12 @@ One job for a customer. A project owns exactly one report; a job that needs a se
 _Avoid_: job, survey (alone)
 
 **Project number**:
-A project's reference: the customer's short code, the day the project was created and J with which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. It can be edited.
+A project's reference: the customer's short code, the Project Creation Date and J with the Job Sequence Number, which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. The date and the sequence are its two parts a User may type, side by side in the Project panel: the date starts as the day the project was made and is changed to the day Trident Cubed accepted the job when the project is made later; the sequence is the next one for that customer and date, given by the app, until one is typed. Nothing else changes it, the Time Log included. On screen it is labelled File number.
 _Avoid_: job number, reference, queue number
+
+**Customer reference number**:
+The customer's own number for the job, such as SO025484: optional, typed under Customer in the Project panel. The cover prints it after the customer's name, KOGA (#SO025484), and every page's footer prints it under the document ID. It is not part of the project number.
+_Avoid_: reference (alone), PO number
 
 **Document ID**:
 The report's identifier and the name of its exported file: the project number, FR with the report number and R with the revision number, SGL-2026-02-03-J01-FR01-R01 (Trident Cubed's pick, 2026-10-09). The file name may end with the transport's name after a triple dash, SGL-2026-02-03-J01-FR01-R01---BBC-Kimberly.pdf.Every report page prints it in the footer, under the customer's name.

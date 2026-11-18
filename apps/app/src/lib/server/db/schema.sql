@@ -312,6 +312,7 @@ CREATE TABLE "project" (
 	"progress" integer DEFAULT 0 NOT NULL,
 	"day" text DEFAULT '' NOT NULL,
 	"job" integer DEFAULT 1 NOT NULL,
+	"customer_reference" text DEFAULT '' NOT NULL,
 	"created_by" uuid
 );
 
