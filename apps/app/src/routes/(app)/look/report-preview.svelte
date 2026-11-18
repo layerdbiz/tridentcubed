@@ -54,7 +54,7 @@
 		type StopType
 	} from './look.data';
 	import { customerOf, photosOf, recordOf } from './records.data';
-	import { heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
+	import { flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -392,18 +392,16 @@
 	}
 
 	const pages = $derived.by(() => {
-		const flowOf = (key: string) => flows.find((flow) => flow.key === key);
 		const list: PageType[] = [
 			{ key: 'cover', title: 'Cover', kind: 'cover' },
 			{ key: 'contents', title: 'Table of Contents', kind: 'contents' }
 		];
-		const report = flowOf('report');
+		const report = flows.find((flow) => flow.key === 'report');
 		if (report) list.push(...pagesOf(report));
 		else list.push({ key: 'report', title: 'Project Report', kind: 'report' });
 		for (const panel of look.panels) {
 			if (!panel.isEnabled) continue;
-			const flow =
-				panel.kind === 'transport' || panel.kind === 'timelog' ? flowOf(panel.id) : undefined;
+			const flow = flowOf(panel, flows);
 			if (flow) list.push(...pagesOf(flow));
 			// Transport Mode A: every stop on one page (run 19), not a page each.
 			else if (panel.kind === 'transport' && panel.stops.length)
@@ -421,7 +419,7 @@
 						part
 					});
 		}
-		const disclaimer = flowOf('disclaimer');
+		const disclaimer = flows.find((flow) => flow.key === 'disclaimer');
 		if (disclaimer) list.push(...pagesOf(disclaimer));
 		else list.push({ key: 'disclaimer', title: 'Disclaimer', kind: 'disclaimer' });
 		return list;
