@@ -66,7 +66,7 @@
 		'To do': 'bg-slate-400',
 		'In progress': 'bg-primary',
 		Complete: 'bg-success',
-		Off: 'bg-slate-300'
+		'Not planned': 'bg-slate-300'
 	};
 
 	// Photo files dragged in from the desktop and dropped on a photo panel, open or shut, join its last group
@@ -213,7 +213,7 @@
 					class="flex size-12 shrink-0 items-center justify-center rounded-2xl transition {metrics.status ===
 					'Complete'
 						? 'bg-success/10 text-success'
-						: metrics.status === 'Off'
+						: metrics.status === 'Not planned'
 							? 'bg-slate-100 text-slate-300'
 							: isQuiet
 								? 'bg-slate-100 text-slate-400'
@@ -226,17 +226,15 @@
 						? 'text-slate-900'
 						: 'text-slate-400'}">{panel.name}</span
 				>
-				<span class="block text-xs text-slate-500"
-					>{panel.isEnabled
-						? `${metrics.done} of ${metrics.total} complete`
-						: 'Left out of the report'}</span
-				>
+				<!-- A panel switched off reads like the rest, with nothing done: "0 of 4 complete", 0%, Not planned
+				     (Justin, 2026-11-18, #225). -->
+				<span class="block text-xs text-slate-500">{metrics.done} of {metrics.total} complete</span>
 			</span>
 			<span class="shrink-0 text-right">
 				<span
 					class="block text-lg leading-tight font-semibold tabular-nums {panel.isEnabled
 						? 'text-slate-900'
-						: 'text-slate-300'}">{panel.isEnabled ? `${metrics.percent}%` : 'Off'}</span
+						: 'text-slate-300'}">{metrics.percent}%</span
 				>
 				<span
 					class="block text-[10px] font-semibold tracking-[0.12em] uppercase {isQuiet

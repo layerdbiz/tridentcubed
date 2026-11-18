@@ -85,11 +85,11 @@ One job for a customer. A project owns exactly one report; a job that needs a se
 _Avoid_: job, survey (alone)
 
 **Project number**:
-A project's reference: the customer's short code, the Project Creation Date and J with the Job Sequence Number, which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. The date and the sequence are its two parts a User may type, side by side in the Project panel: the date starts as the day the project was made and is changed to the day Trident Cubed accepted the job when the project is made later; the sequence is the next one for that customer and date, given by the app, until one is typed. Nothing else changes it, the Time Log included. On screen it is labelled File number.
+A project's reference: the customer's short code, the Project Creation Date and J with the Job Sequence Number, which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. The date and the sequence are its two parts a User may type, side by side in the Project panel: the date starts as the day the project was made and is changed to the day Trident Cubed accepted the job when the project is made later; the sequence is the next one for that customer and date, given by the app, until one is typed. Nothing else changes it, the Time Log included. The panel shows its two parts only; the whole number prints in the report's footer.
 _Avoid_: job number, reference, queue number
 
 **Customer reference number**:
-The customer's own number for the job, such as SO025484: optional, typed under Customer in the Project panel. The cover prints it after the customer's name, KOGA (#SO025484), and every page's footer prints it under the document ID. It is not part of the project number.
+The customer's own number for the job, such as SO025484: optional, typed under Customer in the Project panel, where its input is labelled Reference Number. The cover prints it after the customer's name, KOGA (#SO025484), and every page's footer prints it under the document ID, by an ID card icon. It is not part of the project number.
 _Avoid_: reference (alone), PO number
 
 **Document ID**:

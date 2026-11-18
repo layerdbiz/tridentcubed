@@ -106,8 +106,15 @@ describe('flowOf', () => {
 		expect(flowOf(panel('timelog'), [{ key: 'report' }, { key: 'disclaimer' }])).toBeUndefined();
 	});
 
+	it('finds Transport Mode’s section the same way (#225)', () => {
+		expect(flowOf(panel('transport'), flows)).toEqual({ key: 'transport' });
+	});
+
+	it('finds none for a Transport Mode with no flowing section', () => {
+		expect(flowOf(panel('transport'), [{ key: 'report' }, { key: 'timelog' }])).toBeUndefined();
+	});
+
 	it('finds none for the panels that print pages of their own', () => {
-		expect(flowOf(panel('transport'), flows)).toBeUndefined();
 		expect(flowOf(panel('photos'), flows)).toBeUndefined();
 		expect(flowOf(panel('project'), flows)).toBeUndefined();
 	});

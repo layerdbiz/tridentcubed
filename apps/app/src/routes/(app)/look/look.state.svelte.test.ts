@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { draftPanel, STAGES } from './look.data';
-import { LookState } from './look.state.svelte';
+import { LookState, metricsOf } from './look.state.svelte';
 
 // The tests run on Svelte's server build, where LookState's effects do nothing: what is checked here is the state
 // itself, not what the screens draw from it.
@@ -102,5 +102,20 @@ describe('where a project opens', () => {
 
 		look.open(look.projects[0].id, 'preview');
 		expect(look.tab).toBe('preview');
+	});
+});
+
+describe('a panel switched off', () => {
+	it('reads as not planned, with nothing of its total done (#225)', () => {
+		const look = fresh();
+		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
+		const panel = look.panels.find((item) => item.kind === 'photos')!;
+		// A new Operations panel has its stages titled, so some of it is done before it is switched off.
+		const { done, total } = metricsOf(panel);
+		expect(done).toBeGreaterThan(0);
+
+		panel.isEnabled = false;
+
+		expect(metricsOf(panel)).toEqual({ done: 0, total, percent: 0, status: 'Not planned' });
 	});
 });

@@ -53,7 +53,7 @@
 		type PanelType,
 		type StopType
 	} from './look.data';
-	import { customerOf, photosOf, recordOf } from './records.data';
+	import { customerOf } from './records.data';
 	import { flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
@@ -652,29 +652,29 @@
 		return () => clearTimeout(timer);
 	});
 
-	// Cover A's lines (variants/cover-a.svelte): the six it had before run 19, now in the Project panel's order.
-	// #217: the customer's own number after its name, the whole team's faces where the Lead's name was, and the
-	// project's two dates where Dates was.
+	// Cover A's lines (variants/cover-a.svelte). #217: the customer's own number after its name, the whole team's
+	// faces where the Lead's name was, and the project's two dates where Dates was. #225 (Justin, 2026-11-18): the
+	// customer leads, then the Project Type and the two dates, then the rest as before; the team is its faces alone.
 	const coverLines = $derived([
-		{
-			icon: 'icon-[mdi--package-variant-closed]',
-			label: 'Project Type',
-			value: detail('Project Type') ?? ''
-		},
 		{
 			icon: PAGE_ICONS.customers,
 			label: 'Customer',
 			value: company && reference ? `${company} (${reference})` : company
 		},
+		{
+			icon: 'icon-[mdi--package-variant-closed]',
+			label: 'Project Type',
+			value: detail('Project Type') ?? ''
+		},
+		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Created Date', value: createdDate },
+		{ icon: 'icon-[mdi--calendar-check-outline]', label: 'Completed Date', value: completedDate },
 		{ icon: PAGE_ICONS.team, label: 'Team Members', value: listOf(people), names: people },
 		{
 			icon: stops[0] ? iconOf(stops[0]) : PAGE_ICONS.transport,
 			label: 'Transport Mode',
 			value: transport
 		},
-		{ icon: PAGE_ICONS.facilities, label: 'Facility', value: facility },
-		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Created Date', value: createdDate },
-		{ icon: 'icon-[mdi--calendar-check-outline]', label: 'Completed Date', value: completedDate }
+		{ icon: PAGE_ICONS.facilities, label: 'Facility', value: facility }
 	]);
 
 	// Cover B's lines (variants/cover-b.svelte), in the Project panel's own order, each with its real picture: a
@@ -739,12 +739,6 @@
 		return look.transports.find((item) => item.name === leg.stops[0]?.name);
 	}
 
-	// A transport's picture: its own, else its mode's stock picture.
-	function pictureOf(leg: LegType) {
-		const record = recordOf(look, 'transport', leg.stops[0]?.name ?? '');
-		return record ? photosOf(record)[0] : undefined;
-	}
-
 	function placeOf(name: string) {
 		return look.facilities.find((item) => item.name === name);
 	}
@@ -784,7 +778,7 @@
 
 <!-- The customer's logo, no box around it (run 9 note 6), as big as Trident's in the header (run 11); a customer with
      no logo gets its initial on a colour circle. The document ID under the name, by a barcode, and under that the
-     customer's own number for the job, by a tag, when it has one (#217). -->
+     customer's own number for the job, by an ID card, when it has one (#217, #225). -->
 {#snippet customer()}
 	<div class="flex min-w-0 items-center gap-2.5">
 		{#if client.logo}
@@ -810,9 +804,8 @@
 			</p>
 			{#if reference}
 				<p class="flex items-center gap-1 tabular-nums">
-					<span class="icon-[mdi--tag-outline] size-2.5 text-slate-950"></span><span
-						class="truncate">{reference}</span
-					>
+					<span class="icon-[mdi--card-account-details-outline] size-2.5 text-slate-950"
+					></span><span class="truncate">{reference}</span>
 				</p>
 			{/if}
 		</div>
@@ -1039,24 +1032,28 @@
 			{@const lead = leg.stops[0]}
 			{@const calls = leg.stops.filter((stop) => stop.facility)}
 			{#if block.isFull}
-				{@const picture = pictureOf(leg)}
 				{@const carrier = carrierOf(leg)}
-				<!-- The Transport Mode page: the transport once, with its picture and particulars, then its facilities. -->
+				{@const photo = carrier?.photo}
+				<!-- The Transport Mode page: the transport once, with its own photo across the card when it has one
+				     (Justin, 2026-11-18, #225: big enough to see the ship), its particulars, then its facilities. The
+				     photo's shape is fixed, so the card measures the same before the picture has loaded. A transport
+				     with no photo of its own shows its mode's icon, never a stock picture of some other ship. -->
 				<div class="pt-3">
 					<section class="overflow-hidden rounded-xl bg-slate-50">
-						<div class="flex gap-3 p-3">
-							{#if picture}
-								<img
-									src={picture}
-									crossorigin={toCrossOrigin(picture)}
-									alt=""
-									draggable="false"
-									class="h-[104px] w-[156px] shrink-0 rounded-lg object-cover"
-								/>
-							{:else}
+						{#if photo}
+							<img
+								src={photo}
+								crossorigin={toCrossOrigin(photo)}
+								alt=""
+								draggable="false"
+								class="aspect-[2/1] w-full object-cover"
+							/>
+						{/if}
+						<div class="flex items-center gap-3 p-3">
+							{#if !photo}
 								<span
-									class="flex h-[104px] w-[156px] shrink-0 items-center justify-center rounded-lg bg-slate-200 text-slate-400"
-									><span class="{MODE_ICONS[lead.mode] ?? PAGE_ICONS.transport} size-10"
+									class="flex size-12 shrink-0 items-center justify-center rounded-lg bg-slate-200 text-slate-400"
+									><span class="{MODE_ICONS[lead.mode] ?? PAGE_ICONS.transport} size-6"
 									></span></span
 								>
 							{/if}
@@ -1072,7 +1069,7 @@
 									{lead.mode}
 								</p>
 								{#if PARTICULARS[lead.mode]}
-									<dl class="mt-2 grid grid-cols-3 gap-x-3 gap-y-1">
+									<dl class="mt-2 grid grid-cols-5 gap-x-3 gap-y-1">
 										{#each PARTICULARS[lead.mode] as label (label)}
 											<div class="min-w-0">
 												<dt
@@ -1290,7 +1287,11 @@
 								</p>
 								<p class="mt-3 text-lg text-slate-500">{detail('Subtitle')}</p>
 							</div>
-							<div class="absolute inset-x-0 bottom-0 h-60 bg-slate-100">
+							<!-- The list stands on the band's floor, a fixed gap above the page's edge, and grows upward: a longer
+							     list pushes the band's top (and its wave) up, never its own foot off the page (#225). -->
+							<div
+								class="absolute inset-x-0 bottom-0 flex min-h-60 flex-col justify-end bg-slate-100 pt-6 pb-12"
+							>
 								<svg
 									class="absolute -top-[59px] h-[60px] w-full fill-slate-100"
 									viewBox="0 0 1200 120"
