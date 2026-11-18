@@ -241,6 +241,17 @@ _Avoid_: description, text (for the activity)
 A set of photos in a panel section, with a layout that says how many share a page: 1 or 2 across the page, or 4, 6 or 8 in two columns.
 _Avoid_: section (as a group's name)
 
+**Operations panel**:
+The optional photo panel every project starts with, once called Inspection. Its title is typed at the top of the panel, as every photo panel's is, and the report and its contents print that title: alone on the panel's first page, with "(continued)" on each page after it.
+_Avoid_: Inspection panel
+
+**Stage**:
+A photo group of the Operations panel: one part of the job, with a name, a description and photos. A new project starts with Preloading, Loading Operations, Securing and Lifting Gear; stages are renamed, added, removed and reordered like any photo group. The contents list a photo panel's groups under its title.
+_Avoid_: phase, step
+
+**Group switch**:
+The switch on a photo group. Off, the group keeps its text and photos and leaves the report: its pages, its line in the contents and its count toward the percent. On brings it back.
+
 **Photo**:
 An image the surveyor adds to a photo group, with its own description, written by tapping the photo; the description prints on the photo, and in the panel an icon on the photo shows it has one. One kind of attachment.
 _Avoid_: caption

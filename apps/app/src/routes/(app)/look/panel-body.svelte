@@ -25,6 +25,9 @@
 	// subtitle, type), Customer (customer and contact) and Team (organization, Team Lead, Team Assigned). Every
 	// dropdown in them is picker.svelte, so a person is always the app's own Avatar and a company its logo. Add
 	// Personnel adds a company's section: its name, then as many people from it as needed, each a name and a title.
+	// #215 (Justin, 2026-11-18): a photo panel opens on its own title, filled in and editable, so Operations or an
+	// added panel can be called what the job calls it; the report and its contents print that title. Its groups
+	// (the Operations panel's stages) each have a switch that leaves them out of the report.
 	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
@@ -35,11 +38,13 @@
 	import {
 		createId,
 		FACILITY_ICONS,
+		groupWordOf,
 		itemOf,
 		LAYOUTS,
 		newPerson,
 		newPersonnel,
 		PAGE_ICONS,
+		panelNameOf,
 		PROJECT_TYPES,
 		type AttachmentType,
 		type FacilityKindType,
@@ -318,12 +323,27 @@
 		const found = group?.photos.find((other) => other.id === photo.id);
 		editing = undefined;
 		if (group && found)
-			remove(group.photos, found, 'Delete photo?', 'It leaves the group and the report.');
+			remove(group.photos, found, 'Delete photo?', `It leaves the ${word} and the report.`);
 	}
 
 	function addGroup() {
 		const group = addPhotoGroup(panel);
 		openGroups = [...openGroups, group.id];
+		save();
+	}
+
+	// "stage" in the Operations panel, "group" in any other photo panel.
+	const word = $derived(groupWordOf(panel));
+
+	// A title cleared and left empty goes back to the panel's own name: a report section is never untitled.
+	function keepName() {
+		if (panel.name.trim()) return;
+		panel.name = panelNameOf(panel);
+		save();
+	}
+
+	function toggleGroup(group: PanelType['groups'][number]) {
+		group.isEnabled = !group.isEnabled;
 		save();
 	}
 
@@ -898,6 +918,17 @@
 			>
 		</div>
 	{:else}
+		<label class="block">
+			<span class={labelClass}>Title</span>
+			<input
+				class={inputClass}
+				bind:value={panel.name}
+				placeholder={panelNameOf(panel)}
+				maxlength="80"
+				aria-label="Panel title"
+				onblur={keepName}
+			/>
+		</label>
 		<div
 			class="space-y-3"
 			{@attach sortable(`groups-${panel.id}`, (from, to) => move(panel.groups, from, to))}
@@ -906,16 +937,18 @@
 				<div
 					class="rounded-2xl transition {dropping === group.id ? 'ring-2 ring-primary' : ''}"
 					role="group"
-					aria-label={group.title || 'Photo group'}
+					aria-label={group.title || `Photo ${word}`}
 					animate:flip={{ duration: 200 }}
 					ondragover={(event) => overFiles(event, group.id)}
 					ondragleave={() => (dropping = '')}
 					ondrop={(event) => dropFiles(event, group)}
 				>
 					<Group
-						title={group.title || 'Untitled group'}
+						title={group.title || `Untitled ${word}`}
 						values={[group.title, group.photos]}
 						meta="{group.photos.length} photos"
+						isEnabled={group.isEnabled}
+						onenable={() => toggleGroup(group)}
 						icon="icon-[mdi--image-multiple-outline]"
 						isOpen={openGroups.includes(group.id)}
 						ontoggle={() => (openGroups = toggle(openGroups, group.id))}
@@ -923,7 +956,7 @@
 							remove(
 								panel.groups,
 								group,
-								'Delete group?',
+								`Delete ${word}?`,
 								`Its ${group.photos.length} photos leave the report.`
 							)}
 						sortKey="groups-{panel.id}"
@@ -934,7 +967,9 @@
 							<input
 								class={inputClass}
 								bind:value={group.title}
-								placeholder="e.g. Hatch 2 before discharge"
+								placeholder={word === 'stage'
+									? 'e.g. Discharge Operations'
+									: 'e.g. Hatch 2 before discharge'}
 							/>
 						</label>
 						<label class="block">
@@ -1061,7 +1096,7 @@
 															group.photos,
 															photo,
 															'Delete photo?',
-															'It leaves the group and the report.'
+															`It leaves the ${word} and the report.`
 														)}
 										>
 											{#snippet trigger()}
@@ -1117,14 +1152,14 @@
 					class="flex flex-col items-center gap-1 rounded-2xl bg-slate-900/[0.03] py-6 text-slate-400"
 				>
 					<span class="icon-[mdi--image-filter-hdr] size-8"></span>
-					<p class="text-sm">No photo groups yet.</p>
+					<p class="text-sm">{word === 'stage' ? 'No stages yet.' : 'No photo groups yet.'}</p>
 				</div>
 			{/each}
 		</div>
 		<button
 			type="button"
 			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-			onclick={addGroup}><span class="icon-[mdi--plus] size-4"></span>Add group</button
+			onclick={addGroup}><span class="icon-[mdi--plus] size-4"></span>Add {word}</button
 		>
 	{/if}
 </fieldset>

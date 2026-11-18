@@ -18,14 +18,12 @@ import {
 	createPanels,
 	forgetCustomer,
 	DATASETS,
-	itemOf,
 	newPanel,
 	nowIso,
 	ORGANIZATION,
 	PAGES,
 	registerCustomer,
 	registerPerson,
-	stopOf,
 	type ClientType,
 	type DatasetType,
 	type FacilityType,
@@ -99,9 +97,11 @@ export function metricsOf(panel: PanelType): MetricsType {
 	} else {
 		// A photo group counts its title and having photos. Its layout always has a value, so it never counts: a new
 		// untitled group with no photos is To do (Justin's run 8 note 8). #189: a photo counts once its file is
-		// stored, so every device works out the same percent from the same rows.
-		total = Math.max(1, panel.groups.length * 2);
-		done = panel.groups.reduce(
+		// stored, so every device works out the same percent from the same rows. #215: a group switched off is left
+		// out of the report, so it counts for nothing.
+		const groups = panel.groups.filter((group) => group.isEnabled);
+		total = Math.max(1, groups.length * 2);
+		done = groups.reduce(
 			(sum, group) =>
 				sum + Number(Boolean(group.title.trim())) + Number(group.photos.some(isStored)),
 			0
@@ -475,13 +475,7 @@ export class LookState {
 		this.workspaces[id] = createPanels(this.projects[0]).map((panel) =>
 			panel.kind === 'project'
 				? { ...($state.snapshot(draft) as PanelType), id: panel.id, key: 'project' }
-				: {
-						...panel,
-						days: [],
-						groups: [],
-						stops: panel.kind === 'transport' ? [stopOf()] : [],
-						items: panel.kind === 'items' ? [itemOf()] : []
-					}
+				: panel
 		);
 		this.open(id, 'edit');
 		this.#advance(id);
