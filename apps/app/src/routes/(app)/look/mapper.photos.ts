@@ -24,7 +24,8 @@ export function toPhotoRows(projectId: string, panel: PanelType): RowType[] {
 				position,
 				title: group.title,
 				description: group.description,
-				layout: group.layout
+				layout: group.layout,
+				isEnabled: group.isEnabled
 			}
 		});
 		for (const [index, photo] of group.photos.filter(isStored).entries())
@@ -54,6 +55,7 @@ export function takePhotos(panel: PanelType, rows: SavedRowType[]) {
 			title: text(group.values, 'title'),
 			description: text(group.values, 'description'),
 			layout: Number(group.values.layout ?? 4),
+			isEnabled: group.values.isEnabled !== false,
 			photos: photos
 				.filter((photo) => photo.values.groupId === group.id)
 				.map((photo) => ({

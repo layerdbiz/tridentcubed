@@ -6,7 +6,7 @@
 //
 // They are made in two steps, with a save between: a Sent, Complete or Archived project takes no change but its
 // status (the server refuses the rest), so every project is filled in first and given its state after.
-import { draftPanel, itemOf, stopOf, type PanelType, type StatusType } from './look.data';
+import { draftPanel, groupOf, itemOf, stopOf, type PanelType, type StatusType } from './look.data';
 import type { LookState } from './look.state.svelte';
 import { toSampleDay, toSamplePhotos } from './samples';
 
@@ -182,10 +182,7 @@ function make(look: LookState, sample: SampleType, lead: string, assigned: strin
 		if (panel.kind === 'photos' && panel.isEnabled)
 			panel.groups = [
 				{
-					id: crypto.randomUUID(),
-					title: 'Overview',
-					description: '',
-					layout: 4,
+					...groupOf('Overview'),
 					photos: toSamplePhotos(panel.name.length, 4, () => crypto.randomUUID())
 				}
 			];
