@@ -5,7 +5,7 @@
 // Both carry `project_id`, as every row inside a project does, so they load when the project opens, the freeze of
 // a Sent project reaches them and deleting the project sends them to the Trash (#186). Row Level Security keeps them
 // to the acting organization.
-import { index, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { organizationPolicy } from './policy';
 import { panel, project } from './project.schema';
 import { rowColumns } from './rows';
@@ -20,7 +20,7 @@ function projectId() {
 		.references(() => project.id, { onDelete: 'cascade' });
 }
 
-/** A photo panel's groups in order: a title, a description and how many photos a report page holds. */
+/** A photo panel's groups in order: a title, a description, how many photos a report page holds, and its switch. */
 export const photoGroup = pgTable(
 	'photo_group',
 	{
@@ -33,7 +33,9 @@ export const photoGroup = pgTable(
 		title: words('title'),
 		description: words('description'),
 		/** Photos per report page: 1, 2, 4, 6 or 8. */
-		layout: integer('layout').default(4).notNull()
+		layout: integer('layout').default(4).notNull(),
+		/** Switched off, it keeps what it holds and leaves the report (#215). */
+		isEnabled: boolean('is_enabled').default(true).notNull()
 	},
 	(table) => [
 		index('photo_group_project_idx').on(table.projectId),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { heightOf, paginate, targetOf } from './report-flow';
+import { heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
 
 describe('paginate', () => {
 	it('keeps everything on one page while it fits', () => {
@@ -31,6 +31,40 @@ describe('paginate', () => {
 describe('heightOf', () => {
 	it('adds up the blocks on a page', () => {
 		expect(heightOf([100, 200, 300], [1, 2])).toBe(500);
+	});
+});
+
+describe('photoPagesOf', () => {
+	const group = (photos: number, layout = 4, isEnabled = true) => ({
+		isEnabled,
+		layout,
+		photos: Array.from({ length: photos })
+	});
+
+	it('titles only the first page of the panel; every later page is continued', () => {
+		// Two stages: ten photos at four to a page, then three.
+		expect(photoPagesOf([group(10), group(3)])).toEqual([
+			{ group: 0, part: 0, isContinued: false },
+			{ group: 0, part: 1, isContinued: true },
+			{ group: 0, part: 2, isContinued: true },
+			{ group: 1, part: 0, isContinued: true }
+		]);
+	});
+
+	it('gives a group with no photos yet one page', () => {
+		expect(photoPagesOf([group(0)])).toEqual([{ group: 0, part: 0, isContinued: false }]);
+	});
+
+	it('leaves out a group that is switched off, so the next one opens the panel', () => {
+		expect(photoPagesOf([group(6, 6, false), group(1), group(2, 1)])).toEqual([
+			{ group: 1, part: 0, isContinued: false },
+			{ group: 2, part: 0, isContinued: true },
+			{ group: 2, part: 1, isContinued: true }
+		]);
+	});
+
+	it('prints nothing for a panel with every group switched off', () => {
+		expect(photoPagesOf([group(4, 4, false)])).toEqual([]);
 	});
 });
 

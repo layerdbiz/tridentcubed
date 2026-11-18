@@ -42,6 +42,7 @@
 		dayOf,
 		documentIdOf,
 		FACILITY_ICONS,
+		groupWordOf,
 		MODE_ICONS,
 		PAGE_ICONS,
 		PARTICULARS,
@@ -51,7 +52,7 @@
 		type StopType
 	} from './look.data';
 	import { customerOf, photosOf, recordOf } from './records.data';
-	import { heightOf, paginate, targetOf } from './report-flow';
+	import { heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -116,7 +117,7 @@
 		panel?: PanelType;
 		blocks: BlockType[];
 	};
-	type EntryType = { title: string; key: string; subs: string[] };
+	type EntryType = { title: string; key: string; subs: { title: string; page: number }[] };
 
 	const W = 595;
 	const H = 842;
@@ -396,19 +397,18 @@
 			// Transport Mode A: every stop on one page (run 19), not a page each.
 			else if (panel.kind === 'transport' && panel.stops.length)
 				list.push({ key: 'transport', title: panel.name, kind: 'transport', panel });
+			// A photo panel's title stands on every one of its pages: alone on the first, "(continued)" on each after
+			// it, with the group's own name under it (#215). A group switched off prints nothing.
 			if (panel.kind === 'photos')
-				panel.groups.forEach((group, groupIndex) => {
-					const parts = Math.max(1, Math.ceil(group.photos.length / group.layout));
-					for (let part = 0; part < parts; part += 1)
-						list.push({
-							key: `photos-${panel.id}`,
-							title: part ? `${panel.name} (continued)` : panel.name,
-							kind: 'photos',
-							panel,
-							group: groupIndex,
-							part
-						});
-				});
+				for (const { group, part, isContinued } of photoPagesOf(panel.groups))
+					list.push({
+						key: `photos-${panel.id}`,
+						title: isContinued ? `${panel.name} (continued)` : panel.name,
+						kind: 'photos',
+						panel,
+						group,
+						part
+					});
 		}
 		const disclaimer = flowOf('disclaimer');
 		if (disclaimer) list.push(...pagesOf(disclaimer));
@@ -417,8 +417,9 @@
 	});
 
 	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on and
-	// numbered like an ordered list (1. 2. 3. 3.1); only the Project Report lists its parts (Justin's run 8 notes 16
-	// and 17, run 9 note 4).
+	// numbered like an ordered list (1. 2. 3. 3.1). The Project Report lists its parts (Justin's run 8 notes 16 and
+	// 17, run 9 note 4), and a photo panel the groups that are switched on, in report order: the Operations panel's
+	// stages (#215).
 	const REPORT_PARTS = ['Personnel in Attendance', 'Transport Mode', 'Cargo Description'];
 	const contents = $derived(
 		pages
@@ -426,11 +427,29 @@
 			.map((item): EntryType => ({
 				title: item.title,
 				key: item.key,
-				subs: item.kind === 'report' ? REPORT_PARTS : []
+				subs:
+					item.kind === 'report'
+						? REPORT_PARTS.map((part) => ({ title: part, page: partPage(part, item.key) }))
+						: item.kind === 'photos'
+							? groupSubs(item.key)
+							: []
 			}))
 	);
 	function pageOf(key: string) {
 		return pages.findIndex((other) => other.key === key) + 1;
+	}
+
+	// A photo panel's groups as the contents list them: each at the page it opens on.
+	function groupSubs(key: string) {
+		return pages.flatMap((page, at) =>
+			page.key === key && page.panel && !page.part
+				? [{ title: groupTitle(page.panel, page.group ?? 0), page: at + 1 }]
+				: []
+		);
+	}
+
+	function groupTitle(panel: PanelType, index: number) {
+		return panel.groups[index]?.title.trim() || `Untitled ${groupWordOf(panel)}`;
 	}
 
 	// The page a part of the Project Report is on: where its heading landed, once the report runs over a page.
@@ -1295,13 +1314,8 @@
 								<ol class="mt-4">
 									{#each contents as entry, entryIndex (entry.key)}
 										{@render line(`${entryIndex + 1}.`, entry.title, pageOf(entry.key), false)}
-										{#each entry.subs as sub, subIndex (sub)}
-											{@render line(
-												`${entryIndex + 1}.${subIndex + 1}`,
-												sub,
-												partPage(sub, entry.key),
-												true
-											)}
+										{#each entry.subs as sub, subIndex (subIndex)}
+											{@render line(`${entryIndex + 1}.${subIndex + 1}`, sub.title, sub.page, true)}
 										{/each}
 									{/each}
 								</ol>
@@ -1601,7 +1615,7 @@
 									((item.part ?? 0) + 1) * group.layout
 								)}
 								<p class="mt-2 text-[13px] font-semibold text-slate-700">
-									{group.title || 'Untitled group'}
+									{groupTitle(item.panel, item.group ?? 0)}
 								</p>
 								{#if group.description && !item.part}
 									<p class="mt-1 text-[11px] text-slate-500">{group.description}</p>

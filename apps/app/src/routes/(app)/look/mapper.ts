@@ -22,6 +22,7 @@ import { takePhotos, toPhotoRows } from './mapper.photos';
 import { stopsByProject, takePanelRows, toPanelRows, toTrip } from './mapper.trip';
 import { byPosition, text, toRecordId, toRecordName, toStamp } from './mapper.utils';
 import { customerOf } from './records.data';
+import { upgradeOperations } from './stages';
 import type { TeamMemberType } from './team.data';
 
 export { toFacilityId, toFacilityName, toTransportId, toTransportName } from './mapper.lists';
@@ -481,6 +482,11 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 	if (own) own.personnel = toPersonnel(rows);
 	// #189: a photo panel's groups and photos.
 	for (const panel of panels) if (panel.kind === 'photos') takePhotos(panel, rows);
+	// #215: a project from before stages gets its Operations panel as it opens; the sync loop then saves that. A
+	// Sent, Complete or Archived project takes no change, so it stays as it was.
+	const status = saved ? text(saved.values, 'status') : '';
+	if (status && !FROZEN.includes(status as StatusType))
+		for (const panel of panels) upgradeOperations(panel);
 	// What the panels hold (#188). The stops come with the project's row; while a change waits to be sent only the
 	// rows inside it come, and the stops stay as the lists last gave them.
 	const inside = row ? rows : [...rows, ...(saved?.stops ?? [])];

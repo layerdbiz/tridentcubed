@@ -10,7 +10,7 @@
 // retried by itself; the others carry on.
 import { SvelteMap } from 'svelte/reactivity';
 import { startUpload, type Upload, type UploadStepsType } from '#lib/files/files.state.svelte.js';
-import type { GroupType, PanelType, PhotoType } from './look.data';
+import { groupOf, type GroupType, type PanelType, type PhotoType } from './look.data';
 
 // The photos on their way, or whose upload failed, by photo id. A photo whose file is stored has none.
 const uploads = new SvelteMap<string, Upload>();
@@ -27,13 +27,7 @@ export function hasFiles(event: DragEvent) {
 
 /** A new, empty group at the end of a photo panel: the one in the panel's list, so changes to it show. */
 export function addGroup(panel: PanelType): GroupType {
-	panel.groups.push({
-		id: crypto.randomUUID(),
-		title: '',
-		description: '',
-		layout: 4,
-		photos: []
-	});
+	panel.groups.push(groupOf());
 	return panel.groups.at(-1)!;
 }
 
