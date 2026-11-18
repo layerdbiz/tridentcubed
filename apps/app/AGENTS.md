@@ -186,6 +186,17 @@ src/lib/update/                    the update note: its rule, its test and the n
   fetch the new service worker, since an open app loads no page and the
   browser looks for one only then. When to switch is the update rule
   (`src/lib/update/update.state.svelte.ts`); change it there, test first.
+- **A page load is the browser's own request.** The service worker turns
+  on navigation preload when it takes over and answers a page load with
+  that request, never with one it sends itself: a request sent from a
+  service worker reaches the server as a plain read (`Sec-Fetch-Dest:
+  empty`), not as a page load. Vercel's Skew Protection keeps a visitor on
+  the deployment they started with by a cookie and moves them to the newest
+  one on a page load only, so a page load sent from the service worker left
+  an open app on the old deployment, and the update note came back after
+  every tap. With preload on, the browser asks for every page load itself,
+  so one the service worker leaves alone would be asked twice: an address
+  that is not a page gets the browser's request handed back as it came.
 - **Ask the browser what it can do.** Install App knows three things, each
   asked of the browser: whether the app runs installed, whether a one-tap
   install was offered, whether an install just happened. Nothing reads the
