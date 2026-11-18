@@ -27,3 +27,10 @@ export function paginate(heights: number[], room: number, isGlued: boolean[] = [
 export function heightOf(heights: number[], page: number[]) {
 	return page.reduce((sum, index) => sum + (heights[index] ?? 0), 0);
 }
+
+// The page the preview opens at, by index: the open panel's page (`found`, -1 with none open); else the page a
+// report link asked for (`asked`, from 1; 0 for none), held to the pages there are (#216); else the first.
+export function targetOf(found: number, asked: number, count: number) {
+	if (found >= 0) return found;
+	return Math.max(0, Math.min(asked, count) - 1);
+}

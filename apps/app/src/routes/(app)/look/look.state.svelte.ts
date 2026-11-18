@@ -154,6 +154,9 @@ export class LookState {
 	projectId = $state('');
 	tab = $state<TabType>('edit');
 	panelId = $state('');
+	// The page of the open project's Preview a report link asked for (the QR code on a report page, #216), from 1;
+	// 0 for none. The Preview opens there while no panel is open; opening a project by hand forgets it.
+	pageAsked = $state(0);
 	// The project whose status is being changed in the Change Status sheet, by id.
 	statusFor = $state<string>();
 	// What the + is adding, or nothing while its sheet is shut.
@@ -292,6 +295,7 @@ export class LookState {
 		const first = tab ?? (status && FINISHED.includes(status) ? 'page' : 'edit');
 		this.projectId = id;
 		this.panelId = '';
+		this.pageAsked = 0;
 		this.tab = first;
 		this.tabProgress = PROJECT_TABS.indexOf(first);
 		this.screen = 'workspace';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { heightOf, paginate } from './report-flow';
+import { heightOf, paginate, targetOf } from './report-flow';
 
 describe('paginate', () => {
 	it('keeps everything on one page while it fits', () => {
@@ -31,5 +31,25 @@ describe('paginate', () => {
 describe('heightOf', () => {
 	it('adds up the blocks on a page', () => {
 		expect(heightOf([100, 200, 300], [1, 2])).toBe(500);
+	});
+});
+
+describe('targetOf', () => {
+	it('opens at the open panel’s page', () => {
+		expect(targetOf(3, 0, 9)).toBe(3);
+		expect(targetOf(3, 7, 9)).toBe(3);
+	});
+
+	it('opens at the page a report link asked for when no panel is open (#216)', () => {
+		expect(targetOf(-1, 7, 9)).toBe(6);
+	});
+
+	it('holds a page asked for to the pages there are', () => {
+		expect(targetOf(-1, 12, 9)).toBe(8);
+		expect(targetOf(-1, 5, 0)).toBe(0);
+	});
+
+	it('opens at the first page when nothing is asked for', () => {
+		expect(targetOf(-1, 0, 9)).toBe(0);
 	});
 });

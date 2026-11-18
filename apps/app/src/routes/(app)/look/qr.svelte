@@ -1,8 +1,8 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 35: a real QR code (Justin, 2026-11-12: "I just want the QR code to work"). It encodes
 	// the link it is given with uqr and draws the modules as plain black squares in one path, so a phone's camera
-	// reads it off a screen or a printed page. For now every report's code opens the organization's website; a link
-	// to the report itself comes with the database, when a report has an address of its own.
+	// reads it off a screen or a printed page. A report page's code holds that project's report link, at that page
+	// (#216, #lib/report); the report preview wraps it in a link, so it can be clicked in the PDF too.
 	import { encode } from 'uqr';
 
 	let { value, size = 56 }: { value: string; size?: number } = $props();
