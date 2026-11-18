@@ -8,6 +8,7 @@ import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import {
 	type ClientType,
 	type ContactType,
+	createdDayOf,
 	panelOf,
 	type PanelType,
 	type PersonnelType,
@@ -227,22 +228,28 @@ const PROJECT_COLUMNS = [
 	'location',
 	'status',
 	'progress',
-	'day'
+	'day',
+	'job',
+	'customerReference'
 ];
 
 function fieldOf(panel: PanelType, label: string) {
 	return panel.fields.find((field) => field.label === label)?.value ?? '';
 }
 
-// What a project saves of its Project panel: as typed, its customer and Team Lead by id.
-function toPanelValues(look: LookState, panel: PanelType) {
+// What a project saves of its Project panel: as typed, its customer and Team Lead by id. No Job Sequence Number
+// (a new project, or one cleared) asks the server for the next (#217).
+function toPanelValues(look: LookState, panel: PanelType, project: ProjectType) {
 	return {
 		title: fieldOf(panel, 'Title'),
 		subtitle: fieldOf(panel, 'Subtitle'),
 		projectType: fieldOf(panel, 'Project Type'),
 		customerId: toCustomerId(look, fieldOf(panel, 'Customer')) ?? null,
 		contactId: panel.contact ?? null,
-		teamLeadId: toTeamId(look, panel.owner) ?? null
+		teamLeadId: toTeamId(look, panel.owner) ?? null,
+		day: panel.day || createdDayOf(project),
+		job: panel.job ?? null,
+		customerReference: panel.customerReference?.trim() ?? ''
 	};
 }
 
@@ -259,11 +266,11 @@ function toProjectRows(look: LookState): RowType[] {
 		const progress = panels && !isFrozen ? percentOf(panels) : project.progress;
 		const values = {
 			...Object.fromEntries(PROJECT_COLUMNS.map((column) => [column, saved?.values[column]])),
-			...(own ? toPanelValues(look, own) : {}),
+			day: createdDayOf(project),
+			...(own ? toPanelValues(look, own, project) : {}),
 			location: own ? project.location : (saved?.values.location ?? project.location),
 			status: project.status,
-			progress,
-			day: project.day ?? project.created.slice(0, 10)
+			progress
 		};
 		rows.push({ table: 'project', id: project.id, values });
 		if (!own) {
@@ -368,6 +375,9 @@ function fillProjectPanel(
 	set('Organization', look.organization.name);
 	set('Customer', values.customerId ? (toCustomerName(look, String(values.customerId)) ?? '') : '');
 	panel.contact = values.contactId ? String(values.contactId) : undefined;
+	panel.day = text(values, 'day') || undefined;
+	panel.job = values.job ? Number(values.job) : undefined;
+	panel.customerReference = text(values, 'customerReference');
 	panel.owner = values.teamLeadId ? (toTeamName(look, String(values.teamLeadId)) ?? '') : '';
 	panel.assigned = toAssigned(look, team);
 }
@@ -399,6 +409,7 @@ function toProject(
 		progress: Number(values.progress ?? 0),
 		day: text(values, 'day') || undefined,
 		job: values.job ? Number(values.job) : undefined,
+		customerReference: text(values, 'customerReference'),
 		createdBy: values.createdBy ? String(values.createdBy) : undefined
 	};
 }
@@ -417,6 +428,7 @@ function teamOf(rows: SavedRowType[]) {
 // panel when it has loaded.
 function takeProjectRow(look: LookState, row: SavedRowType, team: RowType[], stops: RowType[]) {
 	look.fromServer[row.id] = { values: { ...row.values }, team, stops: stops.map(toRow) };
+	if (row.values.job) look.serverJobs.set(row.id, Number(row.values.job));
 	for (const key of look.teamRowIds.keys())
 		if (key.startsWith(`${row.id}/`)) look.teamRowIds.delete(key);
 	for (const item of team) look.teamRowIds.set(`${row.id}/${String(item.values.teamId)}`, item.id);
@@ -512,16 +524,25 @@ function toPersonnel(rows: SavedRowType[]): PersonnelType[] {
 		}));
 }
 
-/** The columns only the server sets, from an applied batch (a new project's J count), into the screens. */
+/**
+ * The columns the server sets, from an applied batch (a new project's J count, or the next one after its customer
+ * or Project Creation Date changed), into the screens. The Project panel takes the J count too, unless someone
+ * typed another while the batch was on its way (#217).
+ */
 export function takeReads(look: LookState, reads: RowType[]) {
 	for (const read of reads) {
 		if (read.table !== 'project') continue;
 		const project = look.projects.find((item) => item.id === read.id);
-		if (project) {
-			if (read.values.job) project.job = Number(read.values.job);
-			if (read.values.createdBy) project.createdBy = String(read.values.createdBy);
-		}
 		const saved = look.fromServer[read.id];
+		if (read.values.job) {
+			const job = Number(read.values.job);
+			const own = look.workspaces[read.id]?.find((panel) => panel.kind === 'project');
+			const before = look.serverJobs.get(read.id);
+			if (own && (own.job === undefined || own.job === before)) own.job = job;
+			if (project && (!own || own.job === job)) project.job = job;
+			look.serverJobs.set(read.id, job);
+		}
+		if (project && read.values.createdBy) project.createdBy = String(read.values.createdBy);
 		if (saved) Object.assign(saved.values, read.values);
 	}
 }

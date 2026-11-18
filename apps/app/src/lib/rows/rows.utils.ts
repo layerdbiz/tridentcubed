@@ -1,6 +1,13 @@
 // The sync loop's difference (glossary "Sync loop"; #183): which row changes carry the rows the server last confirmed
 // to the rows the screens hold now. Pure, so it is tested with plain data.
-import { type RowChangeType, type RowType, TABLE_NAMES, type TableNameType } from './rows.schema';
+import {
+	type RowChangeType,
+	type RowType,
+	TABLE_NAMES,
+	type TableNameType,
+	type TableSpecType,
+	TABLES
+} from './rows.schema';
 
 function keyOf(row: { table: string; id: string }) {
 	return `${row.table}/${row.id}`;
@@ -97,6 +104,26 @@ export function toApplied(confirmed: RowType[], changes: RowChangeType[]): RowTy
 		});
 	}
 	return [...rows.values()];
+}
+
+/**
+ * The confirmed rows once the server's own columns of an applied batch (`reads`) are taken in. A column the server
+ * sets that a device sends too (a project's J count, #217) is now what the server made it, so the device does not
+ * send its old one back. Every other column stays as the device sent it.
+ */
+export function toRead(confirmed: RowType[], reads: RowType[]): RowType[] {
+	const taken = new Map(reads.map((row) => [keyOf(row), row]));
+	return confirmed.map((row) => {
+		const read = taken.get(keyOf(row));
+		if (!read) return row;
+		const spec: TableSpecType = TABLES[row.table];
+		const values = Object.fromEntries(
+			(spec.reads ?? [])
+				.filter((column) => column in row.values && column in read.values)
+				.map((column) => [column, read.values[column]])
+		);
+		return { ...row, values: { ...row.values, ...values } };
+	});
 }
 
 /**

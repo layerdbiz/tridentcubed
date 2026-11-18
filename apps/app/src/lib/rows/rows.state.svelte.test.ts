@@ -292,6 +292,25 @@ describe('the sync loop', () => {
 		expect(app.reads).toEqual([job]);
 	});
 
+	it('does not send back a column the server set of a row this device sent (a new project’s J count)', async () => {
+		const made: RowType = {
+			table: 'project',
+			id: PROJECT,
+			values: { title: 'Kimberly', job: null }
+		};
+		const job: RowType = { table: 'project', id: PROJECT, values: { title: 'Kimberly', job: 2 } };
+		const app = createLoop([async () => ({ isSaved: true, reads: [job] })]);
+
+		app.edit([koga('Houston'), made]);
+		await vi.advanceTimersByTimeAsync(1000);
+		// The screens take the J count in, as the mapper's `takeReads` does.
+		app.edit([koga('Houston'), job]);
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(app.sent).toHaveLength(1);
+		expect(app.loop.state).toBe('saved');
+	});
+
 	it('takes in what others saved every minute while the tab is shown (the online dots), and stops', async () => {
 		const app = createLoop([]);
 		let isVisible = true;

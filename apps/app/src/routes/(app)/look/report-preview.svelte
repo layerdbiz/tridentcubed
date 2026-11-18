@@ -39,6 +39,7 @@
 	import ClientLogo from './client-logo.svelte';
 	import { legsOf, type LegType } from './legs';
 	import {
+		createdDayOf,
 		dayOf,
 		documentIdOf,
 		FACILITY_ICONS,
@@ -48,6 +49,7 @@
 		PARTICULARS,
 		personOf,
 		POINTS,
+		toReference,
 		type PanelType,
 		type StopType
 	} from './look.data';
@@ -202,17 +204,26 @@
 		(client.contacts ?? []).find((item) => item.id === team?.contact) ??
 			(client.contacts ?? []).find((item) => item.name)
 	);
-	// The days the team was there: the Time Log's dated days, first to last; before any, the day the project began.
-	const dates = $derived.by(() => {
+	// The cover's two dates (#217). Created Date is the Project Creation Date saved with the project, the day its
+	// number shows. Completed Date is when the work was done: the Time Log's dated day, or first to last for a job of
+	// several days; nothing before any.
+	const createdDate = $derived(dayOf(createdDayOf(look.project)));
+	const completedDate = $derived.by(() => {
 		const days = (timelog?.days ?? [])
 			.map((day) => day.date)
 			.filter(Boolean)
 			.toSorted();
-		if (!days.length) return dayOf(look.project.created);
+		if (!days.length) return '';
 		return days.length > 1 && days[0] !== days.at(-1)
 			? `${dateOf(days[0])} to ${dateOf(days.at(-1)!)}`
 			: dateOf(days[0]);
 	});
+	// The days the team was there, as the report's sentences say it: before any, the day the project began.
+	const dates = $derived(completedDate || createdDate);
+	// The customer's own number for the job (#217): after its name on the cover, under the document ID in the footer.
+	const reference = $derived(
+		toReference(team?.customerReference ?? look.project.customerReference)
+	);
 
 	function titleOf(name: string) {
 		return look.members.find((member) => member.name === name)?.title ?? '';
@@ -644,21 +655,28 @@
 	});
 
 	// Cover A's lines (variants/cover-a.svelte): the six it had before run 19, now in the Project panel's order.
+	// #217: the customer's own number after its name, the whole team's faces where the Lead's name was, and the
+	// project's two dates where Dates was.
 	const coverLines = $derived([
 		{
 			icon: 'icon-[mdi--package-variant-closed]',
 			label: 'Project Type',
 			value: detail('Project Type') ?? ''
 		},
-		{ icon: PAGE_ICONS.customers, label: 'Customer', value: company },
-		{ icon: 'icon-[mdi--account-tie-outline]', label: 'Team Lead', value: team?.owner ?? '' },
+		{
+			icon: PAGE_ICONS.customers,
+			label: 'Customer',
+			value: company && reference ? `${company} (${reference})` : company
+		},
+		{ icon: PAGE_ICONS.team, label: 'Team Members', value: listOf(people), names: people },
 		{
 			icon: stops[0] ? iconOf(stops[0]) : PAGE_ICONS.transport,
 			label: 'Transport Mode',
 			value: transport
 		},
 		{ icon: PAGE_ICONS.facilities, label: 'Facility', value: facility },
-		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Dates', value: dates }
+		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Created Date', value: createdDate },
+		{ icon: 'icon-[mdi--calendar-check-outline]', label: 'Completed Date', value: completedDate }
 	]);
 
 	// Cover B's lines (variants/cover-b.svelte), in the Project panel's own order, each with its real picture: a
@@ -678,7 +696,7 @@
 		},
 		{
 			label: 'Customer',
-			value: company,
+			value: company && reference ? `${company} (${reference})` : company,
 			images: client.icon ? [client.icon] : [],
 			icon: PAGE_ICONS.customers
 		},
@@ -707,7 +725,8 @@
 		},
 		{ label: 'Facility', value: facility, icon: PAGE_ICONS.facilities },
 		{ label: 'Location', value: location, icon: 'icon-[mdi--map-marker]' },
-		{ label: 'Dates', value: dates, icon: 'icon-[mdi--calendar-blank-outline]' }
+		{ label: 'Created Date', value: createdDate, icon: 'icon-[mdi--calendar-blank-outline]' },
+		{ label: 'Completed Date', value: completedDate, icon: 'icon-[mdi--calendar-check-outline]' }
 	]);
 
 	function memberOf(name: string) {
@@ -766,7 +785,8 @@
 {/snippet}
 
 <!-- The customer's logo, no box around it (run 9 note 6), as big as Trident's in the header (run 11); a customer with
-     no logo gets its initial on a colour circle. The document ID under the name, by a barcode. -->
+     no logo gets its initial on a colour circle. The document ID under the name, by a barcode, and under that the
+     customer's own number for the job, by a tag, when it has one (#217). -->
 {#snippet customer()}
 	<div class="flex min-w-0 items-center gap-2.5">
 		{#if client.logo}
@@ -790,6 +810,13 @@
 			<p class="flex items-center gap-1 tabular-nums">
 				<span class="icon-[mdi--barcode] size-2.5 text-slate-950"></span>{documentNumber}
 			</p>
+			{#if reference}
+				<p class="flex items-center gap-1 tabular-nums">
+					<span class="icon-[mdi--tag-outline] size-2.5 text-slate-950"></span><span
+						class="truncate">{reference}</span
+					>
+				</p>
+			{/if}
 		</div>
 	</div>
 {/snippet}

@@ -2,7 +2,7 @@
 // screens hold now, and the row changes that carry one to the other. Plain data: no database, no screens.
 import { describe, expect, it } from 'vite-plus/test';
 import type { RowType } from './rows.schema';
-import { toApplied, toChanges, toMerged, toStableId } from './rows.utils';
+import { toApplied, toChanges, toMerged, toRead, toStableId } from './rows.utils';
 
 const KOGA = '00000000-0000-4000-8000-000000000001';
 const AXA = '00000000-0000-4000-8000-000000000002';
@@ -116,6 +116,35 @@ describe('toApplied', () => {
 		const confirmed = toApplied(before, toChanges(before, after, nextId));
 
 		expect(toChanges(confirmed, after, nextId)).toEqual([]);
+	});
+});
+
+describe('toRead', () => {
+	const PROJECT = '00000000-0000-4000-8000-000000000009';
+
+	it('confirms a column the server set of a row the device sent, and leaves the rest as sent', () => {
+		const sent: RowType = {
+			table: 'project',
+			id: PROJECT,
+			values: { title: 'Kimberly', progress: 40, job: null }
+		};
+		const read: RowType = {
+			table: 'project',
+			id: PROJECT,
+			values: { title: 'Kimberly', progress: 10, job: 3, createdBy: 'someone' }
+		};
+
+		expect(toRead([sent], [read])).toEqual([
+			{ table: 'project', id: PROJECT, values: { title: 'Kimberly', progress: 40, job: 3 } }
+		]);
+		expect(
+			toChanges(toRead([sent], [read]), [{ ...sent, values: { ...sent.values, job: 3 } }])
+		).toEqual([]);
+	});
+
+	it('leaves rows the server sent nothing back for', () => {
+		const sent: RowType = { table: 'project', id: PROJECT, values: { job: 2 } };
+		expect(toRead([sent], [])).toEqual([sent]);
 	});
 });
 

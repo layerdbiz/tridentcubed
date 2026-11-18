@@ -4,7 +4,8 @@
 //
 // Every row inside a project carries `project_id`, however deep it sits, so a project's rows load with one filter, the
 // freeze of a Sent project reaches them without walking parents, and deleting a project sends them all to the Trash.
-// `created_by`, `job` and `status_before_sent` are set by the server only (`#lib/server/rows.ts`). Row Level Security
+// `created_by` and `status_before_sent` are set by the server only, and `job` when no one typed one
+// (`#lib/server/rows.ts`). Row Level Security
 // keeps every table to the acting organization.
 import { sql } from 'drizzle-orm';
 import { boolean, index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
@@ -51,10 +52,12 @@ export const project = pgTable(
 		statusBeforeSent: words('status_before_sent'),
 		/** Its percent, as its panels last worked it out, so the lists show it before the panels load. */
 		progress: integer('progress').default(0).notNull(),
-		/** The day it was made on the device that made it (YYYY-MM-DD): the day its number shows. */
+		/** Its Project Creation Date (YYYY-MM-DD), the day its number shows: the day it was made, or one typed. */
 		day: words('day'),
-		/** Which of its customer's jobs that day it is: the J count of its number. Set by the server, once. */
+		/** Which of its customer's jobs that day it is: the J count of its number. The server's next, or one typed. */
 		job: integer('job').default(1).notNull(),
+		/** The customer's own number for the job, printed after its name on the cover and in the footer. */
+		customerReference: words('customer_reference'),
 		/** The User who made it. Set by the server. */
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' })
 	},

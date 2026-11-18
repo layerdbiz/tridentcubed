@@ -2,7 +2,7 @@
 // the one save command as an Admin, and read back by another member on another device.
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { RowType } from '#lib/rows/rows.schema.js';
-import { toChanges, toMerged } from '#lib/rows/rows.utils.js';
+import { toChanges, toMerged, toRead } from '#lib/rows/rows.utils.js';
 import type { ActorType } from '#lib/server/db/claims.js';
 import * as schema from '#lib/server/db/schema.js';
 import { TRIDENT_CUBED } from '#lib/server/db/seed.js';
@@ -49,7 +49,7 @@ async function save(device: DeviceType) {
 	const changes = toChanges(device.confirmed, toRows(device.look));
 	const result = await saveBatch(test.claims, device.actor, { changes });
 	if (result.isSaved) {
-		device.confirmed = toRows(device.look);
+		device.confirmed = toRead(toRows(device.look), result.reads ?? []);
 		if (result.reads) takeReads(device.look, result.reads);
 	}
 	return result;

@@ -221,6 +221,9 @@ export class LookState {
 	> = {};
 	// The row ids of the Team Assigned, by project and Team record (mapper.ts).
 	teamRowIds = new Map<string, string>();
+	// The J count the server last gave each project (mapper.ts, #217): how a new one from the server is told from
+	// one someone typed while a save was on its way.
+	serverJobs = new Map<string, number>();
 
 	project = $derived(
 		this.projects.find((project) => project.id === this.projectId) ?? this.projects[0]
@@ -451,6 +454,11 @@ export class LookState {
 			if (project[key] !== text) project[key] = text;
 		const team = [panel.owner, ...panel.assigned].filter(Boolean);
 		if (team.join('|') !== project.team.join('|')) project.team = team;
+		// Its number's two typed parts and the customer's own number for the job (#217).
+		if (panel.day && project.day !== panel.day) project.day = panel.day;
+		if (project.job !== panel.job) project.job = panel.job;
+		const reference = panel.customerReference?.trim() ?? '';
+		if ((project.customerReference ?? '') !== reference) project.customerReference = reference;
 	}
 
 	// A new project, from the Project panel the + sheet filled in: that panel becomes the project's own.
@@ -473,7 +481,9 @@ export class LookState {
 			status: 'Draft',
 			team: [draft.owner, ...draft.assigned].filter(Boolean),
 			progress: 0,
-			day: now.slice(0, 10),
+			day: draft.day || now.slice(0, 10),
+			job: draft.job,
+			customerReference: draft.customerReference?.trim() ?? '',
 			createdBy: this.userId || undefined
 		});
 		this.workspaces[id] = createPanels(this.projects[0]).map((panel) =>

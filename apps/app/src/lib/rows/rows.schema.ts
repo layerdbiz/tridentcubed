@@ -11,8 +11,9 @@
 //   opens (#186).
 // - `isNamed`: the screens name its rows by `name`, so a name is unique on its page among rows outside the Trash,
 //   and the rows in the Trash still load, so a project that used one still shows its name.
-// - `reads`: columns only the server sets that still load with the row (a Team record's User and last seen), so the
-//   screens can show them. A device never sends them.
+// - `reads`: columns the server sets that still load with the row (a Team record's User and last seen), so the
+//   screens can show them. A device never sends them, but for one that is also among `columns` (a project's J
+//   count), which the server sets when the device sets none.
 //
 // The order of `TABLES` is the order a batch's puts are applied in: a parent comes before its children.
 // The rules of who may change what are not here: they live in the one permission check (`#lib/server/permission.ts`).
@@ -194,8 +195,9 @@ export const TABLES = {
 	},
 	// Projects (#186). The list loads at start, so the project and its Team Assigned are `organization` rows; what
 	// is inside it (its personnel and panels, and the panels' contents after #188 and #189) loads when it opens.
-	// Every row inside a project carries `projectId`, which `fetchProject` and the freeze read. Who made it, its J
-	// count and the status it had before Sent are the server's to set.
+	// Every row inside a project carries `projectId`, which `fetchProject` and the freeze read. Who made it and the
+	// status it had before Sent are the server's to set. Its J count (`job`) is both: a device may set it (#217: the
+	// Job Sequence Number, typed), and the server gives the next when a put sets none, so it is also a read.
 	project: {
 		scope: 'organization',
 		reads: ['createdBy', 'job', 'statusBeforeSent'],
@@ -209,7 +211,9 @@ export const TABLES = {
 			location: TEXT,
 			status: STATUS,
 			progress: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(100)),
-			day: v.pipe(v.string(), v.regex(/^\d{4}-\d{2}-\d{2}$/, 'A day is YYYY-MM-DD.'))
+			day: v.pipe(v.string(), v.regex(/^\d{4}-\d{2}-\d{2}$/, 'A day is YYYY-MM-DD.')),
+			job: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(999))),
+			customerReference: v.pipe(v.string(), v.maxLength(100))
 		}
 	},
 	project_team: {
@@ -417,7 +421,7 @@ export function columnsOf(table: TableNameType) {
 /** The columns of a table that load with its rows: those a device may set, then those only the server sets. */
 export function readsOf(table: TableNameType) {
 	const spec: TableSpecType = TABLES[table];
-	return [...columnsOf(table), ...(spec.reads ?? [])];
+	return [...new Set([...columnsOf(table), ...(spec.reads ?? [])])];
 }
 
 /** Whether a column of a table that saves keeps a file's address (it is declared with `PICTURE`). */

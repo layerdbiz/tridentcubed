@@ -6,7 +6,7 @@
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { RowType } from '#lib/rows/rows.schema.js';
-import { toChanges, toMerged } from '#lib/rows/rows.utils.js';
+import { toChanges, toMerged, toRead } from '#lib/rows/rows.utils.js';
 import type { ActorType } from '#lib/server/db/claims.js';
 import * as schema from '#lib/server/db/schema.js';
 import { TRIDENT_CUBED } from '#lib/server/db/seed.js';
@@ -61,7 +61,7 @@ async function save(device: DeviceType) {
 	const changes = toChanges(device.confirmed, toRows(device.look));
 	const result = await saveBatch(test.claims, device.actor, { changes });
 	if (result.isSaved) {
-		device.confirmed = toRows(device.look);
+		device.confirmed = toRead(toRows(device.look), result.reads ?? []);
 		if (result.reads) takeReads(device.look, result.reads);
 	}
 	return { result, changes };
@@ -482,6 +482,105 @@ describe('the project number', () => {
 		expect(jobOf(third)).toMatch(/-J03$/);
 		expect(jobOf(other)).toMatch(/-J01$/);
 		expect(numberOf(projectOf(mine.look, third)!, mine.look.projects)).toBe(jobOf(third));
+	});
+
+	// #217: Project Creation Date and Job Sequence Number are the two parts of the number a User may type.
+	it('follows a typed Project Creation Date, with the next J count of that customer and day', async () => {
+		const mine = await open(tom);
+		const first = create(mine.look, { Customer: 'KOGA' });
+		const second = create(mine.look, { Customer: 'KOGA' });
+		await save(mine);
+		expect(projectPanel(mine.look, second).job).toBe(2);
+
+		// The second job was accepted on another day: it is that day's first.
+		projectPanel(mine.look, second).day = '2026-10-27';
+		expect((await save(mine)).result.isSaved).toBe(true);
+		expect(projectPanel(mine.look, second).job).toBe(1);
+
+		// The first follows it there and takes the next one.
+		projectPanel(mine.look, first).day = '2026-10-27';
+		await save(mine);
+		expect(projectPanel(mine.look, first).job).toBe(2);
+
+		const theirs = await open(mia);
+		const numberIn = (id: string) => numberOf(projectOf(theirs.look, id)!, theirs.look.projects);
+		expect(numberIn(second)).toBe('KOG-2026-10-27-J01');
+		expect(numberIn(first)).toBe('KOG-2026-10-27-J02');
+		await openProject(theirs, second);
+		expect(projectPanel(theirs.look)).toMatchObject({ day: '2026-10-27', job: 1 });
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+	});
+
+	it('keeps a typed Job Sequence Number, and gives the next one when it is cleared', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look, { Customer: 'KOGA' });
+		const other = create(mine.look, { Customer: 'KOGA' });
+		await save(mine);
+		const panel = projectPanel(mine.look, id);
+		expect(panel.job).toBe(1);
+
+		panel.job = 7;
+		expect((await save(mine)).result.isSaved).toBe(true);
+		// Typing anything else in the project leaves its number alone.
+		fill(panel, { Title: 'MSC Susana Loading' });
+		await save(mine);
+		const theirs = await open(mia);
+		expect(numberOf(projectOf(theirs.look, id)!, theirs.look.projects)).toMatch(/^KOG-.*-J07$/);
+
+		// Cleared, it is the next after that customer's others of the day.
+		panel.job = undefined;
+		await save(mine);
+		expect(projectPanel(mine.look, id).job).toBe(3);
+		expect(projectOf(mine.look, other)?.job).toBe(2);
+	});
+
+	it('keeps the number through a Time Log edit, on this device and the next', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look, { Customer: 'KOGA' });
+		await save(mine);
+		projectPanel(mine.look).day = '2026-10-27';
+		await save(mine);
+
+		const timelog = mine.look.workspaces[id].find((panel) => panel.kind === 'timelog')!;
+		timelog.days.push({
+			id: crypto.randomUUID(),
+			date: '2026-11-18',
+			entries: [{ id: crypto.randomUUID(), time: '07:30', activity: 'On site' }]
+		});
+		expect((await save(mine)).result.isSaved).toBe(true);
+		expect(projectPanel(mine.look)).toMatchObject({ day: '2026-10-27', job: 1 });
+
+		const theirs = await open(mia);
+		expect(numberOf(projectOf(theirs.look, id)!, theirs.look.projects)).toBe('KOG-2026-10-27-J01');
+		await openProject(theirs, id);
+		expect(numberOf(projectOf(theirs.look, id)!, theirs.look.projects)).toBe('KOG-2026-10-27-J01');
+		expect(projectPanel(theirs.look).day).toBe('2026-10-27');
+	});
+
+	it('refuses a Job Sequence Number that is not a count', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look, { Customer: 'KOGA' });
+		await save(mine);
+		projectPanel(mine.look, id).job = 0;
+		expect((await save(mine)).result.isSaved).toBe(false);
+	});
+});
+
+describe('the Customer Reference Number', () => {
+	it('saves with the project and another member sees it, before the project opens and after', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look, { Customer: 'KOGA' });
+		await save(mine);
+		expect(projectPanel(mine.look).customerReference ?? '').toBe('');
+
+		projectPanel(mine.look).customerReference = 'SO025484';
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		expect(projectOf(theirs.look, id)?.customerReference).toBe('SO025484');
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+		await openProject(theirs, id);
+		expect(projectPanel(theirs.look).customerReference).toBe('SO025484');
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
 	});
 });
 
