@@ -145,7 +145,8 @@ function toMember(row: SavedRowType): TeamMemberType {
 		photo: text(values, 'photo'),
 		created: toStamp(row.createdAt),
 		updated: toStamp(row.updatedAt),
-		seen: values.lastSeen ? String(values.lastSeen) : undefined
+		seen: values.lastSeen ? String(values.lastSeen) : undefined,
+		since: values.onlineSince ? String(values.onlineSince) : undefined
 	};
 }
 

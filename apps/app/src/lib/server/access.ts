@@ -14,6 +14,7 @@
 // `findActor` is who the User is on a request: their organization, role and Super admin flag, read through the
 // claims helper as the User themselves. `hooks.server.ts` puts it on `event.locals.actor`.
 import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm';
+import { ONLINE_MINUTES } from '../presence/presence.constants';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
 import type { DatabaseType } from './db/index';
 import type { RoleType } from './db/organization.schema';
@@ -216,21 +217,32 @@ const STAMPED = new Map<string, number>();
 /**
  * Stamps the acting User's Team record as seen now (#185): their online dot. The server does it on every request of
  * a member, at most once a minute (here, and again in the database, for the servers that do not share this memory).
+ * It also stamps when they came online (#226): now, when they were last seen longer ago than a green dot lasts (or
+ * never); otherwise the visit they are in keeps the start it had.
  */
 export async function stampSeen(claims: ClaimsType, actor: ActorType, now = Date.now()) {
 	if (!actor.organizationId) return;
 	const key = `${actor.userId} ${actor.organizationId}`;
 	if (now - (STAMPED.get(key) ?? 0) < 60_000) return;
 	STAMPED.set(key, now);
+	const at = new Date(now);
+	const away = new Date(now - ONLINE_MINUTES * 60_000);
 	await claims.run(actor, (tx) =>
 		tx
 			.update(team)
-			.set({ lastSeen: sql`now()` })
+			.set({
+				lastSeen: at,
+				onlineSince: sql`case when ${team.lastSeen} >= ${toStamp(away)} then coalesce(${team.onlineSince}, ${toStamp(at)}) else ${toStamp(at)} end`
+			})
 			.where(
 				and(
 					eq(team.userId, actor.userId),
-					or(isNull(team.lastSeen), lt(team.lastSeen, sql`now() - interval '1 minute'`))
+					or(isNull(team.lastSeen), lt(team.lastSeen, new Date(now - 60_000)))
 				)
 			)
 	);
+}
+
+function toStamp(date: Date) {
+	return sql`${date.toISOString()}::timestamptz`;
 }

@@ -23,6 +23,8 @@ export type TeamMemberType = {
 	created?: string;
 	updated?: string;
 	seen?: string;
+	// When they came online: the start of the visit `seen` is part of (#226). It orders the menu's Online panel.
+	since?: string;
 };
 
 // The day the sample rows were made: what a record that came with the prototype says for created and updated.
