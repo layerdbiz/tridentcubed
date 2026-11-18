@@ -3,9 +3,14 @@
 // function stays warm (nothing of it is in the deployment, so the function stays under its size cap); on a
 // developer's machine it is the local Chrome or Edge.
 //
-// It opens this site as the member who asked: their session headers go on requests to the site's own origin only
-// (`sessionFor`), so /files/<id> opens for them and then sends the browser on to the storage host's signed link with
-// no session attached. Fonts and styles load from the site the same way.
+// It opens this site as the member who asked. Their cookies are put in its own cookie store for this site
+// (`toCookies`), so they go with every request to the site, and a cookie the site sets on the way (Better Auth's
+// five-minute session cache, the host's own) joins them. Handing the Cookie header over on each request instead
+// lost the session (#220): this Chromium sends its own store's cookies in place of a handed-over header as soon as
+// the store holds one for the site, so after the site's first answer set a cookie every picture the browser had to
+// open itself (/files/<id>, /start/...) was refused as signed out and left out of the PDF. The other session headers
+// go on requests to the site's own origin only (`sessionFor`). /files/<id> sends the browser on to the storage
+// host's signed link, which gets no cookie and no header. Fonts and styles load from the site the same way.
 import { access } from 'node:fs/promises';
 
 import chromium from '@sparticuz/chromium-min';
@@ -42,7 +47,8 @@ async function fileExists(filePath: string) {
 	}
 }
 
-async function resolveLocalExecutablePath() {
+/** The Chrome or Edge on this machine the export prints with, off Vercel; null when there is none. */
+export async function findLocalBrowser() {
 	for (const candidate of localExecutableCandidates) {
 		if (await fileExists(candidate)) {
 			return candidate;
@@ -72,7 +78,7 @@ export async function launchBrowser() {
 		});
 	}
 
-	const executablePath = await resolveLocalExecutablePath();
+	const executablePath = await findLocalBrowser();
 
 	if (!executablePath) {
 		throw new Error(
@@ -87,8 +93,23 @@ export async function launchBrowser() {
 	});
 }
 
-/** The session headers a request of the export browser carries: the asker's, to this site's own origin; none to
- * any other host, port or scheme. */
+export type SiteCookieType = { name: string; value: string; url: string; secure: boolean };
+
+/** The cookies of a request's Cookie header, as the export browser keeps them: for this site's host and no other,
+ * and for https alone when the site is https (a `__Secure-` name needs that to be kept at all). */
+export function toCookies(header: string | undefined, site: string): SiteCookieType[] {
+	const cookies: SiteCookieType[] = [];
+	const secure = site.startsWith('https:');
+	for (const part of (header ?? '').split(';')) {
+		const at = part.indexOf('=');
+		const name = part.slice(0, Math.max(at, 0)).trim();
+		if (name) cookies.push({ name, value: part.slice(at + 1).trim(), url: site, secure });
+	}
+	return cookies;
+}
+
+/** The session headers a request of the export browser carries besides its cookies: the asker's, to this site's
+ * own origin; none to any other host, port or scheme. */
 export function sessionFor(address: string, site: string, session: Record<string, string>) {
 	if (!URL.canParse(address)) return {};
 	return new URL(address).origin === site ? session : {};
@@ -98,15 +119,22 @@ export function sessionFor(address: string, site: string, session: Record<string
  * (GET /api/export/pdf), not a bare one, so the fonts and pictures it names load from the site as they do in the
  * app. */
 export async function printPdf({ html, site, session }: PrintJobType) {
+	const { cookie, ...others } = session;
 	const browser = await launchBrowser();
 	try {
 		const page = await browser.newPage();
+		// One at a time: a cookie the browser will not keep must not cost the others.
+		const store = await page.createCDPSession();
+		for (const kept of toCookies(cookie, site)) {
+			await store.send('Network.setCookie', kept).catch(() => undefined);
+		}
+		await store.detach();
 		await page.setViewport({ width: PAGE_WIDTH, height: PAGE_HEIGHT, deviceScaleFactor: 2 });
 		await page.emulateMediaType('screen');
 		await page.setRequestInterception(true);
 		page.on('request', (request) => {
 			if (request.isInterceptResolutionHandled()) return;
-			const extra = sessionFor(request.url(), site, session);
+			const extra = sessionFor(request.url(), site, others);
 			const headers = Object.keys(extra).length ? { ...request.headers(), ...extra } : undefined;
 			request.continue(headers ? { headers } : undefined).catch(() => undefined);
 		});
