@@ -37,6 +37,7 @@ import {
 	type TransportType
 } from './look.data';
 import type { PlaceType } from './map.data';
+import { readMenuPanels, writeMenuPanels, type MenuPanelsType } from './menu-panels';
 import type { RowType } from '#lib/rows/rows.schema.js';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
@@ -165,6 +166,9 @@ export class LookState {
 	// The project a record was opened from by a dropdown's pencil; back returns there.
 	#backTo: { projectId: string; tab: TabType; panelId: string } | undefined;
 	navSection = $state<string>('projects');
+	// The menu's panels (#212): which are open, the same in the sidebar and the phone's drawer, and remembered on
+	// the device (menu-panels.ts).
+	menuPanels = $state(readMenuPanels());
 	// Which way the dashboard's next page slides in: 1 from the right, -1 from the left.
 	slide = $state(0);
 	// The record on show: which page it belongs to and its name.
@@ -234,6 +238,12 @@ export class LookState {
 		}
 		// The Project panel is the project: its row follows the panel as it is typed in.
 		$effect(() => this.#syncProject());
+	}
+
+	// Opens or shuts one of the menu's panels, and keeps that on the device (#212).
+	toggleMenuPanel(panel: keyof MenuPanelsType) {
+		this.menuPanels[panel] = !this.menuPanels[panel];
+		writeMenuPanels(this.menuPanels);
 	}
 
 	// Whether a project's panels have loaded (look.svelte loads them as it opens).

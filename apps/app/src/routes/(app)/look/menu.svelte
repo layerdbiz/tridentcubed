@@ -124,8 +124,10 @@
 	}
 
 	// In the top layer. A scroll outside it, a turned phone or the keyboard coming up moves it with its button.
+	// Safari 16 and older (2022) has no popovers: calling one there threw, and the whole screen turned to "Whoops"
+	// (the client's Safari report, 2026-11-18). There the list stays an ordinary fixed box, kept on top by its z-index.
 	const lift: Attachment<HTMLElement> = (node) => {
-		node.showPopover();
+		node.showPopover?.();
 		const onscroll = (event: Event) => {
 			if (!node.contains(event.target as Node)) follow();
 		};
@@ -168,7 +170,7 @@
 	{#if isOpen}
 		<div
 			popover="manual"
-			class="fixed m-0 flex flex-col overflow-hidden rounded-2xl border-0 bg-white text-left shadow-[0_2px_6px_rgb(15_23_42/0.06),0_20px_44px_-12px_rgb(15_23_42/0.28)]"
+			class="fixed z-[120] m-0 flex flex-col overflow-hidden rounded-2xl border-0 bg-white text-left shadow-[0_2px_6px_rgb(15_23_42/0.06),0_20px_44px_-12px_rgb(15_23_42/0.28)]"
 			style="inset: auto; {place}"
 			transition:scale={{ start: 0.95, duration: 140 }}
 			{@attach lift}
@@ -194,8 +196,10 @@
 					/>
 				</label>
 			{/if}
+			<!-- `flex-auto`, not `flex-1`: Safari before this year's (17.4 to 26.4 tested) gives a list that starts from
+			     nothing no height inside a floating box, so every dropdown opened empty (2026-11-18). -->
 			<div
-				class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-1.5"
+				class="min-h-0 flex-auto overflow-y-auto overscroll-contain p-1.5"
 				role="listbox"
 				aria-label={label}
 			>

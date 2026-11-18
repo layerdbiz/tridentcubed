@@ -34,8 +34,10 @@
 		samples = samples.filter((sample) => event.timeStamp - sample.t < 100);
 	}
 
+	// Safari 16 and older (2022) has no popovers, and calling one there threw ("Whoops", 2026-11-18): there the sheet
+	// is an ordinary fixed box, kept on top by its z-index.
 	const lift: Attachment<HTMLElement> = (node) => {
-		node.showPopover();
+		node.showPopover?.();
 	};
 
 	function up(event: PointerEvent) {
@@ -52,7 +54,7 @@
 
 <div
 	popover="manual"
-	class="m-0 size-full max-h-none max-w-none overflow-visible border-0 bg-transparent p-0"
+	class="fixed z-[110] m-0 size-full max-h-none max-w-none overflow-visible border-0 bg-transparent p-0"
 	style="inset: 0"
 	{@attach lift}
 >
