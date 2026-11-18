@@ -418,7 +418,8 @@ CREATE TABLE "photo_group" (
 	"position" integer DEFAULT 0 NOT NULL,
 	"title" text DEFAULT '' NOT NULL,
 	"description" text DEFAULT '' NOT NULL,
-	"layout" integer DEFAULT 4 NOT NULL
+	"layout" integer DEFAULT 4 NOT NULL,
+	"is_enabled" boolean DEFAULT true NOT NULL
 );
 
 --> statement-breakpoint

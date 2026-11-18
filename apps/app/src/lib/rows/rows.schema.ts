@@ -246,6 +246,7 @@ export const TABLES = {
 		}
 	},
 	// #189: a photo panel's groups and their photos, in order. A photo keeps its file's address (`/files/<id>`).
+	// #215: a group switched off keeps what it holds and leaves the report.
 	photo_group: {
 		scope: 'project',
 		parent: { table: 'panel', column: 'panelId' },
@@ -255,7 +256,8 @@ export const TABLES = {
 			position: POSITION,
 			title: TEXT,
 			description: TEXT,
-			layout: v.picklist([1, 2, 4, 6, 8])
+			layout: v.picklist([1, 2, 4, 6, 8]),
+			isEnabled: v.boolean()
 		}
 	},
 	photo: {

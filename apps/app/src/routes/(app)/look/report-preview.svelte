@@ -34,6 +34,7 @@
 	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
 	import { toCrossOrigin } from '#lib/files/files.schema.js';
+	import { toReportLink } from '#lib/report/report.utils.js';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import { legsOf, type LegType } from './legs';
@@ -42,6 +43,7 @@
 		dayOf,
 		documentIdOf,
 		FACILITY_ICONS,
+		groupWordOf,
 		MODE_ICONS,
 		PAGE_ICONS,
 		PARTICULARS,
@@ -52,7 +54,7 @@
 		type StopType
 	} from './look.data';
 	import { customerOf, photosOf, recordOf } from './records.data';
-	import { heightOf, paginate } from './report-flow';
+	import { heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -117,7 +119,7 @@
 		panel?: PanelType;
 		blocks: BlockType[];
 	};
-	type EntryType = { title: string; key: string; subs: string[] };
+	type EntryType = { title: string; key: string; subs: { title: string; page: number }[] };
 
 	const W = 595;
 	const H = 842;
@@ -226,11 +228,17 @@
 	function titleOf(name: string) {
 		return look.members.find((member) => member.name === name)?.title ?? '';
 	}
-	// What the QR code opens: the organization's website, as a full link. A report's own link comes with V1.
+	// What a page's QR code opens (#216): this project's Preview in the app, at that page, by the report's short
+	// link (#lib/report). The app it names is the one the report was made in, where its data is. With no project
+	// to link to, the organization's website, as a full link.
 	const siteLink = $derived.by(() => {
 		const site = organization.website.trim() || 'tridentcubed.com';
 		return site.toLowerCase().startsWith('http') ? site : `https://${site}`;
 	});
+	function linkOf(page: number) {
+		const id = look.project?.id;
+		return id ? toReportLink(document.location.origin, id, page) : siteLink;
+	}
 	const documentNumber = $derived(documentIdOf(look.project, look.projects, company));
 
 	// The trip as legs (legs.ts): one transport and the facilities it calls at.
@@ -400,19 +408,18 @@
 			// Transport Mode A: every stop on one page (run 19), not a page each.
 			else if (panel.kind === 'transport' && panel.stops.length)
 				list.push({ key: 'transport', title: panel.name, kind: 'transport', panel });
+			// A photo panel's title stands on every one of its pages: alone on the first, "(continued)" on each after
+			// it, with the group's own name under it (#215). A group switched off prints nothing.
 			if (panel.kind === 'photos')
-				panel.groups.forEach((group, groupIndex) => {
-					const parts = Math.max(1, Math.ceil(group.photos.length / group.layout));
-					for (let part = 0; part < parts; part += 1)
-						list.push({
-							key: `photos-${panel.id}`,
-							title: part ? `${panel.name} (continued)` : panel.name,
-							kind: 'photos',
-							panel,
-							group: groupIndex,
-							part
-						});
-				});
+				for (const { group, part, isContinued } of photoPagesOf(panel.groups))
+					list.push({
+						key: `photos-${panel.id}`,
+						title: isContinued ? `${panel.name} (continued)` : panel.name,
+						kind: 'photos',
+						panel,
+						group,
+						part
+					});
 		}
 		const disclaimer = flowOf('disclaimer');
 		if (disclaimer) list.push(...pagesOf(disclaimer));
@@ -421,8 +428,9 @@
 	});
 
 	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on and
-	// numbered like an ordered list (1. 2. 3. 3.1); only the Project Report lists its parts (Justin's run 8 notes 16
-	// and 17, run 9 note 4).
+	// numbered like an ordered list (1. 2. 3. 3.1). The Project Report lists its parts (Justin's run 8 notes 16 and
+	// 17, run 9 note 4), and a photo panel the groups that are switched on, in report order: the Operations panel's
+	// stages (#215).
 	const REPORT_PARTS = ['Personnel in Attendance', 'Transport Mode', 'Cargo Description'];
 	const contents = $derived(
 		pages
@@ -430,11 +438,29 @@
 			.map((item): EntryType => ({
 				title: item.title,
 				key: item.key,
-				subs: item.kind === 'report' ? REPORT_PARTS : []
+				subs:
+					item.kind === 'report'
+						? REPORT_PARTS.map((part) => ({ title: part, page: partPage(part, item.key) }))
+						: item.kind === 'photos'
+							? groupSubs(item.key)
+							: []
 			}))
 	);
 	function pageOf(key: string) {
 		return pages.findIndex((other) => other.key === key) + 1;
+	}
+
+	// A photo panel's groups as the contents list them: each at the page it opens on.
+	function groupSubs(key: string) {
+		return pages.flatMap((page, at) =>
+			page.key === key && page.panel && !page.part
+				? [{ title: groupTitle(page.panel, page.group ?? 0), page: at + 1 }]
+				: []
+		);
+	}
+
+	function groupTitle(panel: PanelType, index: number) {
+		return panel.groups[index]?.title.trim() || `Untitled ${groupWordOf(panel)}`;
 	}
 
 	// The page a part of the Project Report is on: where its heading landed, once the report runs over a page.
@@ -488,12 +514,15 @@
 		wording: 'disclaimer'
 	};
 	const target = $derived(KEY_OF[highlight] ?? `photos-${highlight}`);
-	const targetIndex = $derived(
-		Math.max(
-			0,
-			pages.findIndex((item) => item.key === target)
-		)
-	);
+	// The page to open at: the open panel's; with none open, the one a report link asked for (#216), which only
+	// a project's own Preview follows (Settings shows a report too).
+	const panelIndex = $derived(pages.findIndex((item) => item.key === target));
+	const pageAsked = $derived(panelIndex < 0 && look.screen === 'workspace' ? look.pageAsked : 0);
+	const targetIndex = $derived(targetOf(panelIndex, pageAsked, pages.length));
+	// Opening a panel follows the panel from then on: the page a link asked for is forgotten.
+	$effect(() => {
+		if (panelIndex >= 0 && look.screen === 'workspace') look.pageAsked = 0;
+	});
 
 	// Follow the open panel: glide to the page it feeds. The first move is instant and fits the page across.
 	// When the header over the canvas changes height (it is measured after the first paint), place it again.
@@ -507,7 +536,8 @@
 		untrack(() => {
 			if (isPlaced && inset === placedTop) return viewport.focus(rect);
 			placedTop = inset;
-			if (layout === 'column') viewport.fitWidth(rect, false);
+			// A page a report link asked for opens across the view, whichever way the pages are laid out.
+			if (layout === 'column' || pageAsked) viewport.fitWidth(rect, false);
 			else viewport.fitAll(false);
 			isPlaced = true;
 		});
@@ -791,12 +821,23 @@
 	</div>
 {/snippet}
 
-<!-- The QR code alone: no corners, no logo (run 11). It scans (run 35), and opens the organization's website. -->
-{#snippet code()}
-	<Qr
-		value={siteLink}
-		size={44}
-	/>
+<!-- The QR code alone: no corners, no logo (run 11). It scans (run 35) and, in the PDF, is a link to click: both
+     open this project's Preview at the page the code is on (#216). In the app it is not a link to follow or to
+     tab to: the Preview is already on screen. -->
+{#snippet code(page: number)}
+	{@const link = linkOf(page)}
+	<a
+		href={link}
+		class="block shrink-0"
+		draggable="false"
+		tabindex="-1"
+		onclick={(event) => event.preventDefault()}
+	>
+		<Qr
+			value={link}
+			size={44}
+		/>
+	</a>
 {/snippet}
 
 {#snippet entryRow(time: string, activity: string, isLast: boolean)}
@@ -1272,7 +1313,7 @@
 						<header class="px-10 pt-6">
 							<div class="flex items-center justify-between gap-4">
 								{@render trident()}
-								{@render code()}
+								{@render code(index + 1)}
 							</div>
 							<div class="mt-3 h-px bg-slate-900/15"></div>
 						</header>
@@ -1300,13 +1341,8 @@
 								<ol class="mt-4">
 									{#each contents as entry, entryIndex (entry.key)}
 										{@render line(`${entryIndex + 1}.`, entry.title, pageOf(entry.key), false)}
-										{#each entry.subs as sub, subIndex (sub)}
-											{@render line(
-												`${entryIndex + 1}.${subIndex + 1}`,
-												sub,
-												partPage(sub, entry.key),
-												true
-											)}
+										{#each entry.subs as sub, subIndex (subIndex)}
+											{@render line(`${entryIndex + 1}.${subIndex + 1}`, sub.title, sub.page, true)}
 										{/each}
 									{/each}
 								</ol>
@@ -1606,7 +1642,7 @@
 									((item.part ?? 0) + 1) * group.layout
 								)}
 								<p class="mt-2 text-[13px] font-semibold text-slate-700">
-									{group.title || 'Untitled group'}
+									{groupTitle(item.panel, item.group ?? 0)}
 								</p>
 								{#if group.description && !item.part}
 									<p class="mt-1 text-[11px] text-slate-500">{group.description}</p>

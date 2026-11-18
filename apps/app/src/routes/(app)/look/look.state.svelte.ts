@@ -18,14 +18,12 @@ import {
 	createPanels,
 	forgetCustomer,
 	DATASETS,
-	itemOf,
 	newPanel,
 	nowIso,
 	ORGANIZATION,
 	PAGES,
 	registerCustomer,
 	registerPerson,
-	stopOf,
 	type ClientType,
 	type DatasetType,
 	type FacilityType,
@@ -99,9 +97,11 @@ export function metricsOf(panel: PanelType): MetricsType {
 	} else {
 		// A photo group counts its title and having photos. Its layout always has a value, so it never counts: a new
 		// untitled group with no photos is To do (Justin's run 8 note 8). #189: a photo counts once its file is
-		// stored, so every device works out the same percent from the same rows.
-		total = Math.max(1, panel.groups.length * 2);
-		done = panel.groups.reduce(
+		// stored, so every device works out the same percent from the same rows. #215: a group switched off is left
+		// out of the report, so it counts for nothing.
+		const groups = panel.groups.filter((group) => group.isEnabled);
+		total = Math.max(1, groups.length * 2);
+		done = groups.reduce(
 			(sum, group) =>
 				sum + Number(Boolean(group.title.trim())) + Number(group.photos.some(isStored)),
 			0
@@ -154,6 +154,9 @@ export class LookState {
 	projectId = $state('');
 	tab = $state<TabType>('edit');
 	panelId = $state('');
+	// The page of the open project's Preview a report link asked for (the QR code on a report page, #216), from 1;
+	// 0 for none. The Preview opens there; opening a panel, or a project by hand, forgets it.
+	pageAsked = $state(0);
 	// The project whose status is being changed in the Change Status sheet, by id.
 	statusFor = $state<string>();
 	// What the + is adding, or nothing while its sheet is shut.
@@ -295,6 +298,7 @@ export class LookState {
 		const first = tab ?? (status && FINISHED.includes(status) ? 'page' : 'edit');
 		this.projectId = id;
 		this.panelId = '';
+		this.pageAsked = 0;
 		this.tab = first;
 		this.tabProgress = PROJECT_TABS.indexOf(first);
 		this.screen = 'workspace';
@@ -485,13 +489,7 @@ export class LookState {
 		this.workspaces[id] = createPanels(this.projects[0]).map((panel) =>
 			panel.kind === 'project'
 				? { ...($state.snapshot(draft) as PanelType), id: panel.id, key: 'project' }
-				: {
-						...panel,
-						days: [],
-						groups: [],
-						stops: panel.kind === 'transport' ? [stopOf()] : [],
-						items: panel.kind === 'items' ? [itemOf()] : []
-					}
+				: panel
 		);
 		this.open(id, 'edit');
 		this.#advance(id);

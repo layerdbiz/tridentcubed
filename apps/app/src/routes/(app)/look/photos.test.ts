@@ -87,6 +87,7 @@ function groupOf(values: Partial<GroupType>): GroupType {
 		title: '',
 		description: '',
 		layout: 4,
+		isEnabled: true,
 		photos: [],
 		...values
 	};
@@ -97,6 +98,7 @@ function shown(panel: PanelType) {
 		title: group.title,
 		description: group.description,
 		layout: group.layout,
+		isEnabled: group.isEnabled,
 		photos: group.photos.map((photo) => [photo.src, photo.description])
 	}));
 }
@@ -151,9 +153,9 @@ describe('photo groups and photos', () => {
 	it('come back the same for another member: titles, descriptions, layouts and photos, in order', async () => {
 		const mine = await open(tom);
 		const id = create(mine.look);
-		const inspection = panelOf(mine.look, 'inspection');
+		const operations = panelOf(mine.look, 'operations');
 		const damages = panelOf(mine.look, 'damages');
-		inspection.groups.push(
+		operations.groups.push(
 			groupOf({
 				title: 'Hatch 2 before discharge',
 				description: 'Lashing intact.',
@@ -169,10 +171,138 @@ describe('photo groups and photos', () => {
 		const theirs = await open(mia);
 		await openProject(theirs, id);
 
-		expect(shown(panelOf(theirs.look, 'inspection'))).toEqual(shown(inspection));
+		expect(shown(panelOf(theirs.look, 'operations'))).toEqual(shown(operations));
 		expect(shown(panelOf(theirs.look, 'damages'))).toEqual(shown(damages));
 		expect(panelOf(theirs.look, 'discharge').groups).toEqual([]);
 		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+	});
+});
+
+describe('a group switched off', () => {
+	it('stays off for another member with everything it holds, and comes back when switched on', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const discharge = panelOf(mine.look, 'discharge');
+		discharge.groups.push(
+			groupOf({ title: 'Hold 1', description: 'Dry.', photos: [stored('Aft'), stored()] }),
+			groupOf({ title: 'Hold 2', isEnabled: false, photos: [stored('Forward')] })
+		);
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+
+		expect(shown(panelOf(theirs.look, 'discharge'))).toEqual(shown(discharge));
+		expect(panelOf(theirs.look, 'discharge').groups.map((group) => group.isEnabled)).toEqual([
+			true,
+			false
+		]);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+
+		panelOf(theirs.look, 'discharge').groups[1].isEnabled = true;
+		const { result, changes } = await save(theirs);
+		expect(result.isSaved).toBe(true);
+		// The project's percent moves with it: the group counts again.
+		expect(changes.map((change) => [change.table, Object.keys(change.values ?? {})])).toEqual([
+			['project', ['progress']],
+			['photo_group', ['isEnabled']]
+		]);
+		const again = await open(tom);
+		await openProject(again, id);
+		expect(shown(panelOf(again.look, 'discharge'))[1]).toEqual({
+			title: 'Hold 2',
+			description: '',
+			layout: 4,
+			isEnabled: true,
+			photos: [[expect.any(String), 'Forward']]
+		});
+	});
+});
+
+// A project as it was saved before stages (#215): its Operations panel was an Inspection panel.
+async function createOld(device: DeviceType, groups: GroupType[]) {
+	const id = create(device.look);
+	const panel = panelOf(device.look, 'operations');
+	Object.assign(panel, { key: 'inspection', name: 'Inspection', groups });
+	expect((await save(device)).result.isSaved).toBe(true);
+	return id;
+}
+
+describe('a project from before stages', () => {
+	it('opens with its Operations panel, keeps what it held, and saves that once', async () => {
+		const mine = await open(tom);
+		const preloading = groupOf({
+			title: 'Preloading',
+			description: 'On the quay.',
+			layout: 6,
+			photos: [stored('Crate 1'), stored()]
+		});
+		const id = await createOld(mine, [
+			preloading,
+			groupOf({ title: 'Overview', photos: [stored()] })
+		]);
+
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+		const panel = panelOf(theirs.look, 'operations');
+
+		expect(panel.name).toBe('Operations');
+		expect(shown(panel)[0]).toEqual(shown({ groups: [preloading] } as PanelType)[0]);
+		expect(panel.groups[1].photos).toHaveLength(1);
+		expect(panel.groups.map((group) => [group.title, group.isEnabled])).toEqual([
+			['Preloading', true],
+			['Overview', true],
+			['Loading Operations', false],
+			['Securing', false],
+			['Lifting Gear', false]
+		]);
+		const { result, changes } = await save(theirs);
+		expect(result.isSaved).toBe(true);
+		expect(changes.map((change) => [change.table, change.operation])).toEqual([
+			['panel', 'put'],
+			['photo_group', 'put'],
+			['photo_group', 'put'],
+			['photo_group', 'put']
+		]);
+
+		// The next person to open it finds it carried over, and has nothing to save.
+		const next = await open(tom);
+		await openProject(next, id);
+		expect(shown(panelOf(next.look, 'operations'))).toEqual(shown(panel));
+		expect(toChanges(next.confirmed, toRows(next.look))).toEqual([]);
+
+		// A stage removed afterwards stays removed.
+		panelOf(next.look, 'operations').groups.splice(2, 1);
+		expect((await save(next)).result.isSaved).toBe(true);
+		const last = await open(mia);
+		await openProject(last, id);
+		expect(panelOf(last.look, 'operations').groups.map((group) => group.title)).toEqual([
+			'Preloading',
+			'Overview',
+			'Securing',
+			'Lifting Gear'
+		]);
+	});
+
+	it('is left as it was while it is Sent, and is carried over once it is unsent', async () => {
+		const mine = await open(tom);
+		const id = await createOld(mine, [groupOf({ title: 'Overview', photos: [stored()] })]);
+		const project = () => mine.look.projects.find((item) => item.id === id)!;
+		mine.look.setStatus(project(), 'Sent');
+		expect((await save(mine)).result.isSaved).toBe(true);
+
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+		const sent = panelOf(theirs.look, 'inspection');
+		expect(sent.name).toBe('Inspection');
+		expect(sent.groups.map((group) => group.title)).toEqual(['Overview']);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+
+		mine.look.unsend(project());
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const after = await open(mia);
+		await openProject(after, id);
+		expect(panelOf(after.look, 'operations').name).toBe('Operations');
+		expect((await save(after)).result.isSaved).toBe(true);
 	});
 });
 
@@ -180,8 +310,8 @@ describe('order and removal', () => {
 	it('keeps groups and photos dragged into a new order, and what was removed is gone for another member', async () => {
 		const mine = await open(tom);
 		const id = create(mine.look);
-		const inspection = panelOf(mine.look, 'inspection');
-		inspection.groups.push(
+		const discharge = panelOf(mine.look, 'discharge');
+		discharge.groups.push(
 			groupOf({ title: 'First', photos: [stored('A'), stored('B'), stored('C')] }),
 			groupOf({ title: 'Second', photos: [stored('D')] }),
 			groupOf({ title: 'Third' })
@@ -189,18 +319,18 @@ describe('order and removal', () => {
 		await save(mine);
 
 		// Dragged: Third to the top, C before A. Then one photo and one group removed.
-		inspection.groups.unshift(inspection.groups.pop()!);
-		const first = inspection.groups[1];
+		discharge.groups.unshift(discharge.groups.pop()!);
+		const first = discharge.groups[1];
 		first.photos.unshift(first.photos.pop()!);
 		expect((await save(mine)).result.isSaved).toBe(true);
 		first.photos.splice(1, 1);
-		inspection.groups.splice(2, 1);
+		discharge.groups.splice(2, 1);
 		expect((await save(mine)).result.isSaved).toBe(true);
 		const theirs = await open(mia);
 		await openProject(theirs, id);
 
 		expect(
-			panelOf(theirs.look, 'inspection').groups.map((group) => [
+			panelOf(theirs.look, 'discharge').groups.map((group) => [
 				group.title,
 				group.photos.map((photo) => photo.description)
 			])
@@ -220,13 +350,13 @@ describe('the freeze', () => {
 		const ada = (await test.signIn('ada@tridentcubed.com')).actor;
 		const mine = await open(tom);
 		const id = create(mine.look);
-		panelOf(mine.look, 'inspection').groups.push(groupOf({ title: 'Hatch 2', photos: [stored()] }));
+		panelOf(mine.look, 'discharge').groups.push(groupOf({ title: 'Hatch 2', photos: [stored()] }));
 		await save(mine);
 		const admin = await open(ada);
 		const other = await open(mia);
 		await openProject(other, id);
 		const project = () => admin.look.projects.find((item) => item.id === id)!;
-		const groups = () => panelOf(other.look, 'inspection').groups;
+		const groups = () => panelOf(other.look, 'discharge').groups;
 
 		for (const status of ['Sent', 'Complete', 'Archived'] as const) {
 			admin.look.setStatus(project(), status);
@@ -252,8 +382,14 @@ describe('the freeze', () => {
 
 		const again = await open(mia);
 		await openProject(again, id);
-		expect(shown(panelOf(again.look, 'inspection'))).toEqual([
-			{ title: 'Hatch 2', description: '', layout: 4, photos: [[expect.any(String), '']] }
+		expect(shown(panelOf(again.look, 'discharge'))).toEqual([
+			{
+				title: 'Hatch 2',
+				description: '',
+				layout: 4,
+				isEnabled: true,
+				photos: [[expect.any(String), '']]
+			}
 		]);
 	});
 });
@@ -306,13 +442,13 @@ describe('adding photos', () => {
 		const uploads = createUploads();
 		const mine = await open(tom);
 		const id = create(mine.look);
-		const inspection = panelOf(mine.look, 'inspection');
-		const group = addGroup(inspection);
+		const discharge = panelOf(mine.look, 'discharge');
+		const group = addGroup(discharge);
 		group.title = 'Hatch 2';
 		await save(mine);
 
 		const files = [picture('one.jpg'), picture('two.jpg'), picture('three.jpg')];
-		expect(addPhotos(inspection, files, { group, projectId: id, steps: uploads.steps })).toBe(3);
+		expect(addPhotos(discharge, files, { group, projectId: id, steps: uploads.steps })).toBe(3);
 		expect(group.photos.map((photo) => photo.src)).toEqual([
 			'blob:one.jpg',
 			'blob:two.jpg',
@@ -335,7 +471,7 @@ describe('adding photos', () => {
 		expect((await save(mine)).result.isSaved).toBe(true);
 		const theirs = await open(mia);
 		await openProject(theirs, id);
-		expect(shown(panelOf(theirs.look, 'inspection'))).toEqual(shown(inspection));
+		expect(shown(panelOf(theirs.look, 'discharge'))).toEqual(shown(discharge));
 	});
 
 	it('puts photos dropped on a panel with no group into a first group made for them', async () => {
@@ -362,11 +498,11 @@ describe('adding photos', () => {
 		const uploads = createUploads();
 		const mine = await open(tom);
 		const id = create(mine.look);
-		const inspection = panelOf(mine.look, 'inspection');
-		const group = addGroup(inspection);
+		const discharge = panelOf(mine.look, 'discharge');
+		const group = addGroup(discharge);
 		uploads.failing.add('two.jpg');
 
-		addPhotos(inspection, [picture('one.jpg'), picture('two.jpg'), picture('three.jpg')], {
+		addPhotos(discharge, [picture('one.jpg'), picture('two.jpg'), picture('three.jpg')], {
 			group,
 			projectId: id,
 			steps: uploads.steps
@@ -378,7 +514,7 @@ describe('adding photos', () => {
 		expect((await save(mine)).result.isSaved).toBe(true);
 		const before = await open(mia);
 		await openProject(before, id);
-		expect(panelOf(before.look, 'inspection').groups[0].photos).toHaveLength(2);
+		expect(panelOf(before.look, 'discharge').groups[0].photos).toHaveLength(2);
 
 		uploads.failing.clear();
 		void uploadOf(failed)?.retry();
@@ -388,7 +524,7 @@ describe('adding photos', () => {
 		expect((await save(mine)).result.isSaved).toBe(true);
 		const after = await open(mia);
 		await openProject(after, id);
-		expect(panelOf(after.look, 'inspection').groups[0].photos.map((photo) => photo.id)).toEqual(
+		expect(panelOf(after.look, 'discharge').groups[0].photos.map((photo) => photo.id)).toEqual(
 			group.photos.map((photo) => photo.id)
 		);
 	});

@@ -81,11 +81,14 @@ export type PersonnelType = {
 // Something attached to the Items panel in place of typed rows, or beside them: a photo of the item list, or the
 // spreadsheet itself. A photo prints on the report; a file prints its name.
 export type AttachmentType = { id: string; name: string; src: string; kind: 'photo' | 'file' };
+// A photo panel's group; in the Operations panel a group is a stage (#215). Switched off, it keeps what it holds
+// and leaves the report: its pages, its line in the contents and its count toward the percent.
 export type GroupType = {
 	id: string;
 	title: string;
 	description: string;
 	layout: number;
+	isEnabled: boolean;
 	photos: PhotoType[];
 };
 
@@ -109,7 +112,7 @@ export type PanelControlType = 'locked' | 'switch' | 'remove';
 export type PanelType = {
 	// Its row's id, made on the device (#186).
 	id: string;
-	// What a built-in panel is (project, transport, items, timelog, inspection, damages, discharge); none for a panel
+	// What a built-in panel is (project, transport, items, timelog, operations, damages, discharge); none for a panel
 	// added on the project.
 	key?: string;
 	name: string;
@@ -600,6 +603,33 @@ export function itemOf(quantity = '', description = ''): ItemType {
 	return { id: crypto.randomUUID(), quantity, description };
 }
 
+/** A new, empty photo group, four photos to a page. */
+export function groupOf(title = '', isEnabled = true): GroupType {
+	return { id: crypto.randomUUID(), title, description: '', layout: 4, isEnabled, photos: [] };
+}
+
+// The stages an Operations panel starts with (Justin, 2026-11-18). Each is a photo group like any other: it can be
+// renamed, switched off, removed or added to.
+export const STAGES = ['Preloading', 'Loading Operations', 'Securing', 'Lifting Gear'];
+
+// What each built-in photo panel is called until someone gives it a title of their own, and what an added one is.
+export const PANEL_NAMES: Record<string, string> = {
+	operations: 'Operations',
+	damages: 'Damages',
+	discharge: 'Discharge'
+};
+export const CUSTOM_NAME = 'Custom';
+
+/** A photo panel's title when it is left empty: its own starting name, or an added panel's. */
+export function panelNameOf(panel: Pick<PanelType, 'key'>) {
+	return PANEL_NAMES[panel.key ?? ''] ?? CUSTOM_NAME;
+}
+
+/** What a photo panel calls one of its groups: a stage in the Operations panel, a group in any other. */
+export function groupWordOf(panel: Pick<PanelType, 'key'>) {
+	return panel.key === 'operations' ? 'stage' : 'group';
+}
+
 function field(
 	label: string,
 	value: string,
@@ -634,13 +664,13 @@ export function stopOf(
 }
 
 // A project's panels: its own Project panel first, then Transport Mode, Items, Time Log and the photo panels, all
-// empty (the prototype filled them with a sample report; V1 starts every project blank).
+// empty (the prototype filled them with a sample report; V1 starts every project blank) but for the Operations
+// panel's stages (#215).
 export function createPanels(project: ProjectType): PanelType[] {
-	const base = BASE;
 	return [
-		projectPanel(project, base),
+		projectPanel(project, createBase()),
 		{
-			...base,
+			...createBase(),
 			id: crypto.randomUUID(),
 			key: 'transport',
 			name: 'Transport Mode',
@@ -650,7 +680,7 @@ export function createPanels(project: ProjectType): PanelType[] {
 			stops: project.stops.length ? project.stops.map((stop) => stopOf(stop)) : [stopOf()]
 		},
 		{
-			...base,
+			...createBase(),
 			id: crypto.randomUUID(),
 			key: 'items',
 			name: 'Items',
@@ -660,7 +690,7 @@ export function createPanels(project: ProjectType): PanelType[] {
 			items: [itemOf()]
 		},
 		{
-			...base,
+			...createBase(),
 			id: crypto.randomUUID(),
 			key: 'timelog',
 			name: 'Time Log',
@@ -669,20 +699,21 @@ export function createPanels(project: ProjectType): PanelType[] {
 			control: 'locked'
 		},
 		{
-			...base,
+			...createBase(),
 			id: crypto.randomUUID(),
-			key: 'inspection',
-			name: 'Inspection',
+			key: 'operations',
+			name: PANEL_NAMES.operations,
 			icon: 'icon-[mdi--camera-outline]',
 			kind: 'photos',
 			control: 'switch',
-			isDraggable: true
+			isDraggable: true,
+			groups: STAGES.map((title) => groupOf(title))
 		},
 		{
-			...base,
+			...createBase(),
 			id: crypto.randomUUID(),
 			key: 'damages',
-			name: 'Damages',
+			name: PANEL_NAMES.damages,
 			icon: 'icon-[mdi--alert-outline]',
 			kind: 'photos',
 			control: 'switch',
@@ -690,10 +721,10 @@ export function createPanels(project: ProjectType): PanelType[] {
 			isEnabled: false
 		},
 		{
-			...base,
+			...createBase(),
 			id: crypto.randomUUID(),
 			key: 'discharge',
-			name: 'Discharge',
+			name: PANEL_NAMES.discharge,
 			icon: 'icon-[mdi--crane]',
 			kind: 'photos',
 			control: 'switch',
@@ -735,17 +766,20 @@ function projectPanel(
 	} satisfies PanelType;
 }
 
-const BASE = {
-	isEnabled: true,
-	isDraggable: false,
-	fields: [],
-	owner: '',
-	assigned: [],
-	days: [],
-	groups: [],
-	stops: [],
-	items: []
-};
+// What every panel starts from, its lists its own: two panels never share one.
+function createBase() {
+	return {
+		isEnabled: true,
+		isDraggable: false,
+		fields: [],
+		owner: '',
+		assigned: [],
+		days: [],
+		groups: [],
+		stops: [],
+		items: []
+	};
+}
 
 // What a panel row names (#186).
 export type PanelRowType = Pick<
@@ -760,7 +794,7 @@ export function panelOf(row: PanelRowType): PanelType {
 		row.kind === 'project'
 			? projectPanel(
 					{ title: '', subtitle: '', type: '', client: '', team: [] } as unknown as ProjectType,
-					BASE
+					createBase()
 				).fields
 			: [];
 	return {
@@ -789,7 +823,7 @@ export function draftPanel(organization: string, owner: string): PanelType {
 			team: [owner],
 			day: todayIso()
 		} as ProjectType,
-		BASE
+		createBase()
 	);
 	for (const item of panel.fields)
 		if (item.label === 'Organization')
@@ -847,8 +881,9 @@ export function newContact(): ContactType {
 export function newPanel(count: number): PanelType {
 	return {
 		id: crypto.randomUUID(),
-		// Run 19: there is no fixed Custom panel any more; Add panel makes one, and it can be removed.
-		name: count > 1 ? `Custom ${count}` : 'Custom',
+		// Run 19: there is no fixed Custom panel any more; Add panel makes one, and it can be removed. Its title is
+		// typed at the top of the panel (#215).
+		name: count > 1 ? `${CUSTOM_NAME} ${count}` : CUSTOM_NAME,
 		icon: 'icon-[mdi--puzzle-outline]',
 		kind: 'photos',
 		control: 'remove',

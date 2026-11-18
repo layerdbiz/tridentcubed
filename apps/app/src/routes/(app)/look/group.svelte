@@ -7,6 +7,8 @@
 	// ("1 of 3 complete"), from the `values` its caller says count (tally.ts). No line describes it any more.
 	// Its header is not a button: a Sent or Complete project switches its panels' fields off, and a button would
 	// go off with them, so its sections could not be opened to read (Justin, 2026-11-16).
+	// #215 (Justin, 2026-11-18): a section that can be left out of the report has a switch in its header, as a panel
+	// that can be left out does (`onenable`). Switched off it keeps what it holds, greys, and says it is left out.
 	import type { Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { toTally } from './tally';
@@ -20,6 +22,8 @@
 		isOpen,
 		ontoggle,
 		ondelete,
+		isEnabled = true,
+		onenable,
 		deleteLabel = 'Delete',
 		sortKey = '',
 		index = 0,
@@ -37,6 +41,9 @@
 		ontoggle: () => void;
 		// Left out for a section that is always there (the Team, the Trip).
 		ondelete?: () => void;
+		// Whether it is in the report, and what its switch does; with no `onenable` it has no switch.
+		isEnabled?: boolean;
+		onenable?: () => void;
 		deleteLabel?: string;
 		sortKey?: string;
 		index?: number;
@@ -74,15 +81,46 @@
 				class="size-8 shrink-0 rounded-full bg-white object-cover ring-1 ring-slate-900/10"
 			/>
 		{:else if icon}
-			<span class="flex size-8 shrink-0 items-center justify-center rounded-xl {tone}"
-				><span class="{icon} size-5"></span></span
+			<span
+				class="flex size-8 shrink-0 items-center justify-center rounded-xl {isEnabled
+					? tone
+					: 'bg-slate-100 text-slate-300'}"><span class="{icon} size-5"></span></span
 			>
 		{/if}
 		<span class="min-w-0 flex-1">
-			<span class="block truncate text-sm font-semibold text-slate-800">{title}</span>
-			{#if values}<span class="block truncate text-xs text-slate-500">{toTally(values)}</span>{/if}
+			<span
+				class="block truncate text-sm font-semibold {isEnabled
+					? 'text-slate-800'
+					: 'text-slate-400'}">{title}</span
+			>
+			{#if !isEnabled}<span class="block truncate text-xs text-slate-500"
+					>Left out of the report</span
+				>
+			{:else if values}<span class="block truncate text-xs text-slate-500">{toTally(values)}</span
+				>{/if}
 		</span>
 		{#if meta}<span class="shrink-0 text-xs text-slate-400">{meta}</span>{/if}
+		{#if onenable}
+			<!-- Its own button inside the header: a tap or a key on it switches, and does not open the section or
+			     start a drag. A Sent or Complete project's fields are off, and this goes off with them. -->
+			<button
+				type="button"
+				role="switch"
+				aria-checked={isEnabled}
+				aria-label="{isEnabled ? 'Leave out' : 'Put back'} {title}"
+				title={isEnabled ? 'In the report' : 'Left out of the report'}
+				class="flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 {isEnabled
+					? 'justify-end bg-primary'
+					: 'justify-start bg-slate-300'}"
+				data-no-drag
+				onclick={(event) => {
+					event.stopPropagation();
+					onenable();
+				}}
+				onkeydown={(event) => event.stopPropagation()}
+				><span class="size-4 rounded-full bg-white shadow"></span></button
+			>
+		{/if}
 		<span
 			class="icon-[mdi--chevron-down] size-5 shrink-0 text-slate-400 transition {isOpen
 				? 'rotate-180'

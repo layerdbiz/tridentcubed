@@ -116,7 +116,7 @@ describe('making a project', () => {
 			['transport', 'Transport Mode', true],
 			['items', 'Items', true],
 			['timelog', 'Time Log', true],
-			['inspection', 'Inspection', true],
+			['operations', 'Operations', true],
 			['damages', 'Damages', false],
 			['discharge', 'Discharge', true]
 		]);
@@ -229,14 +229,14 @@ describe('panels', () => {
 		const look = mine.look;
 		const named = (name: string) => look.panels.findIndex((panel) => panel.name === name);
 
-		look.panels[named('Inspection')].isEnabled = false;
+		look.panels[named('Operations')].isEnabled = false;
 		look.panels[named('Damages')].isEnabled = true;
 		look.panels[named('Discharge')].name = 'Discharge at Houston';
 		look.addPanel();
 		look.panels[named('Custom')].name = 'Lashing';
 		look.addPanel();
 		look.removePanel(look.panels[named('Custom 2')].id);
-		look.movePanel(named('Lashing'), named('Inspection'));
+		look.movePanel(named('Lashing'), named('Operations'));
 		expect((await save(mine)).result.isSaved).toBe(true);
 		const theirs = await open(mia);
 		await openProject(theirs, id);
@@ -247,7 +247,7 @@ describe('panels', () => {
 			['Items', true],
 			['Time Log', true],
 			['Lashing', true],
-			['Inspection', false],
+			['Operations', false],
 			['Damages', true],
 			['Discharge at Houston', true]
 		]);

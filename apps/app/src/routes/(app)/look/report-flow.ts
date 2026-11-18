@@ -27,3 +27,28 @@ export function paginate(heights: number[], room: number, isGlued: boolean[] = [
 export function heightOf(heights: number[], page: number[]) {
 	return page.reduce((sum, index) => sum + (heights[index] ?? 0), 0);
 }
+
+// A photo panel as pages (#215; Justin, 2026-11-18): each group that is switched on starts a page and runs on over
+// as many as its photos need at its photos-per-page, and a group switched off prints nothing. Only the panel's very
+// first page stands under its title alone; every page after it is a continued one, whichever group it belongs to.
+export type PhotoPageType = { group: number; part: number; isContinued: boolean };
+
+export function photoPagesOf(
+	groups: { isEnabled: boolean; layout: number; photos: unknown[] }[]
+): PhotoPageType[] {
+	const pages: PhotoPageType[] = [];
+	for (const [group, { isEnabled, layout, photos }] of groups.entries()) {
+		if (!isEnabled) continue;
+		const parts = Math.max(1, Math.ceil(photos.length / layout));
+		for (let part = 0; part < parts; part += 1)
+			pages.push({ group, part, isContinued: pages.length > 0 });
+	}
+	return pages;
+}
+
+// The page the preview opens at, by index: the open panel's page (`found`, -1 with none open); else the page a
+// report link asked for (`asked`, from 1; 0 for none), held to the pages there are (#216); else the first.
+export function targetOf(found: number, asked: number, count: number) {
+	if (found >= 0) return found;
+	return Math.max(0, Math.min(asked, count) - 1);
+}

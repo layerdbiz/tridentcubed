@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { draftPanel } from './look.data';
+import { draftPanel, STAGES } from './look.data';
 import { LookState } from './look.state.svelte';
 
 // The tests run on Svelte's server build, where LookState's effects do nothing: what is checked here is the state
@@ -45,8 +45,13 @@ describe('a new app', () => {
 		expect(items.items.every((item) => !item.quantity && !item.description)).toBe(true);
 		const timelog = look.panels.find((panel) => panel.kind === 'timelog')!;
 		expect(timelog.days).toEqual([]);
-		for (const panel of look.panels.filter((item) => item.kind === 'photos'))
-			expect(panel.groups).toEqual([]);
+		// The Operations panel starts with its stages, each empty (#215); the other photo panels with no group.
+		for (const panel of look.panels.filter((item) => item.kind === 'photos')) {
+			expect(panel.groups.map((group) => group.title)).toEqual(
+				panel.key === 'operations' ? STAGES : []
+			);
+			expect(panel.groups.every((group) => !group.photos.length && !group.description)).toBe(true);
+		}
 	});
 });
 

@@ -1,6 +1,7 @@
 // The address follows what is on screen (#161, kept in V1 by #180): the screen, its tab and view, the open project,
-// panel or record, and the dashboard's page, range and chart ride in the address's search, so a reload, the back
-// button or a shared link lands on the same place. look.svelte reads it at start and on back or forward, and writes it.
+// panel or record, the report page a link asked for, and the dashboard's page, range and chart ride in the
+// address's search, so a reload, the back button or a shared link lands on the same place. look.svelte reads it at start and on back or forward, and writes it.
+import { toPageNumber } from '#lib/report/report.utils.js';
 import type { ChartKindType, RangeType } from './chart.data';
 import { PAGES, type DatasetType } from './look.data';
 import type { LookState, ScreenType, TabType, ViewType } from './look.state.svelte';
@@ -22,6 +23,8 @@ export function openAddress(look: LookState, params: AddressType) {
 	const screen = params.get('screen') as ScreenType;
 	look.screen = SCREENS.includes(screen) ? screen : 'dashboard';
 	if (look.screen === 'workspace' && !hasProject) look.screen = 'dashboard';
+	// A report link (the QR code on a report page, #216) names the page of the Preview to open at.
+	look.pageAsked = look.screen === 'workspace' ? toPageNumber(params.get('page')) : 0;
 	const panel = params.get('panel');
 	// A project's panels load after it opens (#186): the panel asked for is kept until they arrive.
 	const isWaiting = Boolean(asked && hasProject && !look.isLoaded(asked));
@@ -67,5 +70,8 @@ export function toAddress(look: LookState, from: URL) {
 	if (look.screen === 'record' && look.record)
 		url.searchParams.set('record', `${look.record.page}:${look.record.key}`);
 	else url.searchParams.delete('record');
+	if (look.screen === 'workspace' && look.pageAsked)
+		url.searchParams.set('page', String(look.pageAsked));
+	else url.searchParams.delete('page');
 	return url;
 }
