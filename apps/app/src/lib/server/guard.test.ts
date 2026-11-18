@@ -19,6 +19,18 @@ describe('the sign-in guard', () => {
 		expect(guard('/waiting')).toEqual({ kind: 'redirect', location: '/login' });
 	});
 
+	it('keeps a report link behind sign-in: a scanned QR code opens for staff only (#216)', () => {
+		const link = '/report/0b9f3c1e-6a52-4d1b-9c47-2f8e5a7d3b10/5';
+
+		expect(guard(link)).toEqual({
+			kind: 'redirect',
+			location: `/login?next=${encodeURIComponent(link)}`
+		});
+		expect(toNext(link)).toBe(link);
+		expect(guard(link, 'guest')).toEqual({ kind: 'redirect', location: '/waiting' });
+		expect(guard(link, 'staff')).toBeUndefined();
+	});
+
 	it('sends the look prototype’s old address to the app, signed in or not', () => {
 		const home = { kind: 'redirect', location: '/' };
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
+import { toReportAddress } from '#lib/report/report.utils.js';
 import { draftPanel } from './look.data';
 import { LookState } from './look.state.svelte';
 import { openAddress, placeOf, toAddress } from './look.utils';
@@ -64,6 +65,34 @@ describe('the address', () => {
 		expect(next.view).toBe('board');
 		expect(next.range).toBe('1y');
 		expect(next.chart).toBe('bar');
+	});
+
+	it('opens a project’s Preview at the page a report link asks for (#216)', () => {
+		const look = withProject();
+		const next = new LookState();
+		next.projects = look.projects;
+		next.workspaces = look.workspaces;
+		// The address the report link's route sends the browser on to.
+		openAddress(next, new URL(toReportAddress(look.projectId, '5'), HOME).searchParams);
+		expect(next.screen).toBe('workspace');
+		expect(next.tab).toBe('preview');
+		expect(next.pageAsked).toBe(5);
+		// A reload lands on the same page; opening another project forgets it.
+		const address = toAddress(next, new URL(HOME));
+		expect(address.searchParams.get('page')).toBe('5');
+		expect(reload(next, address).pageAsked).toBe(5);
+		next.open(look.projectId, 'edit');
+		expect(next.pageAsked).toBe(0);
+		expect(toAddress(next, new URL(`${HOME}?page=5`)).searchParams.has('page')).toBe(false);
+	});
+
+	it('asks for no page outside a project', () => {
+		const look = new LookState();
+		openAddress(look, new URLSearchParams('screen=workspace&tab=preview&project=gone&page=5'));
+		expect(look.screen).toBe('dashboard');
+		expect(look.pageAsked).toBe(0);
+		openAddress(look, new URLSearchParams('screen=dashboard&page=5'));
+		expect(look.pageAsked).toBe(0);
 	});
 
 	it('lands a reload on Settings', () => {
