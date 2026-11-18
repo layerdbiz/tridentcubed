@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
+import { flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
 
 describe('paginate', () => {
 	it('keeps everything on one page while it fits', () => {
@@ -85,5 +85,30 @@ describe('targetOf', () => {
 
 	it('opens at the first page when nothing is asked for', () => {
 		expect(targetOf(-1, 0, 9)).toBe(0);
+	});
+});
+
+describe('flowOf', () => {
+	const flows = [
+		{ key: 'report' },
+		{ key: 'transport' },
+		{ key: 'timelog' },
+		{ key: 'disclaimer' }
+	];
+	// A panel's id is the database's (#196), never the section's key.
+	const panel = (kind: string) => ({ id: '4a1caf0e-7f2f-4191-b370-83033b081a20', kind });
+
+	it('finds the Time Log’s section by what the panel is, not by its id (#223)', () => {
+		expect(flowOf(panel('timelog'), flows)).toEqual({ key: 'timelog' });
+	});
+
+	it('finds none for a Time Log with nothing to print', () => {
+		expect(flowOf(panel('timelog'), [{ key: 'report' }, { key: 'disclaimer' }])).toBeUndefined();
+	});
+
+	it('finds none for the panels that print pages of their own', () => {
+		expect(flowOf(panel('transport'), flows)).toBeUndefined();
+		expect(flowOf(panel('photos'), flows)).toBeUndefined();
+		expect(flowOf(panel('project'), flows)).toBeUndefined();
 	});
 });
