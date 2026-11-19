@@ -77,7 +77,7 @@ _Avoid_: company domain, staff domain
 ### Projects and reports
 
 **Customer**:
-The company a project is done for, kept once in the organization's list with its name and a code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its legal name, type, labels, logo (printed in every page's footer), location, address, main email and phone, website, a cover and any number of contacts. Picking a customer's name in a project fills all of it in. Called Client until 2026-10-26.
+The company a project is done for, kept once in the organization's list with its name and a code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its legal name, type, labels, logo (printed in every page's footer), location, address, main email and phone, website, a cover and any number of contacts. Picking a customer's name in a project fills all of it in. The Project Report prints the customer's own location beside its name, never the project's. Called Client until 2026-10-26.
 _Avoid_: client, account
 
 **Project**:
