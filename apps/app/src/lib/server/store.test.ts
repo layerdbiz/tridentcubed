@@ -25,28 +25,23 @@ function createStorage() {
 }
 
 describe('the one bucket (#194 makes it as this says)', () => {
-	it('is private, 20 MB a file, and takes the pictures and the item list’s spreadsheets and PDFs', () => {
+	it('is private, 20 MB a file, and takes any kind of file (#233)', () => {
 		expect(STORAGE_BUCKET).toEqual({
 			name: 'files',
 			isPublic: false,
 			fileSizeLimit: 20_971_520,
-			allowedMimeTypes: [
-				'image/webp',
-				'image/jpeg',
-				'image/png',
-				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-				'application/vnd.ms-excel',
-				'text/csv',
-				'application/pdf'
-			]
+			allowedMimeTypes: null
 		});
 		expect(BUCKET).toBe(STORAGE_BUCKET.name);
 	});
 
-	it('takes every kind of file the app lets through', () => {
-		for (const type of STORAGE_BUCKET.allowedMimeTypes)
+	it('leaves which column takes which kind to the upload check', () => {
+		for (const type of ['image/webp', 'application/pdf', 'application/zip', 'image/gif'])
 			expect(isTypeAllowed(type, 'item_attachment', 'file')).toBe(true);
-		expect(isTypeAllowed('image/gif', 'item_attachment', 'file')).toBe(false);
+		for (const type of ['image/webp', 'image/jpeg', 'image/png'])
+			expect(isTypeAllowed(type, 'customer', 'logo')).toBe(true);
+		for (const type of ['application/pdf', 'application/zip', 'image/gif', 'text/html'])
+			expect(isTypeAllowed(type, 'customer', 'logo')).toBe(false);
 	});
 });
 

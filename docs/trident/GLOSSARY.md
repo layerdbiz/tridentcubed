@@ -249,6 +249,10 @@ _Avoid_: section (as a group's name)
 The optional photo panel every project starts with, once called Inspection. Its title is typed at the top of the panel, as every photo panel's is, and the report and its contents print that title: alone on the panel's first page, with "(continued)" on each page after it.
 _Avoid_: Inspection panel
 
+**Project Files Link**:
+The one input at the top of the Operations panel, above its stages: the link to the project's folder somewhere else, a OneDrive folder say, that holds its photos, videos and files. The report prints it as one short line, Project Files and where it goes, beside the title of the Project Report's first page and of the Operations panel's first page; in the PDF it is a link to click. Empty, or not an address a browser can open, it prints nothing. It is optional. Whoever opens it still needs access on the other side.
+_Avoid_: OneDrive link (as the input's name), folder link, share link
+
 **Stage**:
 A photo group of the Operations panel: one part of the job, with a name, a description and photos. A new project starts with Preloading, Loading Operations, Securing and Lifting Gear; stages are renamed, added, removed and reordered like any photo group. The contents list a photo panel's groups under its title.
 _Avoid_: phase, step
@@ -399,7 +403,7 @@ A company's own site.
 _Avoid_: url, link (that is a person's)
 
 **link**:
-A person's profile page elsewhere, such as LinkedIn.
+A person's profile page elsewhere, such as LinkedIn; on a project's Operations panel, its Project Files Link, the project's folder elsewhere.
 _Avoid_: website, url
 
 **title**:

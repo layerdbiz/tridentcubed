@@ -15,7 +15,7 @@ import {
 } from './files.schema';
 import type { PictureKindType, PreparedPictureType } from './files.utils';
 
-/** A picture is shrunk first; a document (an item list's spreadsheet or PDF, #188) goes as it came. */
+/** A picture is shrunk first; a document (the item list as a file of any kind, #188, #233) goes as it came. */
 export type UploadKindType = PictureKindType | 'document';
 
 type PreparedType = Omit<PreparedPictureType, 'width' | 'height'> & {
@@ -23,9 +23,11 @@ type PreparedType = Omit<PreparedPictureType, 'width' | 'height'> & {
 	height?: number;
 };
 
-// A document is sent as it is, with its type read from its name when the browser gives none.
+// A document is sent as it is, with its type read from its name when the browser gives none; a name that says
+// nothing either makes it a plain file (`ANY_TYPE`).
 function asDocument(file: File): PreparedType {
-	const blob = file.type ? file : new Blob([file], { type: toDocumentType(file.name) });
+	const type = file.type.split(';')[0].trim() || toDocumentType(file.name);
+	const blob = type === file.type ? file : new Blob([file], { type });
 	return { blob, taken: { from: '' } };
 }
 

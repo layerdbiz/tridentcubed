@@ -50,10 +50,12 @@
 		personOf,
 		POINTS,
 		toReference,
+		type AttachmentType,
 		type PanelType,
 		type StopType
 	} from './look.data';
 	import { customerOf } from './records.data';
+	import { LINK_TITLE, linkNameOf, toLink } from './link';
 	import {
 		createFollower,
 		flowOf,
@@ -105,6 +107,7 @@
 	// One piece of a flowing section, never cut in two.
 	type BlockType =
 		| { kind: 'intro' | 'strip' | 'team' | 'attachments' }
+		| { kind: 'picture'; id: string }
 		| { kind: 'heading' | 'text' | 'closing' | 'empty'; text: string }
 		| { kind: 'company' | 'point'; id: string }
 		| { kind: 'leg'; id: string; isFull: boolean }
@@ -165,6 +168,15 @@
 	);
 	const attachments = $derived(
 		look.panels.find((panel) => panel.kind === 'items' && panel.isEnabled)?.attachments ?? []
+	);
+	// What is attached to the Items panel, by how it prints (#233): a photo of the list whole, one to a block so a
+	// tall one moves to the next page instead of being cut; a file as its name.
+	const pictures = $derived(attachments.filter((file) => file.kind === 'photo'));
+	const documents = $derived(attachments.filter((file) => file.kind !== 'photo'));
+	// The Operations panel's link to the project's files (#233), as an address to open, and what to call where it
+	// goes. None when the panel is switched off, as with everything a panel holds, or when nothing usable is typed.
+	const filesLink = $derived(
+		toLink(look.panels.find((panel) => panel.key === 'operations' && panel.isEnabled)?.link)
 	);
 	const people = $derived(
 		[team?.owner, ...(team?.assigned ?? [])].filter((name): name is string => Boolean(name))
@@ -258,6 +270,8 @@
 	// What a page has under its title, between the header and the footer, and how many cargo rows make a block.
 	const ROOM = 606;
 	const ROWS = 12;
+	// The tallest a photo of the item list prints (#233): a page's room, less the heading it must stay under.
+	const PICTURE_ROOM = 540;
 	const isReportB = $derived(look.variant('report') !== 'A');
 	const isTransportB = $derived(look.variant('report-transport') !== 'A');
 	const isDisclaimerB = $derived(look.variant('disclaimer') !== 'A');
@@ -280,8 +294,10 @@
 			];
 			for (let from = 0; from < cargo.length; from += ROWS)
 				blocks.push({ kind: 'cargo', from, to: from + ROWS });
-			if (attachments.length) blocks.push({ kind: 'attachments' });
-			else if (!cargo.length) blocks.push({ kind: 'empty', text: 'Not filled in yet' });
+			for (const file of pictures) blocks.push({ kind: 'picture', id: file.id });
+			if (documents.length) blocks.push({ kind: 'attachments' });
+			if (!cargo.length && !attachments.length)
+				blocks.push({ kind: 'empty', text: 'Not filled in yet' });
 			list.push({ key: 'report', title: 'Project Report', kind: 'report', blocks });
 		}
 		if (isTransportB && trip?.isEnabled && trip.stops.length)
@@ -431,6 +447,13 @@
 		else list.push({ key: 'disclaimer', title: 'Disclaimer', kind: 'disclaimer' });
 		return list;
 	});
+
+	// Whether a page shows the link to the project's files (#233): the first page of the Project Report, and the
+	// first of the Operations panel.
+	function hasFilesLine(item: PageType, index: number) {
+		if (item.key !== 'report' && item.panel?.key !== 'operations') return false;
+		return pages.findIndex((page) => page.key === item.key) === index;
+	}
 
 	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on and
 	// numbered like an ordered list (1. 2. 3. 3.1). The Project Report lists its parts (Justin's run 8 notes 16 and
@@ -941,6 +964,41 @@
 	{/if}
 {/snippet}
 
+<!-- A photo of the item list (#233; Michael's packing list printed with its sides cut off): the whole picture at its
+     own shape, as wide as the page's text at most and never taller than a page has room for under a heading, with
+     square corners so nothing at its edges is hidden. One smaller than that prints at its own size. -->
+{#snippet picture(file: AttachmentType)}
+	<img
+		src={file.src}
+		crossorigin={toCrossOrigin(file.src)}
+		alt={file.name}
+		draggable="false"
+		class="block max-w-full"
+		style="max-height: {PICTURE_ROOM}px"
+		onload={measure}
+	/>
+{/snippet}
+
+<!-- The link to the project's files (#233), beside a page's title: one short line, a link to click in the PDF. In
+     the app it is not followed, like the QR code: a finger moving the page would open it by accident, and the
+     Operations panel's own arrow opens it. -->
+{#snippet filesLine()}
+	<a
+		href={filesLink}
+		target="_blank"
+		rel="noopener"
+		class="flex shrink-0 items-center gap-1 text-[9.5px] font-semibold text-primary"
+		draggable="false"
+		tabindex="-1"
+		onclick={(event) => event.preventDefault()}
+	>
+		<span class="icon-[mdi--folder-open-outline] size-3.5"></span>
+		<span>{LINK_TITLE}</span>
+		<span class="font-medium text-slate-400">· {linkNameOf(filesLink)}</span>
+		<span class="icon-[mdi--open-in-new] size-3"></span>
+	</a>
+{/snippet}
+
 <!-- One block of a flowing section. Room above a block is its own padding, so the heights add up. -->
 {#snippet flowBlock(block: BlockType)}
 	{#if block.kind === 'intro'}
@@ -1198,25 +1256,20 @@
 				{/each}
 			</tbody>
 		</table>
+	{:else if block.kind === 'picture'}
+		{@const file = pictures.find((item) => item.id === block.id)}
+		{#if file}
+			<div class="pt-2">{@render picture(file)}</div>
+		{/if}
 	{:else if block.kind === 'attachments'}
-		<!-- The item list as it was handed over: photos of it, and the names of any files. -->
+		<!-- The item list as it was handed over, when it came as a file: its name. -->
 		<div class="flex flex-wrap items-start gap-1.5 pt-2">
-			{#each attachments as file (file.id)}
-				{#if file.kind === 'photo'}
-					<img
-						src={file.src}
-						crossorigin={toCrossOrigin(file.src)}
-						alt={file.name}
-						draggable="false"
-						class="h-20 rounded-lg object-cover"
-					/>
-				{:else}
-					<span
-						class="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[9px] text-slate-600"
-						><span class="icon-[mdi--file-table-outline] size-3.5 text-primary"
-						></span>{file.name}</span
-					>
-				{/if}
+			{#each documents as file (file.id)}
+				<span
+					class="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[9px] text-slate-600"
+					><span class="icon-[mdi--file-table-outline] size-3.5 text-primary"
+					></span>{file.name}</span
+				>
 			{/each}
 		</div>
 	{:else if block.kind === 'day'}
@@ -1331,7 +1384,14 @@
 							<div class="mt-3 h-px bg-slate-900/15"></div>
 						</header>
 						<div class="px-10 pt-6">
-							<h2 class="text-[24px] font-bold tracking-tight text-slate-950">{item.title}</h2>
+							<!-- The link to the project's files stands beside the title of the Project Report's first page and of
+							     the Operations panel's first (#233), where it takes no room from what is under it. -->
+							<div class="flex items-baseline justify-between gap-4">
+								<h2 class="min-w-0 text-[24px] font-bold tracking-tight text-slate-950">
+									{item.title}
+								</h2>
+								{#if filesLink && hasFilesLine(item, index)}{@render filesLine()}{/if}
+							</div>
 							{#if item.blocks}
 								{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
 							{:else if item.kind === 'contents'}
@@ -1553,13 +1613,7 @@
 									<div class="mt-2 flex flex-wrap items-start gap-1.5">
 										{#each attachments as file (file.id)}
 											{#if file.kind === 'photo'}
-												<img
-													src={file.src}
-													crossorigin={toCrossOrigin(file.src)}
-													alt={file.name}
-													draggable="false"
-													class="h-20 rounded-lg object-cover"
-												/>
+												{@render picture(file)}
 											{:else}
 												<span
 													class="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[9px] text-slate-600"
