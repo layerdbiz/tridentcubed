@@ -154,10 +154,14 @@ export function sectionsOf(panel: PanelType, contacts: { id: string }[] = []): S
 		return [
 			{
 				id: 'items',
-				inputs: panel.items.flatMap((item) => [
-					{ label: 'Quantity', value: item.quantity },
-					{ label: 'Description', value: item.description }
-				])
+				inputs: [
+					...panel.items.flatMap((item) => [
+						{ label: 'Quantity', value: item.quantity },
+						{ label: 'Description', value: item.description }
+					]),
+					// #242: the item list read from a spreadsheet is one input, there or not.
+					...(panel.grid ? [{ label: 'Item List', value: true }] : [])
+				]
 			}
 		];
 	if (panel.kind === 'timelog')

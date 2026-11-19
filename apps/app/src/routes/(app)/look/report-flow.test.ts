@@ -26,6 +26,18 @@ describe('paginate', () => {
 	it('makes one empty page for a section with nothing in it', () => {
 		expect(paginate([], 600)).toEqual([[]]);
 	});
+
+	it('leaves room for what a block says again when it opens a page (a table row under its headings)', () => {
+		// Four rows of 200 fit three to a page of 600; with 100 of headings said again, the second page holds two.
+		const heights = [200, 200, 200, 200, 200, 200];
+		const leads = [0, 100, 100, 100, 100, 100];
+
+		expect(paginate(heights, 600)).toEqual([
+			[0, 1, 2],
+			[3, 4, 5]
+		]);
+		expect(paginate(heights, 600, [], leads)).toEqual([[0, 1, 2], [3, 4], [5]]);
+	});
 });
 
 describe('heightOf', () => {

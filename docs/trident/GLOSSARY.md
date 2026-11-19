@@ -156,7 +156,11 @@ _Avoid_: operation, Loading, Transfer, Discharge (those say what happens there),
 The company that owns a transport, like a shipping line; never the ship itself. Not in V1.
 
 **Items**:
-The cargo the project concerns, as rows of a quantity and a description (2, Power transformers on steel cradles), printed as the report's Cargo Description. A manifest's further columns may come later.
+The cargo the project concerns, as rows of a quantity and a description (2, Power transformers on steel cradles), printed as the report's Cargo Description. A customer's own list comes in as an Item List.
+
+**Item List**:
+The customer's list of the cargo (a packing list, a manifest) read from a spreadsheet: rows pasted into the Items panel, or an Excel, CSV, TSV or JSON file dropped on it or chosen. Its cells are kept as they came, blank rows and blank columns left out, and the report prints them under Cargo Description as a table the full width of the page, the quantity before the item. A project holds one; a new one takes its place. A photo of a list is an Attachment and prints whole; a file that is not a spreadsheet prints its name.
+_Avoid_: packing list (one kind of it), manifest, grid, spreadsheet
 
 **Project team**:
 The team lead and the Team Assigned of a project, all Team records of the organization. Said "Team" inside a project (the Project panel's Team section). On the report they appear as Personnel in Attendance, as cards like the Team page's, the team lead first and marked by a blue ring but not labelled; the team lead also signs off the report. Each person's job title, phone and email on a report are that report's own, filled in from their profile. People on the job who are not on the team are Personnel.

@@ -167,6 +167,21 @@ describe('the inputs the other panels hold', () => {
 		expect(tallyOf(items.inputs.map((input) => input.value))).toEqual({ done: 3, total: 4 });
 	});
 
+	it('counts the item list read from a spreadsheet as one more input (#242)', () => {
+		const panel = panelOf('items');
+		panel.items = [];
+		panel.grid = {
+			name: 'list.xlsx',
+			cells: [
+				['Qty', 'Description'],
+				['2', 'Pump skid']
+			]
+		};
+		const [items] = sectionsOf(panel);
+		expect(items.inputs.map((input) => input.label)).toEqual(['Item List']);
+		expect(tallyOf(items.inputs.map((input) => input.value))).toEqual({ done: 1, total: 1 });
+	});
+
 	it('counts a day of the time log: its date, then a time and an activity for each entry', () => {
 		const panel = panelOf('timelog');
 		panel.days = [

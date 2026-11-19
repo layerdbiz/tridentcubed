@@ -20,6 +20,8 @@
 import * as v from 'valibot';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
+/** The most an item list read from a spreadsheet may take in its panel's row, as JSON (#242): about 2,000 rows. */
+export const GRID_LIMIT = 400_000;
 // A picture's address: the app's address of a file in storage (`/files/<id>`, #187), a starting file (`/start/...`),
 // a picture the app ships with (`/logo-color.svg`), the picture a sign-in provider gave a new Team record (https), or
 // nothing. Every picture uploads to storage, so a row never keeps the picture itself. A column declared with it holds
@@ -244,7 +246,9 @@ export const TABLES = {
 			isEnabled: v.boolean(),
 			position: POSITION,
 			// #233: the Operations panel's link to the project's folder elsewhere, as typed.
-			link: v.pipe(v.string(), v.maxLength(2048))
+			link: v.pipe(v.string(), v.maxLength(2048)),
+			// #242: the Items panel's item list read from a spreadsheet, its cells as JSON; nothing for none.
+			grid: v.pipe(v.string(), v.maxLength(GRID_LIMIT))
 		}
 	},
 	// #189: a photo panel's groups and their photos, in order. A photo keeps its file's address (`/files/<id>`).

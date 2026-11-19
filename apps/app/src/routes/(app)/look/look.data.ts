@@ -5,6 +5,7 @@
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
 import { seen, touch } from './registry.svelte';
+import type { GridType } from './spreadsheet';
 // Run 16 (Justin, 2026-11-10: "no dummy data left ... the next step is connecting a real database"): nothing shown
 // is made up by code any more. A project and every record carry when they were made and last changed (`created`,
 // `updated`), which the charts, Recent and "Updated" read; a project's number comes from its customer's code and its
@@ -138,6 +139,9 @@ export type PanelType = {
 	attachments?: AttachmentType[];
 	// The Operations panel (#233): the address of the project's folder elsewhere (a OneDrive folder), as typed.
 	link?: string;
+	// The Items panel (#242): the item list read from a spreadsheet, its cells as read. The report prints it as a
+	// table (spreadsheet.ts).
+	grid?: GridType;
 	days: DayType[];
 	groups: GroupType[];
 	stops: StopType[];
@@ -801,7 +805,7 @@ function createBase() {
 // What a panel row names (#186).
 export type PanelRowType = Pick<
 	PanelType,
-	'id' | 'key' | 'name' | 'icon' | 'kind' | 'control' | 'isEnabled' | 'link'
+	'id' | 'key' | 'name' | 'icon' | 'kind' | 'control' | 'isEnabled' | 'link' | 'grid'
 >;
 
 // A saved panel as the screens hold it, empty: the Project panel with its fields, the Transport Mode panel with one

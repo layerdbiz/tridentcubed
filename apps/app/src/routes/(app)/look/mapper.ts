@@ -23,6 +23,7 @@ import { takePhotos, toPhotoRows } from './mapper.photos';
 import { stopsByProject, takePanelRows, toPanelRows, toTrip } from './mapper.trip';
 import { byPosition, text, toRecordId, toRecordName, toStamp } from './mapper.utils';
 import { customerOf } from './records.data';
+import { fromSaved, toSaved } from './spreadsheet';
 import { upgradeOperations } from './stages';
 import type { TeamMemberType } from './team.data';
 
@@ -307,7 +308,8 @@ function toProjectRows(look: LookState): RowType[] {
 					control: panel.control,
 					isEnabled: panel.isEnabled,
 					position,
-					link: panel.link?.trim() ?? ''
+					link: panel.link?.trim() ?? '',
+					grid: toSaved(panel.grid)
 				}
 			});
 		// #189: a photo panel's groups and photos.
@@ -488,7 +490,8 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 				kind: text(item.values, 'kind') as PanelType['kind'],
 				control: text(item.values, 'control') as PanelType['control'],
 				isEnabled: Boolean(item.values.isEnabled),
-				link: text(item.values, 'link')
+				link: text(item.values, 'link'),
+				grid: fromSaved(text(item.values, 'grid'))
 			})
 		);
 	const own = panels.find((panel) => panel.kind === 'project');
