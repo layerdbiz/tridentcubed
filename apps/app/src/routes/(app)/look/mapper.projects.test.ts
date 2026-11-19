@@ -265,8 +265,8 @@ describe('panels', () => {
 		expect(projectOf(theirs.look, id)?.progress).toBe(mine.look.overall);
 		await openProject(theirs, id);
 		expect(theirs.look.overall).toBe(mine.look.overall);
-		expect(theirs.look.panels.map((panel) => metricsOf(panel).status)).toEqual(
-			mine.look.panels.map((panel) => metricsOf(panel).status)
+		expect(theirs.look.panels.map((panel) => metricsOf(panel, theirs.look).status)).toEqual(
+			mine.look.panels.map((panel) => metricsOf(panel, mine.look).status)
 		);
 	});
 });

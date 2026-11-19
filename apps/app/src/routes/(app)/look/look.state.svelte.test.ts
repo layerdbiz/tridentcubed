@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { draftPanel, STAGES } from './look.data';
+import { draftOf, draftPanel, STAGES, type ClientType } from './look.data';
 import { LookState, metricsOf } from './look.state.svelte';
+import { sectionsOf, tallyOf } from './tally';
 
 // The tests run on Svelte's server build, where LookState's effects do nothing: what is checked here is the state
 // itself, not what the screens draw from it.
 function fresh() {
 	return new LookState();
+}
+
+function contact(name: string) {
+	return { id: crypto.randomUUID(), name, title: '', email: '', phone: '', photo: '' };
 }
 
 describe('a new app', () => {
@@ -111,11 +116,68 @@ describe('a panel switched off', () => {
 		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
 		const panel = look.panels.find((item) => item.kind === 'photos')!;
 		// A new Operations panel has its stages titled, so some of it is done before it is switched off.
-		const { done, total } = metricsOf(panel);
+		const { done, total } = metricsOf(panel, look);
 		expect(done).toBeGreaterThan(0);
 
 		panel.isEnabled = false;
 
-		expect(metricsOf(panel)).toEqual({ done: 0, total, percent: 0, status: 'Not planned' });
+		expect(metricsOf(panel, look)).toEqual({ done: 0, total, percent: 0, status: 'Not planned' });
+	});
+});
+
+describe('a panel’s count (#229)', () => {
+	it('is its sections’ counts added up, for every panel of a new project', () => {
+		const look = fresh();
+		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
+		for (const panel of look.panels) {
+			const values = sectionsOf(panel).flatMap((section) =>
+				section.inputs.map((input) => input.value)
+			);
+			const { done, total } = tallyOf(values);
+			expect([panel.name, metricsOf(panel, look).total]).toEqual([panel.name, Math.max(1, total)]);
+			expect(metricsOf(panel, look).done).toBe(panel.isEnabled ? done : 0);
+		}
+	});
+
+	it('reads a new project’s Project panel as 4 of 10: its date, job number, organization and Team Lead', () => {
+		const look = fresh();
+		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
+		const panel = look.panels.find((item) => item.kind === 'project')!;
+		expect(metricsOf(panel, look)).toMatchObject({ done: 4, total: 10 });
+	});
+
+	it('counts the Contact once the picked customer has contacts', () => {
+		const look = fresh();
+		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
+		const panel = look.panels.find((item) => item.kind === 'project')!;
+		const before = metricsOf(panel, look).total;
+		look.added.push({
+			...(draftOf('customers') as ClientType),
+			name: 'NMT Projects',
+			contacts: [contact('Steve')]
+		});
+		panel.fields.find((field) => field.label === 'Customer')!.value = 'NMT Projects';
+		expect(metricsOf(panel, look).total).toBe(before + 1);
+	});
+});
+
+describe('a Draft', () => {
+	it('becomes In Progress once its Project panel has all but the optional reference number', () => {
+		const look = fresh();
+		const draft = draftPanel(look.organization.name, 'Capt. Cezary Poninski');
+		for (const field of draft.fields) field.value ||= 'Barge move';
+		draft.assigned = ['Michael Boone'];
+		look.create(draft);
+		expect(look.project.status).toBe('In Progress');
+		const panel = look.panels.find((item) => item.kind === 'project')!;
+		expect(metricsOf(panel, look).status).toBe('In progress');
+	});
+
+	it('stays a Draft while an input that is not optional is empty', () => {
+		const look = fresh();
+		const draft = draftPanel(look.organization.name, 'Capt. Cezary Poninski');
+		for (const field of draft.fields) field.value ||= 'Barge move';
+		look.create(draft);
+		expect(look.project.status).toBe('Draft');
 	});
 });

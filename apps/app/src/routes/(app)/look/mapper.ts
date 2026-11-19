@@ -264,7 +264,7 @@ function toProjectRows(look: LookState): RowType[] {
 		const saved = look.fromServer[project.id];
 		const isFrozen = FROZEN.includes(project.status);
 		// A frozen project keeps the percent it was frozen at: nothing in it may change.
-		const progress = panels && !isFrozen ? percentOf(panels) : project.progress;
+		const progress = panels && !isFrozen ? percentOf(panels, look) : project.progress;
 		const values = {
 			...Object.fromEntries(PROJECT_COLUMNS.map((column) => [column, saved?.values[column]])),
 			day: createdDayOf(project),

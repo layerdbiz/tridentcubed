@@ -13,6 +13,7 @@
 	import type { LookState } from './look.state.svelte';
 	import PageHeader from './page-header.svelte';
 	import ReportPreview from './report-preview.svelte';
+	import { organizationSectionsOf, valuesOf } from './tally';
 
 	let { look, isWide }: { look: LookState; isWide: boolean } = $props();
 
@@ -27,6 +28,8 @@
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 
 	const organization = $derived(look.organization);
+	// What each section's line counts: the inputs tally.ts says it holds (#229).
+	const sections = $derived(organizationSectionsOf(organization));
 	// #184: only an Admin changes the organization. Manager and Team see the same Edit, read-only; the server refuses
 	// their changes too.
 	const isAdmin = $derived(look.isAdmin);
@@ -124,15 +127,7 @@
 		<div onfocusin={() => (part = 'organization')}>
 			<Group
 				title="Details"
-				values={[
-					organization.logo,
-					organization.name,
-					organization.address,
-					organization.phone,
-					organization.email,
-					organization.groupEmail,
-					organization.website
-				]}
+				values={valuesOf(sections, 'details')}
 				icon="icon-[mdi--domain]"
 				isOpen={open.includes('details')}
 				ontoggle={() => toggle('details')}
@@ -188,11 +183,7 @@
 		<div onfocusin={() => (part = 'wording')}>
 			<Group
 				title="Disclaimer"
-				values={[
-					organization.disclaimer.opening,
-					...organization.disclaimer.points.map((point) => point.title.trim() && point.text),
-					organization.disclaimer.note
-				]}
+				values={valuesOf(sections, 'disclaimer')}
 				icon="icon-[mdi--shield-alert-outline]"
 				isOpen={open.includes('disclaimer')}
 				ontoggle={() => toggle('disclaimer')}
@@ -261,7 +252,7 @@
 		<div onfocusin={() => (part = 'wording')}>
 			<Group
 				title="Sign-off"
-				values={[organization.closing, organization.signoff]}
+				values={valuesOf(sections, 'signoff')}
 				icon="icon-[mdi--draw]"
 				isOpen={open.includes('signoff')}
 				ontoggle={() => toggle('signoff')}
