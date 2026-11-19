@@ -21,7 +21,7 @@
 				"SUPABASE_SECRET_KEY",
 				"SUPABASE_URL"
 			],
-			"outputs": ["dist/**", ".svelte-kit/**", "!**/.svelte-kit/cache/**"]
+			"outputs": ["dist/**", ".svelte-kit/**", "!**/.svelte-kit/cache/**", ".vercel/output/**"]
 		},
 		"styles": {
 			"cache": true,
