@@ -186,10 +186,27 @@ describe('the inputs the other panels hold', () => {
 	it('counts a photo panel’s own title, then a title, a description and the photos of each stage', () => {
 		const panel = panelOf('operations');
 		const [own, stage] = sectionsOf(panel);
-		expect(own.inputs.map((input) => input.label)).toEqual(['Title']);
+		expect(own.inputs.map((input) => input.label)).toEqual(['Title', 'Project Files Link']);
 		expect(stage.inputs.map((input) => input.label)).toEqual(['Title', 'Description', 'Photos']);
 		// A new stage has its name and nothing else.
 		expect(tallyOf(stage.inputs.map((input) => input.value))).toEqual({ done: 1, total: 3 });
+	});
+
+	it('counts the Operations panel’s link once it is an address the report can print (#233)', () => {
+		const panel = panelOf('operations');
+		const linkOf = () =>
+			sectionsOf(panel)[0].inputs.find((input) => input.label === 'Project Files Link');
+		expect(tallyOf([linkOf()?.value])).toEqual({ done: 0, total: 1 });
+		panel.link = 'ask Michael';
+		expect(tallyOf([linkOf()?.value])).toEqual({ done: 0, total: 1 });
+		panel.link = '1drv.ms/f/s!AkR3xyz';
+		expect(tallyOf([linkOf()?.value])).toEqual({ done: 1, total: 1 });
+		// It is optional: empty, it never holds a status back.
+		expect(linkOf()?.isOptional).toBe(true);
+		// Only the Operations panel has one.
+		expect(sectionsOf(panelOf('damages'))[0].inputs.map((input) => input.label)).not.toContain(
+			'Project Files Link'
+		);
 	});
 
 	it('counts a photo once its file is stored, not while it is on its way', () => {

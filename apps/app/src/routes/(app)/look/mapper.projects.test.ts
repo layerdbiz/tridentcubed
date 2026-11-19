@@ -584,6 +584,33 @@ describe('the Customer Reference Number', () => {
 	});
 });
 
+describe('the Operations panel’s link to the project’s files (#233)', () => {
+	it('saves as typed, another member sees it, and clearing it saves too', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look);
+		await save(mine);
+		const operations = (look: LookState) =>
+			look.workspaces[id].find((panel) => panel.key === 'operations') as PanelType;
+		expect(operations(mine.look).link ?? '').toBe('');
+
+		operations(mine.look).link = '  https://1drv.ms/f/s!AkR3xyz ';
+		const first = await save(mine);
+		expect(first.result.isSaved).toBe(true);
+		// Only the Operations panel's row changes, and the project's (its percent).
+		expect(first.changes.filter((change) => change.table === 'panel').length).toBe(1);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+		expect(operations(theirs.look).link).toBe('https://1drv.ms/f/s!AkR3xyz');
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+
+		operations(theirs.look).link = '';
+		expect((await save(theirs)).result.isSaved).toBe(true);
+		const again = await open(tom);
+		await openProject(again, id);
+		expect(operations(again.look).link).toBe('');
+	});
+});
+
 describe('loading', () => {
 	it('loads the lists with no project panels, and a project’s panels only when it opens', async () => {
 		const mine = await open(tom);

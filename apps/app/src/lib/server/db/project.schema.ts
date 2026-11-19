@@ -138,7 +138,9 @@ export const panel = pgTable(
 			.default('locked')
 			.notNull(),
 		isEnabled: boolean('is_enabled').default(true).notNull(),
-		position: integer('position').default(0).notNull()
+		position: integer('position').default(0).notNull(),
+		/** The Operations panel's link to the project's folder elsewhere, a OneDrive folder say, as typed (#233). */
+		link: words('link')
 	},
 	(table) => [
 		index('panel_project_idx').on(table.projectId),

@@ -11,7 +11,7 @@ export const FILE_PREFIX = '/files/';
 /** The biggest file storage takes. A shrunk photo is far smaller (ADR 0004). */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
-/** The kinds of file storage keeps, with the ending its path takes. */
+/** The kinds of file the app knows by type, with the ending its path takes. */
 export const FILE_TYPES: Record<string, string> = {
 	'image/webp': 'webp',
 	'image/jpeg': 'jpg',
@@ -23,34 +23,49 @@ export const FILE_TYPES: Record<string, string> = {
 	'application/pdf': 'pdf'
 };
 
-/** The kinds of file that are not pictures: kept as they came, and only where a column takes them. */
+/** The kinds of file that are not pictures and that the app knows by name: kept as they came. */
 export const DOCUMENT_TYPES = Object.keys(FILE_TYPES).filter((type) => !type.startsWith('image/'));
 
+/** What a file is kept as when neither the browser nor its name says what it is (#233). */
+export const ANY_TYPE = 'application/octet-stream';
+
 /**
- * The one private Storage bucket, as it must be made in Supabase (#194): the source of truth for its name, the kinds
- * of file it takes and its size limit. The store (`#lib/server/store.ts`) and the upload check read it, so the bucket
- * refuses nothing the app lets through, and takes nothing the app would refuse.
+ * The one private Storage bucket, as it must be made in Supabase (#194): the source of truth for its name and its
+ * size limit. It takes any kind of file (#233: Attach File takes whatever the item list came as), so `null`, which
+ * is how Storage says "any". Which column takes which kind is the upload check's to say (`isTypeAllowed`): every
+ * address a device sends bytes to was handed out by that check.
  */
 export const STORAGE_BUCKET = {
 	name: 'files',
 	isPublic: false,
 	fileSizeLimit: MAX_FILE_BYTES,
-	allowedMimeTypes: Object.keys(FILE_TYPES)
+	allowedMimeTypes: null
 } as const;
 
-/** The columns that take a document as well as a picture: an item attachment (#188). */
+/** The columns that take any file, not only a picture: an item attachment (#188, #233). */
 const DOCUMENT_COLUMNS = ['item_attachment/file'];
+
+// A type as browsers write one: letters, digits and a few marks either side of one slash (its length is the upload
+// request's to cap). It goes into a header of the upload, so nothing else is let through.
+const TYPE = /^[\w.+-]+\/[\w.+-]+$/;
 
 /** Whether a file of this type may be kept for this table and column. */
 export function isTypeAllowed(type: string, table: string, column: string) {
-	if (!Object.hasOwn(FILE_TYPES, type)) return false;
-	return !DOCUMENT_TYPES.includes(type) || DOCUMENT_COLUMNS.includes(`${table}/${column}`);
+	if (DOCUMENT_COLUMNS.includes(`${table}/${column}`)) return TYPE.test(type);
+	return Object.hasOwn(FILE_TYPES, type) && !DOCUMENT_TYPES.includes(type);
 }
 
 /** A document's type from its name, for a browser that hands it over with none (a CSV on some systems). */
 export function toDocumentType(name: string) {
 	const ending = name.split('.').pop()?.toLowerCase() ?? '';
-	return DOCUMENT_TYPES.find((type) => FILE_TYPES[type] === ending) ?? '';
+	return DOCUMENT_TYPES.find((type) => FILE_TYPES[type] === ending) ?? ANY_TYPE;
+}
+
+/** The ending a file's path takes in storage: its type's, else its own name's when that is a plain one, else `bin`. */
+export function toEnding(type: string, name: string) {
+	if (Object.hasOwn(FILE_TYPES, type)) return FILE_TYPES[type];
+	const ending = name.includes('.') ? (name.split('.').pop()?.toLowerCase() ?? '') : '';
+	return /^[a-z0-9]{1,12}$/.test(ending) ? ending : 'bin';
 }
 
 /** Where the time and place came from: the photo's own metadata, the device at that moment, or nowhere. */

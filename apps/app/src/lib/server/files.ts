@@ -5,10 +5,10 @@
 // a file does: a member of the file's organization gets a short-lived signed link; anyone else gets nothing.
 import { eq } from 'drizzle-orm';
 import {
-	FILE_TYPES,
 	isTypeAllowed,
 	MAX_FILE_BYTES,
 	type TakenType,
+	toEnding,
 	toFileAddress,
 	type UploadAnswerType,
 	type UploadRequestType
@@ -83,7 +83,7 @@ export async function createUpload(
 	}
 	if (!isTypeAllowed(request.type, table, column))
 		return { isAllowed: false, reason: REASONS.type(request.type) };
-	const ending = FILE_TYPES[request.type];
+	const ending = toEnding(request.type, request.name);
 	if (request.size > MAX_FILE_BYTES) return { isAllowed: false, reason: REASONS.size };
 
 	const id = crypto.randomUUID();

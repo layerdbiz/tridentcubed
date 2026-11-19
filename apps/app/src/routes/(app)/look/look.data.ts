@@ -80,7 +80,7 @@ export type PersonnelType = {
 	people: { id: string; name: string; title: string }[];
 };
 // Something attached to the Items panel in place of typed rows, or beside them: a photo of the item list, or the
-// spreadsheet itself. A photo prints on the report; a file prints its name.
+// list itself as a file of any kind (#233). A photo prints on the report, whole; a file prints its name.
 export type AttachmentType = { id: string; name: string; src: string; kind: 'photo' | 'file' };
 // A photo panel's group; in the Operations panel a group is a stage (#215). Switched off, it keeps what it holds
 // and leaves the report: its pages, its line in the contents and its count toward the percent.
@@ -134,8 +134,10 @@ export type PanelType = {
 	customerReference?: string;
 	// The Project panel: people on the job who are not on the team.
 	personnel?: PersonnelType[];
-	// The Items panel: photos of the item list, or the spreadsheet itself.
+	// The Items panel: photos of the item list, or the list itself as a file.
 	attachments?: AttachmentType[];
+	// The Operations panel (#233): the address of the project's folder elsewhere (a OneDrive folder), as typed.
+	link?: string;
 	days: DayType[];
 	groups: GroupType[];
 	stops: StopType[];
@@ -799,7 +801,7 @@ function createBase() {
 // What a panel row names (#186).
 export type PanelRowType = Pick<
 	PanelType,
-	'id' | 'key' | 'name' | 'icon' | 'kind' | 'control' | 'isEnabled'
+	'id' | 'key' | 'name' | 'icon' | 'kind' | 'control' | 'isEnabled' | 'link'
 >;
 
 // A saved panel as the screens hold it, empty: the Project panel with its fields, the Transport Mode panel with one

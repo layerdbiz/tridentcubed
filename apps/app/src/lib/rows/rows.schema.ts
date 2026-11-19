@@ -242,7 +242,9 @@ export const TABLES = {
 			icon: TEXT,
 			control: v.picklist(['locked', 'switch', 'remove']),
 			isEnabled: v.boolean(),
-			position: POSITION
+			position: POSITION,
+			// #233: the Operations panel's link to the project's folder elsewhere, as typed.
+			link: v.pipe(v.string(), v.maxLength(2048))
 		}
 	},
 	// #189: a photo panel's groups and their photos, in order. A photo keeps its file's address (`/files/<id>`).
