@@ -413,7 +413,7 @@ The Report Generator put on a phone's home screen, or on a computer, with its ow
 _Avoid_: PWA, native app, download
 
 **Install App**:
-The line in the profile picture menu, between Organization and Log Out, and the small link on the login page that put the Report Generator on the device. It installs with one tap where the browser offers that; otherwise it shows three short steps for iPhone or for Android, and the User picks which phone. It is not shown inside the installed app.
+The line in the profile picture menu, between Organization and Log Out, and the button on a phone's login page, under the version number, that put the Report Generator on the device. It installs with one tap where the browser offers that; otherwise it shows three short steps for iPhone or for Android, opening on the phone it is read on. It is not shown inside the installed app.
 _Avoid_: Download, Get the app, Add to Home Screen (that is one of the iPhone's own steps)
 
 **Test copy**:

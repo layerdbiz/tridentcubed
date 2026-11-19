@@ -96,6 +96,6 @@ V1 pages that wait for a later spec:
 
 Spec [#199](https://github.com/layerdbiz/tridentcubed/issues/199), 2026-11-17, makes the app installable ahead of offline editing (ADR 0007). It adds nothing to the navigation.
 
-- Install App: a line in the profile picture menu, between Organization and Log Out, and a small link on Sign in. It is hidden inside the installed app.
+- Install App: a line in the profile picture menu, between Organization and Log Out, and a button under the version number on Sign in, on a phone only. It is hidden inside the installed app.
 - The Needs Internet screen, shown with no signal at whatever page was asked for. It needs no sign-in.
 - The update note, "New version, tap to update", in the signed-in app.
