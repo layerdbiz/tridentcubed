@@ -54,7 +54,7 @@
 		type PanelType,
 		type StopType
 	} from './look.data';
-	import { customerOf } from './records.data';
+	import { customerOf, locationOf } from './records.data';
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
 	import { flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
 	import { labelsOf } from './team.data';
@@ -211,6 +211,9 @@
 	}
 
 	const client = $derived(customerOf(look, company));
+	// The pin in the customer's row is the customer's own place, from its record (#238); the project's is in the
+	// opening sentence and under Transport Mode.
+	const customerLocation = $derived(locationOf(client));
 	// Who the report is for: the contact picked in the Project panel, else the customer's first.
 	const contact = $derived(
 		(client.contacts ?? []).find((item) => item.id === team?.contact) ??
@@ -997,7 +1000,7 @@
 				: ''}.
 		</p>
 	{:else if block.kind === 'strip'}
-		<!-- The project in one strip: what it is, who it is for, where and when. -->
+		<!-- The project in one strip: what it is, who it is for, where they are and when. -->
 		<div class="pt-3">
 			<div class="rounded-xl bg-slate-50 px-3.5 py-2.5">
 				<div class="flex items-baseline justify-between gap-3">
@@ -1035,7 +1038,7 @@
 					</div>
 					<p class="flex min-w-0 items-center gap-1 text-slate-600">
 						<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-slate-400"></span><span
-							class="truncate">{location || 'No location yet'}</span
+							class="truncate">{customerLocation || 'No location yet'}</span
 						>
 					</p>
 					<p class="flex min-w-0 items-center gap-1 text-slate-600">
@@ -1415,7 +1418,7 @@
 										? ` from the ${transport}`
 										: ''}.
 								</p>
-								<!-- The project in one strip: what it is, who it is for, where and when. -->
+								<!-- The project in one strip: what it is, who it is for, where they are and when. -->
 								<div class="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
 									<div class="flex items-baseline justify-between gap-3">
 										<p class="min-w-0 truncate text-[15px] leading-tight font-bold text-slate-950">
@@ -1459,7 +1462,7 @@
 										</div>
 										<p class="flex min-w-0 items-center gap-1 text-slate-600">
 											<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-slate-400"
-											></span><span class="truncate">{location || 'No location yet'}</span>
+											></span><span class="truncate">{customerLocation || 'No location yet'}</span>
 										</p>
 										<p class="flex min-w-0 items-center gap-1 text-slate-600">
 											<span

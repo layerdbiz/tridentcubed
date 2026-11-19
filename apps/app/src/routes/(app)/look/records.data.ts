@@ -275,6 +275,12 @@ export function customerOf(look: LookState, name: string): ClientType {
 	return look.added.find((customer) => customer.name === name) ?? clientOf(name);
 }
 
+// Where a customer is, for the pin beside its name on the report (#238): its own location, else its address as
+// typed. Never the project's location, which is where the work is done.
+export function locationOf(customer: ClientType) {
+	return customer.city.trim() || customer.address?.trim() || '';
+}
+
 /** The contacts the Project panel's Contact field offers: the picked customer's that have a name. */
 export function contactsOf(look: LookState, customer: string) {
 	return customer ? (customerOf(look, customer).contacts ?? []).filter((item) => item.name) : [];
