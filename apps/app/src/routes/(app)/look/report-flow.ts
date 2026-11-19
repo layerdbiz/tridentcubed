@@ -5,8 +5,14 @@
 // blocks until the next one would not fit, then starts another. A block that is glued (a heading) never ends a
 // page: it moves on with the block after it.
 
-// Which blocks go on which page, by index, given each block's height and the room a page has.
-export function paginate(heights: number[], room: number, isGlued: boolean[] = []) {
+// Which blocks go on which page, by index, given each block's height and the room a page has. A block that opens
+// a page may say something again above itself (a table row its headings, #242): `leads` is the room that takes.
+export function paginate(
+	heights: number[],
+	room: number,
+	isGlued: boolean[] = [],
+	leads: number[] = []
+) {
 	const pages: number[][] = [[]];
 	let used = 0;
 	for (const [index, height] of heights.entries()) {
@@ -14,7 +20,7 @@ export function paginate(heights: number[], room: number, isGlued: boolean[] = [
 		const need = isGlued[index] ? height + (heights[index + 1] ?? 0) : height;
 		if (page.length && used + need > room) {
 			pages.push([index]);
-			used = height;
+			used = height + (leads[index] ?? 0);
 		} else {
 			page.push(index);
 			used += height;

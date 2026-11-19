@@ -64,3 +64,44 @@ export function toSamplePhotos(
 		description: ''
 	}));
 }
+
+/**
+ * A made-up packing list for the Items panel (#242), as a spreadsheet hands it over: headings merged over L, W and
+ * H, each measure once in inches and pounds and once in meters and kilos, a blank row and a totals row. No
+ * customer's list is like it; it shows what a real one prints as.
+ */
+export const SAMPLE_LIST: string[][] = [
+	[
+		'Item',
+		'DESCRIPTION',
+		'QTY',
+		'Dimensions (IN)',
+		'',
+		'',
+		'U/Weight (LBS)',
+		'Total Weight (LBS)',
+		'Dimensions (M)',
+		'',
+		'',
+		'Total Weight (Kgs)',
+		'TTL CBM',
+		'TTL MT',
+		'RVTNS'
+	],
+	['', '', '', 'L', 'W', 'H', '', '', 'L', 'W', 'H', '', '', '', ''],
+	// prettier-ignore
+	['1', 'ROTARY DRILL RIG, MAIN UNIT (STATIC)', '1', '472', '204', '151', '138,600', '138,600', '11.99', '5.18', '3.84', '62,868', '238.26', '62.87', '238.26'],
+	// prettier-ignore
+	['2', 'DRILL TOWER / MAST', '1', '1,008', '88', '101', '57,400', '57,400', '25.60', '2.24', '2.57', '26,036', '146.81', '26.04', '146.81'],
+	// prettier-ignore
+	['3', 'OPERATOR CAB, CRATED', '1', '118', '96', '102', '6,850', '6,850', '3.00', '2.44', '2.59', '3,107', '18.93', '3.11', '18.93'],
+	// prettier-ignore
+	['4', 'DRILL PIPE RACK', '2', '366', '48', '40', '9,200', '18,400', '9.30', '1.22', '1.02', '8,346', '23.03', '8.35', '23.03'],
+	// prettier-ignore
+	['5', 'COUNTERWEIGHT SET', '4', '72', '48', '30', '11,000', '44,000', '1.83', '1.22', '0.76', '19,958', '6.80', '19.96', '19.96'],
+	// prettier-ignore
+	['6', 'SPARE PARTS CRATE', '3', '96', '48', '52', '2,150', '6,450', '2.44', '1.22', '1.32', '2,926', '11.78', '2.93', '11.78'],
+	[],
+	// prettier-ignore
+	['', 'TOTALS', '12', '', '', '', '', '271,700', '', '', '', '123,241', '445.61', '123.24', '458.78']
+];

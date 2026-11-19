@@ -140,7 +140,9 @@ export const panel = pgTable(
 		isEnabled: boolean('is_enabled').default(true).notNull(),
 		position: integer('position').default(0).notNull(),
 		/** The Operations panel's link to the project's folder elsewhere, a OneDrive folder say, as typed (#233). */
-		link: words('link')
+		link: words('link'),
+		/** The Items panel's item list read from a spreadsheet: its cells as JSON, nothing for none (#242). */
+		grid: words('grid')
 	},
 	(table) => [
 		index('panel_project_idx').on(table.projectId),

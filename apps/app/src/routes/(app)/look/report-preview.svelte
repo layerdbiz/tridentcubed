@@ -37,6 +37,7 @@
 	import { toReportLink } from '#lib/report/report.utils.js';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
+	import ItemTable, { type FitType, type PartType } from './item-table.svelte';
 	import { legsOf, type LegType } from './legs';
 	import {
 		createdDayOf,
@@ -64,6 +65,7 @@
 		photoPagesOf,
 		targetOf
 	} from './report-flow';
+	import { fromSaved, toSaved, toTable } from './spreadsheet';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -112,6 +114,9 @@
 		| { kind: 'company' | 'point'; id: string }
 		| { kind: 'leg'; id: string; isFull: boolean }
 		| { kind: 'cargo'; from: number; to: number }
+		// The item list read from a spreadsheet (#242), a part to a block: the lines above its headings, its headings
+		// (said again on each page it runs on to), one row, or its totals.
+		| { kind: 'list'; part: 'notes' | PartType; isFirst?: boolean }
 		| { kind: 'day'; id: string; index: number; isContinued?: boolean }
 		| {
 				kind: 'entry';
@@ -172,6 +177,23 @@
 	// What is attached to the Items panel, by how it prints (#233): a photo of the list whole, one to a block so a
 	// tall one moves to the next page instead of being cut; a file as its name.
 	const pictures = $derived(attachments.filter((file) => file.kind === 'photo'));
+	// The item list read from a spreadsheet (#242), as the table it prints as. It is followed by what it holds, not
+	// by which object holds it, so fresh rows from the server that say the same thing change nothing here.
+	const listKey = $derived(
+		toSaved(look.panels.find((panel) => panel.kind === 'items' && panel.isEnabled)?.grid)
+	);
+	const itemList = $derived.by(() => {
+		const grid = fromSaved(listKey);
+		return grid && toTable(grid);
+	});
+	// How that table fits the page's width, read from a copy laid out at its natural size (item-table.svelte). It
+	// belongs to the list it was read from; a new list prints once it has been read too.
+	let fitted = $state<{ key: string; fit: FitType }>();
+	const listFit = $derived(fitted?.key === listKey ? fitted.fit : undefined);
+	function fitList(key: string, fit: FitType) {
+		if (fitted?.key !== key || JSON.stringify(fitted.fit) !== JSON.stringify(fit))
+			fitted = { key, fit };
+	}
 	const documents = $derived(attachments.filter((file) => file.kind !== 'photo'));
 	// The Operations panel's link to the project's files (#233), as an address to open, and what to call where it
 	// goes. None when the panel is switched off, as with everything a panel holds, or when nothing usable is typed.
@@ -297,9 +319,19 @@
 			];
 			for (let from = 0; from < cargo.length; from += ROWS)
 				blocks.push({ kind: 'cargo', from, to: from + ROWS });
+			if (itemList && listFit) {
+				const parts: ('notes' | PartType)[] = [
+					...(itemList.notes.length ? ['notes' as const] : []),
+					...(itemList.hasHeads ? ['head' as const] : []),
+					...itemList.rows.keys(),
+					...(itemList.totals ? ['totals' as const] : [])
+				];
+				for (const [at, part] of parts.entries())
+					blocks.push({ kind: 'list', part, isFirst: at === 0 });
+			}
 			for (const file of pictures) blocks.push({ kind: 'picture', id: file.id });
 			if (documents.length) blocks.push({ kind: 'attachments' });
-			if (!cargo.length && !attachments.length)
+			if (!cargo.length && !attachments.length && !itemList)
 				blocks.push({ kind: 'empty', text: 'Not filled in yet' });
 			list.push({ key: 'report', title: 'Project Report', kind: 'report', blocks });
 		}
@@ -392,17 +424,33 @@
 		const [first] = blocks;
 		if (first?.kind === 'entry')
 			blocks.unshift({ kind: 'day', id: first.day, index: first.dayIndex, isContinued: true });
+		// A page that opens part-way through the item list says its headings again (#242).
+		if (first?.kind === 'list' && isListRow(first) && itemList?.hasHeads)
+			blocks.unshift({ kind: 'list', part: 'head' });
 		return blocks;
+	}
+
+	// A row of the item list, or its totals: what its headings stand over.
+	function isListRow(block: BlockType) {
+		return block.kind === 'list' && (typeof block.part === 'number' || block.part === 'totals');
 	}
 
 	// A flowing section as pages: its blocks dealt out by height, a heading never left at a page's foot.
 	function pagesOf(flow: FlowType) {
 		const tall = heights[flow.key] ?? [];
+		// The item list's headings, said again over a row that opens a page, take their height there (#242).
+		const again = itemList?.hasHeads && listFit ? Math.ceil(listFit.head * listFit.scale) : 0;
 		const dealt = paginate(
 			flow.blocks.map((_, index) => tall[index] ?? 0),
 			// A Time Log page may open with its day said again, so each keeps room for that line.
 			flow.kind === 'timelog' ? ROOM - 52 : ROOM,
-			flow.blocks.map((block) => block.kind === 'heading' || block.kind === 'day')
+			flow.blocks.map(
+				(block) =>
+					block.kind === 'heading' ||
+					block.kind === 'day' ||
+					(block.kind === 'list' && !isListRow(block))
+			),
+			flow.blocks.map((block) => (isListRow(block) ? again : 0))
 		);
 		// The signature stands at the foot of the disclaimer's last page; with no room left there, on one more.
 		if (flow.kind === 'disclaimer' && heightOf(tall, dealt.at(-1)!) + signatureHeight + 28 > ROOM)
@@ -1259,6 +1307,25 @@
 				{/each}
 			</tbody>
 		</table>
+	{:else if block.kind === 'list'}
+		<!-- The item list read from a spreadsheet (#242): always the page's full width, scaled as one block. -->
+		{#if itemList && listFit}
+			<div class={[block.isFirst && (cargo.length ? 'pt-4' : 'pt-0.5')]}>
+				{#if block.part === 'notes'}
+					<div class="pb-1 text-[9.5px] leading-snug text-slate-500">
+						{#each itemList.notes as note, at (at)}<p>{note}</p>{/each}
+					</div>
+				{:else}
+					<div class="text-[10.5px]">
+						<ItemTable
+							table={itemList}
+							part={block.part}
+							fit={listFit}
+						/>
+					</div>
+				{/if}
+			</div>
+		{/if}
 	{:else if block.kind === 'picture'}
 		{@const file = pictures.find((item) => item.id === block.id)}
 		{#if file}
@@ -1798,6 +1865,18 @@
 			</div>
 		{/each}
 		<div data-signature>{@render signature()}</div>
+		<!-- The item list whole, at its natural width, to read how it fits the page (#242). -->
+		{#if itemList}
+			<div class="text-[10.5px]">
+				{#key listKey}
+					<ItemTable
+						table={itemList}
+						room={W - 80}
+						onfit={(fit) => fitList(listKey, fit)}
+					/>
+				{/key}
+			</div>
+		{/if}
 	</div>
 
 	<div

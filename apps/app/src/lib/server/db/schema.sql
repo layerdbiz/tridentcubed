@@ -378,7 +378,8 @@ CREATE TABLE "panel" (
 	"control" text DEFAULT 'locked' NOT NULL,
 	"is_enabled" boolean DEFAULT true NOT NULL,
 	"position" integer DEFAULT 0 NOT NULL,
-	"link" text DEFAULT '' NOT NULL
+	"link" text DEFAULT '' NOT NULL,
+	"grid" text DEFAULT '' NOT NULL
 );
 
 --> statement-breakpoint

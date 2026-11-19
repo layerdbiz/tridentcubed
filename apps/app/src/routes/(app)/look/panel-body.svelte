@@ -41,7 +41,10 @@
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
+	import { GRID_LIMIT } from '#lib/rows/rows.schema.js';
 	import ImageField from './image-field.svelte';
+	import ItemBox from './item-box.svelte';
+	import ItemTable from './item-table.svelte';
 	import {
 		createdDayOf,
 		createId,
@@ -69,8 +72,9 @@
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { addGroup as addPhotoGroup, addPhotos, hasFiles, uploadOf } from './photos';
 	import { contactsOf } from './records.data';
-	import { toSampleDay, toSamplePhotos } from './samples';
+	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
 	import { sortable } from './sortable';
+	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
 	import { sectionsOf, valuesOf } from './tally';
 
 	let {
@@ -136,31 +140,84 @@
 		save();
 	}
 
-	// Rows pasted from a spreadsheet become items: a first cell that is a number is the quantity, the rest the
-	// description. A single pasted word goes into the field as usual.
-	function pasteItems(event: ClipboardEvent) {
-		const text = event.clipboardData?.getData('text/plain') ?? '';
-		if (!/[\t\n]/.test(text.trim())) return;
-		event.preventDefault();
-		const rows = text
-			.split(/\r?\n/)
-			.map((line) =>
-				line
-					.split('\t')
-					.map((cell) => cell.trim())
-					.filter(Boolean)
-			)
-			.filter((cells) => cells.length);
-		for (const cells of rows) {
-			const hasQuantity = cells.length > 1 && /^[\d.,]+$/.test(cells[0]);
-			panel.items.push(
-				itemOf(hasQuantity ? cells[0] : '', (hasQuantity ? cells.slice(1) : cells).join(' · '))
-			);
+	// The item list read from a spreadsheet (#242): its cells are kept as read (`panel.grid`), and this is the table
+	// they print as, the same one the report draws.
+	const table = $derived(panel.grid ? toTable(panel.grid) : undefined);
+	// What the last list left out, said under it once: blank rows and blank columns are not kept.
+	let skipped = $state<SkippedType>();
+
+	// Rows of cells become the panel's item list, in place of the one before. A row to type into that was never
+	// typed in goes, so the panel does not count an empty input beside a full list.
+	function takeRows(name: string, rows: unknown[][]) {
+		const kept = toGrid(name, rows);
+		if (!kept) {
+			look.say(name ? `No rows found in ${name}` : 'No rows found in what was pasted');
+			return true;
 		}
+		if (toSaved(kept.grid).length > GRID_LIMIT) return false;
+		panel.grid = kept.grid;
+		skipped = kept.skipped.rows || kept.skipped.columns ? kept.skipped : undefined;
 		const filled = panel.items.filter((item) => item.quantity.trim() || item.description.trim());
 		panel.items.splice(0, panel.items.length, ...filled);
 		save();
-		look.say(`${rows.length} ${rows.length === 1 ? 'row' : 'rows'} pasted`);
+		const count = toTable(kept.grid).rows.length;
+		look.say(`${count} ${count === 1 ? 'item' : 'items'} added as a table`);
+		return true;
+	}
+
+	// Rows pasted from a spreadsheet, into the box or into any field of the panel.
+	function takeText(text: string) {
+		if (!text.trim()) return look.say('Nothing to paste. Copy the rows in the spreadsheet first.');
+		const rows = readText(text);
+		if (!rows) return look.say('That is a single cell. Copy the whole table, then paste.');
+		if (!takeRows('', rows)) look.say('That list is too long to paste. Choose its file instead.');
+	}
+
+	// A single pasted word goes into the field as usual; rows become the table.
+	function pasteRows(event: ClipboardEvent) {
+		const text = event.clipboardData?.getData('text/plain') ?? '';
+		if (!/[\t\n]/.test(text.trim())) return;
+		event.preventDefault();
+		takeText(text);
+	}
+
+	// Files dropped on the box or chosen with its button, one after the other: a photo is attached and prints
+	// whole; a spreadsheet becomes the table; any other file, or a spreadsheet that cannot be read as a table, is
+	// attached as the file it is, so nothing handed over is ever turned away.
+	async function takeFiles(files: File[]) {
+		for (const file of files) {
+			if (file.type.startsWith('image/')) {
+				send(file, 'photo');
+				continue;
+			}
+			let rows: string[][] | undefined;
+			try {
+				rows = await readFile(file);
+			} catch {
+				look.say(`${file.name} could not be read as a table, so it is attached as a file`);
+			}
+			if (!rows) send(file, 'file');
+			else if (!takeRows(file.name, rows)) {
+				send(file, 'file');
+				look.say(`${file.name} is too long for a table, so it is attached as a file`);
+			}
+		}
+	}
+
+	function addSampleList() {
+		takeRows('Sample data', SAMPLE_LIST);
+	}
+
+	function removeList() {
+		look.confirm({
+			title: 'Remove the list?',
+			note: 'Its table leaves the cargo description.',
+			onyes: () => {
+				panel.grid = undefined;
+				skipped = undefined;
+				save();
+			}
+		});
 	}
 
 	// The 24-hour clock, typed: "730" and "0730" both become 07:30, "7" becomes 07:00.
@@ -233,23 +290,18 @@
 	type SendingType = { id: string; name: string; kind: AttachmentType['kind']; upload: Upload };
 	let sending = $state<SendingType[]>([]);
 
-	function attach(event: Event, kind: AttachmentType['kind']) {
-		const input = event.currentTarget as HTMLInputElement;
-		const files = [...(input.files ?? [])];
-		input.value = '';
-		for (const file of files) {
-			const id = crypto.randomUUID();
-			const upload = startUpload(file, {
-				for: { table: 'item_attachment', column: 'file', id, projectId: look.projectId },
-				kind: kind === 'photo' ? 'photo' : 'document',
-				ondone: (src) => {
-					sending = sending.filter((other) => other.id !== id);
-					panel.attachments = [...(panel.attachments ?? []), { id, name: file.name, src, kind }];
-					save();
-				}
-			});
-			sending.push({ id, name: file.name, kind, upload });
-		}
+	function send(file: File, kind: AttachmentType['kind']) {
+		const id = crypto.randomUUID();
+		const upload = startUpload(file, {
+			for: { table: 'item_attachment', column: 'file', id, projectId: look.projectId },
+			kind: kind === 'photo' ? 'photo' : 'document',
+			ondone: (src) => {
+				sending = sending.filter((other) => other.id !== id);
+				panel.attachments = [...(panel.attachments ?? []), { id, name: file.name, src, kind }];
+				save();
+			}
+		});
+		sending.push({ id, name: file.name, kind, upload });
 	}
 
 	// Asks first, then takes the item out of its list.
@@ -713,71 +765,58 @@
 			onsave={save}
 		/>
 	{:else if panel.kind === 'items'}
-		<!-- Rows copied from a spreadsheet can be pasted into any of these fields: each line becomes an item. -->
-		<div
-			class="space-y-3"
-			onpaste={pasteItems}
-			{@attach sortable(`items-${panel.id}`, (from, to) => move(panel.items, from, to))}
-		>
-			{#if panel.items.length}
-				<p class="flex gap-2 text-xs font-medium text-slate-500">
-					<span class="w-6 shrink-0"></span><span class="w-20 shrink-0 pl-1">Quantity</span><span
-						>Description</span
+		<!-- The item list (#242). A list read from a spreadsheet shows as the table the report prints; under it the
+		     box takes another, or a photo. Items can still be typed a row at a time, and rows pasted into any of
+		     those fields become the table too. -->
+		{#if table && panel.grid}
+			<div class="overflow-hidden rounded-2xl bg-slate-900/[0.02] ring-1 ring-slate-200">
+				<div class="flex items-center gap-2 py-2.5 pr-1.5 pl-3">
+					<div class="min-w-0 flex-1">
+						<p class="truncate text-[13px] font-bold text-slate-900">
+							{panel.grid.name || 'Pasted from a spreadsheet'}
+						</p>
+						<p class="truncate text-xs text-slate-500">
+							{table.rows.length}
+							{table.rows.length === 1 ? 'item' : 'items'} · {table.columns.length} columns
+						</p>
+					</div>
+					<button
+						type="button"
+						class="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-danger"
+						aria-label="Remove the list"
+						onclick={removeList}><span class="icon-[mdi--close] size-4"></span></button
+					>
+				</div>
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+				<div
+					class="max-h-72 overflow-auto border-t border-slate-200 bg-white px-3 py-1 text-xs"
+					tabindex="0"
+					role="region"
+					aria-label="The items table"
+				>
+					<ItemTable {table} />
+				</div>
+			</div>
+			{#if skipped}
+				<p class="flex items-start gap-1.5 text-xs text-slate-400">
+					<span class="mt-px icon-[mdi--table-large] size-4 shrink-0"></span>
+					<span
+						>Left out {[
+							skipped.rows && `${skipped.rows} blank ${skipped.rows === 1 ? 'row' : 'rows'}`,
+							skipped.columns &&
+								`${skipped.columns} blank ${skipped.columns === 1 ? 'column' : 'columns'}`
+						]
+							.filter(Boolean)
+							.join(' and ')}. Only cells with something in them are kept.</span
 					>
 				</p>
 			{/if}
-			{#each panel.items as item, itemIndex (item.id)}
-				<div
-					class="flex items-start gap-2"
-					data-sort="items-{panel.id}"
-					data-index={itemIndex}
-					animate:flip={{ duration: 200 }}
-				>
-					{@render handle(`items-${panel.id}`, panel.items.length)}
-					<input
-						class="{inputClass} w-20! shrink-0 text-center tabular-nums"
-						inputmode="numeric"
-						bind:value={item.quantity}
-						placeholder="Qty"
-						aria-label="Quantity of item {itemIndex + 1}"
-					/>
-					<input
-						class={inputClass}
-						bind:value={item.description}
-						placeholder="What it is, e.g. Accessory crates"
-						aria-label="Description of item {itemIndex + 1}"
-					/>
-					<button
-						type="button"
-						class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
-						aria-label="Delete item {itemIndex + 1}"
-						onclick={() =>
-							remove(
-								panel.items,
-								item,
-								'Delete item?',
-								item.description
-									? `"${item.description}" leaves the cargo description.`
-									: 'It leaves the cargo description.'
-							)}><span class="icon-[mdi--close] size-4"></span></button
-					>
-				</div>
-			{:else}
-				<p class="py-2 text-center text-sm text-slate-400">No items yet. Add the first one.</p>
-			{/each}
-			<button
-				type="button"
-				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-				onclick={() => {
-					panel.items.push(itemOf());
-					save();
-				}}><span class="icon-[mdi--plus] size-4"></span>Add item</button
-			>
-		</div>
-		<p class="flex items-start gap-1.5 text-xs text-slate-400">
-			<span class="mt-px icon-[mdi--content-paste] size-4 shrink-0"></span>
-			Copy rows in a spreadsheet and paste them into any field above. Or attach the list itself:
-		</p>
+		{/if}
+		<ItemBox
+			isSlim={Boolean(panel.grid)}
+			ontext={takeText}
+			onfiles={takeFiles}
+		/>
 		{#if panel.attachments?.length || sending.length}
 			<!-- A photo of the list shows whole (#233; Michael's packing list lost its edges): at its own shape, as wide
 			     as the panel at most, with no rounded corner over it and its Remove beside it, not on it. Tapping it
@@ -881,31 +920,73 @@
 				{/each}
 			</div>
 		{/if}
-		<div class="flex flex-wrap gap-2">
-			<label
-				class="{ghostButton} relative cursor-pointer bg-primary/10 text-primary hover:bg-primary/15"
-			>
-				<span class="icon-[mdi--camera-outline] size-4"></span>Attach Photo
-				<input
-					type="file"
-					accept="image/*"
-					multiple
-					class="sr-only"
-					onchange={(event) => attach(event, 'photo')}
-				/>
-			</label>
-			<label
-				class="{ghostButton} relative cursor-pointer bg-primary/10 text-primary hover:bg-primary/15"
-			>
-				<!-- Any kind of file (#233): the list comes as a spreadsheet, a PDF, a document, whatever it is. -->
-				<span class="icon-[mdi--paperclip] size-4"></span>Attach File
-				<input
-					type="file"
-					multiple
-					class="sr-only"
-					onchange={(event) => attach(event, 'file')}
-				/>
-			</label>
+		<div
+			class="space-y-3"
+			onpaste={pasteRows}
+			{@attach sortable(`items-${panel.id}`, (from, to) => move(panel.items, from, to))}
+		>
+			{#if panel.items.length}
+				<p class="flex gap-2 text-xs font-medium text-slate-500">
+					<span class="w-6 shrink-0"></span><span class="w-20 shrink-0 pl-1">Quantity</span><span
+						>Description</span
+					>
+				</p>
+			{/if}
+			{#each panel.items as item, itemIndex (item.id)}
+				<div
+					class="flex items-start gap-2"
+					data-sort="items-{panel.id}"
+					data-index={itemIndex}
+					animate:flip={{ duration: 200 }}
+				>
+					{@render handle(`items-${panel.id}`, panel.items.length)}
+					<input
+						class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+						inputmode="numeric"
+						bind:value={item.quantity}
+						placeholder="Qty"
+						aria-label="Quantity of item {itemIndex + 1}"
+					/>
+					<input
+						class={inputClass}
+						bind:value={item.description}
+						placeholder="What it is, e.g. Accessory crates"
+						aria-label="Description of item {itemIndex + 1}"
+					/>
+					<button
+						type="button"
+						class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
+						aria-label="Delete item {itemIndex + 1}"
+						onclick={() =>
+							remove(
+								panel.items,
+								item,
+								'Delete item?',
+								item.description
+									? `"${item.description}" leaves the cargo description.`
+									: 'It leaves the cargo description.'
+							)}><span class="icon-[mdi--close] size-4"></span></button
+					>
+				</div>
+			{/each}
+			<div class="flex flex-wrap gap-2">
+				<button
+					type="button"
+					class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+					onclick={() => {
+						panel.items.push(itemOf());
+						save();
+					}}><span class="icon-[mdi--plus] size-4"></span>Add item</button
+				>
+				{#if !panel.grid}
+					<button
+						type="button"
+						class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+						onclick={addSampleList}
+						><span class="icon-[mdi--auto-fix] size-4"></span>Add Sample Data</button
+					>
+				{/if}
+			</div>
 		</div>
 	{:else if panel.kind === 'timelog'}
 		<div

@@ -611,6 +611,38 @@ describe('the Operations panel’s link to the project’s files (#233)', () => 
 	});
 });
 
+describe('the Items panel’s item list as a table (#242)', () => {
+	it('saves its cells as read, another member sees them, and removing the list saves too', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look);
+		await save(mine);
+		const items = (look: LookState) =>
+			look.workspaces[id].find((panel) => panel.kind === 'items') as PanelType;
+		expect(items(mine.look).grid).toBeUndefined();
+
+		const grid = {
+			name: 'packing-list.xlsx',
+			cells: [
+				['Qty', 'Description', 'Dimensions (IN)'],
+				['2', 'Pump skid "A"', '472 × 204 × 151']
+			]
+		};
+		items(mine.look).grid = grid;
+		const first = await save(mine);
+		expect(first.result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+		expect(items(theirs.look).grid).toEqual(grid);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+
+		items(theirs.look).grid = undefined;
+		expect((await save(theirs)).result.isSaved).toBe(true);
+		const again = await open(tom);
+		await openProject(again, id);
+		expect(items(again.look).grid).toBeUndefined();
+	});
+});
+
 describe('loading', () => {
 	it('loads the lists with no project panels, and a project’s panels only when it opens', async () => {
 		const mine = await open(tom);
