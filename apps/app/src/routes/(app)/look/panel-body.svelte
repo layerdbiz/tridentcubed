@@ -88,8 +88,10 @@
 		if (!isDraft) look.saved();
 	}
 
-	// The Operations panel's link to the project's files (#233), as an address to open; none until it is one.
+	// The Operations panel's link to the project's files (#233), as an address to open; none until it is one. Its
+	// label names its field by an id of this panel body's own: a panel is drawn twice, for the phone and the desk.
 	const link = $derived(toLink(panel.link));
+	const uid = $props.id();
 
 	// The Project panel's sections, open or folded: Project, Customer, Team, and one per company of personnel.
 	// Only the first section starts open (Justin, 2026-11-16: all three open at once was too much).
@@ -1029,30 +1031,34 @@
 		{#if panel.key === 'operations'}
 			<!-- The link to the project's files (#233): its folder elsewhere, a OneDrive folder say, pasted once. The
 			     report prints it on the Project Report page and on this panel's first page. Optional; what is typed
-			     is kept, and the arrow opens it to check it goes to the right place. -->
+			     is kept. The field runs the panel's full width, and once what it holds is an address a browser can
+			     open, an arrow shows inside it at the far right that opens it, to check it goes to the right place
+			     (Justin, 2026-11-18). -->
 			<div>
-				<div class="flex items-end gap-2">
-					<label class="block min-w-0 flex-1">
-						<span class={labelClass}>{LINK_LABEL}</span>
-						<input
-							class={inputClass}
-							type="url"
-							inputmode="url"
-							bind:value={panel.link}
-							maxlength="2048"
-							placeholder="Optional, paste the OneDrive folder link"
-							autocapitalize="off"
-							autocomplete="off"
-							spellcheck="false"
-						/>
-					</label>
+				<label
+					class={labelClass}
+					for="{uid}-link">{LINK_LABEL}</label
+				>
+				<div class="relative">
+					<input
+						id="{uid}-link"
+						class="{inputClass} {link ? 'pr-11' : ''}"
+						type="url"
+						inputmode="url"
+						bind:value={panel.link}
+						maxlength="2048"
+						placeholder="Optional, paste the OneDrive folder URL"
+						autocapitalize="off"
+						autocomplete="off"
+						spellcheck="false"
+					/>
 					{#if link}
 						<a
 							href={link}
 							target="_blank"
 							rel="noopener"
-							class="mb-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/15"
-							aria-label="Open the link"
+							class="absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
+							aria-label="Open the URL"
 							title="Open in {linkNameOf(link)}"
 							><span class="icon-[mdi--open-in-new] size-4"></span></a
 						>
@@ -1060,7 +1066,7 @@
 				</div>
 				{#if panel.link?.trim() && !link}
 					<p class="mt-1 text-xs text-danger">
-						That does not look like a link. Paste the folder’s full address.
+						That does not look like a URL. Paste the folder’s full address.
 					</p>
 				{/if}
 			</div>

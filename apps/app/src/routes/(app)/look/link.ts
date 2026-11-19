@@ -4,8 +4,11 @@
 // the Operations panel's first, and nothing when there is none. What is typed is kept as typed; only an address a
 // browser can open is ever printed or counted as filled in.
 
-/** What the input is called in the panel, and in the one list the completed counts read (tally.ts). */
-export const LINK_LABEL = 'Project Files Link';
+/**
+ * What the input is called in the panel (Justin's word for it, 2026-11-18: "say project files URL"), and in the one
+ * list the completed counts read (tally.ts).
+ */
+export const LINK_LABEL = 'Project Files URL';
 /** What the line on the report is called. */
 export const LINK_TITLE = 'Project Files';
 
