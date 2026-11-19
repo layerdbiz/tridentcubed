@@ -9,6 +9,7 @@
 // Start, Stop or End are settings, not inputs, and do not count; nor does an input that is greyed out because
 // there is nothing to pick (the Contact of a customer with no contacts). An input added to a panel is added here.
 import { legsOf } from './legs';
+import { LINK_LABEL, toLink } from './link';
 import type { OrganizationType, PanelType } from './look.data';
 import { isStored } from './mapper.photos';
 
@@ -115,7 +116,9 @@ function transportSections(panel: PanelType): SectionType[] {
 // A photo panel's own title, then each group (in the Operations panel, a stage) that is switched on: one
 // switched off is left out of the report, so it counts for nothing (#215). A photo counts once its file is
 // stored, so every device works out the same percent from the same rows (#189). With no group switched on there
-// is still one thing to do, or a panel holding nothing but its name would read complete.
+// is still one thing to do, or a panel holding nothing but its name would read complete. The Operations panel
+// has one input more, above its stages: the link to the project's files (#233), filled in once it is an address
+// the report can print.
 function photoSections(panel: PanelType): SectionType[] {
 	const groups = panel.groups.filter((group) => group.isEnabled);
 	return [
@@ -123,6 +126,9 @@ function photoSections(panel: PanelType): SectionType[] {
 			id: 'panel',
 			inputs: [
 				{ label: 'Title', value: panel.name },
+				...(panel.key === 'operations'
+					? [{ label: LINK_LABEL, value: toLink(panel.link), isOptional: true }]
+					: []),
 				...(groups.length ? [] : [{ label: 'Photos', value: false }])
 			]
 		},

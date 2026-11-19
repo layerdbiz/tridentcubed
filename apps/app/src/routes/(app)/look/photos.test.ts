@@ -257,7 +257,10 @@ describe('a project from before stages', () => {
 		]);
 		const { result, changes } = await save(theirs);
 		expect(result.isSaved).toBe(true);
+		// The project's row goes too: as the Operations panel it has one input more, its link (#233), so its
+		// percent is worked out again.
 		expect(changes.map((change) => [change.table, change.operation])).toEqual([
+			['project', 'put'],
 			['panel', 'put'],
 			['photo_group', 'put'],
 			['photo_group', 'put'],

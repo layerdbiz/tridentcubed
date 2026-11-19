@@ -147,4 +147,23 @@ describe('a document on its way (#188)', () => {
 		});
 		expect(test.done).toEqual([`/files/${FILE_ID}`]);
 	});
+
+	it('goes as a plain file when neither the browser nor its name says what it is (#233)', async () => {
+		const test = createSteps(['ok']);
+		const list = new File(['packing list'], 'Main Unit and Tower PL.numbers', { type: '' });
+		const upload = new Upload(list, {
+			for: { table: 'item_attachment', column: 'file', id: FILE_ID },
+			kind: 'document',
+			ondone: (address) => test.done.push(address),
+			steps: test.steps
+		});
+
+		await upload.start();
+
+		expect(test.asked[0]).toMatchObject({
+			name: 'Main Unit and Tower PL.numbers',
+			type: 'application/octet-stream'
+		});
+		expect(test.done).toEqual([`/files/${FILE_ID}`]);
+	});
 });

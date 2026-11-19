@@ -306,7 +306,8 @@ function toProjectRows(look: LookState): RowType[] {
 					icon: panel.icon,
 					control: panel.control,
 					isEnabled: panel.isEnabled,
-					position
+					position,
+					link: panel.link?.trim() ?? ''
 				}
 			});
 		// #189: a photo panel's groups and photos.
@@ -486,7 +487,8 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 				icon: text(item.values, 'icon'),
 				kind: text(item.values, 'kind') as PanelType['kind'],
 				control: text(item.values, 'control') as PanelType['control'],
-				isEnabled: Boolean(item.values.isEnabled)
+				isEnabled: Boolean(item.values.isEnabled),
+				link: text(item.values, 'link')
 			})
 		);
 	const own = panels.find((panel) => panel.kind === 'project');

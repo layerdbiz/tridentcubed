@@ -66,6 +66,7 @@
 	import Menu from './menu.svelte';
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
+	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { addGroup as addPhotoGroup, addPhotos, hasFiles, uploadOf } from './photos';
 	import { contactsOf } from './records.data';
 	import { toSampleDay, toSamplePhotos } from './samples';
@@ -86,6 +87,9 @@
 	function save() {
 		if (!isDraft) look.saved();
 	}
+
+	// The Operations panel's link to the project's files (#233), as an address to open; none until it is one.
+	const link = $derived(toLink(panel.link));
 
 	// The Project panel's sections, open or folded: Project, Customer, Team, and one per company of personnel.
 	// Only the first section starts open (Justin, 2026-11-16: all three open at once was too much).
@@ -221,8 +225,9 @@
 		return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 	}
 
-	// The item list attached as photos or the spreadsheet itself (#188): each file goes to private storage through the
-	// upload helper, showing in place while it goes, and joins the panel's attachments once it is there.
+	// The item list attached as photos or as the file it came as, of any kind (#188, #233): each file goes to private
+	// storage through the upload helper, showing in place while it goes, and joins the panel's attachments once it is
+	// there.
 	type SendingType = { id: string; name: string; kind: AttachmentType['kind']; upload: Upload };
 	let sending = $state<SendingType[]>([]);
 
@@ -772,21 +777,43 @@
 			Copy rows in a spreadsheet and paste them into any field above. Or attach the list itself:
 		</p>
 		{#if panel.attachments?.length || sending.length}
-			<div class="flex flex-wrap gap-2">
+			<!-- A photo of the list shows whole (#233; Michael's packing list lost its edges): at its own shape, as wide
+			     as the panel at most, with no rounded corner over it and its Remove beside it, not on it. Tapping it
+			     opens it full size. -->
+			<div class="flex flex-wrap items-start gap-2">
 				{#each panel.attachments ?? [] as file (file.id)}
-					<span
-						class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] text-xs text-slate-700 {file.kind ===
-						'photo'
-							? 'size-20'
-							: 'py-2 pr-8 pl-3'}"
-					>
-						{#if file.kind === 'photo'}
-							<img
-								src={file.src}
-								alt={file.name}
-								class="size-full object-cover"
-							/>
-						{:else}
+					{#if file.kind === 'photo'}
+						<span class="flex max-w-full items-start gap-1">
+							<a
+								href={file.src || undefined}
+								target="_blank"
+								rel="noopener"
+								class="block min-w-0 bg-slate-900/[0.04]"
+								aria-label="Open {file.name}"
+							>
+								<img
+									src={file.src}
+									alt={file.name}
+									class="block max-h-64 w-auto max-w-full"
+								/>
+							</a>
+							<button
+								type="button"
+								class="flex size-6 shrink-0 items-center justify-center rounded-full text-slate-400 hover:text-danger"
+								aria-label="Remove {file.name}"
+								onclick={() =>
+									remove(
+										panel.attachments ?? [],
+										file,
+										`Remove ${file.name}?`,
+										'It leaves the cargo description.'
+									)}><span class="icon-[mdi--close] size-4"></span></button
+							>
+						</span>
+					{:else}
+						<span
+							class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] py-2 pr-8 pl-3 text-xs text-slate-700"
+						>
 							<span class="icon-[mdi--file-table-outline] size-4 shrink-0 text-primary"></span>
 							<a
 								href={file.src || undefined}
@@ -794,38 +821,35 @@
 								rel="noopener"
 								class="max-w-40 truncate hover:underline">{file.name}</a
 							>
-						{/if}
-						<button
-							type="button"
-							class="absolute top-0.5 right-0.5 flex size-6 items-center justify-center rounded-full {file.kind ===
-							'photo'
-								? 'bg-slate-950/50 text-white'
-								: 'text-slate-400 hover:text-danger'}"
-							aria-label="Remove {file.name}"
-							onclick={() =>
-								remove(
-									panel.attachments ?? [],
-									file,
-									`Remove ${file.name}?`,
-									'It leaves the cargo description.'
-								)}><span class="icon-[mdi--close] size-4"></span></button
-						>
-					</span>
+							<button
+								type="button"
+								class="absolute top-0.5 right-0.5 flex size-6 items-center justify-center rounded-full text-slate-400 hover:text-danger"
+								aria-label="Remove {file.name}"
+								onclick={() =>
+									remove(
+										panel.attachments ?? [],
+										file,
+										`Remove ${file.name}?`,
+										'It leaves the cargo description.'
+									)}><span class="icon-[mdi--close] size-4"></span></button
+							>
+						</span>
+					{/if}
 				{/each}
 				<!-- On their way to storage: each shows in place with its mark; a failed one says so, with Retry. -->
 				{#each sending as file (file.id)}
 					<span
-						class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] text-xs text-slate-700 {file.kind ===
+						class="relative flex max-w-full items-center gap-2 overflow-hidden bg-slate-900/[0.04] text-xs text-slate-700 {file.kind ===
 						'photo'
-							? 'size-20'
-							: 'py-2 pr-8 pl-3'}"
+							? 'min-h-12 min-w-28'
+							: 'rounded-xl py-2 pr-8 pl-3'}"
 						aria-busy={file.upload.isUploading}
 					>
 						{#if file.kind === 'photo'}
 							<img
 								src={file.upload.preview}
 								alt={file.name}
-								class="size-full object-cover opacity-60"
+								class="block max-h-64 w-auto max-w-full opacity-60"
 							/>
 						{:else}
 							<span class="icon-[mdi--file-table-outline] size-4 shrink-0 text-primary"></span>
@@ -859,7 +883,7 @@
 			<label
 				class="{ghostButton} relative cursor-pointer bg-primary/10 text-primary hover:bg-primary/15"
 			>
-				<span class="icon-[mdi--camera-outline] size-4"></span>Attach a photo
+				<span class="icon-[mdi--camera-outline] size-4"></span>Attach Photo
 				<input
 					type="file"
 					accept="image/*"
@@ -871,10 +895,10 @@
 			<label
 				class="{ghostButton} relative cursor-pointer bg-primary/10 text-primary hover:bg-primary/15"
 			>
-				<span class="icon-[mdi--file-table-outline] size-4"></span>Attach a spreadsheet
+				<!-- Any kind of file (#233): the list comes as a spreadsheet, a PDF, a document, whatever it is. -->
+				<span class="icon-[mdi--paperclip] size-4"></span>Attach File
 				<input
 					type="file"
-					accept=".xlsx,.xls,.csv,.pdf"
 					multiple
 					class="sr-only"
 					onchange={(event) => attach(event, 'file')}
@@ -1002,6 +1026,45 @@
 				onblur={keepName}
 			/>
 		</label>
+		{#if panel.key === 'operations'}
+			<!-- The link to the project's files (#233): its folder elsewhere, a OneDrive folder say, pasted once. The
+			     report prints it on the Project Report page and on this panel's first page. Optional; what is typed
+			     is kept, and the arrow opens it to check it goes to the right place. -->
+			<div>
+				<div class="flex items-end gap-2">
+					<label class="block min-w-0 flex-1">
+						<span class={labelClass}>{LINK_LABEL}</span>
+						<input
+							class={inputClass}
+							type="url"
+							inputmode="url"
+							bind:value={panel.link}
+							maxlength="2048"
+							placeholder="Optional, paste the OneDrive folder link"
+							autocapitalize="off"
+							autocomplete="off"
+							spellcheck="false"
+						/>
+					</label>
+					{#if link}
+						<a
+							href={link}
+							target="_blank"
+							rel="noopener"
+							class="mb-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/15"
+							aria-label="Open the link"
+							title="Open in {linkNameOf(link)}"
+							><span class="icon-[mdi--open-in-new] size-4"></span></a
+						>
+					{/if}
+				</div>
+				{#if panel.link?.trim() && !link}
+					<p class="mt-1 text-xs text-danger">
+						That does not look like a link. Paste the folder’s full address.
+					</p>
+				{/if}
+			</div>
+		{/if}
 		<div
 			class="space-y-3"
 			{@attach sortable(`groups-${panel.id}`, (from, to) => move(panel.groups, from, to))}

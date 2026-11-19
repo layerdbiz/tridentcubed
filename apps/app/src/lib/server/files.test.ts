@@ -176,7 +176,7 @@ describe('who may ask for an upload address', () => {
 		).toMatchObject({ isAllowed: false });
 	});
 
-	it('takes a spreadsheet or PDF for an item attachment only, never for a record’s picture (#188)', async () => {
+	it('takes any kind of file for an item attachment, never for a record’s picture (#188, #233)', async () => {
 		const attachment = (type: string, name: string): UploadRequestType => ({
 			for: { table: 'item_attachment', column: 'file', id: crypto.randomUUID() },
 			name,
@@ -184,22 +184,49 @@ describe('who may ask for an upload address', () => {
 			size: PICTURE.byteLength,
 			taken: { from: '' }
 		});
-		for (const [type, name] of [
-			['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'manifest.xlsx'],
-			['application/vnd.ms-excel', 'manifest.xls'],
-			['text/csv', 'manifest.csv'],
-			['application/pdf', 'manifest.pdf'],
-			['image/webp', 'list.webp']
-		])
-			expect((await upload(team, attachment(type, name))).address).toMatch(/^\/files\//);
+		// The path's ending is the type's when the app knows it, else the name's own, else `bin`.
+		for (const [type, name, ending] of [
+			[
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+				'manifest.xlsx',
+				'xlsx'
+			],
+			['application/vnd.ms-excel', 'manifest.xls', 'xls'],
+			['text/csv', 'manifest.csv', 'csv'],
+			['application/pdf', 'manifest.pdf', 'pdf'],
+			['image/webp', 'list.webp', 'webp'],
+			[
+				'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+				'Packing List.DOCX',
+				'docx'
+			],
+			['text/tab-separated-values', 'manifest.tsv', 'tsv'],
+			['application/zip', 'everything.zip', 'zip'],
+			['application/octet-stream', 'list.numbers', 'numbers'],
+			['application/octet-stream', 'no ending at all', 'bin'],
+			['application/octet-stream', 'odd.../../etc', 'bin']
+		]) {
+			const answer = await upload(team, attachment(type, name));
+			expect(answer.address).toMatch(/^\/files\//);
+			expect((await readFile(test.claims, team, answer.id))?.path).toBe(
+				`${team.organizationId}/${answer.id}.${ending}`
+			);
+		}
 
-		expect(
-			await createUpload(test.claims, team, store, {
-				...logoOf(),
-				type: 'application/pdf',
-				name: 'logo.pdf'
-			})
-		).toEqual({ isAllowed: false, reason: 'A application/pdf file cannot be kept here.' });
+		// A type is one plain word either side of a slash: nothing else goes into the upload's header.
+		for (const type of ['', 'text', 'text/plain; charset=utf-8', 'text/plain\r\nx-evil: 1'])
+			expect(
+				await createUpload(test.claims, team, store, attachment(type, 'manifest.txt'))
+			).toMatchObject({ isAllowed: false });
+
+		for (const [type, name] of [
+			['application/pdf', 'logo.pdf'],
+			['application/zip', 'logo.zip']
+		])
+			expect(await createUpload(test.claims, team, store, { ...logoOf(), type, name })).toEqual({
+				isAllowed: false,
+				reason: `A ${type} file cannot be kept here.`
+			});
 	});
 
 	it('never lets a picture for another organization’s record land in theirs', async () => {

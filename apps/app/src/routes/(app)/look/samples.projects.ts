@@ -120,6 +120,9 @@ const SAMPLE_ITEMS: [quantity: string, description: string][] = [
 ];
 
 const SAMPLE_REFERENCE = 'SAMPLE-0001';
+// A full sample's link to its project files (#233): OneDrive's own front page, a real address that names no one's
+// folder.
+const SAMPLE_LINK = 'https://onedrive.live.com/';
 const SAMPLE_DESCRIPTION = 'Sample photos, to show how a group reads in the report.';
 
 /** Whether the sample projects are already here: they are never made twice. */
@@ -193,6 +196,8 @@ function make(look: LookState, sample: SampleType, lead: string, assigned: strin
 				}
 			];
 		if (!sample.isFull || !panel.isEnabled) continue;
+		// Every input counts toward the percent (#229), the Operations panel's link among them (#233).
+		if (panel.key === 'operations') panel.link = SAMPLE_LINK;
 		if (panel.kind === 'items')
 			panel.items = SAMPLE_ITEMS.map(([quantity, description]) => itemOf(quantity, description));
 		if (panel.kind === 'timelog') {
