@@ -119,6 +119,9 @@ const SAMPLE_ITEMS: [quantity: string, description: string][] = [
 	['27', 'Accessory crates']
 ];
 
+const SAMPLE_REFERENCE = 'SAMPLE-0001';
+const SAMPLE_DESCRIPTION = 'Sample photos, to show how a group reads in the report.';
+
 /** Whether the sample projects are already here: they are never made twice. */
 export function hasSamples(look: LookState) {
 	return look.projects.some((project) => project.title.startsWith(SAMPLE_MARK));
@@ -158,6 +161,8 @@ function make(look: LookState, sample: SampleType, lead: string, assigned: strin
 	if (look.customers.includes(sample.customer)) setField(draft, 'Customer', sample.customer);
 	// The Draft keeps its Project panel unfinished, which is what makes it a Draft.
 	draft.assigned = sample.status === 'Draft' ? [] : assigned;
+	// Every input counts toward the percent (#229), so a sample that is not the Draft has them all.
+	if (sample.status !== 'Draft') draft.customerReference = SAMPLE_REFERENCE;
 	look.create(draft);
 	const id = look.projectId;
 	const project = look.projects.find((each) => each.id === id);
@@ -183,6 +188,7 @@ function make(look: LookState, sample: SampleType, lead: string, assigned: strin
 			panel.groups = [
 				{
 					...groupOf('Overview'),
+					description: SAMPLE_DESCRIPTION,
 					photos: toSamplePhotos(panel.name.length, 4, () => crypto.randomUUID())
 				}
 			];

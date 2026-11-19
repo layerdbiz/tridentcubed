@@ -309,14 +309,16 @@ describe('order and percent', () => {
 		});
 		await save(mine);
 		const percent = mine.look.overall;
-		const statuses = mine.look.workspaces[id].map((panel) => metricsOf(panel).status);
+		const statuses = mine.look.workspaces[id].map((panel) => metricsOf(panel, mine.look).status);
 		expect(percent).toBeGreaterThan(0);
 
 		const theirs = await open(mia);
 		expect(theirs.look.projects.find((project) => project.id === id)?.progress).toBe(percent);
 		await openProject(theirs, id);
 		expect(theirs.look.overall).toBe(percent);
-		expect(theirs.look.workspaces[id].map((panel) => metricsOf(panel).status)).toEqual(statuses);
+		expect(theirs.look.workspaces[id].map((panel) => metricsOf(panel, theirs.look).status)).toEqual(
+			statuses
+		);
 		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
 	});
 });

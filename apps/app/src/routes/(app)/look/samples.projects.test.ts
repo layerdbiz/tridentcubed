@@ -114,7 +114,7 @@ describe('the sample projects', () => {
 		const statuses = (id: string) =>
 			theirs.look.workspaces[id]
 				.filter((panel) => panel.isEnabled)
-				.map((panel) => metricsOf(panel).status);
+				.map((panel) => metricsOf(panel, theirs.look).status);
 		expect(new Set(statuses(complete.id))).toEqual(new Set(['Complete']));
 		expect(complete.progress).toBe(100);
 		// The Draft's Project panel is the unfinished one; its photo panels have their photos like every sample's.

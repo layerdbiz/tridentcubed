@@ -42,6 +42,7 @@
 	import Menu from '../menu.svelte';
 	import Picker from '../picker.svelte';
 	import { sortable } from '../sortable';
+	import { sectionsOf, valuesOf } from '../tally';
 
 	let { look, panel, onsave }: { look: LookState; panel: PanelType; onsave: () => void } = $props();
 
@@ -52,6 +53,8 @@
 		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 
 	const legs = $derived(legsOf(panel.stops));
+	// What each leg's line counts: the inputs tally.ts says it holds (#229).
+	const sections = $derived(sectionsOf(panel));
 	// The legs standing open: the first, and any just added.
 	let open = $state<string[]>(untrack(() => [legsOf(panel.stops)[0]?.id ?? '']));
 
@@ -185,7 +188,7 @@
 		{@const legId = leg.id}
 		<Group
 			title={first.name || `Transport Mode ${index + 1}`}
-			values={[first.name, ...leg.stops.map((stop) => stop.facility)]}
+			values={valuesOf(sections, leg.id)}
 			icon={MODE_ICONS[first.mode] ?? 'icon-[mdi--transit-connection-variant]'}
 			image={photoOf(leg)}
 			isOpen={open.includes(leg.id)}

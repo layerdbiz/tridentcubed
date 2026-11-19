@@ -9,7 +9,7 @@ import {
 	type PanelType,
 	type ProjectType
 } from './look.data';
-import { metricsOf } from './look.state.svelte';
+import { LookState, metricsOf } from './look.state.svelte';
 import { upgradeOperations } from './stages';
 
 function oldPanel(groups: PanelType['groups'] = [], name = 'Inspection') {
@@ -112,12 +112,14 @@ describe('a project from before stages', () => {
 describe('a group switched off', () => {
 	it('counts for nothing in its panel, and counts again once it is switched on', () => {
 		const panel = oldPanel([{ ...groupOf('Preloading'), photos: [stored()] }, groupOf('Securing')]);
-		expect(metricsOf(panel)).toMatchObject({ done: 3, total: 4, percent: 75 });
+		// The panel's own title, then a title, a description and the photos of each group (#229).
+		const look = new LookState();
+		expect(metricsOf(panel, look)).toMatchObject({ done: 4, total: 7, percent: 57 });
 
 		panel.groups[1].isEnabled = false;
-		expect(metricsOf(panel)).toMatchObject({ done: 2, total: 2, percent: 100 });
+		expect(metricsOf(panel, look)).toMatchObject({ done: 3, total: 4, percent: 75 });
 
 		panel.groups[1].isEnabled = true;
-		expect(metricsOf(panel)).toMatchObject({ done: 3, total: 4 });
+		expect(metricsOf(panel, look)).toMatchObject({ done: 4, total: 7 });
 	});
 });

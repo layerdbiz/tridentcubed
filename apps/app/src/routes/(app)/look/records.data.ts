@@ -275,6 +275,11 @@ export function customerOf(look: LookState, name: string): ClientType {
 	return look.added.find((customer) => customer.name === name) ?? clientOf(name);
 }
 
+/** The contacts the Project panel's Contact field offers: the picked customer's that have a name. */
+export function contactsOf(look: LookState, customer: string) {
+	return customer ? (customerOf(look, customer).contacts ?? []).filter((item) => item.name) : [];
+}
+
 // "Stevedore, Terminal" is two types.
 export function typesOf(kind: string) {
 	return kind

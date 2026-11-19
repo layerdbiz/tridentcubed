@@ -1,9 +1,22 @@
 // How much of a section is filled in, said the way a panel says it: "2 of 7 complete" (Justin, 2026-11-16: every
-// section that opens and closes shows this under its name, in place of a line describing it). A section hands over
-// the values that count; one counts as done when it holds something: words, a pick, a list with something in it, or
-// a plain yes.
+// section that opens and closes shows this under its name, in place of a line describing it).
+// #229 (Justin, 2026-11-18: "each item completed should represent the input inside of that section ... fix it in
+// a single place"): this file is that place. `sectionsOf` lists the inputs every section of a panel holds, in the
+// order the panel draws them; a section's line, its panel's line, the panel's percent and the project's percent
+// are all counted from that one list (`valuesOf`, and `metricsOf` in look.state.svelte.ts), so they cannot
+// disagree. The rule: every input a person fills in counts once, and it is done when it holds something (words, a
+// pick, a list with something in it, or a plain yes). A switch, the photos-per-page buttons and a facility's
+// Start, Stop or End are settings, not inputs, and do not count; nor does an input that is greyed out because
+// there is nothing to pick (the Contact of a customer with no contacts). An input added to a panel is added here.
+import { legsOf } from './legs';
+import type { OrganizationType, PanelType } from './look.data';
+import { isStored } from './mapper.photos';
 
 export type TallyType = { done: number; total: number };
+/** One input. An optional one counts like the rest; it only never holds a status back (`hasRequired`). */
+export type InputType = { label: string; value: unknown; isOptional?: boolean };
+/** A section that opens and closes, by its id: a fixed name, or the id of the day, group, leg or company. */
+export type SectionType = { id: string; inputs: InputType[] };
 
 function isDone(value: unknown) {
 	if (typeof value === 'string') return value.trim().length > 0;
@@ -19,4 +32,188 @@ export function tallyOf(values: unknown[]): TallyType {
 export function toTally(values: unknown[]) {
 	const { done, total } = tallyOf(values);
 	return `${done} of ${Math.max(1, total)} complete`;
+}
+
+/** What one section's inputs hold, for its header's line. A section that is not counted has none. */
+export function valuesOf(sections: SectionType[], id: string) {
+	return sections.find((section) => section.id === id)?.inputs.map((input) => input.value) ?? [];
+}
+
+/** Whether nothing a status waits for is missing: every input but the optional ones holds something. */
+export function hasRequired(sections: SectionType[]) {
+	return sections.every((section) =>
+		section.inputs.every((input) => input.isOptional || isDone(input.value))
+	);
+}
+
+function projectSections(panel: PanelType, contacts: { id: string }[]): SectionType[] {
+	function field(label: string): InputType {
+		return { label, value: panel.fields.find((item) => item.label === label)?.value };
+	}
+	// The Contact field shows the one picked, else the customer's first, so it holds one whenever the customer has
+	// any. With none to pick it is greyed out, and counts for nothing.
+	const contact = contacts.find((item) => item.id === panel.contact) ?? contacts[0];
+	return [
+		{
+			id: 'project',
+			inputs: [
+				field('Title'),
+				field('Subtitle'),
+				field('Project Type'),
+				// These two always hold something: the day typed, or the day the project was made; the number typed,
+				// or the next one, which the server gives a project as it is saved. Counting the number only once
+				// the server had answered would change a project's percent with nobody touching it.
+				{ label: 'Project Creation Date', value: true },
+				{ label: 'Job Sequence Number', value: true }
+			]
+		},
+		{
+			id: 'customer',
+			inputs: [
+				field('Customer'),
+				...(contact ? [{ label: 'Contact', value: contact.id }] : []),
+				{ label: 'Reference Number', value: panel.customerReference, isOptional: true }
+			]
+		},
+		{
+			id: 'team',
+			inputs: [
+				field('Organization'),
+				{ label: 'Team Lead', value: panel.owner },
+				{ label: 'Team Assigned', value: panel.assigned }
+			]
+		},
+		...(panel.personnel ?? []).map((company) => ({
+			id: company.id,
+			inputs: [
+				{ label: 'Company', value: company.company },
+				...company.people.flatMap((person) => [
+					{ label: 'Name', value: person.name },
+					{ label: 'Title', value: person.title }
+				])
+			]
+		}))
+	];
+}
+
+// A trip section is one transport mode: the mode, the transport itself once a mode is picked (its field is
+// named for the mode: "Vessel"), then one field for each facility it calls at.
+function transportSections(panel: PanelType): SectionType[] {
+	return legsOf(panel.stops).map((leg) => {
+		const first = leg.stops[0];
+		return {
+			id: leg.id,
+			inputs: [
+				{ label: 'Transport Mode', value: first.mode },
+				...(first.mode ? [{ label: first.mode, value: first.name }] : []),
+				...leg.stops.map((stop) => ({ label: 'Facility', value: stop.facility }))
+			]
+		};
+	});
+}
+
+// A photo panel's own title, then each group (in the Operations panel, a stage) that is switched on: one
+// switched off is left out of the report, so it counts for nothing (#215). A photo counts once its file is
+// stored, so every device works out the same percent from the same rows (#189). With no group switched on there
+// is still one thing to do, or a panel holding nothing but its name would read complete.
+function photoSections(panel: PanelType): SectionType[] {
+	const groups = panel.groups.filter((group) => group.isEnabled);
+	return [
+		{
+			id: 'panel',
+			inputs: [
+				{ label: 'Title', value: panel.name },
+				...(groups.length ? [] : [{ label: 'Photos', value: false }])
+			]
+		},
+		...groups.map((group) => ({
+			id: group.id,
+			inputs: [
+				{ label: 'Title', value: group.title },
+				{ label: 'Description', value: group.description, isOptional: true },
+				{ label: 'Photos', value: group.photos.some(isStored) }
+			]
+		}))
+	];
+}
+
+/**
+ * The inputs each section of a panel holds, as the panel draws them. `contacts` are the picked customer's, which
+ * the Project panel's Contact field reads.
+ */
+export function sectionsOf(panel: PanelType, contacts: { id: string }[] = []): SectionType[] {
+	if (panel.kind === 'project') return projectSections(panel, contacts);
+	if (panel.kind === 'transport') return transportSections(panel);
+	if (panel.kind === 'items')
+		return [
+			{
+				id: 'items',
+				inputs: panel.items.flatMap((item) => [
+					{ label: 'Quantity', value: item.quantity },
+					{ label: 'Description', value: item.description }
+				])
+			}
+		];
+	if (panel.kind === 'timelog')
+		return panel.days.map((day) => ({
+			id: day.id,
+			inputs: [
+				{ label: 'Date', value: day.date },
+				...day.entries.flatMap((entry) => [
+					{ label: 'Time', value: entry.time },
+					{ label: 'Activity', value: entry.activity }
+				])
+			]
+		}));
+	return photoSections(panel);
+}
+
+type WordingType = Pick<
+	OrganizationType,
+	| 'logo'
+	| 'name'
+	| 'address'
+	| 'phone'
+	| 'email'
+	| 'groupEmail'
+	| 'website'
+	| 'disclaimer'
+	| 'closing'
+	| 'signoff'
+>;
+
+/** The inputs each section of the Settings screen holds: Details, Disclaimer and Sign-off. */
+export function organizationSectionsOf(organization: WordingType): SectionType[] {
+	return [
+		{
+			id: 'details',
+			inputs: [
+				{ label: 'Logo', value: organization.logo },
+				{ label: 'Name', value: organization.name },
+				{ label: 'Address', value: organization.address },
+				{ label: 'Phone', value: organization.phone },
+				{ label: 'Email', value: organization.email },
+				{ label: 'Group Email', value: organization.groupEmail },
+				{ label: 'Website', value: organization.website }
+			]
+		},
+		{
+			id: 'disclaimer',
+			inputs: [
+				{ label: 'Opening', value: organization.disclaimer.opening },
+				...organization.disclaimer.points.flatMap((point) => [
+					{ label: 'Point title', value: point.title },
+					{ label: 'Point text', value: point.text }
+				]),
+				{ label: 'Note', value: organization.disclaimer.note }
+			]
+		},
+		{
+			id: 'signoff',
+			inputs: [
+				{ label: 'Closing', value: organization.closing },
+				{ label: 'Sign-off', value: organization.signoff }
+			]
+		}
+	];
 }

@@ -33,7 +33,7 @@
 		style?: 'soft' | 'flat' | 'ring';
 	} = $props();
 
-	const metrics = $derived(metricsOf(panel));
+	const metrics = $derived(metricsOf(panel, look));
 	const tone = $derived(toneOf(metrics.status));
 	const isOpen = $derived(look.panelId === panel.id);
 	const isQuiet = $derived(

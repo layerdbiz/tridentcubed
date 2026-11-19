@@ -259,7 +259,7 @@
 			<h3 class={HEADING}>Panels</h3>
 			<div class="divide-y divide-slate-900/[0.05] {CARD}">
 				{#each panels as panel (panel.id)}
-					{@const metrics = metricsOf(panel)}
+					{@const metrics = metricsOf(panel, look)}
 					{@const tone = toneOf(metrics.status)}
 					<button
 						class="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm"

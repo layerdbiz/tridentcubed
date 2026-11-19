@@ -32,6 +32,9 @@
 	// #215 (Justin, 2026-11-18): a photo panel opens on its own title, filled in and editable, so Operations or an
 	// added panel can be called what the job calls it; the report and its contents print that title. Its groups
 	// (the Operations panel's stages) each have a switch that leaves them out of the report.
+	// #229 (Justin, 2026-11-18): what a section counts is not written here beside its inputs any more. Every
+	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
+	// added to a section is added to that list.
 	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
@@ -64,9 +67,10 @@
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { addGroup as addPhotoGroup, addPhotos, hasFiles, uploadOf } from './photos';
-	import { customerOf } from './records.data';
+	import { contactsOf } from './records.data';
 	import { toSampleDay, toSamplePhotos } from './samples';
 	import { sortable } from './sortable';
+	import { sectionsOf, valuesOf } from './tally';
 
 	let {
 		look,
@@ -177,9 +181,13 @@
 	const customerName = $derived(
 		panel.fields.find((field) => field.label === 'Customer')?.value ?? ''
 	);
-	const contacts = $derived(
-		customerName ? (customerOf(look, customerName).contacts ?? []).filter((item) => item.name) : []
-	);
+	const contacts = $derived(contactsOf(look, customerName));
+
+	// What each section's line counts: the inputs tally.ts says it holds, by the section's id.
+	const sections = $derived(sectionsOf(panel, contacts));
+	function counted(id: string) {
+		return valuesOf(sections, id);
+	}
 
 	// The two inputs of the project number (#217). A project not made yet has no J count of its own, so the one it
 	// will get is worked out here the way the server will: the next of that customer and day. The number itself is
@@ -478,7 +486,7 @@
 {#snippet teamBlock()}
 	<Group
 		title="Organization"
-		values={[fieldOf('Organization')?.value, panel.owner, panel.assigned]}
+		values={counted('team')}
 		icon={PAGE_ICONS.team}
 		isOpen={openSections.includes('team')}
 		ontoggle={() => (openSections = toggle(openSections, 'team'))}
@@ -516,7 +524,7 @@
 	{#each personnel as company, companyIndex (company.id)}
 		<Group
 			title={company.company || `Personnel ${companyIndex + 1}`}
-			values={[company.company, ...company.people.map((person) => person.name)]}
+			values={counted(company.id)}
 			icon="icon-[mdi--account-multiple-outline]"
 			tone="bg-slate-900/[0.06] text-slate-600"
 			isOpen={openSections.includes(company.id)}
@@ -602,7 +610,7 @@
 		<div class="space-y-3">
 			<Group
 				title="Project"
-				values={[title?.value, subtitle?.value, fieldOf('Project Type')?.value]}
+				values={counted('project')}
 				icon={PAGE_ICONS.projects}
 				isOpen={openSections.includes('project')}
 				ontoggle={() => (openSections = toggle(openSections, 'project'))}
@@ -642,7 +650,7 @@
 			</Group>
 			<Group
 				title="Customer"
-				values={[customerName]}
+				values={counted('customer')}
 				icon={PAGE_ICONS.customers}
 				isOpen={openSections.includes('customer')}
 				ontoggle={() => (openSections = toggle(openSections, 'customer'))}
@@ -884,7 +892,7 @@
 						sortKey={panel.days.length > 1 ? `days-${panel.id}` : ''}
 						index={dayIndex}
 						title="Day {dayIndex + 1}"
-						values={[day.date, ...day.entries.map((entry) => entry.time && entry.activity.trim())]}
+						values={counted(day.id)}
 						meta={day.date || 'No date'}
 						icon="icon-[mdi--calendar-blank-outline]"
 						isOpen={openDays.includes(day.id)}
@@ -1010,7 +1018,7 @@
 				>
 					<Group
 						title={group.title || `Untitled ${word}`}
-						values={[group.title, group.photos]}
+						values={counted(group.id)}
 						meta="{group.photos.length} photos"
 						isEnabled={group.isEnabled}
 						onenable={() => toggleGroup(group)}

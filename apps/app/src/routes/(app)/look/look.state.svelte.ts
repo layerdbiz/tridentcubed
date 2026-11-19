@@ -40,8 +40,8 @@ import type { RowType } from '#lib/rows/rows.schema.js';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
-import { isStored } from './mapper.photos';
-import type { PageType } from './records.data';
+import { contactsOf, type PageType } from './records.data';
+import { hasRequired, sectionsOf, tallyOf } from './tally';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import type { TeamMemberType } from './team.data';
@@ -61,63 +61,30 @@ export type ConfirmType = { title: string; note?: string; onyes: () => void };
 // The states a project is no longer being worked on in: it opens on its Page, not on Edit (LookState.open).
 const FINISHED: StatusType[] = ['Sent', 'Complete', 'Archived'];
 
-export function metricsOf(panel: PanelType): MetricsType {
-	let done = 0;
-	let total = 0;
-	if (panel.kind === 'items') {
-		// Each row counts once, when it has both its quantity and its description; no rows is one to do.
-		total = Math.max(1, panel.items.length);
-		done = panel.items.filter((item) => item.quantity.trim() && item.description.trim()).length;
-	} else if (panel.kind === 'project') {
-		total = panel.fields.length + 2;
-		done =
-			panel.fields.filter((field) => field.value.trim()).length +
-			Number(Boolean(panel.owner)) +
-			Number(panel.assigned.length > 0);
-	} else if (panel.kind === 'transport') {
-		// Each stop counts its five picks; a panel with no stop counts as one to do.
-		const PARTS = ['point', 'type', 'mode', 'name', 'facility'] as const;
-		total = Math.max(1, panel.stops.length * PARTS.length);
-		done = panel.stops.reduce(
-			(sum, stop) => sum + PARTS.filter((part) => Boolean(stop[part])).length,
-			0
-		);
-	} else if (panel.kind === 'timelog') {
-		total = Math.max(
-			1,
-			panel.days.reduce((sum, day) => sum + 1 + day.entries.length, 0)
-		);
-		done = panel.days.reduce(
-			(sum, day) =>
-				sum +
-				Number(Boolean(day.date)) +
-				day.entries.filter((entry) => entry.time && entry.activity.trim()).length,
-			0
-		);
-	} else {
-		// A photo group counts its title and having photos. Its layout always has a value, so it never counts: a new
-		// untitled group with no photos is To do (Justin's run 8 note 8). #189: a photo counts once its file is
-		// stored, so every device works out the same percent from the same rows. #215: a group switched off is left
-		// out of the report, so it counts for nothing.
-		const groups = panel.groups.filter((group) => group.isEnabled);
-		total = Math.max(1, groups.length * 2);
-		done = groups.reduce(
-			(sum, group) =>
-				sum + Number(Boolean(group.title.trim())) + Number(group.photos.some(isStored)),
-			0
-		);
-	}
+// The inputs a panel holds, section by section (tally.ts, the one place that says what counts). The Project
+// panel's Contact field reads the picked customer's contacts, so the app's customers are needed to count it.
+function sectionsIn(panel: PanelType, look: LookState) {
+	const customer = panel.fields.find((field) => field.label === 'Customer')?.value ?? '';
+	return sectionsOf(panel, panel.kind === 'project' ? contactsOf(look, customer) : []);
+}
+
+// A panel's count is its sections' counts added up: every input counts once, done when it holds something. A
+// panel with no input yet (no rows, no days) has one thing to do.
+export function metricsOf(panel: PanelType, look: LookState): MetricsType {
+	const inputs = sectionsIn(panel, look).flatMap((section) => section.inputs);
+	const tally = tallyOf(inputs.map((input) => input.value));
+	const total = Math.max(1, tally.total);
 	// A panel switched off is not planned: it reads like any other panel, with nothing of its total done, 0% (#225).
 	if (!panel.isEnabled) return { done: 0, total, percent: 0, status: 'Not planned' };
-	const percent = total ? Math.round((done / total) * 100) : 0;
+	const percent = Math.round((tally.done / total) * 100);
 	const status: PanelStatusType =
 		percent >= 100 ? 'Complete' : percent === 0 ? 'To do' : 'In progress';
-	return { done, total, percent, status };
+	return { done: tally.done, total, percent, status };
 }
 
 // A project's percent: every input of its switched-on panels counts the same.
-export function percentOf(panels: PanelType[]) {
-	const enabled = panels.filter((panel) => panel.isEnabled).map(metricsOf);
+export function percentOf(panels: PanelType[], look: LookState) {
+	const enabled = panels.filter((panel) => panel.isEnabled).map((panel) => metricsOf(panel, look));
 	const done = enabled.reduce((sum, item) => sum + item.done, 0);
 	const total = enabled.reduce((sum, item) => sum + item.total, 0);
 	return total ? Math.round((done / total) * 100) : 0;
@@ -226,7 +193,7 @@ export class LookState {
 		this.projects.find((project) => project.id === this.projectId) ?? this.projects[0]
 	);
 	panels = $derived(this.workspaces[this.projectId] ?? []);
-	overall = $derived(percentOf(this.panels));
+	overall = $derived(percentOf(this.panels, this));
 	isFrozen = $derived(FROZEN.includes(this.project?.status));
 
 	#saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -263,7 +230,7 @@ export class LookState {
 	// 0% in the lists until it had been opened and left).
 	progressOf(project: ProjectType) {
 		const panels = this.workspaces[project.id];
-		return panels ? percentOf(panels) : project.progress;
+		return panels ? percentOf(panels, this) : project.progress;
 	}
 
 	// A count card picks what the chart and the list show, and the chart that suits it. The view (list, cards or
@@ -520,13 +487,13 @@ export class LookState {
 	}
 
 	// A Draft becomes In Progress by itself once its Project panel is complete (Justin, 2026-11-10): every field
-	// filled, an owner, and someone assigned. Nothing else moves a status automatically.
+	// filled, an owner, and someone assigned. Nothing else moves a status automatically. It does not wait for the
+	// input that is optional (a reference number), which still counts (#229).
 	#advance(id: string) {
 		const project = this.projects.find((item) => item.id === id);
 		const panel = this.workspaces[id]?.find((item) => item.kind === 'project');
 		if (!project || !panel || project.status !== 'Draft') return;
-		const { done, total } = metricsOf(panel);
-		if (done < total) return;
+		if (!hasRequired(sectionsIn(panel, this))) return;
 		project.status = 'In Progress';
 		this.say(`"${project.title}" is now In Progress`);
 	}
