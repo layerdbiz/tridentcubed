@@ -15,6 +15,7 @@
 	import { SyncLoop } from '#lib/rows/rows.state.svelte.js';
 	import { LookState } from './look.state.svelte';
 	import Confirm from './confirm.svelte';
+	import ProgressToast from './progress-toast.svelte';
 	import SaveSheet from './save-sheet.svelte';
 	import Shell from './shell.svelte';
 	import StatusSheet from './status-sheet.svelte';
@@ -183,11 +184,17 @@
 	<SaveSheet {look} />
 </div>
 
-{#if look.toast}
-	<div
-		class="fixed inset-x-0 bottom-28 z-[90] flex justify-center px-4 md:bottom-20"
-		transition:fly={{ y: 16, duration: 200 }}
-	>
-		<p class="rounded-full bg-slate-900 px-4 py-2.5 text-sm text-white shadow-xl">{look.toast}</p>
-	</div>
-{/if}
+<!-- The toasts, one over the other: the download's progress (#240), then the short notes. -->
+<div
+	class="pointer-events-none fixed inset-x-0 bottom-28 z-[90] flex flex-col items-center gap-2 px-4 md:bottom-20"
+>
+	<ProgressToast progress={look.progress} />
+	{#if look.toast}
+		<p
+			class="rounded-full bg-slate-900 px-4 py-2.5 text-sm text-white shadow-xl"
+			transition:fly={{ y: 16, duration: 200 }}
+		>
+			{look.toast}
+		</p>
+	{/if}
+</div>

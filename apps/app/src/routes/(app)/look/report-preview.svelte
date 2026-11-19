@@ -55,6 +55,7 @@
 		type StopType
 	} from './look.data';
 	import { customerOf, locationOf } from './records.data';
+	import { DownloadError, joinPdfs, PART_LIMIT, printParts, sizeOf, toParts } from './download';
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
 	import {
 		createFollower,
@@ -613,9 +614,10 @@
 	}
 
 	// Download (run 33): the pages as they are drawn here, with this page's own styles, go to the server, which
-	// prints them to a PDF with the app's export browser (pdf/+server.ts) and hands the file back.
+	// prints them to a PDF with the app's export browser (pdf/+server.ts) and hands the file back. #240: they go in
+	// parts that each fit under the host's cap on one request, and the PDFs that come back are joined into one
+	// (download.ts); a toast shows how far it is from the click until the file is saved (progress.svelte.ts).
 	let canvas: HTMLDivElement | undefined = $state();
-	let isDownloading = false;
 
 	// A photo far bigger than it prints is sent at three times its printed size, as a JPEG, so the PDF stays small
 	// enough to email. Logos and anything already small go as they are.
@@ -641,48 +643,106 @@
 		}
 	}
 
+	// One page as it is sent: its markup as drawn, at the page's own size, its big photos slimmed.
+	function sheetOf(node: HTMLElement) {
+		const copy = node.cloneNode(true) as HTMLElement;
+		const shown = node.querySelectorAll('img');
+		for (const [index, image] of copy.querySelectorAll('img').entries()) {
+			const slim = slimOf(shown[index]);
+			if (slim) image.src = slim;
+		}
+		copy.style.cssText = `width: ${W}px; height: ${H}px`;
+		copy.classList.remove('ring-4', 'ring-primary/70');
+		return copy.outerHTML;
+	}
+
+	// Lets the screen draw before the next piece of work: slimming a page's photos holds it still, and a toast that
+	// is never drawn says nothing (the "Making the PDF" note that never showed, #240). A hidden tab draws nothing,
+	// so the wait there is a short timer.
+	function pause() {
+		return new Promise<void>((resolve) => {
+			const timer = setTimeout(resolve, 50);
+			requestAnimationFrame(() => {
+				clearTimeout(timer);
+				setTimeout(resolve);
+			});
+		});
+	}
+
+	// How far along the bar each stage ends: the pages prepared, the parts printed, the parts joined. The file
+	// saved is 100.
+	const PREPARED = 25;
+	const PRINTED = 88;
+	const JOINED = 97;
+
 	async function download() {
-		if (isDownloading || !canvas) return;
-		isDownloading = true;
-		look.say('Making the PDF');
+		const progress = look.progress;
+		if (progress.isBusy || !canvas) return;
+		const nodes = [...canvas.querySelectorAll<HTMLElement>('article[data-page]')];
+		const count = nodes.length;
+		const filename = `${documentNumber}.pdf`;
+		const pagesWord = count === 1 ? '1 page' : `${count} pages`;
+		progress.start('Getting the pages ready', PREPARED / Math.max(count, 1));
 		try {
 			const sheets = [...document.querySelectorAll('style, link[rel="stylesheet"]')]
 				.map((node) => node.outerHTML)
 				.join('\n');
-			const sheetsOfPages = [...canvas.querySelectorAll('article[data-page]')]
-				.map((node) => {
-					const copy = node.cloneNode(true) as HTMLElement;
-					const shown = node.querySelectorAll('img');
-					for (const [index, image] of copy.querySelectorAll('img').entries()) {
-						const slim = slimOf(shown[index]);
-						if (slim) image.src = slim;
-					}
-					copy.style.cssText = `width: ${W}px; height: ${H}px`;
-					copy.classList.remove('ring-4', 'ring-primary/70');
-					return copy.outerHTML;
-				})
-				.join('\n');
-			const filename = `${documentNumber}.pdf`;
-			const response = await fetch('/api/export/pdf', {
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ pages: sheetsOfPages, styles: sheets, filename })
-			});
-			if (!response.ok) {
-				const problem = await response.json().catch(() => undefined);
-				throw new Error(problem?.message ?? 'The PDF could not be made');
+			const pages: string[] = [];
+			for (const [at, node] of nodes.entries()) {
+				progress.reach(
+					(PREPARED * at) / count,
+					(PREPARED * (at + 1)) / count,
+					`Preparing page ${at + 1} of ${count}`
+				);
+				await pause();
+				if (!node.isConnected) {
+					throw new DownloadError(
+						'The Preview was closed before the PDF was ready. Open it and try again.'
+					);
+				}
+				pages.push(sheetOf(node));
 			}
-			const url = URL.createObjectURL(await response.blob());
+			if (!count) throw new DownloadError('There are no pages to print yet.');
+
+			// Printing: the bar is at the pages whose PDFs are back, and creeps toward those now with the printer.
+			const parts = toParts(pages, PART_LIMIT - sizeOf(sheets));
+			let sent = 0;
+			let back = 0;
+			function markOf(done: number) {
+				return PREPARED + ((PRINTED - PREPARED) * done) / count;
+			}
+			const pdfs = await printParts(parts, {
+				styles: sheets,
+				filename,
+				onstart(at) {
+					sent += parts[at].length;
+					progress.reach(markOf(back), markOf(sent), `Printing ${pagesWord}`);
+				},
+				ondone(at) {
+					back += parts[at].length;
+					const label = back < count ? `Printed ${back} of ${pagesWord}` : `Printed ${pagesWord}`;
+					progress.reach(markOf(back), markOf(sent), label);
+				}
+			});
+
+			progress.reach(PRINTED, JOINED, 'Putting the pages together');
+			await pause();
+			const pdf = await joinPdfs(pdfs, filename);
+
+			progress.reach(JOINED, 100, 'Saving the PDF');
+			const url = URL.createObjectURL(new Blob([pdf as BlobPart], { type: 'application/pdf' }));
 			const link = Object.assign(document.createElement('a'), { href: url, download: filename });
 			document.body.append(link);
 			link.click();
 			link.remove();
 			setTimeout(() => URL.revokeObjectURL(url), 60000);
-			look.say('PDF downloaded');
+			progress.finish('PDF downloaded');
 		} catch (error) {
-			look.say(error instanceof Error ? error.message : 'The PDF could not be made');
-		} finally {
-			isDownloading = false;
+			if (!(error instanceof DownloadError)) console.error('The PDF download failed.', error);
+			progress.fail(
+				error instanceof DownloadError ? error.message : 'The PDF could not be made. Try again.',
+				download
+			);
 		}
 	}
 
