@@ -56,7 +56,14 @@
 	} from './look.data';
 	import { customerOf } from './records.data';
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
-	import { flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
+	import {
+		createFollower,
+		flowOf,
+		heightOf,
+		paginate,
+		photoPagesOf,
+		targetOf
+	} from './report-flow';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -546,21 +553,28 @@
 	});
 
 	// Follow the open panel: glide to the page it feeds. The first move is instant and fits the page across.
-	// When the header over the canvas changes height (it is measured after the first paint), place it again.
-	let isPlaced = false;
-	let placedTop = -1;
+	// When the header over the canvas changes height (it is measured after the first paint), place it again, and
+	// once more when the project's own pages have arrived, so the fit is of the whole report.
+	// The page list is rebuilt whenever anything it prints changes, fresh rows from the server included, so
+	// `follow` says when the target really moved: otherwise the pages stay where the User put them (#234).
+	const follow = createFollower();
 	const isReady = $derived(viewport.width > 0);
+	const isLoaded = $derived(look.isLoaded(look.projectId));
 	$effect(() => {
 		const rect = rects[targetIndex];
+		const index = targetIndex;
 		const inset = top;
+		const isWhole = isLoaded;
 		if (!isReady || !rect) return;
 		untrack(() => {
-			if (isPlaced && inset === placedTop) return viewport.focus(rect);
-			placedTop = inset;
+			const move = follow(index, rect, inset, isWhole);
+			if (move === 'stay') return;
+			if (move === 'glide') return viewport.focus(rect);
+			// The header's height as it is now: this can run before the line above that hands it to the canvas.
+			viewport.top = inset;
 			// A page a report link asked for opens across the view, whichever way the pages are laid out.
 			if (layout === 'column' || pageAsked) viewport.fitWidth(rect, false);
 			else viewport.fitAll(false);
-			isPlaced = true;
 		});
 	});
 

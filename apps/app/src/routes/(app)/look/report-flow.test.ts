@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
+import { createFollower, flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
 
 describe('paginate', () => {
 	it('keeps everything on one page while it fits', () => {
@@ -85,6 +85,49 @@ describe('targetOf', () => {
 
 	it('opens at the first page when nothing is asked for', () => {
 		expect(targetOf(-1, 0, 9)).toBe(0);
+	});
+});
+
+describe('createFollower', () => {
+	const first = { x: 0, y: 0 };
+
+	it('leaves the pages where the User put them when the same target is worked out again (#234)', () => {
+		const follow = createFollower();
+		follow(0, first, 70);
+
+		// Fresh rows arrived: the page list was rebuilt, the target is the one it was.
+		expect(follow(0, { x: 0, y: 0 }, 70)).toBe('stay');
+	});
+
+	it('places the canvas the first time, and again when the header over it changes height', () => {
+		const follow = createFollower();
+
+		expect(follow(0, first, 0)).toBe('place');
+		expect(follow(0, first, 70)).toBe('place');
+		expect(follow(0, first, 70)).toBe('stay');
+	});
+
+	it('places the canvas again once the project’s own pages have arrived, so every page is fitted', () => {
+		const follow = createFollower();
+		follow(0, first, 0, false);
+
+		expect(follow(0, first, 0, true)).toBe('place');
+		expect(follow(0, first, 0, true)).toBe('stay');
+	});
+
+	it('glides when another panel opens or a report link asks for another page', () => {
+		const follow = createFollower();
+		follow(0, first, 70);
+
+		expect(follow(3, { x: 0, y: 2670 }, 70)).toBe('glide');
+		expect(follow(3, { x: 0, y: 2670 }, 70)).toBe('stay');
+	});
+
+	it('glides when the target page sits somewhere else, as when the pages are laid out another way', () => {
+		const follow = createFollower();
+		follow(3, { x: 0, y: 2670 }, 70);
+
+		expect(follow(3, { x: 1929, y: 0 }, 70)).toBe('glide');
 	});
 });
 

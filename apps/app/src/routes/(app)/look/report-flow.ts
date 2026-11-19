@@ -65,3 +65,33 @@ export function targetOf(found: number, asked: number, count: number) {
 	if (found >= 0) return found;
 	return Math.max(0, Math.min(asked, count) - 1);
 }
+
+// What the preview does each time its target is worked out again (#234; Justin, 2026-11-19: "it keeps on resetting
+// ... making me lose my spot"). The target is worked out whenever the page list is rebuilt, which fresh rows from
+// the server do once a minute, and a rebuilt list with the same target used to glide back to it. The canvas is
+// placed (`place`) the first time, again when the header over it changes height, and again once the project's own
+// pages have arrived (`isWhole`: a project opens with the pages its row gives and loads the rest). After that it
+// glides only when the target is another page or sits somewhere else on the canvas (`glide`), and is otherwise
+// left where the User put it (`stay`).
+export type FollowType = 'place' | 'glide' | 'stay';
+
+export function createFollower() {
+	let followed = '';
+	let placed = '';
+	return function follow(
+		index: number,
+		rect: { x: number; y: number },
+		top: number,
+		isWhole = true
+	): FollowType {
+		const target = `${index}:${rect.x}:${rect.y}`;
+		const isSame = target === followed;
+		followed = target;
+		const placing = `${top}:${isWhole}`;
+		if (placing !== placed) {
+			placed = placing;
+			return 'place';
+		}
+		return isSame ? 'stay' : 'glide';
+	};
+}
