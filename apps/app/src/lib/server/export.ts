@@ -20,7 +20,8 @@
 // - One headless Chromium per Download: a few seconds warm, more on a cold start, which downloads the 66 MB
 //   Chromium pack. The route is its own Vercel function with 300 seconds (its `config`); memory is the project's
 //   Function CPU setting (2 GB on Hobby; 4 GB on Pro for reports with many photos).
-// - The pages travel in one request body, which Vercel caps at 4.5 MB; the preview sends big photos slimmed.
+// - A request body is capped by Vercel at 4.5 MB: the preview sends big photos slimmed, and a report too long for
+//   one request in parts that each fit, joining their PDFs on the device (#240, the preview's download.ts).
 import type { ActorType } from './db/claims';
 
 export const PAGE_WIDTH = 595;

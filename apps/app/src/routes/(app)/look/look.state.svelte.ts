@@ -40,6 +40,7 @@ import type { RowType } from '#lib/rows/rows.schema.js';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
+import { Progress } from './progress.svelte';
 import { contactsOf, type PageType } from './records.data';
 import { hasRequired, sectionsOf, tallyOf } from './tally';
 
@@ -144,6 +145,8 @@ export class LookState {
 	tabProgress = $state(0);
 	isSaving = $state(false);
 	toast = $state('');
+	// The PDF download under way, as its toast shows it (#240).
+	progress = new Progress();
 	workspaces = $state<Record<string, PanelType[]>>({});
 	transports = $state<TransportType[]>([]);
 	facilities = $state<FacilityType[]>([]);
