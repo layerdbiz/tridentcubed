@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { createFollower, flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
+import {
+	createFollower,
+	fitOf,
+	flowOf,
+	heightOf,
+	paginate,
+	photoPagesOf,
+	targetOf
+} from './report-flow';
 
 describe('paginate', () => {
 	it('keeps everything on one page while it fits', () => {
@@ -82,6 +90,27 @@ describe('paginate, with parts that stay whole', () => {
 			[0, 1, 2],
 			[3, 4]
 		]);
+	});
+});
+
+// Justin, 2026-11-19: "the disclaimer page is the only page that you absolutely cannot by any means make into two
+// pages". A section that must stay on one page is drawn smaller, as one piece, when it is too tall.
+describe('fitOf', () => {
+	it('leaves a section that fits at its own size', () => {
+		expect(fitOf([200, 200], 100, 600)).toBe(1);
+		expect(fitOf([250, 250], 100, 600)).toBe(1);
+	});
+
+	it('draws one that is too tall just small enough to fit, what stands under it included', () => {
+		// 400 of text and 160 of signature and clear space on a page of 500.
+		const fit = fitOf([300, 100], 160, 500);
+
+		expect(fit).toBeCloseTo(500 / 560, 5);
+		expect((300 + 100 + 160) * fit).toBeLessThanOrEqual(500);
+	});
+
+	it('is its own size before anything has been measured', () => {
+		expect(fitOf([], 0, 600)).toBe(1);
 	});
 });
 

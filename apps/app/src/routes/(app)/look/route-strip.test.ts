@@ -154,6 +154,25 @@ describe('the trip as one run', () => {
 		]);
 	});
 
+	it('gives a facility with no point picked its place’s: the first the Start, the last the End', () => {
+		// MSC Susanna's one facility had none picked and printed as a Stop, in orange (Justin, 2026-11-19).
+		const unpicked = (facility: string) => ({
+			point: '' as const,
+			facility,
+			city: '',
+			icon: 'anchor'
+		});
+		const transport = { name: 'MSC Susanna', icon: 'ferry' };
+		const one = runOf([{ transport, stops: [unpicked('Bayport')] }]);
+		expect(one.nodes.filter((node) => !node.isGhost).map((node) => node.points)).toEqual([
+			['Start']
+		]);
+		const three = runOf([
+			{ transport, stops: [unpicked('Bayport'), unpicked('Galveston'), unpicked('New Orleans')] }
+		]);
+		expect(three.nodes.map((node) => node.points[0])).toEqual(['Start', 'Stop', 'End']);
+	});
+
 	it('runs a line out of a leg that has only its Start, and into one that has only its End', () => {
 		const run = runOf([
 			leg('MSC Susanna', ['Start', 'Port of Beaumont']),

@@ -63,6 +63,7 @@
 	import {
 		createFollower,
 		flowOf,
+		fitOf,
 		heightOf,
 		paginate,
 		photoPagesOf,
@@ -111,6 +112,8 @@
 		// A page of a section that flows: the blocks that landed on it, and whether the signature sits at its foot.
 		blocks?: BlockType[];
 		hasSignature?: boolean;
+		// How much smaller a page that must not run over is drawn; none, or 1, for its own size.
+		fit?: number;
 	};
 	// One piece of a flowing section, never cut in two.
 	type BlockType =
@@ -466,6 +469,8 @@
 	let measurer: HTMLDivElement | undefined = $state();
 	let heights = $state<Record<string, number[]>>({});
 	let signatureHeight = $state(0);
+	// Clear paper kept between the Disclaimer's last line and its signature.
+	const SIGNATURE_GAP = 28;
 
 	function measure() {
 		if (!measurer) return;
@@ -513,6 +518,24 @@
 	// A flowing section as pages: its blocks dealt out by height, a heading never left at a page's foot.
 	function pagesOf(flow: FlowType) {
 		const tall = heights[flow.key] ?? [];
+		// The Disclaimer is always one page, its signature at its foot (Justin, 2026-11-19: "the only page that you
+		// absolutely cannot by any means make into two pages"). Too tall, it is drawn smaller, as one piece.
+		if (flow.kind === 'disclaimer')
+			return [
+				{
+					key: flow.key,
+					title: flow.title,
+					kind: flow.kind,
+					panel: flow.panel,
+					blocks: flow.blocks,
+					hasSignature: true,
+					fit: fitOf(
+						flow.blocks.map((_, index) => tall[index] ?? 0),
+						signatureHeight + SIGNATURE_GAP,
+						ROOM
+					)
+				} satisfies PageType
+			];
 		// The item list's headings, said again over a row that opens a page, take their height there (#242).
 		const again = itemList?.hasHeads && listFit ? Math.ceil(listFit.head * listFit.scale) : 0;
 		const dealt = paginate(
@@ -530,16 +553,12 @@
 			// over starts on a new page (Justin, 2026-11-19); the contents find each part by its heading's page.
 			flow.kind === 'report' ? flow.blocks.map((block) => block.kind === 'heading') : []
 		);
-		// The signature stands at the foot of the disclaimer's last page; with no room left there, on one more.
-		if (flow.kind === 'disclaimer' && heightOf(tall, dealt.at(-1)!) + signatureHeight + 28 > ROOM)
-			dealt.push([]);
 		return dealt.map((page, index): PageType => ({
 			key: flow.key,
 			title: index ? `${flow.title} (continued)` : flow.title,
 			kind: flow.kind,
 			panel: flow.panel,
-			blocks: blocksOn(flow, page),
-			hasSignature: flow.kind === 'disclaimer' && index === dealt.length - 1
+			blocks: blocksOn(flow, page)
 		}));
 	}
 
@@ -1084,7 +1103,7 @@
 				ring="ring-transparent"
 				hasPresence={false}
 				badge={ICON_192}
-				badgeScale={0.45}
+				badgeScale={0.37}
 			/>
 			<div class="min-w-0 pt-1.5 text-[9px] leading-[1.5] text-slate-500">
 				<p class="text-[17px] leading-tight font-semibold text-slate-950">{signer.name}</p>
@@ -1559,7 +1578,7 @@
 	{:else if block.kind === 'closing'}
 		<!-- The line before the sign-off, in a light grey box so it stands out (Justin, 2026-11-19; before that italic). -->
 		<div class="pt-6">
-			<p class="rounded-lg bg-slate-100 px-3 py-2 text-[10.5px] text-balance text-slate-700">
+			<p class="rounded-lg bg-slate-100 px-2.5 py-2 text-[9.5px] text-balance text-slate-700">
 				{block.text}
 			</p>
 		</div>
@@ -1698,7 +1717,12 @@
 								</h2>
 								{#if filesLink && hasFilesLine(item, index)}{@render filesLine()}{/if}
 							</div>
-							{#if item.blocks}
+							{#if item.blocks && item.fit && item.fit < 1}
+								<!-- A page that must not run over (the Disclaimer), drawn smaller as one piece. -->
+								<div style="zoom: {item.fit}">
+									{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
+								</div>
+							{:else if item.blocks}
 								{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
 							{:else if item.kind === 'contents'}
 								{#snippet line(number: string, title: string, page: number, isSub: boolean)}
@@ -2066,7 +2090,11 @@
 						</div>
 						{#if item.hasSignature}
 							<!-- Disclaimer B: the signature at the foot of the page, clear of the text above and the footer. -->
-							<div class="absolute inset-x-10 bottom-[96px]">{@render signature()}</div>
+							<div class="absolute inset-x-10 bottom-[96px]">
+								<div style={item.fit && item.fit < 1 ? `zoom: ${item.fit}` : undefined}>
+									{@render signature()}
+								</div>
+							</div>
 						{/if}
 						<footer
 							class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-white px-10 pt-3 pb-6 text-[9px] text-slate-400"

@@ -94,15 +94,16 @@ const GHOST: RouteNodeType = { isGhost: true, name: '', city: '', icon: '', poin
 export function runOf(legs: StripLegType[]): RouteType {
 	const run: RouteType = { nodes: [], segs: [] };
 	for (const leg of legs) {
-		let stops = leg.stops
-			.filter((stop) => stop.facility)
-			.map((stop): RouteNodeType => ({
-				isGhost: false,
-				name: stop.facility,
-				city: stop.city,
-				icon: stop.icon,
-				points: [stop.point || 'Stop']
-			}));
+		const called = leg.stops.filter((stop) => stop.facility);
+		// A facility whose point nobody picked takes its place's, as the Transport Mode panel's order does: the
+		// first is the Start, the last the End, any between a Stop.
+		let stops = called.map((stop, at): RouteNodeType => ({
+			isGhost: false,
+			name: stop.facility,
+			city: stop.city,
+			icon: stop.icon,
+			points: [stop.point || (at === 0 ? 'Start' : at === called.length - 1 ? 'End' : 'Stop')]
+		}));
 		if (!stops.length) continue;
 		// One facility alone: the line runs in from, or out to, a place that is not on the report.
 		if (stops.length === 1) {

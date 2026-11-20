@@ -38,6 +38,14 @@ export function paginate(
 	return pages;
 }
 
+// How much smaller a section that must stay on one page is drawn (Justin, 2026-11-19: the Disclaimer never runs to
+// a second page, "by any means"): its blocks and what stands under them (`extra`: the signature and the clear
+// space over it) together, against the room a page has. 1 when it fits as it is.
+export function fitOf(heights: number[], extra: number, room: number) {
+	const need = heights.reduce((sum, each) => sum + each, 0) + extra;
+	return need > room ? room / need : 1;
+}
+
 // The height a page's blocks take up together.
 export function heightOf(heights: number[], page: number[]) {
 	return page.reduce((sum, index) => sum + (heights[index] ?? 0), 0);
