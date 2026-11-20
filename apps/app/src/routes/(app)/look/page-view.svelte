@@ -11,7 +11,9 @@
 	// only up-and-down scrolling, so a sideways swipe on it reaches the tabs.
 	import type { Snippet } from 'svelte';
 	import type { PinType } from './chart.data';
+	import Dots from './dots.svelte';
 	import { FADE, fadeTop } from './fade';
+	import { Slides } from './slides.svelte';
 	import Split from './split.svelte';
 	import WorldMap from './world-map.svelte';
 
@@ -62,8 +64,8 @@
 	// 2026-11-16: "instead of defaulting to the photo view, I want to default to the map view").
 	let picked = $state<boolean>();
 	const isMap = $derived(picked ?? (pins.length > 0 || route.length > 0));
-	let strip: HTMLDivElement | undefined = $state();
-	let at = $state(0);
+	// Which photo is in view, the dots for it, and which photos have their picture yet (slides.svelte.ts).
+	const slides = new Slides();
 	let overlayHeight = $state(0);
 	const isAlike = $derived(picture !== 'A');
 	const isPhoto = $derived(!isMap && (photos.length > 0 || isAlike));
@@ -83,30 +85,31 @@
 	$effect(() => {
 		onphoto?.(isDark);
 	});
-
-	function onscroll() {
-		if (strip?.clientWidth) at = Math.round(strip.scrollLeft / strip.clientWidth);
-	}
 </script>
 
 {#snippet backdrop()}
 	{#if isPhoto}
 		<div class="relative size-full bg-slate-900">
 			<div
-				bind:this={strip}
 				class="flex size-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
 				data-swipe-ignore
-				{onscroll}
+				{@attach slides.follow}
 			>
 				{#each photos as photo, index (index)}
-					<img
-						src={photo}
-						alt=""
-						draggable="false"
-						class="size-full shrink-0 snap-center object-cover {isBlurred
-							? 'scale-125 blur-2xl brightness-75'
-							: ''}"
-					/>
+					<!-- A photo not reached yet holds its place in the strip without its picture. -->
+					{#if slides.hasPicture(index)}
+						<img
+							src={photo}
+							alt=""
+							decoding="async"
+							draggable="false"
+							class="size-full shrink-0 snap-center object-cover {isBlurred
+								? 'scale-125 blur-2xl brightness-75'
+								: ''}"
+						/>
+					{:else}
+						<div class="size-full shrink-0 snap-center"></div>
+					{/if}
 				{/each}
 			</div>
 			{#if !photos.length}
@@ -214,15 +217,12 @@
 			bind:clientHeight={overlayHeight}
 		>
 			{#if isPhoto && photos.length > 1}
-				<span class="mb-3 flex justify-center gap-1.5">
-					{#each photos.slice(0, 8) as _, index (index)}
-						<span
-							class="rounded-full bg-white transition-all {index === at
-								? 'size-[7px]'
-								: 'size-1.5 opacity-50'}"
-						></span>
-					{/each}
-				</span>
+				<div class="mb-3">
+					<Dots
+						at={slides.at}
+						count={photos.length}
+					/>
+				</div>
 			{/if}
 			<div
 				class="max-w-3xl {isOver

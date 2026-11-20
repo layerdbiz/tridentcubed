@@ -10,12 +10,13 @@
 	import type { LookState } from './look.state.svelte';
 	import ProjectLines from './project-lines.svelte';
 	import ProjectLogo from './project-logo.svelte';
+	import Dots from './dots.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import { projectPhotosOf } from './records.data';
+	import { Slides } from './slides.svelte';
 
 	let { look, project }: { look: LookState; project: ProjectType } = $props();
 
-	const DOTS = 5;
 	const status = $derived(STATUS[project.status]);
 	const isArchived = $derived(project.status === 'Archived');
 	// The photos the report prints: switched-on photo panels, in order. The sample projects share one set of photos,
@@ -30,27 +31,8 @@
 		return [...all.slice(turn), ...all.slice(0, turn)];
 	});
 
-	let strip: HTMLDivElement | undefined = $state();
-	let at = $state(0);
-	// At most five dots; with more photos the row slides along, its end dots smaller.
-	const first = $derived(Math.max(0, Math.min(at - 2, photos.length - DOTS)));
-	const dots = $derived(
-		Array.from({ length: Math.min(DOTS, photos.length) }, (_, index) => first + index)
-	);
-
-	function onscroll() {
-		if (strip?.clientWidth) at = Math.round(strip.scrollLeft / strip.clientWidth);
-	}
-
-	function step(by: number) {
-		strip?.scrollTo({ left: (at + by) * strip.clientWidth, behavior: 'smooth' });
-	}
-
-	function isSmall(dot: number) {
-		return (
-			(dot === dots[0] && dot > 0) || (dot === dots.at(-1) && dot < photos.length - 1 && dot !== at)
-		);
-	}
+	// Which photo is in view, the dots for it, and which photos have their picture yet (slides.svelte.ts).
+	const slides = new Slides();
 </script>
 
 <article class="group/card relative {isArchived ? 'opacity-60' : ''}">
@@ -58,39 +40,41 @@
 	<div class="relative aspect-video overflow-hidden rounded-3xl bg-slate-900">
 		{#if photos.length}
 			<div
-				bind:this={strip}
 				class="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
 				data-swipe-ignore
-				{onscroll}
+				{@attach slides.follow}
 			>
-				{#each photos as photo (photo.id)}
+				{#each photos as photo, index (photo.id)}
 					<button
 						class="h-full w-full shrink-0 snap-center"
 						aria-label="Open {project.title}"
 						onclick={() => look.open(project.id)}
-						><img
-							src={photo.src}
-							alt=""
-							loading="lazy"
-							draggable="false"
-							class="size-full object-cover"
-						/></button
+						>{#if slides.hasPicture(index)}<img
+								src={photo.src}
+								alt=""
+								loading="lazy"
+								decoding="async"
+								draggable="false"
+								class="size-full object-cover"
+							/>{/if}</button
 					>
 				{/each}
 			</div>
 			{#if photos.length > 1}
-				{#if at > 0}
+				{#if slides.at > 0}
 					<button
 						class="absolute top-[38%] left-3 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition hover:scale-105 md:group-hover/card:flex"
 						aria-label="Previous photo"
-						onclick={() => step(-1)}><span class="icon-[mdi--chevron-left] size-5"></span></button
+						onclick={() => slides.step(-1)}
+						><span class="icon-[mdi--chevron-left] size-5"></span></button
 					>
 				{/if}
-				{#if at < photos.length - 1}
+				{#if slides.at < photos.length - 1}
 					<button
 						class="absolute top-[38%] right-3 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition hover:scale-105 md:group-hover/card:flex"
 						aria-label="Next photo"
-						onclick={() => step(1)}><span class="icon-[mdi--chevron-right] size-5"></span></button
+						onclick={() => slides.step(1)}
+						><span class="icon-[mdi--chevron-right] size-5"></span></button
 					>
 				{/if}
 			{/if}
@@ -109,17 +93,12 @@
 			class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-slate-950/90 via-slate-950/60 to-transparent px-4 pt-8 pb-3.5"
 		>
 			{#if photos.length > 1}
-				<span class="mb-2 flex items-center justify-center gap-1.5">
-					{#each dots as dot (dot)}
-						<span
-							class="rounded-full bg-white transition-all {dot === at
-								? 'size-[7px]'
-								: isSmall(dot)
-									? 'size-1 opacity-50'
-									: 'size-1.5 opacity-50'}"
-						></span>
-					{/each}
-				</span>
+				<div class="mb-2">
+					<Dots
+						at={slides.at}
+						count={photos.length}
+					/>
+				</div>
 			{/if}
 			<span class="flex items-center gap-3">
 				<ProjectLogo
