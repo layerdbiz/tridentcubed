@@ -3,6 +3,7 @@ import adapter from '@sveltejs/adapter-vercel';
 import { type Config, sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
+import { Features } from 'lightningcss';
 import devtoolsJson from 'vite-plugin-devtools-json';
 import { defineConfig, lazyPlugins, type ViteUserConfig } from 'vite-plus';
 
@@ -69,6 +70,12 @@ export function createAppConfig({ root, prerender, paths, test }: AppConfigType)
 				// sees the source @theme.
 				'@layerd/ui': UI_LIB
 			}
+		},
+		css: {
+			// Each app's PostCSS turns `light-dark()` into a stand-in for browsers without it and keeps the real one
+			// for the rest. Left alone, the minifier would rewrite the kept one into a second stand-in that cannot
+			// follow a section with its own colour scheme (the site's dark footer), so it is told to leave it be.
+			lightningcss: { exclude: Features.LightDark }
 		},
 		test
 	}));
