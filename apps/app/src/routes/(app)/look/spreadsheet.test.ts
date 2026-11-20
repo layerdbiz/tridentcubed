@@ -375,3 +375,59 @@ describe('the grid a project saves', () => {
 		expect(fromSaved('{"name":"x","cells":[]}')).toBeUndefined();
 	});
 });
+
+// #245 (Michael, 2026-11-19): rows copied out of Excel carried two characters no font can draw (U+EE01 and
+// U+EE02, from Excel's private range), and the report printed a box beside every heading and number they sat in.
+describe('characters that cannot print', () => {
+	const ODD = '\uEE01';
+	const OTHER = '\uEE02';
+
+	it('are left out of what is kept, with every letter a person can read as it was', () => {
+		const kept = toGrid('', [
+			[`${ODD}TOTAL WEIGHT (KGS)${OTHER}`, 'Descripción'],
+			[`${ODD}(64,956${OTHER})`, 'Café  crème\u200B – 5 %']
+		]);
+		expect(kept?.grid.cells).toEqual([
+			['TOTAL WEIGHT (KGS)', 'Descripción'],
+			['(64,956)', 'Café crème – 5 %']
+		]);
+	});
+
+	it('turn odd spaces into plain ones', () => {
+		const kept = toGrid('', [['1\u00A0200\u2007kg', 'A\u2028B', '\uFEFFQ\uFEFFty']]);
+		expect(kept?.grid.cells).toEqual([['1 200 kg', 'A B', 'Qty']]);
+	});
+
+	it('leave a cell that held nothing else blank, so its row or column is left out', () => {
+		const kept = toGrid('', [
+			['Qty', ODD, 'Item'],
+			['1', '\u0007', 'Tower'],
+			[ODD, OTHER, '\u200E']
+		]);
+		expect(kept?.grid.cells).toEqual([
+			['Qty', 'Item'],
+			['1', 'Tower']
+		]);
+		expect(kept?.skipped).toEqual({ rows: 1, columns: 1 });
+	});
+
+	it('keep the joiners that hold a letter or a picture together', () => {
+		const family = '👩\u200D👧';
+		expect(toGrid('', [[family, 'می\u200Cخواهم']])?.grid.cells).toEqual([
+			[family, 'می\u200Cخواهم']
+		]);
+	});
+
+	it('print clean from a list saved before they were left out, its numbers read as numbers', () => {
+		const table = toTable({
+			name: '',
+			cells: [
+				['Qty', 'Description', `${ODD}TOTAL WEIGHT (KGS)${OTHER}`],
+				['1', 'EPIROC PV271D', `${ODD}(64,956${OTHER})`],
+				['1', 'TOWER', `${ODD}(26,853${OTHER})`]
+			]
+		});
+		expect(table.columns.at(-1)).toMatchObject({ head: 'TOTAL WEIGHT (KGS)', isNumber: true });
+		expect(table.rows.map((row) => row.at(-1)?.[0].text)).toEqual(['(64,956)', '(26,853)']);
+	});
+});
