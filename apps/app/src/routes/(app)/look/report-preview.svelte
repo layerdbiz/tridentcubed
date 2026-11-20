@@ -34,6 +34,7 @@
 	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
 	import { toCrossOrigin } from '#lib/files/files.schema.js';
+	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toReportLink } from '#lib/report/report.utils.js';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
@@ -1017,8 +1018,33 @@
 	{/if}
 {/snippet}
 
-<!-- Someone in attendance: the app's own Avatar, the name, and labels. The organization's people wear its badge. -->
-{#snippet personCard(name: string, labels: string[], isLead: boolean, badge: string | undefined)}
+<!-- One way to reach someone (#246): a link to tap in the PDF. In the app it is not followed, like the files line:
+     a finger moving the page would start a call by accident. A long address breaks where it must, never cut. -->
+{#snippet contactLine(href: string, icon: string, text: string, tone: string)}
+	<a
+		{href}
+		class="flex items-start justify-center gap-0.5 {tone}"
+		draggable="false"
+		tabindex="-1"
+		onclick={(event) => event.preventDefault()}
+	>
+		<span class="{icon} mt-px size-2 shrink-0 text-slate-400"></span>
+		<span class="min-w-0 [overflow-wrap:anywhere]">{text}</span>
+	</a>
+{/snippet}
+
+<!-- Someone in attendance: the app's own Avatar, the name, and labels. The organization's people wear its badge
+     and show how to reach them (#246; Michael, 2026-11-19: "Full contact details"), from their Team record: the
+     phone over the email, as the dashboard's Team list has them. One that is empty is left out. -->
+{#snippet personCard(
+	name: string,
+	labels: string[],
+	isLead: boolean,
+	badge: string | undefined,
+	contact?: { phone: string; email: string }
+)}
+	{@const phone = contact?.phone.trim()}
+	{@const email = contact?.email.trim()}
 	<div class="flex min-w-0 flex-col items-center rounded-xl bg-slate-50 px-1.5 py-2 text-center">
 		<Avatar
 			{name}
@@ -1038,6 +1064,21 @@
 					>
 				{/each}
 			</p>
+		{/if}
+		{#if phone || email}
+			<div class="mt-1.5 w-full space-y-0.5 text-[7.5px] leading-tight">
+				{#if phone}
+					{@render contactLine(
+						`tel:${phone.replace(/[^+\d]/g, '')}`,
+						'icon-[mdi--phone]',
+						phone,
+						'text-slate-600'
+					)}
+				{/if}
+				{#if email}
+					{@render contactLine(`mailto:${email}`, 'icon-[mdi--email]', email, 'text-slate-500')}
+				{/if}
+			</div>
 		{/if}
 	</div>
 {/snippet}
@@ -1172,7 +1213,8 @@
 						name,
 						member ? labelsOf(member) : [],
 						personIndex === 0,
-						organization.logo || undefined
+						ICON_192,
+						member
 					)}
 				{:else}
 					<p class="col-span-full text-[11px] text-slate-300 italic">No one assigned yet</p>
