@@ -58,6 +58,8 @@ export const project = pgTable(
 		job: integer('job').default(1).notNull(),
 		/** The customer's own number for the job, printed after its name on the cover and in the footer. */
 		customerReference: words('customer_reference'),
+		/** The report's opening sentence as typed in the Project panel; none prints the one worked out. */
+		introduction: words('introduction'),
 		/** The User who made it. Set by the server. */
 		createdBy: uuid('created_by').references(() => user.id, { onDelete: 'set null' })
 	},

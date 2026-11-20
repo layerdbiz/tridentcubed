@@ -139,11 +139,11 @@ describe('a panel’s count (#229)', () => {
 		}
 	});
 
-	it('reads a new project’s Project panel as 4 of 10: its date, job number, organization and Team Lead', () => {
+	it('reads a new project’s Project panel as 5 of 11: its introduction, date, job number, organization and Team Lead', () => {
 		const look = fresh();
 		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
 		const panel = look.panels.find((item) => item.kind === 'project')!;
-		expect(metricsOf(panel, look)).toMatchObject({ done: 4, total: 10 });
+		expect(metricsOf(panel, look)).toMatchObject({ done: 5, total: 11 });
 	});
 
 	it('counts the Contact once the picked customer has contacts', () => {

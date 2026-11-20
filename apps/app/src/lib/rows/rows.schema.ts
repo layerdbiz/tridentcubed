@@ -22,6 +22,8 @@ import * as v from 'valibot';
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
 /** The most an item list read from a spreadsheet may take in its panel's row, as JSON (#242): about 2,000 rows. */
 export const GRID_LIMIT = 400_000;
+/** The most letters the report's opening sentence may be typed as (#244). */
+export const INTRODUCTION_LIMIT = 2000;
 // A picture's address: the app's address of a file in storage (`/files/<id>`, #187), a starting file (`/start/...`),
 // a picture the app ships with (`/logo-color.svg`), the picture a sign-in provider gave a new Team record (https), or
 // nothing. Every picture uploads to storage, so a row never keeps the picture itself. A column declared with it holds
@@ -215,7 +217,9 @@ export const TABLES = {
 			progress: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(100)),
 			day: v.pipe(v.string(), v.regex(/^\d{4}-\d{2}-\d{2}$/, 'A day is YYYY-MM-DD.')),
 			job: v.nullable(v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(999))),
-			customerReference: v.pipe(v.string(), v.maxLength(100))
+			customerReference: v.pipe(v.string(), v.maxLength(100)),
+			// #244: the report's opening sentence as typed; nothing for the one worked out from the records.
+			introduction: v.pipe(v.string(), v.maxLength(INTRODUCTION_LIMIT))
 		}
 	},
 	project_team: {

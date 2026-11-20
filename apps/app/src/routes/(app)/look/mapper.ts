@@ -232,7 +232,8 @@ const PROJECT_COLUMNS = [
 	'progress',
 	'day',
 	'job',
-	'customerReference'
+	'customerReference',
+	'introduction'
 ];
 
 function fieldOf(panel: PanelType, label: string) {
@@ -251,7 +252,8 @@ function toPanelValues(look: LookState, panel: PanelType, project: ProjectType) 
 		teamLeadId: toTeamId(look, panel.owner) ?? null,
 		day: panel.day || createdDayOf(project),
 		job: panel.job ?? null,
-		customerReference: panel.customerReference?.trim() ?? ''
+		customerReference: panel.customerReference?.trim() ?? '',
+		introduction: panel.introduction?.trim() ?? ''
 	};
 }
 
@@ -382,6 +384,7 @@ function fillProjectPanel(
 	panel.day = text(values, 'day') || undefined;
 	panel.job = values.job ? Number(values.job) : undefined;
 	panel.customerReference = text(values, 'customerReference');
+	panel.introduction = text(values, 'introduction');
 	panel.owner = values.teamLeadId ? (toTeamName(look, String(values.teamLeadId)) ?? '') : '';
 	panel.assigned = toAssigned(look, team);
 }

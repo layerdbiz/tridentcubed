@@ -8,6 +8,7 @@
 // pick, a list with something in it, or a plain yes). A switch, the photos-per-page buttons and a facility's
 // Start, Stop or End are settings, not inputs, and do not count; nor does an input that is greyed out because
 // there is nothing to pick (the Contact of a customer with no contacts). An input added to a panel is added here.
+import { INTRODUCTION_LABEL } from './introduction';
 import { legsOf } from './legs';
 import { LINK_LABEL, toLink } from './link';
 import type { OrganizationType, PanelType } from './look.data';
@@ -60,6 +61,9 @@ function projectSections(panel: PanelType, contacts: { id: string }[]): SectionT
 			inputs: [
 				field('Title'),
 				field('Subtitle'),
+				// The report's opening sentence (#244) always holds something: what was typed, or the sentence
+				// worked out from the project's records, which the field shows until someone rewords it.
+				{ label: INTRODUCTION_LABEL, value: true },
 				field('Project Type'),
 				// These two always hold something: the day typed, or the day the project was made; the number typed,
 				// or the next one, which the server gives a project as it is saved. Counting the number only once

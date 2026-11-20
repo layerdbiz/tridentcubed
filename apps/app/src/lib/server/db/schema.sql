@@ -314,6 +314,7 @@ CREATE TABLE "project" (
 	"day" text DEFAULT '' NOT NULL,
 	"job" integer DEFAULT 1 NOT NULL,
 	"customer_reference" text DEFAULT '' NOT NULL,
+	"introduction" text DEFAULT '' NOT NULL,
 	"created_by" uuid
 );
 

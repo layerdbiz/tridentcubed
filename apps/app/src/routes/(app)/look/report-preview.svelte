@@ -37,6 +37,7 @@
 	import { toReportLink } from '#lib/report/report.utils.js';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
+	import { introductionOf, listOf } from './introduction';
 	import ItemTable, { type FitType, type PartType } from './item-table.svelte';
 	import { legsOf, type LegType } from './legs';
 	import {
@@ -214,24 +215,14 @@
 	const facility = $derived(
 		listOf([...new Set(stops.map((stop) => stop.facility).filter(Boolean))])
 	);
-	// The Items panel's filled rows, and the same as words: "2 power transformers and 27 accessory crates".
+	// The Items panel's filled rows.
 	const cargo = $derived(
 		(look.panels.find((panel) => panel.kind === 'items')?.items ?? []).filter((item) =>
 			item.description.trim()
 		)
 	);
-	const cargoLine = $derived(
-		listOf(
-			cargo.map((item) => [item.quantity, item.description.toLowerCase()].filter(Boolean).join(' '))
-		)
-	);
-
-	// "A", "A and B", "A, B and C".
-	function listOf(names: string[]) {
-		return names.length < 2
-			? (names[0] ?? '')
-			: `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
-	}
+	// The report's opening sentence (#244): the one typed in the Project panel, else the one worked out.
+	const introduction = $derived(introductionOf(look));
 
 	function iconOf(stop: StopType) {
 		return (
@@ -1113,13 +1104,8 @@
 <!-- One block of a flowing section. Room above a block is its own padding, so the heights add up. -->
 {#snippet flowBlock(block: BlockType)}
 	{#if block.kind === 'intro'}
-		<p class="pt-2 text-[10.5px] leading-relaxed text-slate-600">
-			This is to report that {organization.name} was present at {facility ||
-				'the facility'}{location ? ` – ${location}` : ''} on {dates} for the purpose of conducting a {(
-				detail('Project Type') || 'cargo'
-			).toLowerCase()} survey{cargoLine ? ` of ${cargoLine}` : ''}{transport
-				? ` from the ${transport}`
-				: ''}.
+		<p class="pt-2 text-[10.5px] leading-relaxed whitespace-pre-line text-slate-600">
+			{introduction}
 		</p>
 	{:else if block.kind === 'strip'}
 		<!-- The project in one strip: what it is, who it is for, where they are and when. -->
@@ -1551,13 +1537,8 @@
 								</ol>
 							{:else if item.kind === 'report'}
 								<p class="mt-2 text-[10.5px] leading-relaxed text-slate-600">
-									<b class="text-slate-900">Introduction.</b> This is to report that {organization.name}
-									was present at {facility || 'the facility'}{location ? ` – ${location}` : ''} on {dates}
-									for the purpose of conducting a {(
-										detail('Project Type') || 'cargo'
-									).toLowerCase()} survey{cargoLine ? ` of ${cargoLine}` : ''}{transport
-										? ` from the ${transport}`
-										: ''}.
+									<b class="text-slate-900">Introduction.</b>
+									{introduction}
 								</p>
 								<!-- The project in one strip: what it is, who it is for, where they are and when. -->
 								<div class="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">

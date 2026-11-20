@@ -41,8 +41,9 @@
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
-	import { GRID_LIMIT } from '#lib/rows/rows.schema.js';
+	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import ImageField from './image-field.svelte';
+	import { generatedOf, INTRODUCTION_LABEL } from './introduction';
 	import ItemBox from './item-box.svelte';
 	import ItemTable from './item-table.svelte';
 	import {
@@ -110,6 +111,34 @@
 	function setField(label: string, value: string) {
 		const field = fieldOf(label);
 		if (field) field.value = value;
+		save();
+	}
+
+	// The report's opening sentence (#244). The field shows the sentence worked out from the project's records
+	// (introduction.ts) until someone rewords it. Only a rewording is kept: the worked-out sentence left as it is,
+	// or the field cleared, keeps nothing, so the sentence goes on following the records. A project not made yet
+	// has only this panel to read.
+	const generated = $derived(
+		isDraft
+			? generatedOf({
+					organization: look.organization,
+					project: { location: '', day: panel.day, created: todayIso() },
+					panels: [panel]
+				})
+			: generatedOf(look)
+	);
+	// What is in the field while it is being typed in, so a cleared field stays clear until it is left.
+	let introductionDraft = $state<string>();
+
+	function setIntroduction(event: Event & { currentTarget: HTMLTextAreaElement }) {
+		introductionDraft = event.currentTarget.value;
+		const typed = introductionDraft.trim();
+		panel.introduction = typed === generated ? '' : typed && introductionDraft;
+	}
+
+	function resetIntroduction() {
+		introductionDraft = undefined;
+		panel.introduction = '';
 		save();
 	}
 
@@ -676,6 +705,26 @@
 			>
 				{#if title}{@render fieldBlock(title)}{/if}
 				{#if subtitle}{@render fieldBlock(subtitle)}{/if}
+				<!-- The report's opening sentence (#244): the one worked out from the project's records until someone
+				     rewords it; what is typed prints in its place, and Reset (or clearing it) brings that one back. -->
+				<label class="block">
+					<span class={labelClass}>
+						{INTRODUCTION_LABEL}
+						{#if panel.introduction?.trim()}
+							<button
+								type="button"
+								class="ml-auto font-semibold text-primary hover:underline"
+								onclick={resetIntroduction}>Reset</button
+							>
+						{/if}
+					</span>
+					<textarea
+						class="{inputClass} field-sizing-content min-h-28 resize-y"
+						maxlength={INTRODUCTION_LIMIT}
+						value={introductionDraft ?? (panel.introduction?.trim() || generated)}
+						oninput={setIntroduction}
+						onblur={() => (introductionDraft = undefined)}></textarea>
+				</label>
 				<Picker
 					label="Project Type"
 					icon="icon-[mdi--package-variant-closed]"

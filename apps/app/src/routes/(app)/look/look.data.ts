@@ -133,6 +133,9 @@ export type PanelType = {
 	day?: string;
 	job?: number;
 	customerReference?: string;
+	// The Project panel (#244): the report's opening sentence as someone typed it; none prints the one worked out
+	// from the project's records (introduction.ts).
+	introduction?: string;
 	// The Project panel: people on the job who are not on the team.
 	personnel?: PersonnelType[];
 	// The Items panel: photos of the item list, or the list itself as a file.
