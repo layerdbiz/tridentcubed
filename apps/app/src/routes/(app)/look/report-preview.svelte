@@ -996,7 +996,7 @@
 			<Avatar
 				name={signer.name}
 				size={76}
-				ring="ring-transparent"
+				ring="ring-primary"
 				hasPresence={false}
 				badge={ICON_192}
 				badgeScale={0.3}
@@ -1028,7 +1028,7 @@
 		tabindex="-1"
 		onclick={(event) => event.preventDefault()}
 	>
-		<span class="{icon} mt-px size-[6.5px] shrink-0 text-slate-400"></span>
+		<span class="{icon} mt-px size-[4.9px] shrink-0 text-slate-950"></span>
 		<span class="min-w-0 [overflow-wrap:anywhere]">{text}</span>
 	</a>
 {/snippet}
@@ -1076,7 +1076,7 @@
 		{#if phone || email}
 			<!-- The two lines start at the same place, in a block that sits in the middle of the card. -->
 			<div
-				class="mt-1.5 inline-flex max-w-full flex-col items-start gap-px text-[6.5px] leading-tight"
+				class="mt-1.5 inline-flex max-w-full flex-col items-start gap-px text-[4.9px] leading-tight"
 			>
 				{#if phone}
 					{@render contactLine(
