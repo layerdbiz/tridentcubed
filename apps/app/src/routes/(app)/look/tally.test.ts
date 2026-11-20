@@ -55,10 +55,10 @@ describe('the inputs each section of the Project panel holds', () => {
 		expect(labelsOf(panel, 'project')).toEqual([
 			'Title',
 			'Subtitle',
-			'Introduction',
+			'Description',
 			'Project Type',
-			'Project Creation Date',
-			'Job Sequence Number'
+			'Created Date',
+			'Job Number'
 		]);
 	});
 

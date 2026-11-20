@@ -40,6 +40,51 @@ describe('paginate', () => {
 	});
 });
 
+// Justin, 2026-11-19: the Project Report's Cargo Description began at a page's foot and left only its totals on
+// the next page. A part that would run over starts on a new page.
+describe('paginate, with parts that stay whole', () => {
+	// A heading of 40 opens each part: one of 300, one of 200, one of three rows of 100.
+	const heights = [40, 260, 40, 160, 40, 100, 100, 100];
+	const starts = [true, false, true, false, true, false, false, false];
+	const glued = [true, false, true, false, true, false, false, false];
+
+	it('moves a part that would run over to a new page, whole', () => {
+		expect(paginate(heights, 700, glued, [], starts)).toEqual([
+			[0, 1, 2, 3],
+			[4, 5, 6, 7]
+		]);
+		// Without parts, the last rows ran over.
+		expect(paginate(heights, 700, glued)).toEqual([
+			[0, 1, 2, 3, 4, 5],
+			[6, 7]
+		]);
+	});
+
+	it('leaves the parts together on one page when they all fit', () => {
+		expect(paginate(heights, 900, glued, [], starts)).toEqual([[0, 1, 2, 3, 4, 5, 6, 7]]);
+	});
+
+	it('does not leave a page empty before a part that opens the section', () => {
+		expect(paginate([40, 400, 400], 600, [true], [], [true])).toEqual([[0, 1], [2]]);
+	});
+
+	it('starts a part longer than a page on a new page, and lets it run on from there', () => {
+		const long = [200, 40, 300, 300, 300];
+
+		expect(paginate(long, 600, [false, true], [], [false, true])).toEqual([[0], [1, 2], [3, 4]]);
+	});
+
+	it('counts what comes before the first part as the page it shares', () => {
+		// An opening paragraph of 100, then two parts of 300 on a page of 600: the second moves on.
+		expect(
+			paginate([100, 40, 260, 40, 260], 600, [], [], [false, true, false, true, false])
+		).toEqual([
+			[0, 1, 2],
+			[3, 4]
+		]);
+	});
+});
+
 describe('heightOf', () => {
 	it('adds up the blocks on a page', () => {
 		expect(heightOf([100, 200, 300], [1, 2])).toBe(500);

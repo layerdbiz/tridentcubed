@@ -443,7 +443,10 @@
 					block.kind === 'day' ||
 					(block.kind === 'list' && !isListRow(block))
 			),
-			flow.blocks.map((block) => (isListRow(block) ? again : 0))
+			flow.blocks.map((block) => (isListRow(block) ? again : 0)),
+			// On the Project Report a part (Personnel in Attendance, Transport Mode, Cargo Description) that would run
+			// over starts on a new page (Justin, 2026-11-19); the contents find each part by its heading's page.
+			flow.kind === 'report' ? flow.blocks.map((block) => block.kind === 'heading') : []
 		);
 		// The signature stands at the foot of the disclaimer's last page; with no room left there, on one more.
 		if (flow.kind === 'disclaimer' && heightOf(tall, dealt.at(-1)!) + signatureHeight + 28 > ROOM)
@@ -996,10 +999,10 @@
 			<Avatar
 				name={signer.name}
 				size={76}
-				ring="ring-primary"
+				ring="ring-transparent"
 				hasPresence={false}
 				badge={ICON_192}
-				badgeScale={0.3}
+				badgeScale={0.45}
 			/>
 			<div class="min-w-0 pt-1.5 text-[9px] leading-[1.5] text-slate-500">
 				<p class="text-[17px] leading-tight font-semibold text-slate-950">{signer.name}</p>
@@ -1472,7 +1475,12 @@
 			</ul>
 		{/if}
 	{:else if block.kind === 'closing'}
-		<p class="pt-6 text-[10.5px] text-slate-700 italic">{block.text}</p>
+		<!-- The line before the sign-off, in a light grey box so it stands out (Justin, 2026-11-19; before that italic). -->
+		<div class="pt-6">
+			<p class="rounded-lg bg-slate-100 px-3 py-2 text-[10.5px] text-balance text-slate-700">
+				{block.text}
+			</p>
+		</div>
 	{:else if block.kind === 'empty'}
 		<p class="text-[11px] text-slate-300 italic">{block.text}</p>
 	{/if}

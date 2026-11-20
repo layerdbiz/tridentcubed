@@ -68,8 +68,8 @@ function projectSections(panel: PanelType, contacts: { id: string }[]): SectionT
 				// These two always hold something: the day typed, or the day the project was made; the number typed,
 				// or the next one, which the server gives a project as it is saved. Counting the number only once
 				// the server had answered would change a project's percent with nobody touching it.
-				{ label: 'Project Creation Date', value: true },
-				{ label: 'Job Sequence Number', value: true }
+				{ label: 'Created Date', value: true },
+				{ label: 'Job Number', value: true }
 			]
 		},
 		{

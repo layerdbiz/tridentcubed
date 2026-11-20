@@ -7,17 +7,26 @@
 
 // Which blocks go on which page, by index, given each block's height and the room a page has. A block that opens
 // a page may say something again above itself (a table row its headings, #242): `leads` is the room that takes.
+// A block may open a part that stays whole (`starts`; Justin, 2026-11-19: the Project Report's Cargo Description
+// began at a page's foot and left only its totals on the next). A part runs from its block to the next one that
+// opens a part, and one that would not fit in what is left of the page starts on a new page. A part longer than a
+// page starts on a new page too, and runs on from there.
 export function paginate(
 	heights: number[],
 	room: number,
 	isGlued: boolean[] = [],
-	leads: number[] = []
+	leads: number[] = [],
+	starts: boolean[] = []
 ) {
 	const pages: number[][] = [[]];
 	let used = 0;
 	for (const [index, height] of heights.entries()) {
 		const page = pages.at(-1)!;
-		const need = isGlued[index] ? height + (heights[index + 1] ?? 0) : height;
+		let need = isGlued[index] ? height + (heights[index + 1] ?? 0) : height;
+		if (starts[index]) {
+			const next = starts.indexOf(true, index + 1);
+			need = heights.slice(index, next < 0 ? undefined : next).reduce((sum, each) => sum + each, 0);
+		}
 		if (page.length && used + need > room) {
 			pages.push([index]);
 			used = height + (leads[index] ?? 0);

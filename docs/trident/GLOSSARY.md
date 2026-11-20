@@ -193,8 +193,8 @@ The panel of the job's facts: organization, customer and team picked from lists,
 _Avoid_: project panel, info panel
 
 **Introduction**:
-The report's opening sentence, on the Project Report page: who was where, when and for what. It is worked out from the project's records in words that fit any job, a loading and a discharge alike, and the project details panel's Introduction field holds it for anyone to reword. What is typed there prints in its place; clearing it brings the worked-out sentence back.
-_Avoid_: opening paragraph, verbiage, a Load or Discharge control (Justin, 2026-11-19: the sentence is edited, not switched)
+The report's opening sentence, on the Project Report page: who was where, when and for what. It is worked out from the project's records in words that fit any job, a loading and a discharge alike, and the project details panel's Description field holds it for anyone to reword. What is typed there prints in its place and no longer follows the panels; the field says which of the two it shows (auto-generated or edited), and its reset, or clearing it, brings the worked-out sentence back.
+_Avoid_: opening paragraph, verbiage, Introduction as the field's label (its name for a few hours on 2026-11-19), a Load or Discharge control (Justin, 2026-11-19: the sentence is edited, not switched)
 
 **Fixed panel**:
 A panel every report has, always in the same place: Cover, Table of Contents, Introduction, Time Log, Closing.

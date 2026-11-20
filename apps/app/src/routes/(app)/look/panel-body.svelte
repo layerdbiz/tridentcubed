@@ -129,6 +129,8 @@
 	);
 	// What is in the field while it is being typed in, so a cleared field stays clear until it is left.
 	let introductionDraft = $state<string>();
+	// Whether the sentence is someone's own words: it then stays as typed whatever the panels come to hold.
+	const isEdited = $derived(Boolean(panel.introduction?.trim()));
 
 	function setIntroduction(event: Event & { currentTarget: HTMLTextAreaElement }) {
 		introductionDraft = event.currentTarget.value;
@@ -705,26 +707,44 @@
 			>
 				{#if title}{@render fieldBlock(title)}{/if}
 				{#if subtitle}{@render fieldBlock(subtitle)}{/if}
-				<!-- The report's opening sentence (#244): the one worked out from the project's records until someone
-				     rewords it; what is typed prints in its place, and Reset (or clearing it) brings that one back. -->
-				<label class="block">
-					<span class={labelClass}>
-						{INTRODUCTION_LABEL}
-						{#if panel.introduction?.trim()}
+				<!-- The report's opening sentence (#244), called Description here (Justin, 2026-11-19): the one worked out
+				     from the project's panels until someone rewords it. What is typed prints in its place and stops
+				     following the panels, so the line under the box always says which of the two it is, and an edited
+				     one shows a reset at its top right that brings the worked-out sentence back (clearing it does too). -->
+				<div>
+					<label
+						class={labelClass}
+						for="{uid}-description">{INTRODUCTION_LABEL}</label
+					>
+					<div class="relative">
+						<textarea
+							id="{uid}-description"
+							class="{inputClass} field-sizing-content min-h-28 resize-y {isEdited ? 'pr-10' : ''}"
+							maxlength={INTRODUCTION_LIMIT}
+							value={introductionDraft ?? (panel.introduction?.trim() || generated)}
+							oninput={setIntroduction}
+							onblur={() => (introductionDraft = undefined)}></textarea>
+						{#if isEdited}
 							<button
 								type="button"
-								class="ml-auto font-semibold text-primary hover:underline"
-								onclick={resetIntroduction}>Reset</button
+								class="absolute top-1.5 right-1.5 flex size-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
+								aria-label="Reset to the auto-generated description"
+								title="Reset"
+								onclick={resetIntroduction}
+								><span class="icon-[mdi--refresh] size-[18px]"></span></button
 							>
 						{/if}
-					</span>
-					<textarea
-						class="{inputClass} field-sizing-content min-h-28 resize-y"
-						maxlength={INTRODUCTION_LIMIT}
-						value={introductionDraft ?? (panel.introduction?.trim() || generated)}
-						oninput={setIntroduction}
-						onblur={() => (introductionDraft = undefined)}></textarea>
-				</label>
+					</div>
+					<p class="mt-1 flex items-center gap-1 text-xs text-slate-400">
+						{#if isEdited}
+							<span class="icon-[mdi--pencil-outline] size-3.5 shrink-0"></span>
+							Edited. It no longer updates from the panels.
+						{:else}
+							<span class="icon-[mdi--auto-fix] size-3.5 shrink-0"></span>
+							Auto-generated from this project's panels.
+						{/if}
+					</p>
+				</div>
 				<Picker
 					label="Project Type"
 					icon="icon-[mdi--package-variant-closed]"
@@ -735,7 +755,7 @@
 				<!-- The two parts of the project number a User may type (#217), and the number they make. -->
 				<div class="grid grid-cols-2 gap-3">
 					<label class="block min-w-0">
-						<span class={labelClass}>Project Creation Date</span>
+						<span class={labelClass}>Created Date</span>
 						<input
 							class="{inputClass} min-w-0"
 							type="date"
@@ -744,7 +764,7 @@
 						/>
 					</label>
 					<label class="block min-w-0">
-						<span class={labelClass}>Job Sequence Number</span>
+						<span class={labelClass}>Job Number</span>
 						<input
 							class="{inputClass} tabular-nums"
 							inputmode="numeric"

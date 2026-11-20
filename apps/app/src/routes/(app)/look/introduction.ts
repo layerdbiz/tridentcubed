@@ -35,7 +35,7 @@ export type IntroductionSourceType = {
 };
 
 /** What the Project panel calls the field that holds the sentence. */
-export const INTRODUCTION_LABEL = 'Introduction';
+export const INTRODUCTION_LABEL = 'Description';
 
 // A packing list this short is read out; a longer one is counted.
 const READ_OUT = 3;
