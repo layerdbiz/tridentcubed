@@ -69,6 +69,24 @@ function markOf(text: string) {
 	return best;
 }
 
+// #245: what a sheet may carry that no font can draw (Michael's Excel list held U+EE01 and U+EE02, and the report
+// printed a box beside every heading and number they sat in). Control characters, a sheet program's private
+// characters, half a broken pair, the marks that stand for "something was here", and the invisible marks of text
+// direction. The two joiners stay: they hold a letter or a picture together in some scripts and print nothing.
+const UNPRINTABLE = /[\p{Cc}\p{Co}\p{Cs}\uFFFC\uFFFD]|(?![\u200C\u200D])\p{Cf}/gu;
+const SPACES = /[\s\p{Z}]+/gu;
+
+/** A cell as it is kept and printed: every space a plain one, nothing that cannot print, no space at its ends. */
+export function toPrintable(text: string) {
+	// The byte order mark first: a regular expression counts it as a space, and it is one of no width.
+	return text
+		.replaceAll('\uFEFF', '')
+		.replace(SPACES, ' ')
+		.replace(UNPRINTABLE, '')
+		.replace(/ +/g, ' ')
+		.trim();
+}
+
 function wordsOf(value: unknown) {
 	if (value === null || value === undefined) return '';
 	return typeof value === 'object' ? JSON.stringify(value) : String(value);
@@ -118,14 +136,14 @@ export function readText(text: string): string[][] | undefined {
 }
 
 /**
- * The cells worth keeping: each trimmed, with rows and columns that hold nothing left out, and how many those
- * were. Nothing when no cell holds anything.
+ * The cells worth keeping: each trimmed and rid of what cannot print (#245), with rows and columns that hold
+ * nothing left out, and how many those were. Nothing when no cell holds anything.
  */
 export function toGrid(
 	name: string,
 	rows: unknown[][]
 ): { grid: GridType; skipped: SkippedType } | undefined {
-	const all = rows.map((row) => row.map((cell) => wordsOf(cell).replace(/\s+/g, ' ').trim()));
+	const all = rows.map((row) => row.map((cell) => toPrintable(wordsOf(cell))));
 	const filled = all.filter((row) => row.some(Boolean));
 	if (!filled.length) return undefined;
 	const width = Math.max(...filled.map((row) => row.length));
@@ -229,7 +247,10 @@ type DraftType = ColumnType & { parts: { unit: string; members: number[] }[] };
  */
 export function toTable(grid: GridType): TableType {
 	const width = Math.max(0, ...grid.cells.map((row) => row.length));
-	const cells = grid.cells.map((row) => Array.from({ length: width }, (_, at) => row[at] ?? ''));
+	// Cleaned here too: a list saved before #245 still holds what its sheet carried.
+	const cells = grid.cells.map((row) =>
+		Array.from({ length: width }, (_, at) => toPrintable(row[at] ?? ''))
+	);
 	if (!cells.length || !width) return { notes: [], hasHeads: false, columns: [], rows: [] };
 	const start = startOf(cells, width);
 	const notes = cells.slice(0, start).map((row) => row.filter(Boolean).join(' '));
