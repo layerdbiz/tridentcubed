@@ -986,24 +986,24 @@
 	</li>
 {/snippet}
 
-<!-- Like the HTML email signatures (packages/ui email): the sign-off, a round photo, the name, the labels in blue
-     capitals, then phone, email and the group email. -->
+<!-- Like the HTML email signatures (packages/ui email): the sign-off, a round photo wearing the organization's mark
+     as it does on the team cards, the name, the labels as the same blue chips (Justin, 2026-11-19; before that
+     blue capitals), then phone, email and the group email. -->
 {#snippet signature()}
 	<p class="text-[11px] text-slate-950">{organization.signoff}</p>
 	{#if signer}
 		<div class="mt-6 flex items-start gap-3">
-			<img
-				src={personOf(signer.name).photo}
-				crossorigin={toCrossOrigin(personOf(signer.name).photo)}
-				alt=""
-				draggable="false"
-				class="size-[76px] shrink-0 rounded-full object-cover"
+			<Avatar
+				name={signer.name}
+				size={76}
+				ring="ring-transparent"
+				hasPresence={false}
+				badge={ICON_192}
+				badgeScale={0.3}
 			/>
 			<div class="min-w-0 pt-1.5 text-[9px] leading-[1.5] text-slate-500">
 				<p class="text-[17px] leading-tight font-semibold text-slate-950">{signer.name}</p>
-				<p class="text-[7.5px] font-semibold tracking-[0.02em] text-primary-700 uppercase">
-					{labelsOf(signer).join(' · ')}
-				</p>
+				{@render labelChips(labelsOf(signer), true, 'mt-1')}
 				<div class="mt-1.5 space-y-0.5">
 					{#each [['icon-[mdi--phone]', signer.phone], ['icon-[mdi--email]', signer.email], ['icon-[mdi--web]', organization.groupEmail]] as [icon, text] (icon)}
 						{#if text}
@@ -1023,14 +1023,30 @@
 {#snippet contactLine(href: string, icon: string, text: string, tone: string)}
 	<a
 		{href}
-		class="flex items-start justify-center gap-0.5 {tone}"
+		class="flex items-start gap-0.5 text-left {tone}"
 		draggable="false"
 		tabindex="-1"
 		onclick={(event) => event.preventDefault()}
 	>
-		<span class="{icon} mt-px size-2 shrink-0 text-slate-400"></span>
+		<span class="{icon} mt-px size-[6.5px] shrink-0 text-slate-400"></span>
 		<span class="min-w-0 [overflow-wrap:anywhere]">{text}</span>
 	</a>
+{/snippet}
+
+<!-- Someone's labels as chips. The organization's own people wear them in blue, light behind dark, so they stand
+     out on the card and beside the signature (Justin, 2026-11-19); anyone else's stay white. -->
+{#snippet labelChips(labels: string[], isOwn: boolean, layout: string)}
+	{#if labels.length}
+		<p class="flex flex-wrap gap-0.5 {layout}">
+			{#each labels as label (label)}
+				<span
+					class="rounded-full px-1.5 py-px text-[7px] font-medium {isOwn
+						? 'bg-primary/15 text-primary-700'
+						: 'bg-white text-slate-600'}">{label}</span
+				>
+			{/each}
+		</p>
+	{/if}
 {/snippet}
 
 <!-- Someone in attendance: the app's own Avatar, the name, and labels. The organization's people wear its badge
@@ -1056,17 +1072,12 @@
 		<p class="mt-1.5 w-full text-[10px] leading-tight font-semibold text-balance text-slate-900">
 			{name}
 		</p>
-		{#if labels.length}
-			<p class="mt-1 flex flex-wrap justify-center gap-0.5">
-				{#each labels as label (label)}
-					<span class="rounded-full bg-white px-1.5 py-px text-[7px] font-medium text-slate-600"
-						>{label}</span
-					>
-				{/each}
-			</p>
-		{/if}
+		{@render labelChips(labels, Boolean(badge), 'mt-1 justify-center')}
 		{#if phone || email}
-			<div class="mt-1.5 w-full space-y-0.5 text-[7.5px] leading-tight">
+			<!-- The two lines start at the same place, in a block that sits in the middle of the card. -->
+			<div
+				class="mt-1.5 inline-flex max-w-full flex-col items-start gap-px text-[6.5px] leading-tight"
+			>
 				{#if phone}
 					{@render contactLine(
 						`tel:${phone.replace(/[^+\d]/g, '')}`,

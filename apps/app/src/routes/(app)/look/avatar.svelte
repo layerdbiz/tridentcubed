@@ -11,7 +11,8 @@
 		ring = 'ring-white',
 		isMuted = false,
 		hasPresence = true,
-		badge
+		badge,
+		badgeScale = 0.42
 	}: {
 		name: string;
 		size?: number;
@@ -19,9 +20,11 @@
 		isMuted?: boolean;
 		hasPresence?: boolean;
 		// A mark to wear at the bottom right, in place of the presence dot: on the report it marks the organization's
-		// own people (run 32). It is a round picture that fills the mark, half as wide as the face: the app's own
+		// own people (run 32). It is a round picture that fills the mark, under half as wide as the face: the app's own
 		// icon, the bright logo on black (Justin, 2026-11-19, #246; before that the light logo on white, top right).
 		badge?: string;
+		// How wide the mark is, as a share of the face: smaller on a big photo (the report's signature).
+		badgeScale?: number;
 	} = $props();
 
 	const presence = $derived(presenceOf(name));
@@ -54,7 +57,7 @@
 	{#if badge}
 		<span
 			class="absolute -right-1 -bottom-1 overflow-hidden rounded-full bg-black ring-[1.5px] ring-white"
-			style="width: {Math.round(size * 0.5)}px; height: {Math.round(size * 0.5)}px"
+			style="width: {Math.round(size * badgeScale)}px; height: {Math.round(size * badgeScale)}px"
 			><img
 				src={badge}
 				alt=""
