@@ -72,8 +72,11 @@
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
+	import RouteStrip from './route-strip.svelte';
+	import type { StripLegType } from './route-strip';
 	import CoverA from './variants/cover-a.svelte';
 	import CoverB from './variants/cover-b.svelte';
+	import CoverC, { type CoverLineType as CoverCLineType } from './variants/cover-c.svelte';
 	import { Viewport, type RectType } from './viewport.svelte';
 	import ZoomBar from './zoom-bar.svelte';
 
@@ -282,6 +285,85 @@
 	const legs = $derived(
 		legsOf(trip?.stops ?? []).filter((leg) =>
 			leg.stops.some((stop) => stop.name || stop.mode || stop.facility)
+		)
+	);
+
+	// Report Cover C (#247): the trip as the strip reads it, each leg's Transport Mode by name and icon and each
+	// facility by name, city and its kind's icon.
+	const isCoverC = $derived(look.variant('cover') === 'C');
+	const stripLegs = $derived(
+		legs.map((leg): StripLegType => {
+			const first = leg.stops[0];
+			return {
+				transport: {
+					name: first?.name ?? '',
+					icon: MODE_ICONS[first?.mode ?? ''] ?? PAGE_ICONS.transport
+				},
+				stops: leg.stops.map((stop) => {
+					const place = placeOf(stop.facility);
+					return {
+						point: stop.point,
+						facility: stop.facility,
+						city: place?.city ?? '',
+						icon: place ? FACILITY_ICONS[place.kind] : PAGE_ICONS.facilities
+					};
+				})
+			};
+		})
+	);
+	// Its list. The dates are written for the cover alone, 2026/10/27, and a job of several days with a dash; the
+	// report's sentences keep their own (`dates`).
+	function slashesOf(day: string) {
+		return day.replaceAll('-', '/');
+	}
+	const coverListC = $derived.by((): CoverCLineType[] => {
+		const days = (timelog?.days ?? [])
+			.map((day) => day.date)
+			.filter(Boolean)
+			.toSorted();
+		const last = days.at(-1) ?? '';
+		return [
+			{
+				icon: PAGE_ICONS.customers,
+				label: 'Customer',
+				value: company,
+				note: reference ? `(${reference})` : ''
+			},
+			{ icon: 'icon-[mdi--domain]', label: 'Company', value: organization.name },
+			{ icon: PAGE_ICONS.team, label: 'Team Members', value: listOf(people), names: people },
+			{
+				icon: 'icon-[mdi--package-variant-closed]',
+				label: 'Project Type',
+				value: detail('Project Type') ?? ''
+			},
+			{
+				icon: 'icon-[mdi--calendar-blank-outline]',
+				label: 'Date Created',
+				value: slashesOf(createdDayOf(look.project))
+			},
+			{
+				icon: 'icon-[mdi--check-circle-outline]',
+				label: 'Date Completed',
+				value:
+					days.length > 1 && days[0] !== last
+						? `${slashesOf(days[0])} — ${slashesOf(last)}`
+						: slashesOf(days[0] ?? '')
+			}
+		];
+	});
+	// Where its top part stands: the band's height, the wave over it and 28 of clear paper are kept under it. The
+	// logo is as big as what is left allows, 168 at most.
+	let coverBandHeight = $state(0);
+	let coverTitleHeight = $state(0);
+	let coverStripHeight = $state(0);
+	const coverReserved = $derived(coverBandHeight + 59 + 28);
+	const coverLogo = $derived(
+		Math.max(
+			80,
+			Math.min(
+				168,
+				H - coverReserved - 44 - (32 + coverTitleHeight + 12 + 28 + 26 + coverStripHeight)
+			)
 		)
 	);
 
@@ -1513,7 +1595,54 @@
 					style="left: {rect.x}px; top: {rect.y}px; width: {W}px; height: {H}px"
 					data-page={item.key}
 				>
-					{#if item.kind === 'cover'}
+					{#if item.kind === 'cover' && isCoverC}
+						<!-- Report Cover C (#247; Justin, 2026-11-19): the trip drawn as a strip under the subtitle, the login
+						     page's wave, and a list without Transport Mode and Facility. The top part stands on a fixed line
+						     above the wave and the strip has the same room whatever the trip, so the logo, title and subtitle
+						     are in the same place for every trip. -->
+						<div
+							class="absolute inset-0 flex flex-col items-center justify-end px-3.5 text-center"
+							style="padding-bottom: {coverReserved}px"
+						>
+							{#if organization.logo}
+								<img
+									src={organization.logo}
+									crossorigin={toCrossOrigin(organization.logo)}
+									alt=""
+									class="flex-none object-contain"
+									style="width: {coverLogo}px; height: {coverLogo}px"
+								/>
+							{/if}
+							<p
+								class="mt-8 max-w-[499px] text-[34px] leading-tight font-bold tracking-tight text-balance text-slate-950 uppercase"
+								bind:offsetHeight={coverTitleHeight}
+							>
+								{detail('Title') || 'Untitled project'}
+							</p>
+							<p class="mt-3 min-h-7 text-lg leading-7 text-slate-500">{detail('Subtitle')}</p>
+							<div
+								class="mt-[26px] flex-none self-stretch"
+								bind:offsetHeight={coverStripHeight}
+							>
+								<RouteStrip legs={stripLegs} />
+							</div>
+						</div>
+						<div
+							class="absolute inset-x-0 bottom-0 flex min-h-[200px] flex-col justify-end bg-slate-100 pt-6 pb-12"
+							bind:offsetHeight={coverBandHeight}
+						>
+							<svg
+								class="absolute -top-[59px] left-0 h-[60px] w-full fill-slate-100"
+								viewBox="0 0 1200 120"
+								preserveAspectRatio="none"
+								aria-hidden="true"
+								><path
+									d="M1200,0v120H0C41,68.89,288.87-55.15,578.87,30.29c178.24,53.05,440.37,74.74,621.13-30.29Z"
+								/></svg
+							>
+							<CoverC lines={coverListC} />
+						</div>
+					{:else if item.kind === 'cover'}
 						<div class="flex h-full flex-col items-center text-center">
 							<div class="flex flex-1 flex-col items-center justify-center px-12 pb-36">
 								{#if organization.logo}
