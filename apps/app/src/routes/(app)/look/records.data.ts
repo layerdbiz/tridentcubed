@@ -513,10 +513,10 @@ export function photosOf(record: RecordType) {
 	return record.photo ? [record.photo, ...stock] : stock;
 }
 
-// The photos a project's report prints: its switched-on photo panels, in order, at most ten.
+// The photos of a project's switched-on photo panels, every one, in order: what the sliders on its page and its
+// card show. How many of them are fetched at a time is the slider's business (slides.svelte.ts), not a limit here.
 export function projectPhotosOf(look: LookState, project: ProjectType) {
 	return (look.workspaces[project.id] ?? [])
 		.filter((panel) => panel.kind === 'photos' && panel.isEnabled)
-		.flatMap((panel) => panel.groups.flatMap((group) => group.photos))
-		.slice(0, 10);
+		.flatMap((panel) => panel.groups.flatMap((group) => group.photos));
 }
