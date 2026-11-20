@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { createFollower, flowOf, heightOf, paginate, photoPagesOf, targetOf } from './report-flow';
+import {
+	createFollower,
+	fitOf,
+	flowOf,
+	heightOf,
+	paginate,
+	photoPagesOf,
+	stageNumbersOf,
+	targetOf
+} from './report-flow';
 
 describe('paginate', () => {
 	it('keeps everything on one page while it fits', () => {
@@ -37,6 +46,96 @@ describe('paginate', () => {
 			[3, 4, 5]
 		]);
 		expect(paginate(heights, 600, [], leads)).toEqual([[0, 1, 2], [3, 4], [5]]);
+	});
+});
+
+// Justin, 2026-11-19: the Project Report's Cargo Description began at a page's foot and left only its totals on
+// the next page. A part that would run over starts on a new page.
+describe('paginate, with parts that stay whole', () => {
+	// A heading of 40 opens each part: one of 300, one of 200, one of three rows of 100.
+	const heights = [40, 260, 40, 160, 40, 100, 100, 100];
+	const starts = [true, false, true, false, true, false, false, false];
+	const glued = [true, false, true, false, true, false, false, false];
+
+	it('moves a part that would run over to a new page, whole', () => {
+		expect(paginate(heights, 700, glued, [], starts)).toEqual([
+			[0, 1, 2, 3],
+			[4, 5, 6, 7]
+		]);
+		// Without parts, the last rows ran over.
+		expect(paginate(heights, 700, glued)).toEqual([
+			[0, 1, 2, 3, 4, 5],
+			[6, 7]
+		]);
+	});
+
+	it('leaves the parts together on one page when they all fit', () => {
+		expect(paginate(heights, 900, glued, [], starts)).toEqual([[0, 1, 2, 3, 4, 5, 6, 7]]);
+	});
+
+	it('does not leave a page empty before a part that opens the section', () => {
+		expect(paginate([40, 400, 400], 600, [true], [], [true])).toEqual([[0, 1], [2]]);
+	});
+
+	it('starts a part longer than a page on a new page, and lets it run on from there', () => {
+		const long = [200, 40, 300, 300, 300];
+
+		expect(paginate(long, 600, [false, true], [], [false, true])).toEqual([[0], [1, 2], [3, 4]]);
+	});
+
+	it('counts what comes before the first part as the page it shares', () => {
+		// An opening paragraph of 100, then two parts of 300 on a page of 600: the second moves on.
+		expect(
+			paginate([100, 40, 260, 40, 260], 600, [], [], [false, true, false, true, false])
+		).toEqual([
+			[0, 1, 2],
+			[3, 4]
+		]);
+	});
+});
+
+// Justin, 2026-11-19: "the disclaimer page is the only page that you absolutely cannot by any means make into two
+// pages". A section that must stay on one page is drawn smaller, as one piece, when it is too tall.
+describe('fitOf', () => {
+	it('leaves a section that fits at its own size', () => {
+		expect(fitOf([200, 200], 100, 600)).toBe(1);
+		expect(fitOf([250, 250], 100, 600)).toBe(1);
+	});
+
+	it('draws one that is too tall just small enough to fit, what stands under it included', () => {
+		// 400 of text and 160 of signature and clear space on a page of 500.
+		const fit = fitOf([300, 100], 160, 500);
+
+		expect(fit).toBeCloseTo(500 / 560, 5);
+		expect((300 + 100 + 160) * fit).toBeLessThanOrEqual(500);
+	});
+
+	it('is its own size before anything has been measured', () => {
+		expect(fitOf([], 0, 600)).toBe(1);
+	});
+});
+
+// Justin, 2026-11-19: each stage of the Operations panel wears its number, in the panel and in the Preview, and
+// "whenever the order of that changes ... it will automatically update the number".
+describe('stageNumbersOf', () => {
+	const stage = (isEnabled = true) => ({ isEnabled });
+
+	it('counts the stages in the order they are in: the first is 1, the second 2', () => {
+		expect(stageNumbersOf([stage(), stage(), stage()])).toEqual([1, 2, 3]);
+	});
+
+	it('gives a stage left out of the report no number, so the report never skips one', () => {
+		expect(stageNumbersOf([stage(), stage(false), stage(), stage(false), stage()])).toEqual([
+			1,
+			undefined,
+			2,
+			undefined,
+			3
+		]);
+	});
+
+	it('has none for a panel with no stages', () => {
+		expect(stageNumbersOf([])).toEqual([]);
 	});
 });
 

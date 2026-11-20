@@ -7,17 +7,26 @@
 
 // Which blocks go on which page, by index, given each block's height and the room a page has. A block that opens
 // a page may say something again above itself (a table row its headings, #242): `leads` is the room that takes.
+// A block may open a part that stays whole (`starts`; Justin, 2026-11-19: the Project Report's Cargo Description
+// began at a page's foot and left only its totals on the next). A part runs from its block to the next one that
+// opens a part, and one that would not fit in what is left of the page starts on a new page. A part longer than a
+// page starts on a new page too, and runs on from there.
 export function paginate(
 	heights: number[],
 	room: number,
 	isGlued: boolean[] = [],
-	leads: number[] = []
+	leads: number[] = [],
+	starts: boolean[] = []
 ) {
 	const pages: number[][] = [[]];
 	let used = 0;
 	for (const [index, height] of heights.entries()) {
 		const page = pages.at(-1)!;
-		const need = isGlued[index] ? height + (heights[index + 1] ?? 0) : height;
+		let need = isGlued[index] ? height + (heights[index + 1] ?? 0) : height;
+		if (starts[index]) {
+			const next = starts.indexOf(true, index + 1);
+			need = heights.slice(index, next < 0 ? undefined : next).reduce((sum, each) => sum + each, 0);
+		}
 		if (page.length && used + need > room) {
 			pages.push([index]);
 			used = height + (leads[index] ?? 0);
@@ -27,6 +36,14 @@ export function paginate(
 		}
 	}
 	return pages;
+}
+
+// How much smaller a section that must stay on one page is drawn (Justin, 2026-11-19: the Disclaimer never runs to
+// a second page, "by any means"): its blocks and what stands under them (`extra`: the signature and the clear
+// space over it) together, against the room a page has. 1 when it fits as it is.
+export function fitOf(heights: number[], extra: number, room: number) {
+	const need = heights.reduce((sum, each) => sum + each, 0) + extra;
+	return need > room ? room / need : 1;
 }
 
 // The height a page's blocks take up together.
@@ -50,6 +67,14 @@ export function photoPagesOf(
 			pages.push({ group, part, isContinued: pages.length > 0 });
 	}
 	return pages;
+}
+
+// The number each stage of the Operations panel wears, in the panel and before its title in the Preview (Justin,
+// 2026-11-19): the first is 1, the second 2, by the order they are in, so moving one renumbers them. A stage left
+// out of the report has none and is not counted, so the report's numbers never skip one.
+export function stageNumbersOf(groups: { isEnabled: boolean }[]) {
+	let count = 0;
+	return groups.map((group) => (group.isEnabled ? (count += 1) : undefined));
 }
 
 // The flowing section a panel prints as: the Time Log's (#223) and Transport Mode's (#225), each keyed by its

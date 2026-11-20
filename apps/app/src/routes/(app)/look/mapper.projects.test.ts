@@ -584,6 +584,30 @@ describe('the Customer Reference Number', () => {
 	});
 });
 
+describe('the report’s opening sentence as typed (#244)', () => {
+	it('saves with the project, another member sees it, and clearing it saves too', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look, { Customer: 'KOGA' });
+		await save(mine);
+		expect(projectPanel(mine.look).introduction ?? '').toBe('');
+
+		const typed = 'Trident Cubed attended the loading of cargo on board the MSC Susanna.';
+		projectPanel(mine.look).introduction = `  ${typed}  `;
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+		await openProject(theirs, id);
+		expect(projectPanel(theirs.look).introduction).toBe(typed);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+
+		projectPanel(theirs.look).introduction = '';
+		expect((await save(theirs)).result.isSaved).toBe(true);
+		const again = await open(tom);
+		await openProject(again, id);
+		expect(projectPanel(again.look).introduction).toBe('');
+	});
+});
+
 describe('the Operations panel’s link to the project’s files (#233)', () => {
 	it('saves as typed, another member sees it, and clearing it saves too', async () => {
 		const mine = await open(tom);

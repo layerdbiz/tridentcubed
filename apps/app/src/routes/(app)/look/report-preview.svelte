@@ -34,9 +34,11 @@
 	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
 	import { toCrossOrigin } from '#lib/files/files.schema.js';
+	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toReportLink } from '#lib/report/report.utils.js';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
+	import { introductionOf, listOf } from './introduction';
 	import ItemTable, { type FitType, type PartType } from './item-table.svelte';
 	import { legsOf, type LegType } from './legs';
 	import {
@@ -61,17 +63,22 @@
 	import {
 		createFollower,
 		flowOf,
+		fitOf,
 		heightOf,
 		paginate,
 		photoPagesOf,
+		stageNumbersOf,
 		targetOf
 	} from './report-flow';
 	import { fromSaved, toSaved, toTable } from './spreadsheet';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
+	import RouteStrip from './route-strip.svelte';
+	import type { StripLegType } from './route-strip';
 	import CoverA from './variants/cover-a.svelte';
 	import CoverB from './variants/cover-b.svelte';
+	import CoverC, { type CoverLineType as CoverCLineType } from './variants/cover-c.svelte';
 	import { Viewport, type RectType } from './viewport.svelte';
 	import ZoomBar from './zoom-bar.svelte';
 
@@ -106,6 +113,8 @@
 		// A page of a section that flows: the blocks that landed on it, and whether the signature sits at its foot.
 		blocks?: BlockType[];
 		hasSignature?: boolean;
+		// How much smaller a page that must not run over is drawn; none, or 1, for its own size.
+		fit?: number;
 	};
 	// One piece of a flowing section, never cut in two.
 	type BlockType =
@@ -214,24 +223,14 @@
 	const facility = $derived(
 		listOf([...new Set(stops.map((stop) => stop.facility).filter(Boolean))])
 	);
-	// The Items panel's filled rows, and the same as words: "2 power transformers and 27 accessory crates".
+	// The Items panel's filled rows.
 	const cargo = $derived(
 		(look.panels.find((panel) => panel.kind === 'items')?.items ?? []).filter((item) =>
 			item.description.trim()
 		)
 	);
-	const cargoLine = $derived(
-		listOf(
-			cargo.map((item) => [item.quantity, item.description.toLowerCase()].filter(Boolean).join(' '))
-		)
-	);
-
-	// "A", "A and B", "A, B and C".
-	function listOf(names: string[]) {
-		return names.length < 2
-			? (names[0] ?? '')
-			: `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
-	}
+	// The report's opening sentence (#244): the one typed in the Project panel, else the one worked out.
+	const introduction = $derived(introductionOf(look));
 
 	function iconOf(stop: StopType) {
 		return (
@@ -290,6 +289,85 @@
 	const legs = $derived(
 		legsOf(trip?.stops ?? []).filter((leg) =>
 			leg.stops.some((stop) => stop.name || stop.mode || stop.facility)
+		)
+	);
+
+	// Report Cover C (#247): the trip as the strip reads it, each leg's Transport Mode by name and icon and each
+	// facility by name, city and its kind's icon.
+	const isCoverC = $derived(look.variant('cover') === 'C');
+	const stripLegs = $derived(
+		legs.map((leg): StripLegType => {
+			const first = leg.stops[0];
+			return {
+				transport: {
+					name: first?.name ?? '',
+					icon: MODE_ICONS[first?.mode ?? ''] ?? PAGE_ICONS.transport
+				},
+				stops: leg.stops.map((stop) => {
+					const place = placeOf(stop.facility);
+					return {
+						point: stop.point,
+						facility: stop.facility,
+						city: place?.city ?? '',
+						icon: place ? FACILITY_ICONS[place.kind] : PAGE_ICONS.facilities
+					};
+				})
+			};
+		})
+	);
+	// Its list. The dates are written for the cover alone, 2026/10/27, and a job of several days with a dash; the
+	// report's sentences keep their own (`dates`).
+	function slashesOf(day: string) {
+		return day.replaceAll('-', '/');
+	}
+	const coverListC = $derived.by((): CoverCLineType[] => {
+		const days = (timelog?.days ?? [])
+			.map((day) => day.date)
+			.filter(Boolean)
+			.toSorted();
+		const last = days.at(-1) ?? '';
+		return [
+			{
+				icon: PAGE_ICONS.customers,
+				label: 'Customer',
+				value: company,
+				note: reference ? `(${reference})` : ''
+			},
+			{ icon: 'icon-[mdi--domain]', label: 'Company', value: organization.name },
+			{ icon: PAGE_ICONS.team, label: 'Team Members', value: listOf(people), names: people },
+			{
+				icon: 'icon-[mdi--package-variant-closed]',
+				label: 'Project Type',
+				value: detail('Project Type') ?? ''
+			},
+			{
+				icon: 'icon-[mdi--calendar-blank-outline]',
+				label: 'Date Created',
+				value: slashesOf(createdDayOf(look.project))
+			},
+			{
+				icon: 'icon-[mdi--check-circle-outline]',
+				label: 'Date Completed',
+				value:
+					days.length > 1 && days[0] !== last
+						? `${slashesOf(days[0])} — ${slashesOf(last)}`
+						: slashesOf(days[0] ?? '')
+			}
+		];
+	});
+	// Where its top part stands: the band's height, the wave over it and 28 of clear paper are kept under it. The
+	// logo is as big as what is left allows, 168 at most.
+	let coverBandHeight = $state(0);
+	let coverTitleHeight = $state(0);
+	let coverStripHeight = $state(0);
+	const coverReserved = $derived(coverBandHeight + 59 + 28);
+	const coverLogo = $derived(
+		Math.max(
+			80,
+			Math.min(
+				168,
+				H - coverReserved - 44 - (32 + coverTitleHeight + 12 + 28 + 26 + coverStripHeight)
+			)
 		)
 	);
 
@@ -392,6 +470,8 @@
 	let measurer: HTMLDivElement | undefined = $state();
 	let heights = $state<Record<string, number[]>>({});
 	let signatureHeight = $state(0);
+	// Clear paper kept between the Disclaimer's last line and its signature.
+	const SIGNATURE_GAP = 28;
 
 	function measure() {
 		if (!measurer) return;
@@ -439,6 +519,24 @@
 	// A flowing section as pages: its blocks dealt out by height, a heading never left at a page's foot.
 	function pagesOf(flow: FlowType) {
 		const tall = heights[flow.key] ?? [];
+		// The Disclaimer is always one page, its signature at its foot (Justin, 2026-11-19: "the only page that you
+		// absolutely cannot by any means make into two pages"). Too tall, it is drawn smaller, as one piece.
+		if (flow.kind === 'disclaimer')
+			return [
+				{
+					key: flow.key,
+					title: flow.title,
+					kind: flow.kind,
+					panel: flow.panel,
+					blocks: flow.blocks,
+					hasSignature: true,
+					fit: fitOf(
+						flow.blocks.map((_, index) => tall[index] ?? 0),
+						signatureHeight + SIGNATURE_GAP,
+						ROOM
+					)
+				} satisfies PageType
+			];
 		// The item list's headings, said again over a row that opens a page, take their height there (#242).
 		const again = itemList?.hasHeads && listFit ? Math.ceil(listFit.head * listFit.scale) : 0;
 		const dealt = paginate(
@@ -451,18 +549,17 @@
 					block.kind === 'day' ||
 					(block.kind === 'list' && !isListRow(block))
 			),
-			flow.blocks.map((block) => (isListRow(block) ? again : 0))
+			flow.blocks.map((block) => (isListRow(block) ? again : 0)),
+			// On the Project Report a part (Personnel in Attendance, Transport Mode, Cargo Description) that would run
+			// over starts on a new page (Justin, 2026-11-19); the contents find each part by its heading's page.
+			flow.kind === 'report' ? flow.blocks.map((block) => block.kind === 'heading') : []
 		);
-		// The signature stands at the foot of the disclaimer's last page; with no room left there, on one more.
-		if (flow.kind === 'disclaimer' && heightOf(tall, dealt.at(-1)!) + signatureHeight + 28 > ROOM)
-			dealt.push([]);
 		return dealt.map((page, index): PageType => ({
 			key: flow.key,
 			title: index ? `${flow.title} (continued)` : flow.title,
 			kind: flow.kind,
 			panel: flow.panel,
-			blocks: blocksOn(flow, page),
-			hasSignature: flow.kind === 'disclaimer' && index === dealt.length - 1
+			blocks: blocksOn(flow, page)
 		}));
 	}
 
@@ -994,24 +1091,24 @@
 	</li>
 {/snippet}
 
-<!-- Like the HTML email signatures (packages/ui email): the sign-off, a round photo, the name, the labels in blue
-     capitals, then phone, email and the group email. -->
+<!-- Like the HTML email signatures (packages/ui email): the sign-off, a round photo wearing the organization's mark
+     as it does on the team cards, the name, the labels as the same blue chips (Justin, 2026-11-19; before that
+     blue capitals), then phone, email and the group email. -->
 {#snippet signature()}
 	<p class="text-[11px] text-slate-950">{organization.signoff}</p>
 	{#if signer}
 		<div class="mt-6 flex items-start gap-3">
-			<img
-				src={personOf(signer.name).photo}
-				crossorigin={toCrossOrigin(personOf(signer.name).photo)}
-				alt=""
-				draggable="false"
-				class="size-[76px] shrink-0 rounded-full object-cover"
+			<Avatar
+				name={signer.name}
+				size={76}
+				ring="ring-transparent"
+				hasPresence={false}
+				badge={ICON_192}
+				badgeScale={0.37}
 			/>
 			<div class="min-w-0 pt-1.5 text-[9px] leading-[1.5] text-slate-500">
 				<p class="text-[17px] leading-tight font-semibold text-slate-950">{signer.name}</p>
-				<p class="text-[7.5px] font-semibold tracking-[0.02em] text-primary-700 uppercase">
-					{labelsOf(signer).join(' · ')}
-				</p>
+				{@render labelChips(labelsOf(signer), true, 'mt-1')}
 				<div class="mt-1.5 space-y-0.5">
 					{#each [['icon-[mdi--phone]', signer.phone], ['icon-[mdi--email]', signer.email], ['icon-[mdi--web]', organization.groupEmail]] as [icon, text] (icon)}
 						{#if text}
@@ -1026,8 +1123,49 @@
 	{/if}
 {/snippet}
 
-<!-- Someone in attendance: the app's own Avatar, the name, and labels. The organization's people wear its badge. -->
-{#snippet personCard(name: string, labels: string[], isLead: boolean, badge: string | undefined)}
+<!-- One way to reach someone (#246): a link to tap in the PDF. In the app it is not followed, like the files line:
+     a finger moving the page would start a call by accident. A long address breaks where it must, never cut. -->
+{#snippet contactLine(href: string, icon: string, text: string, tone: string)}
+	<a
+		{href}
+		class="flex items-start gap-0.5 text-left {tone}"
+		draggable="false"
+		tabindex="-1"
+		onclick={(event) => event.preventDefault()}
+	>
+		<span class="{icon} mt-px size-[4.9px] shrink-0 text-slate-950"></span>
+		<span class="min-w-0 [overflow-wrap:anywhere]">{text}</span>
+	</a>
+{/snippet}
+
+<!-- Someone's labels as chips. The organization's own people wear them in blue, light behind dark, so they stand
+     out on the card and beside the signature (Justin, 2026-11-19); anyone else's stay white. -->
+{#snippet labelChips(labels: string[], isOwn: boolean, layout: string)}
+	{#if labels.length}
+		<p class="flex flex-wrap gap-0.5 {layout}">
+			{#each labels as label (label)}
+				<span
+					class="rounded-full px-1.5 py-px text-[7px] font-medium {isOwn
+						? 'bg-primary/15 text-primary-700'
+						: 'bg-white text-slate-600'}">{label}</span
+				>
+			{/each}
+		</p>
+	{/if}
+{/snippet}
+
+<!-- Someone in attendance: the app's own Avatar, the name, and labels. The organization's people wear its badge
+     and show how to reach them (#246; Michael, 2026-11-19: "Full contact details"), from their Team record: the
+     phone over the email, as the dashboard's Team list has them. One that is empty is left out. -->
+{#snippet personCard(
+	name: string,
+	labels: string[],
+	isLead: boolean,
+	badge: string | undefined,
+	contact?: { phone: string; email: string }
+)}
+	{@const phone = contact?.phone.trim()}
+	{@const email = contact?.email.trim()}
 	<div class="flex min-w-0 flex-col items-center rounded-xl bg-slate-50 px-1.5 py-2 text-center">
 		<Avatar
 			{name}
@@ -1039,14 +1177,24 @@
 		<p class="mt-1.5 w-full text-[10px] leading-tight font-semibold text-balance text-slate-900">
 			{name}
 		</p>
-		{#if labels.length}
-			<p class="mt-1 flex flex-wrap justify-center gap-0.5">
-				{#each labels as label (label)}
-					<span class="rounded-full bg-white px-1.5 py-px text-[7px] font-medium text-slate-600"
-						>{label}</span
-					>
-				{/each}
-			</p>
+		{@render labelChips(labels, Boolean(badge), 'mt-1 justify-center')}
+		{#if phone || email}
+			<!-- The two lines start at the same place, in a block that sits in the middle of the card. -->
+			<div
+				class="mt-1.5 inline-flex max-w-full flex-col items-start gap-px text-[4.9px] leading-tight"
+			>
+				{#if phone}
+					{@render contactLine(
+						`tel:${phone.replace(/[^+\d]/g, '')}`,
+						'icon-[mdi--phone]',
+						phone,
+						'text-slate-600'
+					)}
+				{/if}
+				{#if email}
+					{@render contactLine(`mailto:${email}`, 'icon-[mdi--email]', email, 'text-slate-500')}
+				{/if}
+			</div>
 		{/if}
 	</div>
 {/snippet}
@@ -1113,13 +1261,8 @@
 <!-- One block of a flowing section. Room above a block is its own padding, so the heights add up. -->
 {#snippet flowBlock(block: BlockType)}
 	{#if block.kind === 'intro'}
-		<p class="pt-2 text-[10.5px] leading-relaxed text-slate-600">
-			This is to report that {organization.name} was present at {facility ||
-				'the facility'}{location ? ` – ${location}` : ''} on {dates} for the purpose of conducting a {(
-				detail('Project Type') || 'cargo'
-			).toLowerCase()} survey{cargoLine ? ` of ${cargoLine}` : ''}{transport
-				? ` from the ${transport}`
-				: ''}.
+		<p class="pt-2 text-[10.5px] leading-relaxed whitespace-pre-line text-slate-600">
+			{introduction}
 		</p>
 	{:else if block.kind === 'strip'}
 		<!-- The project in one strip: what it is, who it is for, where they are and when. -->
@@ -1186,7 +1329,8 @@
 						name,
 						member ? labelsOf(member) : [],
 						personIndex === 0,
-						organization.logo || undefined
+						ICON_192,
+						member
 					)}
 				{:else}
 					<p class="col-span-full text-[11px] text-slate-300 italic">No one assigned yet</p>
@@ -1433,7 +1577,12 @@
 			</ul>
 		{/if}
 	{:else if block.kind === 'closing'}
-		<p class="pt-6 text-[10.5px] text-slate-700 italic">{block.text}</p>
+		<!-- The line before the sign-off, in a light grey box so it stands out (Justin, 2026-11-19; before that italic). -->
+		<div class="pt-6">
+			<p class="rounded-lg bg-slate-100 px-2.5 py-2 text-[9.5px] text-balance text-slate-700">
+				{block.text}
+			</p>
+		</div>
 	{:else if block.kind === 'empty'}
 		<p class="text-[11px] text-slate-300 italic">{block.text}</p>
 	{/if}
@@ -1466,7 +1615,54 @@
 					style="left: {rect.x}px; top: {rect.y}px; width: {W}px; height: {H}px"
 					data-page={item.key}
 				>
-					{#if item.kind === 'cover'}
+					{#if item.kind === 'cover' && isCoverC}
+						<!-- Report Cover C (#247; Justin, 2026-11-19): the trip drawn as a strip under the subtitle, the login
+						     page's wave, and a list without Transport Mode and Facility. The top part stands on a fixed line
+						     above the wave and the strip has the same room whatever the trip, so the logo, title and subtitle
+						     are in the same place for every trip. -->
+						<div
+							class="absolute inset-0 flex flex-col items-center justify-end px-3.5 text-center"
+							style="padding-bottom: {coverReserved}px"
+						>
+							{#if organization.logo}
+								<img
+									src={organization.logo}
+									crossorigin={toCrossOrigin(organization.logo)}
+									alt=""
+									class="flex-none object-contain"
+									style="width: {coverLogo}px; height: {coverLogo}px"
+								/>
+							{/if}
+							<p
+								class="mt-8 max-w-[499px] text-[34px] leading-tight font-bold tracking-tight text-balance text-slate-950 uppercase"
+								bind:offsetHeight={coverTitleHeight}
+							>
+								{detail('Title') || 'Untitled project'}
+							</p>
+							<p class="mt-3 min-h-7 text-lg leading-7 text-slate-500">{detail('Subtitle')}</p>
+							<div
+								class="mt-[26px] flex-none self-stretch"
+								bind:offsetHeight={coverStripHeight}
+							>
+								<RouteStrip legs={stripLegs} />
+							</div>
+						</div>
+						<div
+							class="absolute inset-x-0 bottom-0 flex min-h-[200px] flex-col justify-end bg-slate-100 pt-6 pb-12"
+							bind:offsetHeight={coverBandHeight}
+						>
+							<svg
+								class="absolute -top-[59px] left-0 h-[60px] w-full fill-slate-100"
+								viewBox="0 0 1200 120"
+								preserveAspectRatio="none"
+								aria-hidden="true"
+								><path
+									d="M1200,0v120H0C41,68.89,288.87-55.15,578.87,30.29c178.24,53.05,440.37,74.74,621.13-30.29Z"
+								/></svg
+							>
+							<CoverC lines={coverListC} />
+						</div>
+					{:else if item.kind === 'cover'}
 						<div class="flex h-full flex-col items-center text-center">
 							<div class="flex flex-1 flex-col items-center justify-center px-12 pb-36">
 								{#if organization.logo}
@@ -1522,7 +1718,12 @@
 								</h2>
 								{#if filesLink && hasFilesLine(item, index)}{@render filesLine()}{/if}
 							</div>
-							{#if item.blocks}
+							{#if item.blocks && item.fit && item.fit < 1}
+								<!-- A page that must not run over (the Disclaimer), drawn smaller as one piece. -->
+								<div style="zoom: {item.fit}">
+									{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
+								</div>
+							{:else if item.blocks}
 								{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
 							{:else if item.kind === 'contents'}
 								{#snippet line(number: string, title: string, page: number, isSub: boolean)}
@@ -1551,13 +1752,8 @@
 								</ol>
 							{:else if item.kind === 'report'}
 								<p class="mt-2 text-[10.5px] leading-relaxed text-slate-600">
-									<b class="text-slate-900">Introduction.</b> This is to report that {organization.name}
-									was present at {facility || 'the facility'}{location ? ` – ${location}` : ''} on {dates}
-									for the purpose of conducting a {(
-										detail('Project Type') || 'cargo'
-									).toLowerCase()} survey{cargoLine ? ` of ${cargoLine}` : ''}{transport
-										? ` from the ${transport}`
-										: ''}.
+									<b class="text-slate-900">Introduction.</b>
+									{introduction}
 								</p>
 								<!-- The project in one strip: what it is, who it is for, where they are and when. -->
 								<div class="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
@@ -1838,7 +2034,19 @@
 									(item.part ?? 0) * group.layout,
 									((item.part ?? 0) + 1) * group.layout
 								)}
-								<p class="mt-2 text-[13px] font-semibold text-slate-700">
+								<!-- A stage of the Operations panel wears its number before its title, white in a black circle
+								     (Justin, 2026-11-19): the number it has in the panel, by the stages' order. -->
+								{@const stageNumber =
+									item.panel.key === 'operations'
+										? stageNumbersOf(item.panel.groups)[item.group ?? 0]
+										: undefined}
+								<p class="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-slate-700">
+									{#if stageNumber}
+										<span
+											class="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-slate-950 text-[10px] leading-none font-bold text-white tabular-nums"
+											>{stageNumber}</span
+										>
+									{/if}
 									{groupTitle(item.panel, item.group ?? 0)}
 								</p>
 								{#if group.description && !item.part}
@@ -1895,7 +2103,11 @@
 						</div>
 						{#if item.hasSignature}
 							<!-- Disclaimer B: the signature at the foot of the page, clear of the text above and the footer. -->
-							<div class="absolute inset-x-10 bottom-[96px]">{@render signature()}</div>
+							<div class="absolute inset-x-10 bottom-[96px]">
+								<div style={item.fit && item.fit < 1 ? `zoom: ${item.fit}` : undefined}>
+									{@render signature()}
+								</div>
+							</div>
 						{/if}
 						<footer
 							class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-white px-10 pt-3 pb-6 text-[9px] text-slate-400"

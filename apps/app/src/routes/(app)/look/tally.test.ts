@@ -55,9 +55,10 @@ describe('the inputs each section of the Project panel holds', () => {
 		expect(labelsOf(panel, 'project')).toEqual([
 			'Title',
 			'Subtitle',
+			'Description',
 			'Project Type',
-			'Project Creation Date',
-			'Job Sequence Number'
+			'Created Date',
+			'Job Number'
 		]);
 	});
 
@@ -75,12 +76,12 @@ describe('the inputs each section of the Project panel holds', () => {
 		expect(labelsOf(panelOf('project'), 'customer')).toEqual(['Customer', 'Reference Number']);
 	});
 
-	it('reads MSC Susana as his screenshot should have: 4 of 5 and 3 of 3', () => {
+	it('reads MSC Susana as his screenshot should have, plus the Introduction (#244): 5 of 6 and 3 of 3', () => {
 		const panel = panelOf('project');
 		panel.customerReference = 'S00025484';
 		const contacts = [{ id: 'steve' }];
 		const sections = sectionsOf(panel, contacts);
-		expect(toTally(valuesOf(sections, 'project'))).toBe('4 of 5 complete');
+		expect(toTally(valuesOf(sections, 'project'))).toBe('5 of 6 complete');
 		expect(toTally(valuesOf(sections, 'customer'))).toBe('3 of 3 complete');
 	});
 

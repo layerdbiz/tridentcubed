@@ -41,8 +41,9 @@
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
-	import { GRID_LIMIT } from '#lib/rows/rows.schema.js';
+	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import ImageField from './image-field.svelte';
+	import { generatedOf, INTRODUCTION_LABEL } from './introduction';
 	import ItemBox from './item-box.svelte';
 	import ItemTable from './item-table.svelte';
 	import {
@@ -72,6 +73,7 @@
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { addGroup as addPhotoGroup, addPhotos, hasFiles, uploadOf } from './photos';
 	import { contactsOf } from './records.data';
+	import { stageNumbersOf } from './report-flow';
 	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
 	import { sortable } from './sortable';
 	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
@@ -110,6 +112,40 @@
 	function setField(label: string, value: string) {
 		const field = fieldOf(label);
 		if (field) field.value = value;
+		save();
+	}
+
+	// The report's opening sentence (#244). The field shows the sentence worked out from the project's records
+	// (introduction.ts) until someone rewords it. Only a rewording is kept: the worked-out sentence left as it is,
+	// or the field cleared, keeps nothing, so the sentence goes on following the records. A project not made yet
+	// has only this panel to read.
+	const generated = $derived(
+		isDraft
+			? generatedOf({
+					organization: look.organization,
+					project: { location: '', day: panel.day, created: todayIso() },
+					panels: [panel]
+				})
+			: generatedOf(look)
+	);
+	// What is in the field while it is being typed in, so a cleared field stays clear until it is left.
+	let introductionDraft = $state<string>();
+	// The Operations panel's stages wear their number in place of an icon (Justin, 2026-11-19), by the order they
+	// are in, so dragging one to another place renumbers them. Any other photo panel's groups keep the icon.
+	const stageNumbers = $derived(panel.key === 'operations' ? stageNumbersOf(panel.groups) : []);
+
+	// Whether the sentence is someone's own words: it then stays as typed whatever the panels come to hold.
+	const isEdited = $derived(Boolean(panel.introduction?.trim()));
+
+	function setIntroduction(event: Event & { currentTarget: HTMLTextAreaElement }) {
+		introductionDraft = event.currentTarget.value;
+		const typed = introductionDraft.trim();
+		panel.introduction = typed === generated ? '' : typed && introductionDraft;
+	}
+
+	function resetIntroduction() {
+		introductionDraft = undefined;
+		panel.introduction = '';
 		save();
 	}
 
@@ -676,6 +712,44 @@
 			>
 				{#if title}{@render fieldBlock(title)}{/if}
 				{#if subtitle}{@render fieldBlock(subtitle)}{/if}
+				<!-- The report's opening sentence (#244), called Description here (Justin, 2026-11-19): the one worked out
+				     from the project's panels until someone rewords it. What is typed prints in its place and stops
+				     following the panels, so the line under the box always says which of the two it is, and an edited
+				     one shows a reset at its top right that brings the worked-out sentence back (clearing it does too). -->
+				<div>
+					<label
+						class={labelClass}
+						for="{uid}-description">{INTRODUCTION_LABEL}</label
+					>
+					<div class="relative">
+						<textarea
+							id="{uid}-description"
+							class="{inputClass} field-sizing-content min-h-28 resize-y {isEdited ? 'pr-10' : ''}"
+							maxlength={INTRODUCTION_LIMIT}
+							value={introductionDraft ?? (panel.introduction?.trim() || generated)}
+							oninput={setIntroduction}
+							onblur={() => (introductionDraft = undefined)}></textarea>
+						{#if isEdited}
+							<button
+								type="button"
+								class="absolute top-1.5 right-1.5 flex size-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
+								aria-label="Reset to the auto-generated description"
+								title="Reset"
+								onclick={resetIntroduction}
+								><span class="icon-[mdi--refresh] size-[18px]"></span></button
+							>
+						{/if}
+					</div>
+					<p class="mt-1 flex items-center gap-1 text-xs text-slate-400">
+						{#if isEdited}
+							<span class="icon-[mdi--pencil-outline] size-3.5 shrink-0"></span>
+							Edited. It no longer updates from the panels.
+						{:else}
+							<span class="icon-[mdi--auto-fix] size-3.5 shrink-0"></span>
+							Auto-generated from this project's panels.
+						{/if}
+					</p>
+				</div>
 				<Picker
 					label="Project Type"
 					icon="icon-[mdi--package-variant-closed]"
@@ -686,7 +760,7 @@
 				<!-- The two parts of the project number a User may type (#217), and the number they make. -->
 				<div class="grid grid-cols-2 gap-3">
 					<label class="block min-w-0">
-						<span class={labelClass}>Project Creation Date</span>
+						<span class={labelClass}>Created Date</span>
 						<input
 							class="{inputClass} min-w-0"
 							type="date"
@@ -695,7 +769,7 @@
 						/>
 					</label>
 					<label class="block min-w-0">
-						<span class={labelClass}>Job Sequence Number</span>
+						<span class={labelClass}>Job Number</span>
 						<input
 							class="{inputClass} tabular-nums"
 							inputmode="numeric"
@@ -1173,6 +1247,7 @@
 						isEnabled={group.isEnabled}
 						onenable={() => toggleGroup(group)}
 						icon="icon-[mdi--image-multiple-outline]"
+						number={stageNumbers[groupIndex]}
 						isOpen={openGroups.includes(group.id)}
 						ontoggle={() => (openGroups = toggle(openGroups, group.id))}
 						ondelete={() =>
