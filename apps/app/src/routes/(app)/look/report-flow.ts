@@ -69,6 +69,14 @@ export function photoPagesOf(
 	return pages;
 }
 
+// The number each stage of the Operations panel wears, in the panel and before its title in the Preview (Justin,
+// 2026-11-19): the first is 1, the second 2, by the order they are in, so moving one renumbers them. A stage left
+// out of the report has none and is not counted, so the report's numbers never skip one.
+export function stageNumbersOf(groups: { isEnabled: boolean }[]) {
+	let count = 0;
+	return groups.map((group) => (group.isEnabled ? (count += 1) : undefined));
+}
+
 // The flowing section a panel prints as: the Time Log's (#223) and Transport Mode's (#225), each keyed by its
 // panel's kind; none for a panel that prints pages of its own (a photo panel). It is found by what the panel is: a
 // panel's id is the database's (#196), and looking the section up by that id left the Time Log out of every report

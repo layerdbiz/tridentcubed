@@ -73,6 +73,7 @@
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { addGroup as addPhotoGroup, addPhotos, hasFiles, uploadOf } from './photos';
 	import { contactsOf } from './records.data';
+	import { stageNumbersOf } from './report-flow';
 	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
 	import { sortable } from './sortable';
 	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
@@ -129,6 +130,10 @@
 	);
 	// What is in the field while it is being typed in, so a cleared field stays clear until it is left.
 	let introductionDraft = $state<string>();
+	// The Operations panel's stages wear their number in place of an icon (Justin, 2026-11-19), by the order they
+	// are in, so dragging one to another place renumbers them. Any other photo panel's groups keep the icon.
+	const stageNumbers = $derived(panel.key === 'operations' ? stageNumbersOf(panel.groups) : []);
+
 	// Whether the sentence is someone's own words: it then stays as typed whatever the panels come to hold.
 	const isEdited = $derived(Boolean(panel.introduction?.trim()));
 
@@ -1242,6 +1247,7 @@
 						isEnabled={group.isEnabled}
 						onenable={() => toggleGroup(group)}
 						icon="icon-[mdi--image-multiple-outline]"
+						number={stageNumbers[groupIndex]}
 						isOpen={openGroups.includes(group.id)}
 						ontoggle={() => (openGroups = toggle(openGroups, group.id))}
 						ondelete={() =>

@@ -6,6 +6,7 @@ import {
 	heightOf,
 	paginate,
 	photoPagesOf,
+	stageNumbersOf,
 	targetOf
 } from './report-flow';
 
@@ -111,6 +112,30 @@ describe('fitOf', () => {
 
 	it('is its own size before anything has been measured', () => {
 		expect(fitOf([], 0, 600)).toBe(1);
+	});
+});
+
+// Justin, 2026-11-19: each stage of the Operations panel wears its number, in the panel and in the Preview, and
+// "whenever the order of that changes ... it will automatically update the number".
+describe('stageNumbersOf', () => {
+	const stage = (isEnabled = true) => ({ isEnabled });
+
+	it('counts the stages in the order they are in: the first is 1, the second 2', () => {
+		expect(stageNumbersOf([stage(), stage(), stage()])).toEqual([1, 2, 3]);
+	});
+
+	it('gives a stage left out of the report no number, so the report never skips one', () => {
+		expect(stageNumbersOf([stage(), stage(false), stage(), stage(false), stage()])).toEqual([
+			1,
+			undefined,
+			2,
+			undefined,
+			3
+		]);
+	});
+
+	it('has none for a panel with no stages', () => {
+		expect(stageNumbersOf([])).toEqual([]);
 	});
 });
 

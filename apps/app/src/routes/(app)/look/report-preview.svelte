@@ -67,6 +67,7 @@
 		heightOf,
 		paginate,
 		photoPagesOf,
+		stageNumbersOf,
 		targetOf
 	} from './report-flow';
 	import { fromSaved, toSaved, toTable } from './spreadsheet';
@@ -2033,7 +2034,19 @@
 									(item.part ?? 0) * group.layout,
 									((item.part ?? 0) + 1) * group.layout
 								)}
-								<p class="mt-2 text-[13px] font-semibold text-slate-700">
+								<!-- A stage of the Operations panel wears its number before its title, white in a black circle
+								     (Justin, 2026-11-19): the number it has in the panel, by the stages' order. -->
+								{@const stageNumber =
+									item.panel.key === 'operations'
+										? stageNumbersOf(item.panel.groups)[item.group ?? 0]
+										: undefined}
+								<p class="mt-2 flex items-center gap-1.5 text-[13px] font-semibold text-slate-700">
+									{#if stageNumber}
+										<span
+											class="flex size-[18px] shrink-0 items-center justify-center rounded-full bg-slate-950 text-[10px] leading-none font-bold text-white tabular-nums"
+											>{stageNumber}</span
+										>
+									{/if}
 									{groupTitle(item.panel, item.group ?? 0)}
 								</p>
 								{#if group.description && !item.part}

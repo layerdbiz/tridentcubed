@@ -18,6 +18,7 @@
 		meta = '',
 		values,
 		icon = '',
+		number,
 		tone = 'bg-primary/10 text-primary',
 		isOpen,
 		ontoggle,
@@ -36,6 +37,9 @@
 		// What counts toward the section being complete: each one that holds something is one done.
 		values?: unknown[];
 		icon?: string;
+		// Its number in a round badge, in place of the icon: a stage of the Operations panel (Justin, 2026-11-19).
+		// None (a stage left out of the report) shows the icon.
+		number?: number;
 		tone?: string;
 		isOpen: boolean;
 		ontoggle: () => void;
@@ -80,6 +84,11 @@
 				draggable="false"
 				class="size-8 shrink-0 rounded-full bg-white object-cover ring-1 ring-slate-900/10"
 			/>
+		{:else if number}
+			<span
+				class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums {tone}"
+				>{number}</span
+			>
 		{:else if icon}
 			<span
 				class="flex size-8 shrink-0 items-center justify-center rounded-xl {isEnabled
