@@ -4,8 +4,12 @@ import {
 	fitOf,
 	flowOf,
 	heightOf,
+	markOf,
 	paginate,
+	partSpansOf,
 	photoPagesOf,
+	rangeOf,
+	spanOf,
 	stageNumbersOf,
 	targetOf
 } from './report-flow';
@@ -155,27 +159,135 @@ describe('photoPagesOf', () => {
 	it('titles only the first page of the panel; every later page is continued', () => {
 		// Two stages: ten photos at four to a page, then three.
 		expect(photoPagesOf([group(10), group(3)])).toEqual([
-			{ group: 0, part: 0, isContinued: false },
-			{ group: 0, part: 1, isContinued: true },
-			{ group: 0, part: 2, isContinued: true },
-			{ group: 1, part: 0, isContinued: true }
+			{ group: 0, part: 0, parts: 3, isContinued: false },
+			{ group: 0, part: 1, parts: 3, isContinued: true },
+			{ group: 0, part: 2, parts: 3, isContinued: true },
+			{ group: 1, part: 0, parts: 1, isContinued: true }
 		]);
 	});
 
 	it('gives a group with no photos yet one page', () => {
-		expect(photoPagesOf([group(0)])).toEqual([{ group: 0, part: 0, isContinued: false }]);
+		expect(photoPagesOf([group(0)])).toEqual([{ group: 0, part: 0, parts: 1, isContinued: false }]);
 	});
 
 	it('leaves out a group that is switched off, so the next one opens the panel', () => {
 		expect(photoPagesOf([group(6, 6, false), group(1), group(2, 1)])).toEqual([
-			{ group: 1, part: 0, isContinued: false },
-			{ group: 2, part: 0, isContinued: true },
-			{ group: 2, part: 1, isContinued: true }
+			{ group: 1, part: 0, parts: 1, isContinued: false },
+			{ group: 2, part: 0, parts: 2, isContinued: true },
+			{ group: 2, part: 1, parts: 2, isContinued: true }
+		]);
+	});
+
+	it('tells every page of a group how many pages the group has (#259)', () => {
+		// Michael's Loading Operations on MSC Susanna: twelve photos at six to a page.
+		expect(photoPagesOf([group(12, 6)]).map((page) => [page.part, page.parts])).toEqual([
+			[0, 2],
+			[1, 2]
 		]);
 	});
 
 	it('prints nothing for a panel with every group switched off', () => {
 		expect(photoPagesOf([group(4, 4, false)])).toEqual([]);
+	});
+});
+
+describe('markOf', () => {
+	// Justin, 2026-11-21: two pages both headed "Loading Operations" read the same.
+	it('says which of its own pages a group is on, when it has more than one', () => {
+		expect(markOf(0, 2)).toBe('(1 of 2)');
+		expect(markOf(1, 2)).toBe('(2 of 2)');
+		expect(markOf(2, 3)).toBe('(3 of 3)');
+	});
+
+	it('says nothing for a group on one page', () => {
+		expect(markOf(0, 1)).toBe('');
+	});
+});
+
+describe('the pages a contents entry covers', () => {
+	// The report Justin was looking at: Cover, Table of Contents, Project Report on 3 and 4, then Operations
+	// from 7 to 12 with Loading Operations on 8 and 9.
+	const pages = [
+		{ key: 'cover' },
+		{ key: 'contents' },
+		{ key: 'report' },
+		{ key: 'report' },
+		{ key: 'transport' },
+		{ key: 'timelog' },
+		{ key: 'photos', group: 0 },
+		{ key: 'photos', group: 1 },
+		{ key: 'photos', group: 1 },
+		{ key: 'photos', group: 3 },
+		{ key: 'photos', group: 4 },
+		{ key: 'photos', group: 5 },
+		{ key: 'disclaimer' }
+	];
+
+	it('runs from the first page of a section to its last', () => {
+		expect(spanOf(pages, (page) => page.key === 'report')).toEqual({ first: 3, last: 4 });
+		expect(spanOf(pages, (page) => page.key === 'photos')).toEqual({ first: 7, last: 12 });
+		expect(spanOf(pages, (page) => page.key === 'transport')).toEqual({ first: 5, last: 5 });
+	});
+
+	it('runs over the pages of one group of a photo panel', () => {
+		expect(spanOf(pages, (page) => page.key === 'photos' && page.group === 1)).toEqual({
+			first: 8,
+			last: 9
+		});
+	});
+
+	it('has none for something that is on no page', () => {
+		expect(spanOf(pages, (page) => page.key === 'damages')).toBeUndefined();
+	});
+
+	it('prints as one number on one page, and as where it starts and ends on more', () => {
+		expect(rangeOf({ first: 5, last: 5 })).toBe('5');
+		expect(rangeOf({ first: 3, last: 4 })).toBe('3-4');
+		expect(rangeOf({ first: 7, last: 12 })).toBe('7-12');
+	});
+});
+
+describe('partSpansOf', () => {
+	// A section's pages, each as its blocks: a heading by its words, anything else as nothing.
+	const INTRO = undefined;
+	const BLOCK = undefined;
+
+	it('gives each headed part the page its heading is on when the section is one page', () => {
+		const spans = partSpansOf([[INTRO, 'Personnel', BLOCK, 'Transport', BLOCK, 'Cargo', BLOCK]], 3);
+		expect(spans).toEqual({
+			Personnel: { first: 3, last: 3 },
+			Transport: { first: 3, last: 3 },
+			Cargo: { first: 3, last: 3 }
+		});
+	});
+
+	it('runs a part on to the last page it has anything on', () => {
+		// The cargo list starts on the first page and fills the next two.
+		const spans = partSpansOf(
+			[[INTRO, 'Personnel', BLOCK, 'Transport', BLOCK, 'Cargo', BLOCK], [BLOCK, BLOCK], [BLOCK]],
+			3
+		);
+		expect(spans.Personnel).toEqual({ first: 3, last: 3 });
+		expect(spans.Transport).toEqual({ first: 3, last: 3 });
+		expect(spans.Cargo).toEqual({ first: 3, last: 5 });
+	});
+
+	it('ends a part on the page before, when the next part opens a page', () => {
+		const spans = partSpansOf(
+			[
+				[INTRO, 'Personnel', BLOCK],
+				[BLOCK, 'Transport', BLOCK],
+				['Cargo', BLOCK]
+			],
+			3
+		);
+		expect(spans.Personnel).toEqual({ first: 3, last: 4 });
+		expect(spans.Transport).toEqual({ first: 4, last: 4 });
+		expect(spans.Cargo).toEqual({ first: 5, last: 5 });
+	});
+
+	it('has no part for a section with no heading', () => {
+		expect(partSpansOf([[BLOCK, BLOCK]], 3)).toEqual({});
 	});
 });
 
