@@ -1,28 +1,28 @@
-// The cover's route strip (#247): where its circles, lines and names go. The checks are the ones Justin's
-// prototype passed, run here on the layout itself with names of a known width.
+// The cover's route strip (#247, final design #256): where its circles, lines and vehicle names go. The checks are
+// the ones Justin's prototype passed, run here on the layout itself with names of a known width.
 import { describe, expect, it } from 'vite-plus/test';
 import {
 	AVAIL,
 	depthsOf,
 	layoutOf,
+	NODE_CLEAR,
+	OUTER,
+	OUTER_LONE,
 	PAD,
 	runOf,
 	SIZES,
 	slotOf,
-	solve,
-	type JoinType,
+	SPACE,
+	START_SCALE,
 	type MeasureType,
 	type RowType,
 	type StripLegType
 } from './route-strip';
 
-// A name is as wide as its letters: 4 for a facility's, 3.4 for a location's, 3.2 for a vehicle's.
-const LETTER = { name: 4, place: 3.4, vehicle: 3.2 };
-const TALL = { name: 10.5, place: 9.7, vehicle: 6.3 };
-const measure: MeasureType = (kind, text) => ({
-	width: text.length * LETTER[kind],
-	height: TALL[kind]
-});
+// A vehicle's name is as wide as its letters, 3.2 each, and 6.3 tall.
+const LETTER = 3.2;
+const TALL = 6.3;
+const measure: MeasureType = (text) => ({ width: text.length * LETTER, height: TALL });
 
 const FACILITIES: Record<string, { city: string; icon: string }> = {
 	'Bayport Container Terminal': { city: 'Pasadena, TX', icon: 'anchor' },
@@ -72,7 +72,7 @@ const TRIPS: Record<string, StripLegType[]> = {
 			['End', 'Port of New Orleans']
 		)
 	],
-	// Too long for the page at full size.
+	// Too long for the page at its starting size.
 	long: [
 		leg(
 			'Union Pacific 8141',
@@ -90,26 +90,34 @@ const TRIPS: Record<string, StripLegType[]> = {
 			'Antonov 124',
 			['Start', 'Port of New Orleans'],
 			['End', 'Louis Armstrong New Orleans Airport']
+		),
+		leg(
+			'Mammoet Actros',
+			['Start', 'Louis Armstrong New Orleans Airport'],
+			['Stop', 'Port of Beaumont'],
+			['End', 'Port of Galveston']
 		)
 	]
 };
-const ROWS = ['pair', 'stops', 'legs2', 'legs3', 'long'];
-const JOINS: JoinType[] = ['amber', 'pair', 'gradient'];
+const ROWS = ['one', 'pair', 'stops', 'legs2', 'legs3', 'long'];
 
-function rowOf(trip: string, join: JoinType = 'amber') {
-	const strip = layoutOf(runOf(TRIPS[trip]), measure, join);
-	if (strip.kind !== 'row') throw new Error(`${trip} is not a row`);
+function stripOf(legs: StripLegType[]) {
+	const strip = layoutOf(runOf(legs), measure);
+	if (strip.kind !== 'row') throw new Error('not a row');
 	return strip;
 }
+function rowOf(trip: string) {
+	return stripOf(TRIPS[trip]);
+}
 
-// The clear paper between each pair of neighbouring circles, edge to edge.
-function runsOf(row: RowType) {
-	return row.segs.map(
-		(seg) =>
-			row.x[seg.index + 1] -
-			row.x[seg.index] -
-			row.nodes[seg.index].half -
-			row.nodes[seg.index + 1].half
+// The clear paper from one node's edge to the next's.
+function clearOf(row: RowType, index: number) {
+	return row.x[index + 1] - row.x[index] - row.nodes[index].half - row.nodes[index + 1].half;
+}
+// The lines between two facilities: neither end is off the report.
+function innerOf(row: RowType) {
+	return row.segs.filter(
+		(seg) => !row.nodes[seg.index].isGhost && !row.nodes[seg.index + 1].isGhost
 	);
 }
 
@@ -154,7 +162,7 @@ describe('the trip as one run', () => {
 		]);
 	});
 
-	it('gives a facility with no point picked its place’s: the first the Start, the last the End', () => {
+	it('gives a facility with no point picked the one of its place: the first the Start, the last the End', () => {
 		// MSC Susanna's one facility had none picked and printed as a Stop, in orange (Justin, 2026-11-19).
 		const unpicked = (facility: string) => ({
 			point: '' as const,
@@ -179,113 +187,193 @@ describe('the trip as one run', () => {
 			leg('Mammoet Actros', ['End', 'Englewood Yard'])
 		]);
 		expect(run.nodes.map((node) => node.isGhost)).toEqual([false, true, true, false]);
-		expect(run.segs.map((seg) => seg.fade)).toEqual(['out', 'in']);
+		expect(run.segs.map((seg) => seg.index)).toEqual([0, 2]);
 	});
 });
 
 describe('what a trip prints as', () => {
 	it('is nothing before it has a facility', () => {
-		expect(layoutOf(runOf([]), measure, 'amber')).toEqual({ kind: 'none' });
+		expect(layoutOf(runOf([]), measure)).toEqual({ kind: 'none' });
 	});
 
-	it('is one facility with its Transport Mode, and no line, when there is only one', () => {
-		const strip = layoutOf(runOf(TRIPS.one), measure, 'amber');
-		expect(strip).toMatchObject({
-			kind: 'single',
-			node: { name: 'Bayport Container Terminal', points: ['Start'] },
-			transport: { name: 'MSC Susanna' }
-		});
+	it('runs a line in before the first facility and out after the last, with no vehicle on either', () => {
+		const { row } = rowOf('pair');
+		expect(row.nodes.map((node) => node.isGhost)).toEqual([true, false, false, true]);
+		expect(row.segs.map((seg) => [seg.index, seg.isBare])).toEqual([
+			[0, true],
+			[1, false],
+			[2, true]
+		]);
+		// One set length, from its far end to the facility's edge, whatever the vehicle names are.
+		expect(clearOf(row, 0)).toBeCloseTo(OUTER, 5);
+		expect(clearOf(row, 2)).toBeCloseTo(OUTER, 5);
+		expect(clearOf(rowOf('long').row, 0)).toBeCloseTo(OUTER, 5);
 	});
 
-	it.each(ROWS)('%s: every clear piece of line is the same length', (trip) => {
-		for (const join of JOINS) {
-			const { row } = rowOf(trip, join);
-			const runs = runsOf(row);
-			for (const run of runs) expect(run).toBeCloseTo(row.span, 5);
-			// The vehicle stands in the middle of its run, so the line either side of it is the same.
-			for (const seg of row.segs) {
+	it('fades the line in, and ends the line out solid with the only arrowhead on its tip', () => {
+		for (const trip of ROWS) {
+			const { row } = rowOf(trip);
+			expect(row.segs[0].fade).toBe('in');
+			expect(row.segs.map((seg) => seg.hasArrow)).toEqual(
+				row.segs.map((_, at) => at === row.segs.length - 1)
+			);
+			expect(row.segs.at(-1)?.fade).toBe('');
+			for (const seg of innerOf(row)) expect(seg.fade).toBe('');
+		}
+	});
+
+	it('draws one facility alone the same way: a line either side, its vehicle on both', () => {
+		const { row } = rowOf('one');
+		expect(row.nodes.map((node) => node.isGhost)).toEqual([true, false, true]);
+		expect(row.nodes[1]).toMatchObject({ name: 'Bayport Container Terminal', points: ['Start'] });
+		expect(row.segs.map((seg) => [seg.name, seg.isBare])).toEqual([
+			['MSC Susanna', false],
+			['MSC Susanna', false]
+		]);
+		// Its outer pieces, beyond each vehicle, are the shorter set length.
+		const [before, after] = row.segs;
+		expect(before.middle - PAD / 2 - row.x[0]).toBeCloseTo(OUTER_LONE, 5);
+		expect(row.x[2] - (after.middle + PAD / 2)).toBeCloseTo(OUTER_LONE, 5);
+		// And the facility stands on the centre line.
+		expect(row.x[1]).toBeCloseTo(row.width / 2, 5);
+	});
+
+	it('draws a lone End the same: a line either side, its vehicle on both', () => {
+		const { row } = stripOf([leg('MSC Susanna', ['End', 'Port of New Orleans'])]);
+		expect(row.nodes.map((node) => node.isGhost)).toEqual([true, false, true]);
+		expect(row.segs.map((seg) => seg.isBare)).toEqual([false, false]);
+	});
+
+	it.each(ROWS)(
+		'%s: every line between two facilities is the same length, each with its vehicle',
+		(trip) => {
+			const { row } = rowOf(trip);
+			for (const seg of innerOf(row)) {
+				expect(seg.isBare).toBe(false);
+				expect(clearOf(row, seg.index)).toBeCloseTo(row.gap, 5);
+				// The vehicle stands in the middle of its line, so the piece either side of it is the same.
 				const left = seg.middle - row.x[seg.index] - row.nodes[seg.index].half;
-				expect(left).toBeCloseTo(row.span / 2, 5);
+				expect(left).toBeCloseTo(row.gap / 2, 5);
 			}
-			expect((row.span - PAD) / 2).toBeGreaterThanOrEqual(14);
 		}
+	);
+
+	it('stands facilities apart by the longest vehicle name with 8 either side, and by nothing else', () => {
+		// What shows of a line runs from the clear paper at one facility to the clear paper at the next.
+		const shown = (row: RowType) => row.gap - 2 * NODE_CLEAR;
+		const longest = 'Union Pacific 8141'.length * LETTER;
+		expect(shown(rowOf('legs3').row)).toBeCloseTo(longest + 2 * SPACE, 5);
+		// Facility names and locations never set it: the same vehicles between other facilities stand as far apart.
+		const renamed = stripOf([
+			leg(
+				'Union Pacific 8141',
+				['Start', 'Port of Corpus Christi Authority'],
+				['End', 'Englewood Yard']
+			),
+			leg(
+				'Mammoet Actros',
+				['Start', 'Englewood Yard'],
+				['End', 'Louis Armstrong New Orleans Airport']
+			)
+		]);
+		expect(shown(renamed.row)).toBeCloseTo(longest + 2 * SPACE, 5);
 	});
 
-	it.each(ROWS)('%s: no two names in the same row of text touch', (trip) => {
-		for (const join of JOINS) {
-			const { row } = rowOf(trip, join);
-			for (let at = 0; at < row.nodes.length - 1; at += 1) {
-				const gap = row.x[at + 1] - row.x[at] - (row.nodes[at].width + row.nodes[at + 1].width) / 2;
-				expect(gap).toBeGreaterThanOrEqual(14 - 0.001);
-			}
-			for (let at = 0; at < row.segs.length - 1; at += 1) {
-				const gap =
-					row.segs[at + 1].middle -
-					row.segs[at].middle -
-					(row.segs[at].width + row.segs[at + 1].width) / 2;
-				expect(gap).toBeGreaterThanOrEqual(14 - 0.001);
-			}
-			// A vehicle's name fits between its two circles.
-			for (const seg of row.segs) expect(row.span).toBeGreaterThanOrEqual(seg.width + 12);
-		}
+	it('keeps a least distance for a short vehicle name: its icon with 14 of line either side', () => {
+		const { row } = stripOf([leg('Ox', ['Start', 'Port of Beaumont'], ['End', 'Englewood Yard'])]);
+		expect(row.gap).toBeCloseTo(PAD + 2 * (14 + NODE_CLEAR), 5);
+		const nameless = stripOf([leg('', ['Start', 'Port of Beaumont'], ['End', 'Englewood Yard'])]);
+		expect(nameless.row.gap).toBeCloseTo(PAD + 2 * (14 + NODE_CLEAR), 5);
+	});
+
+	it('does not stretch its lines to fill a page with room to spare', () => {
+		const { row, scale } = rowOf('pair');
+		expect(scale).toBe(START_SCALE);
+		expect(row.width * scale).toBeLessThan(AVAIL);
+		// The first build grew this trip's one line to 132.
+		expect(row.gap).toBeCloseTo(PAD + 2 * (14 + NODE_CLEAR), 5);
 	});
 
 	it.each(ROWS)(
 		'%s: an icon stands on the centre line, and the row is inside its width',
 		(trip) => {
-			for (const join of JOINS) {
-				const { row } = rowOf(trip, join);
-				const icons = [...row.x, ...row.segs.map((seg) => seg.middle)];
-				const nearest = Math.min(...icons.map((at) => Math.abs(at - row.width / 2)));
-				expect(nearest).toBeLessThan(0.3);
-				for (const [at, node] of row.nodes.entries()) {
-					expect(row.x[at] - Math.max(node.half, node.width / 2)).toBeGreaterThanOrEqual(-0.001);
-					expect(row.x[at] + Math.max(node.half, node.width / 2)).toBeLessThanOrEqual(
-						row.width + 0.001
-					);
-				}
+			const { row } = rowOf(trip);
+			const icons = [
+				...row.x.filter((_, at) => !row.nodes[at].isGhost),
+				...row.segs.filter((seg) => !seg.isBare).map((seg) => seg.middle)
+			];
+			const nearest = Math.min(...icons.map((at) => Math.abs(at - row.width / 2)));
+			expect(nearest).toBeLessThan(0.3);
+			for (const [at, node] of row.nodes.entries()) {
+				expect(row.x[at] - node.out).toBeGreaterThanOrEqual(-0.001);
+				expect(row.x[at] + node.out).toBeLessThanOrEqual(row.width + 0.001);
+			}
+			for (const seg of row.segs) {
+				expect(seg.middle - seg.width / 2).toBeGreaterThanOrEqual(-0.001);
+				expect(seg.middle + seg.width / 2).toBeLessThanOrEqual(row.width + 0.001);
 			}
 		}
 	);
 
-	it('grows every line by the same amount when there is room, up to 132', () => {
-		const { row, scale } = rowOf('pair');
-		expect(scale).toBe(1);
-		expect(row.span).toBe(132);
-		expect(row.span).toBeGreaterThan(row.need);
+	it.each(ROWS)('%s: no vehicle name touches the next one', (trip) => {
+		const { row } = rowOf(trip);
+		const named = row.segs.filter((seg) => !seg.isBare);
+		for (let at = 0; at < named.length - 1; at += 1) {
+			const gap =
+				named[at + 1].middle - named[at].middle - (named[at].width + named[at + 1].width) / 2;
+			expect(gap).toBeGreaterThan(0);
+		}
+		for (const seg of innerOf(row))
+			expect(row.gap - 2 * NODE_CLEAR).toBeGreaterThanOrEqual(seg.width + 2 * SPACE - 0.001);
 	});
 
-	it('scales a long trip down as one piece to the widest the strip prints', () => {
+	it('starts every trip at 125%, and scales one too wide for the page down as one piece', () => {
+		expect(rowOf('legs2').scale).toBe(START_SCALE);
 		const { row, scale } = rowOf('long');
-		expect(row.width).toBeGreaterThan(AVAIL);
-		expect(scale).toBeLessThan(1);
+		expect(row.width * START_SCALE).toBeGreaterThan(AVAIL);
+		expect(scale).toBeLessThan(START_SCALE);
 		expect(row.width * scale).toBeCloseTo(AVAIL, 5);
-		// At its tightest: nothing is added to the lines of a row that already does not fit.
-		expect(row.span).toBe(row.need);
 	});
 
-	it('draws a shared facility as two circles only when the join is Pair', () => {
-		const amber = solve(runOf(TRIPS.legs2), measure, 'amber');
-		const pair = solve(runOf(TRIPS.legs2), measure, 'pair');
-		expect(amber.nodes[1]).toMatchObject({ isPair: false, half: SIZES.dot / 2 });
-		expect(pair.nodes[1]).toMatchObject({ isPair: true, half: SIZES.dot * 0.92 });
+	it('keeps a broken trip in one row: a leg with only its Start, then one with only its End', () => {
+		const { row } = stripOf([
+			leg('MSC Susanna', ['Start', 'Port of Beaumont']),
+			leg('Mammoet Actros', ['End', 'Englewood Yard'])
+		]);
+		expect(row.nodes.map((node) => node.isGhost)).toEqual([true, false, true, true, false, true]);
+		for (const at of row.x) expect(Number.isFinite(at)).toBe(true);
+		for (let at = 1; at < row.x.length; at += 1)
+			expect(row.x[at]).toBeGreaterThanOrEqual(row.x[at - 1]);
+		// The line out of the first leg fades where the trip breaks; only the last line carries the arrowhead.
+		expect(row.segs.map((seg) => [seg.fade, seg.hasArrow])).toEqual([
+			['in', false],
+			['out', false],
+			['in', false],
+			['', true]
+		]);
+	});
+
+	it('stands two facilities with no line between them as far apart as any other two', () => {
+		const { row } = stripOf([
+			leg('MSC Susanna', ['Start', 'Port of Beaumont'], ['End', 'Englewood Yard']),
+			leg('Mammoet Actros', ['Start', 'Port of Galveston'], ['End', 'Port of New Orleans'])
+		]);
+		expect(clearOf(row, 2)).toBeCloseTo(row.gap, 5);
+		expect(row.segs.some((seg) => seg.index === 2)).toBe(false);
 	});
 });
 
 describe('how tall the strip is', () => {
-	it('puts the facility names under the circles and under the vehicle names', () => {
-		const { row } = rowOf('pair');
-		const depths = depthsOf(row, measure);
-		expect(depths.line).toBe(20);
-		expect(depths.vehicle).toBe(31);
-		expect(depths.facility).toBeGreaterThanOrEqual(48);
-		expect(depths.facility).toBeGreaterThanOrEqual(depths.vehicle + TALL.vehicle + 8);
-		expect(depths.height).toBeCloseTo(depths.facility + TALL.name + 1 + TALL.place, 5);
+	it('makes room above the circles for the curved location, and puts a vehicle name under its icon', () => {
+		const depths = depthsOf(measure);
+		// The lettering reaches 8.1 outside the circle's border, with 1 to spare.
+		expect(depths.line).toBeCloseTo(9.1 + SIZES.dot / 2, 5);
+		expect(depths.vehicle).toBeCloseTo(depths.line + SIZES.mode / 2 + 4, 5);
+		expect(depths.height).toBeGreaterThanOrEqual(depths.line + SIZES.dot / 2);
+		expect(depths.height).toBeGreaterThanOrEqual(depths.vehicle + TALL);
 	});
 
-	it('is given the same room whatever the trip, enough for a row and for one facility', () => {
-		const room = slotOf(measure);
-		expect(room).toBeGreaterThanOrEqual(depthsOf(rowOf('long').row, measure).height);
-		expect(room).toBeGreaterThanOrEqual(SIZES.dot + 9 + TALL.name + TALL.place + 1);
+	it('is given the same room whatever the trip: a row at its starting size', () => {
+		expect(slotOf(measure)).toBeCloseTo(depthsOf(measure).height * START_SCALE, 5);
 	});
 });

@@ -42,10 +42,6 @@ export const LOOKS: Record<string, string> = {
 	settings: 'A'
 };
 
-/** What the cover's route strip draws where two legs meet at one facility (#247). Justin picked Amber on
- * 2026-11-19 and may switch: 'amber' (as a Stop), 'pair' (the End and the Start side by side) or 'gradient'. */
-export const ROUTE_JOIN: 'amber' | 'pair' | 'gradient' = 'amber';
-
 // The letter a part shows; a part not listed has only the one look, A.
 export function lookOf(id: string) {
 	return LOOKS[id] ?? 'A';

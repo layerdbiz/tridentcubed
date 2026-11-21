@@ -292,8 +292,8 @@
 		)
 	);
 
-	// Report Cover C (#247): the trip as the strip reads it, each leg's Transport Mode by name and icon and each
-	// facility by name, city and its kind's icon.
+	// Report Cover C (#247, final design #256): the trip as the strip reads it, each leg's Transport Mode by name and
+	// icon and each facility by name, city and its kind's icon.
 	const isCoverC = $derived(look.variant('cover') === 'C');
 	const stripLegs = $derived(
 		legs.map((leg): StripLegType => {
@@ -326,28 +326,38 @@
 			.filter(Boolean)
 			.toSorted();
 		const last = days.at(-1) ?? '';
+		// The people who were there but are not on the team, as a count after the team's faces.
+		const others = personnel.reduce((count, item) => count + item.people.length, 0);
 		return [
 			{
 				icon: PAGE_ICONS.customers,
 				label: 'Customer',
 				value: company,
-				note: reference ? `(${reference})` : ''
+				note: reference ? `(${reference})` : '',
+				customer: company
 			},
-			{ icon: 'icon-[mdi--domain]', label: 'Company', value: organization.name },
-			{ icon: PAGE_ICONS.team, label: 'Team Members', value: listOf(people), names: people },
+			// The company's logo is the dark mark the installed app wears.
+			{ icon: 'icon-[mdi--domain]', label: 'Company', value: organization.name, logo: ICON_192 },
+			{
+				icon: PAGE_ICONS.team,
+				label: 'Team',
+				value: listOf(people),
+				names: people,
+				more: others ? `+${others} ${others === 1 ? 'other' : 'others'}` : ''
+			},
 			{
 				icon: 'icon-[mdi--package-variant-closed]',
-				label: 'Project Type',
+				label: 'Type',
 				value: detail('Project Type') ?? ''
 			},
 			{
 				icon: 'icon-[mdi--calendar-blank-outline]',
-				label: 'Date Created',
+				label: 'Created',
 				value: slashesOf(createdDayOf(look.project))
 			},
 			{
 				icon: 'icon-[mdi--check-circle-outline]',
-				label: 'Date Completed',
+				label: 'Completed',
 				value:
 					days.length > 1 && days[0] !== last
 						? `${slashesOf(days[0])} — ${slashesOf(last)}`
@@ -366,7 +376,7 @@
 			80,
 			Math.min(
 				168,
-				H - coverReserved - 44 - (32 + coverTitleHeight + 12 + 28 + 26 + coverStripHeight)
+				H - coverReserved - 44 - (32 + coverTitleHeight + 9 + 28 + 14 + coverStripHeight)
 			)
 		)
 	);
@@ -1616,7 +1626,7 @@
 					data-page={item.key}
 				>
 					{#if item.kind === 'cover' && isCoverC}
-						<!-- Report Cover C (#247; Justin, 2026-11-19): the trip drawn as a strip under the subtitle, the login
+						<!-- Report Cover C (#247; final design #256, Justin, 2026-11-21): the trip drawn as a strip under the subtitle, the login
 						     page's wave, and a list without Transport Mode and Facility. The top part stands on a fixed line
 						     above the wave and the strip has the same room whatever the trip, so the logo, title and subtitle
 						     are in the same place for every trip. -->
@@ -1639,9 +1649,9 @@
 							>
 								{detail('Title') || 'Untitled project'}
 							</p>
-							<p class="mt-3 min-h-7 text-lg leading-7 text-slate-500">{detail('Subtitle')}</p>
+							<p class="mt-[9px] min-h-7 text-lg leading-7 text-slate-500">{detail('Subtitle')}</p>
 							<div
-								class="mt-[26px] flex-none self-stretch"
+								class="mt-3.5 flex-none self-stretch"
 								bind:offsetHeight={coverStripHeight}
 							>
 								<RouteStrip legs={stripLegs} />
