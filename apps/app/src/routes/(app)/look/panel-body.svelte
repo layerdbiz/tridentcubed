@@ -71,7 +71,7 @@
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
-	import { addGroup as addPhotoGroup, addPhotos, hasFiles, uploadOf } from './photos';
+	import { addGroup as addPhotoGroup, addPhotos, hasFiles, movePhoto, uploadOf } from './photos';
 	import { contactsOf } from './records.data';
 	import { stageNumbersOf } from './report-flow';
 	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
@@ -493,6 +493,18 @@
 	function move<T>(list: T[], from: number, to: number) {
 		const [item] = list.splice(from, 1);
 		list.splice(to, 0, item);
+		save();
+	}
+
+	// A photo dragged out of its group and let go on another one (Justin, 2026-11-21), in this panel or in another
+	// photo panel that is open: it joins that group where it was dropped, or at its end, and is saved like any change.
+	const PHOTO_ZONE = 'photos';
+	function dropPhoto(group: PanelType['groups'][number], from: number, id: string, to?: number) {
+		if (!movePhoto(look.panels, group.id, from, id, to)) return;
+		const target = look.panels.flatMap((item) => item.groups ?? []).find((item) => item.id === id);
+		if (panel.groups.some((item) => item.id === id) && !openGroups.includes(id))
+			openGroups = [...openGroups, id];
+		look.say(`Photo moved to ${target?.title || 'the other group'}`);
 		save();
 	}
 
@@ -1232,9 +1244,14 @@
 		>
 			{#each panel.groups as group, groupIndex (group.id)}
 				<div
-					class="rounded-2xl transition {dropping === group.id ? 'ring-2 ring-primary' : ''}"
+					class="rounded-2xl transition data-[drop]:ring-2 data-[drop]:ring-primary {dropping ===
+					group.id
+						? 'ring-2 ring-primary'
+						: ''}"
 					role="group"
 					aria-label={group.title || `Photo ${word}`}
+					data-zone={PHOTO_ZONE}
+					data-zone-id={group.id}
 					animate:flip={{ duration: 200 }}
 					ondragover={(event) => overFiles(event, group.id)}
 					ondragleave={() => (dropping = '')}
@@ -1308,7 +1325,11 @@
 						</div>
 						<div
 							class="grid grid-cols-3 gap-2"
-							{@attach sortable(`photos-${group.id}`, (from, to) => move(group.photos, from, to))}
+							{@attach sortable(`photos-${group.id}`, (from, to) => move(group.photos, from, to), {
+								name: PHOTO_ZONE,
+								items: 'photos-',
+								ondrop: (from, id, to) => dropPhoto(group, from, id, to)
+							})}
 						>
 							{#each group.photos as photo, photoIndex (photo.id)}
 								{@const upload = uploadOf(photo)}

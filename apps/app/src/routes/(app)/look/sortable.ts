@@ -10,7 +10,21 @@
 // past its middle, and never while it is still sliding, so nothing swaps back. On release the copy settles into the
 // place and goes. Nothing is added to or taken from the item's own classes (taking `relative` off a photo is what
 // lost its ⋮ after a drag).
+// Zones (Justin, 2026-11-21: a photo dragged "from any photo group panel ... into another"). Inside its own list an
+// item still gives way as it is dragged. Over another zone (an element carrying data-zone="<name>" and
+// data-zone-id) nothing moves yet: the zone is marked with data-drop while the finger is over it, and on release
+// the item is handed to it, at the item the finger is on or at its end. Nothing moves on the way there, so passing
+// over the zones between never drops the item into them.
 import type { Attachment } from 'svelte/attachments';
+
+export type ZonesType = {
+	/** What the zones are called: every element with this data-zone takes a drop. */
+	name: string;
+	/** What the data-sort of an item starts with in any of the zones, to find the one a drop lands on. */
+	items: string;
+	/** A drop on another zone: where the item was in its own list, the id of the zone, and the place there. */
+	ondrop: (from: number, zoneId: string, to: number | undefined) => void;
+};
 
 const HOLD_MS = 320;
 const SLOP = 8;
@@ -32,11 +46,14 @@ function scrollerOf(node: HTMLElement) {
 
 export function sortable(
 	key: string,
-	onmove: (from: number, to: number) => boolean | void
+	onmove: (from: number, to: number) => boolean | void,
+	zones?: ZonesType
 ): Attachment<HTMLElement> {
 	return (list) => {
 		let from = -1;
 		let item: HTMLElement | undefined;
+		// The other zone the finger is over, which takes the item on release.
+		let target: HTMLElement | undefined;
 		// The copy that follows the finger, and where on it the finger took hold.
 		let ghost: HTMLElement | undefined;
 		let grab = { x: 0, y: 0 };
@@ -77,6 +94,31 @@ export function sortable(
 			if (onmove(from, to) !== false) from = to;
 		}
 
+		// Marks the other zone the finger is over, and unmarks the one it left.
+		function aim() {
+			if (!zones) return;
+			const selector = `[data-zone="${zones.name}"]`;
+			const hit = document.elementFromPoint(point.x, point.y)?.closest<HTMLElement>(selector);
+			const next =
+				hit && hit !== list.closest(selector) && !hit.closest('[data-frozen]') ? hit : undefined;
+			if (next === target) return;
+			target?.removeAttribute('data-drop');
+			next?.setAttribute('data-drop', '');
+			target = next;
+		}
+
+		// Where in the zone a drop lands: before the item the finger is on, or after it once past its middle.
+		function placeIn(zone: HTMLElement) {
+			if (!zones) return undefined;
+			const over = document.elementFromPoint(point.x, point.y)?.closest<HTMLElement>('[data-sort]');
+			if (!over || !zone.contains(over) || !over.dataset.sort?.startsWith(zones.items))
+				return undefined;
+			const index = Number(over.dataset.index);
+			if (Number.isNaN(index)) return undefined;
+			const box = over.getBoundingClientRect();
+			return index + (point.x > box.left + box.width / 2 ? 1 : 0);
+		}
+
 		function follow() {
 			if (!isDragging) return;
 			if (scroller) {
@@ -89,7 +131,8 @@ export function sortable(
 							: 0;
 				if (step) {
 					scroller.scrollTop += step;
-					reorder();
+					aim();
+					if (!target) reorder();
 				}
 			}
 			frame = requestAnimationFrame(follow);
@@ -140,6 +183,21 @@ export function sortable(
 			}, SETTLE_MS);
 		}
 
+		// Handed to another zone: the copy shrinks away where it was let go, since its item leaves this list.
+		function hand(zone: HTMLElement) {
+			const [node, copy] = [item, ghost];
+			ghost = undefined;
+			const to = placeIn(zone);
+			if (copy) {
+				copy.style.transition = `transform ${SETTLE_MS}ms ease-in, opacity ${SETTLE_MS}ms ease-in`;
+				copy.style.transform = `translate(${point.x - grab.x}px, ${point.y - grab.y}px) scale(0.5)`;
+				copy.style.opacity = '0';
+				setTimeout(() => copy.remove(), SETTLE_MS);
+			}
+			if (node) node.style.opacity = '';
+			zones?.ondrop(from, zone.dataset.zoneId ?? '', to);
+		}
+
 		function blockScroll(event: TouchEvent) {
 			if (isDragging) event.preventDefault();
 		}
@@ -164,13 +222,19 @@ export function sortable(
 				else return end();
 			}
 			place();
-			reorder();
+			aim();
+			if (!target) reorder();
 		}
 
-		function end() {
+		function end(event?: Event) {
 			clearTimeout(hold);
 			cancelAnimationFrame(frame);
 			if (isDragging) quietUntil = performance.now() + 400;
+			const zone = target;
+			target?.removeAttribute('data-drop');
+			target = undefined;
+			// Only a release hands the item over: a drag that is cancelled leaves it where it was.
+			if (isDragging && zone && event?.type === 'pointerup') hand(zone);
 			drop();
 			isDragging = false;
 			item = undefined;

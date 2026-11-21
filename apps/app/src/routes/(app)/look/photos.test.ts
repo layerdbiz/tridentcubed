@@ -22,7 +22,7 @@ import { createTestSignIn } from '#lib/server/testing.js';
 import { draftPanel, type GroupType, type PanelType } from './look.data';
 import { LookState } from './look.state.svelte';
 import { isOfProject, takeProject, takeReads, takeRows, toRows } from './mapper';
-import { addGroup, addPhotos, uploadOf } from './photos';
+import { addGroup, addPhotos, movePhoto, uploadOf } from './photos';
 
 type TestType = Awaited<ReturnType<typeof createTestSignIn>>;
 type DeviceType = { look: LookState; confirmed: RowType[]; actor: ActorType };
@@ -341,6 +341,49 @@ describe('order and removal', () => {
 			['Third', []],
 			['First', ['C', 'B']]
 		]);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+	});
+
+	it('moves a photo dragged into another group, to where it was dropped or to the end, for another member', async () => {
+		// Michael's second "Loading Operations" stage on MSC Susanna (Justin, 2026-11-21): its photos belong in the
+		// first, and a photo could only be dragged about inside its own group.
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const discharge = panelOf(mine.look, 'discharge');
+		const damages = panelOf(mine.look, 'damages');
+		discharge.groups.push(
+			groupOf({ title: 'Loading', photos: [stored('A'), stored('B')] }),
+			groupOf({ title: 'Loading again', photos: [stored('C'), stored('D'), stored('E')] })
+		);
+		damages.isEnabled = true;
+		damages.groups.push(groupOf({ title: 'Dent', photos: [stored('F')] }));
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const [first, second] = discharge.groups;
+		const panels = mine.look.panels;
+
+		// D is dropped on B and takes its place; E is dropped on the group itself and goes to its end.
+		expect(movePhoto(panels, second.id, 1, first.id, 1)).toBe(true);
+		expect(movePhoto(panels, second.id, 1, first.id)).toBe(true);
+		// A drop on its own group, or from a place that holds no photo, moves nothing.
+		expect(movePhoto(panels, first.id, 0, first.id)).toBe(false);
+		expect(movePhoto(panels, second.id, 9, first.id)).toBe(false);
+		// A group of another photo panel takes one too.
+		expect(movePhoto(panels, damages.groups[0].id, 0, second.id, 0)).toBe(true);
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+
+		expect(
+			panelOf(theirs.look, 'discharge').groups.map((group) => [
+				group.title,
+				group.photos.map((photo) => photo.description)
+			])
+		).toEqual([
+			['Loading', ['A', 'D', 'B', 'E']],
+			['Loading again', ['F', 'C']]
+		]);
+		expect(shown(panelOf(theirs.look, 'discharge'))).toEqual(shown(discharge));
+		expect(panelOf(theirs.look, 'damages').groups[0].photos).toEqual([]);
 		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
 	});
 });

@@ -31,6 +31,29 @@ export function addGroup(panel: PanelType): GroupType {
 	return panel.groups.at(-1)!;
 }
 
+/**
+ * Moves a photo out of one photo group into another (Justin, 2026-11-21), in the same panel or in another of the
+ * project's photo panels: to the place `to` there, or to its end. Says whether it moved: a drop on its own group,
+ * or from a place that holds no photo, moves nothing. A photo still on its way to storage moves like any other;
+ * its upload finishes where it now is.
+ */
+export function movePhoto(
+	panels: PanelType[],
+	fromId: string,
+	from: number,
+	toId: string,
+	to?: number
+) {
+	const groups = panels.flatMap((panel) => panel.groups ?? []);
+	const source = groups.find((group) => group.id === fromId);
+	const target = groups.find((group) => group.id === toId);
+	if (!source || !target || source === target || !source.photos[from]) return false;
+	const [photo] = source.photos.splice(from, 1);
+	const place = Math.min(Math.max(to ?? target.photos.length, 0), target.photos.length);
+	target.photos.splice(place, 0, photo);
+	return true;
+}
+
 export type AddPhotosType = {
 	/** The group they join; none is the panel's last group, or a first one made for them. */
 	group?: GroupType;
