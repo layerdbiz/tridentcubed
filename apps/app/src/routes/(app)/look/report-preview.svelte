@@ -65,8 +65,12 @@
 		flowOf,
 		fitOf,
 		heightOf,
+		markOf,
 		paginate,
+		partSpansOf,
 		photoPagesOf,
+		rangeOf,
+		spanOf,
 		stageNumbersOf,
 		targetOf
 	} from './report-flow';
@@ -110,6 +114,7 @@
 		panel?: PanelType;
 		group?: number;
 		part?: number;
+		parts?: number;
 		// A page of a section that flows: the blocks that landed on it, and whether the signature sits at its foot.
 		blocks?: BlockType[];
 		hasSignature?: boolean;
@@ -144,7 +149,12 @@
 		panel?: PanelType;
 		blocks: BlockType[];
 	};
-	type EntryType = { title: string; key: string; subs: { title: string; page: number }[] };
+	type EntryType = {
+		title: string;
+		key: string;
+		page: string;
+		subs: { title: string; page: string }[];
+	};
 
 	const W = 595;
 	const H = 842;
@@ -591,14 +601,15 @@
 			// A photo panel's title stands on every one of its pages: alone on the first, "(continued)" on each after
 			// it, with the group's own name under it (#215). A group switched off prints nothing.
 			if (panel.kind === 'photos')
-				for (const { group, part, isContinued } of photoPagesOf(panel.groups))
+				for (const { group, part, parts, isContinued } of photoPagesOf(panel.groups))
 					list.push({
 						key: `photos-${panel.id}`,
 						title: isContinued ? `${panel.name} (continued)` : panel.name,
 						kind: 'photos',
 						panel,
 						group,
-						part
+						part,
+						parts
 					});
 		}
 		const disclaimer = flows.find((flow) => flow.key === 'disclaimer');
@@ -614,10 +625,11 @@
 		return pages.findIndex((page) => page.key === item.key) === index;
 	}
 
-	// The table of contents: every section, Cover and Table of Contents included, each at the page it starts on and
+	// The table of contents: every section, Cover and Table of Contents included, each at the pages it covers and
 	// numbered like an ordered list (1. 2. 3. 3.1). The Project Report lists its parts (Justin's run 8 notes 16 and
 	// 17, run 9 note 4), and a photo panel the groups that are switched on, in report order: the Operations panel's
-	// stages (#215).
+	// stages (#215). A section, a part or a group that runs over pages shows where it starts and ends, 7-12 (#259;
+	// Justin, 2026-11-21); on one page, that page.
 	const REPORT_PARTS = ['Personnel in Attendance', 'Transport Mode', 'Cargo Description'];
 	const contents = $derived(
 		pages
@@ -625,9 +637,10 @@
 			.map((item): EntryType => ({
 				title: item.title,
 				key: item.key,
+				page: pagesOfKey(item.key),
 				subs:
 					item.kind === 'report'
-						? REPORT_PARTS.map((part) => ({ title: part, page: partPage(part, item.key) }))
+						? partSubs(item.key)
 						: item.kind === 'photos'
 							? groupSubs(item.key)
 							: []
@@ -636,28 +649,39 @@
 	function pageOf(key: string) {
 		return pages.findIndex((other) => other.key === key) + 1;
 	}
+	// The pages a section covers, as the contents print them.
+	function pagesOfKey(key: string) {
+		const span = spanOf(pages, (page) => page.key === key);
+		return span ? rangeOf(span) : '';
+	}
 
-	// A photo panel's groups as the contents list them: each at the page it opens on.
+	// A photo panel's groups as the contents list them: each at the pages its photos take.
 	function groupSubs(key: string) {
-		return pages.flatMap((page, at) =>
-			page.key === key && page.panel && !page.part
-				? [{ title: groupTitle(page.panel, page.group ?? 0), page: at + 1 }]
-				: []
-		);
+		return pages.flatMap((page) => {
+			if (page.key !== key || !page.panel || page.part) return [];
+			const span = spanOf(pages, (other) => other.key === key && other.group === page.group);
+			return span ? [{ title: groupTitle(page.panel, page.group ?? 0), page: rangeOf(span) }] : [];
+		});
 	}
 
 	function groupTitle(panel: PanelType, index: number) {
 		return panel.groups[index]?.title.trim() || `Untitled ${groupWordOf(panel)}`;
 	}
 
-	// The page a part of the Project Report is on: where its heading landed, once the report runs over a page.
-	function partPage(part: string, key: string) {
-		const at = pages.findIndex(
-			(page) =>
-				page.key === key &&
-				page.blocks?.some((block) => block.kind === 'heading' && block.text === part)
+	// The parts of the Project Report as the contents list them: each from the page its heading landed on to the
+	// last page it has anything on, once the report runs over a page. Before it is measured, the report's own page.
+	function partSubs(key: string) {
+		const own = pages.filter((page) => page.key === key);
+		const spans = partSpansOf(
+			own.map((page) =>
+				(page.blocks ?? []).map((block) => (block.kind === 'heading' ? block.text : undefined))
+			),
+			pageOf(key)
 		);
-		return at < 0 ? pageOf(key) : at + 1;
+		return REPORT_PARTS.map((part) => ({
+			title: part,
+			page: rangeOf(spans[part] ?? { first: pageOf(key), last: pageOf(key) })
+		}));
 	}
 
 	// How tall each photo prints for each photos-per-page choice: one or two fill the width; four, six and eight sit in
@@ -1736,7 +1760,7 @@
 							{:else if item.blocks}
 								{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
 							{:else if item.kind === 'contents'}
-								{#snippet line(number: string, title: string, page: number, isSub: boolean)}
+								{#snippet line(number: string, title: string, page: string, isSub: boolean)}
 									<li
 										class="flex items-baseline gap-2 {isSub
 											? 'py-[3px] pl-8 text-[11px] text-slate-600'
@@ -1749,12 +1773,14 @@
 										<span
 											class="h-[3px] min-w-4 flex-1 bg-[radial-gradient(circle,var(--color-slate-400)_0.8px,transparent_1.1px)] bg-size-[7px_3px] bg-bottom bg-repeat-x"
 										></span>
-										<span class="w-5 text-right text-slate-950 tabular-nums">{page}</span>
+										<span class="min-w-5 shrink-0 text-right text-slate-950 tabular-nums"
+											>{page}</span
+										>
 									</li>
 								{/snippet}
 								<ol class="mt-4">
 									{#each contents as entry, entryIndex (entry.key)}
-										{@render line(`${entryIndex + 1}.`, entry.title, pageOf(entry.key), false)}
+										{@render line(`${entryIndex + 1}.`, entry.title, entry.page, false)}
 										{#each entry.subs as sub, subIndex (subIndex)}
 											{@render line(`${entryIndex + 1}.${subIndex + 1}`, sub.title, sub.page, true)}
 										{/each}
@@ -2058,6 +2084,8 @@
 										>
 									{/if}
 									{groupTitle(item.panel, item.group ?? 0)}
+									<!-- A group whose photos run over pages says which of its own pages this is (#259). -->
+									{markOf(item.part ?? 0, item.parts ?? 1)}
 								</p>
 								{#if group.description && !item.part}
 									<p class="mt-1 text-[11px] text-slate-500">{group.description}</p>

@@ -54,7 +54,8 @@ export function heightOf(heights: number[], page: number[]) {
 // A photo panel as pages (#215; Justin, 2026-11-18): each group that is switched on starts a page and runs on over
 // as many as its photos need at its photos-per-page, and a group switched off prints nothing. Only the panel's very
 // first page stands under its title alone; every page after it is a continued one, whichever group it belongs to.
-export type PhotoPageType = { group: number; part: number; isContinued: boolean };
+// Each page knows which of its group's pages it is (`part`, from 0) and how many the group has (`parts`, #259).
+export type PhotoPageType = { group: number; part: number; parts: number; isContinued: boolean };
 
 export function photoPagesOf(
 	groups: { isEnabled: boolean; layout: number; photos: unknown[] }[]
@@ -64,9 +65,51 @@ export function photoPagesOf(
 		if (!isEnabled) continue;
 		const parts = Math.max(1, Math.ceil(photos.length / layout));
 		for (let part = 0; part < parts; part += 1)
-			pages.push({ group, part, isContinued: pages.length > 0 });
+			pages.push({ group, part, parts, isContinued: pages.length > 0 });
 	}
 	return pages;
+}
+
+// What a photo group says after its title when its photos run over pages (#259; Justin, 2026-11-21: two pages
+// both headed "Loading Operations" read the same): which of its own pages this is, "(1 of 2)". Nothing for a
+// group on one page. It leaves out the word "page", which the footer already uses for the whole report.
+export function markOf(part: number, parts: number) {
+	return parts > 1 ? `(${part + 1} of ${parts})` : '';
+}
+
+// The pages something covers in the report, counted from 1 (#259; Justin, 2026-11-21: "project report starts on
+// page 3, but it extends all the way to page 4 ... it probably should say 3-4").
+export type SpanType = { first: number; last: number };
+
+/** The first and the last page `has` picks; none when it picks no page. */
+export function spanOf<PageType>(
+	pages: PageType[],
+	has: (page: PageType) => boolean
+): SpanType | undefined {
+	const first = pages.findIndex(has);
+	return first < 0 ? undefined : { first: first + 1, last: pages.findLastIndex(has) + 1 };
+}
+
+/** A span as the Table of Contents prints it: one number on one page, where it starts and ends on more. */
+export function rangeOf(span: SpanType) {
+	return span.last > span.first ? `${span.first}-${span.last}` : `${span.first}`;
+}
+
+/**
+ * The pages each headed part of a flowing section covers, by its heading. `pages` is the section's pages in order,
+ * each as its blocks: a heading by its words, any other block as nothing. `first` is the page the section starts
+ * on. A part runs from its heading's page to the last page it has a block on, so one whose next part opens a page
+ * ends on the page before.
+ */
+export function partSpansOf(pages: (string | undefined)[][], first: number) {
+	const spans: Record<string, SpanType> = {};
+	let part: SpanType | undefined;
+	for (const [at, blocks] of pages.entries())
+		for (const heading of blocks) {
+			if (heading) part = spans[heading] = { first: first + at, last: first + at };
+			else if (part) part.last = first + at;
+		}
+	return spans;
 }
 
 // The number each stage of the Operations panel wears, in the panel and before its title in the Preview (Justin,
