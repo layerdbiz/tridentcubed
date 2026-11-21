@@ -113,8 +113,8 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   `vite-plus/test`. Lint takes over from this prose where Oxlint can express a
   rule.
 - **Checks before a PR.** CI (`.github/workflows/ci.yml`) runs the gate and
-  the two Vercel-shaped builds on every PR into `dev`, so no thread re-runs
-  them by hand. The gate is one local command for a pre-push run,
+  the two Vercel-shaped builds on every push to a branch, so they are already
+  running when the PR opens and no thread re-runs them by hand. The gate is one local command for a pre-push run,
   `pnpm check`; the root `package.json` `check` script is the one list of
   what it runs (format and lint, svelte-check and tsc, barrels with a
   zero-diff check, tests). CI runs the same steps in jobs side by side:

@@ -45,3 +45,29 @@ describe("CI's test jobs", () => {
 		);
 	});
 });
+
+// The checks used to start on pull request events. GitHub makes a trial merge of the branch into dev before it
+// creates those runs, and on 2026-11-21 that step stalled: #267's checks were created 1 min 56 s after it opened
+// (#271). A run started by a push does not wait for the trial merge, and it starts before the pull request exists.
+describe('when CI starts', () => {
+	/** The lines of the workflow's `on:` block, without its indent. */
+	const triggers = /^on:\n((?:[ \t]+.*\n|\n)+)/m.exec(workflow)?.[1] ?? '';
+
+	it('is a push to a branch, never a pull request event', () => {
+		expect(triggers).toMatch(/^ {2}push:$/m);
+		expect(triggers).not.toMatch(/pull_request/);
+	});
+
+	it('leaves out the branches nobody pushes work to', () => {
+		const branches = /^ {4}branches: \[(.*)\]$/m.exec(triggers)?.[1].split(', ') ?? [];
+
+		expect(branches).toEqual(["'**'", "'!main'", "'!persist'"]);
+	});
+
+	it('lets a new push cancel the running checks on every branch but dev', () => {
+		expect(workflow).toMatch(/^ {2}group: ci-\$\{\{ github\.ref \}\}$/m);
+		expect(workflow).toMatch(
+			/^ {2}cancel-in-progress: \$\{\{ github\.ref != 'refs\/heads\/dev' \}\}$/m
+		);
+	});
+});
