@@ -117,7 +117,8 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   them by hand. The gate is one local command for a pre-push run,
   `pnpm check`; the root `package.json` `check` script is the one list of
   what it runs (format and lint, svelte-check and tsc, barrels with a
-  zero-diff check, tests). It runs on a fresh clone with no build step, and
+  zero-diff check, tests). CI runs the same steps in jobs side by side:
+  `check:static` in one, the tests in others. It runs on a fresh clone with no build step, and
   its barrels check reads red on a tree with regenerated barrels not yet
   committed. `vp check --fix` formats and applies safe lint fixes.
 - **One config file per app.** SvelteKit 3 reads only `vite.config.ts`; no
