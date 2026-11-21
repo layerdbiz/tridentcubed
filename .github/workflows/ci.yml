@@ -1,10 +1,15 @@
 # Runs the gate from AGENTS.md "Checks before a PR" and the two Vercel-shaped builds on every pull
 # request into dev and on every push to dev (#130), so no thread re-runs them by hand.
 #
-# gate: `pnpm check`, the same command a thread runs locally; what it runs is the root package.json's
-# `check` script, nowhere else. No build step comes first: the apps alias `@layerd/ui` to the UI
-# source (packages/config/vite), so `@layerd/ui/ui.css` resolves without the styles build, and dev
-# stays green on a fresh clone (#129).
+# The gate is the root package.json's `check` script, the same command a thread runs locally
+# (`pnpm check`). Here its two halves run side by side instead of one after the other (#254), since
+# the tests were 65 to 107 seconds of a 2 to 3 minute run:
+# - gate: `pnpm run check:static`, which is format and lint, type checks and the barrels check.
+# - test: the packages `pnpm test` covers, the app's tests split over two runners because each of
+#   its test files starts a database of its own. apps/site/src/ci.test.ts fails when a package
+#   `pnpm test` covers is missing here.
+# No build step comes first: the apps alias `@layerd/ui` to the UI source (packages/config/vite), so
+# `@layerd/ui/ui.css` resolves without the styles build, and dev stays green on a fresh clone (#129).
 #
 # build (app) and build (site): `pnpm build` inside the app folder from a clean checkout, the way
 # Vercel builds each project, with no `turbo ^build` before it. The 2026-10-03 retro's #86 passed a
@@ -42,7 +47,30 @@ jobs:
           node-version-file: package.json
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
+      - run: pnpm run check:static
+
+  test:
+    name: test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: app 1/2
+            run: pnpm --filter app test --shard=1/2
+          - name: app 2/2
+            run: pnpm --filter app test --shard=2/2
+          - name: site and ui
+            run: pnpm --filter site --filter @layerd/ui test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: ${{ matrix.run }}
 
   build:
     name: build (${{ matrix.app }})
