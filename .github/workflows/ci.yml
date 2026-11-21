@@ -1,5 +1,13 @@
-# Runs the gate from AGENTS.md "Checks before a PR" and the two Vercel-shaped builds on every pull
-# request into dev and on every push to dev (#130), so no thread re-runs them by hand.
+# Runs the gate from AGENTS.md "Checks before a PR" and the two Vercel-shaped builds on every push to
+# a branch (#130), so no thread re-runs them by hand.
+#
+# The checks start on the push, not on the pull request (#271). GitHub makes a trial merge of the
+# branch into dev before it creates a pull request's runs, and on 2026-11-21 that step stalled: #267's
+# checks were created 1 min 56 s after it opened. A push run does not wait for the trial merge and
+# starts before the pull request exists; its results show on the pull request through the head commit.
+# It tests the branch as pushed, not the branch combined with the newest dev: the run on dev after
+# every merge tests the combined result. main takes only promotions from dev, and persist is never
+# touched, so neither is checked here.
 #
 # The gate is the root package.json's `check` script, the same command a thread runs locally
 # (`pnpm check`). Here its two halves run side by side instead of one after the other (#254), since
@@ -20,17 +28,15 @@
 name: ci
 
 on:
-  pull_request:
-    branches: [dev]
   push:
-    branches: [dev]
+    branches: ['**', '!main', '!persist']
   workflow_dispatch:
 
-# A new push to a PR cancels that PR's running checks; a run on dev itself always finishes, so a red
-# commit on dev is never hidden by the next merge.
+# A new push to a branch cancels that branch's running checks; a run on dev itself always finishes,
+# so a red commit on dev is never hidden by the next merge.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/dev' }}
 
 permissions:
   contents: read
