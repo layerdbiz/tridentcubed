@@ -33,6 +33,8 @@
 	// facility, transport, facility; a transport's page with its photo, particulars and facilities; the signature
 	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
+	import Trip from '#lib/components/trip/trip.svelte';
+	import type { TripLegType } from '#lib/components/trip/trip.types.js';
 	import { toCrossOrigin } from '#lib/files/files.schema.js';
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toReportLink } from '#lib/report/report.utils.js';
@@ -78,8 +80,6 @@
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
-	import RouteStrip from './route-strip.svelte';
-	import type { StripLegType } from './route-strip';
 	import CoverA from './variants/cover-a.svelte';
 	import CoverB from './variants/cover-b.svelte';
 	import CoverC, { type CoverLineType as CoverCLineType } from './variants/cover-c.svelte';
@@ -274,7 +274,8 @@
 	});
 	// The days the team was there, as the report's sentences say it: before any, the day the project began.
 	const dates = $derived(completedDate || createdDate);
-	// The customer's own number for the job (#217): after its name on the cover, under the document ID in the footer.
+	// The customer's own number for the job (#217): a row of its own on the cover (#273), under the document ID in the
+	// footer.
 	const reference = $derived(
 		toReference(team?.customerReference ?? look.project.customerReference)
 	);
@@ -302,11 +303,11 @@
 		)
 	);
 
-	// Report Cover C (#247, final design #256): the trip as the strip reads it, each leg's Transport Mode by name and
-	// icon and each facility by name, city and its kind's icon.
+	// Report Cover C (#247, #256; the Stops look is #273): the trip as the strip reads it (#lib/components/trip), each
+	// leg's Transport Mode by name and icon and each facility by name, city and its kind's icon.
 	const isCoverC = $derived(look.variant('cover') === 'C');
 	const stripLegs = $derived(
-		legs.map((leg): StripLegType => {
+		legs.map((leg): TripLegType => {
 			const first = leg.stops[0];
 			return {
 				transport: {
@@ -343,7 +344,6 @@
 				icon: PAGE_ICONS.customers,
 				label: 'Customer',
 				value: company,
-				note: reference ? `(${reference})` : '',
 				customer: company
 			},
 			// The company's logo is the dark mark the installed app wears.
@@ -360,6 +360,17 @@
 				label: 'Type',
 				value: detail('Project Type') ?? ''
 			},
+			// The customer's own number for the job, with the icon it has in the page header. The row is left out
+			// when the project has none (#273).
+			...(reference
+				? [
+						{
+							icon: 'icon-[mdi--card-account-details-outline]',
+							label: 'Reference',
+							value: reference
+						}
+					]
+				: []),
 			{
 				icon: 'icon-[mdi--calendar-blank-outline]',
 				label: 'Created',
@@ -1678,7 +1689,7 @@
 								class="mt-3.5 flex-none self-stretch"
 								bind:offsetHeight={coverStripHeight}
 							>
-								<RouteStrip legs={stripLegs} />
+								<Trip legs={stripLegs} />
 							</div>
 						</div>
 						<div

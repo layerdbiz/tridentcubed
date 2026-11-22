@@ -1,9 +1,10 @@
 <script lang="ts">
 	// Report Cover, look C (#247; the final design is #256, settled by Justin on 2026-11-21): the cover's list
-	// under the trip's strip. Customer, Company, Team, Type, Created, Completed; Transport Mode and Facility are
-	// the strip's. The list is two halves that meet on the page's centre line, under the middle of the logo: the
-	// icons and labels end there and the values begin there, however long a value is. Customer and Company lead
-	// with their logo, Team with the team's own faces. Looks A and B are kept beside it as they were.
+	// under the trip's strip. Customer, Company, Team, Type, Reference (only when the project has a reference
+	// number, #273), Created, Completed; Transport Mode and Facility are the strip's. The list is two halves that
+	// meet on the page's centre line, under the middle of the logo: the icons and labels end there and the values
+	// begin there, however long a value is. Customer and Company lead with their logo, Team with the team's own
+	// faces. Looks A and B are kept beside it as they were.
 	import { toCrossOrigin } from '#lib/files/files.schema.js';
 	import ClientLogo from '../client-logo.svelte';
 	import { personOf } from '../look.data';
@@ -12,8 +13,6 @@
 		label: string;
 		value: string;
 		icon: string;
-		// The customer's own number: after the value in a mono font, lighter and smaller.
-		note?: string;
 		// The picture the value leads with: the customer's own logo by its name, or a picture's address.
 		customer?: string;
 		logo?: string;
@@ -84,9 +83,7 @@
 							draggable="false"
 						/>
 					{/if}
-					<span class="min-w-0 truncate"
-						>{line.value}{#if line.note}&nbsp;<span class="id">{line.note}</span>{/if}</span
-					>
+					<span class="min-w-0 truncate">{line.value}</span>
 				</dd>
 			{:else}
 				<dd class="line-clamp-2 {line.value ? '' : 'text-slate-300 italic'}">
@@ -158,17 +155,6 @@
 		object-fit: cover;
 		background: #fff;
 		box-shadow: 0 0 0 1px rgb(15 23 42 / 0.1);
-	}
-	/* Three quarters of 10 px, by scale and not by font size: a phone will not draw text under 8 px. */
-	.id {
-		display: inline-block;
-		font-family:
-			ui-monospace, 'SF Mono', SFMono-Regular, 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas,
-			monospace;
-		font-size: 10px;
-		color: #94a3b8;
-		transform: scale(0.75);
-		transform-origin: 0 72%;
 	}
 	.faces {
 		display: flex;
