@@ -29,3 +29,9 @@ export * from "./update/update.utils.ts";
 /* COMPONENTS */
 // sheet
 export { default as Sheet } from "./components/sheet/sheet.svelte";
+
+// trip
+export { default as Trip } from "./components/trip/trip.svelte";
+export * from "./components/trip/trip.constants.ts";
+export * from "./components/trip/trip.types.ts";
+export * from "./components/trip/trip.utils.ts";
