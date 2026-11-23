@@ -74,6 +74,6 @@ export const ORGANIZATION: OrganizationType = {
 		note: 'Please note that this report reflects the situation as observed on a date of Inspection and may not reflect subsequent changes or conditions.'
 	},
 	closing:
-		'Thank you for trusting Trident Cubed with your cargo. Call or email me with any question about this report.',
+		'Thank you for trusting Trident Cubed with your cargo! Contact us if you have any questions about this report.',
 	signoff: 'Best Regards,'
 };

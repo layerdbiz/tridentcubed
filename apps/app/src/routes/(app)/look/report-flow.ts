@@ -38,12 +38,68 @@ export function paginate(
 	return pages;
 }
 
-// How much smaller a section that must stay on one page is drawn (Justin, 2026-11-19: the Disclaimer never runs to
-// a second page, "by any means"): its blocks and what stands under them (`extra`: the signature and the clear
-// space over it) together, against the room a page has. 1 when it fits as it is.
-export function fitOf(heights: number[], extra: number, room: number) {
-	const need = heights.reduce((sum, each) => sum + each, 0) + extra;
-	return need > room ? room / need : 1;
+// The Disclaimer's points in two columns that end as level as they can (#275; Justin, 2026-11-23: "We need to not
+// allow this white space gap here"). Any point may go to either side and each side keeps the points in their own
+// order; the first point always opens the left one. What is left over is spread between the shorter side's points.
+// Past 16 points the list is only cut in two where the sides come out closest, in its own order.
+export function columnsOf(heights: number[]): [number[], number[]] {
+	const total = heights.reduce((sum, each) => sum + each, 0);
+	const indexes = heights.map((_, index) => index);
+	let left: number[] = [];
+	if (heights.length > 16) {
+		let best = Infinity;
+		let sum = 0;
+		for (const [cut, height] of heights.entries()) {
+			sum += height;
+			if (Math.abs(total - 2 * sum) < best) {
+				best = Math.abs(total - 2 * sum);
+				left = indexes.slice(0, cut + 1);
+			}
+		}
+	} else {
+		let best = { off: Infinity, mask: 1 };
+		for (let mask = 1; mask < 1 << heights.length; mask += 2) {
+			let sum = 0;
+			for (const index of indexes) if (mask & (1 << index)) sum += heights[index];
+			const off = Math.abs(total - 2 * sum);
+			// Less than half a pixel better is no better: the first such split stays.
+			if (off < best.off - 0.5) best = { off, mask };
+		}
+		left = indexes.filter((index) => best.mask & (1 << index));
+	}
+	return [left, indexes.filter((index) => !left.includes(index))];
+}
+
+// How much smaller the Disclaimer's points are drawn so their two columns fit the room left for them (#275; Justin,
+// 2026-11-19: the Disclaimer never runs to a second page, "by any means"; 2026-11-22: only the bullets shrink, the
+// opening, the note, the thank-you and the signature keep their size). Drawn smaller, the points rewrap at a wider
+// measure and come out shorter than their size alone says, so the points are measured again at each size tried
+// (`heightsAt`, their heights at that size before it is applied), and the largest size that fits is kept. 1 when they
+// fit as they are.
+export function columnsFitOf(heightsAt: (fit: number) => number[], room: number) {
+	function tallestAt(fit: number) {
+		const heights = heightsAt(fit);
+		return fit * Math.max(...columnsOf(heights).map((side) => heightOf(heights, side)));
+	}
+	if (tallestAt(1) <= room) return 1;
+	let low = 0.1;
+	let high = 1;
+	for (let step = 0; step < 14; step += 1) {
+		const middle = (low + high) / 2;
+		if (tallestAt(middle) <= room) low = middle;
+		else high = middle;
+	}
+	return low;
+}
+
+// The font size that sets one line across the room it has (#275; Justin, 2026-11-22: the thank-you on one line, its
+// font grown so the text fills its box), given the line's width at 100 px. None when that would be too small to read,
+// and the line wraps at its own size instead; never above `most`.
+export function lineSizeOf(widthAt100: number, room: number, least = 8, most = 14) {
+	if (widthAt100 <= 0) return undefined;
+	// Just under the full width, so a rounding in the browser or the printer never pushes the last letter over.
+	const size = ((room * 100) / widthAt100) * 0.992;
+	return size < least ? undefined : Math.min(size, most);
 }
 
 // The height a page's blocks take up together.
