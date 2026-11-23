@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
 	createFollower,
-	fitOf,
+	columnsFitOf,
+	columnsOf,
 	flowOf,
 	heightOf,
+	lineSizeOf,
 	markOf,
 	paginate,
 	partSpansOf,
@@ -98,24 +100,81 @@ describe('paginate, with parts that stay whole', () => {
 	});
 });
 
+// Justin, 2026-11-23: the Disclaimer's points in two columns, "We need to not allow this white space gap here."
+describe('columnsOf', () => {
+	it('shares the points out so both columns end as level as they can, each in its own order', () => {
+		const [left, right] = columnsOf([40, 10, 10, 20, 20]);
+
+		expect(left).toEqual([0, 1]);
+		expect(right).toEqual([2, 3, 4]);
+	});
+
+	it('may move a point to the other side to level them', () => {
+		// In order, the closest cut is 30 against 50; taking the third point left and the second right makes 40 and 40.
+		const [left, right] = columnsOf([30, 30, 10, 10]);
+
+		expect(left).toEqual([0, 2]);
+		expect(right).toEqual([1, 3]);
+	});
+
+	it('always opens the left column with the first point', () => {
+		expect(columnsOf([10, 50])[0]).toEqual([0]);
+		expect(columnsOf([10])).toEqual([[0], []]);
+		expect(columnsOf([])).toEqual([[], []]);
+	});
+
+	it('cuts a very long list in its own order', () => {
+		const heights = Array.from({ length: 20 }, () => 10);
+
+		expect(columnsOf(heights)).toEqual([
+			heights.slice(0, 10).map((_, index) => index),
+			heights.slice(10).map((_, index) => index + 10)
+		]);
+	});
+});
+
 // Justin, 2026-11-19: "the disclaimer page is the only page that you absolutely cannot by any means make into two
-// pages". A section that must stay on one page is drawn smaller, as one piece, when it is too tall.
-describe('fitOf', () => {
-	it('leaves a section that fits at its own size', () => {
-		expect(fitOf([200, 200], 100, 600)).toBe(1);
-		expect(fitOf([250, 250], 100, 600)).toBe(1);
+// pages"; 2026-11-22: only the bullets shrink to fit.
+describe('columnsFitOf', () => {
+	it('leaves points that fit at their own size', () => {
+		expect(columnsFitOf(() => [100, 100, 100, 100], 200)).toBe(1);
 	});
 
-	it('draws one that is too tall just small enough to fit, what stands under it included', () => {
-		// 400 of text and 160 of signature and clear space on a page of 500.
-		const fit = fitOf([300, 100], 160, 500);
+	it('draws them just small enough for the taller column to fit', () => {
+		const fit = columnsFitOf(() => [100, 100, 100, 100], 150);
 
-		expect(fit).toBeCloseTo(500 / 560, 5);
-		expect((300 + 100 + 160) * fit).toBeLessThanOrEqual(500);
+		expect(fit).toBeLessThanOrEqual(0.75);
+		expect(fit).toBeGreaterThan(0.749);
 	});
 
-	it('is its own size before anything has been measured', () => {
-		expect(fitOf([], 0, 600)).toBe(1);
+	it('counts the points rewrapping shorter when drawn smaller', () => {
+		// Each point is a line shorter at three quarters of its size, so the columns fit sooner than size alone says.
+		const fit = columnsFitOf(
+			(at) => [100, 100, 100, 100].map((each) => (at < 1 ? each - 20 : each)),
+			150
+		);
+
+		expect(fit).toBeGreaterThan(0.9);
+		expect(fit * 160).toBeLessThanOrEqual(150);
+	});
+});
+
+// Justin, 2026-11-22: the thank-you on one line, its font grown so the text fills its box.
+describe('lineSizeOf', () => {
+	it('sets the line just inside the room it has', () => {
+		const size = lineSizeOf(5000, 500)!;
+
+		expect(size).toBeCloseTo(9.92, 5);
+		expect((5000 * size) / 100).toBeLessThanOrEqual(500);
+	});
+
+	it('never grows a short line past the largest size', () => {
+		expect(lineSizeOf(500, 500)).toBe(14);
+	});
+
+	it('gives no size to a line too long to read on one line, or one not measured', () => {
+		expect(lineSizeOf(10000, 500)).toBeUndefined();
+		expect(lineSizeOf(0, 500)).toBeUndefined();
 	});
 });
 

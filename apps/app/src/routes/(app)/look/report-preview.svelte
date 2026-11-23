@@ -64,9 +64,11 @@
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
 	import {
 		createFollower,
+		columnsFitOf,
+		columnsOf,
 		flowOf,
-		fitOf,
 		heightOf,
+		lineSizeOf,
 		markOf,
 		paginate,
 		partSpansOf,
@@ -118,14 +120,17 @@
 		// A page of a section that flows: the blocks that landed on it, and whether the signature sits at its foot.
 		blocks?: BlockType[];
 		hasSignature?: boolean;
-		// How much smaller a page that must not run over is drawn; none, or 1, for its own size.
+		// The Disclaimer (#275): its points in two columns between the blocks above and under them, and how much
+		// smaller the points are drawn so the page never runs over; none, or 1, for their own size.
+		columns?: BlockType[][];
+		after?: BlockType[];
 		fit?: number;
 	};
 	// One piece of a flowing section, never cut in two.
 	type BlockType =
 		| { kind: 'intro' | 'strip' | 'team' | 'attachments' }
 		| { kind: 'picture'; id: string }
-		| { kind: 'heading' | 'text' | 'closing' | 'empty'; text: string }
+		| { kind: 'heading' | 'text' | 'note' | 'closing' | 'empty'; text: string }
 		| { kind: 'company' | 'point'; id: string }
 		| { kind: 'leg'; id: string; isFull: boolean }
 		| { kind: 'cargo'; from: number; to: number }
@@ -487,7 +492,7 @@
 						id: point.id
 					})),
 					...(organization.disclaimer.note
-						? [{ kind: 'text', text: organization.disclaimer.note } as BlockType]
+						? [{ kind: 'note', text: organization.disclaimer.note } as BlockType]
 						: []),
 					...(organization.closing
 						? [{ kind: 'closing', text: organization.closing } as BlockType]
@@ -501,8 +506,15 @@
 	let measurer: HTMLDivElement | undefined = $state();
 	let heights = $state<Record<string, number[]>>({});
 	let signatureHeight = $state(0);
+	// The thank-you's font, set so its one line fills the text's width (#275); none when it wraps instead.
+	let closingSize = $state<number | undefined>();
+	// The Disclaimer's points (#275): how much smaller they are drawn, and each one's height at that size.
+	let points = $state<{ fit: number; heights: number[] }>({ fit: 1, heights: [] });
 	// Clear paper kept between the Disclaimer's last line and its signature.
 	const SIGNATURE_GAP = 28;
+	// The Disclaimer's two columns of points and the space between them (#275), and the space over them.
+	const COLUMN_GAP = 28;
+	const LIST_GAP = 12;
 
 	function measure() {
 		if (!measurer) return;
@@ -514,18 +526,47 @@
 		if (JSON.stringify(next) !== JSON.stringify(heights)) heights = next;
 		signatureHeight =
 			measurer.querySelector<HTMLElement>('[data-signature]')?.offsetHeight ?? signatureHeight;
+		const line = measurer.querySelector<HTMLElement>('[data-closing]')?.offsetWidth ?? 0;
+		closingSize = lineSizeOf(line, W - 80);
+		measurePoints(next.disclaimer ?? []);
+	}
+
+	// The Disclaimer's points read at each size tried: drawn smaller, a column is wider in the points' own measure,
+	// so they rewrap shorter. The size kept leaves room for the rest of the page and a clear gap over the signature.
+	function measurePoints(tall: number[]) {
+		const flow = flows.find((each) => each.kind === 'disclaimer');
+		const blocks = [...(measurer?.querySelectorAll<HTMLElement>('[data-points] > div') ?? [])];
+		if (!flow || !blocks.length) return;
+		const around =
+			heightOf(
+				tall,
+				flow.blocks.flatMap((block, index) => (block.kind === 'point' ? [] : [index]))
+			) +
+			LIST_GAP +
+			signatureHeight +
+			SIGNATURE_GAP;
+		function heightsAt(fit: number) {
+			for (const block of blocks) block.style.width = `${((W - 80) / fit - COLUMN_GAP) / 2}px`;
+			return blocks.map((block) => block.getBoundingClientRect().height);
+		}
+		const fit = columnsFitOf(heightsAt, ROOM - around);
+		const next = { fit, heights: heightsAt(fit) };
+		if (JSON.stringify(next) !== JSON.stringify(points)) points = next;
 	}
 
 	// Measured again when what is printed changes, and when a picture or a font arrives and changes a height.
 	$effect(() => {
 		void flows;
 		void signer;
+		void closingSize;
 		measure();
 	});
 	onMount(() => {
 		if (!measurer) return;
 		const observer = new ResizeObserver(measure);
 		observer.observe(measurer);
+		// A font that arrives late changes a line's width without changing the measurer's size.
+		void document.fonts?.ready.then(measure);
 		return () => observer.disconnect();
 	});
 
@@ -551,23 +592,29 @@
 	function pagesOf(flow: FlowType) {
 		const tall = heights[flow.key] ?? [];
 		// The Disclaimer is always one page, its signature at its foot (Justin, 2026-11-19: "the only page that you
-		// absolutely cannot by any means make into two pages"). Too tall, it is drawn smaller, as one piece.
-		if (flow.kind === 'disclaimer')
+		// absolutely cannot by any means make into two pages"). Its points stand in two columns that end level, and
+		// only they are drawn smaller when the page is too full (#275).
+		if (flow.kind === 'disclaimer') {
+			const indexes = flow.blocks.flatMap((block, index) =>
+				block.kind === 'point' ? [index] : []
+			);
+			const first = indexes[0] ?? flow.blocks.length;
+			const last = indexes.at(-1) ?? first - 1;
+			const columns = columnsOf(indexes.map((_, at) => points.heights[at] ?? 0));
 			return [
 				{
 					key: flow.key,
 					title: flow.title,
 					kind: flow.kind,
 					panel: flow.panel,
-					blocks: flow.blocks,
+					blocks: flow.blocks.slice(0, first),
+					columns: columns.map((side) => side.map((at) => flow.blocks[indexes[at]])),
+					after: flow.blocks.slice(last + 1),
 					hasSignature: true,
-					fit: fitOf(
-						flow.blocks.map((_, index) => tall[index] ?? 0),
-						signatureHeight + SIGNATURE_GAP,
-						ROOM
-					)
+					fit: points.fit
 				} satisfies PageType
 			];
+		}
 		// The item list's headings, said again over a row that opens a page, take their height there (#242).
 		const again = itemList?.hasHeads && listFit ? Math.ceil(listFit.head * listFit.scale) : 0;
 		const dealt = paginate(
@@ -1614,17 +1661,27 @@
 		</ul>
 	{:else if block.kind === 'text'}
 		<p class="pt-3 text-[9.5px] leading-[1.5] text-slate-700">{block.text}</p>
+	{:else if block.kind === 'note'}
+		<!-- The Disclaimer's closing note, as far under the points as they stand under the opening (#275). -->
+		<p class="pt-[18px] text-[9.5px] leading-[1.5] text-slate-700">{block.text}</p>
 	{:else if block.kind === 'point'}
+		<!-- One bullet each: the title on its own line, no colon, its words under it, no lone last word (#275). -->
 		{@const point = organization.disclaimer.points.find((item) => item.id === block.id)}
 		{#if point}
-			<ul class="list-disc pt-1.5 pl-4 text-[9.5px] leading-[1.45] text-slate-700">
-				<li><b class="text-slate-900">{point.title}:</b> {point.text}</li>
+			<ul class="list-disc pt-1.5 pl-4 text-[9.5px] leading-[1.45] text-pretty text-slate-700">
+				<li><b class="block text-slate-900">{point.title}</b>{point.text}</li>
 			</ul>
 		{/if}
 	{:else if block.kind === 'closing'}
-		<!-- The line before the sign-off, in a light grey box so it stands out (Justin, 2026-11-19; before that italic). -->
-		<div class="pt-6">
-			<p class="rounded-lg bg-slate-100 px-2.5 py-2 text-[9.5px] text-balance text-slate-700">
+		<!-- The line before the sign-off (#275; Justin, 2026-11-22): semibold navy on light blue, on one line that fills
+		     the text's width, the blue reaching past the text on each side. Too long for one line, it wraps. -->
+		<div class="pt-4">
+			<p
+				class="-mx-2.5 rounded-lg bg-[#f1f6ff] px-2.5 py-2 leading-[1.5] font-semibold text-[#1f2f5e] {closingSize
+					? 'whitespace-nowrap'
+					: 'text-[9.5px] text-balance'}"
+				style={closingSize ? `font-size: ${closingSize}px` : undefined}
+			>
 				{block.text}
 			</p>
 		</div>
@@ -1763,11 +1820,26 @@
 								</h2>
 								{#if filesLink && hasFilesLine(item, index)}{@render filesLine()}{/if}
 							</div>
-							{#if item.blocks && item.fit && item.fit < 1}
-								<!-- A page that must not run over (the Disclaimer), drawn smaller as one piece. -->
-								<div style="zoom: {item.fit}">
-									{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
+							{#if item.columns}
+								<!-- The Disclaimer (#275): the opening, its points in two columns that end level (what is left
+								     over spread between the shorter side's points), drawn smaller when the page is too full,
+								     then the note and the thank-you at their own size. -->
+								{#each item.blocks ?? [] as block, at (at)}{@render flowBlock(block)}{/each}
+								<div style="padding-top: {LIST_GAP}px">
+									<div
+										class="flex"
+										style="gap: {COLUMN_GAP}px{item.fit && item.fit < 1
+											? `; zoom: ${item.fit}`
+											: ''}"
+									>
+										{#each item.columns as side, at (at)}
+											<div class="flex min-w-0 flex-1 flex-col justify-between">
+												{#each side as block, blockAt (blockAt)}{@render flowBlock(block)}{/each}
+											</div>
+										{/each}
+									</div>
 								</div>
+								{#each item.after ?? [] as block, at (at)}{@render flowBlock(block)}{/each}
 							{:else if item.blocks}
 								{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
 							{:else if item.kind === 'contents'}
@@ -2152,17 +2224,15 @@
 						</div>
 						{#if item.hasSignature}
 							<!-- Disclaimer B: the signature at the foot of the page, clear of the text above and the footer. -->
-							<div class="absolute inset-x-10 bottom-[96px]">
-								<div style={item.fit && item.fit < 1 ? `zoom: ${item.fit}` : undefined}>
-									{@render signature()}
-								</div>
-							</div>
+							<!-- It is never drawn smaller (Justin, 2026-11-22). -->
+							<div class="absolute inset-x-10 bottom-[96px]">{@render signature()}</div>
 						{/if}
 						<footer
 							class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-4 bg-white px-10 pt-3 pb-6 text-[9px] text-slate-400"
 						>
 							{@render customer()}
-							<span class="shrink-0">Page {index + 1} of {pages.length}</span>
+							<!-- At the footer's bottom right (Justin, 2026-11-22). -->
+							<span class="shrink-0 self-end">Page {index + 1} of {pages.length}</span>
 						</footer>
 					{/if}
 				</article>
@@ -2186,6 +2256,26 @@
 			</div>
 		{/each}
 		<div data-signature>{@render signature()}</div>
+		<!-- The Disclaimer's points, each read at the width of its column for each size tried (#275); set apart so
+		     trying sizes never resizes the measurer. -->
+		{#if isDisclaimerB}
+			<div
+				data-points
+				class="absolute top-0 left-0"
+			>
+				{#each organization.disclaimer.points as point (point.id)}
+					<div>{@render flowBlock({ kind: 'point', id: point.id })}</div>
+				{/each}
+			</div>
+		{/if}
+		<!-- The thank-you on one line at 100 px, to read the size that sets it across the text's width (#275). -->
+		{#if organization.closing}
+			<span
+				data-closing
+				class="block w-max text-[100px] font-semibold whitespace-nowrap"
+				>{organization.closing}</span
+			>
+		{/if}
 		<!-- The item list whole, at its natural width, to read how it fits the page (#242). -->
 		{#if itemList}
 			<div class="text-[10.5px]">
