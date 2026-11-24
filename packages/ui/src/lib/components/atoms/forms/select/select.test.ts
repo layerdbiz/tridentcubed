@@ -571,11 +571,66 @@ describe('a lookup', () => {
 		).toBe('true');
 	});
 
-	it('wears an amber dot while it is empty and required', async () => {
-		const { rerender } = typeIn({ required: true });
+	it("takes its form's own input look when given one", () => {
+		const { input } = typeIn({ inputClass: 'boxed' });
+		expect(input.classList.contains('boxed')).toBe(true);
+		expect(input.classList.contains('bg-slate-900/[0.04]')).toBe(false);
+	});
+
+	it('wears an amber dot while it is empty and required, and never stops a form being sent', async () => {
+		const { rerender, input } = typeIn({ required: true });
 		expect(screen.getByTitle('Not filled in yet')).toBeTruthy();
+		expect((input as HTMLInputElement).required).toBe(false);
 
 		await rerender({ value: 'Pier 9' });
 		expect(screen.queryByTitle('Not filled in yet')).toBeNull();
+	});
+});
+
+describe('a typed field', () => {
+	const CUSTOMERS: SelectOptionType[] = [
+		{ value: 'US Ocean', label: 'US Ocean' },
+		{ value: 'Ocean Freight Co', label: 'Ocean Freight Co' },
+		{ value: 'Gulf Lines', label: 'Gulf Lines' }
+	];
+
+	function typeIn(props: Record<string, unknown> = {}) {
+		const onpick = vi.fn();
+		const view = render(Select, {
+			props: {
+				variant: 'soft',
+				label: 'Company',
+				options: CUSTOMERS,
+				isTyped: true,
+				value: '',
+				onpick,
+				...props
+			}
+		});
+		return { ...view, onpick, input: screen.getByRole('combobox', { name: 'Company' }) };
+	}
+
+	it('is typed into without a lookup, offering the known choices holding the words', async () => {
+		const { input } = typeIn();
+		await fireEvent.focus(input);
+		await fireEvent.input(input, { target: { value: 'ocean' } });
+
+		expect(
+			screen.getAllByRole('option').map((option) => option.textContent?.replace(/\s+/g, ' ').trim())
+		).toEqual(['US Ocean', 'Ocean Freight Co']);
+	});
+
+	it('keeps words no choice holds, and takes a known choice when one is picked', async () => {
+		const { input, onpick } = typeIn();
+		await fireEvent.focus(input);
+		await fireEvent.input(input, { target: { value: 'Pier 9 Stevedores' } });
+		expect((input as HTMLInputElement).value).toBe('Pier 9 Stevedores');
+		expect(screen.queryByRole('listbox')).toBeNull();
+
+		await fireEvent.input(input, { target: { value: 'gulf' } });
+		await fireEvent.click(screen.getByRole('option', { name: 'Gulf Lines' }));
+
+		expect(onpick).toHaveBeenCalledWith('Gulf Lines');
+		expect((input as HTMLInputElement).value).toBe('Gulf Lines');
 	});
 });

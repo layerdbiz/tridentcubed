@@ -10,9 +10,10 @@
 	// a face or a logo), `multiple` to pick several, `onadd` for Add new, `onedit` for a pencil that opens a choice.
 	// The list is the library's Menu, which floats above every scrolling box.
 	//
-	// `lookup` takes any Lookup (glossary), such as places from an outside service. With one the field is typed into:
-	// the known choices holding the words show at once, the lookup's choices once typing pauses, and words typed and
-	// never picked are kept as the value. `oninput` hears the words, `onpick` a choice.
+	// `isTyped` makes the field one to type into: the known choices holding the words show at once, and words typed and
+	// never picked are kept as the value. `lookup` takes any Lookup (glossary), such as places from an outside service,
+	// and makes the field typed too, adding the lookup's choices once typing pauses. `oninput` hears the words, `onpick`
+	// a choice.
 	//
 	// Two looks. The notched field is the library's own (#284: the label sits on the border). `variant="soft"` is the
 	// app's panel field (label above, filled and borderless, lit while open), kept so nothing in the app looks different
@@ -62,10 +63,17 @@
 		addLabel?: string;
 		/** Puts a pencil on each choice in the list, which opens it to edit. */
 		onedit?: (value: string) => void;
+		/** Typed into: the words are the value, and the known choices holding them are offered as they are typed. */
+		isTyped?: boolean;
 		/** Finds choices for what is typed; the field is then typed into (glossary: Lookup). */
 		lookup?: LookupType;
-		/** Hears the words typed into a field with a lookup. */
+		/** Hears the words typed into a typed field. */
 		oninput?: (text: string) => void;
+		/**
+		 * The classes of a soft field typed into, in place of the panel's: the app's record forms draw a white box with
+		 * an edge (until #57 moves them onto the notched field).
+		 */
+		inputClass?: string;
 		/** A control of its own at the start of a soft field, in place of the picture: a facility's Start, Stop or End. */
 		start?: Snippet;
 		/** False for a second row of the same fields, which the first row's labels already name (soft). */
@@ -94,8 +102,10 @@
 		onadd = undefined,
 		addLabel = undefined,
 		onedit = undefined,
+		isTyped = false,
 		lookup = undefined,
 		oninput = undefined,
+		inputClass = undefined,
 		start = undefined,
 		hasLabel = true,
 		class: className = undefined,
@@ -114,17 +124,18 @@
 	const LIT = 'bg-primary/10 text-primary';
 	const QUIET =
 		'bg-slate-100 text-slate-400 group-hover/option:bg-primary/10 group-hover/option:text-primary';
-	// How many known choices a lookup's list shows.
+	// How many known choices a typed field's list shows.
 	const KNOWN = 5;
 
 	const asking = new LookupState(() => lookup);
-	// A lookup's list is open: the field is in use and something is typed.
+	// A typed field's list is open: the field is in use and something is typed.
 	let isListed = $state(false);
 	let blurTimer: ReturnType<typeof setTimeout> | undefined;
 	// How wide the start control is, so the field's words start after it.
 	let startWidth = $state(0);
 
 	const isSoft = $derived(variant === 'soft');
+	const isTyping = $derived(isTyped || Boolean(lookup));
 	const selected = $derived.by(() => {
 		if (Array.isArray(value)) return value.map(String);
 		return value == null || value === '' ? [] : [String(value)];
@@ -146,7 +157,7 @@
 	});
 	const softIcon = $derived(icon ?? 'icon-[mdi--chevron-right]');
 
-	// A lookup's words, and what shows for them: the known choices holding them, then what the lookup found.
+	// A typed field's words, and what shows for them: the known choices holding them, then what a lookup found.
 	const text = $derived(typeof value === 'string' ? value.trim().toLowerCase() : '');
 	const known = $derived(
 		text
@@ -246,8 +257,8 @@
 	{/if}
 {/snippet}
 
-<!-- A lookup's list, in the flow under the field so no scrolling box or sheet can cut it off: the known choices,
-     then what the lookup found, each with a line that places it, and who found them. -->
+<!-- A typed field's list, in the flow under the field so no scrolling box or sheet can cut it off: the known choices,
+     then what a lookup found, each with a line that places it, and who found them. -->
 {#snippet choices()}
 	{#if hasList}
 		<ul
@@ -310,15 +321,16 @@
 	{/if}
 {/snippet}
 
-<!-- The field a lookup is typed into. -->
-{#snippet typedField(inputClass: string)}
+<!-- The field that is typed into. A soft one shows it is required by its amber dot alone and never stops a form being
+     sent, as the app's fields never have. -->
+{#snippet typedField(classes: string)}
 	<input
 		id="{uid}-input"
-		class={inputClass}
+		class={classes}
 		value={typeof value === 'string' ? value : ''}
 		placeholder={isSoft ? placeholder : ' '}
 		{disabled}
-		{required}
+		required={isSoft ? undefined : required}
 		name={isSoft ? name : fieldState.field.name}
 		autocomplete="off"
 		role="combobox"
@@ -400,7 +412,7 @@
 		data-empty={selected.length ? undefined : ''}
 	>
 		{#if hasLabel}
-			{#if lookup}
+			{#if isTyping}
 				<span class={LABEL}>
 					<label for="{uid}-input">{label}</label>
 					{#if help}<Help
@@ -426,9 +438,9 @@
 				</p>
 			{/if}
 		{/if}
-		{#if lookup}
+		{#if isTyping}
 			<div class="relative">
-				{@render typedField(TYPED)}
+				{@render typedField(inputClass ?? TYPED)}
 				{@render choices()}
 			</div>
 		{:else if disabled}
@@ -490,7 +502,7 @@
 	{/snippet}
 
 	{#snippet selectEl()}
-		{#if lookup}
+		{#if isTyping}
 			{@render typedField('')}
 		{:else if children}
 			<!-- The browser's own dropdown, for choices written as <option>s. -->
@@ -582,7 +594,7 @@
 								text={help}
 							/>{/if}</legend
 					>
-					<label for={lookup ? `${uid}-input` : fieldState.field.id}>
+					<label for={isTyping ? `${uid}-input` : fieldState.field.id}>
 						{#if variant === 'icon text' || variant === 'icon text icon'}
 							{@render iconStartEl()}
 						{/if}

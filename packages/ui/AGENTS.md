@@ -41,6 +41,8 @@ the module singletons in `observe` and `scroll`, five rune-free
 `.svelte.ts` helpers, the menu list's slate shades and its own outer box
 in place of the base component (kept from the app on #297: the same look,
 and a list of rows with a ⋮ each stays as fast as before), the toast's
-slate and amber shades (kept from the app's PDF download toast on #293):
-all listed on "UI library cleanup" (#33), changed
-there, not mid-feature.
+slate and amber shades (kept from the app's PDF download toast on #293),
+the select's `variant="soft"` look with its own box and slate shades and
+its `inputClass` (kept from the app's dropdown and place field on #298,
+the app's panel look until #57): all listed on "UI library cleanup" (#33),
+changed there, not mid-feature.

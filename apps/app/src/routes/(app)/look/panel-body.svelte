@@ -25,7 +25,8 @@
 	// files of the item list. The Time Log's times are typed on the 24-hour clock.
 	// Run 21 (Justin, 2026-11-11): the Project panel is three sections that open like the Team did: Project (title,
 	// subtitle, type), Customer (customer and contact) and Team (organization, Team Lead, Team Assigned). Every
-	// dropdown in them is picker.svelte, so a person is always the app's own Avatar and a company its logo. Add
+	// dropdown in them is the library's Select (#298, once picker.svelte), so a person is always the app's own Avatar
+	// and a company its logo. Add
 	// Personnel adds a company's section: its name, then as many people from it as needed, each a name and a title.
 	// #217 (Justin, 2026-11-18): the Project section ends with the two parts of the project number a User may type,
 	// side by side: Project Creation Date (today on a new project) and Job Sequence Number (the server's next for
@@ -38,9 +39,11 @@
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
 	import { flip } from 'svelte/animate';
-	import { Help, Menu } from '@layerd/ui';
+	import { Help, Menu, Select } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
+	import Avatar from './avatar.svelte';
+	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import { toPictureType } from '#lib/files/files.schema.js';
@@ -72,7 +75,6 @@
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
-	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { addGroup as addPhotoGroup, addPhotos, hasFiles, movePhoto, uploadOf } from './photos';
@@ -108,7 +110,9 @@
 	// Only the first section starts open (Justin, 2026-11-16: all three open at once was too much).
 	let openSections = $state<string[]>(['project']);
 	const personnel = $derived(panel.personnel ?? []);
-	const members = $derived(look.members.map((member) => ({ id: member.name, label: member.name })));
+	const members = $derived(
+		look.members.map((member) => ({ value: member.name, label: member.name }))
+	);
 
 	// The key of a Project panel field's Help text (#299): `project.title` for Title, `project.type` for Project Type.
 	function keyOf(field: FieldType) {
@@ -538,32 +542,46 @@
 	>
 {/snippet}
 
+<!-- A person in a dropdown is the app's own face, a customer its logo (Select's `mark`). -->
+{#snippet face(name: string, size: number)}
+	<Avatar
+		{name}
+		{size}
+	/>
+{/snippet}
+
+{#snippet logo(name: string, size: number)}
+	<ClientLogo
+		{name}
+		{size}
+		shape="circle"
+	/>
+{/snippet}
+
 {#snippet fieldBlock(field: FieldType)}
 	{#if field.label === 'Location'}
 		<!-- Where the project is: the shared location field, which suggests places and saves the one picked. -->
-		<div
-			class="has-help sm:col-span-2"
-			data-empty={field.value ? undefined : ''}
-		>
-			{@render labelOf(field.label, `${uid}-${field.id}`, keyOf(field), !field.value)}
-			<PlaceField
-				{look}
-				id="{uid}-{field.id}"
-				value={field.value}
-				oninput={(text) => {
-					field.value = text;
-					save();
-				}}
-				{inputClass}
-			/>
-		</div>
-	{:else if field.type === 'select'}
-		<Picker
+		<PlaceField
+			{look}
+			class="sm:col-span-2"
 			label={field.label}
-			options={optionsOf(field).map((option) => ({ id: option, label: option }))}
+			help={look.helpOf(keyOf(field))}
+			isRequired
+			value={field.value}
+			oninput={(text) => {
+				field.value = text;
+				save();
+			}}
+		/>
+	{:else if field.type === 'select'}
+		<Select
+			variant="soft"
+			label={field.label}
+			options={optionsOf(field).map((option) => ({ value: option, label: option }))}
 			value={field.value}
 			icon="icon-[mdi--format-list-bulleted]"
-			isDisabled={field.isReadonly}
+			disabled={field.isReadonly}
+			required
 			help={look.helpOf(keyOf(field))}
 			onpick={(option) => pickField(field, option)}
 			onadd={field.isAddable ? () => askField(field) : undefined}
@@ -610,35 +628,43 @@
 		isOpen={openSections.includes('team')}
 		ontoggle={() => (openSections = toggle(openSections, 'team'))}
 	>
-		<Picker
+		<Select
+			variant="soft"
 			label="Organization"
 			icon="icon-[mdi--domain]"
 			options={[
 				{
-					id: look.organization.name,
+					value: look.organization.name,
 					label: look.organization.name,
 					image: look.organization.logo
 				}
 			]}
 			value={fieldOf('Organization')?.value ?? ''}
+			required
 			help={look.helpOf('project.organization')}
 			onpick={(id) => setField('Organization', id)}
 		/>
-		<Picker
+		<Select
+			variant="soft"
 			label="Team Lead"
-			kind="person"
+			mark={face}
 			icon="icon-[mdi--account-tie]"
 			options={members}
 			value={panel.owner}
+			required
 			help={look.helpOf('project.teamLead')}
 			onpick={setLead}
 		/>
-		<Picker
+		<Select
+			variant="soft"
 			label="Team Assigned"
-			kind="person"
+			mark={face}
 			icon={PAGE_ICONS.team}
-			options={members.filter((member) => member.id !== panel.owner)}
-			values={panel.assigned}
+			options={members.filter((member) => member.value !== panel.owner)}
+			multiple
+			value={panel.assigned}
+			many="people"
+			required
 			help={look.helpOf('project.teamAssigned')}
 			onpick={assign}
 		/>
@@ -654,23 +680,18 @@
 			ondelete={() =>
 				remove(panel.personnel ?? [], company, 'Delete Personnel?', 'Its people leave the report.')}
 		>
-			<div
-				class="has-help block"
-				data-empty={company.company ? undefined : ''}
-			>
-				{@render labelOf('Company', `${uid}-${company.id}`, 'personnel.company', !company.company)}
-				<!-- Typed freely, with the customers offered as it is typed: both a dropdown and an input. -->
-				<input
-					id="{uid}-{company.id}"
-					class={inputClass}
-					bind:value={company.company}
-					list="companies-{company.id}"
-					placeholder="Type a company, or pick a customer"
-				/>
-				<datalist id="companies-{company.id}">
-					{#each look.customers as name (name)}<option value={name}></option>{/each}
-				</datalist>
-			</div>
+			<!-- Typed freely, with the customers offered as it is typed: both a dropdown and an input. -->
+			<Select
+				variant="soft"
+				isTyped
+				label="Company"
+				icon={PAGE_ICONS.customers}
+				options={look.customers.map((name) => ({ value: name, label: name }))}
+				bind:value={company.company}
+				required
+				help={look.helpOf('personnel.company')}
+				placeholder="Type a company, or pick a customer"
+			/>
 			{#each company.people as person, personIndex (person.id)}
 				<div class="flex items-start gap-2">
 					<div class="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
@@ -795,11 +816,13 @@
 						{/if}
 					</p>
 				</div>
-				<Picker
+				<Select
+					variant="soft"
 					label="Project Type"
 					icon="icon-[mdi--package-variant-closed]"
-					options={PROJECT_TYPES.map((type) => ({ id: type, label: type }))}
+					options={PROJECT_TYPES.map((type) => ({ value: type, label: type }))}
 					value={fieldOf('Project Type')?.value ?? ''}
+					required
 					help={look.helpOf('project.type')}
 					onpick={(id) => setField('Project Type', id)}
 				/>
@@ -839,23 +862,26 @@
 				isOpen={openSections.includes('customer')}
 				ontoggle={() => (openSections = toggle(openSections, 'customer'))}
 			>
-				<Picker
+				<Select
+					variant="soft"
 					label="Customer"
-					kind="customer"
+					mark={logo}
 					icon={PAGE_ICONS.customers}
-					options={look.customers.map((name) => ({ id: name, label: name }))}
+					options={look.customers.map((name) => ({ value: name, label: name }))}
 					value={customerName}
+					required
 					help={look.helpOf('project.customer')}
 					onpick={setCustomer}
 					onadd={() => look.addFor('customers', {}, setCustomer)}
 					onedit={(name) => look.editRecord('customers', name)}
 				/>
 				<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
-				<Picker
+				<Select
+					variant="soft"
 					label="Contact"
 					icon="icon-[mdi--account]"
 					options={contacts.map((item) => ({
-						id: item.id,
+						value: item.id,
 						label: item.name,
 						note: item.title,
 						image: item.photo
@@ -864,8 +890,7 @@
 					placeholder={customerName
 						? 'No contacts on this customer yet'
 						: 'Choose a customer first'}
-					isDisabled={!contacts.length}
-					isRequired={false}
+					disabled={!contacts.length}
 					help={look.helpOf('project.contact')}
 					onpick={(id) => {
 						panel.contact = id;

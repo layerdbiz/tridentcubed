@@ -1,5 +1,5 @@
-// What the location field does today (#298, written before it becomes the library's Select with the place lookup, so
-// nothing already built breaks): typing offers the saved places at once, and only after a pause, with three letters
+// What the location field does (#298, written before it became the library's Select with the place lookup, so
+// nothing already built breaks, and kept passing since): typing offers the saved places at once, and only after a pause, with three letters
 // or more and no saved place of that name, asks the server once, remembering its answer for the visit. Picking a
 // suggestion saves the place with its coordinates; words typed and never picked are kept, with no pin.
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
@@ -61,16 +61,15 @@ function show(value = '') {
 	const view = render(PlaceField, {
 		props: {
 			look: look as unknown as LookState,
+			label: 'City',
 			value,
-			id: 'city',
-			inputClass: 'field',
 			oninput: (text: string) => {
 				typed.push(text);
 				void view.rerender({ value: text });
 			}
 		}
 	});
-	return { ...view, look, typed, input: screen.getByRole('combobox') };
+	return { ...view, look, typed, input: screen.getByRole('combobox', { name: 'City' }) };
 }
 
 async function type(input: HTMLElement, text: string) {
