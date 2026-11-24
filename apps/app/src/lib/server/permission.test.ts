@@ -65,8 +65,20 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 		}),
 		[]
 	],
+	// #303: a Manager changes the organization's details in Settings, its disclaimer and sign-off included.
 	[
-		'change the organization’s details',
+		'change the organization’s disclaimer and sign-off',
+		() => ({
+			table: 'organization_details',
+			operation: 'put',
+			columns: ['disclaimerOpening', 'signoff'],
+			row: { organizationId: ORG },
+			values: { disclaimerOpening: 'Changed', signoff: 'Oziel' }
+		}),
+		['manager', 'admin', 'super']
+	],
+	[
+		'change the email domain, which is set in the database only',
 		() => ({
 			table: 'organization_details',
 			operation: 'put',
@@ -74,7 +86,7 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 			row: { organizationId: ORG },
 			values: { emailDomain: 'tridentcubed.com' }
 		}),
-		['admin', 'super']
+		[]
 	],
 	[
 		'rename the organization',
@@ -85,7 +97,7 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 			row: { id: ORG },
 			values: { name: 'Trident' }
 		}),
-		['admin', 'super']
+		['manager', 'admin', 'super']
 	],
 	[
 		'delete the organization',
@@ -111,7 +123,7 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 			row: { organizationId: ORG },
 			values: { organizationId: ORG, text: 'Changed' }
 		}),
-		['admin', 'super']
+		['manager', 'admin', 'super']
 	],
 	[
 		'add a Transport Mode, a Facility or a place',

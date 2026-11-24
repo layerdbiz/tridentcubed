@@ -147,8 +147,8 @@ export const TABLES = {
 			detail: TEXT
 		}
 	},
-	// The organization itself (Better Auth's table): only its name saves from the app. Only an Admin changes it,
-	// its details or its disclaimer points (the one permission check).
+	// The organization itself (Better Auth's table): only its name saves from the app. An Admin or a Manager changes
+	// it, its details or its disclaimer points (the one permission check, #303).
 	organization: {
 		scope: 'organization',
 		columns: { name: NAME }

@@ -30,9 +30,9 @@
 	const organization = $derived(look.organization);
 	// What each section's line counts: the inputs tally.ts says it holds (#229).
 	const sections = $derived(organizationSectionsOf(organization));
-	// #184: only an Admin changes the organization. Manager and Team see the same Edit, read-only; the server refuses
-	// their changes too.
-	const isAdmin = $derived(look.isAdmin);
+	// #184, #303: an Admin or a Manager changes the organization. Team sees the same Edit, read-only; the server
+	// refuses its changes too.
+	const isEditable = $derived(look.isOrganizationEditable);
 	// The section last touched, which picks the report page shown beside the form on a desktop.
 	let part = $state<'organization' | 'wording'>('organization');
 	let open = $state<string[]>(['details']);
@@ -111,17 +111,17 @@
 	</label>
 {/snippet}
 
-<!-- Edit: the same sections a Project panel has, each opening and closing. For Manager and Team every field inside is
-	 disabled (a fieldset), while the sections still open and close. -->
+<!-- Edit: the same sections a Project panel has, each opening and closing. For Team every field inside is disabled
+	 (a fieldset), while the sections still open and close. -->
 {#snippet form()}
 	<div class="space-y-3">
-		{#if !isAdmin}
+		{#if !isEditable}
 			<p
 				class="flex items-center gap-2 rounded-2xl bg-slate-900/[0.04] px-3 py-2.5 text-xs text-slate-500"
 				role="note"
 			>
-				<span class="icon-[mdi--lock-outline] size-4 shrink-0"></span>Only an Admin can change the
-				organization.
+				<span class="icon-[mdi--lock-outline] size-4 shrink-0"></span>Only an Admin or a Manager can
+				change the organization.
 			</p>
 		{/if}
 		<div onfocusin={() => (part = 'organization')}>
@@ -134,7 +134,7 @@
 			>
 				<fieldset
 					class="contents"
-					disabled={!isAdmin}
+					disabled={!isEditable}
 				>
 					<ImageField
 						label="Logo"
@@ -190,7 +190,7 @@
 			>
 				<fieldset
 					class="contents"
-					disabled={!isAdmin}
+					disabled={!isEditable}
 				>
 					{@render area(
 						'Opening',
@@ -239,7 +239,7 @@
 					)}
 				</fieldset>
 				{#snippet actions()}
-					{#if isAdmin}
+					{#if isEditable}
 						<button
 							type="button"
 							class="{BUTTON} bg-primary/10 text-primary hover:bg-primary/15"
@@ -259,7 +259,7 @@
 			>
 				<fieldset
 					class="contents"
-					disabled={!isAdmin}
+					disabled={!isEditable}
 				>
 					{@render area(
 						'Thank-you Line',

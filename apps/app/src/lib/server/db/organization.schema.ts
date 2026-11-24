@@ -20,7 +20,7 @@ import {
 import { user } from './auth.schema';
 import { appRole, ORGANIZATION_ID, organizationPolicy, USER_ID } from './policy';
 
-/** Admin, Manager and Team (the glossary's roles). Manager and Team may do the same things for now. */
+/** Admin, Manager and Team (the glossary's roles). A Manager may do what Team may and change the organization (#303). */
 export const ROLES = ['admin', 'manager', 'team'] as const;
 
 export type RoleType = (typeof ROLES)[number];

@@ -39,7 +39,7 @@ A User with no membership in any organization. A Guest sees only Waiting for acc
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
-A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, legal name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15). Its details also hold its email domain.
+A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, legal name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its Admins and Managers, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15). Its details also hold its email domain.
 _Avoid_: team, company, workspace
 
 **Membership**:

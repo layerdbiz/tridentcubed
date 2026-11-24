@@ -26,7 +26,10 @@ function createSteps(answers: Array<'ok' | 'refused' | 'offline'>) {
 		async ask(request): Promise<UploadAnswerType> {
 			asked.push(request);
 			if (answers[asked.length - 1] === 'refused') {
-				return { isAllowed: false, reason: 'Only an Admin can change the organization.' };
+				return {
+					isAllowed: false,
+					reason: 'Only an Admin or a Manager can change the organization.'
+				};
 			}
 			return {
 				isAllowed: true,
@@ -119,7 +122,7 @@ describe('a picture on its way', () => {
 		await upload.start();
 
 		expect(upload.isFailed).toBe(true);
-		expect(upload.reason).toBe('Only an Admin can change the organization.');
+		expect(upload.reason).toBe('Only an Admin or a Manager can change the organization.');
 		expect(test.sent).toEqual([]);
 		expect(test.done).toEqual([]);
 	});

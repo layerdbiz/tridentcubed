@@ -352,8 +352,28 @@ describe('the organization', () => {
 		expect(listRows(again.look)).toEqual(listRows(device.look));
 	});
 
-	it('refuses Manager and Team, on the server, and changes nothing', async () => {
+	it('saves a Manager’s changes to its disclaimer and sign-off (#303)', async () => {
 		const manager = await signInAs('mia@tridentcubed.com', 'manager');
+		const device = await open(manager);
+		const { organization } = device.look;
+		const [first] = organization.disclaimer.points;
+
+		organization.disclaimer.opening = 'Read this first.';
+		organization.disclaimer.points[0].text = 'Seen, not taken apart.';
+		organization.signoff = 'Oziel';
+		const { result } = await save(device, manager);
+		const again = await open(team);
+
+		expect(result).toEqual({ isSaved: true });
+		expect(again.look.organization.disclaimer.opening).toBe('Read this first.');
+		expect(again.look.organization.disclaimer.points[0]).toEqual({
+			...first,
+			text: 'Seen, not taken apart.'
+		});
+		expect(again.look.organization.signoff).toBe('Oziel');
+	});
+
+	it('refuses Team, on the server, and changes nothing', async () => {
 		const changes = [
 			(look: LookState) => look.nameOrganization('Taken over'),
 			(look: LookState) => (look.organization.website = 'example.com'),
@@ -361,18 +381,17 @@ describe('the organization', () => {
 			(look: LookState) => (look.organization.disclaimer.points[0].title = 'Changed')
 		];
 
-		for (const actor of [team, manager])
-			for (const change of changes) {
-				const device = await open(actor);
-				change(device.look);
+		for (const change of changes) {
+			const device = await open(team);
+			change(device.look);
 
-				const { result } = await save(device, actor);
+			const { result } = await save(device, team);
 
-				expect(result).toMatchObject({
-					isSaved: false,
-					reason: 'Only an Admin can change the organization.'
-				});
-			}
+			expect(result).toMatchObject({
+				isSaved: false,
+				reason: 'Only an Admin or a Manager can change the organization.'
+			});
+		}
 		const again = await open(team);
 
 		expect(again.look.organization.name).toBe('Trident Cubed');

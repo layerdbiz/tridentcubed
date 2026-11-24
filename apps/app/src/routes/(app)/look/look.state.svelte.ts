@@ -175,6 +175,8 @@ export class LookState {
 	me = $derived(this.members.find((member) => member.userId && member.userId === this.userId));
 	// Only an Admin changes a Team role (the server refuses it from anyone else).
 	isAdmin = $derived(this.isSuperAdmin || this.role === 'admin');
+	// An Admin or a Manager changes the organization: its details, disclaimer and sign-off (#303). Team reads it.
+	isOrganizationEditable = $derived(this.isAdmin || this.role === 'manager');
 	organization = $state<OrganizationType>(structuredClone(ORGANIZATION));
 	// Every place a location field has been given, with where it is: looked up once, then read from here. The
 	// server's rows since #184 (the seed's starting places, then every one a member picked).
