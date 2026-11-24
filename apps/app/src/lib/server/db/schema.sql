@@ -405,6 +405,7 @@ CREATE TABLE "file" (
 	"latitude" double precision,
 	"longitude" double precision,
 	"taken_from" text DEFAULT '' NOT NULL,
+	"metadata" jsonb,
 	"uploaded_by" uuid
 );
 

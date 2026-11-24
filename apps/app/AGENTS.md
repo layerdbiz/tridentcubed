@@ -26,6 +26,9 @@ src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.r
 src/lib/files/                 files: files.schema.ts (the upload request), files.remote.ts (`askUpload`),
                                files.utils.ts (read time and place, shrink), files.state.svelte.ts (the
                                upload helper: `Upload`, `startUpload`)
+src/lib/metadata/              metadata.utils.ts: every metadata field of a picture carried byte for byte into
+                               the shrunk copy, and the original's field list for the File row (#292); the
+                               test pictures in fixtures/ (drawn, no client data)
 src/lib/start/                 the starting files the seed's rows point at, served at /start/... (routes/start)
 src/routes/login/              the login page (server-rendered; emailed code, then Google/Microsoft)
 src/routes/waiting/            Waiting for access, where a Guest is kept (server-rendered)

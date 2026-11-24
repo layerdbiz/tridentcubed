@@ -18,6 +18,8 @@ The same holds for every conversion the app makes, of a photo now, a video later
 
 - Detail beyond 2048 px is gone for good, and a later wish for sharper prints cannot be met from stored photos. Two thousand pixels still prints a full page at about 185 ppi.
 - Safari cannot write WebP itself, so the app ships its own WebP encoder; the JPEG fallback keeps old phones working.
+- A WebP has no slot for a few rare fields (IPTC, a PNG's text and pixel density, RAW maker data), so every photo's File row also keeps the full field list of the file it came from (Justin, 2026-11-24, on [#281](https://github.com/layerdbiz/tridentcubed/issues/281); built on #292).
+- The phone reads its copy back before sending it. A photo whose copy lacks any field the copy can hold, or whose field list is too long to keep, goes untouched like a photo the phone cannot read (#292); until the server converts such files (#294) it stays as it came.
 - Time and place are read on the phone before shrinking and stored with the Attachment, from the file's metadata when it has it, otherwise from the phone's clock and location at that moment, with a flag saying which. In-app camera shots on iPhone arrive with no metadata, so the app writes its own into the file. Location is asked for once and never required.
 - The PDF export never embeds stored photos as they are: Chrome copies images into a PDF at full size and stores WebP losslessly, so the export makes a JPEG sized to each photo's spot on the page and lowers quality on its own to keep a report at or under 10 MB.
 - An Attachment follows its report's rules for deleting and restoring (ADR 0003), never rules of its own.
