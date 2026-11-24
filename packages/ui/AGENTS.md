@@ -38,5 +38,6 @@ unfinished and stay unused.
 
 30 shipped root overrides, `Colorss.svelte`, relative imports in `base/`,
 the module singletons in `observe` and `scroll`, five rune-free
-`.svelte.ts` helpers: all listed on "UI library cleanup" (#33), changed
+`.svelte.ts` helpers, the menu list's slate shades (kept from the app on
+#297 so nothing looks different): all listed on "UI library cleanup" (#33), changed
 there, not mid-feature.

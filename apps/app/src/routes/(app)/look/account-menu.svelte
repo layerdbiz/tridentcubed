@@ -9,7 +9,7 @@
 	import HowTo from '#lib/install/how-to.svelte';
 	import { install } from '#lib/install/install.state.svelte.js';
 	import type { LookState } from './look.state.svelte';
-	import Menu from './menu.svelte';
+	import { Menu } from '@layerd/ui';
 
 	let {
 		look,

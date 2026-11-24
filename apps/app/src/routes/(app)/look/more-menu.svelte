@@ -7,7 +7,7 @@
 	// Run 18: a project also offers Mark Complete and Change Status, which opens every status (status-sheet.svelte).
 	import { DATASETS, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import Menu, { type OptionType } from './menu.svelte';
+	import { Menu, type MenuOptionType } from '@layerd/ui';
 
 	let {
 		look,
@@ -34,7 +34,7 @@
 	// Its page's own word, both words capitalised: "Edit Transport Mode" (run 16).
 	const one = $derived(DATASETS[page].one);
 
-	const options = $derived<OptionType[]>([
+	const options = $derived<MenuOptionType[]>([
 		...(isOpenable
 			? [{ id: 'open', label: `Open ${one}`, icon: 'icon-[mdi--arrow-top-right]' }]
 			: []),

@@ -67,7 +67,7 @@
 		type PhotoType
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import Menu from './menu.svelte';
+	import { Menu } from '@layerd/ui';
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';

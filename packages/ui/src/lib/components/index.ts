@@ -51,6 +51,7 @@ export { default as Item, type ItemProps } from "./molecules/grid/item.svelte";
 export { default as Line } from "./molecules/chart/line/line.svelte";
 export { default as Logo, type LogoProps } from "./molecules/logo/logo.svelte";
 export * from "./molecules/logo/logo.data.ts";
+export { default as Menu, type MenuOptionType, type MenuProps } from "./molecules/menu/menu.svelte";
 export { default as Navbar } from "./molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./molecules/preview/preview.svelte";
 export { default as Slider, type SliderProps } from "./molecules/slider/slider.svelte";
