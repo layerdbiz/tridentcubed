@@ -4,6 +4,12 @@ export type FormFieldVariant = 'text' | 'icon text' | 'text icon' | 'icon text i
 
 export interface FieldProps<TValue = unknown> extends Omit<ComponentProps, 'disabled'> {
 	label?: string;
+	/**
+	 * Help text (glossary): what goes in the input. A ? right after the label opens it, shown once the label sits on
+	 * the border (the input is in use or holds a value): a pop-up by the ? for a mouse, a sheet from the bottom for a
+	 * finger. Neither takes the focus from the input.
+	 */
+	help?: string;
 	variant?: FormFieldVariant;
 	icon?: string;
 	iconEnd?: string;
@@ -32,6 +38,13 @@ export interface TextFieldProps<
 	autocorrect?: TAutocorrect;
 	autocapitalize?: TAutocapitalize;
 	spellcheck?: boolean;
+	/**
+	 * A Generated value (glossary): the value the app makes. While `value` is empty the input shows it in bright blue
+	 * with a wand; once someone types over it, the text turns dark and a reset empties `value`, which brings it back.
+	 */
+	generated?: string;
+	/** Called after the reset has emptied `value`, for a consumer that saves by itself. */
+	onreset?: () => void;
 }
 
 export interface FormFieldStateOptions<TValue = unknown> {
@@ -95,6 +108,32 @@ export function hasFieldValue(value: unknown): boolean {
 	}
 
 	return true;
+}
+
+export interface GeneratedStateType {
+	/** What the input shows: its own value once typed, the app's while it is empty. */
+	shown: string;
+	/** The app's value is showing (bright blue, a wand). */
+	isGenerated: boolean;
+	/** Someone typed over the app's value (dark, a reset). */
+	isTyped: boolean;
+}
+
+/**
+ * Which value an input with a Generated value shows. An empty value, or one equal to the app's, is the app's; anything
+ * else was typed over it. Without a Generated value the input shows its own value and is neither.
+ */
+export function toGeneratedState(value: unknown, generated?: string): GeneratedStateType {
+	const own = value == null ? '' : String(value);
+	if (generated === undefined) return { shown: own, isGenerated: false, isTyped: false };
+	const isTyped = own.trim().length > 0 && own !== generated;
+	return { shown: isTyped ? own : generated, isGenerated: !isTyped, isTyped };
+}
+
+/** The class names a field's fieldset takes for its Generated value. */
+export function toGeneratedClass(state: GeneratedStateType): string {
+	if (state.isTyped) return 'field-typed';
+	return state.isGenerated ? 'field-generated' : '';
 }
 
 export function createFieldIdentity(options: {

@@ -46,21 +46,21 @@ document.head.insertAdjacentHTML(
 	'<style>[popover][data-popover-open] { display: block !important; }</style>'
 );
 
-// jsdom has no Web Animations, which Svelte's transitions play on. The stand-in finishes each one as soon as it is
-// started, so an element that fades out is gone by the next tick.
+// Svelte's transitions run on the Web Animations API, which jsdom lacks: every animation finishes at once.
 if (!('animate' in Element.prototype)) {
 	Object.defineProperty(Element.prototype, 'animate', {
 		configurable: true,
-		value() {
+		value: () => {
 			const animation = {
-				cancel() {},
+				onfinish: null as null | (() => void),
+				finished: Promise.resolve(),
 				currentTime: 0,
 				effect: null,
-				playState: 'finished',
-				set onfinish(done: (() => void) | null) {
-					done?.();
-				}
+				cancel: () => {},
+				play: () => {},
+				pause: () => {}
 			};
+			queueMicrotask(() => animation.onfinish?.());
 			return animation as unknown as Animation;
 		}
 	});
