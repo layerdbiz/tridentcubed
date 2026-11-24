@@ -1,7 +1,7 @@
 // PROTOTYPE (#161) run 27: photo files dragged in from the desktop (Justin, 2026-11-12: "select a bunch of photos
 // ... drag and drop onto a panel or a photo section, and they would all get uploaded"). Dropped on a group they join
 // that group; dropped on the panel they join its last group, or a first group made for them. Anything that is not a
-// picture is left out.
+// picture is left out; a picture the browser hands over with no type (a HEIC on Windows) is known by its name (#294).
 //
 // #189: each photo, picked, taken or dropped, goes to private storage on its own through the upload helper
 // (`startUpload`), which reads its time and place and shrinks it first. It shows in place at once (its `src` is its
@@ -9,6 +9,7 @@
 // app's file address and the mapper saves it (mapper.photos.ts). One failed upload is marked on its photo and is
 // retried by itself; the others carry on.
 import { SvelteMap } from 'svelte/reactivity';
+import { toPictureType } from '#lib/files/files.schema.js';
 import { startUpload, type Upload, type UploadStepsType } from '#lib/files/files.state.svelte.js';
 import { groupOf, type GroupType, type PanelType, type PhotoType } from './look.data';
 
@@ -64,7 +65,7 @@ export type AddPhotosType = {
 
 /** Adds the pictures among `files` to a photo panel, each on its way to storage, and says how many there were. */
 export function addPhotos(panel: PanelType, files: File[], options: AddPhotosType) {
-	const images = files.filter((file) => file.type.startsWith('image/'));
+	const images = files.filter((file) => toPictureType(file).startsWith('image/'));
 	if (!images.length) return 0;
 	const group = options.group ?? panel.groups.at(-1) ?? addGroup(panel);
 	for (const file of images) {

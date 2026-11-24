@@ -3,16 +3,15 @@
 // its clear background.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vite-plus/test';
-import { readMetadata } from '#lib/metadata/metadata.utils.js';
+import { readMetadata, toExifTaken, toExifTime } from '#lib/metadata/metadata.utils.js';
+import { MAX_PICTURE_SIDE, PictureError, UNREADABLE } from './files.schema';
 import {
 	type BlobMakerType,
 	encodePicture,
-	MAX_PICTURE_SIDE,
-	toExifTaken,
-	toExifTime,
 	toFittedSize,
 	toSent,
-	toTaken
+	toTaken,
+	toUntouched
 } from './files.utils';
 
 // What the picture's own metadata says of when and where, read as a picked picture is.
@@ -129,9 +128,32 @@ describe('what goes to storage (#292)', () => {
 		);
 	});
 
-	it('sends the copy anyway when storage cannot keep the original, or for a logo', () => {
-		expect(toSent({ kind: 'photo', file: HEIC, isCarried: false, isListKept: true })).toBe('plain');
+	it('sends a HEIC untouched too when its copy falls short: the server converts it (#294)', () => {
+		expect(toSent({ kind: 'photo', file: HEIC, isCarried: false, isListKept: true })).toBe(
+			'original'
+		);
+	});
+
+	it('sends the copy anyway when storage cannot take the original, or for a logo', () => {
 		expect(toSent({ kind: 'photo', file: HUGE, isCarried: true, isListKept: false })).toBe('copy');
 		expect(toSent({ kind: 'logo', file: JPEG, isCarried: false, isListKept: true })).toBe('plain');
+	});
+});
+
+describe('a picture the device cannot read (#294)', () => {
+	it('goes untouched for the server to convert, typed by its name when the browser gave none', () => {
+		const heic = new File(['heic'], 'IMG_0001.HEIC', { type: '' });
+		expect(toUntouched(heic).type).toBe('image/heic');
+		expect(toUntouched(heic).size).toBe(4);
+		const tiff = new File(['tiff'], 'scan.tif', { type: 'image/tiff' });
+		expect(toUntouched(tiff)).toBe(tiff);
+	});
+
+	it('is turned down with a reason the User reads when the server cannot convert it either', () => {
+		const raw = new File(['raw'], 'IMG_0001.CR2', { type: '' });
+		expect(() => toUntouched(raw)).toThrow(PictureError);
+		expect(() => toUntouched(raw)).toThrow(UNREADABLE);
+		const broken = new File(['jpeg'], 'broken.jpg', { type: 'image/jpeg' });
+		expect(() => toUntouched(broken)).toThrow(UNREADABLE);
 	});
 });

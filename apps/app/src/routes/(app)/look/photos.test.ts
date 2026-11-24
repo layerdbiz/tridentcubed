@@ -134,6 +134,9 @@ function createUploads() {
 		async put(target) {
 			await new Promise<void>((resolve) => waiting.push(resolve));
 			if (failing.has(names.get(target.url) ?? '')) throw new TypeError('Failed to fetch');
+		},
+		async convert() {
+			return { isDone: true };
 		}
 	};
 	async function settle() {
@@ -538,6 +541,23 @@ describe('adding photos', () => {
 		expect(panelOf(theirs.look, 'discharge').groups.map((group) => group.photos.length)).toEqual([
 			1
 		]);
+	});
+
+	it('takes a HEIC dropped with no type from the browser, as Windows can hand one over (#294)', async () => {
+		const uploads = createUploads();
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const discharge = panelOf(mine.look, 'discharge');
+
+		const added = addPhotos(discharge, [new File(['heic'], 'IMG_0001.HEIC', { type: '' })], {
+			projectId: id,
+			steps: uploads.steps
+		});
+
+		expect(added).toBe(1);
+		expect(uploads.asked).toHaveLength(0);
+		await uploads.settle();
+		expect(uploads.asked.map((request) => request.name)).toEqual(['IMG_0001.HEIC']);
 	});
 
 	it('marks a failed upload on its photo, saves the others, and Retry saves it in its place', async () => {

@@ -972,12 +972,20 @@
 							: 'rounded-xl py-2 pr-8 pl-3'}"
 						aria-busy={file.upload.isUploading}
 					>
-						{#if file.kind === 'photo'}
+						{#if file.kind === 'photo' && file.upload.hasPreview}
 							<img
 								src={file.upload.preview}
 								alt={file.name}
 								class="block max-h-64 w-auto max-w-full opacity-60"
+								onerror={() => (file.upload.hasPreview = false)}
 							/>
+						{:else if file.kind === 'photo'}
+							<!-- #294: a photo the device cannot draw shows its name while the server converts it. -->
+							<span class="flex items-center gap-2 py-2 pr-8 pl-3">
+								<span class="icon-[mdi--image-outline] size-4 shrink-0 text-primary"></span>
+								<span class="max-w-40 truncate">{file.name}</span>
+								{#if file.upload.isConverting}<span class="text-slate-500">Converting</span>{/if}
+							</span>
 						{:else}
 							<span class="icon-[mdi--file-table-outline] size-4 shrink-0 text-primary"></span>
 							<span class="max-w-40 truncate">{file.name}</span>
@@ -1348,14 +1356,30 @@
 										data-grip="photos-{group.id}"
 										onclick={() => (editing = photo)}
 									>
-										<img
-											src={photo.src}
-											alt={photo.description}
-											class="pointer-events-none size-full object-cover {upload
-												? 'opacity-60'
-												: ''}"
-											draggable="false"
-										/>
+										<!-- #294: a photo the device cannot draw (a HEIC in Chrome) shows its name, never a broken picture. -->
+										{#if upload && !upload.hasPreview}
+											<span
+												class="pointer-events-none flex size-full flex-col items-center justify-center gap-1 p-2 pb-8 text-center"
+											>
+												<span class="icon-[mdi--image-outline] size-6 shrink-0 text-slate-400"
+												></span>
+												<span class="line-clamp-2 text-[11px] font-medium break-all text-slate-600"
+													>{upload.name}</span
+												>
+											</span>
+										{:else}
+											<img
+												src={photo.src}
+												alt={photo.description}
+												class="pointer-events-none size-full object-cover {upload
+													? 'opacity-60'
+													: ''}"
+												draggable="false"
+												onerror={() => {
+													if (upload) upload.hasPreview = false;
+												}}
+											/>
+										{/if}
 										<!-- A soft shade in the corner, so the white ⋮ reads on a pale photo too (run 19). -->
 										<span
 											class="pointer-events-none absolute top-0 right-0 size-12 bg-[radial-gradient(circle_at_top_right,rgb(0_0_0/0.45),transparent_70%)]"
@@ -1367,8 +1391,17 @@
 											></span>
 										{/if}
 									</button>
-									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. -->
-									{#if upload?.isUploading}
+									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. #294: while
+									     the server converts it, the mark says so. -->
+									{#if upload?.isConverting}
+										<span
+											class="pointer-events-none absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded-lg bg-white px-1.5 py-1 text-[11px] font-semibold text-slate-700 shadow"
+											role="status"
+											aria-label="Converting photo {photoIndex + 1}"
+											><span class="icon-[svg-spinners--ring-resize] size-3.5 shrink-0 text-primary"
+											></span>Converting</span
+										>
+									{:else if upload?.isUploading}
 										<span
 											class="pointer-events-none absolute bottom-1 left-1 flex size-6 items-center justify-center rounded-full bg-white shadow"
 											role="status"
