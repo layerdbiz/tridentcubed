@@ -7,6 +7,10 @@
 	// on the toggle's own menu, which opens in place and would be cut off inside scrolling boxes. It keeps the app's
 	// slate shades so nothing looks different; trading them for theme colours belongs to "UI library cleanup" (#33).
 	//
+	// It draws its own outer box, not the base component: the app shows one per row's ⋮, and built on the base
+	// component a swipe between the dashboard's lists took about twice the script time on a slowed phone (measured on
+	// #297). Its props are its own for the same reason; none of the base props would do anything here.
+	//
 	// Closes on a pick, a tap outside or Escape. `isWide` fills its row. The list opens in the browser's top layer (a
 	// popover), placed under its button, or over it when there is no room below, so no scrolling or rounded box around
 	// the button cuts it off (the ⋮ of each project in the dashboard's lists, 2026-10-26). `isSearchable` puts a field
@@ -16,7 +20,6 @@
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { scale } from 'svelte/transition';
-	import { Component, type ComponentProps } from '@layerd/ui';
 
 	export interface MenuOptionType {
 		id: string;
@@ -32,8 +35,7 @@
 		isDanger?: boolean;
 	}
 
-	// The base component's `label` (its text) and `value` (a bound field's) mean other things here.
-	export interface MenuProps extends Omit<ComponentProps, 'label' | 'value'> {
+	export interface MenuProps {
 		options: MenuOptionType[];
 		value: string;
 		// The list's name, read out for its button, its list and its search field.
@@ -67,15 +69,11 @@
 		isSearchable = false,
 		onadd,
 		addLabel = '',
-		onedit,
-		...props
+		onedit
 	}: MenuProps = $props();
 
 	let isOpen = $state(false);
-	let button: HTMLButtonElement | undefined = $state();
-	// The element the base component draws around the button: what the list is placed against and what a tap
-	// outside is measured from.
-	const root = $derived(button?.parentElement ?? undefined);
+	let root: HTMLDivElement | undefined = $state();
 	let place = $state('');
 	let query = $state('');
 	const current = $derived(options.find((option) => option.id === value));
@@ -167,9 +165,9 @@
 	onresize={follow}
 />
 
-<Component
-	{...props}
-	class="relative {isWide ? 'w-full' : ''} {(props.class ?? '').trim()}"
+<div
+	class="relative {isWide ? 'w-full' : ''}"
+	bind:this={root}
 >
 	<button
 		type="button"
@@ -177,8 +175,7 @@
 		aria-haspopup="listbox"
 		aria-expanded={isOpen}
 		aria-label={label}
-		onclick={toggle}
-		bind:this={button}>{@render trigger(current, isOpen)}</button
+		onclick={toggle}>{@render trigger(current, isOpen)}</button
 	>
 	{#if isOpen}
 		<div
@@ -290,4 +287,4 @@
 			</div>
 		</div>
 	{/if}
-</Component>
+</div>
