@@ -38,6 +38,7 @@
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
 	import { flip } from 'svelte/animate';
+	import { Help } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Group from './group.svelte';
@@ -108,6 +109,13 @@
 	let openSections = $state<string[]>(['project']);
 	const personnel = $derived(panel.personnel ?? []);
 	const members = $derived(look.members.map((member) => ({ id: member.name, label: member.name })));
+
+	// The key of a Project panel field's Help text (#299): `project.title` for Title, `project.type` for Project Type.
+	function keyOf(field: FieldType) {
+		if (field.label === 'Project Type') return 'project.type';
+		const [first = '', ...rest] = field.label.split(' ');
+		return `project.${first.toLowerCase()}${rest.join('')}`;
+	}
 
 	function fieldOf(label: string) {
 		return panel.fields.find((field) => field.label === label);
@@ -531,16 +539,14 @@
 {#snippet fieldBlock(field: FieldType)}
 	{#if field.label === 'Location'}
 		<!-- Where the project is: the shared location field, which suggests places and saves the one picked. -->
-		<div class="sm:col-span-2">
-			<p class={labelClass}>
-				{field.label}
-				{#if !field.value}<span
-						class="size-1.5 rounded-full bg-warning"
-						title="Not filled in yet"
-					></span>{/if}
-			</p>
+		<div
+			class="has-help sm:col-span-2"
+			data-empty={field.value ? undefined : ''}
+		>
+			{@render labelOf(field.label, `${uid}-${field.id}`, keyOf(field), !field.value)}
 			<PlaceField
 				{look}
+				id="{uid}-{field.id}"
 				value={field.value}
 				oninput={(text) => {
 					field.value = text;
@@ -556,26 +562,31 @@
 			value={field.value}
 			icon="icon-[mdi--format-list-bulleted]"
 			isDisabled={field.isReadonly}
+			help={look.helpOf(keyOf(field))}
 			onpick={(option) => pickField(field, option)}
 			onadd={field.isAddable ? () => askField(field) : undefined}
 		/>
 	{:else}
-		<label class="block {field.type === 'textarea' ? 'sm:col-span-2' : ''}">
-			<span class={labelClass}>
-				{field.label}
-				{#if !field.value && !field.isReadonly}<span
-						class="size-1.5 rounded-full bg-warning"
-						title="Not filled in yet"
-					></span>{/if}
-			</span>
+		<div
+			class="has-help block {field.type === 'textarea' ? 'sm:col-span-2' : ''}"
+			data-empty={field.value ? undefined : ''}
+		>
+			{@render labelOf(
+				field.label,
+				`${uid}-${field.id}`,
+				keyOf(field),
+				!field.value && !field.isReadonly
+			)}
 			{#if field.type === 'textarea'}
 				<textarea
+					id="{uid}-{field.id}"
 					class="{inputClass} min-h-20 resize-y"
 					bind:value={field.value}
 					disabled={field.isReadonly}
 					placeholder="Type here"></textarea>
 			{:else}
 				<input
+					id="{uid}-{field.id}"
 					class={inputClass}
 					type={field.type}
 					bind:value={field.value}
@@ -583,7 +594,7 @@
 					placeholder="Type here"
 				/>
 			{/if}
-		</label>
+		</div>
 	{/if}
 {/snippet}
 
@@ -608,6 +619,7 @@
 				}
 			]}
 			value={fieldOf('Organization')?.value ?? ''}
+			help={look.helpOf('project.organization')}
 			onpick={(id) => setField('Organization', id)}
 		/>
 		<Picker
@@ -616,6 +628,7 @@
 			icon="icon-[mdi--account-tie]"
 			options={members}
 			value={panel.owner}
+			help={look.helpOf('project.teamLead')}
 			onpick={setLead}
 		/>
 		<Picker
@@ -624,6 +637,7 @@
 			icon={PAGE_ICONS.team}
 			options={members.filter((member) => member.id !== panel.owner)}
 			values={panel.assigned}
+			help={look.helpOf('project.teamAssigned')}
 			onpick={assign}
 		/>
 	</Group>
@@ -638,10 +652,14 @@
 			ondelete={() =>
 				remove(panel.personnel ?? [], company, 'Delete Personnel?', 'Its people leave the report.')}
 		>
-			<label class="block">
-				<span class={labelClass}>Company {@render unpicked(!company.company)}</span>
+			<div
+				class="has-help block"
+				data-empty={company.company ? undefined : ''}
+			>
+				{@render labelOf('Company', `${uid}-${company.id}`, 'personnel.company', !company.company)}
 				<!-- Typed freely, with the customers offered as it is typed: both a dropdown and an input. -->
 				<input
+					id="{uid}-{company.id}"
 					class={inputClass}
 					bind:value={company.company}
 					list="companies-{company.id}"
@@ -650,7 +668,7 @@
 				<datalist id="companies-{company.id}">
 					{#each look.customers as name (name)}<option value={name}></option>{/each}
 				</datalist>
-			</label>
+			</div>
 			{#each company.people as person, personIndex (person.id)}
 				<div class="flex items-start gap-2">
 					<div class="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
@@ -697,6 +715,23 @@
 	>
 {/snippet}
 
+<!-- An input's label and its ? (#299), which opens the input's Help text: outside the <label>, so a tap on the ?
+     never reaches the input and the input keeps the label's words for its name. The block holding the label and the
+     input is `has-help`, with `data-empty` while the input has nothing in it (look.css). -->
+{#snippet labelOf(label: string, id: string, key: string, isUnfilled = false)}
+	<span class={labelClass}>
+		<label for={id}>{label}</label>
+		{#if look.helpOf(key)}<Help
+				{label}
+				text={look.helpOf(key)}
+			/>{/if}
+		{#if isUnfilled}<span
+				class="size-1.5 rounded-full bg-warning"
+				title="Not filled in yet"
+			></span>{/if}
+	</span>
+{/snippet}
+
 {#snippet unpicked(isShown: boolean)}
 	{#if isShown}<span
 			class="size-1.5 rounded-full bg-warning"
@@ -727,11 +762,8 @@
 				     from the project's panels until someone rewords it. What is typed prints in its place and stops
 				     following the panels, so the line under the box always says which of the two it is, and an edited
 				     one shows a reset at its top right that brings the worked-out sentence back (clearing it does too). -->
-				<div>
-					<label
-						class={labelClass}
-						for="{uid}-description">{INTRODUCTION_LABEL}</label
-					>
+				<div class="has-help">
+					{@render labelOf(INTRODUCTION_LABEL, `${uid}-description`, 'project.description')}
 					<div class="relative">
 						<textarea
 							id="{uid}-description"
@@ -766,22 +798,28 @@
 					icon="icon-[mdi--package-variant-closed]"
 					options={PROJECT_TYPES.map((type) => ({ id: type, label: type }))}
 					value={fieldOf('Project Type')?.value ?? ''}
+					help={look.helpOf('project.type')}
 					onpick={(id) => setField('Project Type', id)}
 				/>
 				<!-- The two parts of the project number a User may type (#217), and the number they make. -->
 				<div class="grid grid-cols-2 gap-3">
-					<label class="block min-w-0">
-						<span class={labelClass}>Created Date</span>
+					<div
+						class="has-help block min-w-0"
+						data-empty={day ? undefined : ''}
+					>
+						{@render labelOf('Created Date', `${uid}-day`, 'project.createdDate')}
 						<input
+							id="{uid}-day"
 							class="{inputClass} min-w-0"
 							type="date"
 							value={day}
 							onchange={setDay}
 						/>
-					</label>
-					<label class="block min-w-0">
-						<span class={labelClass}>Job Number</span>
+					</div>
+					<div class="has-help block min-w-0">
+						{@render labelOf('Job Number', `${uid}-job`, 'project.jobNumber')}
 						<input
+							id="{uid}-job"
 							class="{inputClass} tabular-nums"
 							inputmode="numeric"
 							maxlength="3"
@@ -789,7 +827,7 @@
 							placeholder={String(nextJob)}
 							oninput={setJob}
 						/>
-					</label>
+					</div>
 				</div>
 			</Group>
 			<Group
@@ -805,6 +843,7 @@
 					icon={PAGE_ICONS.customers}
 					options={look.customers.map((name) => ({ id: name, label: name }))}
 					value={customerName}
+					help={look.helpOf('project.customer')}
 					onpick={setCustomer}
 					onadd={() => look.addFor('customers', {}, setCustomer)}
 					onedit={(name) => look.editRecord('customers', name)}
@@ -825,21 +864,26 @@
 						: 'Choose a customer first'}
 					isDisabled={!contacts.length}
 					isRequired={false}
+					help={look.helpOf('project.contact')}
 					onpick={(id) => {
 						panel.contact = id;
 						save();
 					}}
 				/>
 				<!-- The customer's own number for the job (#217): optional, so it shows no "not filled in" dot. -->
-				<label class="block">
-					<span class={labelClass}>Reference Number</span>
+				<div
+					class="has-help block"
+					data-empty={panel.customerReference ? undefined : ''}
+				>
+					{@render labelOf('Reference Number', `${uid}-reference`, 'project.referenceNumber')}
 					<input
+						id="{uid}-reference"
 						class={inputClass}
 						bind:value={panel.customerReference}
 						maxlength="100"
 						placeholder="Optional, e.g. SO025484"
 					/>
-				</label>
+				</div>
 			</Group>
 			{@render teamBlock()}
 		</div>
@@ -1105,14 +1149,18 @@
 								`Its ${day.entries.length} time log entries go with it.`
 							)}
 					>
-						<label class="block">
-							<span class={labelClass}>Date</span>
+						<div
+							class="has-help block"
+							data-empty={day.date ? undefined : ''}
+						>
+							{@render labelOf('Date', `${uid}-${day.id}`, 'timeLog.date')}
 							<input
+								id="{uid}-{day.id}"
 								class={inputClass}
 								type="date"
 								bind:value={day.date}
 							/>
-						</label>
+						</div>
 						<div
 							class="space-y-3"
 							{@attach sortable(`entries-${day.id}`, (from, to) => move(day.entries, from, to))}
@@ -1191,9 +1239,13 @@
 			>
 		</div>
 	{:else}
-		<label class="block">
-			<span class={labelClass}>Title</span>
+		<div
+			class="has-help block"
+			data-empty={panel.name ? undefined : ''}
+		>
+			{@render labelOf('Title', `${uid}-title`, 'panel.title')}
 			<input
+				id="{uid}-title"
 				class={inputClass}
 				bind:value={panel.name}
 				placeholder={panelNameOf(panel)}
@@ -1201,18 +1253,18 @@
 				aria-label="Panel title"
 				onblur={keepName}
 			/>
-		</label>
+		</div>
 		{#if panel.key === 'operations'}
 			<!-- The link to the project's files (#233): its folder elsewhere, a OneDrive folder say, pasted once. The
 			     report prints it on the Project Report page and on this panel's first page. Optional; what is typed
 			     is kept. The field runs the panel's full width, and once what it holds is an address a browser can
 			     open, an arrow shows inside it at the far right that opens it, to check it goes to the right place
 			     (Justin, 2026-11-18). -->
-			<div>
-				<label
-					class={labelClass}
-					for="{uid}-link">{LINK_LABEL}</label
-				>
+			<div
+				class="has-help"
+				data-empty={panel.link ? undefined : ''}
+			>
+				{@render labelOf(LINK_LABEL, `${uid}-link`, 'panel.link')}
 				<div class="relative">
 					<input
 						id="{uid}-link"
@@ -1284,25 +1336,47 @@
 						sortKey="groups-{panel.id}"
 						index={groupIndex}
 					>
-						<label class="block">
-							<span class={labelClass}>Title</span>
+						<div
+							class="has-help block"
+							data-empty={group.title ? undefined : ''}
+						>
+							{@render labelOf('Title', `${uid}-${group.id}-title`, 'group.title')}
 							<input
+								id="{uid}-{group.id}-title"
 								class={inputClass}
 								bind:value={group.title}
 								placeholder={word === 'stage'
 									? 'e.g. Discharge Operations'
 									: 'e.g. Hatch 2 before discharge'}
 							/>
-						</label>
-						<label class="block">
-							<span class={labelClass}>Description</span>
+						</div>
+						<div
+							class="has-help block"
+							data-empty={group.description ? undefined : ''}
+						>
+							{@render labelOf(
+								'Description',
+								`${uid}-${group.id}-description`,
+								'group.description'
+							)}
 							<textarea
+								id="{uid}-{group.id}-description"
 								class="{inputClass} min-h-16"
 								bind:value={group.description}
 								placeholder="Optional"></textarea>
-						</label>
-						<div>
-							<p class={labelClass}>Photos per page</p>
+						</div>
+						<div
+							class="has-help"
+							role="group"
+							aria-labelledby="{uid}-{group.id}-layout"
+						>
+							<p class={labelClass}>
+								<span id="{uid}-{group.id}-layout">Photos per page</span>
+								{#if look.helpOf('group.layout')}<Help
+										label="Photos per page"
+										text={look.helpOf('group.layout')}
+									/>{/if}
+							</p>
 							<div class="flex gap-1.5">
 								{#each LAYOUTS as layout (layout)}
 									<button

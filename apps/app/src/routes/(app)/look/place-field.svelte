@@ -20,12 +20,15 @@
 		value,
 		oninput,
 		inputClass,
+		id,
 		placeholder = 'Start typing a city or address'
 	}: {
 		look: LookState;
 		value: string;
 		oninput: (text: string) => void;
 		inputClass: string;
+		// The input's id, for the label that names it.
+		id?: string;
 		placeholder?: string;
 	} = $props();
 
@@ -86,6 +89,7 @@
 
 <div class="relative">
 	<input
+		{id}
 		class={inputClass}
 		{value}
 		{placeholder}

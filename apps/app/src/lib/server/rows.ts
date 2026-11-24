@@ -35,6 +35,7 @@ import {
 	customer,
 	disclaimerPoint,
 	facility,
+	helpText,
 	member,
 	organization,
 	organizationDetails,
@@ -72,6 +73,8 @@ export const DRIZZLE_TABLES: Record<TableNameType, PgTable> = {
 	organization,
 	organization_details: organizationDetails,
 	disclaimer_point: disclaimerPoint,
+	// #299
+	help_text: helpText,
 	// #186
 	project,
 	project_team: projectTeam,

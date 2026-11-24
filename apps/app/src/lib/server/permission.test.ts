@@ -126,6 +126,17 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 		['manager', 'admin', 'super']
 	],
 	[
+		'change the help text of an input',
+		() => ({
+			table: 'help_text',
+			operation: 'put',
+			columns: ['text'],
+			row: { organizationId: ORG },
+			values: { organizationId: ORG, text: 'Changed' }
+		}),
+		['admin', 'super']
+	],
+	[
 		'add a Transport Mode, a Facility or a place',
 		() => ({
 			table: 'transport',

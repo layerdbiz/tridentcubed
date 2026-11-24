@@ -6,12 +6,14 @@
 // they are filled in the database only.
 import { sql } from 'drizzle-orm';
 import { toStableId } from '#lib/rows/rows.utils.js';
+import { HELP } from '#lib/start/help.js';
 import { ORGANIZATION } from '#lib/start/organization.js';
 import { PLACES } from '#lib/start/places.js';
 import { FACILITIES, TRANSPORTS } from '#lib/start/transport.js';
 import { customer } from './customer.schema';
 import type { DatabaseType } from './index';
 import { disclaimerPoint, organizationDetails } from './details.schema';
+import { helpText } from './help.schema';
 import { organization } from './organization.schema';
 import { place } from './place.schema';
 import { team } from './team.schema';
@@ -371,6 +373,7 @@ export async function seedDatabase(db: DatabaseType) {
 	await db.transaction(async (tx) => {
 		await tx.insert(organization).values({ id, name, slug }).onConflictDoNothing();
 		await seedDetails(tx, id, emailDomain);
+		await seedHelp(tx, id);
 		await tx
 			.insert(customer)
 			.values(
@@ -404,6 +407,7 @@ export const SEED_TABLES = [
 	'organization',
 	'organization_details',
 	'disclaimer_point',
+	'help_text',
 	'customer',
 	'place',
 	'team',
@@ -475,6 +479,28 @@ async function seedDetails(tx: SeedTransactionType, organizationId: string, emai
 				title: point.title,
 				text: point.text
 			}))
+		)
+		.onConflictDoNothing();
+}
+
+// The first draft of every input's Help text (#299), one row per input, a second apart so they list in this order.
+// A row's id is worked out from its key, so seeding twice changes nothing and never undoes an edit.
+async function seedHelp(tx: SeedTransactionType, organizationId: string) {
+	await tx
+		.insert(helpText)
+		.values(
+			HELP.map(({ key, label, text }, index) => {
+				const at = new Date(SEEDED_AT + index * 1000);
+				return {
+					id: toStableId(organizationId, 'help text', key),
+					organizationId,
+					key,
+					label,
+					text,
+					createdAt: at,
+					updatedAt: at
+				};
+			})
 		)
 		.onConflictDoNothing();
 }

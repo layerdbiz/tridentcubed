@@ -44,6 +44,7 @@ it('prints SQL that gives a fresh database exactly the seed’s rows, twice over
 		'customer',
 		'disclaimer_point',
 		'facility',
+		'help_text',
 		'organization',
 		'organization_details',
 		'place',

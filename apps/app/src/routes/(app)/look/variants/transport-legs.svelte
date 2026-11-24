@@ -201,6 +201,7 @@
 					options={MODES.map((mode) => ({ id: mode, label: mode, icon: MODE_ICONS[mode] }))}
 					value={first.mode}
 					icon="icon-[mdi--cube-send]"
+					help={look.helpOf('leg.mode')}
 					onpick={(mode) => pickMode(leg, mode)}
 				/>
 				{#if first.mode}
@@ -209,6 +210,7 @@
 						options={transportsOf(leg)}
 						value={first.name}
 						icon={MODE_ICONS[first.mode]}
+						help={look.helpOf('leg.transport')}
 						onpick={(name) => pickName(leg, name)}
 						onadd={() => addTransport(leg)}
 						onedit={(name) => look.editRecord('transport', name)}
@@ -235,6 +237,7 @@
 								options={facilitiesOf(leg)}
 								value={stop.facility}
 								hasLabel={at === 0}
+								help={look.helpOf('stop.facility')}
 								onpick={(name) => pickFacility(stop, name)}
 								onadd={() => addFacility(leg, stop)}
 								onedit={(name) => look.editRecord('facilities', name)}
