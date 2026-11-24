@@ -6,6 +6,8 @@ status: accepted
 
 Report Generator V1 stores one copy of each photo: the phone shrinks it to at most 2048 px on its long side as a WebP (JPEG when the phone cannot encode WebP), copies every metadata field of the file it was given into it, and uploads that copy to a private Supabase Storage bucket; the file the phone took is never uploaded. A tiny preview for lists rides along, never shown as a photo of its own. Justin expects up to 100 reports a month with about 150 photos each, wants storage and loading kept small, and judged that a 2K copy holding all the metadata is enough; surveyors upload over mobile data, so shrinking before upload moves about 45 MB per report instead of 600 MB and works with no signal. Decided on 2026-10-06 and 2026-10-07 ([#125](https://github.com/layerdbiz/tridentcubed/issues/125)).
 
+The same holds for every conversion the app makes, of a photo now, a video later or any other file: the new file carries every metadata field of the one it came from, and nothing is ever dropped (Justin, 2026-11-24). A photo the phone cannot read, such as HEIC in Chrome on Windows and Android, camera RAW or TIFF, is uploaded untouched and converted on the server, every field copied, and the untouched file is deleted once the copy checks out: the one time a file the phone took reaches storage, and only until it is converted (Justin, 2026-11-24).
+
 ## Considered options
 
 - Keep every original and let Supabase image transformations make display sizes: the research's recommendation, dropped because transformations cost $5 per 1,000 photos after the first 100 a month, about $75 a month at 100 reports, the whole platform budget.
