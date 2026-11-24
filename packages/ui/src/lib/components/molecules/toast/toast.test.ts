@@ -1,0 +1,84 @@
+// A Toast (glossary, #293): a short message, or the work under way with what is happening, a percent and a bar; a
+// failure keeps it open with the reason, Try Again and Close.
+import { fireEvent, render, screen } from '@testing-library/svelte';
+import { flushSync } from 'svelte';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import Toast from './toast.svelte';
+import { Progress } from './toast.svelte.ts';
+
+// jsdom has no Web Animations, which the toast's slide in plays on: each one finishes as soon as it starts.
+beforeAll(() => {
+	if ('animate' in Element.prototype) return;
+	Object.defineProperty(Element.prototype, 'animate', {
+		configurable: true,
+		value() {
+			return {
+				cancel() {},
+				currentTime: 0,
+				playState: 'finished',
+				set onfinish(done: (() => void) | null) {
+					done?.();
+				}
+			} as unknown as Animation;
+		}
+	});
+});
+
+describe('Toast', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('shows nothing until its work starts', () => {
+		render(Toast, { props: { progress: new Progress(), label: 'Download PDF' } });
+		expect(screen.queryByRole('status')).toBeNull();
+	});
+
+	it('shows what is happening, a percent and a bar named for the work', () => {
+		const progress = new Progress();
+		render(Toast, { props: { progress, label: 'Download PDF' } });
+
+		progress.start('Getting the pages ready', 25);
+		progress.reach(20, 25, 'Preparing page 4 of 5');
+		flushSync();
+
+		const toast = screen.getByRole('status');
+		expect(toast.textContent).toContain('Preparing page 4 of 5');
+		expect(toast.textContent).toContain('20%');
+		const bar = screen.getByRole('progressbar', { name: 'Download PDF' });
+		expect(bar.getAttribute('aria-valuenow')).toBe('20');
+	});
+
+	it('stays open on a failure with the reason, Try Again and Close', async () => {
+		const progress = new Progress();
+		const again = vi.fn();
+		render(Toast, { props: { progress, label: 'Download PDF' } });
+		progress.start('Printing 24 pages', 85);
+		progress.fail('No connection. Check your signal and try again.', again);
+		flushSync();
+
+		expect(screen.getByRole('status').textContent).toContain(
+			'No connection. Check your signal and try again.'
+		);
+		expect(screen.queryByRole('progressbar')).toBeNull();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
+		expect(again).toHaveBeenCalledOnce();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		expect(progress.isOpen).toBe(false);
+	});
+
+	it('shows a short message while it has one', () => {
+		render(Toast, { props: { text: '3 photos added' } });
+		expect(screen.getByRole('status').textContent).toBe('3 photos added');
+	});
+
+	it('shows nothing for an empty message', () => {
+		render(Toast, { props: { text: '' } });
+		expect(screen.queryByRole('status')).toBeNull();
+	});
+});

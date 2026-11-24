@@ -62,6 +62,7 @@
 	} from './look.data';
 	import { customerOf, locationOf } from './records.data';
 	import { DownloadError, joinPdfs, PART_LIMIT, printParts, sizeOf, toParts } from './download';
+	import { downloadToast } from './toasts';
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
 	import {
 		createFollower,
@@ -894,7 +895,7 @@
 	// Download (run 33): the pages as they are drawn here, with this page's own styles, go to the server, which
 	// prints them to a PDF with the app's export browser (pdf/+server.ts) and hands the file back. #240: they go in
 	// parts that each fit under the host's cap on one request, and the PDFs that come back are joined into one
-	// (download.ts); a toast shows how far it is from the click until the file is saved (progress.svelte.ts).
+	// (download.ts); a toast shows how far it is from the click until the file is saved (the library's Toast, #293).
 	let canvas: HTMLDivElement | undefined = $state();
 
 	// A photo far bigger than it prints is sent at three times its printed size, as a JPEG, so the PDF stays small
@@ -954,7 +955,7 @@
 	const JOINED = 97;
 
 	async function download() {
-		const progress = look.progress;
+		const progress = downloadToast();
 		if (progress.isBusy || !canvas) return;
 		const nodes = [...canvas.querySelectorAll<HTMLElement>('article[data-page]')];
 		const count = nodes.length;

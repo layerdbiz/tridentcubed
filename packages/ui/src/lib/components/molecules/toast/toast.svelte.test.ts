@@ -1,13 +1,13 @@
-// The download's progress (#240; Justin, 2026-11-18: "it needs to appear to be actually loading, because the last
-// thing you want to do is leave the user wondering"). What is checked is what the person sees: the bar opens at
-// once, keeps moving between real steps without passing one that is not done, glides on when a step finishes, only
-// reads 100 when the file is saved, and stays open with the reason when the download fails.
+// The work a toast shows (#293; first the PDF download's, #240; Justin, 2026-11-18: "it needs to appear to be
+// actually loading, because the last thing you want to do is leave the user wondering"). What is checked is what the
+// person sees: the bar opens at once, keeps moving between real steps without passing one that is not done, glides on
+// when a step finishes, only reads 100 when the work is done, and stays open with the reason when it fails.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { Progress } from './progress.svelte';
+import { Progress } from './toast.svelte.ts';
 
 const SECOND = 1000;
 
-describe('the download progress', () => {
+describe('the progress a toast shows', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 	});

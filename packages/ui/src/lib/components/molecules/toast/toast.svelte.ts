@@ -1,13 +1,12 @@
-// The download's progress (#240), as the toast shows it (progress-toast.svelte). Justin, 2026-11-18: it opens the
-// moment Download is clicked, stays until the file is saved, and must always look alive, "because the last thing
-// you want to do is leave the user wondering".
+// The work a Toast (glossary) shows (#293; it began as the PDF download's progress, #240). Justin, 2026-11-18: it
+// opens the moment the work starts, stays until it is done, and must always look alive, "because the last thing you
+// want to do is leave the user wondering".
 //
-// The bar follows the real work: each real step (a page prepared, a part printed, the parts joined, the file
-// saved) puts it at least at that step's mark. Between steps nothing can be measured (a part is with the printer
-// for seconds, and it says nothing until it is done), so the bar creeps toward the next step's mark, fast at
-// first and slower the closer it gets, and never arrives on its own: a step that is not done is never shown as
-// done, and 100 is the file saved and nothing else. A step that finishes early moves the bar straight on.
-// A failure stops it where it is, with the reason and a way to try again.
+// The bar follows the real work: each real step (a page prepared, a part printed, a photo stored) puts it at least
+// at that step's mark. Between steps nothing can be measured, so the bar creeps toward the next step's mark, fast at
+// first and slower the closer it gets, and never arrives on its own: a step that is not done is never shown as done,
+// and 100 is the work done and nothing else. A step that finishes early moves the bar straight on. A failure stops
+// it where it is, with the reason and a way to try again.
 
 // How often the bar creeps, and how long it takes to cover about two thirds of the way to the next mark.
 const TICK = 100;
@@ -15,14 +14,14 @@ const PACE = 12_000;
 const RATE = 1 - Math.exp(-TICK / PACE);
 // How close to the next mark creeping may come: the number shown stays under it.
 const SHY = 0.5;
-// How long "PDF downloaded" stays up.
+// How long the toast stays up once the work is done ("PDF downloaded").
 const GOODBYE = 1600;
 
 export class Progress {
 	isOpen = $state(false);
 	/** What is happening, in a few plain words. */
 	label = $state('');
-	/** Why the download failed; empty while it has not. */
+	/** Why the work failed; empty while it has not. */
 	problem = $state('');
 	/** Where the bar is, 0 to 100. */
 	value = $state(0);
@@ -32,17 +31,17 @@ export class Progress {
 	#ticker: ReturnType<typeof setInterval> | undefined;
 	#closer: ReturnType<typeof setTimeout> | undefined;
 
-	/** The whole number shown beside the bar: 100 only once the file is saved. */
+	/** The whole number shown beside the bar: 100 only once the work is done. */
 	get percent() {
 		return this.#isDone ? 100 : Math.min(Math.floor(this.value), 99);
 	}
 
-	/** Whether a download is under way: Download does nothing more until it ends. */
+	/** Whether the work is under way: what started it does nothing more until it ends. */
 	get isBusy() {
 		return this.isOpen && !this.problem && !this.#isDone;
 	}
 
-	/** A download has begun: the toast opens at nothing and creeps toward `next`, the first step's mark. */
+	/** The work has begun: the toast opens at nothing and creeps toward `next`, the first step's mark. */
 	start(label: string, next: number) {
 		this.#stop();
 		this.isOpen = true;
@@ -65,7 +64,7 @@ export class Progress {
 		if (label) this.label = label;
 	}
 
-	/** The file is saved. */
+	/** The work is done: the bar reads 100 and the toast goes a moment later. */
 	finish(label: string) {
 		this.#stop();
 		this.#isDone = true;
@@ -74,7 +73,7 @@ export class Progress {
 		this.#closer = setTimeout(() => this.close(), GOODBYE);
 	}
 
-	/** The download failed: the toast stays, with why, until it is closed or tried again. */
+	/** The work failed: the toast stays, with why, until it is closed or tried again. */
 	fail(problem: string, again: () => void) {
 		this.#stop();
 		this.problem = problem;

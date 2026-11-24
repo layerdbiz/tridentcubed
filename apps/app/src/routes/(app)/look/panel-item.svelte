@@ -19,6 +19,7 @@
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
 	import { addPhotos, hasFiles } from './photos';
+	import { createPhotoToast } from './toasts';
 	import ProgressRing from './progress-ring.svelte';
 
 	let {
@@ -89,7 +90,8 @@
 		event.preventDefault();
 		isOver = false;
 		const count = addPhotos(panel, [...(event.dataTransfer?.files ?? [])], {
-			projectId: look.projectId
+			projectId: look.projectId,
+			toast: createPhotoToast
 		});
 		if (!count) return;
 		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added to ${panel.name}`);

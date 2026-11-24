@@ -76,6 +76,7 @@
 	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { addGroup as addPhotoGroup, addPhotos, hasFiles, movePhoto, uploadOf } from './photos';
+	import { createPhotoToast } from './toasts';
 	import { contactsOf } from './records.data';
 	import { stageNumbersOf } from './report-flow';
 	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
@@ -459,7 +460,8 @@
 		dropping = '';
 		const count = addPhotos(panel, [...(event.dataTransfer?.files ?? [])], {
 			group,
-			projectId: look.projectId
+			projectId: look.projectId,
+			toast: createPhotoToast
 		});
 		if (!count) return;
 		if (!openGroups.includes(group.id)) openGroups = [...openGroups, group.id];
@@ -493,7 +495,8 @@
 		const input = event.currentTarget as HTMLInputElement;
 		const files = [...(input.files ?? [])];
 		input.value = '';
-		if (addPhotos(panel, files, { group, projectId: look.projectId })) save();
+		if (addPhotos(panel, files, { group, projectId: look.projectId, toast: createPhotoToast }))
+			save();
 	}
 
 	function move<T>(list: T[], from: number, to: number) {

@@ -40,5 +40,7 @@ unfinished and stay unused.
 the module singletons in `observe` and `scroll`, five rune-free
 `.svelte.ts` helpers, the menu list's slate shades and its own outer box
 in place of the base component (kept from the app on #297: the same look,
-and a list of rows with a ⋮ each stays as fast as before): all listed on "UI library cleanup" (#33), changed
+and a list of rows with a ⋮ each stays as fast as before), the toast's
+slate and amber shades (kept from the app's PDF download toast on #293):
+all listed on "UI library cleanup" (#33), changed
 there, not mid-feature.

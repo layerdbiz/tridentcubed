@@ -248,8 +248,7 @@ fieldset.field:has(.generated) input::-webkit-calendar-picker-indicator {
 	display: none;
 }
 
-input:is(:-webkit-autofill, :autofill),
-textarea:is(:-webkit-autofill, :autofill) {
+fieldset.field :is(input, textarea):is(:-webkit-autofill, :autofill) {
 	-webkit-text-fill-color: currentColor;
 	caret-color: currentColor;
 	transition: background-color 99999s ease-out 0s;

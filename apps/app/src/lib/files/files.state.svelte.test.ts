@@ -1,7 +1,8 @@
 // One picture on its way to storage (#187; spec stories 68 and 69): it shows in place at once with an uploading
 // mark, the row gets the app's file address only once the bytes are there, and a failed upload says so on the
 // picture and can be retried.
-import { describe, expect, it } from 'vite-plus/test';
+import { Progress } from '@layerd/ui';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 import {
 	type ConvertAnswerType,
 	type ConvertRequestType,
@@ -10,7 +11,7 @@ import {
 	type UploadAnswerType,
 	type UploadRequestType
 } from './files.schema';
-import { Upload, type UploadStepsType } from './files.state.svelte';
+import { Upload, UploadBatch, type UploadStepsType } from './files.state.svelte';
 import type { PreparedType } from './files.utils';
 
 const FILE_ID = '0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
@@ -326,5 +327,169 @@ describe('a document on its way (#188)', () => {
 			type: 'application/octet-stream'
 		});
 		expect(test.done).toEqual([`/files/${FILE_ID}`]);
+	});
+});
+
+describe('photos picked together (#293)', () => {
+	// Every photo's trip to storage waits until the test lets it go, one at a time, by the photo's name. A name ending
+	// in .HEIC goes untouched and waits again while the server converts it; a name in `failing` fails its first send.
+	function createHeldSteps(failing: string[] = []) {
+		const waiting = new Map<string, () => void>();
+		const tries = new Map<string, number>();
+		const asked: string[] = [];
+		function hold(name: string) {
+			return new Promise<void>((resolve) => waiting.set(name, resolve));
+		}
+		const steps: UploadStepsType = {
+			toPreview: () => 'blob:preview',
+			async prepare(file) {
+				if (!file.name.endsWith('.HEIC')) return COPY;
+				return { ...COPY, blob: new Blob(['heic'], { type: 'image/heic' }), shouldConvert: true };
+			},
+			async ask(request) {
+				asked.push(request.name);
+				return {
+					isAllowed: true,
+					id: FILE_ID,
+					address: `/files/${request.name}`,
+					upload: { method: 'PUT', url: `/local-files/${request.name}`, headers: {} }
+				};
+			},
+			async put(target) {
+				const name = target.url.split('/').at(-1)!;
+				tries.set(name, (tries.get(name) ?? 0) + 1);
+				await hold(name);
+				if (failing.includes(name) && tries.get(name) === 1) throw new TypeError('Failed to fetch');
+			},
+			async convert() {
+				await hold('server');
+				return { isDone: true };
+			}
+		};
+		// Lets the named photo's waiting step finish, and gives the batch time to hear of it.
+		async function release(name: string) {
+			await settle();
+			const resolve = waiting.get(name);
+			waiting.delete(name);
+			resolve?.();
+			await settle();
+		}
+		return { steps, asked, release };
+	}
+
+	function settle() {
+		return new Promise((resolve) => setTimeout(resolve, 0));
+	}
+
+	function photo(name: string) {
+		return new File(['raw'], name, { type: 'image/jpeg' });
+	}
+
+	let toast: Progress;
+	afterEach(() => toast.close());
+
+	function pickTogether(names: string[], test: ReturnType<typeof createHeldSteps>) {
+		toast = new Progress();
+		const batch = new UploadBatch(toast);
+		for (const name of names) {
+			batch.add(photo(name), { for: LOGO, kind: 'photo', ondone: () => {}, steps: test.steps });
+		}
+		return batch;
+	}
+
+	it('share one toast that counts them as each is stored, and says when all are', async () => {
+		const test = createHeldSteps();
+		pickTogether(['a.jpg', 'b.jpg', 'c.jpg'], test);
+		expect(toast.isOpen).toBe(true);
+		expect(toast.label).toBe('Uploading 1 of 3 photos');
+		expect(toast.percent).toBe(0);
+
+		await test.release('a.jpg');
+		expect(toast.label).toBe('Uploading 2 of 3 photos');
+		expect(toast.percent).toBe(33);
+
+		await test.release('c.jpg');
+		await test.release('b.jpg');
+		expect(toast.label).toBe('3 photos uploaded');
+		expect(toast.percent).toBe(100);
+	});
+
+	it('says Converting while the server converts one of them', async () => {
+		const test = createHeldSteps();
+		pickTogether(['a.jpg', 'b.HEIC'], test);
+		await test.release('a.jpg');
+		await test.release('b.HEIC');
+		expect(toast.label).toBe('Converting 2 of 2 photos');
+		expect(toast.isBusy).toBe(true);
+
+		await test.release('server');
+		expect(toast.label).toBe('2 photos uploaded');
+	});
+
+	it('counts one photo alone as one', async () => {
+		const test = createHeldSteps();
+		pickTogether(['a.jpg'], test);
+		expect(toast.label).toBe('Uploading 1 photo');
+		await test.release('a.jpg');
+		expect(toast.label).toBe('1 photo uploaded');
+	});
+
+	it('stays open when one does not go, and Try Again sends only that one', async () => {
+		const test = createHeldSteps(['b.jpg']);
+		const batch = pickTogether(['a.jpg', 'b.jpg', 'c.jpg'], test);
+		await test.release('a.jpg');
+		await test.release('b.jpg');
+		await test.release('c.jpg');
+		expect(toast.isOpen).toBe(true);
+		expect(toast.problem).toBe(
+			'1 of 3 photos did not upload. The upload did not go through. Check the connection and retry.'
+		);
+		expect(batch.uploads.map((upload) => upload.isFailed)).toEqual([false, true, false]);
+
+		toast.retry();
+		expect(toast.problem).toBe('');
+		expect(toast.label).toBe('Uploading 3 of 3 photos');
+		await test.release('b.jpg');
+		expect(test.asked).toEqual(['a.jpg', 'b.jpg', 'c.jpg', 'b.jpg']);
+		expect(toast.label).toBe('3 photos uploaded');
+	});
+
+	it('stops counting a photo deleted on its way, and Try Again never sends it', async () => {
+		const test = createHeldSteps(['b.jpg']);
+		toast = new Progress();
+		const batch = new UploadBatch(toast);
+		const kept = new Set(['a.jpg', 'b.jpg', 'c.jpg']);
+		for (const name of kept) {
+			batch.add(
+				photo(name),
+				{ for: LOGO, kind: 'photo', ondone: () => {}, steps: test.steps },
+				() => kept.has(name)
+			);
+		}
+		await test.release('a.jpg');
+		await test.release('b.jpg');
+		await test.release('c.jpg');
+		expect(toast.problem).toBe(
+			'1 of 3 photos did not upload. The upload did not go through. Check the connection and retry.'
+		);
+
+		kept.delete('b.jpg');
+		toast.retry();
+		expect(test.asked).toEqual(['a.jpg', 'b.jpg', 'c.jpg']);
+		expect(toast.label).toBe('2 photos uploaded');
+	});
+
+	it('comes back when a photo is tried again from its own mark after the toast was closed', async () => {
+		const test = createHeldSteps(['a.jpg']);
+		const batch = pickTogether(['a.jpg'], test);
+		await test.release('a.jpg');
+		expect(toast.problem).toBe('The upload did not go through. Check the connection and retry.');
+		toast.close();
+
+		void batch.uploads[0].retry();
+		expect(toast.isOpen).toBe(true);
+		expect(toast.label).toBe('Uploading 1 photo');
+		await test.release('a.jpg');
+		expect(toast.label).toBe('1 photo uploaded');
 	});
 });
