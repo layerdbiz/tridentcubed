@@ -7,7 +7,9 @@
 	// puts the kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with
 	// Delete at the far right of its bottom row (run 8 note 10); every delete asks first. Each photo has its own
 	// description: tap it, or Edit description in its ⋮ (notes 12 and 14). V1 (#180) took out the sample day and the
-	// sample photo, the last buttons that wrote made-up data.
+	// sample photo, the last buttons that wrote made-up data. #312: a tap opens the photo in its pop-up
+	// (photo-popup.svelte) to swipe through its group, crop it and describe it; its ⋮ opens it cropping or typing, or
+	// deletes it. A photo's tile shows its crop.
 	// Run 9: Items is rows of quantity and description, like the time log's entries (note 24); a photo with a
 	// description shows an icon instead of its text (note 16), its ⋮ is bare dots (note 15), and the photos-per-page
 	// buttons draw their own layout (note 17). Uploads are shrunk here, as V1 will, so the browser can keep them.
@@ -35,8 +37,8 @@
 	// #229 (Justin, 2026-11-18): what a section counts is not written here beside its inputs any more. Every
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
-	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
+	import Photo from '#lib/components/photo/photo.svelte';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
@@ -68,6 +70,7 @@
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import Menu from './menu.svelte';
+	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
@@ -414,13 +417,16 @@
 		save();
 	}
 
-	// The photo whose description is open in the sheet. The sheet opens with the cursor at the end of the text, ready to
-	// type: the browser's own autofocus skips a field that appears after a tap on a button.
-	let editing = $state<PhotoType>();
-	const focusEnd: Attachment<HTMLTextAreaElement> = (node) => {
-		node.focus({ preventScroll: true });
-		node.setSelectionRange(node.value.length, node.value.length);
-	};
+	// The photo open in the pop-up (#312): its group, which photo, and whether it opens looking, cropping or typing.
+	let opened = $state<{ group: PanelType['groups'][number]; id: string; mode: PopupModeType }>();
+
+	function openPhoto(
+		group: PanelType['groups'][number],
+		photo: PhotoType,
+		mode: PopupModeType = 'view'
+	) {
+		opened = { group, id: photo.id, mode };
+	}
 
 	function sortEntries(index: number) {
 		panel.days[index].entries.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
@@ -450,15 +456,6 @@
 		if (!openGroups.includes(group.id)) openGroups = [...openGroups, group.id];
 		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added`);
 		save();
-	}
-
-	// From the photo's own sheet: close it, then ask, as every delete does.
-	function deletePhoto(photo: PhotoType) {
-		const group = panel.groups.find((item) => item.photos.some((other) => other.id === photo.id));
-		const found = group?.photos.find((other) => other.id === photo.id);
-		editing = undefined;
-		if (group && found)
-			remove(group.photos, found, 'Delete photo?', `It leaves the ${word} and the report.`);
 	}
 
 	function addGroup() {
@@ -1344,17 +1341,15 @@
 									<button
 										type="button"
 										class="relative block size-full overflow-hidden rounded-xl bg-slate-100 select-none [-webkit-touch-callout:none]"
-										aria-label="Describe photo {photoIndex + 1}"
+										aria-label="Open photo {photoIndex + 1}"
 										data-grip="photos-{group.id}"
-										onclick={() => (editing = photo)}
+										onclick={() => openPhoto(group, photo)}
 									>
-										<img
+										<Photo
 											src={photo.src}
 											alt={photo.description}
-											class="pointer-events-none size-full object-cover {upload
-												? 'opacity-60'
-												: ''}"
-											draggable="false"
+											crop={photo.crop}
+											class="pointer-events-none size-full {upload ? 'opacity-60' : ''}"
 										/>
 										<!-- A soft shade in the corner, so the white ⋮ reads on a pale photo too (run 19). -->
 										<span
@@ -1397,6 +1392,11 @@
 											align={photoIndex % 3 === 0 ? 'left' : 'right'}
 											options={[
 												{
+													id: 'crop',
+													label: 'Crop',
+													icon: 'icon-[mdi--crop]'
+												},
+												{
 													id: 'describe',
 													label: 'Edit description',
 													icon: 'icon-[mdi--pencil-outline]'
@@ -1409,14 +1409,14 @@
 												}
 											]}
 											onpick={(id) =>
-												id === 'describe'
-													? (editing = photo)
-													: remove(
+												id === 'delete'
+													? remove(
 															group.photos,
 															photo,
 															'Delete photo?',
 															`It leaves the ${word} and the report.`
-														)}
+														)
+													: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
 										>
 											{#snippet trigger()}
 												<span class="flex size-7 items-center justify-center text-white"
@@ -1534,47 +1534,14 @@
 	</BottomSheet>
 {/if}
 
-{#if editing}
-	{@const photo = editing}
-	<BottomSheet
-		label="Describe this photo"
-		onclose={() => (editing = undefined)}
-	>
-		<form
-			onsubmit={(event) => {
-				event.preventDefault();
-				editing = undefined;
-			}}
-		>
-			<div class="flex items-center gap-3">
-				<img
-					src={photo.src}
-					alt=""
-					class="size-16 shrink-0 rounded-xl object-cover"
-				/>
-				<div>
-					<b class="block text-lg text-slate-900">Photo description</b>
-					<p class="text-sm text-slate-500">Shows on this photo in the report.</p>
-				</div>
-			</div>
-			<label class="mt-4 block">
-				<span class={labelClass}>Description</span>
-				<textarea
-					class="{inputClass} min-h-20"
-					bind:value={photo.description}
-					oninput={() => save()}
-					placeholder="e.g. Lashing on the forward stack, seen from the quay"
-					{@attach focusEnd}></textarea>
-			</label>
-			<button class="mt-5 w-full rounded-full bg-primary py-3 text-sm font-semibold text-white"
-				>Done</button
-			>
-			<button
-				type="button"
-				class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full py-3 text-sm font-semibold text-danger transition hover:bg-danger/10"
-				onclick={() => deletePhoto(photo)}
-				><span class="icon-[mdi--trash-can-outline] size-[18px]"></span>Delete</button
-			>
-		</form>
-	</BottomSheet>
+{#if opened}
+	<PhotoPopup
+		{look}
+		group={opened.group}
+		id={opened.id}
+		mode={opened.mode}
+		{word}
+		onsave={save}
+		onclose={() => (opened = undefined)}
+	/>
 {/if}

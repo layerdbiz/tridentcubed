@@ -1,7 +1,9 @@
 // The mapper's photo panels (#189): a photo panel's groups and their photos as rows, and rows back into the panel.
 // A group is a `photo_group` row of its panel and a photo a `photo` row of its group, each with its place in the
 // list as `position`. A photo saves only once its file is in storage: while it uploads, or after its upload failed,
-// it shows on this device and keeps its place, but nothing of it is sent (photos.ts holds its upload).
+// it shows on this device and keeps its place, but nothing of it is sent (photos.ts holds its upload). #312: a photo's
+// crop is kept on its row, and so moves with it to another group.
+import type { CropType } from '#lib/components/photo/photo.types.js';
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import type { GroupType, PanelType, PhotoType } from './look.data';
 import { byPosition, text } from './mapper.utils';
@@ -9,6 +11,21 @@ import { byPosition, text } from './mapper.utils';
 /** Whether a photo's file is in storage yet: a photo on its way shows its own preview (a `blob:` address). */
 export function isStored(photo: PhotoType) {
 	return Boolean(photo.src) && !photo.src.startsWith('blob:');
+}
+
+// A crop as its row keeps it: in jsonb's own key order (x, y, zoom), so a row sent reads the same as the row the
+// server gives back and nothing is sent twice; nothing for the whole photo.
+function toSavedCrop(crop?: CropType) {
+	return crop ? { x: crop.x, y: crop.y, zoom: crop.zoom } : null;
+}
+
+function cropOf(values: RowType['values']): CropType | undefined {
+	const crop = values.crop as Record<string, unknown> | null | undefined;
+	if (!crop) return undefined;
+	const { zoom, x, y } = crop;
+	return typeof zoom === 'number' && typeof x === 'number' && typeof y === 'number'
+		? { zoom, x, y }
+		: undefined;
 }
 
 /** A photo panel's groups and their stored photos as rows, in order. */
@@ -37,7 +54,8 @@ export function toPhotoRows(projectId: string, panel: PanelType): RowType[] {
 					groupId: group.id,
 					position: index,
 					file: photo.src,
-					description: photo.description
+					description: photo.description,
+					crop: toSavedCrop(photo.crop)
 				}
 			});
 	}
@@ -61,7 +79,8 @@ export function takePhotos(panel: PanelType, rows: SavedRowType[]) {
 				.map((photo) => ({
 					id: photo.id,
 					src: text(photo.values, 'file'),
-					description: text(photo.values, 'description')
+					description: text(photo.values, 'description'),
+					crop: cropOf(photo.values)
 				}))
 		}));
 }

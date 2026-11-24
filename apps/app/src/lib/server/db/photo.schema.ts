@@ -5,7 +5,7 @@
 // Both carry `project_id`, as every row inside a project does, so they load when the project opens, the freeze of
 // a Sent project reaches them and deleting the project sends them to the Trash (#186). Row Level Security keeps them
 // to the acting organization.
-import { boolean, index, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, uuid } from 'drizzle-orm/pg-core';
 import { organizationPolicy } from './policy';
 import { panel, project } from './project.schema';
 import { rowColumns } from './rows';
@@ -43,7 +43,11 @@ export const photoGroup = pgTable(
 	]
 ).enableRLS();
 
-/** A group's photos in order: the file's address and what the photo shows. */
+/**
+ * A group's photos in order: the file's address, what the photo shows and how it is framed in its spot in the report
+ * (#312, glossary "Crop": how far in, 1 to 5, and the point of the photo at the middle of its box, 0 to 1 across and
+ * down; nothing for the whole photo). The crop never changes the file.
+ */
 export const photo = pgTable(
 	'photo',
 	{
@@ -54,7 +58,8 @@ export const photo = pgTable(
 			.references(() => photoGroup.id, { onDelete: 'cascade' }),
 		position: integer('position').default(0).notNull(),
 		file: words('file'),
-		description: words('description')
+		description: words('description'),
+		crop: jsonb('crop').$type<{ x: number; y: number; zoom: number }>()
 	},
 	(table) => [index('photo_project_idx').on(table.projectId), organizationPolicy('photo')]
 ).enableRLS();
