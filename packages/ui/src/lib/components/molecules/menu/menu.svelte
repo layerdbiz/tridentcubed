@@ -11,9 +11,11 @@
 	// component a swipe between the dashboard's lists took about twice the script time on a slowed phone (measured on
 	// #297). Its props are its own for the same reason; none of the base props would do anything here.
 	//
-	// Closes on a pick, a tap outside or Escape. `isWide` fills its row. The list opens in the browser's top layer (a
-	// popover), placed under its button, or over it when there is no room below, so no scrolling or rounded box around
-	// the button cuts it off (the ⋮ of each project in the dashboard's lists, 2026-10-26). `isSearchable` puts a field
+	// Closes on a pick, a tap outside or Escape. `isWide` fills its row, and its list is as wide as the row. The list
+	// opens in the browser's top layer (a popover), placed under its button, or over it when there is no room below, so
+	// no scrolling or rounded box around the button cuts it off (the ⋮ of each project in the dashboard's lists,
+	// 2026-10-26), and never reaches past the edge of the screen, so the pencil at the right of a choice always shows
+	// (Justin, 2026-11-24: a facility's list ran off the phone's edge and took its pencils with it). `isSearchable` puts a field
 	// at the top to type in, which narrows the list; `onadd` puts "Add new" right under it; `onedit` puts a pencil at
 	// the far right of every choice, which opens that thing to edit it (run 28, Justin, 2026-11-12, for every dropdown
 	// in the app).
@@ -24,7 +26,7 @@
 	export interface MenuOptionType {
 		id: string;
 		label: string;
-		// A second, quieter line under the label: a facility's city.
+		// A second, quieter line under the label: a facility's city, a contact's title.
 		note?: string;
 		icon?: string;
 		// A round picture in place of an icon: a face or a logo.
@@ -98,7 +100,8 @@
 		const view = window.visualViewport;
 		const [viewTop, viewHeight] = [view?.offsetTop ?? 0, view?.height ?? innerHeight];
 		if (box.bottom < viewTop || box.top > viewTop + viewHeight) return '';
-		const tall = options.length * 44 + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
+		const rows = options.reduce((sum, option) => sum + (option.note ? 52 : 44), 0);
+		const tall = rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
 		const below = viewTop + viewHeight - box.bottom - 24;
 		const above = box.top - viewTop - 24;
 		const isUp = below < Math.min(tall, 220) && above > below;
@@ -106,7 +109,15 @@
 		const y = isUp ? `bottom: ${innerHeight - box.top + 8}px` : `top: ${box.bottom + 8}px`;
 		// Run 14 (note 5): never taller than the room on its side, or 360px; longer lists scroll inside it.
 		const most = Math.max(140, Math.min(isUp ? above : below, 360));
-		return `${x}; ${y}; min-width: ${isWide ? box.width : 192}px; max-width: ${innerWidth - 16}px; max-height: ${most}px`;
+		// Never wider than the room from its button's edge to the screen's, keeping 8px clear.
+		const room = Math.min(
+			innerWidth - 16,
+			align === 'right' ? box.right - 8 : innerWidth - box.left - 8
+		);
+		const across = isWide
+			? `width: ${Math.min(Math.max(box.width, 192), room)}px`
+			: `min-width: ${Math.min(192, room)}px; max-width: ${room}px`;
+		return `${x}; ${y}; ${across}; max-height: ${most}px`;
 	}
 
 	function toggle() {
@@ -257,12 +268,16 @@
 								{#if option.dot}<span class="size-2.5 shrink-0 rounded-full {option.dot}"
 									></span>{/if}
 							{/if}
-							<!-- One line: the name, and what places it (a city) in grey at the right. -->
-							<span class="min-w-0 flex-1 truncate">{option.label}</span>
-							{#if option.note}<span
-									class="max-w-[45%] shrink-0 truncate text-xs font-normal text-slate-400"
-									>{option.note}</span
-								>{/if}
+							<!-- The name, and under it what places it (a facility's city, a contact's title) in grey: two
+							     lines, so a long name never pushes the pencil out of view (Justin, 2026-11-24). -->
+							{#if option.note}
+								<span class="flex min-w-0 flex-1 flex-col">
+									<span class="truncate">{option.label}</span>
+									<span class="truncate text-xs font-normal text-slate-400">{option.note}</span>
+								</span>
+							{:else}
+								<span class="min-w-0 flex-1 truncate">{option.label}</span>
+							{/if}
 							{#if option.count !== undefined}<span class="text-xs text-slate-400 tabular-nums"
 									>{option.count}</span
 								>{/if}

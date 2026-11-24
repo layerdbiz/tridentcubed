@@ -281,15 +281,18 @@ describe('what each choice shows', () => {
 		expect(picture?.className).toContain('rounded-full');
 	});
 
-	it('puts the grey note at the right of the name', async () => {
+	it('puts the grey note under the name, two lines, so a long name leaves room for the pencil', async () => {
 		show({ label: 'Start', options: FACILITIES });
 		const list = await open('Start');
 		const port = within(list).getByRole('option', { name: /Port of Houston/ });
-		const [name, note] = [...port.querySelectorAll('span')];
+		const name = within(port).getByText('Port of Houston');
+		const note = within(port).getByText('Houston');
 
-		expect(name.textContent).toBe('Port of Houston');
-		expect(note.textContent).toBe('Houston');
+		expect(note.parentElement).toBe(name.parentElement);
+		expect(name.parentElement?.className).toContain('flex-col');
 		expect(note.className).toContain('text-slate-400');
+		expect(name.className).toContain('truncate');
+		expect(note.className).toContain('truncate');
 	});
 
 	it('lets the place draw the mark at the left, told which choice is picked', async () => {
@@ -368,15 +371,31 @@ describe('where the list goes', () => {
 		expect(listOf()?.getAttribute('style')).toContain('left: 24px');
 	});
 
-	it('is at least as wide as a wide button, and the button fills its row', async () => {
+	it('is as wide as a wide button, and the button fills its row', async () => {
 		placeButton({ top: 100, left: 24, width: 320, height: 44 });
 		show({ align: 'left', isWide: true });
 		await open();
 
-		expect(listOf()?.getAttribute('style')).toContain('min-width: 320px');
+		expect(listOf()?.getAttribute('style')).toContain(' width: 320px');
 		const button = screen.getByRole('button', { name: 'View' });
 		expect(button.className).toContain('w-full');
 		expect(button.parentElement?.className).toContain('w-full');
+	});
+
+	it('never reaches past the edge of the screen, so the pencil at the right always shows', async () => {
+		placeButton({ top: 100, left: 24, width: innerWidth, height: 44 });
+		show({ align: 'left', isWide: true });
+		await open();
+		expect(listOf()?.getAttribute('style')).toContain(` width: ${innerWidth - 32}px`);
+
+		vi.restoreAllMocks();
+		document.body.innerHTML = '';
+		placeButton({ top: 100, left: innerWidth - 150, width: 40, height: 40 });
+		show({ align: 'left', label: 'Kind' });
+		await open('Kind');
+		const style = listOf()?.getAttribute('style') ?? '';
+		expect(style).toContain('min-width: 142px');
+		expect(style).toContain('max-width: 142px');
 	});
 
 	it('opens upward when there is no room below its button', async () => {

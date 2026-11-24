@@ -1,7 +1,8 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 26: the Transport Mode panel as legs (Justin, 2026-11-11: "without having to repeat
 	// ourselves"). The trip is one leg after another (legs.ts), each a card. A leg's transport is picked once.
-	// Run 28, from Justin's notes on the artifact (2026-11-12). Every pick is the app's one dropdown (picker.svelte).
+	// Run 28, from Justin's notes on the artifact (2026-11-12). Every pick is the library's Select (once
+	// picker.svelte, #298).
 	// A leg starts with one facility, and each facility is a Start, a Stop or an End, because the job does not
 	// always begin at the Start. Add Stop is at the card's bottom left and Delete at its bottom right, as in every
 	// other card. No line is drawn down the facilities: the report's page will show the trip that way.
@@ -39,8 +40,7 @@
 		type StopType
 	} from '../look.data';
 	import type { LookState } from '../look.state.svelte';
-	import { Menu } from '@layerd/ui';
-	import Picker from '../picker.svelte';
+	import { Menu, Select } from '@layerd/ui';
 	import { sortable } from '../sortable';
 	import { sectionsOf, valuesOf } from '../tally';
 
@@ -89,7 +89,11 @@
 		const mode = headOf(leg)?.mode;
 		return look.transports
 			.filter((transport) => transport.mode === mode)
-			.map((transport) => ({ id: transport.name, label: transport.name, image: transport.photo }));
+			.map((transport) => ({
+				value: transport.name,
+				label: transport.name,
+				image: transport.photo
+			}));
 	}
 
 	function kindOf(leg: LegType) {
@@ -104,7 +108,7 @@
 		return look.facilities
 			.filter((facility) => !suited || facility.kind === suited || used.includes(facility.name))
 			.map((facility) => ({
-				id: facility.name,
+				value: facility.name,
 				label: facility.name,
 				note: facility.city,
 				image: facility.photo,
@@ -196,20 +200,24 @@
 			ondelete={() => drop(leg)}
 		>
 			<div class="grid gap-2 sm:grid-cols-2">
-				<Picker
+				<Select
+					variant="soft"
 					label="Transport Mode"
-					options={MODES.map((mode) => ({ id: mode, label: mode, icon: MODE_ICONS[mode] }))}
+					options={MODES.map((mode) => ({ value: mode, label: mode, icon: MODE_ICONS[mode] }))}
 					value={first.mode}
 					icon="icon-[mdi--cube-send]"
+					required
 					help={look.helpOf('leg.mode')}
 					onpick={(mode) => pickMode(leg, mode)}
 				/>
 				{#if first.mode}
-					<Picker
+					<Select
+						variant="soft"
 						label={first.mode}
 						options={transportsOf(leg)}
 						value={first.name}
 						icon={MODE_ICONS[first.mode]}
+						required
 						help={look.helpOf('leg.transport')}
 						onpick={(name) => pickName(leg, name)}
 						onadd={() => addTransport(leg)}
@@ -232,17 +240,19 @@
 						animate:flip={{ duration: 200 }}
 					>
 						<div class="min-w-0 flex-1">
-							<Picker
+							<Select
+								variant="soft"
 								label="Facility"
 								options={facilitiesOf(leg)}
 								value={stop.facility}
 								hasLabel={at === 0}
+								required
 								help={look.helpOf('stop.facility')}
 								onpick={(name) => pickFacility(stop, name)}
 								onadd={() => addFacility(leg, stop)}
 								onedit={(name) => look.editRecord('facilities', name)}
 							>
-								{#snippet inset()}
+								{#snippet start()}
 									<Menu
 										label="Point"
 										value={stop.point}
@@ -262,7 +272,7 @@
 										{/snippet}
 									</Menu>
 								{/snippet}
-							</Picker>
+							</Select>
 						</div>
 					</div>
 				{/each}

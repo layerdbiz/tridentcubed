@@ -4,7 +4,7 @@
 	// an empty draft and a record's Edit tab over the record itself, so the two always ask for the same things. It
 	// only reads `value` and reports each change through `set`; who keeps the change is the caller's business. A
 	// customer has any number of contacts (2026-11-10).
-	import { Help } from '@layerd/ui';
+	import { Help, Select } from '@layerd/ui';
 	import ImageField from './image-field.svelte';
 	import {
 		FACILITY_ICONS,
@@ -21,7 +21,6 @@
 		type TransportType
 	} from './look.data';
 	import type { LookState, RecordDraftType } from './look.state.svelte';
-	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { CUSTOMER_TYPES, TEAM_LABELS, typesOf, type PageType } from './records.data';
 	import { labelsOf, ROLE_LABELS, type TeamMemberType } from './team.data';
@@ -129,19 +128,14 @@
 
 <!-- Where it is: one field everywhere, which suggests places and saves the one picked (place-field.svelte). -->
 {#snippet place(label: string, key: string, current: string, oninput: (text: string) => void)}
-	<div
-		class="has-help"
-		data-empty={current ? undefined : ''}
-	>
-		{@render labelOf(label, key, `${uid}-${key}`)}
-		<PlaceField
-			{look}
-			id="{uid}-{key}"
-			value={current}
-			{oninput}
-			inputClass={FIELD}
-		/>
-	</div>
+	<PlaceField
+		{look}
+		{label}
+		help={look.helpOf(key)}
+		value={current}
+		{oninput}
+		inputClass={FIELD}
+	/>
 {/snippet}
 
 <div class="space-y-4">
@@ -219,12 +213,15 @@
 						'SGL'}-2026-05-12-J01.{isNew ? ' Left empty, it is made from the name.' : ''}</span
 				>
 			</div>
-			<Picker
+			<Select
+				variant="soft"
 				label="Type"
-				options={CUSTOMER_TYPES.map((label) => ({ id: label, label }))}
-				values={typesOf(customer.kind)}
+				options={CUSTOMER_TYPES.map((label) => ({ value: label, label }))}
+				multiple
+				value={typesOf(customer.kind)}
 				many="types"
 				icon="icon-[mdi--tag-outline]"
+				required
 				help={look.helpOf('customer.types')}
 				onpick={(label) => set({ kind: toggle(typesOf(customer.kind), label).join(', ') })}
 			/>
@@ -262,26 +259,29 @@
 				onpick={(url) => set({ photo: url })}
 			/>
 		{:else if member}
-			<Picker
+			<Select
+				variant="soft"
 				label="Role"
-				options={ROLES.map((role) => ({ id: role, label: ROLE_LABELS[role] }))}
+				options={ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role] }))}
 				value={member.role}
 				icon="icon-[mdi--shield-account-outline]"
-				isDisabled={!look.isAdmin}
+				disabled={!look.isAdmin}
+				required
 				help={look.helpOf('team.role')}
 				onpick={(role) => set({ role })}
 			/>
 			{@render text('Title', 'team.title', member.title, (title) => set({ title }))}
-			<Picker
+			<Select
+				variant="soft"
 				label="Labels"
 				options={[...new Set([...TEAM_LABELS, ...labelsOf(member)])].map((label) => ({
-					id: label,
+					value: label,
 					label
 				}))}
-				values={labelsOf(member)}
+				multiple
+				value={labelsOf(member)}
 				many="labels"
 				icon="icon-[mdi--tag-outline]"
-				isRequired={false}
 				help={look.helpOf('team.labels')}
 				onpick={(label) => set({ label: toggle(labelsOf(member), label).join(', ') })}
 			/>
@@ -289,11 +289,13 @@
 			{@render text('Email', 'team.email', member.email, (email) => set({ email }), 'email')}
 			{@render place('Location', 'team.location', member.location, (location) => set({ location }))}
 		{:else if transport}
-			<Picker
+			<Select
+				variant="soft"
 				label="Transport Mode"
-				options={MODES.map((mode) => ({ id: mode, label: mode, icon: MODE_ICONS[mode] }))}
+				options={MODES.map((mode) => ({ value: mode, label: mode, icon: MODE_ICONS[mode] }))}
 				value={transport.mode}
 				icon="icon-[mdi--cube-send]"
+				required
 				help={look.helpOf('transport.mode')}
 				onpick={(mode) => set({ mode, type: typeOfMode(mode) })}
 			/>
@@ -306,15 +308,17 @@
 				onpick={(url) => set({ photo: url })}
 			/>
 		{:else if facility}
-			<Picker
+			<Select
+				variant="soft"
 				label="Kind"
 				options={Object.entries(FACILITY_ICONS).map(([kind, icon]) => ({
-					id: kind,
+					value: kind,
 					label: kind,
 					icon
 				}))}
 				value={facility.kind}
 				icon="icon-[mdi--domain]"
+				required
 				help={look.helpOf('facility.kind')}
 				onpick={(kind) => set({ kind: kind as FacilityKindType })}
 			/>

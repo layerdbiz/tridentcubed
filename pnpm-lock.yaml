@@ -281,12 +281,18 @@ importers:
       '@tailwindcss/typography':
         specifier: ^0.5.19
         version: 0.5.19(tailwindcss@4.3.3)
+      '@testing-library/svelte':
+        specifier: ^5.4.2
+        version: 5.4.2(@voidzero-dev/vite-plus-core@1.0.0(@types/node@25.2.1)(esbuild@0.27.3)(jiti@2.7.0)(publint@0.3.17)(tsx@4.23.15)(typescript@6.0.3)(yaml@2.8.2))(svelte@5.57.1)(vitest@5.0.1)
       drizzle-kit:
         specifier: ^0.31.11
         version: 0.31.11
       exiftool-vendored:
         specifier: 39.4.0
         version: 39.4.0
+      jsdom:
+        specifier: ^30.1.1
+        version: 30.1.1(@noble/hashes@2.4.0)
       lightningcss:
         specifier: ^1.33.0
         version: 1.33.0
@@ -5350,7 +5356,7 @@ snapshots:
 
   '@bramus/specificity@2.4.2':
     dependencies:
-      css-tree: 3.1.0
+      css-tree: 3.2.1
 
   '@csstools/color-helpers@6.1.2': {}
 
