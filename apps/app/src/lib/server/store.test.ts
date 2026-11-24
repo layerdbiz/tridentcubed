@@ -1,9 +1,12 @@
 // The Supabase Storage adapter (#187), against a stand-in for Storage's REST API: the addresses it hands out are
 // Storage's own signed ones, asked for with the secret key, in the one private bucket. Real Storage is checked by
 // hand once the keys exist (spec #179 Testing Decisions).
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vite-plus/test';
 import { isTypeAllowed, STORAGE_BUCKET } from '#lib/files/files.schema.js';
-import { BUCKET, createSupabaseStore } from './store';
+import { BUCKET, createLocalStore, createSupabaseStore } from './store';
 
 type CallType = { url: string; headers: Record<string, string>; body: unknown };
 
@@ -98,5 +101,108 @@ describe('the Supabase Storage store', () => {
 		await expect(store.toLink('org/file.webp')).rejects.toThrow(
 			'Supabase Storage answered 404: Bucket not found'
 		);
+	});
+});
+
+// The server's own work on a stored file (#294): reading an untouched photo to convert it, writing the converted
+// copy beside it, and deleting the untouched one once the copy checks out. All with the secret key, in the one bucket.
+describe('the server reading, writing and deleting a file', () => {
+	type SentType = { method: string; url: string; headers: Record<string, string>; body?: unknown };
+
+	function createObjects(answer: (sent: SentType) => Response) {
+		const sent: SentType[] = [];
+		const fetcher = (async (url: string, init: RequestInit) => {
+			const call = {
+				method: init.method ?? 'GET',
+				url,
+				headers: init.headers as Record<string, string>,
+				body: init.body
+			};
+			sent.push(call);
+			return answer(call);
+		}) as typeof fetch;
+		const store = createSupabaseStore({
+			url: 'https://abc.supabase.co',
+			secretKey: 'sb_secret_x',
+			fetch: fetcher
+		});
+		return { sent, store };
+	}
+
+	it('reads a file’s bytes with the secret key', async () => {
+		const { sent, store } = createObjects(() => new Response(new Uint8Array([1, 2, 3])));
+
+		expect(await store.read('org/file.heic')).toEqual(new Uint8Array([1, 2, 3]));
+		expect(sent[0]).toMatchObject({
+			method: 'GET',
+			url: 'https://abc.supabase.co/storage/v1/object/authenticated/files/org/file.heic',
+			headers: { apikey: 'sb_secret_x', authorization: 'Bearer sb_secret_x' }
+		});
+	});
+
+	it('writes a file at a path of its own, over what a half-done earlier try left there', async () => {
+		const { sent, store } = createObjects(() => Response.json({ Key: 'files/org/file.webp' }));
+		const bytes = new Uint8Array([4, 5, 6]);
+
+		await store.write('org/file.webp', bytes, 'image/webp');
+
+		expect(sent[0]).toMatchObject({
+			method: 'POST',
+			url: 'https://abc.supabase.co/storage/v1/object/files/org/file.webp',
+			headers: {
+				apikey: 'sb_secret_x',
+				authorization: 'Bearer sb_secret_x',
+				'content-type': 'image/webp',
+				'cache-control': 'max-age=31536000',
+				'x-upsert': 'true'
+			}
+		});
+		expect(new Uint8Array(await new Response(sent[0].body as BodyInit).arrayBuffer())).toEqual(
+			bytes
+		);
+	});
+
+	it('deletes a file', async () => {
+		const { sent, store } = createObjects(() => Response.json({ message: 'Successfully deleted' }));
+
+		await store.remove('org/file.heic');
+
+		expect(sent[0]).toMatchObject({
+			method: 'DELETE',
+			url: 'https://abc.supabase.co/storage/v1/object/files/org/file.heic'
+		});
+	});
+
+	it('says what Storage answered when it refuses', async () => {
+		const { store } = createObjects(() => new Response('Object not found', { status: 404 }));
+
+		await expect(store.read('org/gone.heic')).rejects.toThrow(
+			'Supabase Storage answered 404: Object not found'
+		);
+		await expect(store.remove('org/gone.heic')).rejects.toThrow('answered 404');
+		await expect(store.write('org/gone.webp', new Uint8Array(1), 'image/webp')).rejects.toThrow(
+			'answered 404'
+		);
+	});
+
+	it('does the same in the local folder, and keeps every path inside it', async () => {
+		const folder = await mkdtemp(join(tmpdir(), 'trident-store-'));
+		try {
+			const store = createLocalStore({
+				folder,
+				secret: 'test-secret-that-is-at-least-32-characters-long'
+			});
+
+			await store.write('org/file.webp', new Uint8Array([7]), 'image/webp');
+			await store.write('org/file.webp', new Uint8Array([7, 8]), 'image/webp');
+			expect(await store.read('org/file.webp')).toEqual(new Uint8Array([7, 8]));
+			await store.remove('org/file.webp');
+			await expect(store.read('org/file.webp')).rejects.toThrow();
+			await expect(store.write('../outside.webp', new Uint8Array(1), 'image/webp')).rejects.toThrow(
+				'outside'
+			);
+		} finally {
+			await rm(folder, { recursive: true, force: true });
+		}
 	});
 });

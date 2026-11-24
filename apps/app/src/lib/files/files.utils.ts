@@ -3,44 +3,51 @@
 // at most 2048 px on its long side as a WebP (the app's own encoder where the browser cannot write one, as on Safari;
 // a JPEG if that fails too), and a logo to at most 1024 px, kept as WebP or PNG so its clear background stays. The
 // copy gets every metadata field of the original, only Orientation turned upright (`#lib/metadata`); when it cannot,
-// a photo goes untouched instead. When the file says neither when nor where, the device's clock (and its place, only
-// if the User already allowed it: a picture never asks) stand in, with a flag saying so.
-import type { ExpandedTags } from 'exifreader';
+// a photo goes untouched instead, and the server converts it (#294). A picture the device cannot read at all (HEIC in
+// Chrome on Windows and Android, TIFF) goes untouched for the server too; one the server cannot convert either is
+// turned down with a reason. When the file says neither when nor where, the device's clock (and its place, only if
+// the User already allowed it: a picture never asks) stand in, with a flag saying so.
 import {
 	carryMetadata,
+	type ExifTakenType,
 	type MetadataType,
 	readMetadata,
+	toExifTaken,
 	toFieldList
 } from '#lib/metadata/metadata.utils.js';
 import {
-	FILE_TYPES,
 	type FieldListType,
+	isConvertibleType,
 	isFieldListKept,
+	isShownType,
+	isToConvert,
 	MAX_FILE_BYTES,
-	type TakenType
+	MAX_PICTURE_SIDE,
+	PictureError,
+	type PictureKindType,
+	QUALITY,
+	type TakenType,
+	toPictureType,
+	toTyped,
+	UNREADABLE
 } from './files.schema';
-
-export type PictureKindType = 'photo' | 'logo';
-
-export const MAX_PICTURE_SIDE: Record<PictureKindType, number> = { photo: 2048, logo: 1024 };
-
-/** What the file's own metadata says, when it says anything. */
-export type ExifTakenType = { at?: string; latitude?: number; longitude?: number };
 
 export type PlaceType = { latitude: number; longitude: number };
 
-/** A picture shrunk and ready to send. */
-export type PreparedPictureType = {
+/** A picture shrunk and ready to send, or the original untouched for the server to convert. */
+export type PreparedType = {
 	blob: Blob;
-	width: number;
-	height: number;
+	/** Its size in pixels; unknown for a picture the device could not read. */
+	width?: number;
+	height?: number;
 	taken: TakenType;
 	/** The original's full field list, for the File row (#292). */
 	metadata?: FieldListType;
+	/** The device could not read it, so it cannot show it either: its spot shows its name (#294). */
+	isUnreadable?: boolean;
+	/** It went untouched and the server makes the copy the app keeps (#294). */
+	shouldConvert?: boolean;
 };
-
-/** How well each kind of picture is kept, from 0 to 1: a photo's detail, a logo's sharp edges. */
-const QUALITY: Record<PictureKindType, number> = { photo: 0.82, logo: 0.9 };
 
 /** The size a picture is drawn at: its own, or smaller so its long side is at most `max`, never larger. */
 export function toFittedSize(width: number, height: number, max: number) {
@@ -135,30 +142,6 @@ export function toTaken(exif: ExifTakenType, device: { now?: Date; place?: Place
 	};
 }
 
-/** A photo's "2026:05:12 09:30:00" with its "+02:00", as an ISO time; without an offset it is read as this device's. */
-export function toExifTime(dateTime?: string, offset?: string) {
-	const match = dateTime?.match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
-	if (!match) return undefined;
-	const [, year, month, day, hour, minute, second] = match;
-	const local = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-	const zone = offset?.match(/^[+-]\d{2}:\d{2}$/) ? offset : '';
-	const time = new Date(`${local}${zone}`);
-	return Number.isNaN(time.getTime()) ? undefined : time.toISOString();
-}
-
-/** What a file's metadata says of when and where, from the fields ExifReader read. */
-export function toExifTaken(tags?: ExpandedTags): ExifTakenType {
-	if (!tags) return {};
-	const description = (tag?: { description?: string }) => tag?.description;
-	const at = toExifTime(
-		description(tags.exif?.DateTimeOriginal) ?? description(tags.exif?.DateTime),
-		description(tags.exif?.OffsetTimeOriginal)
-	);
-	const { Latitude: latitude, Longitude: longitude } = tags.gps ?? {};
-	const hasPlace = Number.isFinite(latitude) && Number.isFinite(longitude);
-	return { at, ...(hasPlace ? { latitude, longitude } : {}) };
-}
-
 /** The device's place, only when the User already allowed it; a picture never asks, and never waits long. */
 export async function readDevicePlace(): Promise<PlaceType | undefined> {
 	try {
@@ -179,19 +162,15 @@ export async function readDevicePlace(): Promise<PlaceType | undefined> {
 /** What goes to storage: the carried copy, the original untouched, or the copy alone with nothing carried. */
 export type SentType = 'copy' | 'original' | 'plain';
 
-/** Whether storage keeps a picture of this type and size as it is. */
+/** Whether storage takes a picture of this type and size untouched: one it shows, or one the server converts (#294). */
 export function isKeptAsItIs(file: { type: string; size: number }) {
-	return (
-		file.type.startsWith('image/') &&
-		Object.hasOwn(FILE_TYPES, file.type) &&
-		file.size <= MAX_FILE_BYTES
-	);
+	return (isShownType(file.type) || isConvertibleType(file.type)) && file.size <= MAX_FILE_BYTES;
 }
 
 /**
  * Which file goes: the copy when it carries every field and the field list fits. Otherwise a photo goes untouched,
- * when storage keeps its type, so nothing of it is lost until the server converts it (ADR 0004, #294); a logo, or a
- * photo storage cannot keep (HEIC, over 20 MB), goes as the copy, with whatever it carried.
+ * when storage takes its type, so nothing of it is lost, and the server converts it (ADR 0004, #294); a logo, or a
+ * photo storage cannot take (over 20 MB), goes as the copy, with whatever it carried.
  */
 export function toSent(choice: {
 	kind: PictureKindType;
@@ -202,6 +181,17 @@ export function toSent(choice: {
 	if (choice.isCarried && choice.isListKept) return 'copy';
 	if (choice.kind === 'photo' && isKeptAsItIs(choice.file)) return 'original';
 	return choice.isCarried ? 'copy' : 'plain';
+}
+
+/**
+ * A picture the device could not read, as it goes untouched for the server to convert, typed by its name when the
+ * browser gave it no type (a HEIC dropped on Windows); turned down, with the reason the User reads, when the server
+ * cannot convert it either (camera RAW, a broken file).
+ */
+export function toUntouched(file: File): Blob {
+	const type = toPictureType(file);
+	if (!isConvertibleType(type)) throw new PictureError(UNREADABLE);
+	return toTyped(file, type);
 }
 
 // The picture drawn upright at its shrunk size and encoded. `none` keeps the picture's own colour numbers, for a
@@ -238,22 +228,33 @@ async function toPictureTaken(original: MetadataType, kind: PictureKindType) {
 
 /**
  * A picked picture read, then shrunk and encoded on the device, ready to send: the copy with every metadata field of
- * the original carried into it, and the original's field list (#292). See `toSent` for what goes when that fails.
+ * the original carried into it, and the original's field list (#292). See `toSent` for what goes when that fails,
+ * and `toUntouched` for a picture the device cannot read (#294).
  */
-export async function preparePicture(
-	file: File,
-	kind: PictureKindType
-): Promise<PreparedPictureType> {
+export async function preparePicture(file: File, kind: PictureKindType): Promise<PreparedType> {
 	const original = await readMetadata(new Uint8Array(await file.arrayBuffer()));
 	const taken = await toPictureTaken(original, kind);
 	const fields = toFieldList(original.tags);
 	const isListKept = !fields || isFieldListKept(fields);
 	const metadata = isListKept ? fields : undefined;
 	const hasProfile = Boolean(original.blocks.icc);
-	const drawn = await drawPicture(file, kind, hasProfile ? 'none' : 'default');
+	let drawn: Awaited<ReturnType<typeof drawPicture>>;
+	try {
+		drawn = await drawPicture(file, kind, hasProfile ? 'none' : 'default');
+	} catch (error) {
+		// A JPEG, PNG or WebP every browser draws failed for another reason (a big one can run the device out of
+		// memory): an upload to retry, not a picture to convert.
+		if (isShownType(toPictureType(file))) throw error;
+		const blob = toUntouched(file);
+		return { blob, taken, metadata, isUnreadable: true, shouldConvert: true };
+	}
 	const copy = await carryMetadata(original, new Uint8Array(await drawn.blob.arrayBuffer()));
-	const sent = toSent({ kind, file, isCarried: Boolean(copy), isListKept });
-	if (sent === 'original') return { blob: file, ...drawn.full, taken, metadata };
+	const typed = toTyped(file, toPictureType(file) || file.type);
+	const sent = toSent({ kind, file: typed, isCarried: Boolean(copy), isListKept });
+	if (sent === 'original') {
+		const shouldConvert = isToConvert({ type: typed.type, ...drawn.full }, kind);
+		return { blob: typed, ...drawn.full, taken, metadata, shouldConvert };
+	}
 	if (sent === 'copy' && copy) {
 		const blob = new Blob([copy], { type: drawn.blob.type });
 		return { blob, width: drawn.width, height: drawn.height, taken, metadata };

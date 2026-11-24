@@ -11,6 +11,14 @@ export const FILE_PREFIX = '/files/';
 /** The biggest file storage takes. A shrunk photo is far smaller (ADR 0004). */
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
+export type PictureKindType = 'photo' | 'logo';
+
+/** The longest side a kept picture has (ADR 0004): a photo 2048 px, a logo 1024. */
+export const MAX_PICTURE_SIDE: Record<PictureKindType, number> = { photo: 2048, logo: 1024 };
+
+/** How well each kind of picture is kept, from 0 to 1: a photo's detail, a logo's sharp edges. */
+export const QUALITY: Record<PictureKindType, number> = { photo: 0.82, logo: 0.9 };
+
 /** The kinds of file the app knows by type, with the ending its path takes. */
 export const FILE_TYPES: Record<string, string> = {
 	'image/webp': 'webp',
@@ -22,6 +30,82 @@ export const FILE_TYPES: Record<string, string> = {
 	'text/csv': 'csv',
 	'application/pdf': 'pdf'
 };
+
+/**
+ * Pictures a device may not be able to read (HEIC in Chrome on Windows and Android, TIFF), with the ending the
+ * untouched file's path takes: such a picture is sent untouched and the server converts it to WebP, every metadata
+ * field copied (ADR 0004, #294). Camera RAW is not among them yet.
+ */
+export const CONVERTIBLE_TYPES: Record<string, string> = {
+	'image/heic': 'heic',
+	'image/heif': 'heif',
+	'image/avif': 'avif',
+	'image/tiff': 'tif'
+};
+
+/** Whether every browser shows a picture of this type as it is (a WebP, JPEG or PNG). */
+export function isShownType(type: string) {
+	return type.startsWith('image/') && Object.hasOwn(FILE_TYPES, type);
+}
+
+/** Whether the server converts a picture of this type before anyone sees it. */
+export function isConvertibleType(type: string) {
+	return Object.hasOwn(CONVERTIBLE_TYPES, type);
+}
+
+/**
+ * Whether a stored picture still needs converting on the server: a type a browser may not show, or a picture bigger
+ * than the app keeps (a photo sent untouched because its copy fell short, #292).
+ */
+export function isToConvert(
+	picture: { type: string; width?: number | null; height?: number | null },
+	kind: PictureKindType
+) {
+	if (isConvertibleType(picture.type)) return true;
+	if (!picture.type.startsWith('image/')) return false;
+	return Math.max(picture.width ?? 0, picture.height ?? 0) > MAX_PICTURE_SIDE[kind];
+}
+
+/** What the User reads about a picture neither the device nor the server can read (camera RAW, a broken file). */
+export const UNREADABLE = 'This picture could not be read. Save it as a JPEG and add it again.';
+
+/** A picture the app turns down for a reason of its own, which the User reads in its place (not a lost connection). */
+export class PictureError extends Error {}
+
+// The picture types by the ending a file's name may have, for a browser that hands a file over with no type.
+const PICTURE_ENDINGS: Record<string, string> = {
+	jpg: 'image/jpeg',
+	jpeg: 'image/jpeg',
+	png: 'image/png',
+	webp: 'image/webp',
+	heic: 'image/heic',
+	heif: 'image/heif',
+	avif: 'image/avif',
+	tif: 'image/tiff',
+	tiff: 'image/tiff',
+	// Camera RAW, known by name so the User is told it cannot be read rather than see it left out.
+	dng: 'image/x-adobe-dng',
+	cr2: 'image/x-canon-cr2',
+	cr3: 'image/x-canon-cr3',
+	nef: 'image/x-nikon-nef',
+	arw: 'image/x-sony-arw',
+	orf: 'image/x-olympus-orf',
+	rw2: 'image/x-panasonic-rw2',
+	raf: 'image/x-fuji-raf'
+};
+
+/** A picture's type: the browser's, else its name's (a HEIC dropped on Windows can come with none), else empty. */
+export function toPictureType(file: { name: string; type: string }) {
+	const type = file.type.split(';')[0].trim().toLowerCase();
+	if (type && type !== ANY_TYPE) return type;
+	const ending = file.name.includes('.') ? (file.name.split('.').pop()?.toLowerCase() ?? '') : '';
+	return PICTURE_ENDINGS[ending] ?? '';
+}
+
+/** The file as it came, said to be of this type. */
+export function toTyped(file: File, type: string): Blob {
+	return type === file.type ? file : new Blob([file], { type });
+}
 
 /** The kinds of file that are not pictures and that the app knows by name: kept as they came. */
 export const DOCUMENT_TYPES = Object.keys(FILE_TYPES).filter((type) => !type.startsWith('image/'));
@@ -49,9 +133,13 @@ const DOCUMENT_COLUMNS = ['item_attachment/file'];
 // request's to cap). It goes into a header of the upload, so nothing else is let through.
 const TYPE = /^[\w.+-]+\/[\w.+-]+$/;
 
-/** Whether a file of this type may be kept for this table and column. */
+/**
+ * Whether a file of this type may be kept for this table and column: a picture column takes the pictures the app
+ * shows, and the ones the server converts first (#294).
+ */
 export function isTypeAllowed(type: string, table: string, column: string) {
 	if (DOCUMENT_COLUMNS.includes(`${table}/${column}`)) return TYPE.test(type);
+	if (isConvertibleType(type)) return true;
 	return Object.hasOwn(FILE_TYPES, type) && !DOCUMENT_TYPES.includes(type);
 }
 
@@ -64,6 +152,7 @@ export function toDocumentType(name: string) {
 /** The ending a file's path takes in storage: its type's, else its own name's when that is a plain one, else `bin`. */
 export function toEnding(type: string, name: string) {
 	if (Object.hasOwn(FILE_TYPES, type)) return FILE_TYPES[type];
+	if (isConvertibleType(type)) return CONVERTIBLE_TYPES[type];
 	const ending = name.includes('.') ? (name.split('.').pop()?.toLowerCase() ?? '') : '';
 	return /^[a-z0-9]{1,12}$/.test(ending) ? ending : 'bin';
 }
@@ -197,6 +286,17 @@ export type UploadTargetType = { method: 'PUT'; url: string; headers: Record<str
 export type UploadAnswerType =
 	| { isAllowed: true; id: string; address: string; upload: UploadTargetType }
 	| { isAllowed: false; reason: string };
+
+/** Where a device asks the server to convert a picture it sent untouched (#294): a route of its own, given time. */
+export const CONVERT_PATH = '/api/convert';
+
+/** Which file to convert: the server reads what kind of picture it is from the column it is for. */
+export const CONVERT_REQUEST = v.object({ id: UUID });
+
+export type ConvertRequestType = v.InferOutput<typeof CONVERT_REQUEST>;
+
+/** The server's answer once the picture is ready to show, or why it is not. */
+export type ConvertAnswerType = { isDone: true } | { isDone: false; reason: string };
 
 /** The app's address of the file with this id. */
 export function toFileAddress(id: string) {

@@ -29,6 +29,9 @@ export type MetadataType = {
 
 export type PictureFormatType = 'jpeg' | 'png' | 'webp' | 'heif' | 'other';
 
+/** What the file's own metadata says of when and where, when it says anything. */
+export type ExifTakenType = { at?: string; latitude?: number; longitude?: number };
+
 const XMP_ID = 'http://ns.adobe.com/xap/1.0/\0';
 const XMP_EXTENDED_ID = 'http://ns.adobe.com/xmp/extension/\0';
 const ICC_ID = 'ICC_PROFILE\0';
@@ -441,4 +444,31 @@ export function toFieldList(tags?: ExpandedTags): FieldListType | undefined {
 	if (!tags) return undefined;
 	const { metadataRange: _range, ...groups } = tags;
 	return toStorableJson(groups) as FieldListType;
+}
+
+/**
+ * A photo's "2026:05:12 09:30:00" with its "+02:00", as an ISO time; without an offset it is read in the time zone of
+ * whatever reads it (the device's on the phone, which is why the server keeps the device's reading, #294).
+ */
+export function toExifTime(dateTime?: string, offset?: string) {
+	const match = dateTime?.match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+	if (!match) return undefined;
+	const [, year, month, day, hour, minute, second] = match;
+	const local = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+	const zone = offset?.match(/^[+-]\d{2}:\d{2}$/) ? offset : '';
+	const time = new Date(`${local}${zone}`);
+	return Number.isNaN(time.getTime()) ? undefined : time.toISOString();
+}
+
+/** What a file's metadata says of when and where, from the fields ExifReader read. */
+export function toExifTaken(tags?: ExpandedTags): ExifTakenType {
+	if (!tags) return {};
+	const description = (tag?: { description?: string }) => tag?.description;
+	const at = toExifTime(
+		description(tags.exif?.DateTimeOriginal) ?? description(tags.exif?.DateTime),
+		description(tags.exif?.OffsetTimeOriginal)
+	);
+	const { Latitude: latitude, Longitude: longitude } = tags.gps ?? {};
+	const hasPlace = Number.isFinite(latitude) && Number.isFinite(longitude);
+	return { at, ...(hasPlace ? { latitude, longitude } : {}) };
 }

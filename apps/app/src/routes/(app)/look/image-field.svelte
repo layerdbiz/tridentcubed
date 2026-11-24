@@ -6,7 +6,8 @@
 	// #187: given `target` (the table, column and row the picture is for), a picked file goes to private storage
 	// through the upload helper: it shows here at once with an uploading mark, the row gets the app's file address
 	// (`onpick`) once the file is there, and a failed upload says so on the picture with Retry. Wiring another
-	// picture is giving its field a `target`; every picture has one, so none is kept inline.
+	// picture is giving its field a `target`; every picture has one, so none is kept inline. #294: a picture the
+	// device cannot draw (a HEIC in Chrome) shows a picture mark and its name while the server converts it.
 	import type { FileTargetType } from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 
@@ -38,10 +39,14 @@
 	const look = $derived(SHAPES[shape]);
 
 	// The picture on its way, and the address it gave the row once there: its own preview shows until the row moves
-	// on to another picture, so nothing flickers while the stored copy loads.
+	// on to another picture, so nothing flickers while the stored copy loads. One the device cannot draw (#294) shows
+	// a picture mark while it is on its way, and the stored copy once it is there.
 	let upload = $state<Upload>();
 	let address = $state('');
-	const shown = $derived(upload && (!address || value === address) ? upload.preview : value);
+	const isUnseen = $derived(Boolean(upload && !upload.hasPreview && !address));
+	const shown = $derived(
+		upload?.hasPreview && (!address || value === address) ? upload.preview : isUnseen ? '' : value
+	);
 
 	function forget() {
 		if (upload?.preview.startsWith('blob:')) URL.revokeObjectURL(upload.preview);
@@ -79,12 +84,23 @@
 				? 'ring-2 ring-danger'
 				: ''}"
 		>
-			{#if shown}
+			{#if isUnseen}
+				<!-- #294: a picture the device cannot draw (a HEIC in Chrome) while the server converts it. -->
+				<span
+					class="size-6 text-slate-400 {upload?.isFailed
+						? 'icon-[mdi--image-off-outline]'
+						: 'icon-[mdi--image-sync-outline]'}"
+					title={upload?.name}
+				></span>
+			{:else if shown}
 				<img
 					src={shown}
 					alt=""
 					draggable="false"
 					class="size-full {look.fit} {upload?.isUploading || upload?.isFailed ? 'opacity-60' : ''}"
+					onerror={() => {
+						if (upload && shown === upload.preview) upload.hasPreview = false;
+					}}
 				/>
 			{:else}
 				<span class="icon-[mdi--image-outline] size-6 text-slate-300"></span>
@@ -138,6 +154,14 @@
 				class="font-semibold underline underline-offset-2"
 				onclick={() => upload?.retry()}>Retry</button
 			>
+		</p>
+	{:else if upload?.isUploading && !upload.hasPreview}
+		<p
+			class="mt-1.5 truncate text-xs text-slate-500"
+			role="status"
+		>
+			{upload.isConverting ? 'Converting' : 'Uploading'}
+			{upload.name}
 		</p>
 	{:else if hint}<p class="mt-1.5 text-xs text-slate-400">{hint}</p>{/if}
 </div>

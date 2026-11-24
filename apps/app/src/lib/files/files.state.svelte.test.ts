@@ -2,30 +2,54 @@
 // mark, the row gets the app's file address only once the bytes are there, and a failed upload says so on the
 // picture and can be retried.
 import { describe, expect, it } from 'vite-plus/test';
-import type { FileTargetType, UploadAnswerType, UploadRequestType } from './files.schema';
+import {
+	type ConvertAnswerType,
+	type ConvertRequestType,
+	type FileTargetType,
+	PictureError,
+	type UploadAnswerType,
+	type UploadRequestType
+} from './files.schema';
 import { Upload, type UploadStepsType } from './files.state.svelte';
+import type { PreparedType } from './files.utils';
 
 const FILE_ID = '0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
 
 // The original's field list as the device read it (#292), shortened.
 const FIELDS = { exif: { Make: { value: ['Apple'], description: 'Apple' } } };
 
-function createSteps(answers: Array<'ok' | 'refused' | 'offline'>) {
+// What the device made of the picked picture: a WebP copy, unless a test says otherwise.
+const COPY: PreparedType = {
+	blob: new Blob(['webp'], { type: 'image/webp' }),
+	width: 2048,
+	height: 1536,
+	taken: { from: 'file', at: '2026-05-12T09:30:00.000Z' },
+	metadata: FIELDS
+};
+
+function createSteps(
+	answers: Array<'ok' | 'refused' | 'offline'>,
+	options: { prepared?: PreparedType | Error; converted?: ConvertAnswerType[] } = {}
+) {
 	const asked: UploadRequestType[] = [];
 	const sent: string[] = [];
 	const done: string[] = [];
+	const converting: ConvertRequestType[] = [];
 	let release: () => void = () => {};
 	const isHeld = { value: false };
+	const isConvertHeld = { value: false };
 	const steps: UploadStepsType = {
 		toPreview: () => 'blob:preview',
 		async prepare() {
-			return {
-				blob: new Blob(['webp'], { type: 'image/webp' }),
-				width: 2048,
-				height: 1536,
-				taken: { from: 'file', at: '2026-05-12T09:30:00.000Z' },
-				metadata: FIELDS
-			};
+			if (options.prepared instanceof Error) throw options.prepared;
+			return options.prepared ?? COPY;
+		},
+		async convert(request) {
+			converting.push(request);
+			const answer = options.converted?.[converting.length - 1] ?? { isDone: true };
+			if (isConvertHeld.value) await new Promise<void>((resolve) => (release = resolve));
+			if (!answer.isDone && answer.reason === 'offline') throw new TypeError('Failed to fetch');
+			return answer;
 		},
 		async ask(request): Promise<UploadAnswerType> {
 			asked.push(request);
@@ -48,7 +72,16 @@ function createSteps(answers: Array<'ok' | 'refused' | 'offline'>) {
 			sent.push(target.url);
 		}
 	};
-	return { steps, asked, sent, done, isHeld, release: () => release() };
+	return {
+		steps,
+		asked,
+		sent,
+		done,
+		converting,
+		isHeld,
+		isConvertHeld,
+		release: () => release()
+	};
 }
 
 function pick() {
@@ -130,6 +163,126 @@ describe('a picture on its way', () => {
 		expect(upload.reason).toBe('Only an Admin or a Manager can change the organization.');
 		expect(test.sent).toEqual([]);
 		expect(test.done).toEqual([]);
+	});
+});
+
+describe('a picture the server converts (#294)', () => {
+	// A HEIC Chrome cannot read on Windows: the device sends it untouched, typed by its name.
+	const UNTOUCHED: PreparedType = {
+		blob: new Blob(['heic'], { type: 'image/heic' }),
+		taken: { from: 'file', at: '2026-05-12T09:30:00.000Z' },
+		metadata: FIELDS,
+		isUnreadable: true,
+		shouldConvert: true
+	};
+
+	function pickHeic() {
+		return new File(['heic'], 'IMG_0001.HEIC', { type: '' });
+	}
+
+	it('goes untouched, shows its name with a converting mark, and reaches the row once converted', async () => {
+		const test = createSteps(['ok'], { prepared: UNTOUCHED });
+		const upload = new Upload(pickHeic(), {
+			for: LOGO,
+			kind: 'photo',
+			ondone: (address) => test.done.push(address),
+			steps: test.steps
+		});
+		test.isConvertHeld.value = true;
+
+		const running = upload.start();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(upload.name).toBe('IMG_0001.HEIC');
+		expect(upload.hasPreview).toBe(false);
+		expect(upload.isConverting).toBe(true);
+		expect(upload.isUploading).toBe(true);
+		expect(test.done).toEqual([]);
+
+		test.release();
+		await running;
+		expect(test.asked[0]).toMatchObject({ name: 'IMG_0001.HEIC', type: 'image/heic', size: 4 });
+		expect(test.asked[0].width).toBeUndefined();
+		expect(test.converting).toEqual([{ id: FILE_ID }]);
+		expect(upload.isConverting).toBe(false);
+		expect(upload.isUploading).toBe(false);
+		expect(test.done).toEqual([`/files/${FILE_ID}`]);
+	});
+
+	it('asks only for the converting again on Retry, once the file is in storage', async () => {
+		const test = createSteps(['ok'], {
+			prepared: UNTOUCHED,
+			converted: [{ isDone: false, reason: 'offline' }, { isDone: true }]
+		});
+		const upload = new Upload(pickHeic(), {
+			for: LOGO,
+			kind: 'photo',
+			ondone: (address) => test.done.push(address),
+			steps: test.steps
+		});
+
+		await upload.start();
+		expect(upload.isFailed).toBe(true);
+		expect(upload.isConverting).toBe(false);
+		expect(upload.reason).toBe('The upload did not go through. Check the connection and retry.');
+
+		await upload.retry();
+		expect(test.asked).toHaveLength(1);
+		expect(test.sent).toHaveLength(1);
+		expect(test.converting).toHaveLength(2);
+		expect(test.done).toEqual([`/files/${FILE_ID}`]);
+	});
+
+	it('shows the server’s reason when it cannot convert the picture', async () => {
+		const reason = 'This picture could not be read. Save it as a JPEG and add it again.';
+		const test = createSteps(['ok'], {
+			prepared: UNTOUCHED,
+			converted: [{ isDone: false, reason }]
+		});
+		const upload = new Upload(pickHeic(), {
+			for: LOGO,
+			kind: 'photo',
+			ondone: (address) => test.done.push(address),
+			steps: test.steps
+		});
+
+		await upload.start();
+
+		expect(upload.isFailed).toBe(true);
+		expect(upload.reason).toBe(reason);
+		expect(test.done).toEqual([]);
+	});
+
+	it('does not ask the server when the device’s own copy is what goes', async () => {
+		const test = createSteps(['ok']);
+		const upload = new Upload(pick(), {
+			for: LOGO,
+			kind: 'photo',
+			ondone: (address) => test.done.push(address),
+			steps: test.steps
+		});
+
+		await upload.start();
+
+		expect(upload.hasPreview).toBe(true);
+		expect(test.converting).toEqual([]);
+		expect(test.done).toEqual([`/files/${FILE_ID}`]);
+	});
+
+	it('shows the reason the device turned a picture down, and sends nothing', async () => {
+		const reason = 'This picture cannot be read here. Save it as a JPEG and add it again.';
+		const test = createSteps(['ok'], { prepared: new PictureError(reason) });
+		const upload = new Upload(new File(['raw'], 'IMG_0001.CR2'), {
+			for: LOGO,
+			kind: 'photo',
+			ondone: (address) => test.done.push(address),
+			steps: test.steps
+		});
+
+		await upload.start();
+
+		expect(upload.isFailed).toBe(true);
+		expect(upload.reason).toBe(reason);
+		expect(test.asked).toEqual([]);
 	});
 });
 

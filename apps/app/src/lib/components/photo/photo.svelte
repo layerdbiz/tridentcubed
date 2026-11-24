@@ -37,6 +37,7 @@
 		shape = $bindable(),
 		class: className = '',
 		style = undefined,
+		onerror = undefined,
 		children = undefined
 	}: {
 		src: string;
@@ -51,6 +52,8 @@
 		/** The box's size and anything else about it. */
 		class?: string;
 		style?: string;
+		/** The browser cannot draw the file (a HEIC in Chrome, #294), so its spot can show something else. */
+		onerror?: () => void;
 		/** Drawn over the photo, such as its description. */
 		children?: Snippet;
 	} = $props();
@@ -303,6 +306,7 @@
 			draggable="false"
 			class="photo-image pointer-events-none {imageClass}"
 			style={placeStyle}
+			{onerror}
 			{@attach readShape}
 		/>
 	</span>

@@ -42,6 +42,8 @@ export type FileType = {
 	width?: number;
 	height?: number;
 	taken: TakenType;
+	/** Where the untouched file a device sent still lies, when the server's copy could not carry every field (#294). */
+	original?: string;
 	uploadedBy?: string;
 	createdAt: string;
 };
@@ -70,6 +72,7 @@ function toFile(row: FileRowType): FileType {
 		width: row.width ?? undefined,
 		height: row.height ?? undefined,
 		taken: toTaken(row),
+		original: row.originalPath ?? undefined,
 		uploadedBy: row.uploadedBy ?? undefined,
 		createdAt: row.createdAt.toISOString()
 	};
