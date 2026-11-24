@@ -405,6 +405,8 @@ CREATE TABLE "file" (
 	"latitude" double precision,
 	"longitude" double precision,
 	"taken_from" text DEFAULT '' NOT NULL,
+	"metadata" jsonb,
+	"original_path" text,
 	"uploaded_by" uuid
 );
 
@@ -439,7 +441,8 @@ CREATE TABLE "photo" (
 	"group_id" uuid NOT NULL,
 	"position" integer DEFAULT 0 NOT NULL,
 	"file" text DEFAULT '' NOT NULL,
-	"description" text DEFAULT '' NOT NULL
+	"description" text DEFAULT '' NOT NULL,
+	"crop" jsonb
 );
 
 --> statement-breakpoint

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { toPictureType } from '#lib/files/files.schema.js';
+
 	// The Items panel's one way in (#242; settled with Justin on a prototype, 2026-11-19): a dashed box that takes rows
 	// pasted from a spreadsheet, a file or photo dropped on it, or one chosen with its button. Click or tap it and it
 	// is ready for a paste; it keeps its height then, and only its colors change. The kinds of file it reads stand in
@@ -23,7 +25,7 @@
 		const held = event.clipboardData;
 		if (!held) return;
 		event.preventDefault();
-		const pictures = [...held.files].filter((file) => file.type.startsWith('image/'));
+		const pictures = [...held.files].filter((file) => toPictureType(file).startsWith('image/'));
 		if (pictures.length) onfiles(pictures);
 		else ontext(held.getData('text/plain'));
 	}

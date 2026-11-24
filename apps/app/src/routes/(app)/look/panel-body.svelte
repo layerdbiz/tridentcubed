@@ -7,7 +7,9 @@
 	// puts the kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with
 	// Delete at the far right of its bottom row (run 8 note 10); every delete asks first. Each photo has its own
 	// description: tap it, or Edit description in its ⋮ (notes 12 and 14). V1 (#180) took out the sample day and the
-	// sample photo, the last buttons that wrote made-up data.
+	// sample photo, the last buttons that wrote made-up data. #312: a tap opens the photo in its pop-up
+	// (photo-popup.svelte) to swipe through its group, crop it and describe it; its ⋮ opens it cropping or typing, or
+	// deletes it. A photo's tile shows its crop.
 	// Run 9: Items is rows of quantity and description, like the time log's entries (note 24); a photo with a
 	// description shows an icon instead of its text (note 16), its ⋮ is bare dots (note 15), and the photos-per-page
 	// buttons draw their own layout (note 17). Uploads are shrunk here, as V1 will, so the browser can keep them.
@@ -35,11 +37,12 @@
 	// #229 (Justin, 2026-11-18): what a section counts is not written here beside its inputs any more. Every
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
-	import type { Attachment } from 'svelte/attachments';
 	import { flip } from 'svelte/animate';
+	import Photo from '#lib/components/photo/photo.svelte';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
+	import { toPictureType } from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import ImageField from './image-field.svelte';
@@ -68,6 +71,7 @@
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { Menu } from '@layerd/ui';
+	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
@@ -222,7 +226,8 @@
 	// attached as the file it is, so nothing handed over is ever turned away.
 	async function takeFiles(files: File[]) {
 		for (const file of files) {
-			if (file.type.startsWith('image/')) {
+			// By its name too: a HEIC dropped on Windows can come with no type (#294).
+			if (toPictureType(file).startsWith('image/')) {
 				send(file, 'photo');
 				continue;
 			}
@@ -414,13 +419,16 @@
 		save();
 	}
 
-	// The photo whose description is open in the sheet. The sheet opens with the cursor at the end of the text, ready to
-	// type: the browser's own autofocus skips a field that appears after a tap on a button.
-	let editing = $state<PhotoType>();
-	const focusEnd: Attachment<HTMLTextAreaElement> = (node) => {
-		node.focus({ preventScroll: true });
-		node.setSelectionRange(node.value.length, node.value.length);
-	};
+	// The photo open in the pop-up (#312): its group, which photo, and whether it opens looking, cropping or typing.
+	let opened = $state<{ group: PanelType['groups'][number]; id: string; mode: PopupModeType }>();
+
+	function openPhoto(
+		group: PanelType['groups'][number],
+		photo: PhotoType,
+		mode: PopupModeType = 'view'
+	) {
+		opened = { group, id: photo.id, mode };
+	}
 
 	function sortEntries(index: number) {
 		panel.days[index].entries.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
@@ -450,15 +458,6 @@
 		if (!openGroups.includes(group.id)) openGroups = [...openGroups, group.id];
 		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added`);
 		save();
-	}
-
-	// From the photo's own sheet: close it, then ask, as every delete does.
-	function deletePhoto(photo: PhotoType) {
-		const group = panel.groups.find((item) => item.photos.some((other) => other.id === photo.id));
-		const found = group?.photos.find((other) => other.id === photo.id);
-		editing = undefined;
-		if (group && found)
-			remove(group.photos, found, 'Delete photo?', `It leaves the ${word} and the report.`);
 	}
 
 	function addGroup() {
@@ -972,12 +971,20 @@
 							: 'rounded-xl py-2 pr-8 pl-3'}"
 						aria-busy={file.upload.isUploading}
 					>
-						{#if file.kind === 'photo'}
+						{#if file.kind === 'photo' && file.upload.hasPreview}
 							<img
 								src={file.upload.preview}
 								alt={file.name}
 								class="block max-h-64 w-auto max-w-full opacity-60"
+								onerror={() => (file.upload.hasPreview = false)}
 							/>
+						{:else if file.kind === 'photo'}
+							<!-- #294: a photo the device cannot draw shows its name while the server converts it. -->
+							<span class="flex items-center gap-2 py-2 pr-8 pl-3">
+								<span class="icon-[mdi--image-outline] size-4 shrink-0 text-primary"></span>
+								<span class="max-w-40 truncate">{file.name}</span>
+								{#if file.upload.isConverting}<span class="text-slate-500">Converting</span>{/if}
+							</span>
 						{:else}
 							<span class="icon-[mdi--file-table-outline] size-4 shrink-0 text-primary"></span>
 							<span class="max-w-40 truncate">{file.name}</span>
@@ -1344,18 +1351,35 @@
 									<button
 										type="button"
 										class="relative block size-full overflow-hidden rounded-xl bg-slate-100 select-none [-webkit-touch-callout:none]"
-										aria-label="Describe photo {photoIndex + 1}"
+										aria-label="Open photo {photoIndex + 1}"
 										data-grip="photos-{group.id}"
-										onclick={() => (editing = photo)}
+										onclick={() => {
+											// Nothing to show in the pop-up until the server has converted it (#294).
+											if (!upload || upload.hasPreview) openPhoto(group, photo);
+										}}
 									>
-										<img
-											src={photo.src}
-											alt={photo.description}
-											class="pointer-events-none size-full object-cover {upload
-												? 'opacity-60'
-												: ''}"
-											draggable="false"
-										/>
+										<!-- #294: a photo the device cannot draw (a HEIC in Chrome) shows its name, never a broken picture. -->
+										{#if upload && !upload.hasPreview}
+											<span
+												class="pointer-events-none flex size-full flex-col items-center justify-center gap-1 p-2 pb-8 text-center"
+											>
+												<span class="icon-[mdi--image-outline] size-6 shrink-0 text-slate-400"
+												></span>
+												<span class="line-clamp-2 text-[11px] font-medium break-all text-slate-600"
+													>{upload.name}</span
+												>
+											</span>
+										{:else}
+											<Photo
+												src={photo.src}
+												alt={photo.description}
+												crop={photo.crop}
+												class="pointer-events-none size-full {upload ? 'opacity-60' : ''}"
+												onerror={() => {
+													if (upload) upload.hasPreview = false;
+												}}
+											/>
+										{/if}
 										<!-- A soft shade in the corner, so the white ⋮ reads on a pale photo too (run 19). -->
 										<span
 											class="pointer-events-none absolute top-0 right-0 size-12 bg-[radial-gradient(circle_at_top_right,rgb(0_0_0/0.45),transparent_70%)]"
@@ -1367,8 +1391,17 @@
 											></span>
 										{/if}
 									</button>
-									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. -->
-									{#if upload?.isUploading}
+									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. #294: while
+									     the server converts it, the mark says so. -->
+									{#if upload?.isConverting}
+										<span
+											class="pointer-events-none absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded-lg bg-white px-1.5 py-1 text-[11px] font-semibold text-slate-700 shadow"
+											role="status"
+											aria-label="Converting photo {photoIndex + 1}"
+											><span class="icon-[svg-spinners--ring-resize] size-3.5 shrink-0 text-primary"
+											></span>Converting</span
+										>
+									{:else if upload?.isUploading}
 										<span
 											class="pointer-events-none absolute bottom-1 left-1 flex size-6 items-center justify-center rounded-full bg-white shadow"
 											role="status"
@@ -1397,6 +1430,11 @@
 											align={photoIndex % 3 === 0 ? 'left' : 'right'}
 											options={[
 												{
+													id: 'crop',
+													label: 'Crop',
+													icon: 'icon-[mdi--crop]'
+												},
+												{
 													id: 'describe',
 													label: 'Edit description',
 													icon: 'icon-[mdi--pencil-outline]'
@@ -1409,14 +1447,14 @@
 												}
 											]}
 											onpick={(id) =>
-												id === 'describe'
-													? (editing = photo)
-													: remove(
+												id === 'delete'
+													? remove(
 															group.photos,
 															photo,
 															'Delete photo?',
 															`It leaves the ${word} and the report.`
-														)}
+														)
+													: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
 										>
 											{#snippet trigger()}
 												<span class="flex size-7 items-center justify-center text-white"
@@ -1534,47 +1572,14 @@
 	</BottomSheet>
 {/if}
 
-{#if editing}
-	{@const photo = editing}
-	<BottomSheet
-		label="Describe this photo"
-		onclose={() => (editing = undefined)}
-	>
-		<form
-			onsubmit={(event) => {
-				event.preventDefault();
-				editing = undefined;
-			}}
-		>
-			<div class="flex items-center gap-3">
-				<img
-					src={photo.src}
-					alt=""
-					class="size-16 shrink-0 rounded-xl object-cover"
-				/>
-				<div>
-					<b class="block text-lg text-slate-900">Photo description</b>
-					<p class="text-sm text-slate-500">Shows on this photo in the report.</p>
-				</div>
-			</div>
-			<label class="mt-4 block">
-				<span class={labelClass}>Description</span>
-				<textarea
-					class="{inputClass} min-h-20"
-					bind:value={photo.description}
-					oninput={() => save()}
-					placeholder="e.g. Lashing on the forward stack, seen from the quay"
-					{@attach focusEnd}></textarea>
-			</label>
-			<button class="mt-5 w-full rounded-full bg-primary py-3 text-sm font-semibold text-white"
-				>Done</button
-			>
-			<button
-				type="button"
-				class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-full py-3 text-sm font-semibold text-danger transition hover:bg-danger/10"
-				onclick={() => deletePhoto(photo)}
-				><span class="icon-[mdi--trash-can-outline] size-[18px]"></span>Delete</button
-			>
-		</form>
-	</BottomSheet>
+{#if opened}
+	<PhotoPopup
+		{look}
+		group={opened.group}
+		id={opened.id}
+		mode={opened.mode}
+		{word}
+		onsave={save}
+		onclose={() => (opened = undefined)}
+	/>
 {/if}

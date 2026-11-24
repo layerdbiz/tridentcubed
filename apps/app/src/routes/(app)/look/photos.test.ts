@@ -134,6 +134,9 @@ function createUploads() {
 		async put(target) {
 			await new Promise<void>((resolve) => waiting.push(resolve));
 			if (failing.has(names.get(target.url) ?? '')) throw new TypeError('Failed to fetch');
+		},
+		async convert() {
+			return { isDone: true };
 		}
 	};
 	async function settle() {
@@ -388,6 +391,63 @@ describe('order and removal', () => {
 	});
 });
 
+describe('a crop', () => {
+	// #312: a photo's crop belongs to its spot in the report and is kept on its row, as three numbers: how far in and
+	// the point of the photo at the middle of its box. The photo's file never changes.
+	it('comes back the same for another member, moves with its photo to another stage, and a whole photo has none', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const operations = panelOf(mine.look, 'operations');
+		operations.groups.push(
+			groupOf({
+				title: 'Hatch 2',
+				photos: [{ ...stored('Lashing'), crop: { zoom: 2.5, x: 0.3, y: 0.7 } }, stored('Deck')]
+			}),
+			groupOf({ title: 'Hatch 3' })
+		);
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const hatch2 = operations.groups.find((group) => group.title === 'Hatch 2') as GroupType;
+		const hatch3 = operations.groups.find((group) => group.title === 'Hatch 3') as GroupType;
+		expect(movePhoto(mine.look.panels, hatch2.id, 0, hatch3.id)).toBe(true);
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+
+		const cropsOf = (title: string) =>
+			panelOf(theirs.look, 'operations')
+				.groups.find((group) => group.title === title)
+				?.photos.map((photo) => [photo.description, photo.crop]);
+		expect(cropsOf('Hatch 2')).toEqual([['Deck', undefined]]);
+		expect(cropsOf('Hatch 3')).toEqual([['Lashing', { zoom: 2.5, x: 0.3, y: 0.7 }]]);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+		expect(toChanges(mine.confirmed, toRows(mine.look))).toEqual([]);
+	});
+
+	it('taken off leaves the whole photo for another member', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const operations = panelOf(mine.look, 'operations');
+		operations.groups.push(
+			groupOf({
+				title: 'Hatch 2',
+				photos: [{ ...stored('Lashing'), crop: { zoom: 2, x: 0.5, y: 0.25 } }]
+			})
+		);
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const photo = operations.groups.find((group) => group.title === 'Hatch 2')?.photos[0];
+		if (photo) photo.crop = undefined;
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+
+		const hatch2 = panelOf(theirs.look, 'operations').groups.find(
+			(group) => group.title === 'Hatch 2'
+		);
+		expect(hatch2?.photos.map((photo) => photo.crop)).toEqual([undefined]);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+	});
+});
+
 describe('the freeze', () => {
 	it('refuses groups and photos added, changed or removed on a Sent, Complete or Archived project', async () => {
 		await test.db
@@ -538,6 +598,23 @@ describe('adding photos', () => {
 		expect(panelOf(theirs.look, 'discharge').groups.map((group) => group.photos.length)).toEqual([
 			1
 		]);
+	});
+
+	it('takes a HEIC dropped with no type from the browser, as Windows can hand one over (#294)', async () => {
+		const uploads = createUploads();
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const discharge = panelOf(mine.look, 'discharge');
+
+		const added = addPhotos(discharge, [new File(['heic'], 'IMG_0001.HEIC', { type: '' })], {
+			projectId: id,
+			steps: uploads.steps
+		});
+
+		expect(added).toBe(1);
+		expect(uploads.asked).toHaveLength(0);
+		await uploads.settle();
+		expect(uploads.asked.map((request) => request.name)).toEqual(['IMG_0001.HEIC']);
 	});
 
 	it('marks a failed upload on its photo, saves the others, and Retry saves it in its place', async () => {

@@ -2,9 +2,10 @@
 // two adapters. Supabase Storage holds them in one private bucket, and only the server, with the secret key, makes
 // the short-lived addresses a device uploads to and a browser opens. With no storage settings, outside production, a
 // local folder stands in, served by the app itself at /local-files/... with links signed the same short-lived way,
-// so development and tests work the same with no network.
+// so development and tests work the same with no network. The server also reads, writes and deletes a file itself,
+// to convert a photo the device could not read (#294).
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
 import { STORAGE_BUCKET, type UploadTargetType } from '#lib/files/files.schema.js';
 
@@ -23,7 +24,19 @@ export type FileStoreType = {
 	toUpload(path: string, type: string): Promise<UploadTargetType>;
 	/** A link that opens the file at `path` for `seconds`. */
 	toLink(path: string, seconds?: number): Promise<string>;
+	/** The bytes of the file at `path`. */
+	read(path: string): Promise<Uint8Array<ArrayBuffer>>;
+	/**
+	 * Keeps `bytes` as the file at `path`, over a file a half-done earlier try left there: only the server writes this
+	 * way, at paths it chose itself (a device's upload address never writes over a file).
+	 */
+	write(path: string, bytes: Uint8Array, type: string): Promise<void>;
+	/** Deletes the file at `path`. */
+	remove(path: string): Promise<void>;
 };
+
+/** How long a browser may keep a file: forever, since a path is never written twice. */
+const CACHE = 'max-age=31536000';
 
 export type LocalStoreType = FileStoreType & {
 	kind: 'local';
@@ -68,8 +81,19 @@ export function createLocalStore(options: { folder: string; secret: string }): L
 		if (parsed.searchParams.get('op') !== operation) return undefined;
 		if (!Number.isFinite(expires) || expires < Date.now()) return undefined;
 		if (given.length !== wanted.length || !timingSafeEqual(given, wanted)) return undefined;
+		return toInside(path);
+	}
+
+	// The file at `path`, inside the folder; undefined for a path that leads out of it.
+	function toInside(path: string) {
 		const file = resolve(join(root, path));
 		return file.startsWith(`${root}${sep}`) ? file : undefined;
+	}
+
+	function toOwnFile(path: string) {
+		const file = toInside(path);
+		if (!file) throw new Error(`${path} leads outside the files folder.`);
+		return file;
 	}
 
 	return {
@@ -99,6 +123,17 @@ export function createLocalStore(options: { folder: string; secret: string }): L
 			} catch {
 				return undefined;
 			}
+		},
+		async read(path) {
+			return new Uint8Array(await readFile(toOwnFile(path)));
+		},
+		async write(path, bytes) {
+			const file = toOwnFile(path);
+			await mkdir(dirname(file), { recursive: true });
+			await writeFile(file, bytes);
+		},
+		async remove(path) {
+			await rm(toOwnFile(path));
 		}
 	};
 }
@@ -116,20 +151,29 @@ export function createSupabaseStore(options: {
 	const storage = `${options.url.replace(/\/+$/, '')}/storage/v1`;
 	const bucket = options.bucket ?? BUCKET;
 	const send = options.fetch ?? fetch;
+	const key = { apikey: options.secretKey, authorization: `Bearer ${options.secretKey}` };
 
-	async function post(path: string, body?: unknown) {
+	// One call to Storage with the secret key; a refusal is thrown with what Storage said.
+	async function call(
+		path: string,
+		init: { method: string; headers?: Record<string, string>; body?: BodyInit }
+	) {
 		const response = await send(`${storage}${path}`, {
-			method: 'POST',
-			headers: {
-				apikey: options.secretKey,
-				authorization: `Bearer ${options.secretKey}`,
-				'content-type': 'application/json'
-			},
-			body: JSON.stringify(body ?? {})
+			...init,
+			headers: { ...key, ...init.headers }
 		});
 		if (!response.ok) {
 			throw new Error(`Supabase Storage answered ${response.status}: ${await response.text()}`);
 		}
+		return response;
+	}
+
+	async function post(path: string, body?: unknown) {
+		const response = await call(path, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(body ?? {})
+		});
 		return (await response.json()) as Record<string, string>;
 	}
 
@@ -140,12 +184,26 @@ export function createSupabaseStore(options: {
 			return {
 				method: 'PUT',
 				url: `${storage}${url}`,
-				headers: { 'content-type': type, 'cache-control': 'max-age=31536000', 'x-upsert': 'false' }
+				headers: { 'content-type': type, 'cache-control': CACHE, 'x-upsert': 'false' }
 			};
 		},
 		async toLink(path, seconds = LINK_SECONDS) {
 			const { signedURL } = await post(`/object/sign/${bucket}/${path}`, { expiresIn: seconds });
 			return `${storage}${signedURL}`;
+		},
+		async read(path) {
+			const response = await call(`/object/authenticated/${bucket}/${path}`, { method: 'GET' });
+			return new Uint8Array(await response.arrayBuffer());
+		},
+		async write(path, bytes, type) {
+			await call(`/object/${bucket}/${path}`, {
+				method: 'POST',
+				headers: { 'content-type': type, 'cache-control': CACHE, 'x-upsert': 'true' },
+				body: new Blob([bytes as BlobPart], { type })
+			});
+		},
+		async remove(path) {
+			await call(`/object/${bucket}/${path}`, { method: 'DELETE' });
 		}
 	};
 }

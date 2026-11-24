@@ -9,6 +9,7 @@ export { default as HowTo } from "./install/how-to.svelte";
 export * from "./definitions/inputs.ts";
 export * from "./install/install.constants.ts";
 export * from "./install/install.state.svelte.ts";
+export * from "./metadata/metadata.utils.ts";
 export { default as Note } from "./update/note.svelte";
 export * from "./start/organization.ts";
 export * from "./definitions/pages.ts";
@@ -27,6 +28,12 @@ export * from "./update/update.state.svelte.ts";
 export * from "./update/update.utils.ts";
 
 /* COMPONENTS */
+// photo
+export { default as Photo } from "./components/photo/photo.svelte";
+export * from "./components/photo/photo.constants.ts";
+export * from "./components/photo/photo.types.ts";
+export * from "./components/photo/photo.utils.ts";
+
 // sheet
 export { default as Sheet } from "./components/sheet/sheet.svelte";
 

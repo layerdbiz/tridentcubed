@@ -39,7 +39,7 @@ A User with no membership in any organization. A Guest sees only Waiting for acc
 _Avoid_: visitor, pending, unassigned
 
 **Organization**:
-A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, legal name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its admins, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15). Its details also hold its email domain.
+A group of Users who share access to its projects. Trident Cubed is the first; customer organizations come later. Its details (name, legal name, logo, address, phone, email, group email, website, disclaimer and sign-off wording) are kept once, edited by its Admins and Managers, and printed on every report: the logo, name, phone and email in each page's header, the disclaimer and sign-off on the last page. The design prototype edits them on its Settings screen (run 15). Its details also hold its email domain.
 _Avoid_: team, company, workspace
 
 **Membership**:
@@ -85,11 +85,11 @@ One job for a customer. A project owns exactly one report; a job that needs a se
 _Avoid_: job, survey (alone)
 
 **Project number**:
-A project's reference: the customer's short code, the Project Creation Date and J with the Job Sequence Number, which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. The date and the sequence are its two parts a User may type, side by side in the Project panel: the date starts as the day the project was made and is changed to the day Trident Cubed accepted the job when the project is made later; the sequence is the next one for that customer and date, given by the app, until one is typed. Nothing else changes it, the Time Log included. The whole number shows under the Job Number as a value the app made, and prints on the cover as Project # and in the report's footer (Justin, 2026-11-24; it was hidden from the panel from 2026-11-18).
+A project's reference: the customer's short code, the Project Creation Date and J with the Job Sequence Number, which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. The date and the sequence are its two parts a User may type, side by side in the Project panel: the date starts as the day the project was made and is changed to the day Trident Cubed accepted the job when the project is made later; the sequence is the next one for that customer and date, given by the app, until one is typed. Nothing else changes it, the Time Log included. The whole number shows under the Job Number as a value the app made (Justin, 2026-11-24; it was hidden from the panel from 2026-11-18), and prints in the report's footer; the cover does not print it.
 _Avoid_: job number, reference, queue number
 
 **Customer reference number**:
-The customer's own number for the job, such as SO025484: optional, typed under Customer in the Project panel, where its input is labelled Reference Number. The cover prints it as Reference #, under the Project #, and every page's footer prints it under the document ID, by an ID card icon. It is not part of the project number.
+The customer's own number for the job, such as SO025484: optional, typed under Customer in the Project panel, where its input is labelled Reference Number. When it is filled in, the cover prints it as Reference, and every page's footer prints it under the document ID, by an ID card icon. It is not part of the project number.
 _Avoid_: reference (alone), PO number
 
 **Document ID**:
@@ -293,7 +293,7 @@ A File a User adds to a project: a photo, a video or a document. It keeps every 
 _Avoid_: asset (in surveying that is the vessel or cargo surveyed), media, upload, uploaded file
 
 **File**:
-Anything uploaded and kept in private storage: a photo, an attached document, or a logo, cover or photo on a record or the organization. It holds what it is for, its type and size, and for a photo the time and place it was taken. An Attachment is a File added to a project; a record's logo is a File but not an Attachment.
+Anything uploaded and kept in private storage: a photo, an attached document, or a logo, cover or photo on a record or the organization. It holds what it is for, its type and size, and for a photo the time and place it was taken and the full field list of the file the User picked, so no metadata field is ever lost. An Attachment is a File added to a project; a record's logo is a File but not an Attachment.
 _Avoid_: upload, asset, blob
 
 ### Report pages

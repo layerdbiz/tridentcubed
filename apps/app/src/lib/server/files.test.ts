@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { UploadRequestType } from '#lib/files/files.schema.js';
 import type { ActorType } from './db/claims';
 import * as schema from './db/schema';
-import { createUpload, findFileLink, readFile } from './files';
+import { createUpload, findFileLink, readFieldList, readFile } from './files';
 import { saveBatch } from './rows';
 import { createLocalStore, type LocalStoreType } from './store';
 import { createTestSignIn } from './testing';
@@ -106,6 +106,33 @@ describe('a file row', () => {
 		expect((await readFile(test.claims, team, fromDevice.id))?.taken).toEqual({
 			from: 'device',
 			at: '2026-11-12T10:00:00.000Z'
+		});
+	});
+
+	it('keeps the original’s full field list beside a photo, for its own organization only (#292)', async () => {
+		const fields = {
+			exif: {
+				Make: { value: ['Apple'], description: 'Apple' },
+				MakerNote: { value: [65, 112, 0] }
+			},
+			iptc: { 'By-line': { value: [84, 84], description: 'TT' } },
+			Thumbnail: { image: { bytes: 6120 } }
+		};
+		const photo = await upload(team, { ...logoOf(), metadata: fields });
+		const plain = await upload(team, logoOf());
+
+		expect(await readFieldList(test.claims, team, photo.id)).toEqual(fields);
+		expect(await readFieldList(test.claims, team, plain.id)).toBeUndefined();
+		expect(await readFieldList(test.claims, await addOrganization(), photo.id)).toBeUndefined();
+	});
+
+	it('keeps a field list whatever a device sends in it, never failing the upload over it', async () => {
+		const odd = { icc: { '\0\0\0\0': { value: 'a\0b' } }, exif: { Huge: { value: 12n } } };
+		const photo = await upload(team, { ...logoOf(), metadata: odd });
+
+		expect(await readFieldList(test.claims, team, photo.id)).toEqual({
+			icc: { 'codes:0,0,0,0': { value: { codes: [97, 0, 98] } } },
+			exif: { Huge: {} }
 		});
 	});
 

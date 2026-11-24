@@ -147,8 +147,8 @@ export const TABLES = {
 			detail: TEXT
 		}
 	},
-	// The organization itself (Better Auth's table): only its name saves from the app. Only an Admin changes it,
-	// its details or its disclaimer points (the one permission check).
+	// The organization itself (Better Auth's table): only its name saves from the app. An Admin or a Manager changes
+	// it, its details or its disclaimer points (the one permission check, #303).
 	organization: {
 		scope: 'organization',
 		columns: { name: NAME }
@@ -278,7 +278,16 @@ export const TABLES = {
 			groupId: ID,
 			position: POSITION,
 			file: PICTURE,
-			description: TEXT
+			description: TEXT,
+			// #312: how it is framed in its spot in the report; nothing for the whole photo. Kept in jsonb's own key order
+			// (x, y, zoom), so the row a device sends reads the same as the one the server gives back.
+			crop: v.nullable(
+				v.object({
+					x: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+					y: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
+					zoom: v.pipe(v.number(), v.minValue(1), v.maxValue(5))
+				})
+			)
 		}
 	},
 	// #188: the trip's stops, the Items panel's rows and attachments, and the Time Log's days and entries. Stops load

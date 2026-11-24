@@ -1,8 +1,18 @@
 // Files (glossary "File", "Attachment"; ADR 0004; spec #179 "Files" and "Tables"; #187): one row per file kept in
 // the private bucket. It says what the file is for (a table, a column and, once it exists, the row), where it lies
 // in the bucket, its type, size and pixel size, the time and place a photo was taken with where those came from,
-// and who sent it. Rows of records keep only the app's address of the file (`/files/<id>`), never the file.
-import { doublePrecision, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+// the original's full field list (#292), the untouched file a device sent while it is kept (#294), and who sent it. Rows of records keep only the app's address of the file
+// (`/files/<id>`), never the file.
+import {
+	doublePrecision,
+	integer,
+	jsonb,
+	pgTable,
+	text,
+	timestamp,
+	uuid
+} from 'drizzle-orm/pg-core';
+import type { FieldListType } from '#lib/files/files.schema.js';
 import { user } from './auth.schema';
 import { organizationPolicy } from './policy';
 import { rowColumns } from './rows';
@@ -29,6 +39,16 @@ export const file = pgTable(
 		latitude: doublePrecision('latitude'),
 		longitude: doublePrecision('longitude'),
 		takenFrom: text('taken_from').default('').notNull(),
+		/**
+		 * Every metadata field of the file the User picked, as the device read it (Justin, 2026-11-24, on #281): the
+		 * stored copy holds its EXIF, XMP and ICC too, and this keeps what it has no slot for (IPTC, PNG text).
+		 */
+		metadata: jsonb('metadata').$type<FieldListType>(),
+		/**
+		 * Where the untouched file a device sent lies while it is still in storage (#294): empty once the server's copy
+		 * checked out and the untouched file was deleted, kept when the copy could not carry every field.
+		 */
+		originalPath: text('original_path'),
 		uploadedBy: uuid('uploaded_by').references(() => user.id, { onDelete: 'set null' })
 	},
 	() => [organizationPolicy('file')]

@@ -3,13 +3,16 @@
 // then a file row is written (through the claims helper, so it is the User's organization's) and the store makes a
 // short-lived address the device sends the bytes to, straight to storage. `findFileLink` is what the app's address of
 // a file does: a member of the file's organization gets a short-lived signed link; anyone else gets nothing.
-import { eq } from 'drizzle-orm';
+// `readFieldList` reads the original's full field list a photo keeps (#292), which nothing else reads.
+import { eq, getTableColumns } from 'drizzle-orm';
 import {
+	type FieldListType,
 	isTypeAllowed,
 	MAX_FILE_BYTES,
 	type TakenType,
 	toEnding,
 	toFileAddress,
+	toStorableJson,
 	type UploadAnswerType,
 	type UploadRequestType
 } from '#lib/files/files.schema.js';
@@ -39,11 +42,16 @@ export type FileType = {
 	width?: number;
 	height?: number;
 	taken: TakenType;
+	/** Where the untouched file a device sent still lies, when the server's copy could not carry every field (#294). */
+	original?: string;
 	uploadedBy?: string;
 	createdAt: string;
 };
 
-type FileRowType = typeof files.$inferSelect;
+// Every column but the field list, which can run to a few hundred KB and is read on its own.
+const { metadata: _fieldList, ...FILE_COLUMNS } = getTableColumns(files);
+
+type FileRowType = Omit<typeof files.$inferSelect, 'metadata'>;
 
 function toTaken(row: FileRowType): TakenType {
 	const taken: TakenType = { from: row.takenFrom as TakenType['from'] };
@@ -64,6 +72,7 @@ function toFile(row: FileRowType): FileType {
 		width: row.width ?? undefined,
 		height: row.height ?? undefined,
 		taken: toTaken(row),
+		original: row.originalPath ?? undefined,
 		uploadedBy: row.uploadedBy ?? undefined,
 		createdAt: row.createdAt.toISOString()
 	};
@@ -113,6 +122,8 @@ export async function createUpload(
 			latitude: taken.latitude ?? null,
 			longitude: taken.longitude ?? null,
 			takenFrom: taken.from,
+			// Written again as Postgres keeps it, whatever the device sent, so a field list never fails an upload.
+			metadata: request.metadata ? (toStorableJson(request.metadata) as FieldListType) : null,
 			uploadedBy: actor.userId
 		});
 		return allowed;
@@ -124,8 +135,23 @@ export async function createUpload(
 /** The file row with this id, when the actor's organization has it. */
 export async function readFile(claims: ClaimsType, actor: ActorType, id: string) {
 	if (!actor.organizationId || !UUID.test(id)) return undefined;
-	const [row] = await claims.run(actor, (tx) => tx.select().from(files).where(eq(files.id, id)));
+	const [row] = await claims.run(actor, (tx) =>
+		tx.select(FILE_COLUMNS).from(files).where(eq(files.id, id))
+	);
 	return row ? toFile(row) : undefined;
+}
+
+/** The full field list of the file the User picked, kept with this file, when the actor's organization has it. */
+export async function readFieldList(
+	claims: ClaimsType,
+	actor: ActorType,
+	id: string
+): Promise<FieldListType | undefined> {
+	if (!actor.organizationId || !UUID.test(id)) return undefined;
+	const [row] = await claims.run(actor, (tx) =>
+		tx.select({ metadata: files.metadata }).from(files).where(eq(files.id, id))
+	);
+	return row?.metadata ?? undefined;
 }
 
 /** A short-lived link that opens the file, for a member of its organization; nothing for anyone else. */

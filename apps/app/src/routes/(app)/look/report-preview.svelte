@@ -33,6 +33,7 @@
 	// facility, transport, facility; a transport's page with its photo, particulars and facilities; the signature
 	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
+	import Photo from '#lib/components/photo/photo.svelte';
 	import Trip from '#lib/components/trip/trip.svelte';
 	import type { TripLegType } from '#lib/components/trip/trip.types.js';
 	import { toCrossOrigin } from '#lib/files/files.schema.js';
@@ -2210,13 +2211,13 @@
 								{/if}
 								<div class="mt-4 grid gap-3 {group.layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}">
 									{#each shown as photo (photo.id)}
+										<!-- #312: the photo as it is cropped for this spot, placed in percentages so the PDF prints it the same. -->
 										<figure class="relative overflow-hidden rounded">
-											<img
+											<Photo
 												src={photo.src}
 												crossorigin={toCrossOrigin(photo.src)}
-												alt=""
-												draggable="false"
-												class="w-full object-cover {PHOTO_SIZES[group.layout]}"
+												crop={photo.crop}
+												class="w-full {PHOTO_SIZES[group.layout]}"
 											/>
 											{#if photo.description}
 												<figcaption

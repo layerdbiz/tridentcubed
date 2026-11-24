@@ -2,6 +2,7 @@
 // starting data (the organization Trident Cubed here; its customers come from the database since #183, its team
 // since #185), and the helpers every screen reads. Carried over from the look prototype (#161); since V1 (#180) no
 // sample projects, transports or facilities ship (Justin's rule of 2026-11-10: every value on screen is real).
+import type { CropType } from '#lib/components/photo/photo.types.js';
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
 import { seen, touch } from './registry.svelte';
@@ -66,8 +67,9 @@ export type FieldType = {
 
 export type EntryType = { id: string; time: string; activity: string };
 export type DayType = { id: string; date: string; entries: EntryType[] };
-// Each photo has its own description, written from the photo's ⋮ or a tap, shown over it in the preview.
-export type PhotoType = { id: string; src: string; description: string };
+// Each photo has its own description, written from the photo's ⋮ or a tap, shown over it in the preview. #312: its
+// `crop` is how it is framed in its spot in the report (glossary "Crop"); none shows the whole photo.
+export type PhotoType = { id: string; src: string; description: string; crop?: CropType };
 // One row of the Items panel: how many and what (Justin's run 9 note 24), the way the sample reports list cargo
 // ("2x transformers and 27x accessory crates"). A manifest's extra columns may come later.
 export type ItemType = { id: string; quantity: string; description: string };
