@@ -181,6 +181,9 @@ export class LookState {
 	// Every place a location field has been given, with where it is: looked up once, then read from here. The
 	// server's rows since #184 (the seed's starting places, then every one a member picked).
 	places = $state<PlaceType[]>([]);
+	// The Help text of every input by its key (#299), from the server's `help_text` rows. The app holds none of its own:
+	// an input whose key has no row shows no ?.
+	help = $state.raw<Record<string, string>>({});
 	asking = $state<ConfirmType>();
 	// Each project's row, Team Assigned rows and trip's stops (#188) as the server last gave them (#186, mapper.ts):
 	// what a project whose panels have not loaded saves as, since only its status and percent change from the lists.
@@ -323,6 +326,11 @@ export class LookState {
 
 	// A suggestion picked in a location field joins the saved places, once, for every member (#184). Its id is worked
 	// out from its name, so two members picking the same new place save one row.
+	/** The Help text of the input `key` names (`project.title`), or nothing, which shows no ?. */
+	helpOf(key: string) {
+		return this.help[key] ?? '';
+	}
+
 	keepPlace(place: PlaceType) {
 		if (this.placeOf(place.name)) return;
 		const id = toStableId(this.organization.id ?? '', 'place', place.name.trim().toLowerCase());

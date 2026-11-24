@@ -9,6 +9,7 @@ export * from './team.schema';
 export * from './transport.schema';
 export * from './place.schema';
 export * from './details.schema';
+export * from './help.schema';
 export * from './project.schema';
 export * from './file.schema';
 export * from './photo.schema';

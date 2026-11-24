@@ -8,6 +8,7 @@
 	// (`onpick`) once the file is there, and a failed upload says so on the picture with Retry. Wiring another
 	// picture is giving its field a `target`; every picture has one, so none is kept inline. #294: a picture the
 	// device cannot draw (a HEIC in Chrome) shows a picture mark and its name while the server converts it.
+	import { Help } from '@layerd/ui';
 	import type { FileTargetType } from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 
@@ -18,6 +19,7 @@
 		target,
 		shape = 'wide',
 		hint = '',
+		help = '',
 		canRemove = true
 	}: {
 		label: string;
@@ -27,6 +29,8 @@
 		target: FileTargetType;
 		shape?: 'logo' | 'face' | 'wide';
 		hint?: string;
+		// Its Help text (#299): a ? beside the label opens it once there is a picture.
+		help?: string;
 		// False while what shows is the picture it falls back to, which cannot be taken away.
 		canRemove?: boolean;
 	} = $props();
@@ -76,8 +80,16 @@
 	}
 </script>
 
-<div>
-	<p class="mb-1 block text-xs font-medium text-slate-500">{label}</p>
+<div
+	class={help ? 'has-help' : undefined}
+	data-empty={value ? undefined : ''}
+>
+	<p class="mb-1 flex items-center gap-1 text-xs font-medium text-slate-500">
+		{label}{#if help}<Help
+				{label}
+				text={help}
+			/>{/if}
+	</p>
 	<div class="flex items-center gap-3">
 		<span
 			class="relative flex shrink-0 items-center justify-center overflow-hidden ring-1 ring-slate-900/10 {look.frame} {upload?.isFailed

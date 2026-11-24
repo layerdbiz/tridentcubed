@@ -6,6 +6,7 @@
 // - Manager and Team may change everything in their organization except: a member, a Team record's role, the
 //   Archived status, and deleting a project that is not their own Draft.
 // - A Manager may also change the organization, its details and its disclaimer points (#184, #303); Team may not.
+// - Only an Admin changes the Help text of the inputs (#299).
 // - The email domain, which decides who joins as staff, is set in the database only.
 // - An Admin (and the Super admin) may do all of it.
 // - Nobody demotes or removes the Super admin or the organization's last Admin.
@@ -65,6 +66,7 @@ const REASONS = {
 	organizationDelete: 'An organization cannot be deleted from the app.',
 	organizationCreate: 'An organization cannot be made from the app.',
 	member: 'Only an Admin can change who is in the organization.',
+	help: 'Only an Admin can change the help text.',
 	role: 'Only an Admin can change a Team role.',
 	teamEmail:
 		'Only an Admin can change the email of an Admin’s or Manager’s Team record before they sign in.',
@@ -125,6 +127,8 @@ const TABLE_RULES: Partial<Record<CheckedTableType, RuleType[]>> = {
 	],
 	// The disclaimer's points are the organization's wording (#184).
 	disclaimer_point: [managersAndAdminsOnly(REASONS.organization)],
+	// The Help text of every input (#299).
+	help_text: [adminsOnly(REASONS.help)],
 	member: [adminsOnly(REASONS.member), keepAdmins],
 	// Team records (#185): staff edit them, but only an Admin changes a role, and an Admin stays one. Staff may add a
 	// record with the Team role. A record nobody has signed in as yet hands its role to whoever signs in with its

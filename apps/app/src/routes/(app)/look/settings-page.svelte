@@ -8,6 +8,7 @@
 	// under the same header (page-header.svelte). Edit is the Project panel's own sections (group.svelte) with its
 	// soft fields: Details, Disclaimer, Sign-off. The signed-in person's profile is their Team page, reached from
 	// the same menu. On a desktop Edit keeps its floating column and the report it changes shows beside it.
+	import { Help } from '@layerd/ui';
 	import Group from './group.svelte';
 	import ImageField from './image-field.svelte';
 	import type { LookState } from './look.state.svelte';
@@ -16,6 +17,7 @@
 	import { organizationSectionsOf, valuesOf } from './tally';
 
 	let { look, isWide }: { look: LookState; isWide: boolean } = $props();
+	const uid = $props.id();
 
 	const FLOAT =
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
@@ -82,10 +84,32 @@
 	});
 </script>
 
-{#snippet text(label: string, value: string, oninput: (value: string) => void, type = 'text')}
-	<label class="block">
-		<span class={LABEL}>{label}</span>
+<!-- An input's label and its ? (#299), outside the <label>, so a tap on the ? never reaches the input. The block
+     is `has-help`, with `data-empty` while the input has nothing in it (look.css). -->
+{#snippet labelOf(label: string, key: string)}
+	<span class={LABEL}>
+		<label for="{uid}-{key}">{label}</label>
+		{#if look.helpOf(key)}<Help
+				{label}
+				text={look.helpOf(key)}
+			/>{/if}
+	</span>
+{/snippet}
+
+{#snippet text(
+	label: string,
+	key: string,
+	value: string,
+	oninput: (value: string) => void,
+	type = 'text'
+)}
+	<div
+		class="has-help block"
+		data-empty={value ? undefined : ''}
+	>
+		{@render labelOf(label, key)}
 		<input
+			id="{uid}-{key}"
 			class={FIELD}
 			{type}
 			{value}
@@ -94,13 +118,23 @@
 				look.flash();
 			}}
 		/>
-	</label>
+	</div>
 {/snippet}
 
-{#snippet area(label: string, value: string, oninput: (value: string) => void, rows = 3)}
-	<label class="block">
-		<span class={LABEL}>{label}</span>
+{#snippet area(
+	label: string,
+	key: string,
+	value: string,
+	oninput: (value: string) => void,
+	rows = 3
+)}
+	<div
+		class="has-help block"
+		data-empty={value ? undefined : ''}
+	>
+		{@render labelOf(label, key)}
 		<textarea
+			id="{uid}-{key}"
 			class="{FIELD} resize-y leading-relaxed"
 			{rows}
 			{value}
@@ -108,7 +142,7 @@
 				oninput(event.currentTarget.value);
 				look.flash();
 			}}></textarea>
-	</label>
+	</div>
 {/snippet}
 
 <!-- Edit: the same sections a Project panel has, each opening and closing. For Team every field inside is disabled
@@ -140,6 +174,7 @@
 						label="Logo"
 						shape="logo"
 						value={organization.logo}
+						help={look.helpOf('organization.logo')}
 						target={{
 							table: 'organization_details',
 							column: 'logo',
@@ -151,28 +186,39 @@
 							look.flash();
 						}}
 					/>
-					{@render text('Name', organization.name, (value) => look.nameOrganization(value))}
-					{@render text('Address', organization.address, (value) => (organization.address = value))}
+					{@render text('Name', 'organization.name', organization.name, (value) =>
+						look.nameOrganization(value)
+					)}
+					{@render text(
+						'Address',
+						'organization.address',
+						organization.address,
+						(value) => (organization.address = value)
+					)}
 					{@render text(
 						'Phone',
+						'organization.phone',
 						organization.phone,
 						(value) => (organization.phone = value),
 						'tel'
 					)}
 					{@render text(
 						'Email',
+						'organization.email',
 						organization.email,
 						(value) => (organization.email = value),
 						'email'
 					)}
 					{@render text(
 						'Group Email',
+						'organization.groupEmail',
 						organization.groupEmail,
 						(value) => (organization.groupEmail = value),
 						'email'
 					)}
 					{@render text(
 						'Website',
+						'organization.website',
 						organization.website,
 						(value) => (organization.website = value),
 						'url'
@@ -194,6 +240,7 @@
 				>
 					{@render area(
 						'Opening',
+						'disclaimer.opening',
 						organization.disclaimer.opening,
 						(value) => (organization.disclaimer.opening = value),
 						4
@@ -233,6 +280,7 @@
 					{/each}
 					{@render area(
 						'Closing Note',
+						'disclaimer.note',
 						organization.disclaimer.note,
 						(value) => (organization.disclaimer.note = value),
 						2
@@ -263,12 +311,14 @@
 				>
 					{@render area(
 						'Thank-you Line',
+						'organization.closing',
 						organization.closing,
 						(value) => (organization.closing = value),
 						2
 					)}
 					{@render text(
 						'Sign-off',
+						'organization.signoff',
 						organization.signoff,
 						(value) => (organization.signoff = value)
 					)}

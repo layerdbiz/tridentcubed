@@ -36,3 +36,25 @@ body:has(.look)::-webkit-scrollbar,
 		mask: var(--svg) no-repeat center / 100% 100%;
 	}
 }
+
+/* An input's ? (#299), the library's Help (#284) beside the label: grey, blue while its input is focused or its help
+   is open, and hidden while the input is empty and not being typed in, as the library's inputs do. `has-help` marks
+   the block holding the label and the input, `data-empty` an input with nothing in it. */
+.has-help .help {
+	color: var(--color-slate-400);
+}
+.has-help:focus-within .help,
+.has-help .help[aria-expanded='true'] {
+	color: var(--color-primary);
+}
+@media (hover: hover) {
+	.has-help .help:hover {
+		color: var(--color-primary);
+	}
+}
+.has-help[data-empty]:not(:focus-within) .help:not([aria-expanded='true']) {
+	pointer-events: none;
+	width: 0;
+	margin-inline-start: -0.25rem;
+	opacity: 0;
+}

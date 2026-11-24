@@ -31,9 +31,9 @@
 	// Run 29 (his second round of notes): the field is always one line, the pencil shows only in the open list, and
 	// a short field never cuts its word.
 	import type { Snippet } from 'svelte';
+	import { Help, Menu } from '@layerd/ui';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
-	import { Menu } from '@layerd/ui';
 
 	let {
 		label,
@@ -49,6 +49,7 @@
 		isDisabled = false,
 		isRequired = true,
 		isSearchable,
+		help = '',
 		onpick,
 		onadd,
 		addLabel,
@@ -76,6 +77,8 @@
 		isRequired?: boolean;
 		// A field to type in at the top of the list: every dropdown has one unless this says false.
 		isSearchable?: boolean;
+		// The input's Help text (#299): a ? beside the label opens it once something is picked or the field is focused.
+		help?: string;
 		onpick: (id: string) => void;
 		// Puts "Add new" at the top of the list.
 		onadd?: () => void;
@@ -190,10 +193,17 @@
 	</span>
 {/snippet}
 
-<div>
+<div
+	class={help && hasLabel ? 'has-help' : undefined}
+	data-empty={picked.length ? undefined : ''}
+>
 	{#if hasLabel}
 		<p class={LABEL}>
 			{label}
+			{#if help}<Help
+					{label}
+					text={help}
+				/>{/if}
 			{#if isRequired && !picked.length}<span
 					class="size-1.5 rounded-full bg-warning"
 					title="Not picked yet"

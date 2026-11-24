@@ -9,6 +9,7 @@ import type { ActorType } from '#lib/server/db/claims.js';
 import * as schema from '#lib/server/db/schema.js';
 import { readRows, saveBatch } from '#lib/server/rows.js';
 import { createTestSignIn } from '#lib/server/testing.js';
+import { HELP } from '#lib/start/help.js';
 import { FACILITIES, TRANSPORTS } from '#lib/start/transport.js';
 import { draftOf, type FacilityType, type TransportType } from './look.data';
 import { LookState } from './look.state.svelte';
@@ -398,6 +399,36 @@ describe('the organization', () => {
 		expect(again.look.organization.website).toBe('tridentcubed.com');
 		expect(again.look.organization.disclaimer.points).toHaveLength(8);
 		expect(again.look.organization.disclaimer.points[0].title).toBe('Scope Limitation');
+	});
+});
+
+describe('the Help text (#299)', () => {
+	it('starts with one filled-in row per input, each key once', () => {
+		expect(new Set(HELP.map((help) => help.key)).size).toBe(HELP.length);
+		for (const help of HELP) expect(help.text.trim()).not.toBe('');
+	});
+
+	it('loads every input’s help from the seed by its key, and none for an input it has no row for', async () => {
+		const { look } = await open(team);
+
+		expect(Object.keys(look.help)).toHaveLength(HELP.length);
+		expect(look.helpOf('customer.code')).toBe(
+			HELP.find((help) => help.key === 'customer.code')?.text
+		);
+		expect(look.helpOf('no.such.input')).toBe('');
+	});
+
+	it('never goes out, and a row changed in the database shows on the next open', async () => {
+		const device = await open(team);
+		expect(toRows(device.look).some((row) => row.table === 'help_text')).toBe(false);
+
+		await test.db
+			.update(schema.helpText)
+			.set({ text: 'Changed in the database.' })
+			.where(eq(schema.helpText.key, 'project.title'));
+
+		expect(device.look.helpOf('project.title')).not.toBe('Changed in the database.');
+		expect((await open(team)).look.helpOf('project.title')).toBe('Changed in the database.');
 	});
 });
 

@@ -178,6 +178,15 @@ export const TABLES = {
 			text: TEXT
 		}
 	},
+	// The Help text of every input (#299): read by every screen, changed by an Admin only.
+	help_text: {
+		scope: 'organization',
+		columns: {
+			key: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+			label: TEXT,
+			text: TEXT
+		}
+	},
 	// Team records (#185). Their role is a membership's once its User has signed in: only an Admin changes it
 	// (`#lib/server/permission.ts`), and the save command moves the membership with it.
 	team: {

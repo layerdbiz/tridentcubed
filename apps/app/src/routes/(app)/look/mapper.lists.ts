@@ -1,6 +1,7 @@
 // The mapper's part for the organization's other lists (#184): Transport Modes, Facilities, saved places and the
-// organization's own details (its name, letterhead, wording and disclaimer points). `toListRows` and `takeListRows`
-// are called by mapper.ts's `toRows` and `takeRows`; the same rule holds: what goes out comes back equal.
+// organization's own details (its name, letterhead, wording and disclaimer points), and the inputs' Help text (#299),
+// which only comes in. `toListRows` and `takeListRows` are called by mapper.ts's `toRows` and `takeRows`; the same
+// rule holds: what goes out comes back equal.
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import {
 	type FacilityKindType,
@@ -188,6 +189,17 @@ function toOrganization(rows: SavedRowType[]): OrganizationType {
 	};
 }
 
+// The Help text of every input by its key (#299). The screens only read it: no row of it ever goes out.
+function toHelp(rows: SavedRowType[]): Record<string, string> {
+	const help: Record<string, string> = {};
+	for (const row of rows)
+		if (row.table === 'help_text' && !row.deletedAt) {
+			const text = String(row.values.text ?? '').trim();
+			if (text) help[String(row.values.key)] = text;
+		}
+	return help;
+}
+
 /** The server's rows of the lists into the screens' state, in place of what it held for them. */
 export function takeListRows(look: LookState, rows: SavedRowType[]) {
 	const transports = rows.filter((row) => row.table === 'transport');
@@ -198,6 +210,7 @@ export function takeListRows(look: LookState, rows: SavedRowType[]) {
 	look.trashed.facilities = facilities.filter((row) => row.deletedAt).map(toFacility);
 	look.places = rows.filter((row) => row.table === 'place' && !row.deletedAt).map(toPlace);
 	look.organization = toOrganization(rows);
+	look.help = toHelp(rows);
 }
 
 /** A Transport Mode's id from the name the screens use, in the Trash or not (#188: a stop's transport). */

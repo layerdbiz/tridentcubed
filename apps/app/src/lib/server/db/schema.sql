@@ -295,6 +295,20 @@ CREATE TABLE "disclaimer_point" (
 --> statement-breakpoint
 ALTER TABLE "disclaimer_point" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "help_text" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"key" text NOT NULL,
+	"label" text DEFAULT '' NOT NULL,
+	"text" text DEFAULT '' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "help_text" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 CREATE TABLE "project" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -572,6 +586,8 @@ ALTER TABLE "disclaimer_point" ADD CONSTRAINT "disclaimer_point_organization_id_
 --> statement-breakpoint
 ALTER TABLE "disclaimer_point" ADD CONSTRAINT "disclaimer_point_details_id_organization_details_id_fk" FOREIGN KEY ("details_id") REFERENCES "public"."organization_details"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "help_text" ADD CONSTRAINT "help_text_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 ALTER TABLE "project" ADD CONSTRAINT "project_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "project" ADD CONSTRAINT "project_customer_id_customer_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customer"("id") ON DELETE no action ON UPDATE no action;
@@ -690,6 +706,8 @@ CREATE UNIQUE INDEX "organization_details_email_domain_idx" ON "organization_det
 --> statement-breakpoint
 CREATE INDEX "disclaimer_point_details_idx" ON "disclaimer_point" USING btree ("details_id");
 --> statement-breakpoint
+CREATE UNIQUE INDEX "help_text_key_idx" ON "help_text" USING btree ("organization_id","key");
+--> statement-breakpoint
 CREATE INDEX "project_customer_day_idx" ON "project" USING btree ("organization_id","customer_id","day");
 --> statement-breakpoint
 CREATE INDEX "project_team_project_idx" ON "project_team" USING btree ("project_id");
@@ -747,6 +765,8 @@ CREATE POLICY "place in the acting organization" ON "place" AS PERMISSIVE FOR AL
 CREATE POLICY "organization_details in the acting organization" ON "organization_details" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "disclaimer_point in the acting organization" ON "disclaimer_point" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "help_text in the acting organization" ON "help_text" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "project in the acting organization" ON "project" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
