@@ -31,4 +31,4 @@ Decided on "Sign in and save to the real database" ([#179](https://github.com/la
 
 Decided by Justin in the team feedback grilling, built on "Let managers edit the organization" ([#303](https://github.com/layerdbiz/tridentcubed/issues/303)).
 
-- **A Manager may also change the organization's details**: its name, letterhead, disclaimer and sign-off, as Settings shows them. The Team role still may not. The email domain, which decides who joins as staff, stays an Admin's. Every other right is still the same for Manager and Team.
+- **A Manager may also change the organization's details**: its name, letterhead, disclaimer and sign-off, as Settings shows them. The Team role still may not. Every other right is still the same for Manager and Team. The email domain, which decides who joins as staff, stays set in the database only, never from the app.

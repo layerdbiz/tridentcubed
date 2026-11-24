@@ -78,7 +78,7 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 		['manager', 'admin', 'super']
 	],
 	[
-		'change the email domain, which decides who joins as staff',
+		'change the email domain, which is set in the database only',
 		() => ({
 			table: 'organization_details',
 			operation: 'put',
@@ -86,7 +86,7 @@ const MATRIX: [string, () => ChangeType, WhoType[]][] = [
 			row: { organizationId: ORG },
 			values: { emailDomain: 'tridentcubed.com' }
 		}),
-		['admin', 'super']
+		[]
 	],
 	[
 		'rename the organization',

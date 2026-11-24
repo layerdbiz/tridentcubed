@@ -6,6 +6,7 @@
 // - Manager and Team may change everything in their organization except: a member, a Team record's role, the
 //   Archived status, and deleting a project that is not their own Draft.
 // - A Manager may also change the organization, its details and its disclaimer points (#184, #303); Team may not.
+// - The email domain, which decides who joins as staff, is set in the database only.
 // - An Admin (and the Super admin) may do all of it.
 // - Nobody demotes or removes the Super admin or the organization's last Admin.
 // - Access grants are never changed from the app.
@@ -60,6 +61,7 @@ const REASONS = {
 	otherOrganization: 'That belongs to another organization.',
 	grant: 'Access grants are kept in the database only.',
 	organization: 'Only an Admin or a Manager can change the organization.',
+	emailDomain: 'The email domain is set in the database only.',
 	organizationDelete: 'An organization cannot be deleted from the app.',
 	organizationCreate: 'An organization cannot be made from the app.',
 	member: 'Only an Admin can change who is in the organization.',
@@ -104,8 +106,10 @@ const adminsOnly =
 		isAdmin(actor) ? undefined : reason;
 
 // The organization, its details and its disclaimer points: a Manager changes them too (#303).
-const managersAndAdmins: RuleType = (actor) =>
-	isManagerOrAdmin(actor) ? undefined : REASONS.organization;
+const managersAndAdminsOnly =
+	(reason: string): RuleType =>
+	(actor) =>
+		isManagerOrAdmin(actor) ? undefined : reason;
 
 const TABLE_RULES: Partial<Record<CheckedTableType, RuleType[]>> = {
 	access_grant: [() => REASONS.grant],
@@ -113,16 +117,14 @@ const TABLE_RULES: Partial<Record<CheckedTableType, RuleType[]>> = {
 		(_actor, change) => (change.operation === 'delete' ? REASONS.organizationDelete : undefined),
 		(_actor, change) =>
 			change.operation === 'put' && !change.row ? REASONS.organizationCreate : undefined,
-		managersAndAdmins
+		managersAndAdminsOnly(REASONS.organization)
 	],
 	organization_details: [
-		managersAndAdmins,
-		// The email domain decides who joins as staff, so it stays an Admin's.
-		(actor, change) =>
-			touches(change, 'emailDomain') && !isAdmin(actor) ? REASONS.member : undefined
+		managersAndAdminsOnly(REASONS.organization),
+		(_actor, change) => (touches(change, 'emailDomain') ? REASONS.emailDomain : undefined)
 	],
 	// The disclaimer's points are the organization's wording (#184).
-	disclaimer_point: [managersAndAdmins],
+	disclaimer_point: [managersAndAdminsOnly(REASONS.organization)],
 	member: [adminsOnly(REASONS.member), keepAdmins],
 	// Team records (#185): staff edit them, but only an Admin changes a role, and an Admin stays one. Staff may add a
 	// record with the Team role. A record nobody has signed in as yet hands its role to whoever signs in with its
