@@ -220,7 +220,7 @@
 		<fieldset
 			bind:this={fieldsetNode}
 			{...props}
-			class={`${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)} textarea`.trim()}
+			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)} textarea`.trim()}
 		>
 			<legend
 				><span>{fieldState.labelText}</span>{#if help}<Help

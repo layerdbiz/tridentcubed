@@ -429,7 +429,7 @@
 		>
 			<fieldset
 				{...props}
-				class={`${props.class} ${fieldState.className}`.trim()}
+				class={`field ${props.class} ${fieldState.className}`.trim()}
 			>
 				<legend
 					><span>{fieldState.labelText}</span>{#if help}<Help

@@ -229,7 +229,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 	{#snippet component({ props }: { props: ComponentReturn })}
 		<fieldset
 			{...props}
-			class={`${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)}`.trim()}
+			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)}`.trim()}
 		>
 			<legend
 				><span>{fieldState.labelText}</span>{#if help}<Help
