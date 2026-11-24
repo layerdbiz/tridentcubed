@@ -6,7 +6,7 @@
 	import { CHART_KINDS, RANGE_NAMES, RANGES, type ChartKindType } from './chart.data';
 	import { DATASETS } from './look.data';
 	import type { LookState, ViewType } from './look.state.svelte';
-	import Menu from './menu.svelte';
+	import { Menu } from '@layerd/ui';
 	import { columnsOf, countOf } from './records.data';
 
 	let { look }: { look: LookState } = $props();
