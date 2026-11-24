@@ -10,6 +10,7 @@
 		type ComponentReturn,
 		createFormField,
 		type FieldProps,
+		Help,
 		Icon
 	} from '@layerd/ui';
 
@@ -45,6 +46,7 @@
 	let {
 		variant = 'text icon',
 		label = 'Select',
+		help = undefined,
 		icon = undefined,
 		iconEnd = undefined,
 		name = undefined,
@@ -429,7 +431,12 @@
 				{...props}
 				class={`${props.class} ${fieldState.className}`.trim()}
 			>
-				<legend>{fieldState.labelText}</legend>
+				<legend
+					><span>{fieldState.labelText}</span>{#if help}<Help
+							label={fieldState.labelText}
+							text={help}
+						/>{/if}</legend
+				>
 				<label for={fieldState.field.id}>
 					{#if variant === 'icon text'}
 						{@render iconTextVariant()}

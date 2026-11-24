@@ -64,7 +64,7 @@ fieldset:has(.end) {
 }
 
 fieldset legend {
-	@apply pointer-events-none relative z-2 grid origin-top-left items-center bg-transparent leading-0 font-semibold whitespace-nowrap transition-transform;
+	@apply pointer-events-none relative z-2 grid origin-top-left grid-flow-col items-center justify-start gap-[0.3em] bg-transparent leading-0 font-semibold whitespace-nowrap transition-transform;
 	@apply ml-(--legend-start) text-base-400/50;
 	@apply ps-(--legend-pad-start) pe-(--legend-pad-end);
 
@@ -112,7 +112,7 @@ fieldset.field-empty {
 	@apply outline-1 -outline-offset-1 outline-base-200;
 }
 
-fieldset.field-empty legend {
+fieldset.field-empty:not(:has(.help[aria-expanded='true'])) legend {
 	@apply text-base-400 opacity-60;
 	@apply translate-x-(--legend-initial-offset-x) translate-y-(--legend-float-y) scale-(--legend-float-scale);
 	font-size: var(--legend-font-size);
@@ -153,7 +153,6 @@ fieldset:focus-within legend {
 	@apply text-info-500!;
 }
 
-fieldset:focus-within legend,
 fieldset:focus-within .icon {
 	@apply bg-info-500 text-info-500;
 }
@@ -168,8 +167,9 @@ fieldset.field-filled:not(:focus-within) {
 	@apply border border-base-200;
 }
 
+/* Grey, not blue: blue is kept for a Generated value (#284). */
 fieldset.field-filled:not(:focus-within) legend {
-	@apply text-info-600;
+	@apply text-base-500;
 }
 
 fieldset.field-filled:not(:focus-within) label {
@@ -182,6 +182,68 @@ fieldset.field-filled:not(:focus-within) label .icon {
 
 fieldset.field-filled:not(:focus-within) label :is(input, select, textarea) {
 	@apply outline-0;
+}
+
+/* HELP: the ? right after the label (help/help.svelte). It shows once the label sits on the border, while the input
+   is in use or holds a value, and comes in with the label; its colour follows the field's icons: grey with a value,
+   blue while in use, blue under a mouse (#284). */
+fieldset legend .help {
+	@apply text-base-500;
+}
+
+fieldset:focus-within legend .help,
+fieldset legend .help[aria-expanded='true'] {
+	@apply text-info-500;
+}
+
+@media (hover: hover) {
+	fieldset legend .help:hover {
+		@apply text-info-500;
+	}
+}
+
+fieldset.field-empty:not(:focus-within) legend .help:not([aria-expanded='true']) {
+	@apply pointer-events-none -ms-[0.3em] w-0 opacity-0;
+}
+
+/* GENERATED VALUE: the app's value in bright blue with a wand at the end; typed over, the text is the input's own
+   and the wand turns into a reset that brings the app's value back (#284). */
+fieldset.field-generated :is(input, textarea) {
+	@apply font-medium text-info-500;
+}
+
+fieldset label .generated {
+	@apply z-2 col-start-3 row-start-1 mr-(--content-end) grid size-(--icon-size) shrink-0 place-items-center self-center justify-self-end;
+}
+
+fieldset label .generated .icon-mark {
+	@apply block size-full bg-info-500 text-info-500;
+}
+
+fieldset label button.generated {
+	@apply pointer-events-auto cursor-pointer rounded-[0.4em] border-0 bg-transparent p-0 text-info-500;
+	-webkit-tap-highlight-color: transparent;
+	touch-action: manipulation;
+}
+
+fieldset label button.generated:focus:not(:focus-visible) {
+	@apply outline-0;
+}
+
+@media (hover: hover) {
+	fieldset label button.generated:hover {
+		@apply bg-info-50;
+	}
+}
+
+fieldset:has(.generated) {
+	--suffix-width: calc(var(--icon-size) + var(--icon-gap));
+}
+
+/* A date with a Generated value has the wand or the reset where the browser's calendar button was; a click anywhere
+   on it opens the calendar instead. */
+fieldset:has(.generated) input::-webkit-calendar-picker-indicator {
+	display: none;
 }
 
 input:is(:-webkit-autofill, :autofill),

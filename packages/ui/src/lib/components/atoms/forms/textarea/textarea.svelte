@@ -5,8 +5,13 @@
 	 */
 	import type { HTMLTextareaAttributes } from 'svelte/elements';
 	import '../forms.css';
-	import { Component, type ComponentReturn, Icon } from '@layerd/ui';
-	import { createFormField, type TextFieldProps } from '../field.svelte.ts';
+	import { Component, type ComponentReturn, Help, Icon } from '@layerd/ui';
+	import {
+		createFormField,
+		type TextFieldProps,
+		toGeneratedClass,
+		toGeneratedState
+	} from '../field.svelte.ts';
 	import { TextareaAutosize } from 'runed';
 
 	const uid = $props.id();
@@ -25,6 +30,9 @@
 	let {
 		variant = 'text',
 		label = 'Textarea',
+		help = undefined,
+		generated = undefined,
+		onreset = undefined,
 		icon = undefined,
 		iconEnd = undefined,
 		name = undefined,
@@ -57,6 +65,13 @@
 		fieldsetNode.style.setProperty('--input-height', `${textareaNode.offsetHeight}px`);
 	}
 
+	// What is being typed, kept while the textarea has the focus: emptied, it stays empty under the caret, and the
+	// app's value comes back once the focus leaves.
+	let draft = $state<string>();
+
+	const generatedState = $derived(toGeneratedState(value, generated));
+	const shown = $derived(draft ?? generatedState.shown);
+
 	const fieldState = $derived.by(() =>
 		createFormField({
 			uid,
@@ -64,14 +79,23 @@
 			label,
 			name,
 			id,
-			value,
+			value: shown,
 			icon,
 			iconEnd
 		})
 	);
 
 	function handleInput(event: Event): void {
-		value = (event.currentTarget as HTMLTextAreaElement).value;
+		const text = (event.currentTarget as HTMLTextAreaElement).value;
+		if (generated !== undefined) draft = text;
+		value = text;
+	}
+
+	// The reset empties the value, so the app's comes back; the textarea keeps the focus it had.
+	function reset(): void {
+		draft = undefined;
+		value = '';
+		onreset?.();
 	}
 
 	function setPersistedValue(nextValue: unknown): void {
@@ -83,7 +107,7 @@
 
 		const autosize = new TextareaAutosize({
 			element: () => textareaNode || undefined,
-			input: () => String(value ?? '')
+			input: () => shown
 		});
 
 		syncFieldHeight();
@@ -109,8 +133,28 @@
 	{/if}
 {/snippet}
 
+{#snippet generatedEl()}
+	{#if generatedState.isTyped}
+		<button
+			type="button"
+			class="generated"
+			aria-label="Bring back the app's {fieldState.labelText}"
+			title="Bring back the app's value"
+			onmousedown={(event) => event.preventDefault()}
+			onclick={reset}><span class="icon-mark icon-[mdi--refresh]"></span></button
+		>
+	{:else}
+		<span
+			class="generated"
+			title="Made by the app"><span class="icon-mark icon-[mdi--auto-fix]"></span></span
+		>
+	{/if}
+{/snippet}
+
 {#snippet iconEndEl()}
-	{#if fieldState.trailingIcon}
+	{#if generated !== undefined}
+		{@render generatedEl()}
+	{:else if fieldState.trailingIcon}
 		<Icon
 			icon={fieldState.trailingIcon}
 			class="icon end"
@@ -121,7 +165,7 @@
 {#snippet textareaFieldEl()}
 	<textarea
 		bind:this={textareaNode}
-		{value}
+		value={shown}
 		{placeholder}
 		name={fieldState.field.name}
 		id={fieldState.field.id}
@@ -139,16 +183,19 @@
 		{autocomplete}
 		{autocapitalize}
 		{spellcheck}
-		oninput={handleInput}></textarea>
+		oninput={handleInput}
+		onblur={() => (draft = undefined)}></textarea>
 {/snippet}
 
 {#snippet textVariant()}
 	{@render textareaFieldEl()}
+	{#if generated !== undefined}{@render generatedEl()}{/if}
 {/snippet}
 
 {#snippet iconTextVariant()}
 	{@render iconStartEl()}
 	{@render textareaFieldEl()}
+	{#if generated !== undefined}{@render generatedEl()}{/if}
 {/snippet}
 
 {#snippet textIconVariant()}
@@ -173,9 +220,14 @@
 		<fieldset
 			bind:this={fieldsetNode}
 			{...props}
-			class={`${props.class} ${fieldState.className} textarea`.trim()}
+			class={`${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)} textarea`.trim()}
 		>
-			<legend>{fieldState.labelText}</legend>
+			<legend
+				><span>{fieldState.labelText}</span>{#if help}<Help
+						label={fieldState.labelText}
+						text={help}
+					/>{/if}</legend
+			>
 			<label for={fieldState.field.id}>
 				{#if variant === 'icon text'}
 					{@render iconTextVariant()}
@@ -214,7 +266,7 @@
 
 		/* One selector, not a list: a nested list flattens to :is(:global ...),
 		   which Svelte rejects. */
-		fieldset.textarea :is(.icon.start, .icon.end) {
+		fieldset.textarea :is(.icon.start, .icon.end, .generated) {
 			@apply self-start;
 			margin-top: var(--textarea-icon-offset);
 		}
