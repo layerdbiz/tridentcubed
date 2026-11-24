@@ -9,8 +9,11 @@
 		Component,
 		type ComponentReturn,
 		createFormField,
+		Help,
 		Icon,
-		type TextFieldProps
+		type TextFieldProps,
+		toGeneratedClass,
+		toGeneratedState
 	} from '@layerd/ui';
 
 	const uid = $props.id();
@@ -32,6 +35,9 @@
 	let {
 		variant = 'text',
 		label = 'Text',
+		help = undefined,
+		generated = undefined,
+		onreset = undefined,
 		icon = undefined,
 		iconEnd = undefined,
 		name = undefined,
@@ -60,6 +66,12 @@
 	}: InputProps = $props();
 
 	let inputNode = $state<HTMLInputElement | null>(null);
+	// What is being typed, kept while the input has the focus: emptied, it stays empty under the caret, and the app's
+	// value comes back once the focus leaves.
+	let draft = $state<string>();
+
+	const generatedState = $derived(toGeneratedState(value, generated));
+	const shown = $derived(draft ?? generatedState.shown);
 
 	const fieldState = $derived.by(() =>
 		createFormField({
@@ -68,14 +80,34 @@
 			label,
 			name,
 			id,
-			value,
+			value: shown,
 			icon,
 			iconEnd
 		})
 	);
 
 	function handleInput(event: Event): void {
-		value = (event.currentTarget as HTMLInputElement).value;
+		const text = (event.currentTarget as HTMLInputElement).value;
+		if (generated !== undefined) draft = text;
+		value = text;
+	}
+
+	// A date, time or month with a Generated value has no calendar button (the wand sits there), so a click opens it.
+	function openPicker(): void {
+		if (generated === undefined || !/^(date|datetime-local|month|time|week)$/.test(String(type)))
+			return;
+		try {
+			inputNode?.showPicker?.();
+		} catch {
+			// Some browsers open it only on a real tap; the field still takes typing.
+		}
+	}
+
+	// The reset empties the value, so the app's comes back; the input keeps the focus it had.
+	function reset(): void {
+		draft = undefined;
+		value = '';
+		onreset?.();
 	}
 
 	function setPersistedValue(nextValue: unknown): void {
@@ -105,8 +137,28 @@ Use thse emojis for comments about the state of the input in the examples below.
 	{/if}
 {/snippet}
 
+{#snippet generatedEl()}
+	{#if generatedState.isTyped}
+		<button
+			type="button"
+			class="generated"
+			aria-label="Bring back the app's {fieldState.labelText}"
+			title="Bring back the app's value"
+			onmousedown={(event) => event.preventDefault()}
+			onclick={reset}><span class="icon-mark icon-[mdi--refresh]"></span></button
+		>
+	{:else}
+		<span
+			class="generated"
+			title="Made by the app"><span class="icon-mark icon-[mdi--auto-fix]"></span></span
+		>
+	{/if}
+{/snippet}
+
 {#snippet iconEndEl()}
-	{#if fieldState.trailingIcon}
+	{#if generated !== undefined}
+		{@render generatedEl()}
+	{:else if fieldState.trailingIcon}
 		<Icon
 			icon={fieldState.trailingIcon}
 			class="icon end"
@@ -118,7 +170,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 	<input
 		bind:this={inputNode}
 		{type}
-		{value}
+		value={shown}
 		{placeholder}
 		name={fieldState.field.name}
 		id={fieldState.field.id}
@@ -140,16 +192,20 @@ Use thse emojis for comments about the state of the input in the examples below.
 		{autocapitalize}
 		{spellcheck}
 		oninput={handleInput}
+		onblur={() => (draft = undefined)}
+		onclick={openPicker}
 	/>
 {/snippet}
 
 {#snippet textVariant()}
 	{@render inputEl()}
+	{#if generated !== undefined}{@render generatedEl()}{/if}
 {/snippet}
 
 {#snippet iconTextVariant()}
 	{@render iconStartEl()}
 	{@render inputEl()}
+	{#if generated !== undefined}{@render generatedEl()}{/if}
 {/snippet}
 
 {#snippet textIconVariant()}
@@ -173,9 +229,14 @@ Use thse emojis for comments about the state of the input in the examples below.
 	{#snippet component({ props }: { props: ComponentReturn })}
 		<fieldset
 			{...props}
-			class={`${props.class} ${fieldState.className}`.trim()}
+			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)}`.trim()}
 		>
-			<legend>{fieldState.labelText}</legend>
+			<legend
+				><span>{fieldState.labelText}</span>{#if help}<Help
+						label={fieldState.labelText}
+						text={help}
+					/>{/if}</legend
+			>
 			<label for={fieldState.field.id}>
 				{#if variant === 'icon text'}
 					{@render iconTextVariant()}
