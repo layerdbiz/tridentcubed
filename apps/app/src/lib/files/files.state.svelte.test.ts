@@ -7,6 +7,9 @@ import { Upload, type UploadStepsType } from './files.state.svelte';
 
 const FILE_ID = '0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
 
+// The original's field list as the device read it (#292), shortened.
+const FIELDS = { exif: { Make: { value: ['Apple'], description: 'Apple' } } };
+
 function createSteps(answers: Array<'ok' | 'refused' | 'offline'>) {
 	const asked: UploadRequestType[] = [];
 	const sent: string[] = [];
@@ -20,7 +23,8 @@ function createSteps(answers: Array<'ok' | 'refused' | 'offline'>) {
 				blob: new Blob(['webp'], { type: 'image/webp' }),
 				width: 2048,
 				height: 1536,
-				taken: { from: 'file', at: '2026-05-12T09:30:00.000Z' }
+				taken: { from: 'file', at: '2026-05-12T09:30:00.000Z' },
+				metadata: FIELDS
 			};
 		},
 		async ask(request): Promise<UploadAnswerType> {
@@ -58,7 +62,7 @@ const LOGO: FileTargetType = {
 };
 
 describe('a picture on its way', () => {
-	it('shows in place at once with an uploading mark, then gives the row its file address', async () => {
+	it('shows in place at once with an uploading mark, then gives the row its file address and field list', async () => {
 		const test = createSteps(['ok']);
 		test.isHeld.value = true;
 		const upload = new Upload(pick(), {
@@ -86,7 +90,8 @@ describe('a picture on its way', () => {
 			size: 4,
 			width: 2048,
 			height: 1536,
-			taken: { from: 'file', at: '2026-05-12T09:30:00.000Z' }
+			taken: { from: 'file', at: '2026-05-12T09:30:00.000Z' },
+			metadata: FIELDS
 		});
 	});
 

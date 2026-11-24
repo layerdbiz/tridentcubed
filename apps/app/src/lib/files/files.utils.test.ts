@@ -3,19 +3,22 @@
 // its clear background.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vite-plus/test';
+import { readMetadata } from '#lib/metadata/metadata.utils.js';
 import {
 	type BlobMakerType,
 	encodePicture,
 	MAX_PICTURE_SIDE,
-	readExif,
+	toExifTaken,
 	toExifTime,
 	toFittedSize,
+	toSent,
 	toTaken
 } from './files.utils';
 
-function fixture(name: string) {
-	const bytes = readFileSync(new URL(`./fixtures/${name}`, import.meta.url));
-	return new File([bytes], name, { type: 'image/jpeg' });
+// What the picture's own metadata says of when and where, read as a picked picture is.
+async function readExif(name: string) {
+	const bytes = readFileSync(new URL(`../metadata/fixtures/${name}`, import.meta.url));
+	return toExifTaken((await readMetadata(new Uint8Array(bytes))).tags);
 }
 
 // A browser's canvas: it writes the types it can, and a PNG for any it cannot (what Safari does with WebP).
@@ -45,6 +48,19 @@ describe('shrinking', () => {
 		expect((await encodePicture(createCanvas(['image/jpeg']), 'photo')).type).toBe('image/jpeg');
 	});
 
+	it('writes WebP with the app’s own encoder where the browser cannot (Safari), JPEG if that fails', async () => {
+		const safari = createCanvas(['image/jpeg']);
+		const encoder = async () => new Blob(['webp'], { type: 'image/webp' });
+		const broken = async () => {
+			throw new Error('The encoder did not load.');
+		};
+
+		expect((await encodePicture(safari, 'photo', encoder)).type).toBe('image/webp');
+		expect((await encodePicture(safari, 'logo', encoder)).type).toBe('image/webp');
+		expect((await encodePicture(safari, 'photo', broken)).type).toBe('image/jpeg');
+		expect((await encodePicture(safari, 'logo', broken)).type).toBe('image/png');
+	});
+
 	it('keeps a logo’s clear background: WebP, or PNG, never JPEG', async () => {
 		const safari = createCanvas(['image/jpeg']);
 
@@ -56,7 +72,7 @@ describe('shrinking', () => {
 
 describe('when and where it was taken', () => {
 	it('reads them from the photo’s own metadata', async () => {
-		const exif = await readExif(fixture('taken.jpg'));
+		const exif = await readExif('taken.jpg');
 
 		expect(exif.at).toBe('2026-05-12T09:30:00.000Z');
 		expect(exif.latitude).toBeCloseTo(25.9, 3);
@@ -68,7 +84,7 @@ describe('when and where it was taken', () => {
 	});
 
 	it('falls back to the device’s clock and place, flagged as the device’s', async () => {
-		const exif = await readExif(fixture('plain.jpg'));
+		const exif = await readExif('plain.jpg');
 
 		expect(exif).toEqual({ at: undefined });
 		expect(
@@ -81,7 +97,9 @@ describe('when and where it was taken', () => {
 
 	it('says nothing came from anywhere when neither knows, and the picture still goes', async () => {
 		expect(toTaken({}, {})).toEqual({ from: '' });
-		expect(await readExif(new File(['not a picture'], 'x.png'))).toEqual({});
+		expect(
+			toExifTaken((await readMetadata(new TextEncoder().encode('not a picture'))).tags)
+		).toEqual({});
 	});
 
 	it('reads a photo’s time with its offset, and without one as the device’s own time', () => {
@@ -89,5 +107,31 @@ describe('when and where it was taken', () => {
 		expect(toExifTime('2026:05:12 11:30:00')).toBe(new Date('2026-05-12T11:30:00').toISOString());
 		expect(toExifTime('0000:00:00 00:00:00')).toBeUndefined();
 		expect(toExifTime(undefined)).toBeUndefined();
+	});
+});
+
+describe('what goes to storage (#292)', () => {
+	const JPEG = { type: 'image/jpeg', size: 4_000_000 };
+	const HEIC = { type: 'image/heic', size: 2_000_000 };
+	const HUGE = { type: 'image/jpeg', size: 30_000_000 };
+
+	it('sends the copy when it carries every field and the field list fits', () => {
+		expect(toSent({ kind: 'photo', file: JPEG, isCarried: true, isListKept: true })).toBe('copy');
+		expect(toSent({ kind: 'logo', file: JPEG, isCarried: true, isListKept: true })).toBe('copy');
+	});
+
+	it('sends a photo untouched when its copy or its field list falls short, so nothing is lost', () => {
+		expect(toSent({ kind: 'photo', file: JPEG, isCarried: false, isListKept: true })).toBe(
+			'original'
+		);
+		expect(toSent({ kind: 'photo', file: JPEG, isCarried: true, isListKept: false })).toBe(
+			'original'
+		);
+	});
+
+	it('sends the copy anyway when storage cannot keep the original, or for a logo', () => {
+		expect(toSent({ kind: 'photo', file: HEIC, isCarried: false, isListKept: true })).toBe('plain');
+		expect(toSent({ kind: 'photo', file: HUGE, isCarried: true, isListKept: false })).toBe('copy');
+		expect(toSent({ kind: 'logo', file: JPEG, isCarried: false, isListKept: true })).toBe('plain');
 	});
 });

@@ -1,6 +1,6 @@
 // The upload helper (spec #179 "Files", stories 67 to 72; ADR 0004; #187): one picked picture on its way to private
 // storage. It shows in place at once (`preview`) with an uploading mark (`isUploading`); it is read and shrunk on
-// the device, the server is asked for an upload address for the one column it is for (permission checked there),
+// the device (its full field list read too, for the File row, #292), the server is asked for an upload address for the one column it is for (permission checked there),
 // the bytes go straight to storage, and only then does `ondone` get the app's file address (`/files/<id>`) for the
 // row to keep. A failure says so (`isFailed`, `reason`) and `retry()` starts it again.
 //
@@ -98,7 +98,7 @@ export class Upload {
 			const { kind } = this.#options;
 			this.#prepared ??=
 				kind === 'document' ? asDocument(this.#file) : await this.#steps.prepare(this.#file, kind);
-			const { blob, width, height, taken } = this.#prepared;
+			const { blob, width, height, taken, metadata } = this.#prepared;
 			const answer = await this.#steps.ask({
 				for: this.#options.for,
 				name: this.#file.name,
@@ -106,7 +106,8 @@ export class Upload {
 				size: blob.size,
 				width,
 				height,
-				taken
+				taken,
+				...(metadata ? { metadata } : {})
 			});
 			if (!answer.isAllowed) return this.#fail(answer.reason);
 			await this.#steps.put(answer.upload, blob);

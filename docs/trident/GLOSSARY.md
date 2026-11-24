@@ -293,7 +293,7 @@ A File a User adds to a project: a photo, a video or a document. It keeps every 
 _Avoid_: asset (in surveying that is the vessel or cargo surveyed), media, upload, uploaded file
 
 **File**:
-Anything uploaded and kept in private storage: a photo, an attached document, or a logo, cover or photo on a record or the organization. It holds what it is for, its type and size, and for a photo the time and place it was taken. An Attachment is a File added to a project; a record's logo is a File but not an Attachment.
+Anything uploaded and kept in private storage: a photo, an attached document, or a logo, cover or photo on a record or the organization. It holds what it is for, its type and size, and for a photo the time and place it was taken and the full field list of the file the User picked, so no metadata field is ever lost. An Attachment is a File added to a project; a record's logo is a File but not an Attachment.
 _Avoid_: upload, asset, blob
 
 ### Report pages
