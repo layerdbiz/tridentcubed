@@ -26,6 +26,7 @@ export * from "./atoms/number/number.data.ts";
 export { default as Radio } from "./atoms/forms/radio/radio.svelte";
 export { default as Section } from "./atoms/section/section.svelte";
 export * from "./atoms/section/section.data.ts";
+export * from "./atoms/forms/select/select.svelte.ts";
 export { default as Select } from "./atoms/forms/select/select.svelte";
 export { default as Switch } from "./atoms/forms/switch/switch.svelte";
 export { default as Table, type TableColumn, type TableProps } from "./atoms/table/table.svelte";
