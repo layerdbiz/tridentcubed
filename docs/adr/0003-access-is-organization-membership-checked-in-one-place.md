@@ -26,3 +26,9 @@ Decided on "Sign in and save to the real database" ([#179](https://github.com/la
 - **The email domain rule** replaces the hard-coded `@tridentcubed.com`: the organization's details hold its email domain, and a verified address at that domain joins it with the Team role.
 - At every sign-in the server decides access from the verified email in that order: an access grant, then the email domain, otherwise a Guest. A staff User is tied to the Team record with the same email (or the one their grant names), or gets a new Team record; that record's role is their membership's role.
 - Users, Deactivated and its pages wait for a later spec; until then roles are changed on the Team record.
+
+## Amendment, 2026-11-24
+
+Decided by Justin in the team feedback grilling, built on "Let managers edit the organization" ([#303](https://github.com/layerdbiz/tridentcubed/issues/303)).
+
+- **A Manager may also change the organization's details**: its name, letterhead, disclaimer and sign-off, as Settings shows them. The Team role still may not. The email domain, which decides who joins as staff, stays an Admin's. Every other right is still the same for Manager and Team.

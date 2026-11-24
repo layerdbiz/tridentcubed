@@ -3,9 +3,9 @@
 // applies the change through the claims helper; Row Level Security is the net behind it.
 //
 // - A Guest may do nothing.
-// - Manager and Team may change everything in their organization except: the organization, its details and its
-//   disclaimer points (#184), a
-//   member, a Team record's role, the Archived status, and deleting a project that is not their own Draft.
+// - Manager and Team may change everything in their organization except: a member, a Team record's role, the
+//   Archived status, and deleting a project that is not their own Draft.
+// - A Manager may also change the organization, its details and its disclaimer points (#184, #303); Team may not.
 // - An Admin (and the Super admin) may do all of it.
 // - Nobody demotes or removes the Super admin or the organization's last Admin.
 // - Access grants are never changed from the app.
@@ -59,7 +59,7 @@ const REASONS = {
 	guest: 'You are waiting for access. An Admin of the organization can let you in.',
 	otherOrganization: 'That belongs to another organization.',
 	grant: 'Access grants are kept in the database only.',
-	organization: 'Only an Admin can change the organization.',
+	organization: 'Only an Admin or a Manager can change the organization.',
 	organizationDelete: 'An organization cannot be deleted from the app.',
 	organizationCreate: 'An organization cannot be made from the app.',
 	member: 'Only an Admin can change who is in the organization.',
@@ -77,6 +77,10 @@ const REASONS = {
 
 function isAdmin(actor: ActorType) {
 	return actor.isSuperAdmin || actor.role === 'admin';
+}
+
+function isManagerOrAdmin(actor: ActorType) {
+	return isAdmin(actor) || actor.role === 'manager';
 }
 
 function touches(change: ChangeType, column: string) {
@@ -99,17 +103,26 @@ const adminsOnly =
 	(actor) =>
 		isAdmin(actor) ? undefined : reason;
 
+// The organization, its details and its disclaimer points: a Manager changes them too (#303).
+const managersAndAdmins: RuleType = (actor) =>
+	isManagerOrAdmin(actor) ? undefined : REASONS.organization;
+
 const TABLE_RULES: Partial<Record<CheckedTableType, RuleType[]>> = {
 	access_grant: [() => REASONS.grant],
 	organization: [
 		(_actor, change) => (change.operation === 'delete' ? REASONS.organizationDelete : undefined),
 		(_actor, change) =>
 			change.operation === 'put' && !change.row ? REASONS.organizationCreate : undefined,
-		adminsOnly(REASONS.organization)
+		managersAndAdmins
 	],
-	organization_details: [adminsOnly(REASONS.organization)],
+	organization_details: [
+		managersAndAdmins,
+		// The email domain decides who joins as staff, so it stays an Admin's.
+		(actor, change) =>
+			touches(change, 'emailDomain') && !isAdmin(actor) ? REASONS.member : undefined
+	],
 	// The disclaimer's points are the organization's wording (#184).
-	disclaimer_point: [adminsOnly(REASONS.organization)],
+	disclaimer_point: [managersAndAdmins],
 	member: [adminsOnly(REASONS.member), keepAdmins],
 	// Team records (#185): staff edit them, but only an Admin changes a role, and an Admin stays one. Staff may add a
 	// record with the Team role. A record nobody has signed in as yet hands its role to whoever signs in with its

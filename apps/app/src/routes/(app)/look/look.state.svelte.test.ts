@@ -29,6 +29,20 @@ describe('a new app', () => {
 		expect(look.places).toEqual([]);
 	});
 
+	it('lets an Admin, the Super admin and a Manager edit the organization, not Team (#303)', () => {
+		const look = fresh();
+		const editable = (role: typeof look.role, isSuperAdmin = false) => {
+			look.role = role;
+			look.isSuperAdmin = isSuperAdmin;
+			return look.isOrganizationEditable;
+		};
+		expect(editable('admin')).toBe(true);
+		expect(editable('manager')).toBe(true);
+		expect(editable('team', true)).toBe(true);
+		expect(editable('team')).toBe(false);
+		expect(editable('')).toBe(false);
+	});
+
 	it('opens on the dashboard with nothing open', () => {
 		const look = fresh();
 		expect(look.screen).toBe('dashboard');

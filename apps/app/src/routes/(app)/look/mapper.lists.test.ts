@@ -370,7 +370,7 @@ describe('the organization', () => {
 
 				expect(result).toMatchObject({
 					isSaved: false,
-					reason: 'Only an Admin can change the organization.'
+					reason: 'Only an Admin or a Manager can change the organization.'
 				});
 			}
 		const again = await open(team);

@@ -1,8 +1,8 @@
 // The organization's own details (spec #179 "Tables", #184): one row per organization with its letterhead (logo,
 // address, phone, emails, website), the report's standard wording (the disclaimer's opening and note, the closing
 // line and the sign-off) and the email domain whose verified Users join it as staff; the disclaimer's points are
-// ordered rows of it. Its name is the organization's own (organization.schema.ts). Only an Admin changes any of it
-// (the one permission check); the email domain is set in the database only, never from the app.
+// ordered rows of it. Its name is the organization's own (organization.schema.ts). An Admin or a Manager changes it
+// (the one permission check, #303); the email domain is set in the database only, never from the app.
 import { sql } from 'drizzle-orm';
 import { check, index, integer, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { organizationPolicy } from './policy';
