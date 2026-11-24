@@ -86,7 +86,11 @@
 		>
 			{#if isUnseen}
 				<!-- #294: a picture the device cannot draw (a HEIC in Chrome) while the server converts it. -->
-				<span class="icon-[mdi--image-sync-outline] size-6 text-slate-400" title={upload?.name}
+				<span
+					class="size-6 text-slate-400 {upload?.isFailed
+						? 'icon-[mdi--image-off-outline]'
+						: 'icon-[mdi--image-sync-outline]'}"
+					title={upload?.name}
 				></span>
 			{:else if shown}
 				<img

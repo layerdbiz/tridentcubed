@@ -13,18 +13,22 @@
 // deleted once the copy checks out. A copy that cannot carry every field (a TIFF, whose fields are woven into the
 // file rather than kept in a block: ExifTool's work, not built yet) is still swapped in so the photo shows, and the
 // untouched file is kept beside it, named on the row (`original_path`), so nothing of it is lost.
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import decodeHeic from 'heic-decode';
 import sharp, { type Sharp } from 'sharp';
 import {
 	type ConvertAnswerType,
 	type FieldListType,
 	isFieldListKept,
+	isShownType,
 	isToConvert,
 	MAX_PICTURE_SIDE,
 	type PictureKindType,
 	QUALITY,
-	type TakenType
+	type TakenType,
+	toEnding,
+	toStorableJson,
+	UNREADABLE
 } from '#lib/files/files.schema.js';
 import {
 	carryMetadata,
@@ -38,6 +42,7 @@ import {
 } from '#lib/metadata/metadata.utils.js';
 import type { ActorType, ClaimsType } from './db/claims';
 import { file as files } from './db/schema';
+import { readFile } from './files';
 import type { FileStoreType } from './store';
 
 /** The copy the server made, ready to swap in. */
@@ -55,12 +60,9 @@ export type ConvertedType = {
 };
 
 const REASONS = {
-	guest: 'You are waiting for access. An Admin of the organization can let you in.',
 	missing: 'No such file.',
-	unreadable: 'This picture could not be read. Save it as a JPEG and add it again.'
+	notYours: 'Only the person who added this picture can have it converted.'
 };
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // How many pictures one server works on at once: a 12 MP HEIC takes 250 to 390 MB while it is drawn (research #281).
 const AT_ONCE = 2;
@@ -123,7 +125,7 @@ export async function convertPicture(
 	try {
 		image = await toPixels(bytes, kind);
 	} catch {
-		throw new Error(REASONS.unreadable);
+		throw new Error(UNREADABLE);
 	}
 	const fields = toFieldList(original.tags);
 	const exif = toExifTaken(original.tags);
@@ -158,68 +160,45 @@ export async function convertPicture(
 	return { ...webp, bytes: partial, type: 'image/webp', isChecked: false, ...kept };
 }
 
-// The row as the conversion reads it.
-async function readRow(claims: ClaimsType, actor: ActorType, id: string) {
-	const [row] = await claims.run(actor, (tx) =>
-		tx
-			.select({
-				id: files.id,
-				organizationId: files.organizationId,
-				path: files.path,
-				type: files.type,
-				width: files.width,
-				height: files.height,
-				takenFrom: files.takenFrom,
-				hasMetadata: sql<boolean>`${files.metadata} is not null`
-			})
-			.from(files)
-			.where(eq(files.id, id))
-	);
-	return row;
+// A logo is kept at logo size; every other picture column holds a photo (as `image-field.svelte` picks its kind).
+function toPictureKind(column: string): PictureKindType {
+	return column === 'logo' ? 'logo' : 'photo';
 }
-
-// Whether a browser shows the stored file as it is: then a copy that falls short is not worth keeping over it.
-function isShownAsItIs(type: string) {
-	return ['image/webp', 'image/jpeg', 'image/png'].includes(type);
-}
-
-export type ConvertCallType = {
-	claims: ClaimsType;
-	actor: ActorType;
-	store: FileStoreType;
-	id: string;
-	kind: PictureKindType;
-};
 
 /**
- * Converts the stored file with this id, when the actor's organization has it and it still needs converting, and
- * swaps the copy in. Done once the file shows as the copy the app keeps; else the reason, and the file as it was.
+ * Converts the stored file with this id and swaps the copy in, when the actor sent it and it still needs converting;
+ * what kind of picture it is comes from the column it is for. Done once the file shows as the copy the app keeps;
+ * else the reason, and the file as it was.
  */
-export async function convertFile(call: ConvertCallType): Promise<ConvertAnswerType> {
-	const { claims, actor, store, id, kind } = call;
-	if (!actor.organizationId) return { isDone: false, reason: REASONS.guest };
-	if (!UUID.test(id)) return { isDone: false, reason: REASONS.missing };
-	const row = await readRow(claims, actor, id);
-	if (!row) return { isDone: false, reason: REASONS.missing };
-	if (!isToConvert(row, kind)) return { isDone: true };
+export async function convertFile(
+	claims: ClaimsType,
+	actor: ActorType,
+	store: FileStoreType,
+	id: string
+): Promise<ConvertAnswerType> {
+	const file = await readFile(claims, actor, id);
+	if (!file) return { isDone: false, reason: REASONS.missing };
+	// Whoever asked for the upload address passed the permission check for it, so only they convert it.
+	if (file.uploadedBy !== actor.userId) return { isDone: false, reason: REASONS.notYours };
+	const kind = toPictureKind(file.for.column);
+	if (!isToConvert(file, kind)) return { isDone: true };
 
 	let converted: ConvertedType;
 	try {
-		converted = await takeTurn(async () => convertPicture(await store.read(row.path), kind));
+		converted = await takeTurn(async () => convertPicture(await store.read(file.path), kind));
 	} catch {
-		return { isDone: false, reason: REASONS.unreadable };
+		return { isDone: false, reason: UNREADABLE };
 	}
 	// A picture that shows as it is stays as it came rather than swap in a copy that lost something.
-	if (!converted.isChecked && isShownAsItIs(row.type)) return { isDone: true };
+	if (!converted.isChecked && isShownType(file.type)) return { isDone: true };
 
-	const ending = converted.type === 'image/webp' ? 'webp' : 'jpg';
-	const path = `${row.organizationId}/${id}-${MAX_PICTURE_SIDE[kind]}.${ending}`;
+	const path = `${actor.organizationId}/${id}-${MAX_PICTURE_SIDE[kind]}.${toEnding(converted.type, '')}`;
 	await store.write(path, converted.bytes, converted.type);
 	// The device's reading of when and where stands when it read them from the file: it knows its own time zone.
-	const isTakenKept = row.takenFrom === 'file' || converted.taken.from !== 'file';
-	const { taken } = converted;
-	await claims.run(actor, (tx) =>
-		tx
+	const isTakenKept = file.taken.from === 'file' || converted.taken.from !== 'file';
+	const { taken, metadata } = converted;
+	await claims.run(actor, async (tx) => {
+		await tx
 			.update(files)
 			.set({
 				path,
@@ -227,7 +206,7 @@ export async function convertFile(call: ConvertCallType): Promise<ConvertAnswerT
 				size: converted.bytes.byteLength,
 				width: converted.width,
 				height: converted.height,
-				originalPath: row.path,
+				originalPath: file.path,
 				...(isTakenKept
 					? {}
 					: {
@@ -235,14 +214,20 @@ export async function convertFile(call: ConvertCallType): Promise<ConvertAnswerT
 							takenAt: taken.at ? new Date(taken.at) : null,
 							latitude: taken.latitude ?? null,
 							longitude: taken.longitude ?? null
-						}),
-				...(row.hasMetadata || !converted.metadata ? {} : { metadata: converted.metadata })
+						})
 			})
-			.where(eq(files.id, id))
-	);
+			.where(eq(files.id, id));
+		// The field list the device read stands; else the one read here, written as Postgres keeps it.
+		if (metadata) {
+			await tx
+				.update(files)
+				.set({ metadata: toStorableJson(metadata) as FieldListType })
+				.where(and(eq(files.id, id), isNull(files.metadata)));
+		}
+	});
 	if (!converted.isChecked) return { isDone: true };
 	try {
-		await store.remove(row.path);
+		await store.remove(file.path);
 		await claims.run(actor, (tx) =>
 			tx.update(files).set({ originalPath: null }).where(eq(files.id, id))
 		);

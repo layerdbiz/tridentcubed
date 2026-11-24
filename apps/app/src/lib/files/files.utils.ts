@@ -16,10 +16,10 @@ import {
 	toFieldList
 } from '#lib/metadata/metadata.utils.js';
 import {
-	FILE_TYPES,
 	type FieldListType,
-	isConvertedType,
+	isConvertibleType,
 	isFieldListKept,
+	isShownType,
 	isToConvert,
 	MAX_FILE_BYTES,
 	MAX_PICTURE_SIDE,
@@ -28,13 +28,14 @@ import {
 	QUALITY,
 	type TakenType,
 	toPictureType,
+	toTyped,
 	UNREADABLE
 } from './files.schema';
 
 export type PlaceType = { latitude: number; longitude: number };
 
 /** A picture shrunk and ready to send, or the original untouched for the server to convert. */
-export type PreparedPictureType = {
+export type PreparedType = {
 	blob: Blob;
 	/** Its size in pixels; unknown for a picture the device could not read. */
 	width?: number;
@@ -163,8 +164,7 @@ export type SentType = 'copy' | 'original' | 'plain';
 
 /** Whether storage takes a picture of this type and size untouched: one it shows, or one the server converts (#294). */
 export function isKeptAsItIs(file: { type: string; size: number }) {
-	const isShown = file.type.startsWith('image/') && Object.hasOwn(FILE_TYPES, file.type);
-	return (isShown || isConvertedType(file.type)) && file.size <= MAX_FILE_BYTES;
+	return (isShownType(file.type) || isConvertibleType(file.type)) && file.size <= MAX_FILE_BYTES;
 }
 
 /**
@@ -190,14 +190,8 @@ export function toSent(choice: {
  */
 export function toUntouched(file: File): Blob {
 	const type = toPictureType(file);
-	if (!isConvertedType(type)) throw new PictureError(UNREADABLE);
-	return type === file.type ? file : new Blob([file], { type });
-}
-
-// The original as it goes untouched, typed by its name when the browser gave it no type.
-function asTyped(file: File): Blob {
-	const type = toPictureType(file);
-	return !type || type === file.type ? file : new Blob([file], { type });
+	if (!isConvertibleType(type)) throw new PictureError(UNREADABLE);
+	return toTyped(file, type);
 }
 
 // The picture drawn upright at its shrunk size and encoded. `none` keeps the picture's own colour numbers, for a
@@ -237,10 +231,7 @@ async function toPictureTaken(original: MetadataType, kind: PictureKindType) {
  * the original carried into it, and the original's field list (#292). See `toSent` for what goes when that fails,
  * and `toUntouched` for a picture the device cannot read (#294).
  */
-export async function preparePicture(
-	file: File,
-	kind: PictureKindType
-): Promise<PreparedPictureType> {
+export async function preparePicture(file: File, kind: PictureKindType): Promise<PreparedType> {
 	const original = await readMetadata(new Uint8Array(await file.arrayBuffer()));
 	const taken = await toPictureTaken(original, kind);
 	const fields = toFieldList(original.tags);
@@ -250,12 +241,15 @@ export async function preparePicture(
 	let drawn: Awaited<ReturnType<typeof drawPicture>>;
 	try {
 		drawn = await drawPicture(file, kind, hasProfile ? 'none' : 'default');
-	} catch {
+	} catch (error) {
+		// A JPEG, PNG or WebP every browser draws failed for another reason (a big one can run the device out of
+		// memory): an upload to retry, not a picture to convert.
+		if (isShownType(toPictureType(file))) throw error;
 		const blob = toUntouched(file);
 		return { blob, taken, metadata, isUnreadable: true, shouldConvert: true };
 	}
 	const copy = await carryMetadata(original, new Uint8Array(await drawn.blob.arrayBuffer()));
-	const typed = asTyped(file);
+	const typed = toTyped(file, toPictureType(file) || file.type);
 	const sent = toSent({ kind, file: typed, isCarried: Boolean(copy), isListKept });
 	if (sent === 'original') {
 		const shouldConvert = isToConvert({ type: typed.type, ...drawn.full }, kind);

@@ -1,7 +1,7 @@
 // Converting a picture a device sent untouched (#294; ADR 0004): a HEIC Chrome cannot read on Windows or Android, a
 // TIFF, or a photo whose own copy fell short (#292). The upload helper asks once the bytes are in storage, and gives
-// the row the file's address only when this answers done. The work, who may ask and what is kept are in
-// #lib/server/convert.ts. The sign-in guard refuses a signed-out visitor or a Guest before this runs; this checks
+// the row the file's address only when this answers done. The work, who may ask (the member who sent it) and what is
+// kept are in #lib/server/convert.ts. The sign-in guard refuses a signed-out visitor or a Guest before this runs; this checks
 // again itself, as a remote function would.
 import { json } from '@sveltejs/kit';
 import * as v from 'valibot';
@@ -26,5 +26,5 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const reason = 'Files cannot be kept yet: storage is not set up.';
 		return json({ isDone: false, reason }, { status: 503 });
 	}
-	return json(await convertFile({ claims, actor: locals.actor, store, ...asked.output }));
+	return json(await convertFile(claims, locals.actor, store, asked.output.id));
 };

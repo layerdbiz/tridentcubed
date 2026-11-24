@@ -40,6 +40,7 @@
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
+	import { toPictureType } from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import ImageField from './image-field.svelte';
@@ -222,7 +223,8 @@
 	// attached as the file it is, so nothing handed over is ever turned away.
 	async function takeFiles(files: File[]) {
 		for (const file of files) {
-			if (file.type.startsWith('image/')) {
+			// By its name too: a HEIC dropped on Windows can come with no type (#294).
+			if (toPictureType(file).startsWith('image/')) {
 				send(file, 'photo');
 				continue;
 			}

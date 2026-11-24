@@ -183,9 +183,15 @@ describe('converting a file in storage', () => {
 	});
 
 	// A device that could not read the photo: it asks for an address for the untouched file and sends it there.
-	async function sendUntouched(name: string, type: string, bytes: Uint8Array, fields?: object) {
+	async function sendUntouched(
+		name: string,
+		type: string,
+		bytes: Uint8Array,
+		options: { fields?: object; column?: 'picture' | 'logo' } = {}
+	) {
+		const { fields, column = 'picture' } = options;
 		const request: UploadRequestType = {
-			for: { table: 'customer', column: 'logo', id: crypto.randomUUID() },
+			for: { table: 'customer', column, id: crypto.randomUUID() },
 			name,
 			type,
 			size: bytes.byteLength,
@@ -205,7 +211,7 @@ describe('converting a file in storage', () => {
 	}
 
 	function convert(id: string, actor = team) {
-		return convertFile({ claims: test.claims, actor, store, id, kind: 'photo' });
+		return convertFile(test.claims, actor, store, id);
 	}
 
 	it('swaps a HEIC for its WebP and deletes the untouched file once the copy checks out', async () => {
@@ -241,7 +247,7 @@ describe('converting a file in storage', () => {
 
 	it('keeps the time, place and field list the device read from the file', async () => {
 		const id = await sendUntouched('IMG_0001.HEIC', 'image/heic', fixture('phone.heic'), {
-			exif: { Make: { value: 'Phone' } }
+			fields: { exif: { Make: { value: 'Phone' } } }
 		});
 		await test.db
 			.update(schema.file)
@@ -297,6 +303,30 @@ describe('converting a file in storage', () => {
 		const file = await readFile(test.claims, team, id);
 		expect(file).toMatchObject({ type: 'image/webp', width: 1024, height: 2048 });
 		expect(await filesInStorage()).toEqual([file?.path.split('/').pop()]);
+	});
+
+	it('shrinks a logo to logo size, by the column it is for', async () => {
+		const id = await sendUntouched('logo.jpg', 'image/jpeg', await bigCameraPhoto(), {
+			column: 'logo'
+		});
+		await test.db.update(schema.file).set({ width: 3000, height: 1500 });
+
+		await convert(id);
+
+		const file = await readFile(test.claims, team, id);
+		expect(file).toMatchObject({ type: 'image/webp', width: 512, height: 1024 });
+	});
+
+	it('converts only for the member who sent it', async () => {
+		const id = await sendUntouched('IMG_0001.HEIC', 'image/heic', fixture('phone.heic'));
+		const other = (await test.signIn('ana@tridentcubed.com')).actor;
+		expect(other.organizationId).toBe(team.organizationId);
+
+		expect(await convert(id, other)).toEqual({
+			isDone: false,
+			reason: 'Only the person who added this picture can have it converted.'
+		});
+		expect(await filesInStorage()).toEqual([`${id}.heic`]);
 	});
 
 	it('says why when the untouched file cannot be read, and keeps it', async () => {

@@ -3,21 +3,25 @@
 // its clear background.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vite-plus/test';
-import { readMetadata, toExifTaken, toExifTime } from '#lib/metadata/metadata.utils.js';
+import { readMetadata, toExifTaken } from '#lib/metadata/metadata.utils.js';
 import { MAX_PICTURE_SIDE, PictureError, UNREADABLE } from './files.schema';
 import {
 	type BlobMakerType,
 	encodePicture,
 	toFittedSize,
 	toSent,
+	preparePicture,
 	toTaken,
 	toUntouched
 } from './files.utils';
 
+function readFixture(name: string) {
+	return readFileSync(new URL(`../metadata/fixtures/${name}`, import.meta.url));
+}
+
 // What the picture's own metadata says of when and where, read as a picked picture is.
 async function readExif(name: string) {
-	const bytes = readFileSync(new URL(`../metadata/fixtures/${name}`, import.meta.url));
-	return toExifTaken((await readMetadata(new Uint8Array(bytes))).tags);
+	return toExifTaken((await readMetadata(new Uint8Array(readFixture(name)))).tags);
 }
 
 // A browser's canvas: it writes the types it can, and a PNG for any it cannot (what Safari does with WebP).
@@ -100,13 +104,6 @@ describe('when and where it was taken', () => {
 			toExifTaken((await readMetadata(new TextEncoder().encode('not a picture'))).tags)
 		).toEqual({});
 	});
-
-	it('reads a photo’s time with its offset, and without one as the device’s own time', () => {
-		expect(toExifTime('2026:05:12 11:30:00', '+02:00')).toBe('2026-05-12T09:30:00.000Z');
-		expect(toExifTime('2026:05:12 11:30:00')).toBe(new Date('2026-05-12T11:30:00').toISOString());
-		expect(toExifTime('0000:00:00 00:00:00')).toBeUndefined();
-		expect(toExifTime(undefined)).toBeUndefined();
-	});
 });
 
 describe('what goes to storage (#292)', () => {
@@ -155,5 +152,25 @@ describe('a picture the device cannot read (#294)', () => {
 		expect(() => toUntouched(raw)).toThrow(UNREADABLE);
 		const broken = new File(['jpeg'], 'broken.jpg', { type: 'image/jpeg' });
 		expect(() => toUntouched(broken)).toThrow(UNREADABLE);
+	});
+
+	// No browser here, so nothing draws: as on a device that cannot read the file.
+	it('goes untouched when it is a HEIC, flagged for the server, with what the device read of it', async () => {
+		const heic = new File([readFixture('phone.heic')], 'IMG_0001.HEIC', { type: '' });
+
+		const prepared = await preparePicture(heic, 'logo');
+
+		expect(prepared).toMatchObject({ isUnreadable: true, shouldConvert: true });
+		expect(prepared.blob.type).toBe('image/heic');
+		expect(prepared.taken).toMatchObject({ from: 'file' });
+	});
+
+	it('fails as an upload to retry, not as a picture to convert, when a JPEG does not draw', async () => {
+		const jpeg = new File([readFixture('taken.jpg')], 'taken.jpg', { type: 'image/jpeg' });
+
+		const failed = await preparePicture(jpeg, 'logo').catch((error: unknown) => error);
+
+		expect(failed).toBeInstanceOf(Error);
+		expect(failed).not.toBeInstanceOf(PictureError);
 	});
 });

@@ -8,7 +8,14 @@ import { join } from 'node:path';
 import { ExifTool } from 'exiftool-vendored';
 import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 import { MAX_FIELD_LIST_CHARACTERS } from '#lib/files/files.schema.js';
-import { carryMetadata, readMetadata, toFieldList, toUprightXmp } from './metadata.utils';
+import {
+	carryMetadata,
+	readMetadata,
+	toExifTaken,
+	toExifTime,
+	toFieldList,
+	toUprightXmp
+} from './metadata.utils';
 
 // The groups that describe a file rather than the photo (its size, its container, its encoder), the ones ExifTool
 // works out from others (Composite, and MWG, which exiftool-vendored turns on), and the fields that point into the
@@ -297,5 +304,22 @@ describe('the field list the File row keeps', () => {
 		expect(toFieldList((await readMetadata(new TextEncoder().encode('not a picture'))).tags)).toBe(
 			undefined
 		);
+	});
+});
+
+describe('when and where the file says it was taken', () => {
+	it('reads the time, with its offset, and the place', async () => {
+		const exif = toExifTaken((await readMetadata(fixture('taken.jpg'))).tags);
+
+		expect(exif.at).toBe('2026-05-12T09:30:00.000Z');
+		expect(exif.latitude).toBeCloseTo(25.9, 3);
+		expect(exif.longitude).toBeCloseTo(-97.5, 3);
+	});
+
+	it('reads a time without an offset as the reader’s own time', () => {
+		expect(toExifTime('2026:05:12 11:30:00', '+02:00')).toBe('2026-05-12T09:30:00.000Z');
+		expect(toExifTime('2026:05:12 11:30:00')).toBe(new Date('2026-05-12T11:30:00').toISOString());
+		expect(toExifTime('0000:00:00 00:00:00')).toBeUndefined();
+		expect(toExifTime(undefined)).toBeUndefined();
 	});
 });

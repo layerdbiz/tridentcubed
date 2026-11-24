@@ -1,7 +1,14 @@
 // Which pictures the server converts (#294; ADR 0004): a HEIC Chrome cannot read on Windows or Android, a TIFF; what
 // their untouched files are called in storage, and when a stored picture still needs converting.
 import { describe, expect, it } from 'vite-plus/test';
-import { isToConvert, isTypeAllowed, toEnding, toPictureType } from './files.schema';
+import {
+	isShownType,
+	isToConvert,
+	isTypeAllowed,
+	toEnding,
+	toPictureType,
+	toTyped
+} from './files.schema';
 
 describe('pictures the server converts', () => {
 	it('lets a picture column take them, untouched, until the server converts them', () => {
@@ -24,7 +31,26 @@ describe('pictures the server converts', () => {
 			'image/tiff'
 		);
 		expect(toPictureType({ name: 'photo.jpg', type: 'image/jpeg' })).toBe('image/jpeg');
-		expect(toPictureType({ name: 'IMG_0001.CR2', type: '' })).toBe('');
+		expect(toPictureType({ name: 'notes.txt', type: '' })).toBe('');
+	});
+
+	it('knows camera RAW by its name, so the User is told it cannot be read rather than see it left out', () => {
+		expect(toPictureType({ name: 'IMG_0001.CR2', type: '' })).toBe('image/x-canon-cr2');
+		expect(toPictureType({ name: 'DSC_0001.NEF', type: '' })).toBe('image/x-nikon-nef');
+		expect(toPictureType({ name: 'shot.dng', type: '' })).toBe('image/x-adobe-dng');
+	});
+
+	it('shows a WebP, JPEG or PNG as it is', () => {
+		expect(isShownType('image/jpeg')).toBe(true);
+		expect(isShownType('image/heic')).toBe(false);
+		expect(isShownType('application/pdf')).toBe(false);
+	});
+
+	it('types a file by what is known of it, keeping the file itself when it already says so', () => {
+		const heic = new File(['heic'], 'IMG_0001.HEIC', { type: '' });
+		expect(toTyped(heic, 'image/heic').type).toBe('image/heic');
+		const jpeg = new File(['jpeg'], 'photo.jpg', { type: 'image/jpeg' });
+		expect(toTyped(jpeg, 'image/jpeg')).toBe(jpeg);
 	});
 
 	it('converts what a browser may not show, and a photo bigger than the app keeps', () => {

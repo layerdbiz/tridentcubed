@@ -11,7 +11,7 @@ import {
 	type UploadRequestType
 } from './files.schema';
 import { Upload, type UploadStepsType } from './files.state.svelte';
-import type { PreparedPictureType } from './files.utils';
+import type { PreparedType } from './files.utils';
 
 const FILE_ID = '0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
 
@@ -19,7 +19,7 @@ const FILE_ID = '0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
 const FIELDS = { exif: { Make: { value: ['Apple'], description: 'Apple' } } };
 
 // What the device made of the picked picture: a WebP copy, unless a test says otherwise.
-const COPY: PreparedPictureType = {
+const COPY: PreparedType = {
 	blob: new Blob(['webp'], { type: 'image/webp' }),
 	width: 2048,
 	height: 1536,
@@ -29,7 +29,7 @@ const COPY: PreparedPictureType = {
 
 function createSteps(
 	answers: Array<'ok' | 'refused' | 'offline'>,
-	options: { prepared?: PreparedPictureType | Error; converted?: ConvertAnswerType[] } = {}
+	options: { prepared?: PreparedType | Error; converted?: ConvertAnswerType[] } = {}
 ) {
 	const asked: UploadRequestType[] = [];
 	const sent: string[] = [];
@@ -168,7 +168,7 @@ describe('a picture on its way', () => {
 
 describe('a picture the server converts (#294)', () => {
 	// A HEIC Chrome cannot read on Windows: the device sends it untouched, typed by its name.
-	const UNTOUCHED: PreparedPictureType = {
+	const UNTOUCHED: PreparedType = {
 		blob: new Blob(['heic'], { type: 'image/heic' }),
 		taken: { from: 'file', at: '2026-05-12T09:30:00.000Z' },
 		metadata: FIELDS,
@@ -202,7 +202,7 @@ describe('a picture the server converts (#294)', () => {
 		await running;
 		expect(test.asked[0]).toMatchObject({ name: 'IMG_0001.HEIC', type: 'image/heic', size: 4 });
 		expect(test.asked[0].width).toBeUndefined();
-		expect(test.converting).toEqual([{ id: FILE_ID, kind: 'photo' }]);
+		expect(test.converting).toEqual([{ id: FILE_ID }]);
 		expect(upload.isConverting).toBe(false);
 		expect(upload.isUploading).toBe(false);
 		expect(test.done).toEqual([`/files/${FILE_ID}`]);

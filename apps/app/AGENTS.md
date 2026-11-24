@@ -25,12 +25,14 @@ src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql
 scripts/seed-sql.ts            prints the one seed as SQL (`pnpm --silent --filter app db:seed-sql`)
 src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.remote.ts (`saveRows`,
                                `fetchLists`), rows.utils.ts (the difference), rows.state.svelte.ts (the sync loop)
-src/lib/files/                 files: files.schema.ts (the upload request), files.remote.ts (`askUpload`),
-                               files.utils.ts (read time and place, shrink), files.state.svelte.ts (the
-                               upload helper: `Upload`, `startUpload`)
+src/lib/files/                 files: files.schema.ts (the upload and convert requests, the picture sizes and
+                               the types the server converts), files.remote.ts (`askUpload`), files.utils.ts
+                               (shrink, or send untouched, on the device), files.state.svelte.ts (the upload
+                               helper: `Upload`, `startUpload`)
 src/lib/metadata/              metadata.utils.ts: every metadata field of a picture carried byte for byte into
-                               the shrunk copy, and the original's field list for the File row (#292); the
-                               test pictures in fixtures/ (drawn, no client data)
+                               the shrunk copy, the original's field list for the File row (#292), and the
+                               time and place the file says; the test pictures in fixtures/ (drawn, no
+                               client data)
 src/lib/start/                 the starting files the seed's rows point at, served at /start/... (routes/start)
 src/routes/login/              the login page (server-rendered; emailed code, then Google/Microsoft)
 src/routes/waiting/            Waiting for access, where a Guest is kept (server-rendered)
@@ -130,11 +132,12 @@ the why is in ADR 0002, 0003 and 0005.
   server's `createUpload` checks the column holds files and asks the one
   permission check before it hands out an upload address.
 - **A picture the device cannot read goes untouched** (ADR 0004, #294): a
-  HEIC in Chrome on Windows and Android, a TIFF (`CONVERTED_TYPES`), or a
+  HEIC in Chrome on Windows and Android, a TIFF (`CONVERTIBLE_TYPES`), or a
   photo whose own copy fell short (#292). The upload helper then asks
   `/api/convert`, its own Vercel function with sharp and libheif, and
   gives the row the file's address only once the server's copy is swapped
-  in. The untouched file is deleted once the copy checks out; when it
+  in. Only the member who sent the file may convert it, and the kind of
+  picture (photo or logo) comes from its column. The untouched file is deleted once the copy checks out; when it
   cannot (a TIFF), it stays beside the copy, named on the file row
   (`original_path`). Camera RAW is turned down on the device for now.
 - **Schema changes** are Drizzle schema edits tested on the in-process

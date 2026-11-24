@@ -17,27 +17,27 @@ import {
 	PictureError,
 	type PictureKindType,
 	toDocumentType,
+	toTyped,
 	type UploadAnswerType,
 	type UploadRequestType,
 	type UploadTargetType
 } from './files.schema';
-import type { PreparedPictureType } from './files.utils';
+import type { PreparedType } from './files.utils';
 
 /** A picture is shrunk first; a document (the item list as a file of any kind, #188, #233) goes as it came. */
 export type UploadKindType = PictureKindType | 'document';
 
 // A document is sent as it is, with its type read from its name when the browser gives none; a name that says
 // nothing either makes it a plain file (`ANY_TYPE`).
-function asDocument(file: File): PreparedPictureType {
+function asDocument(file: File): PreparedType {
 	const type = file.type.split(';')[0].trim() || toDocumentType(file.name);
-	const blob = type === file.type ? file : new Blob([file], { type });
-	return { blob, taken: { from: '' } };
+	return { blob: toTyped(file, type), taken: { from: '' } };
 }
 
 /** The steps an upload takes, each swappable so tests run without a browser, a server or storage. */
 export type UploadStepsType = {
 	toPreview(file: File): string;
-	prepare(file: File, kind: PictureKindType): Promise<PreparedPictureType>;
+	prepare(file: File, kind: PictureKindType): Promise<PreparedType>;
 	ask(request: UploadRequestType): Promise<UploadAnswerType>;
 	put(target: UploadTargetType, blob: Blob): Promise<void>;
 	/** Asks the server to convert a picture sent untouched (#294). */
@@ -104,7 +104,7 @@ export class Upload {
 	#file: File;
 	#options: UploadOptionsType;
 	#steps: UploadStepsType;
-	#prepared?: PreparedPictureType;
+	#prepared?: PreparedType;
 	// The file's id and address once its bytes are in storage, so a Retry only converts.
 	#sent?: { id: string; address: string };
 
@@ -135,7 +135,7 @@ export class Upload {
 			if (!this.#sent) return;
 			if (prepared.shouldConvert && kind !== 'document') {
 				this.isConverting = true;
-				const answer = await this.#steps.convert({ id: this.#sent.id, kind });
+				const answer = await this.#steps.convert({ id: this.#sent.id });
 				this.isConverting = false;
 				if (!answer.isDone) return this.#fail(answer.reason);
 			}
@@ -147,7 +147,7 @@ export class Upload {
 	}
 
 	// Asks for an upload address and sends the bytes there; nothing when the server refuses, with its reason shown.
-	async #send({ blob, width, height, taken, metadata }: PreparedPictureType) {
+	async #send({ blob, width, height, taken, metadata }: PreparedType) {
 		const answer = await this.#steps.ask({
 			for: this.#options.for,
 			name: this.#file.name,
