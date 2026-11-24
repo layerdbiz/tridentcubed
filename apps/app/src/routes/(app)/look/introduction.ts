@@ -7,6 +7,7 @@
 // the transport that calls there, not every facility and transport of the trip; the cargo typed into the Items
 // panel, else the item list read from a spreadsheet; and the days of the Time Log, else the project's date.
 import { legsOf } from './legs';
+import { cityStateOf } from './location';
 import {
 	createdDayOf,
 	dayOf,
@@ -61,7 +62,7 @@ function surveyOf(type: string) {
 
 /** The sentence its parts make. */
 export function toIntroduction(parts: IntroductionType) {
-	const place = `${parts.facility || 'the facility'}${parts.location ? ` – ${parts.location}` : ''}`;
+	const place = `${parts.facility || 'the facility'}${parts.location ? ` – ${cityStateOf(parts.location)}` : ''}`;
 	const cargo = parts.cargo ? ` of ${parts.cargo}` : '';
 	const transport = parts.transport ? ` in connection with the ${parts.transport}` : '';
 	return `This is to report that ${parts.organization} was present at ${place} on ${parts.dates} for the purpose of conducting ${surveyOf(parts.type)}${cargo}${transport}.`;

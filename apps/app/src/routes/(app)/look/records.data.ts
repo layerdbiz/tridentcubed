@@ -20,6 +20,7 @@ import {
 	type RecentType,
 	type StatusType
 } from './look.data';
+import { cityStateOf } from './location';
 import type { LookState } from './look.state.svelte';
 import { labelsOf as labelsOfMember, SEEDED, type TeamMemberType } from './team.data';
 
@@ -275,10 +276,10 @@ export function customerOf(look: LookState, name: string): ClientType {
 	return look.added.find((customer) => customer.name === name) ?? clientOf(name);
 }
 
-// Where a customer is, for the pin beside its name on the report (#238): its own location, else its address as
-// typed. Never the project's location, which is where the work is done.
+// Where a customer is, for the pin beside its name on the report (#238): its own location, as its city and state
+// (#320). Never the project's location, which is where the work is done.
 export function locationOf(customer: ClientType) {
-	return customer.city.trim() || customer.address?.trim() || '';
+	return cityStateOf(customer.city);
 }
 
 /** The contacts the Project panel's Contact field offers: the picked customer's that have a name. */

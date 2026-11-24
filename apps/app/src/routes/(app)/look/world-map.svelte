@@ -14,6 +14,7 @@
 	// shows. Things that share a place are scattered round it, close together and in no pattern (map.utils.ts);
 	// zoomed in by hand they move apart. The map always fits every place: only a person zooms past that. How
 	// close it stands follows `closeness`: where the sheet under it rests (RESTS). Its markers keep one size (`size`).
+	import { partsOf } from './location';
 	import type {
 		ExpressionSpecification,
 		GeoJSONSource,
@@ -176,7 +177,7 @@
 					type: 'Feature' as const,
 					properties: {
 						key: pin.city,
-						city: pin.city.split(',')[0],
+						city: partsOf(pin.city).city || pin.city.split(',')[0],
 						count: 1,
 						tone: -1,
 						reach: (reachOf(pin.items.length) + 26) / 12
@@ -195,7 +196,7 @@
 					type: 'Feature' as const,
 					properties: {
 						key,
-						city: pin.city.split(',')[0],
+						city: partsOf(pin.city).city || pin.city.split(',')[0],
 						count: pin.count,
 						tone: shared.size === 1 ? tones.indexOf([...shared][0]) : -1
 					},

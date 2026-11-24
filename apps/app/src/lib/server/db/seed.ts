@@ -551,7 +551,7 @@ async function seedTransports(tx: SeedTransactionType, organizationId: string) {
 	await tx
 		.insert(facility)
 		.values(
-			FACILITIES.map(({ name, kind, city, address, phone, file }, index) => {
+			FACILITIES.map(({ name, kind, city, phone, file }, index) => {
 				const at = new Date(SEEDED_AT + index * 1000);
 				return {
 					id: toStableId(organizationId, 'facility', name.toLowerCase()),
@@ -559,7 +559,6 @@ async function seedTransports(tx: SeedTransactionType, organizationId: string) {
 					name,
 					kind,
 					city,
-					address,
 					phone,
 					picture: `/start/facility/${file}`,
 					createdAt: at,

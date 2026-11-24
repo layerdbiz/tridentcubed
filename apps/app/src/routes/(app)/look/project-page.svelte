@@ -4,6 +4,7 @@
 	// report's photos on top, swiping, or a map of the trip, its stops joined by a line; over them what the project's
 	// card shows (state, customer, title, percent, where the trip runs, the team); and in the sheet below, the rest to
 	// read: its numbers, its details, the team, the trip stop by stop and each panel's progress. A panel opens on Edit.
+	import { cityStateOf } from './location';
 	import Avatar from './avatar.svelte';
 	import { pinOfRecord, pinsAt } from './chart.data';
 	import ClientLogo from './client-logo.svelte';
@@ -186,7 +187,7 @@
 						/>{project.client}
 					</dd>
 				</div>
-				{#each [['Project Number', numberOf(project, look.projects)], ['Type', project.type], ['Created', dayOf(createdDayOf(project))], ['Where', project.location], ['Updated', agoOf(project.updated)]] as [label, value] (label)}
+				{#each [['Project Number', numberOf(project, look.projects)], ['Type', project.type], ['Created', dayOf(createdDayOf(project))], ['Where', cityStateOf(project.location)], ['Updated', agoOf(project.updated)]] as [label, value] (label)}
 					<div class="flex justify-between gap-3 px-4 py-2.5 text-sm">
 						<dt class="text-slate-500">{label}</dt>
 						<dd class="text-right font-medium text-slate-900">{value || '—'}</dd>
@@ -244,7 +245,7 @@
 									>{stop.facility || 'No facility yet'}</span
 								>
 								<span class="block truncate text-xs text-slate-500"
-									>{[stop.point, stop.transport, cityOf(stop.facility)]
+									>{[stop.point, stop.transport, cityStateOf(cityOf(stop.facility))]
 										.filter(Boolean)
 										.join(' · ')}</span
 								>

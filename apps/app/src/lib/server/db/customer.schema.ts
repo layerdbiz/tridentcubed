@@ -21,8 +21,8 @@ export const customer = pgTable(
 		icon: words('icon'),
 		logo: words('logo'),
 		picture: words('picture'),
+		/** Its location (#320): the place as picked, street and all. Views show its city and state. */
 		city: words('city'),
-		address: words('address'),
 		email: words('email'),
 		phone: words('phone'),
 		website: words('website')

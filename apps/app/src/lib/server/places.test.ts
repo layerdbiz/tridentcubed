@@ -13,6 +13,20 @@ function createGeoapify() {
 		return Response.json({
 			results: [
 				{
+					formatted: '14035 Industrial Road, Houston, TX 77015, United States of America',
+					housenumber: '14035',
+					street: 'Industrial Road',
+					city: 'Houston',
+					postcode: '77015',
+					state: 'Texas',
+					state_code: 'TX',
+					country: 'United States',
+					country_code: 'us',
+					result_type: 'building',
+					lat: 29.7713,
+					lon: -95.1855
+				},
+				{
 					formatted: 'Paris, Île-de-France, France',
 					city: 'Paris',
 					country: 'France',
@@ -24,7 +38,9 @@ function createGeoapify() {
 				{
 					formatted: 'Houston, TX, United States of America',
 					city: 'Houston',
+					state: 'Texas',
 					state_code: 'TX',
+					country: 'United States',
 					country_code: 'us',
 					result_type: 'city',
 					lat: 29.7604,
@@ -48,16 +64,31 @@ describe('the place lookup', () => {
 			from: 'geoapify',
 			places: [
 				{
+					name: '14035 Industrial Road, Houston, TX 77015, United States of America',
+					detail: '14035 Industrial Road, Houston, TX 77015, United States of America',
+					lat: 29.7713,
+					lng: -95.1855,
+					parts: {
+						zip: '77015',
+						city: 'Houston',
+						state: 'TX',
+						street: '14035 Industrial Road',
+						country: 'United States'
+					}
+				},
+				{
 					name: 'Paris, France',
 					detail: 'Paris, Île-de-France, France',
 					lat: 48.8566,
-					lng: 2.3522
+					lng: 2.3522,
+					parts: { zip: '', city: 'Paris', state: '', street: '', country: 'France' }
 				},
 				{
 					name: 'Houston, TX',
 					detail: 'Houston, TX, United States of America',
 					lat: 29.7604,
-					lng: -95.3698
+					lng: -95.3698,
+					parts: { zip: '', city: 'Houston', state: 'TX', street: '', country: 'United States' }
 				}
 			]
 		});

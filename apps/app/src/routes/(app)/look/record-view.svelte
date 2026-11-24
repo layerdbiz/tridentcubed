@@ -41,13 +41,13 @@
 		return lines.filter((line) => line.text);
 	}
 
-	// What the record's Edit tab holds about it (run 15): a customer's code, address, email, phone and website, a
-	// facility's address, a team member's phone and email.
+	// What the record's Edit tab holds about it (run 15): a customer's code, location (its whole address, #320), email,
+	// phone and website, a facility's location, a team member's phone and email (a person's address shows nowhere).
 	const details = $derived(
 		customer
 			? filled([
 					{ icon: 'icon-[mdi--barcode]', text: customer.code },
-					{ icon: 'icon-[mdi--map-marker-outline]', text: customer.address ?? '' },
+					{ icon: 'icon-[mdi--map-marker-outline]', text: customer.city },
 					emailLine(customer.email),
 					phoneLine(customer.phone),
 					{
@@ -57,7 +57,7 @@
 					}
 				])
 			: facility
-				? filled([{ icon: 'icon-[mdi--map-marker-outline]', text: facility.address ?? '' }])
+				? filled([{ icon: 'icon-[mdi--map-marker-outline]', text: facility.city }])
 				: record.member
 					? filled([phoneLine(record.member.phone), emailLine(record.member.email)])
 					: []

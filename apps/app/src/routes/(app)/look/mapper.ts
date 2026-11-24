@@ -46,7 +46,6 @@ export function toRows(look: LookState): RowType[] {
 				logo: customer.logo ?? '',
 				picture: customer.photo ?? '',
 				city: customer.city ?? '',
-				address: customer.address ?? '',
 				email: customer.email ?? '',
 				phone: customer.phone ?? '',
 				website: customer.website ?? ''
@@ -118,7 +117,6 @@ function toCustomer(row: SavedRowType, contacts: ContactType[]): ClientType {
 		logo: text(values, 'logo'),
 		city: text(values, 'city'),
 		code: text(values, 'code'),
-		address: text(values, 'address'),
 		email: text(values, 'email'),
 		phone: text(values, 'phone'),
 		website: text(values, 'website'),

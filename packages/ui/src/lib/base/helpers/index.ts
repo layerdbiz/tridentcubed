@@ -1,4 +1,5 @@
 /* HELPERS */
+export * from "./address.ts";
 export * from "./classes.svelte.ts";
 export * from "./debug/debug.svelte.ts";
 export { default as Debug } from "./debug/debug.svelte";

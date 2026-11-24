@@ -6,6 +6,7 @@
 	// rest in the sheet below. On a desktop the Edit form sits in the floating column on the left and the Page fills
 	// the rest. Run 24 (Justin, 2026-11-11): with Header B the phone's top is page-header.svelte, the one a project
 	// uses, over both tabs: a bare back arrow and ⋮ on the Page, and the bar with the name from Edit on.
+	import { cityStateOf } from './location';
 	import { pinOfRecord, pinsAt } from './chart.data';
 	import Chips from './chips.svelte';
 	import { DATASETS } from './look.data';
@@ -28,6 +29,7 @@
 	const city = $derived(
 		record.page === 'customers' ? customerOf(look, record.key).city : record.location
 	);
+	// The header shows only the city and state (#320); a company's whole address is in its Details.
 	const pins = $derived(pinsAt(look.places, [pinOfRecord(look, record, city)]));
 
 	const isShared = $derived(look.variant('header') !== 'A');
@@ -137,7 +139,9 @@
 						>
 							<span class="icon-[mdi--map-marker] size-4 shrink-0 {record.tone.text}"></span>
 							<span class="truncate"
-								>{record.page === 'transport' ? `Last seen in ${city}` : city}</span
+								>{record.page === 'transport'
+									? `Last seen in ${cityStateOf(city)}`
+									: cityStateOf(city)}</span
 							>
 						</p>
 					{/if}

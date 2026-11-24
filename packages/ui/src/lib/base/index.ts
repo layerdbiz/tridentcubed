@@ -1,4 +1,5 @@
 /* BASE */
+export * from "./helpers/address.ts";
 export * from "./helpers/classes.svelte.ts";
 export * from "./component.svelte.ts";
 export { default as Component } from "./component.svelte";

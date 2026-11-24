@@ -225,10 +225,7 @@
 				help={look.helpOf('customer.types')}
 				onpick={(label) => set({ kind: toggle(typesOf(customer.kind), label).join(', ') })}
 			/>
-			{@render place('City', 'customer.city', customer.city, (city) => set({ city }))}
-			{@render text('Address', 'customer.address', customer.address ?? '', (address) =>
-				set({ address })
-			)}
+			{@render place('Location', 'customer.city', customer.city, (city) => set({ city }))}
 			{@render text(
 				'Email',
 				'customer.email',
@@ -322,10 +319,7 @@
 				help={look.helpOf('facility.kind')}
 				onpick={(kind) => set({ kind: kind as FacilityKindType })}
 			/>
-			{@render place('City', 'facility.city', facility.city, (city) => set({ city }))}
-			{@render text('Address', 'facility.address', facility.address ?? '', (address) =>
-				set({ address })
-			)}
+			{@render place('Location', 'facility.city', facility.city, (city) => set({ city }))}
 			<ImageField
 				label="Picture"
 				value={facility.photo ?? ''}

@@ -89,7 +89,6 @@ export const TABLES = {
 			logo: PICTURE,
 			picture: PICTURE,
 			city: TEXT,
-			address: TEXT,
 			email: TEXT,
 			phone: TEXT,
 			website: TEXT
@@ -130,7 +129,6 @@ export const TABLES = {
 			name: NAME,
 			kind: v.picklist(FACILITY_KINDS),
 			city: TEXT,
-			address: TEXT,
 			picture: PICTURE,
 			contactName: TEXT,
 			phone: TEXT,
@@ -144,7 +142,18 @@ export const TABLES = {
 			name: NAME,
 			latitude: v.pipe(v.number(), v.minValue(-90), v.maxValue(90)),
 			longitude: v.pipe(v.number(), v.minValue(-180), v.maxValue(180)),
-			detail: TEXT
+			detail: TEXT,
+			// #320: its parts as the lookup read them, in jsonb's own key order (shortest key first), so the row a
+			// device sends reads the same as the one the server gives back.
+			parts: v.nullable(
+				v.object({
+					zip: TEXT,
+					city: TEXT,
+					state: TEXT,
+					street: TEXT,
+					country: TEXT
+				})
+			)
 		}
 	},
 	// The organization itself (Better Auth's table): only its name saves from the app. An Admin or a Manager changes

@@ -5,13 +5,17 @@
 // in a location field, and the pins read that list. Since #184 the places are rows: the starting ones come from the
 // seed (lib/start/places.ts) and a picked one is saved once for every member.
 
-// A saved place: what a location field's text means on the map. `detail` is the full address the lookup gave. Its id
-// is the saved row's (#184): worked out from its name, so it is the same on every device.
+import type { AddressPartsType } from '@layerd/ui';
+
+// A saved place: what a location field's text means on the map. `detail` is the full address the lookup gave, and
+// `parts` its street, city, state, zip and country (#320). Its id is the saved row's (#184): worked out from its name,
+// so it is the same on every device.
 export type PlaceType = {
 	id?: string;
 	name: string;
 	lat: number;
 	lng: number;
 	detail?: string;
+	parts?: AddressPartsType;
 	created?: string;
 };

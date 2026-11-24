@@ -16,11 +16,11 @@ describe('locationOf', () => {
 		expect(locationOf(customerOf(look, 'Gulf Projects'))).toBe('Katy, TX');
 	});
 
-	it('is the address as typed when no location is picked', () => {
+	it('is only the city and state of a whole address, never its street (#320)', () => {
 		const look = new LookState();
-		look.setCustomer('Bay Forwarding', { city: '', address: '1 Main St, Houston, TX 77002' });
+		look.setCustomer('Bay Forwarding', { city: '1 Main St, Houston, TX 77002, United States' });
 
-		expect(locationOf(customerOf(look, 'Bay Forwarding'))).toBe('1 Main St, Houston, TX 77002');
+		expect(locationOf(customerOf(look, 'Bay Forwarding'))).toBe('Houston, TX');
 	});
 
 	it('is nothing for a customer with neither, and for no customer at all', () => {

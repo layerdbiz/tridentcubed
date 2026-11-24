@@ -5,6 +5,7 @@
 import type { CropType } from '#lib/components/photo/photo.types.js';
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
+import { cityStateOf } from './location';
 import { seen, touch } from './registry.svelte';
 import type { GridType } from './spreadsheet';
 // Run 16 (Justin, 2026-11-10: "no dummy data left ... the next step is connecting a real database"): nothing shown
@@ -293,8 +294,9 @@ export function routeOf(project: ProjectType, facilities: { name: string; city: 
 	const start = project.stops.find((stop) => stop.point === 'Start') ?? project.stops[0];
 	const end = project.stops.findLast((stop) => stop.point === 'End') ?? project.stops.at(-1);
 	if (!start?.facility || !end?.facility || start === end)
-		return { from: project.location, to: '' };
-	const cityOf = (name: string) => facilities.find((item) => item.name === name)?.city || name;
+		return { from: cityStateOf(project.location), to: '' };
+	const cityOf = (name: string) =>
+		cityStateOf(facilities.find((item) => item.name === name)?.city ?? '') || name;
 	const [from, to] = [cityOf(start.facility), cityOf(end.facility)];
 	return from === to ? { from: start.facility, to: end.facility } : { from, to };
 }
@@ -311,7 +313,6 @@ export type ClientType = {
 	// The short code a document ID starts with. The starting customers' are placeholders until their own arrive.
 	code: string;
 	// Run 15, all typed in or uploaded on the customer's Edit tab. An uploaded logo fills `icon` and `logo`.
-	address?: string;
 	email?: string;
 	phone?: string;
 	website?: string;
@@ -575,9 +576,9 @@ export type FacilityType = {
 	id?: string;
 	name: string;
 	kind: FacilityKindType;
+	// Its location (#320): the place as picked, street and all, which its stop page prints whole.
 	city: string;
-	// Run 15: its street address (printed on the report's stop page), a picture, and who to call there.
-	address?: string;
+	// Run 15: a picture, and who to call there.
 	photo?: string;
 	contact?: string;
 	phone?: string;

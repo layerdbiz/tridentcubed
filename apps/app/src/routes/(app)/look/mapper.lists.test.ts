@@ -1,6 +1,7 @@
 // The save round trip for the organization's other lists (spec #179 Testing Decisions; #184): Transport Modes,
 // Facilities, saved places and the organization's own details, through the mapper, the save command's work as an
 // acting User, the in-process Postgres with the real schema and policies, and back. The helpers are mapper.test.ts's.
+import { cityStateOf } from './location';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { RowType } from '#lib/rows/rows.schema.js';
@@ -191,7 +192,7 @@ describe('Transport Modes', () => {
 });
 
 describe('Facilities', () => {
-	it('starts with the real ones the seed gives, each with its place, address and picture', async () => {
+	it('starts with the real ones the seed gives, each with its location and picture', async () => {
 		const { look } = await open(team);
 
 		expect(look.facilities.map((each) => each.name).toSorted()).toEqual(
@@ -199,19 +200,18 @@ describe('Facilities', () => {
 		);
 		expect(facilityOf(look, 'Port of Beaumont')).toMatchObject({
 			kind: 'Port',
-			city: 'Beaumont, TX',
-			address: '1225 Main St, Beaumont, TX 77701',
+			city: '1225 Main St, Beaumont, TX 77701',
 			photo: '/start/facility/port-of-beaumont.jpg'
 		});
-		// Every one is at a saved place, so it shows on the map.
-		for (const each of look.facilities) expect(look.placeOf(each.city)).toBeDefined();
+		// Every one's city is a saved place, so it shows on the map until its address is looked up (#320).
+		for (const each of look.facilities) expect(look.placeOf(cityStateOf(each.city))).toBeDefined();
 	});
 
 	it('saves a new one with every field, an edit and a rename, and another member sees the same', async () => {
 		const mine = await open(team);
 		addFacility(mine.look, 'Port of Houston');
 		mine.look.patch('facilities', 'Port of Houston', {
-			address: '111 East Loop N, Houston, TX 77029',
+			city: '111 East Loop N, Houston, TX 77029',
 			photo: '/files/7b2e4d3f-1c8e-4f6a-8b9c-2d3e4f5a6b7c',
 			contact: 'Dana Wharf',
 			phone: '+1 713 555 0100',
@@ -232,8 +232,7 @@ describe('Facilities', () => {
 			id,
 			name: 'Port Houston',
 			kind: 'Depot',
-			city: 'Houston, TX',
-			address: '111 East Loop N, Houston, TX 77029',
+			city: '111 East Loop N, Houston, TX 77029',
 			photo: '/files/7b2e4d3f-1c8e-4f6a-8b9c-2d3e4f5a6b7c',
 			contact: 'Dana Wharf',
 			phone: '+1 713 555 0100',

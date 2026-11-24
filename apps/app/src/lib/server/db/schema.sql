@@ -140,7 +140,6 @@ CREATE TABLE "customer" (
 	"logo" text DEFAULT '' NOT NULL,
 	"picture" text DEFAULT '' NOT NULL,
 	"city" text DEFAULT '' NOT NULL,
-	"address" text DEFAULT '' NOT NULL,
 	"email" text DEFAULT '' NOT NULL,
 	"phone" text DEFAULT '' NOT NULL,
 	"website" text DEFAULT '' NOT NULL
@@ -232,7 +231,6 @@ CREATE TABLE "facility" (
 	"name" text NOT NULL,
 	"kind" text NOT NULL,
 	"city" text DEFAULT '' NOT NULL,
-	"address" text DEFAULT '' NOT NULL,
 	"picture" text DEFAULT '' NOT NULL,
 	"contact_name" text DEFAULT '' NOT NULL,
 	"phone" text DEFAULT '' NOT NULL,
@@ -251,7 +249,8 @@ CREATE TABLE "place" (
 	"name" text NOT NULL,
 	"latitude" double precision NOT NULL,
 	"longitude" double precision NOT NULL,
-	"detail" text DEFAULT '' NOT NULL
+	"detail" text DEFAULT '' NOT NULL,
+	"parts" jsonb
 );
 
 --> statement-breakpoint

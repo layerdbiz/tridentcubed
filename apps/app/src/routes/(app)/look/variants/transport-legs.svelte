@@ -39,6 +39,7 @@
 		type PointType,
 		type StopType
 	} from '../look.data';
+	import { cityStateOf } from '../location';
 	import type { LookState } from '../look.state.svelte';
 	import { Menu, Select } from '@layerd/ui';
 	import { sortable } from '../sortable';
@@ -110,7 +111,7 @@
 			.map((facility) => ({
 				value: facility.name,
 				label: facility.name,
-				note: facility.city,
+				note: cityStateOf(facility.city),
 				image: facility.photo,
 				icon: FACILITY_ICONS[facility.kind]
 			}));
