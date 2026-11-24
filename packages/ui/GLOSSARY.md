@@ -254,6 +254,24 @@ One row's or column's size on the grid component, which an item placed there may
 **Canvas**:
 The surface pages are laid on, meant to be zoomed and dragged like a design tool's canvas with its own controls. Unfinished concept; no component exists yet.
 
+### Forms
+
+**Select**:
+The one dropdown for choosing from a list, whatever the list holds. Search, a picture beside each choice, picking several, Add new and opening a choice to edit are each switched on by a prop of its own, and they combine freely (Justin, 2026-11-24).
+_Avoid_: dropdown, picker, variant (for these switches; a variant is a named look)
+
+**Lookup**:
+What finds the choices for what someone types, such as places from an outside service. Every lookup answers in the same shape, so any component takes any lookup through one prop and never knows where the choices come from (Justin, 2026-11-24).
+_Avoid_: source (in the business glossary that is where a value comes from), API (for the piece), a prop name per service
+
+**Toast**:
+A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24).
+_Avoid_: snackbar, progress toast (as a component of its own), loading bar
+
+**Selection bar**:
+The bright blue bar that takes the menu bar's place, at its exact size, while things are selected: white icons for what can be done to all of them at once, and an X at its far right that ends the selection, as a tap anywhere else does. Selected things wear a border of the same blue (Justin, 2026-11-24).
+_Avoid_: action bar, toolbar, bulk menu
+
 ### Organization
 
 **Atom**:

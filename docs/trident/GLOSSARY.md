@@ -59,7 +59,7 @@ A User who can no longer sign in, kept with their history and shown greyed out. 
 _Avoid_: banned, suspended, removed, deleted
 
 **Manager**:
-The role between Admin and Team. For now it may do exactly what the Team role may; it exists so managers are named before they get rights of their own.
+The role between Admin and Team. It may do what the Team role may, and also change the organization's details, such as the disclaimer and the sign-off (Justin, 2026-11-24); its other rights are still to come.
 _Avoid_: supervisor, lead (that is the Team Lead)
 
 **Team role**:
@@ -85,11 +85,11 @@ One job for a customer. A project owns exactly one report; a job that needs a se
 _Avoid_: job, survey (alone)
 
 **Project number**:
-A project's reference: the customer's short code, the Project Creation Date and J with the Job Sequence Number, which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. The date and the sequence are its two parts a User may type, side by side in the Project panel: the date starts as the day the project was made and is changed to the day Trident Cubed accepted the job when the project is made later; the sequence is the next one for that customer and date, given by the app, until one is typed. Nothing else changes it, the Time Log included. The panel shows its two parts only; the whole number prints in the report's footer.
+A project's reference: the customer's short code, the Project Creation Date and J with the Job Sequence Number, which of that customer's jobs that day it is, SGL-2026-02-03-J01 for the first and -J02 for the second. A customer sometimes assigns two or three in a day. The date and the sequence are its two parts a User may type, side by side in the Project panel: the date starts as the day the project was made and is changed to the day Trident Cubed accepted the job when the project is made later; the sequence is the next one for that customer and date, given by the app, until one is typed. Nothing else changes it, the Time Log included. The whole number shows under the Job Number as a value the app made, and prints on the cover as Project # and in the report's footer (Justin, 2026-11-24; it was hidden from the panel from 2026-11-18).
 _Avoid_: job number, reference, queue number
 
 **Customer reference number**:
-The customer's own number for the job, such as SO025484: optional, typed under Customer in the Project panel, where its input is labelled Reference Number. The cover prints it after the customer's name, KOGA (#SO025484), and every page's footer prints it under the document ID, by an ID card icon. It is not part of the project number.
+The customer's own number for the job, such as SO025484: optional, typed under Customer in the Project panel, where its input is labelled Reference Number. The cover prints it as Reference #, under the Project #, and every page's footer prints it under the document ID, by an ID card icon. It is not part of the project number.
 _Avoid_: reference (alone), PO number
 
 **Document ID**:
@@ -117,6 +117,10 @@ _Avoid_: snapshot, frozen copy
 
 **History**:
 The record of every change to a project: who changed what, when, and what it was before.
+
+**Activity**:
+The organization's running list of what happens in the app, newest first: sign-ins, projects created and every change in the history. Admins open it from the profile menu (Justin, 2026-11-24).
+_Avoid_: log (that is the time log), audit trail, feed
 _Avoid_: log (that is the time log), audit trail
 
 **Report**:
@@ -159,7 +163,7 @@ The company that owns a transport, like a shipping line; never the ship itself. 
 The cargo the project concerns, as rows of a quantity and a description (2, Power transformers on steel cradles), printed as the report's Cargo Description. A customer's own list comes in as an Item List.
 
 **Item List**:
-The customer's list of the cargo (a packing list, a manifest) read from a spreadsheet: rows pasted into the Items panel, or an Excel, CSV, TSV or JSON file dropped on it or chosen. Its cells are kept as they came, blank rows and blank columns left out, and the report prints them under Cargo Description as a table the full width of the page, the quantity before the item. A project holds one; a new one takes its place. A photo of a list is an Attachment and prints whole; a file that is not a spreadsheet prints its name.
+The customer's list of the cargo (a packing list, a manifest) read from a spreadsheet: rows pasted into the Items panel, or an Excel, CSV, TSV or JSON file dropped on it or chosen. Its cells are kept as they came, blank rows and blank columns left out, and the report prints them under Cargo Description as a table the full width of the page, the quantity before the item. A project holds one; a new one takes its place. A photo of a list is an Attachment and prints whole; a PDF prints its pages, laid out like a photo group's photos, 1, 2, 4, 6 or 8 to a page (Justin, 2026-11-24); any other file that is not a spreadsheet prints its name.
 _Avoid_: packing list (one kind of it), manifest, grid, spreadsheet
 
 **Project team**:
@@ -220,6 +224,10 @@ One of To do, In progress, Complete, from how many of the panel's required input
 One question defined in the definitions: its panel, label, path, source, type and the report pages it feeds.
 _Avoid_: field
 
+**Help text**:
+The short explanation an input's ? opens: what goes there and what the report does with it. Every input has one. It is changed in one place, and everyone sees the change without a new version of the app (Justin, 2026-11-24).
+_Avoid_: tooltip, hint, description (that is a stage's or a photo's own text)
+
 **Value**:
 What the surveyor enters for an input. Every value saves by itself as it is typed; there is no Save button. When two people change the same value, the last change to reach the server stays and the other is kept in the history.
 
@@ -237,6 +245,10 @@ _Avoid_: viewers, online users, collaborators
 
 **Source**:
 Where an input's value comes from: user, system, prefilled, derived, template or external.
+
+**Generated value**:
+A value the app makes or an outside service fills in, an input whose source is system, derived or external, such as the project number or the opening sentence. It looks the same everywhere, in bright blue with an icon, and its reset brings the app's value back after someone types over it. A prefilled value, such as a new project's four stage names, is the surveyor's from the start and is not one (Justin, 2026-11-24).
+_Avoid_: auto-generated (as the term), computed, default
 
 **Group repeater**:
 Content made of groups the surveyor adds, reorders, collapses and removes: the time log's days, the photo groups and the transport stops. A group's Delete sits at the far right of its bottom row, and removing anything asks first. Groups, photos and panels move by holding and dragging; nothing has a drag handle.
@@ -272,8 +284,12 @@ The switch on a photo group. Off, the group keeps its text and photos and leaves
 An image the surveyor adds to a photo group, with its own description, written by tapping the photo; the description prints on the photo, and in the panel an icon on the photo shows it has one. One kind of attachment.
 _Avoid_: caption
 
+**Crop**:
+How a photo is framed in its spot in the report: zoomed in on part of it, always in the photo's own shape. It belongs to that spot, shows as it changes while the surveyor edits, and prints in the preview and the PDF; the photo and everything it recorded never change, and no new image is made (Justin, 2026-11-24).
+_Avoid_: edit (for the crop), zoom (as something apart from the crop)
+
 **Attachment**:
-A File a User adds to a project: a photo, a video or a document. It keeps the time and place it was taken, and follows its report's rules for deleting and restoring.
+A File a User adds to a project: a photo, a video or a document. It keeps every detail the file it came from carried, such as the time and place it was taken, even when the app makes it smaller or changes its format (Justin, 2026-11-24), and follows its report's rules for deleting and restoring. It always shows, whatever format it arrived in: one the device cannot read is turned into one it can before anyone sees it (Justin, 2026-11-24).
 _Avoid_: asset (in surveying that is the vessel or cargo surveyed), media, upload, uploaded file
 
 **File**:
@@ -387,7 +403,7 @@ The one big image on top of a record's Page tab. Called picture until 2026-11-17
 _Avoid_: picture, background, banner
 
 **photos**:
-More images of a record beside its cover; the cover is one picked from them. Not in V1.
+More images of a record beside its cover; the cover is one picked from them. A transport's photos gather every photo of it taken on a job: each prints in that job's report and is kept on the transport, and the cover changes only when someone picks another (Justin, 2026-11-24).
 _Avoid_: gallery, pictures
 
 **location**:
