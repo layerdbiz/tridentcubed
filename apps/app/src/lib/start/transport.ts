@@ -19,9 +19,8 @@ export type StartTransportType = {
 export type StartFacilityType = {
 	name: string;
 	kind: (typeof FACILITY_KINDS)[number];
-	/** A saved place (places.ts), so it shows on the map. */
+	/** Its location (#320): its whole address, which its stop page prints; every other view shows its city. */
 	city: string;
-	address: string;
 	phone: string;
 	/** Its picture's file in `facility/`. */
 	file: string;
@@ -109,72 +108,63 @@ export const FACILITIES: StartFacilityType[] = [
 	{
 		name: 'Barbours Cut Container Terminal',
 		kind: 'Port',
-		city: 'La Porte, TX',
-		address: '1515 E. Barbours Cut Blvd, La Porte, TX 77571',
+		city: '1515 E. Barbours Cut Blvd, La Porte, TX 77571',
 		phone: '+1 (713) 670-2400',
 		file: 'barbours-cut.jpg'
 	},
 	{
 		name: 'Bayport Container Terminal',
 		kind: 'Port',
-		city: 'Pasadena, TX',
-		address: '12621 Port Road, Pasadena, TX 77586',
+		city: '12621 Port Road, Pasadena, TX 77586',
 		phone: '+1 (713) 670-2400',
 		file: 'bayport.jpg'
 	},
 	{
 		name: 'Turning Basin Terminal',
 		kind: 'Port',
-		city: 'Houston, TX',
-		address: '111 East Loop North, Houston, TX 77029',
+		city: '111 East Loop North, Houston, TX 77029',
 		phone: '+1 (713) 670-2400',
 		file: 'turning-basin.jpg'
 	},
 	{
 		name: 'Port of Galveston',
 		kind: 'Port',
-		city: 'Galveston, TX',
-		address: '123 Rosenberg Ave, Galveston, TX 77553',
+		city: '123 Rosenberg Ave, Galveston, TX 77553',
 		phone: '+1 (409) 766-7105',
 		file: 'port-of-galveston.jpg'
 	},
 	{
 		name: 'Port of Beaumont',
 		kind: 'Port',
-		city: 'Beaumont, TX',
-		address: '1225 Main St, Beaumont, TX 77701',
+		city: '1225 Main St, Beaumont, TX 77701',
 		phone: '+1 (409) 835-5367',
 		file: 'port-of-beaumont.jpg'
 	},
 	{
 		name: 'Port of Corpus Christi',
 		kind: 'Port',
-		city: 'Corpus Christi, TX',
-		address: '400 Harbor Drive, Corpus Christi, TX 78401',
+		city: '400 Harbor Drive, Corpus Christi, TX 78401',
 		phone: '+1 (361) 882-5633',
 		file: 'port-of-corpus-christi.jpg'
 	},
 	{
 		name: 'Port of New Orleans',
 		kind: 'Port',
-		city: 'New Orleans, LA',
-		address: '1350 Port of New Orleans Place, New Orleans, LA 70130',
+		city: '1350 Port of New Orleans Place, New Orleans, LA 70130',
 		phone: '',
 		file: 'port-of-new-orleans.jpg'
 	},
 	{
 		name: 'George Bush Intercontinental Airport',
 		kind: 'Airport',
-		city: 'Houston, TX',
-		address: '2800 N Terminal Rd, Houston, TX 77032',
+		city: '2800 N Terminal Rd, Houston, TX 77032',
 		phone: '',
 		file: 'houston-intercontinental.jpg'
 	},
 	{
 		name: 'Union Pacific Englewood Yard',
 		kind: 'Rail yard',
-		city: 'Houston, TX',
-		address: '5500 Wallisville Rd, Houston, TX 77020',
+		city: '5500 Wallisville Rd, Houston, TX 77020',
 		phone: '',
 		file: 'englewood-yard.jpg'
 	}

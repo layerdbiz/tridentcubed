@@ -34,6 +34,7 @@ import {
 	type StatusType,
 	type TransportType
 } from './look.data';
+import { knowPlaces } from './location';
 import type { PlaceType } from './map.data';
 import { readMenuPanels, writeMenuPanels, type MenuPanelsType } from './menu-panels';
 import type { RowType } from '#lib/rows/rows.schema.js';
@@ -332,6 +333,7 @@ export class LookState {
 		if (this.placeOf(place.name)) return;
 		const id = toStableId(this.organization.id ?? '', 'place', place.name.trim().toLowerCase());
 		this.places.push({ ...place, id, created: nowIso() });
+		knowPlaces([place]);
 	}
 
 	// Settings: the organization's details and report wording (run 15).

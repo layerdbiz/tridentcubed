@@ -77,7 +77,7 @@ _Avoid_: company domain, staff domain
 ### Projects and reports
 
 **Customer**:
-The company a project is done for, kept once in the organization's list with its name and a code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its legal name, type, labels, logo (printed in every page's footer), location, address, main email and phone, website, a cover and any number of contacts. Picking a customer's name in a project fills all of it in. The Project Report prints the customer's own location beside its name, never the project's. Called Client until 2026-10-26.
+The company a project is done for, kept once in the organization's list with its name and a code (SGL) that project numbers and file names use. A customer has many projects. Its record also holds its legal name, type, labels, logo (printed in every page's footer), location, main email and phone, website, a cover and any number of contacts. Picking a customer's name in a project fills all of it in. The Project Report prints the customer's own location beside its name, never the project's. Called Client until 2026-10-26.
 _Avoid_: client, account
 
 **Project**:
@@ -131,8 +131,12 @@ _Avoid_: survey report, document
 A person at a company: name, title, email, phone and photo, kept on the company's record. A customer has any number; a project picks the one its report is for, and the report prints their name, title and email under the customer. A company's other email addresses and phone numbers belong to its contacts, not to the company. A facility has one for now, as a name, phone and email; it takes the same contacts as a customer when it needs more (Justin, 2026-11-17).
 _Avoid_: client contact, recipient, attendee
 
+**Location**:
+Where a record is, typed once and picked from the place lookup's suggestions: a customer's, facility's, Team member's, project's or the organization's. It keeps the whole place, street and all, so the record's pin sits on the real spot, and its street, city, state, zip and country are read from it once (#320). Every view shows only its city and state ("Houston, TX"; abroad, "London, United Kingdom"). The whole address shows only for a company or facility, on its own record and a facility's stop page; a person's address shows nowhere.
+_Avoid_: city, address (for the field)
+
 **Facility**:
-Where a stop takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. Its record holds its type (Port, Airport, Rail yard or Depot), location, address, a cover and a contact; the stop's report page prints the address and contact. A facility is a company too, so its record takes any other company field (legal, code, logo, website) when it needs one. The drop-down lists every facility, the type that suits the stop's transport type first (ports for Sea).
+Where a stop takes place: a port, airport, rail yard or depot, picked from the organization's list or added on the spot. Its record holds its type (Port, Airport, Rail yard or Depot), location, a cover and a contact; the stop's report page prints its whole address and contact. A facility is a company too, so its record takes any other company field (legal, code, logo, website) when it needs one. The drop-down lists every facility, the type that suits the stop's transport type first (ports for Sea).
 _Avoid_: kind (for its type)
 
 **Transport**:

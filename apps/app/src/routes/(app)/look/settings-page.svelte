@@ -13,6 +13,8 @@
 	import ImageField from './image-field.svelte';
 	import type { LookState } from './look.state.svelte';
 	import PageHeader from './page-header.svelte';
+	import { cityStateOf } from './location';
+	import PlaceField from './place-field.svelte';
 	import ReportPreview from './report-preview.svelte';
 	import { organizationSectionsOf, valuesOf } from './tally';
 
@@ -189,12 +191,18 @@
 					{@render text('Name', 'organization.name', organization.name, (value) =>
 						look.nameOrganization(value)
 					)}
-					{@render text(
-						'Address',
-						'organization.address',
-						organization.address,
-						(value) => (organization.address = value)
-					)}
+					<!-- Where it is (#320): the one location field every record has, typed once and picked. -->
+					<PlaceField
+						{look}
+						label="Location"
+						help={look.helpOf('organization.address')}
+						value={organization.address}
+						inputClass={FIELD}
+						oninput={(value) => {
+							organization.address = value;
+							look.flash();
+						}}
+					/>
 					{@render text(
 						'Phone',
 						'organization.phone',
@@ -347,7 +355,9 @@
 			<h1 class="mt-4 text-2xl leading-tight font-semibold">{organization.name}</h1>
 			{#if organization.address}
 				<p class="mt-1.5 flex items-center gap-1 text-sm text-white/75">
-					<span class="icon-[mdi--map-marker] size-4 shrink-0"></span>{organization.address}
+					<span class="icon-[mdi--map-marker] size-4 shrink-0"></span>{cityStateOf(
+						organization.address
+					)}
 				</p>
 			{/if}
 		</div>

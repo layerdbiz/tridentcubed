@@ -61,6 +61,7 @@
 		type StopType
 	} from './look.data';
 	import { customerOf, locationOf } from './records.data';
+	import { cityStateOf, partsOf } from './location';
 	import { DownloadError, joinPdfs, PART_LIMIT, printParts, sizeOf, toParts } from './download';
 	import { downloadToast } from './toasts';
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
@@ -192,7 +193,8 @@
 	const team = $derived(look.panels.find((panel) => panel.kind === 'project'));
 	const timelog = $derived(look.panels.find((panel) => panel.kind === 'timelog'));
 	const company = $derived(detail('Customer') || look.project.client);
-	const location = $derived(look.project.location);
+	// Where the project is, as every view shows it: its city and state (#320).
+	const location = $derived(cityStateOf(look.project.location));
 	// The other companies on the job, each with its people who have a name.
 	const personnel = $derived(
 		(team?.personnel ?? [])
@@ -330,7 +332,7 @@
 					return {
 						point: stop.point,
 						facility: stop.facility,
-						city: place?.city ?? '',
+						city: cityStateOf(place?.city ?? ''),
 						icon: place ? FACILITY_ICONS[place.kind] : PAGE_ICONS.facilities
 					};
 				})
@@ -1591,8 +1593,11 @@
 												{stop.point || 'Point'}
 											</p>
 											<p class="text-[10.5px] font-semibold text-slate-900">{stop.facility}</p>
-											<p>{[place?.kind, place?.city].filter(Boolean).join(' · ')}</p>
-											{#if place?.address}<p>{place.address}</p>{/if}
+											<p>
+												{[place?.kind, cityStateOf(place?.city ?? '')].filter(Boolean).join(' · ')}
+											</p>
+											<!-- A facility's whole address prints on its stop page only (#320). -->
+											{#if place && partsOf(place.city).street}<p>{place.city}</p>{/if}
 											{#if place?.contact || place?.phone}
 												<p>{[place?.contact, place?.phone].filter(Boolean).join(' · ')}</p>
 											{/if}
@@ -1633,8 +1638,10 @@
 											>
 										{/if}
 										<span class="font-medium text-slate-800">{stop.facility}</span>
-										{#if placeOf(stop.facility)?.city}
-											<span class="text-slate-500">{placeOf(stop.facility)?.city}</span>
+										{#if cityStateOf(placeOf(stop.facility)?.city ?? '')}
+											<span class="text-slate-500"
+												>{cityStateOf(placeOf(stop.facility)?.city ?? '')}</span
+											>
 										{/if}
 									</span>
 								{/each}
@@ -2145,10 +2152,14 @@
 														{stop.facility || 'No facility yet'}
 													</p>
 													<p class="truncate text-slate-500">
-														{[place?.kind, place?.city].filter(Boolean).join(' · ')}
+														{[place?.kind, cityStateOf(place?.city ?? '')]
+															.filter(Boolean)
+															.join(' · ')}
 													</p>
-													{#if place?.address}<p class="truncate text-slate-500">
-															{place.address}
+													{#if place && partsOf(place.city).street}<p
+															class="truncate text-slate-500"
+														>
+															{place.city}
 														</p>{/if}
 													{#if place?.contact || place?.phone}
 														<p class="truncate text-slate-500">

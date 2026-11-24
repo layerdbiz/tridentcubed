@@ -184,13 +184,8 @@ export const HELP: readonly HelpType[] = [
 	},
 	{
 		key: 'customer.city',
-		label: 'City',
-		text: 'Where the customer’s office is. Start typing and pick the place.'
-	},
-	{
-		key: 'customer.address',
-		label: 'Address',
-		text: 'The customer’s street address.'
+		label: 'Location',
+		text: 'Where the customer’s office is. Start typing its address and pick it. Lists and reports show only its city and state.'
 	},
 	{
 		key: 'customer.email',
@@ -277,7 +272,7 @@ export const HELP: readonly HelpType[] = [
 	{
 		key: 'team.location',
 		label: 'Location',
-		text: 'Where they are based. Start typing and pick the place.'
+		text: 'Where they are based. Start typing their address and pick it, so their pin sits in the right place. Only their city and state ever show.'
 	},
 
 	// A Transport Mode's page.
@@ -415,13 +410,8 @@ export const HELP: readonly HelpType[] = [
 	},
 	{
 		key: 'facility.city',
-		label: 'City',
-		text: 'Where it is. Start typing and pick the place.'
-	},
-	{
-		key: 'facility.address',
-		label: 'Address',
-		text: 'Its street address. It prints on the report page of every stop there.'
+		label: 'Location',
+		text: 'Where it is. Start typing its address and pick it. The report page of every stop there prints the whole address; everywhere else shows its city and state.'
 	},
 	{
 		key: 'facility.picture',
@@ -457,8 +447,8 @@ export const HELP: readonly HelpType[] = [
 	},
 	{
 		key: 'organization.address',
-		label: 'Address',
-		text: 'The organization’s street address.'
+		label: 'Location',
+		text: 'Where the organization is. Start typing its address and pick it.'
 	},
 	{
 		key: 'organization.phone',

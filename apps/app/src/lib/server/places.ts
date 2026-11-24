@@ -5,11 +5,16 @@
 // typing pauses and only when the saved places (rows) have no answer, and a picked place is saved for every member, so
 // a place is looked up once. With no key (a deployment that has none yet) it answers with nothing, and saved places
 // still work.
+import type { AddressPartsType } from '@layerd/ui';
 import type { ActorType } from './db/claims';
 
 type GeoapifyType = {
 	formatted?: string;
+	housenumber?: string;
+	street?: string;
 	city?: string;
+	postcode?: string;
+	state?: string;
 	state_code?: string;
 	country?: string;
 	country_code?: string;
@@ -18,7 +23,14 @@ type GeoapifyType = {
 	lon?: number;
 };
 
-export type FoundPlaceType = { name: string; detail: string; lat: number; lng: number };
+export type FoundPlaceType = {
+	name: string;
+	detail: string;
+	lat: number;
+	lng: number;
+	/** Every part of it, read once here (#320), so no view reads its text again. */
+	parts: AddressPartsType;
+};
 
 export type PlaceAnswerType = {
 	status: 200 | 401 | 403;
@@ -37,13 +49,28 @@ export type PlaceLookupOptionsType = {
 
 const DAY_LIMIT = 2500;
 const KEPT = 500;
+const CITY_TYPES = ['city', 'postcode', 'county', 'state'];
 
 // "Houston, TX" for a city in the United States, "London, United Kingdom" for one abroad, else the full address.
 function nameOf(place: GeoapifyType) {
-	const isCity = ['city', 'postcode', 'county', 'state'].includes(place.result_type ?? '');
+	const isCity = CITY_TYPES.includes(place.result_type ?? '');
 	if (!isCity || !place.city) return place.formatted ?? '';
 	if (place.country_code === 'us' && place.state_code) return `${place.city}, ${place.state_code}`;
 	return [place.city, place.country].filter(Boolean).join(', ');
+}
+
+// Its parts as Geoapify read them (#320), in the key order Postgres keeps jsonb in (shortest key first), so the row a
+// device saves reads the same as the one the server gives back.
+export function toPlaceParts(place: GeoapifyType): AddressPartsType {
+	const isCity = CITY_TYPES.includes(place.result_type ?? '');
+	const street = isCity ? '' : [place.housenumber, place.street].filter(Boolean).join(' ');
+	return {
+		zip: isCity ? '' : (place.postcode ?? ''),
+		city: place.city ?? '',
+		state: place.state_code?.toUpperCase() ?? place.state ?? '',
+		street,
+		country: place.country ?? ''
+	};
 }
 
 function toPlaces(results: GeoapifyType[]) {
@@ -53,7 +80,13 @@ function toPlaces(results: GeoapifyType[]) {
 		const name = nameOf(result);
 		if (!name || result.lat === undefined || result.lon === undefined || names.has(name)) continue;
 		names.add(name);
-		places.push({ name, detail: result.formatted ?? '', lat: result.lat, lng: result.lon });
+		places.push({
+			name,
+			detail: result.formatted ?? '',
+			lat: result.lat,
+			lng: result.lon,
+			parts: toPlaceParts(result)
+		});
 	}
 	return places;
 }

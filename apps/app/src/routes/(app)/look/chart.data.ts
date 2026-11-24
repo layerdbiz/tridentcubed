@@ -3,6 +3,7 @@
 // projects or records had been made by then, from their `created` stamps, so the right edge still matches the card
 // and the list (run 12 note 13: one number everywhere). The pie's slices are the page's labels, the same as the
 // board's columns (note 11).
+import { cityStateOf } from './location';
 import { clientOf, personOf, STATUS, type DatasetType } from './look.data';
 import type { LookState } from './look.state.svelte';
 import type { PlaceType } from './map.data';
@@ -154,14 +155,18 @@ export type PinType = {
 	items: PinItemType[];
 };
 
-// Pins for the map, one per place with what is there. Where a place is comes from the saved places (run 17);
-// words that are not a saved place get no pin.
+// Pins for the map, one per place with what is there. Where a place is comes from the saved places (run 17): the
+// location itself when it was picked, else (an address typed by hand and never looked up, #320) its city's, so it
+// still shows near enough. Words that are neither get no pin.
 export function pinsAt(saved: PlaceType[], items: PinItemType[]): PinType[] {
 	const pins = new Map<string, PinType>();
+	const find = (text: string) =>
+		text ? saved.find((place) => place.name.toLowerCase() === text) : undefined;
 	for (const item of items) {
-		const text = item.city.trim().toLowerCase();
-		const point = text ? saved.find((place) => place.name.toLowerCase() === text) : undefined;
+		const exact = find(item.city.trim().toLowerCase());
+		const point = exact ?? find(cityStateOf(item.city).toLowerCase());
 		if (!point) continue;
+		const text = point.name.toLowerCase();
 		const pin = pins.get(text) ?? {
 			city: point.name,
 			lng: point.lng,

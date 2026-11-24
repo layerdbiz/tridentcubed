@@ -3,6 +3,7 @@ export * from "./base/component.svelte.ts";
 export { default as Component } from "./base/component.svelte";
 export * from "./base/root.svelte.ts";
 export { default as Root } from "./base/root.svelte";
+export * from "./base/helpers/address.ts";
 export * from "./base/helpers/classes.svelte.ts";
 export * from "./base/helpers/debug/debug.svelte.ts";
 export { default as Debug } from "./base/helpers/debug/debug.svelte";

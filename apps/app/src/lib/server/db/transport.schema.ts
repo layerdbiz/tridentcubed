@@ -36,8 +36,8 @@ export const facility = pgTable(
 		name: text('name').notNull(),
 		/** Port, Airport, Rail yard or Depot. */
 		kind: text('kind').notNull(),
+		/** Its location (#320): the place as picked, street and all, which its stop page prints whole. */
 		city: words('city'),
-		address: words('address'),
 		picture: words('picture'),
 		contactName: words('contact_name'),
 		phone: words('phone'),

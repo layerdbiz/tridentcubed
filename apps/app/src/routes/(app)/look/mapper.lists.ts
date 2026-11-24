@@ -3,6 +3,7 @@
 // which only comes in. `toListRows` and `takeListRows` are called by mapper.ts's `toRows` and `takeRows`; the same
 // rule holds: what goes out comes back equal.
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
+import type { AddressPartsType } from '@layerd/ui';
 import {
 	type FacilityKindType,
 	type FacilityType,
@@ -12,6 +13,7 @@ import {
 	type TransportType,
 	typeOfMode
 } from './look.data';
+import { knowPlaces } from './location';
 import type { LookState } from './look.state.svelte';
 import type { PlaceType } from './map.data';
 import { text, toRecordId, toRecordName, toStamp } from './mapper.utils';
@@ -85,7 +87,6 @@ export function toListRows(look: LookState): RowType[] {
 					name: facility.name,
 					kind: facility.kind,
 					city: facility.city ?? '',
-					address: facility.address ?? '',
 					picture: facility.photo ?? '',
 					contactName: facility.contact ?? '',
 					phone: facility.phone ?? '',
@@ -101,7 +102,8 @@ export function toListRows(look: LookState): RowType[] {
 					name: place.name,
 					latitude: place.lat,
 					longitude: place.lng,
-					detail: place.detail ?? ''
+					detail: place.detail ?? '',
+					parts: place.parts ?? null
 				}
 			});
 	rows.push(...toOrganizationRows(look.organization));
@@ -131,7 +133,6 @@ function toFacility(row: SavedRowType): FacilityType {
 		name: text(values, 'name'),
 		kind: text(values, 'kind') as FacilityKindType,
 		city: text(values, 'city'),
-		address: text(values, 'address'),
 		photo: text(values, 'picture'),
 		contact: text(values, 'contactName'),
 		phone: text(values, 'phone'),
@@ -149,6 +150,7 @@ function toPlace(row: SavedRowType): PlaceType {
 		lat: Number(values.latitude),
 		lng: Number(values.longitude),
 		detail: text(values, 'detail'),
+		parts: (values.parts as AddressPartsType | null) ?? undefined,
 		created: toStamp(row.createdAt)
 	};
 }
@@ -209,6 +211,7 @@ export function takeListRows(look: LookState, rows: SavedRowType[]) {
 	look.facilities = facilities.filter((row) => !row.deletedAt).map(toFacility);
 	look.trashed.facilities = facilities.filter((row) => row.deletedAt).map(toFacility);
 	look.places = rows.filter((row) => row.table === 'place' && !row.deletedAt).map(toPlace);
+	knowPlaces(look.places);
 	look.organization = toOrganization(rows);
 	look.help = toHelp(rows);
 }
