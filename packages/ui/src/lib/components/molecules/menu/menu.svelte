@@ -1,8 +1,27 @@
-<script
-	module
-	lang="ts"
->
-	export type OptionType = {
+<script lang="ts">
+	/**
+	 * @tags ui, menu
+	 */
+	// The menu list (#297): the list the app's dropdown opens (its picker), and its account menu, ⋮ menus, list menus
+	// and cards' menus. Moved here from the app unchanged (Justin, 2026-11-24): it sits beside the toggle rather than
+	// on the toggle's own menu, which opens in place and would be cut off inside scrolling boxes. It keeps the app's
+	// slate shades so nothing looks different; trading them for theme colours belongs to "UI library cleanup" (#33).
+	//
+	// It draws its own outer box, not the base component: the app shows one per row's ⋮, and built on the base
+	// component a swipe between the dashboard's lists took about twice the script time on a slowed phone (measured on
+	// #297). Its props are its own for the same reason; none of the base props would do anything here.
+	//
+	// Closes on a pick, a tap outside or Escape. `isWide` fills its row. The list opens in the browser's top layer (a
+	// popover), placed under its button, or over it when there is no room below, so no scrolling or rounded box around
+	// the button cuts it off (the ⋮ of each project in the dashboard's lists, 2026-10-26). `isSearchable` puts a field
+	// at the top to type in, which narrows the list; `onadd` puts "Add new" right under it; `onedit` puts a pencil at
+	// the far right of every choice, which opens that thing to edit it (run 28, Justin, 2026-11-12, for every dropdown
+	// in the app).
+	import type { Snippet } from 'svelte';
+	import type { Attachment } from 'svelte/attachments';
+	import { scale } from 'svelte/transition';
+
+	export interface MenuOptionType {
 		id: string;
 		label: string;
 		// A second, quieter line under the label: a facility's city.
@@ -14,20 +33,28 @@
 		count?: number;
 		// A delete in a ⋮ menu reads red.
 		isDanger?: boolean;
-	};
-</script>
+	}
 
-<script lang="ts">
-	// PROTOTYPE (#161): a small dropdown menu (view and status pickers, each photo's ⋮ menu, and the list every
-	// dropdown field opens, picker.svelte). Closes on a pick, outside tap or Escape. `isWide` fills its row. The list
-	// opens in the browser's top layer (a popover), placed under its button, or over it when there is no room below,
-	// so no scrolling or rounded box around the button cuts it off (the ⋮ of each project in the dashboard's lists,
-	// 2026-10-26). Run 28 (Justin, 2026-11-12, for every dropdown in the app): `isSearchable` puts a field at the
-	// top to type in, which narrows the list; `onadd` puts "Add new" right under it; `onedit` puts a pencil at the
-	// far right of every choice, which opens that thing to edit it.
-	import type { Snippet } from 'svelte';
-	import type { Attachment } from 'svelte/attachments';
-	import { scale } from 'svelte/transition';
+	export interface MenuProps {
+		options: MenuOptionType[];
+		value: string;
+		// The list's name, read out for its button, its list and its search field.
+		label: string;
+		onpick: (id: string) => void;
+		// What the button shows, told the picked choice and whether the list is open.
+		trigger: Snippet<[MenuOptionType | undefined, boolean]>;
+		// Draws what stands at the left of a choice, in place of its icon or image (a picker's faces and logos).
+		// The second argument says the choice is the one picked.
+		mark?: Snippet<[MenuOptionType, boolean]>;
+		align?: 'left' | 'right';
+		isWide?: boolean;
+		// Given, the menu picks several: every id in it is ticked, and a pick does not close the list (run 19).
+		values?: string[];
+		isSearchable?: boolean;
+		onadd?: () => void;
+		addLabel?: string;
+		onedit?: (id: string) => void;
+	}
 
 	let {
 		options,
@@ -43,24 +70,7 @@
 		onadd,
 		addLabel = '',
 		onedit
-	}: {
-		options: OptionType[];
-		value: string;
-		label: string;
-		onpick: (id: string) => void;
-		trigger: Snippet<[OptionType | undefined, boolean]>;
-		// Draws what stands at the left of an option, in place of its icon or image (picker.svelte's faces and logos).
-		// The second argument says the option is the one picked.
-		mark?: Snippet<[OptionType, boolean]>;
-		align?: 'left' | 'right';
-		isWide?: boolean;
-		// Given, the menu picks several: every id in it is ticked, and a pick does not close the list (run 19).
-		values?: string[];
-		isSearchable?: boolean;
-		onadd?: () => void;
-		addLabel?: string;
-		onedit?: (id: string) => void;
-	} = $props();
+	}: MenuProps = $props();
 
 	let isOpen = $state(false);
 	let root: HTMLDivElement | undefined = $state();

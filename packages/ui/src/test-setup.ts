@@ -22,6 +22,30 @@ window.matchMedia ??= ((query: string) => ({
 	dispatchEvent: () => false
 })) as typeof window.matchMedia;
 
+// jsdom has no popovers: it hides every [popover] and has no showPopover. The stand-in shows one when asked, as a
+// browser does, so a test can find what floats in one (the menu list). jsdom weighs its own rule above a page's, so
+// the stand-in's needs !important.
+if (!('showPopover' in HTMLElement.prototype)) {
+	Object.defineProperties(HTMLElement.prototype, {
+		showPopover: {
+			configurable: true,
+			value(this: HTMLElement) {
+				this.toggleAttribute('data-popover-open', true);
+			}
+		},
+		hidePopover: {
+			configurable: true,
+			value(this: HTMLElement) {
+				this.removeAttribute('data-popover-open');
+			}
+		}
+	});
+}
+document.head.insertAdjacentHTML(
+	'beforeend',
+	'<style>[popover][data-popover-open] { display: block !important; }</style>'
+);
+
 // Svelte's transitions run on the Web Animations API, which jsdom lacks: every animation finishes at once.
 if (!('animate' in Element.prototype)) {
 	Object.defineProperty(Element.prototype, 'animate', {

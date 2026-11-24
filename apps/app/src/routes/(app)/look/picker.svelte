@@ -20,7 +20,7 @@
 	// component for that ... it shouldn't be different every time"). Whatever is picked shows as what it is: a person
 	// is the same Avatar the rest of the app draws, online dot and ring included; a customer is its logo
 	// (ClientLogo); anything else is its own image, an icon or a dot of colour. The list shows the same marks. Given
-	// `values` it picks several and stays open. The list itself is menu.svelte.
+	// `values` it picks several and stays open. The list itself is the library's Menu.
 	// Run 28 (Justin, 2026-11-12: "this needs to happen for every select menu in the entire app"): it is the only
 	// dropdown a form uses. Every one has a search field at the top of its list, however short the list (Justin,
 	// 2026-11-16: the transport's own dropdown had none, because it held three vessels and the field only showed
@@ -31,10 +31,9 @@
 	// Run 29 (his second round of notes): the field is always one line, the pencil shows only in the open list, and
 	// a short field never cuts its word.
 	import type { Snippet } from 'svelte';
-	import { Help } from '@layerd/ui';
+	import { Help, Menu } from '@layerd/ui';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
-	import Menu from './menu.svelte';
 
 	let {
 		label,

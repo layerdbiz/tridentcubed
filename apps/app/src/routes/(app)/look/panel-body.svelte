@@ -38,7 +38,7 @@
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
 	import { flip } from 'svelte/animate';
-	import { Help } from '@layerd/ui';
+	import { Help, Menu } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Group from './group.svelte';
@@ -71,7 +71,6 @@
 		type PhotoType
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import Menu from './menu.svelte';
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
 	import Picker from './picker.svelte';
 	import PlaceField from './place-field.svelte';
