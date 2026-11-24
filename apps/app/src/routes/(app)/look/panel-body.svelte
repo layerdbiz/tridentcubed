@@ -25,9 +25,9 @@
 	// files of the item list. The Time Log's times are typed on the 24-hour clock.
 	// Run 21 (Justin, 2026-11-11): the Project panel is three sections that open like the Team did: Project (title,
 	// subtitle, type), Customer (customer and contact) and Team (organization, Team Lead, Team Assigned). Every
-	// dropdown in them is the library's Select (#298, once picker.svelte), so a person is always the app's own Avatar
-	// and a company its logo. Add
-	// Personnel adds a company's section: its name, then as many people from it as needed, each a name and a title.
+	// pick in them is the library's Select (#298, once picker.svelte), so a person is always the app's own Avatar and a
+	// company its logo. Add Personnel adds a company's section: its name, then as many people from it as needed, each a
+	// name and a title.
 	// #217 (Justin, 2026-11-18): the Project section ends with the two parts of the project number a User may type,
 	// side by side: Project Creation Date (today on a new project) and Job Sequence Number (the server's next for
 	// that customer and day, until one is typed); the number they make is not shown here (#225). The Customer section takes
@@ -542,7 +542,7 @@
 	>
 {/snippet}
 
-<!-- A person in a dropdown is the app's own face, a customer its logo (Select's `mark`). -->
+<!-- A person in a Select is the app's own face, a customer its logo (Select's `mark`). -->
 {#snippet face(name: string, size: number)}
 	<Avatar
 		{name}
@@ -680,7 +680,8 @@
 			ondelete={() =>
 				remove(panel.personnel ?? [], company, 'Delete Personnel?', 'Its people leave the report.')}
 		>
-			<!-- Typed freely, with the customers offered as it is typed: both a dropdown and an input. -->
+			<!-- Typed freely, with the customers offered as it is typed: a typed Select. Typing saves through the
+			     fieldset's input like every field here; a pick is no keystroke, so it saves itself. -->
 			<Select
 				variant="soft"
 				isTyped
@@ -691,6 +692,7 @@
 				required
 				help={look.helpOf('personnel.company')}
 				placeholder="Type a company, or pick a customer"
+				onpick={save}
 			/>
 			{#each company.people as person, personIndex (person.id)}
 				<div class="flex items-start gap-2">

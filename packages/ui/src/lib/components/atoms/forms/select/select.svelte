@@ -40,7 +40,7 @@
 
 	const uid = $props.id();
 
-	export type SelectProps = Omit<FieldProps<string | string[]>, 'variant' | 'inset'> & {
+	export type SelectProps = Omit<FieldProps<string | string[]>, 'variant'> & {
 		/** The notched field's icon arrangement, or `soft`, the app's panel field. */
 		variant?: FormFieldVariant | 'soft';
 		options?: SelectOptionType[];
