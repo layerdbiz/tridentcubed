@@ -441,7 +441,8 @@ CREATE TABLE "photo" (
 	"group_id" uuid NOT NULL,
 	"position" integer DEFAULT 0 NOT NULL,
 	"file" text DEFAULT '' NOT NULL,
-	"description" text DEFAULT '' NOT NULL
+	"description" text DEFAULT '' NOT NULL,
+	"crop" jsonb
 );
 
 --> statement-breakpoint
