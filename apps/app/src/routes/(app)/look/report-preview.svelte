@@ -66,6 +66,7 @@
 		createFollower,
 		columnsFitOf,
 		columnsOf,
+		contentLinesOf,
 		flowOf,
 		heightOf,
 		lineSizeOf,
@@ -76,7 +77,8 @@
 		rangeOf,
 		spanOf,
 		stageNumbersOf,
-		targetOf
+		targetOf,
+		type ContentLineType
 	} from './report-flow';
 	import { fromSaved, toSaved, toTable } from './spreadsheet';
 	import { labelsOf } from './team.data';
@@ -125,6 +127,8 @@
 		columns?: BlockType[][];
 		after?: BlockType[];
 		fit?: number;
+		// A page of the Table of Contents (#277): which of its lines (`contentLines`) landed on it.
+		lines?: number[];
 	};
 	// One piece of a flowing section, never cut in two.
 	type BlockType =
@@ -557,6 +561,7 @@
 	// Measured again when what is printed changes, and when a picture or a font arrives and changes a height.
 	$effect(() => {
 		void flows;
+		void contentLines;
 		void signer;
 		void closingSize;
 		measure();
@@ -641,11 +646,15 @@
 		}));
 	}
 
+	// The cover, and the Table of Contents' title (#277).
+	const COVER: PageType = { key: 'cover', title: 'Cover', kind: 'cover' };
+	const CONTENTS_TITLE = 'Table of Contents';
+	// The space over the first line (the list's top margin), and each line's height before it has been read.
+	const CONTENTS_GAP = 16;
+	const LINE_HEIGHTS = { section: 32, part: 23 };
+
 	const pages = $derived.by(() => {
-		const list: PageType[] = [
-			{ key: 'cover', title: 'Cover', kind: 'cover' },
-			{ key: 'contents', title: 'Table of Contents', kind: 'contents' }
-		];
+		const list: PageType[] = [];
 		const report = flows.find((flow) => flow.key === 'report');
 		if (report) list.push(...pagesOf(report));
 		else list.push({ key: 'report', title: 'Project Report', kind: 'report' });
@@ -673,8 +682,36 @@
 		const disclaimer = flows.find((flow) => flow.key === 'disclaimer');
 		if (disclaimer) list.push(...pagesOf(disclaimer));
 		else list.push({ key: 'disclaimer', title: 'Disclaimer', kind: 'disclaimer' });
-		return list;
+		return [COVER, ...contentsPagesOf(list), ...list];
 	});
+
+	// The Table of Contents as pages (#277; Justin, 2026-11-24): it runs on to "(continued)" pages like any section
+	// that flows, and a section moves on whole with its parts when they would not all fit. Its lines are the same
+	// however many pages it takes (only their page numbers change), so they are dealt out from a draft with one
+	// contents page, at the heights read from the copy drawn out of sight.
+	function contentsPagesOf(body: PageType[]): PageType[] {
+		const lines = contentLinesOf(
+			contentsOf([COVER, { key: 'contents', title: CONTENTS_TITLE, kind: 'contents' }, ...body])
+		);
+		const read = heights.contents ?? [];
+		const tall = lines.map(
+			(line, at) =>
+				(read.length === lines.length ? read[at] : undefined) ??
+				(line.isSub ? LINE_HEIGHTS.part : LINE_HEIGHTS.section)
+		);
+		return paginate(
+			tall,
+			ROOM - CONTENTS_GAP,
+			[],
+			[],
+			lines.map((line) => !line.isSub)
+		).map((page, index) => ({
+			key: 'contents',
+			title: index ? `${CONTENTS_TITLE} (continued)` : CONTENTS_TITLE,
+			kind: 'contents',
+			lines: page
+		}));
+	}
 
 	// Whether a page shows the link to the project's files (#233): the first page of the Project Report, and the
 	// first of the Operations panel.
@@ -689,35 +726,37 @@
 	// stages (#215). A section, a part or a group that runs over pages shows where it starts and ends, 7-12 (#259;
 	// Justin, 2026-11-21); on one page, that page.
 	const REPORT_PARTS = ['Personnel in Attendance', 'Transport Mode', 'Cargo Description'];
-	const contents = $derived(
-		pages
-			.filter((item, index) => pages.findIndex((other) => other.key === item.key) === index)
+	const contents = $derived(contentsOf(pages));
+	const contentLines = $derived(contentLinesOf(contents));
+	function contentsOf(list: PageType[]) {
+		return list
+			.filter((item, index) => list.findIndex((other) => other.key === item.key) === index)
 			.map((item): EntryType => ({
 				title: item.title,
 				key: item.key,
-				page: pagesOfKey(item.key),
+				page: pagesOfKey(list, item.key),
 				subs:
 					item.kind === 'report'
-						? partSubs(item.key)
+						? partSubs(list, item.key)
 						: item.kind === 'photos'
-							? groupSubs(item.key)
+							? groupSubs(list, item.key)
 							: []
-			}))
-	);
-	function pageOf(key: string) {
-		return pages.findIndex((other) => other.key === key) + 1;
+			}));
+	}
+	function pageOf(list: PageType[], key: string) {
+		return list.findIndex((other) => other.key === key) + 1;
 	}
 	// The pages a section covers, as the contents print them.
-	function pagesOfKey(key: string) {
-		const span = spanOf(pages, (page) => page.key === key);
+	function pagesOfKey(list: PageType[], key: string) {
+		const span = spanOf(list, (page) => page.key === key);
 		return span ? rangeOf(span) : '';
 	}
 
 	// A photo panel's groups as the contents list them: each at the pages its photos take.
-	function groupSubs(key: string) {
-		return pages.flatMap((page) => {
+	function groupSubs(list: PageType[], key: string) {
+		return list.flatMap((page) => {
 			if (page.key !== key || !page.panel || page.part) return [];
-			const span = spanOf(pages, (other) => other.key === key && other.group === page.group);
+			const span = spanOf(list, (other) => other.key === key && other.group === page.group);
 			return span ? [{ title: groupTitle(page.panel, page.group ?? 0), page: rangeOf(span) }] : [];
 		});
 	}
@@ -728,17 +767,18 @@
 
 	// The parts of the Project Report as the contents list them: each from the page its heading landed on to the
 	// last page it has anything on, once the report runs over a page. Before it is measured, the report's own page.
-	function partSubs(key: string) {
-		const own = pages.filter((page) => page.key === key);
+	function partSubs(list: PageType[], key: string) {
+		const own = list.filter((page) => page.key === key);
+		const first = pageOf(list, key);
 		const spans = partSpansOf(
 			own.map((page) =>
 				(page.blocks ?? []).map((block) => (block.kind === 'heading' ? block.text : undefined))
 			),
-			pageOf(key)
+			first
 		);
 		return REPORT_PARTS.map((part) => ({
 			title: part,
-			page: rangeOf(spans[part] ?? { first: pageOf(key), last: pageOf(key) })
+			page: rangeOf(spans[part] ?? { first, last: first })
 		}));
 	}
 
@@ -1351,6 +1391,24 @@
 {/snippet}
 
 <!-- One block of a flowing section. Room above a block is its own padding, so the heights add up. -->
+<!-- One line of the Table of Contents: a section, or one of its parts set in under it. -->
+{#snippet contentsLine(line: ContentLineType | undefined)}
+	{#if line}
+		<li
+			class="flex items-baseline gap-2 {line.isSub
+				? 'py-[3px] pl-8 text-[11px] text-slate-600'
+				: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
+		>
+			<span class="w-6 shrink-0 font-semibold text-slate-950 tabular-nums">{line.number}</span>
+			<span>{line.title}</span>
+			<span
+				class="h-[3px] min-w-4 flex-1 bg-[radial-gradient(circle,var(--color-slate-400)_0.8px,transparent_1.1px)] bg-size-[7px_3px] bg-bottom bg-repeat-x"
+			></span>
+			<span class="min-w-5 shrink-0 text-right text-slate-950 tabular-nums">{line.page}</span>
+		</li>
+	{/if}
+{/snippet}
+
 {#snippet flowBlock(block: BlockType)}
 	{#if block.kind === 'intro'}
 		<p class="pt-2 text-[10.5px] leading-relaxed whitespace-pre-line text-slate-600">
@@ -1843,31 +1901,8 @@
 							{:else if item.blocks}
 								{#each item.blocks as block, at (at)}{@render flowBlock(block)}{/each}
 							{:else if item.kind === 'contents'}
-								{#snippet line(number: string, title: string, page: string, isSub: boolean)}
-									<li
-										class="flex items-baseline gap-2 {isSub
-											? 'py-[3px] pl-8 text-[11px] text-slate-600'
-											: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
-									>
-										<span class="w-6 shrink-0 font-semibold text-slate-950 tabular-nums"
-											>{number}</span
-										>
-										<span>{title}</span>
-										<span
-											class="h-[3px] min-w-4 flex-1 bg-[radial-gradient(circle,var(--color-slate-400)_0.8px,transparent_1.1px)] bg-size-[7px_3px] bg-bottom bg-repeat-x"
-										></span>
-										<span class="min-w-5 shrink-0 text-right text-slate-950 tabular-nums"
-											>{page}</span
-										>
-									</li>
-								{/snippet}
 								<ol class="mt-4">
-									{#each contents as entry, entryIndex (entry.key)}
-										{@render line(`${entryIndex + 1}.`, entry.title, entry.page, false)}
-										{#each entry.subs as sub, subIndex (subIndex)}
-											{@render line(`${entryIndex + 1}.${subIndex + 1}`, sub.title, sub.page, true)}
-										{/each}
-									{/each}
+									{#each item.lines ?? [] as at (at)}{@render contentsLine(contentLines[at])}{/each}
 								</ol>
 							{:else if item.kind === 'report'}
 								<p class="mt-2 text-[10.5px] leading-relaxed text-slate-600">
@@ -2255,6 +2290,10 @@
 				{/each}
 			</div>
 		{/each}
+		<!-- The Table of Contents' lines, each read to deal them out over its pages (#277). -->
+		<ol data-flow="contents">
+			{#each contentLines as line, at (at)}{@render contentsLine(line)}{/each}
+		</ol>
 		<div data-signature>{@render signature()}</div>
 		<!-- The Disclaimer's points, each read at the width of its column for each size tried (#275); set apart so
 		     trying sizes never resizes the measurer. -->

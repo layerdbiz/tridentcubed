@@ -3,6 +3,7 @@ import {
 	createFollower,
 	columnsFitOf,
 	columnsOf,
+	contentLinesOf,
 	flowOf,
 	heightOf,
 	lineSizeOf,
@@ -442,5 +443,49 @@ describe('flowOf', () => {
 	it('finds none for the panels that print pages of their own', () => {
 		expect(flowOf(panel('photos'), flows)).toBeUndefined();
 		expect(flowOf(panel('project'), flows)).toBeUndefined();
+	});
+});
+
+// Justin, 2026-11-24 (#277): the Table of Contents runs on to a continued page, a section and its parts never split.
+describe('contentLinesOf', () => {
+	const entries = [
+		{ title: 'Cover', page: '1', subs: [] },
+		{ title: 'Table of Contents', page: '2-3', subs: [] },
+		{
+			title: 'Damages / Cosmetics',
+			page: '22',
+			subs: [
+				{ title: 'Pre-Cargo Condition', page: '22' },
+				{ title: 'Hatch 2', page: '23' }
+			]
+		}
+	];
+
+	it('numbers each section and its parts like an ordered list, one line each', () => {
+		expect(contentLinesOf(entries)).toEqual([
+			{ number: '1.', title: 'Cover', page: '1', isSub: false },
+			{ number: '2.', title: 'Table of Contents', page: '2-3', isSub: false },
+			{ number: '3.', title: 'Damages / Cosmetics', page: '22', isSub: false },
+			{ number: '3.1', title: 'Pre-Cargo Condition', page: '22', isSub: true },
+			{ number: '3.2', title: 'Hatch 2', page: '23', isSub: true }
+		]);
+	});
+
+	it('moves a section that would not fit whole on to the next page, its parts with it', () => {
+		const lines = contentLinesOf(entries);
+		const heights = lines.map((line) => (line.isSub ? 20 : 30));
+
+		expect(
+			paginate(
+				heights,
+				120,
+				[],
+				[],
+				lines.map((line) => !line.isSub)
+			)
+		).toEqual([
+			[0, 1],
+			[2, 3, 4]
+		]);
 	});
 });

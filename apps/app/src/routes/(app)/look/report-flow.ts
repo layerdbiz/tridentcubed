@@ -168,6 +168,29 @@ export function partSpansOf(pages: (string | undefined)[][], first: number) {
 	return spans;
 }
 
+// The Table of Contents as lines, one to a section and one to each of its parts, numbered like an ordered list (1.
+// 2. 3. 3.1). Its pages are these lines dealt out like any flowing section's blocks (#277; Justin, 2026-11-24: "I
+// never want to leave a section cut off"): a section opens a part that stays whole, so one that would not fit with
+// all of its parts moves on to the continued page.
+export type ContentLineType = { number: string; title: string; page: string; isSub: boolean };
+
+export function contentLinesOf(
+	entries: { title: string; page: string; subs: { title: string; page: string }[] }[]
+) {
+	const lines: ContentLineType[] = [];
+	for (const [at, entry] of entries.entries()) {
+		lines.push({ number: `${at + 1}.`, title: entry.title, page: entry.page, isSub: false });
+		for (const [subAt, sub] of entry.subs.entries())
+			lines.push({
+				number: `${at + 1}.${subAt + 1}`,
+				title: sub.title,
+				page: sub.page,
+				isSub: true
+			});
+	}
+	return lines;
+}
+
 // The number each stage of the Operations panel wears, in the panel and before its title in the Preview (Justin,
 // 2026-11-19): the first is 1, the second 2, by the order they are in, so moving one renumbers them. A stage left
 // out of the report has none and is not counted, so the report's numbers never skip one.
