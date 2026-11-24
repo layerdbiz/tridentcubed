@@ -7,6 +7,7 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { sql } from 'drizzle-orm';
+import { Progress } from '@layerd/ui';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { UploadAnswerType, UploadRequestType } from '#lib/files/files.schema.js';
 import type { UploadStepsType } from '#lib/files/files.state.svelte.js';
@@ -578,6 +579,30 @@ describe('adding photos', () => {
 		const theirs = await open(mia);
 		await openProject(theirs, id);
 		expect(shown(panelOf(theirs.look, 'discharge'))).toEqual(shown(discharge));
+	});
+
+	it('gives photos picked together one toast that counts them until each is stored (#293)', async () => {
+		const uploads = createUploads();
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const discharge = panelOf(mine.look, 'discharge');
+		const group = addGroup(discharge);
+		const toast = new Progress();
+
+		addPhotos(discharge, [picture('one.jpg'), picture('two.jpg')], {
+			group,
+			projectId: id,
+			steps: uploads.steps,
+			toast: () => toast
+		});
+		expect(toast.label).toBe('Uploading 1 of 2 photos');
+		expect(group.photos.every((photo) => uploadOf(photo)?.isUploading)).toBe(true);
+
+		await uploads.settle();
+		expect(toast.label).toBe('2 photos uploaded');
+		expect(group.photos.every((photo) => photo.src.startsWith('/files/'))).toBe(true);
+		expect(group.photos.some((photo) => uploadOf(photo))).toBe(false);
+		toast.close();
 	});
 
 	it('puts photos dropped on a panel with no group into a first group made for them', async () => {

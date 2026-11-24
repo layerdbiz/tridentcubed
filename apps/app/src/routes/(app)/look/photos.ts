@@ -7,10 +7,17 @@
 // (`startUpload`), which reads its time and place and shrinks it first. It shows in place at once (its `src` is its
 // own preview, a `blob:` address) with an uploading mark (`uploadOf`); once its file is stored its `src` becomes the
 // app's file address and the mapper saves it (mapper.photos.ts). One failed upload is marked on its photo and is
-// retried by itself; the others carry on.
+// retried by itself; the others carry on. #293: photos picked or dropped together share one toast that counts them.
+import type { Progress } from '@layerd/ui';
 import { SvelteMap } from 'svelte/reactivity';
 import { toPictureType } from '#lib/files/files.schema.js';
-import { startUpload, type Upload, type UploadStepsType } from '#lib/files/files.state.svelte.js';
+import {
+	startUpload,
+	type Upload,
+	UploadBatch,
+	type UploadOptionsType,
+	type UploadStepsType
+} from '#lib/files/files.state.svelte.js';
 import { groupOf, type GroupType, type PanelType, type PhotoType } from './look.data';
 
 // The photos on their way, or whose upload failed, by photo id. A photo whose file is stored has none.
@@ -60,6 +67,8 @@ export type AddPhotosType = {
 	group?: GroupType;
 	/** The project the panel is in, so a Sent project refuses the upload before it starts. */
 	projectId: string;
+	/** Makes the toast the photos share (toasts.svelte.ts); without it each shows only its own mark. */
+	toast?: () => Progress;
 	steps?: UploadStepsType;
 };
 
@@ -68,12 +77,13 @@ export function addPhotos(panel: PanelType, files: File[], options: AddPhotosTyp
 	const images = files.filter((file) => toPictureType(file).startsWith('image/'));
 	if (!images.length) return 0;
 	const group = options.group ?? panel.groups.at(-1) ?? addGroup(panel);
+	const batch = options.toast && new UploadBatch(options.toast());
 	for (const file of images) {
 		const id = crypto.randomUUID();
 		group.photos.push({ id, src: '', description: '' });
 		// The photo as the group holds it, so setting its address shows and saves.
 		const photo = group.photos.at(-1)!;
-		const upload = startUpload(file, {
+		const settings: UploadOptionsType = {
 			for: { table: 'photo', column: 'file', id, projectId: options.projectId },
 			kind: 'photo',
 			steps: options.steps,
@@ -83,7 +93,11 @@ export function addPhotos(panel: PanelType, files: File[], options: AddPhotosTyp
 				if (upload.preview.startsWith('blob:') && typeof URL.revokeObjectURL === 'function')
 					URL.revokeObjectURL(upload.preview);
 			}
-		});
+		};
+		// A photo deleted from the panel on its way no longer counts in the toast (moved to another panel's group, it
+		// keeps only its own mark).
+		const isThere = () => panel.groups.some((each) => each.photos.some((one) => one.id === id));
+		const upload = batch ? batch.add(file, settings, isThere) : startUpload(file, settings);
 		uploads.set(id, upload);
 		photo.src = upload.preview;
 	}

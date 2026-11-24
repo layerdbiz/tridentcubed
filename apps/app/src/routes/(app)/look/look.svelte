@@ -6,8 +6,8 @@
 	// the header's cloud shows how that went. Coming back to the tab or opening a record takes in what others saved,
 	// while nothing here waits to be sent.
 	import './look.css';
-	import { fly } from 'svelte/transition';
 	import { untrack } from 'svelte';
+	import { Toast } from '@layerd/ui';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { fetchLists, fetchProject, saveRows } from '#lib/rows/rows.remote.js';
@@ -15,12 +15,12 @@
 	import { SyncLoop } from '#lib/rows/rows.state.svelte.js';
 	import { LookState } from './look.state.svelte';
 	import Confirm from './confirm.svelte';
-	import ProgressToast from './progress-toast.svelte';
 	import SaveSheet from './save-sheet.svelte';
 	import Shell from './shell.svelte';
 	import StatusSheet from './status-sheet.svelte';
 	import { openAddress, placeOf, toAddress } from './look.utils';
 	import { isOfProject, takeProject, takeReads, takeRows, toRows } from './mapper';
+	import { downloadToast, photoToasts } from './toasts';
 
 	type SelfType = { userId: string; role: LookState['role'] | null; isSuperAdmin: boolean };
 
@@ -184,17 +184,20 @@
 	<SaveSheet {look} />
 </div>
 
-<!-- The toasts, one over the other: the download's progress (#240), then the short notes. -->
+<!-- The toasts, one over the other (#293): the download's progress (#240), one for each set of photos picked
+     together, then the short notes. -->
 <div
 	class="pointer-events-none fixed inset-x-0 bottom-28 z-[90] flex flex-col items-center gap-2 px-4 md:bottom-20"
 >
-	<ProgressToast progress={look.progress} />
-	{#if look.toast}
-		<p
-			class="rounded-full bg-slate-900 px-4 py-2.5 text-sm text-white shadow-xl"
-			transition:fly={{ y: 16, duration: 200 }}
-		>
-			{look.toast}
-		</p>
-	{/if}
+	<Toast
+		progress={downloadToast()}
+		label="Download PDF"
+	/>
+	{#each photoToasts() as toast (toast)}
+		<Toast
+			progress={toast}
+			label="Upload photos"
+		/>
+	{/each}
+	<Toast text={look.toast} />
 </div>

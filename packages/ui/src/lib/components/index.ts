@@ -56,6 +56,8 @@ export { default as Menu, type MenuOptionType, type MenuProps } from "./molecule
 export { default as Navbar } from "./molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./molecules/preview/preview.svelte";
 export { default as Slider, type SliderProps } from "./molecules/slider/slider.svelte";
+export * from "./molecules/toast/toast.svelte.ts";
+export { default as Toast, type ToastProps } from "./molecules/toast/toast.svelte";
 export { default as Toggle, type ToggleProps } from "./molecules/toggle/toggle.svelte";
 export { default as Tree } from "./molecules/chart/tree/tree.svelte";
 

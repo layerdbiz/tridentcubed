@@ -8,7 +8,9 @@
 // the bytes are already in storage.
 //
 // Wiring a picture of a record to it is one line: give the picture field its `target` (`{ table, column, id }`), as
-// `image-field.svelte` does. Code that is not a field calls `startUpload(file, { for, kind, ondone })`.
+// `image-field.svelte` does. Code that is not a field calls `startUpload(file, { for, kind, ondone })`. Photos picked
+// together go through an `UploadBatch` and share one toast (#293).
+import type { Progress } from '@layerd/ui';
 import {
 	type ConvertAnswerType,
 	CONVERT_PATH,
@@ -54,6 +56,8 @@ export type UploadOptionsType = {
 	kind: UploadKindType;
 	/** Gets the app's file address once the file is in storage: put it in the row. */
 	ondone: (address: string) => void;
+	/** Told each time its marks change: how the toast it shares with others hears of it (`UploadBatch`). */
+	onchange?: () => void;
 	steps?: UploadStepsType;
 };
 
@@ -100,6 +104,8 @@ export class Upload {
 	/** The server is converting it (#294). */
 	isConverting = $state(false);
 	isFailed = $state(false);
+	/** It is in storage and the row has its address. */
+	isDone = $state(false);
 	reason = $state('');
 	#file: File;
 	#options: UploadOptionsType;
@@ -124,7 +130,9 @@ export class Upload {
 		this.preview ||= this.#steps.toPreview(this.#file);
 		this.isUploading = true;
 		this.isFailed = false;
+		this.isDone = false;
 		this.reason = '';
+		this.#tell();
 		try {
 			const { kind } = this.#options;
 			this.#prepared ??=
@@ -135,12 +143,15 @@ export class Upload {
 			if (!this.#sent) return;
 			if (prepared.shouldConvert && kind !== 'document') {
 				this.isConverting = true;
+				this.#tell();
 				const answer = await this.#steps.convert({ id: this.#sent.id });
 				this.isConverting = false;
 				if (!answer.isDone) return this.#fail(answer.reason);
 			}
 			this.isUploading = false;
 			this.#options.ondone(this.#sent.address);
+			this.isDone = true;
+			this.#tell();
 		} catch (error) {
 			this.#fail(error instanceof PictureError ? error.message : FAILED);
 		}
@@ -175,6 +186,86 @@ export class Upload {
 		this.isConverting = false;
 		this.isFailed = true;
 		this.reason = reason;
+		this.#tell();
+	}
+
+	#tell() {
+		this.#options.onchange?.();
+	}
+}
+
+/**
+ * Photos picked together (#293; #187 as changed 2026-11-24): each goes to storage on its own and keeps its own small
+ * mark, and they share one toast that counts them, "Uploading 3 of 12 photos", or "Converting" while the server
+ * converts one (#294). It stays until every one is stored; when one does not go it stays open with how many, and Try
+ * Again sends just those again. A photo tried again from its own mark brings the toast back. A photo deleted on its
+ * way no longer counts and is never sent again.
+ */
+export class UploadBatch {
+	#toast: Progress;
+	#uploads: Array<{ upload: Upload; isWanted: () => boolean }> = [];
+
+	constructor(toast: Progress) {
+		this.#toast = toast;
+	}
+
+	/** The photos on their way that still count: none that was deleted. */
+	get uploads() {
+		return this.#uploads.filter((each) => each.isWanted()).map((each) => each.upload);
+	}
+
+	/**
+	 * Starts one more photo on its way, sharing the toast. `isWanted` says whether its photo is still there to have
+	 * it; once it is not, the toast stops counting it and Try Again leaves it alone.
+	 */
+	add(file: File, options: UploadOptionsType, isWanted: () => boolean = () => true) {
+		const upload = new Upload(file, {
+			...options,
+			onchange: () => {
+				this.#update();
+				options.onchange?.();
+			}
+		});
+		this.#uploads.push({ upload, isWanted });
+		void upload.start();
+		return upload;
+	}
+
+	// The toast's words and bar, from where the photos are: the bar is at the share stored or given up on, and creeps
+	// toward the next one.
+	#update() {
+		const toast = this.#toast;
+		const uploads = this.uploads;
+		const total = uploads.length;
+		const failed = uploads.filter((upload) => upload.isFailed);
+		const settled = failed.length + uploads.filter((upload) => upload.isDone).length;
+		if (!total) {
+			toast.close();
+		} else if (settled < total) {
+			const verb = uploads.some((upload) => upload.isConverting) ? 'Converting' : 'Uploading';
+			const label = total === 1 ? `${verb} 1 photo` : `${verb} ${settled + 1} of ${total} photos`;
+			const [done, next] = [(100 * settled) / total, (100 * (settled + 1)) / total];
+			if (!toast.isBusy) toast.start(label, next);
+			toast.reach(done, next, label);
+		} else if (failed.length) {
+			toast.fail(this.#problemOf(failed, total), () => this.#retry());
+		} else {
+			toast.finish(total === 1 ? '1 photo uploaded' : `${total} photos uploaded`);
+		}
+	}
+
+	// Why they did not go: the reason when they all share it; different reasons are not run together as one.
+	#problemOf(failed: Upload[], total: number) {
+		const reasons = new Set(failed.map((upload) => upload.reason));
+		const reason = reasons.size === 1 ? failed[0].reason : '';
+		if (total === 1) return reason;
+		return `${failed.length} of ${total} photos did not upload. ${reason}`.trim();
+	}
+
+	#retry() {
+		const failed = this.uploads.filter((upload) => upload.isFailed);
+		if (!failed.length) return this.#update();
+		for (const upload of failed) void upload.retry();
 	}
 }
 
