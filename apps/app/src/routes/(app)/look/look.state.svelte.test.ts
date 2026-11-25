@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { draftOf, draftPanel, itemOf, STAGES, type ClientType } from './look.data';
-import { isMovedOn, LookState, metricsOf, toFollowing, toWorkBefore } from './look.state.svelte';
+import {
+	isMovedOn,
+	LookState,
+	metricsOf,
+	themeOf,
+	toFollowing,
+	toWorkBefore
+} from './look.state.svelte';
 import { sectionsOf, tallyOf } from './tally';
 
 // The tests run on Svelte's server build, where LookState's effects do nothing: what is checked here is the state
@@ -289,5 +296,18 @@ describe('a project’s status following its work (#328)', () => {
 		for (const status of ['Review', 'Revision', 'Sent', 'Complete', 'Archived'] as const)
 			expect(toFollowing(status, done)).toBe(status);
 		expect(toFollowing('In Progress', undone)).toBe('In Progress');
+	});
+});
+
+describe('a project’s Edit tab colour (#335)', () => {
+	it('draws a Sent, Complete or Archived project all in its status colour', () => {
+		expect(themeOf('Sent')).toContain('violet');
+		expect(themeOf('Complete')).toContain('success');
+		expect(themeOf('Archived')).toContain('slate');
+	});
+
+	it('keeps the progress colours while a project is in work, Review and Ready included', () => {
+		for (const status of ['Draft', 'In Progress', 'Review', 'Ready', 'Revision'] as const)
+			expect(themeOf(status)).toBe('');
 	});
 });

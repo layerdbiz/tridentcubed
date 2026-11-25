@@ -11,7 +11,9 @@
 	// `ring` (F): the icon sits in its own progress ring, so the card needs no bar.
 	// Run 11 (Justin, 2026-10-26 19:22): a Sent or Complete project is frozen. Every panel's icon and ring take the
 	// state's colour (Sent purple, Complete green), a lock in that colour stands where the switch was, and nothing
-	// inside opens for editing, drags or deletes (panel-list.svelte says why, with Unsend).
+	// inside opens for editing, drags or deletes (panel-list.svelte says why, with Unsend). #335: the colour is set
+	// once, on the panel list (themeOf), so the ring, icon, state word and bar here need no frozen colours of their
+	// own; a frozen panel is never quiet, so its "To do" takes the colour too.
 	// Run 26 (Justin, 2026-11-11), Panel List B: a panel with nothing done yet is quiet, its icon and its "To do"
 	// grey like its empty ring; blue starts with the first thing filled in.
 	import { slide } from 'svelte/transition';
@@ -37,31 +39,17 @@
 	const metrics = $derived(metricsOf(panel, look));
 	const tone = $derived(toneOf(metrics.status));
 	const isOpen = $derived(look.panelId === panel.id);
+	const frozen = $derived(look.isFrozen ? look.project.status : undefined);
 	const isQuiet = $derived(
-		look.variant('panels') !== 'A' && panel.isEnabled && metrics.status === 'To do'
+		look.variant('panels') !== 'A' && !frozen && panel.isEnabled && metrics.status === 'To do'
 	);
 	const isLocked = $derived(panel.control === 'locked');
-	const frozen = $derived(look.isFrozen ? look.project.status : undefined);
-	const FROZEN_RINGS: Record<string, string> = {
-		Sent: 'stroke-violet-500',
-		Complete: 'stroke-success',
-		Archived: 'stroke-slate-400'
-	};
-	// Inside an open panel everything the app draws in its blue takes the state's colour instead (Justin,
-	// 2026-11-16: "all those colors need to update as the status changes for every icon, not just some"): the
-	// project's while it is Sent, Complete or Archived, else green once the panel is complete. The theme's colours
-	// are read where they are used (@theme inline), so it is the theme's own variable that is set here.
-	const RECOLOURS: Record<string, string> = {
-		Sent: '[--theme-color-primary:var(--color-violet-500)]',
-		Complete: '[--theme-color-primary:var(--theme-color-success)]',
-		Archived: '[--theme-color-primary:var(--color-slate-400)]'
-	};
+	// Inside an open panel that is complete, everything the app draws in its blue turns green (Justin, 2026-11-16:
+	// "all those colors need to update as the status changes for every icon, not just some"). The theme's colours
+	// are read where they are used (@theme inline), so it is the theme's own variable that is set here; in a frozen
+	// project its green is already the state's colour (themeOf).
 	const recolour = $derived(
-		frozen && panel.isEnabled
-			? RECOLOURS[frozen]
-			: metrics.status === 'Complete'
-				? RECOLOURS.Complete
-				: ''
+		metrics.status === 'Complete' ? '[--theme-color-primary:var(--theme-color-success)]' : ''
 	);
 	const TRACKS = {
 		'To do': 'bg-slate-400',
@@ -196,18 +184,16 @@
 					percent={panel.isEnabled ? metrics.percent : 0}
 					size={52}
 					stroke={4}
-					tone={frozen && panel.isEnabled ? FROZEN_RINGS[frozen] : tone.ring}
+					tone={tone.ring}
 				>
 					<span
-						class="{panel.icon} relative size-6 {frozen && panel.isEnabled
-							? STATUS[frozen].tone
-							: panel.isEnabled
-								? metrics.status === 'Complete'
-									? 'text-success'
-									: isQuiet
-										? 'text-slate-400'
-										: 'text-primary'
-								: 'text-slate-300'}"
+						class="{panel.icon} relative size-6 {panel.isEnabled
+							? metrics.status === 'Complete'
+								? 'text-success'
+								: isQuiet
+									? 'text-slate-400'
+									: 'text-primary'
+							: 'text-slate-300'}"
 					></span>
 				</ProgressRing>
 			{:else}

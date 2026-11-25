@@ -3,9 +3,10 @@
 	// project's percent and state at its right (the state in its colour, the way each panel shows them), the bar under
 	// both, from where the title starts (run 9 notes 10 and 12), and a ⋮ at the far right with what can be done to the
 	// whole project (note 11), the same MoreMenu the dashboard's lists use. `isCloud` adds the save cloud after the
-	// title (the phone has it on the floating bar).
+	// title (the phone has it on the floating bar). A Sent, Complete or Archived project's bar is all in its status
+	// colour, the cloud too (themeOf, #335).
 	import { STATUS } from './look.data';
-	import type { LookState } from './look.state.svelte';
+	import { themeOf, type LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import SaveCloud from './save-cloud.svelte';
 
@@ -14,7 +15,7 @@
 	const status = $derived(STATUS[look.project.status]);
 </script>
 
-<div class="flex items-start gap-1">
+<div class="flex items-start gap-1 {themeOf(look.project.status)}">
 	<button
 		class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
 		aria-label="Back to Home"
