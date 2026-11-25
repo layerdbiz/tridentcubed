@@ -90,6 +90,15 @@
 	import CoverA from './variants/cover-a.svelte';
 	import CoverB from './variants/cover-b.svelte';
 	import CoverC, { type CoverLineType as CoverCLineType } from './variants/cover-c.svelte';
+	import PageStrip from './page-strip.svelte';
+	import PresentBar from './present-bar.svelte';
+	import {
+		Presentation,
+		slideRoomOf,
+		slideZoomOf,
+		startOf,
+		type LayoutType
+	} from './presentation.svelte';
 	import { Viewport, type RectType } from './viewport.svelte';
 	import ZoomBar from './zoom-bar.svelte';
 
@@ -177,7 +186,12 @@
 		viewport.isLeft = isLeft;
 	});
 	// svelte-ignore state_referenced_locally
-	let layout = $state<'column' | 'spread'>(start);
+	let layout = $state<LayoutType>(start);
+	// Presentation (#324): the pages one at a time, over the whole screen, and the layout Esc goes back to.
+	const presentation = new Presentation();
+	const isPresenting = $derived(layout === 'present');
+	// svelte-ignore state_referenced_locally
+	let back: 'column' | 'spread' = start;
 
 	function valueOf(kind: string, label: string) {
 		return look.panels
@@ -802,26 +816,41 @@
 	const COLUMNS = 4;
 	const GAP = 48;
 	const columns = $derived(
-		layout === 'column'
+		layout !== 'spread'
 			? 1
 			: viewport.isWide
 				? viewport.columnsFor(pages.length, { width: W, height: H }, GAP)
 				: Math.max(1, Math.min(COLUMNS, pages.length))
 	);
+	// Presented, the page shown fills the room left by the screen's edges and the strip, and the pages lie in one row
+	// a screen apart, so the next one waits just past the edge and slides in with a swipe.
+	let stripHeight = $state(0);
+	let safe = $state({ top: 0, bottom: 0 });
+	const slideRoom = $derived(
+		slideRoomOf(viewport, viewport.isWide, safe.top, stripHeight || safe.bottom)
+	);
+	const slideZoom = $derived(slideZoomOf(slideRoom, { width: W, height: H }));
+	const slideStep = $derived(viewport.width / slideZoom);
 	const rects = $derived(
-		pages.map((_, index): RectType => ({
-			x: (index % columns) * (W + GAP),
-			y: Math.floor(index / columns) * (H + GAP),
-			width: W,
-			height: H
-		}))
+		pages.map((_, index): RectType =>
+			isPresenting
+				? { x: index * slideStep, y: 0, width: W, height: H }
+				: {
+						x: (index % columns) * (W + GAP),
+						y: Math.floor(index / columns) * (H + GAP),
+						width: W,
+						height: H
+					}
+		)
 	);
 	// When the rows change shape on a desktop (the window is resized, a panel adds or takes pages), the pages are
 	// laid out to fill the screen again. A change of layout is left to its own eased refit.
 	let shape = '';
 	$effect(() => {
 		const rows = Math.ceil(pages.length / columns);
-		viewport.content = { width: columns * (W + GAP) - GAP, height: rows * (H + GAP) - GAP };
+		viewport.content = isPresenting
+			? { width: Math.max(0, pages.length - 1) * slideStep + W, height: H }
+			: { width: columns * (W + GAP) - GAP, height: rows * (H + GAP) - GAP };
 		const next = `${layout}:${columns}x${rows}`;
 		untrack(() => {
 			const isRefit =
@@ -864,10 +893,11 @@
 		const index = targetIndex;
 		const inset = top;
 		const isWhole = isLoaded;
-		if (!isReady || !rect) return;
+		if (!isReady || !rect || isPresenting) return;
 		untrack(() => {
 			const move = follow(index, rect, inset, isWhole);
-			if (move === 'stay') return;
+			// Back from a presentation the pages land on the page that was shown, not the panel's.
+			if (move === 'stay' || landing !== undefined) return;
 			if (move === 'glide') return viewport.focus(rect);
 			// The header's height as it is now: this can run before the line above that hands it to the canvas.
 			viewport.top = inset;
@@ -882,10 +912,149 @@
 		else viewport.fitAll();
 	}
 
-	function toggleLayout() {
-		layout = layout === 'column' ? 'spread' : 'column';
+	function choose(mode: LayoutType) {
+		if (mode === layout) return;
+		if (mode === 'present') return present();
+		layout = mode;
 		requestAnimationFrame(refit);
 	}
+
+	// Presenting: the page shown where it belongs, moved by however far a finger has taken it; a swipe let go slides.
+	$effect(() => {
+		if (!isPresenting || !isReady) return;
+		const zoom = slideZoom;
+		const x =
+			slideRoom.x +
+			(slideRoom.width - W * zoom) / 2 -
+			presentation.at * viewport.width +
+			presentation.offset;
+		const y = slideRoom.y + (slideRoom.height - H * zoom) / 2;
+		const isEased = presentation.isEased;
+		untrack(() => viewport.moveTo(x, y, zoom, isEased));
+	});
+	$effect.pre(() => {
+		presentation.count = pages.length;
+	});
+
+	// Over everything: full screen where the browser allows it (Present asks for it, so it needs the click), and
+	// otherwise, or once full screen is left with the bar's button, in the page's top layer, over the header, the panels
+	// and the phone's bar. iPhone Safari has no full screen for a page: there it fills the window.
+	let root: HTMLDivElement | undefined = $state();
+	let isFull = $state(false);
+	let isFullAsked = $state(false);
+	let isFullKept = false;
+	const canFull = typeof document !== 'undefined' && Boolean(document.fullscreenEnabled);
+	const canLift = typeof HTMLElement !== 'undefined' && 'showPopover' in HTMLElement.prototype;
+	const isLifted = $derived(isPresenting && !isFull && !isFullAsked && canLift);
+	$effect(() => {
+		const element = root;
+		if (!element || !isLifted) return;
+		if (!element.matches(':popover-open')) element.showPopover();
+		return () => {
+			if (element.matches(':popover-open')) element.hidePopover();
+		};
+	});
+
+	function askFull() {
+		if (!root || !canFull) return;
+		if (root.matches(':popover-open')) root.hidePopover();
+		isFullAsked = true;
+		root.requestFullscreen().catch(() => (isFullAsked = false));
+	}
+
+	function toggleFull() {
+		if (!isFull) return askFull();
+		isFullKept = true;
+		document.exitFullscreen().catch(() => {});
+	}
+
+	// Esc in full screen leaves full screen, and the presentation with it; the bar's button leaves only full screen.
+	function onfullscreenchange() {
+		const wasFull = isFull;
+		isFull = Boolean(root) && document.fullscreenElement === root;
+		isFullAsked = false;
+		if (wasFull && !isFull && isPresenting && !isFullKept) leave();
+		isFullKept = false;
+	}
+
+	// What a phone keeps at the top and the bottom (the clock, the home bar), which the page stays clear of.
+	function safeAreaOf() {
+		const probe = document.createElement('div');
+		probe.style.cssText =
+			'position: fixed; visibility: hidden; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom)';
+		document.body.append(probe);
+		const style = getComputedStyle(probe);
+		const area = {
+			top: parseFloat(style.paddingTop) || 0,
+			bottom: parseFloat(style.paddingBottom) || 0
+		};
+		probe.remove();
+		return area;
+	}
+	$effect(() => {
+		if (!isPresenting || !viewport.width || !viewport.height) return;
+		safe = safeAreaOf();
+	});
+
+	// From the page being read, or the first when every page is on the screen.
+	function present() {
+		back = layout === 'column' ? 'column' : 'spread';
+		const screen = {
+			x: viewport.left,
+			y: viewport.top,
+			width: viewport.width - viewport.left,
+			height: viewport.height - viewport.top
+		};
+		presentation.start(startOf(rects, viewport, screen));
+		layout = 'present';
+		askFull();
+	}
+
+	// Back to Stack or Spread, on the page that was shown, once the preview has its own size again.
+	let landing = $state<number>();
+	let landTimer: ReturnType<typeof setTimeout> | undefined;
+	function leave() {
+		if (!isPresenting) return;
+		landing = presentation.at;
+		presentation.stop();
+		layout = back;
+		if (isFull) {
+			isFullKept = true;
+			document.exitFullscreen().catch(() => {});
+		}
+		clearTimeout(landTimer);
+		landTimer = setTimeout(() => (landing = undefined), 600);
+	}
+	$effect(() => {
+		const index = landing;
+		const rect = index === undefined ? undefined : rects[index];
+		if (!rect || isPresenting || !viewport.width || !viewport.height) return;
+		untrack(() => {
+			if (layout === 'column') viewport.fitWidth(rect, false);
+			else viewport.fitAll(false);
+		});
+	});
+
+	// Keys while presenting: the arrows and the rest turn the page (presentation.svelte.ts), Esc leaves. They are
+	// taken before anything else on the page sees them.
+	function onkeydown(event: KeyboardEvent) {
+		if (!isPresenting) return;
+		if (
+			(event.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]')
+		)
+			return;
+		presentation.wake();
+		if (event.key === 'Escape') {
+			if (!document.fullscreenElement) leave();
+		} else if (event.metaKey || event.ctrlKey || event.altKey || !presentation.key(event.key))
+			return;
+		event.preventDefault();
+		event.stopPropagation();
+	}
+	onMount(() => () => {
+		clearTimeout(landTimer);
+		presentation.stop();
+	});
 
 	function dateOf(value: string) {
 		if (!value) return 'No date';
@@ -1771,14 +1940,29 @@
 	{/if}
 {/snippet}
 
-<div class="relative h-full overflow-hidden {surface}">
+<svelte:window onkeydowncapture={onkeydown} />
+<svelte:document {onfullscreenchange} />
+
+<!-- Presenting (#324), the preview covers the whole screen: full screen, or the page's top layer. -->
+<div
+	bind:this={root}
+	popover={isLifted ? 'manual' : undefined}
+	class="{isPresenting
+		? 'fixed inset-0 z-[100] m-0 size-full max-h-none max-w-none border-0 p-0 text-inherit'
+		: 'relative h-full'} overflow-hidden {surface} {isPresenting && presentation.isIdle
+		? 'cursor-none'
+		: ''}"
+	{@attach isPresenting && presentation.controls}
+>
 	<div
-		class="absolute inset-0 cursor-grab touch-none select-none [-webkit-touch-callout:none] {viewport.isMoving
-			? 'cursor-grabbing'
-			: ''}"
+		class="absolute inset-0 touch-none select-none [-webkit-touch-callout:none] {isPresenting
+			? ''
+			: viewport.isMoving
+				? 'cursor-grabbing'
+				: 'cursor-grab'}"
 		bind:clientWidth={viewport.width}
 		bind:clientHeight={viewport.height}
-		{@attach viewport.gestures}
+		{@attach isPresenting ? presentation.swipe : viewport.gestures}
 	>
 		<div
 			bind:this={canvas}
@@ -1790,12 +1974,18 @@
 		>
 			{#each pages as item, index (index)}
 				{@const rect = rects[index]}
+				<!-- Presenting, only the page shown and the two beside it are drawn, and a page moves with no easing. -->
 				<article
-					class="absolute overflow-hidden bg-white text-slate-800 shadow-[0_1px_3px_rgb(15_23_42/0.08),0_24px_48px_-24px_rgb(15_23_42/0.25)] ring-4 transition-[box-shadow,top,left] duration-300 {item.key ===
-					target
+					class="absolute overflow-hidden bg-white text-slate-800 shadow-[0_1px_3px_rgb(15_23_42/0.08),0_24px_48px_-24px_rgb(15_23_42/0.25)] ring-4 {isPresenting ||
+					landing !== undefined
+						? ''
+						: 'transition-[box-shadow,top,left] duration-300'} {item.key === target && !isPresenting
 						? 'ring-primary/70'
 						: 'ring-transparent'}"
-					style="left: {rect.x}px; top: {rect.y}px; width: {W}px; height: {H}px"
+					style="left: {rect.x}px; top: {rect.y}px; width: {W}px; height: {H}px{isPresenting &&
+					Math.abs(index - presentation.at) > 1
+						? '; visibility: hidden'
+						: ''}"
 					data-page={item.key}
 				>
 					{#if item.kind === 'cover' && isCoverC}
@@ -2356,19 +2546,54 @@
 		{/if}
 	</div>
 
-	<div
-		class="absolute right-3 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-10 md:top-1/2 md:right-5 md:bottom-auto md:-translate-y-1/2"
-	>
-		<ZoomBar
-			{viewport}
-			{layout}
-			onfit={refit}
-			onlayout={toggleLayout}
-			ondownload={download}
+	{#if isPresenting}
+		<PageStrip
+			{canvas}
+			{pages}
+			at={presentation.at}
+			isWide={viewport.isWide}
+			ongo={(index) => presentation.go(index)}
+			bind:height={stripHeight}
 		/>
-	</div>
+		<!-- The page number, in the bottom right corner (Justin, 2026-11-25), over the strip and clear of the bar. -->
+		<p
+			class="pointer-events-none absolute z-[2] rounded-full bg-black/80 px-[11px] py-[5px] text-xs font-semibold text-white tabular-nums transition-opacity duration-500 {presentation.isIdle
+				? 'opacity-35'
+				: ''}"
+			style="right: {viewport.isWide ? 20 : 76}px; bottom: {stripHeight +
+				(viewport.isWide ? 24 : 12)}px"
+			aria-live="polite"
+			aria-label="Page {presentation.at + 1} of {pages.length}"
+		>
+			{presentation.at + 1}<span class="text-white/60">{` / ${pages.length}`}</span>
+		</p>
+		<div
+			class="absolute right-3 bottom-[calc(env(safe-area-inset-bottom)+24px)] z-10 md:top-1/2 md:right-5 md:bottom-auto md:-translate-y-1/2"
+		>
+			<PresentBar
+				{presentation}
+				{isFull}
+				{canFull}
+				onexit={leave}
+				onfull={toggleFull}
+			/>
+		</div>
+	{:else}
+		<div
+			class="absolute right-3 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-10 md:top-1/2 md:right-5 md:bottom-auto md:-translate-y-1/2"
+		>
+			<ZoomBar
+				{viewport}
+				{layout}
+				onfit={refit}
+				onmode={choose}
+				ondownload={download}
+			/>
+		</div>
+	{/if}
 
 	<p
+		hidden={isPresenting}
 		style="left: {left + 16}px"
 		class="pointer-events-none absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm backdrop-blur transition-opacity duration-500 md:bottom-4 {isHintShown
 			? 'opacity-100'
