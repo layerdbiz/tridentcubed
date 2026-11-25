@@ -474,6 +474,46 @@ describe('attached PDFs in the downloaded report (#327)', () => {
 		expect(placed.length).toBeLessThan(bytes.length * 1.2);
 	});
 
+	it('draws a PDF as pictures of its pages when its own would take the report past 10 MB, a lighter one as itself (#295)', async () => {
+		// A scan of two pages that weighs 10.5 MB, as a list attached straight from a copier can, and a light list.
+		const scan = await PDFDocument.create();
+		const grain = new Uint8Array(10.5 * MB);
+		for (let at = 0; at < grain.length; at += 1) grain[at] = (at * 7919) % 251;
+		const jpeg = new Uint8Array(WHITE_JPEG.length + grain.length);
+		jpeg.set(WHITE_JPEG);
+		jpeg.set(grain, WHITE_JPEG.length);
+		const picture = await scan.embedJpg(jpeg);
+		for (let at = 0; at < 2; at += 1)
+			scan.addPage([612, 792]).drawImage(picture, { x: 0, y: 0, width: 612, height: 792 });
+		const heavy = await scan.save();
+		const light = await attachedOf(1);
+		const asked: Array<[string, number]> = [];
+		const box = { width: 250, height: 188 };
+		const placed = await placePdfPages(
+			await printedOf(2),
+			[
+				{ page: 0, box: { x: 40, y: 120, ...box }, source: '/files/list', at: 0 },
+				{ page: 1, box: { x: 40, y: 120, ...box }, source: '/files/scan', at: 0 },
+				{ page: 1, box: { x: 305, y: 120, ...box }, source: '/files/scan', at: 1 }
+			],
+			{
+				bytes: async (source) => (source === '/files/scan' ? heavy : light),
+				picture: async (source, page) => {
+					asked.push([source, page]);
+					return WHITE_JPEG;
+				}
+			}
+		);
+
+		expect(heavy.length).toBeGreaterThan(10 * MB);
+		expect(asked).toEqual([
+			['/files/scan', 1],
+			['/files/scan', 2]
+		]);
+		expect((await drawnOn(placed, 1)).match(/ Do/g)).toHaveLength(2);
+		expect(placed.length).toBeLessThan(MB);
+	});
+
 	it('hands back the report untouched when nothing is attached', async () => {
 		const printed = await printedOf(1);
 		const read: PdfReaderType = { bytes: async () => printed, picture: async () => WHITE_JPEG };

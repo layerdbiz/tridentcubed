@@ -203,6 +203,14 @@ export async function joinPdfs(pdfs: Uint8Array[], filename: string) {
 // each of those spots empty (nothing of the picture rides in the request) and says where it is; once the parts are
 // printed and joined, each page of the PDF is put in its spot here, on the device. A PDF whose pages cannot be
 // copied (one locked against it) goes in as pictures of its pages instead.
+//
+// A report stays within 10 MB (#295; ADR 0004). An attached PDF may be up to 20 MB, and its own pages bring what
+// they draw with them, so a PDF whose own pages would take the report past that goes in as pictures of its pages,
+// drawn as the Preview draws them, sized to their spots. PDFs are weighed in the order the report first shows them,
+// so the earlier ones keep their own pages.
+
+/** The most a downloaded report should weigh, in bytes (#295). */
+export const REPORT_BUDGET = 10 * 1024 * 1024;
 
 /** A box on a report page, in the page's own pixels (595 by 842), from its top left. */
 export type BoxType = { x: number; y: number; width: number; height: number };
@@ -252,29 +260,40 @@ export function toDrawing(fitted: BoxType, size: { width: number; height: number
 
 /**
  * The report with each attached PDF's pages put in their spots. Each PDF is fetched once. One that cannot be fetched
- * fails the download, with words the person can act on; one whose pages cannot be copied goes in as pictures.
+ * fails the download, with words the person can act on; one whose pages cannot be copied, or whose own pages would
+ * take the report past `budget` bytes, goes in as pictures.
  */
 export async function placePdfPages(
 	pdf: Uint8Array,
 	placements: PlacementType[],
 	read: PdfReaderType,
-	pageWidth = 595
+	pageWidth = 595,
+	budget = REPORT_BUDGET
 ) {
 	if (!placements.length) return pdf;
 	const { PDFDocument, degrees, rgb } = await import('pdf-lib');
 	const report = await PDFDocument.load(pdf);
 	const pages = report.getPages();
 	const sources = new Map<string, Promise<import('pdf-lib').PDFDocument | undefined>>();
+	// What the report would weigh with the PDFs whose own pages it takes: at most each PDF's whole weight.
+	let weight = pdf.length;
 
 	function sourceOf(address: string) {
 		let source = sources.get(address);
 		if (!source) {
 			source = read.bytes(address).then(
-				// A PDF the library cannot open as it is (locked, or written oddly) is drawn as pictures instead.
-				(bytes) =>
-					PDFDocument.load(bytes)
-						.then((source) => (source.getPageCount() ? source : undefined))
-						.catch(() => undefined),
+				// A PDF the library cannot open as it is (locked, or written oddly), or one that would take the report
+				// past its budget, is drawn as pictures instead.
+				(bytes) => {
+					if (weight + bytes.length > budget) return undefined;
+					return PDFDocument.load(bytes)
+						.then((source) => {
+							if (!source.getPageCount()) return undefined;
+							weight += bytes.length;
+							return source;
+						})
+						.catch(() => undefined);
+				},
 				(error) => {
 					console.error('An attached PDF could not be fetched.', error);
 					throw new DownloadError(
