@@ -1535,7 +1535,8 @@
 
 <!-- Someone in attendance: the app's own Avatar, the name, and labels. The organization's people wear its badge
      and show how to reach them (#246; Michael, 2026-11-19: "Full contact details"), from their Team record: the
-     phone over the email, as the dashboard's Team list has them. One that is empty is left out. -->
+     phone over the email, as the dashboard's Team list has them. Another company's people show theirs as typed on
+     the project (#326). One that is empty is left out. -->
 {#snippet personCard(
 	name: string,
 	labels: string[],
@@ -1737,7 +1738,8 @@
 	{:else if block.kind === 'company'}
 		{@const other = personnel.find((item) => item.id === block.id)}
 		{#if other}
-			<!-- Anyone else on the job, by company, in the same cards with no badge. -->
+			<!-- Anyone else on the job, by company, in the same cards with no badge, and the phone and email typed for
+			     them on the project (#326), as a team member's card shows theirs. -->
 			<div class="pt-2">
 				{@render caption(other.company || 'Other personnel')}
 				<div
@@ -1745,7 +1747,13 @@
 					style="grid-template-columns: repeat({teamColumns}, minmax(0, 1fr))"
 				>
 					{#each other.people as person (person.id)}
-						{@render personCard(person.name, person.title ? [person.title] : [], false, undefined)}
+						{@render personCard(
+							person.name,
+							person.title ? [person.title] : [],
+							false,
+							undefined,
+							person
+						)}
 					{/each}
 				</div>
 			</div>

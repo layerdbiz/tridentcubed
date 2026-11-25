@@ -343,7 +343,9 @@ function toPersonnelRows(projectId: string, personnel: PersonnelType[]): RowType
 					companyId: company.id,
 					position: index,
 					name: person.name,
-					title: person.title
+					title: person.title,
+					phone: person.phone,
+					email: person.email
 				}
 			});
 	}
@@ -526,7 +528,9 @@ function toPersonnel(rows: SavedRowType[]): PersonnelType[] {
 				.map((person) => ({
 					id: person.id,
 					name: text(person.values, 'name'),
-					title: text(person.values, 'title')
+					title: text(person.values, 'title'),
+					phone: text(person.values, 'phone'),
+					email: text(person.values, 'email')
 				}))
 		}));
 }

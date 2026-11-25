@@ -82,6 +82,16 @@ export const HELP: readonly HelpType[] = [
 		label: 'Title',
 		text: 'What that person does on the job, such as Foreman or Agent.'
 	},
+	{
+		key: 'personnel.phone',
+		label: 'Phone',
+		text: 'A number to reach that person on. It prints on their card on the Project Report page, as a link to tap. Leave it empty if you don’t have one.'
+	},
+	{
+		key: 'personnel.email',
+		label: 'Email',
+		text: 'An email address to reach that person at. It prints under the phone on their card, as a link to tap. Leave it empty if you don’t have one.'
+	},
 
 	// The Transport Mode panel.
 	{

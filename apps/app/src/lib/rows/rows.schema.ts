@@ -253,7 +253,15 @@ export const TABLES = {
 	personnel_person: {
 		scope: 'project',
 		parent: { table: 'personnel_company', column: 'companyId' },
-		columns: { projectId: ID, companyId: ID, position: POSITION, name: TEXT, title: TEXT }
+		columns: {
+			projectId: ID,
+			companyId: ID,
+			position: POSITION,
+			name: TEXT,
+			title: TEXT,
+			phone: TEXT,
+			email: TEXT
+		}
 	},
 	panel: {
 		scope: 'project',
