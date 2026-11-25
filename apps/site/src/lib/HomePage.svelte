@@ -503,7 +503,7 @@
 	/>
 
 	<!-- partners -->
-	{#if mq.sm}
+	{#snippet partnersSlider()}
 		<Slider
 			class="bleed overflow-hidden mask-x-lg"
 			show={3}
@@ -520,7 +520,9 @@
 				/>
 			{/each}
 		</Slider>
-	{:else}
+	{/snippet}
+
+	{#snippet partnersRow()}
 		<!-- Desktop: 8 cols x 2 rows grid -->
 		<div
 			class="flex items-center justify-center gap-12 mask-x-lg px-10 pb-20 invert lg:mask-[unset]"
@@ -533,6 +535,16 @@
 				/>
 			{/each}
 		</div>
+	{/snippet}
+
+	{#if mq.base}
+		<!-- First paint, before the Bucket is known: CSS shows the band the Bucket picks next (sm is below md) -->
+		<div class="contents md:hidden">{@render partnersSlider()}</div>
+		<div class="hidden md:contents">{@render partnersRow()}</div>
+	{:else if mq.sm}
+		{@render partnersSlider()}
+	{:else}
+		{@render partnersRow()}
 	{/if}
 
 	<!-- testimonials -->

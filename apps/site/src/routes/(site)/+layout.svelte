@@ -18,6 +18,7 @@
 		Image,
 		scroll,
 		trackEvent,
+		Mq,
 		mq,
 		navigationState
 	} from '@layerd/ui';
@@ -170,6 +171,9 @@
 		fetchpriority="high"
 	/>
 </svelte:head>
+
+<!-- Hosts the Bucket once for every page here that reads `mq` (ADR 0002) -->
+<Mq />
 
 <!-- <Metadata /> -->
 <!-- Hidden image to keep background cached in memory -->
