@@ -654,8 +654,13 @@ export class LookState {
 	// What keeps a percent under 100% (#305): a tap on a panel's percent lists that panel's empty inputs, a tap on the
 	// project's percent the whole project's. The list stays until it is closed or nothing is left in it: it is read
 	// anew as inputs are filled in, and only while that project is the one open.
+	// One panel by its id, or every panel when none is named: whose empty inputs a percent lists.
+	#panelsOf(panelId?: string) {
+		return panelId ? this.panels.filter((panel) => panel.id === panelId) : this.panels;
+	}
+
 	showEmpty(panelId?: string) {
-		const panels = panelId ? this.panels.filter((panel) => panel.id === panelId) : this.panels;
+		const panels = this.#panelsOf(panelId);
 		if (!emptyInputsOf(panels, this).length) {
 			this.emptyFor = undefined;
 			return this.say(`Everything${panelId ? ` in ${panels[0]?.name}` : ''} is filled in`);
@@ -670,10 +675,7 @@ export class LookState {
 	get empties(): EmptyInputType[] {
 		const asked = this.emptyFor;
 		if (!asked || this.screen !== 'workspace' || asked.projectId !== this.projectId) return [];
-		const panels = asked.panelId
-			? this.panels.filter((panel) => panel.id === asked.panelId)
-			: this.panels;
-		return emptyInputsOf(panels, this);
+		return emptyInputsOf(this.#panelsOf(asked.panelId), this);
 	}
 
 	// An entry of that list opens its input: the Edit tab, the input's panel, and the input to put the focus on.
