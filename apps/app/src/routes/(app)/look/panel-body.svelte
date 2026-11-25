@@ -62,6 +62,7 @@
 		toPictureType
 	} from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
+	import { DEFAULT_LAYOUT, LAYOUTS, type PageLayoutType } from '#lib/report/report.constants.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
 	import ImageField from './image-field.svelte';
@@ -75,7 +76,6 @@
 		groupWordOf,
 		isPdfAttachment,
 		itemOf,
-		LAYOUTS,
 		newPerson,
 		newPersonnel,
 		nextJobOf,
@@ -109,7 +109,7 @@
 	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
 	import { sortable } from './sortable';
 	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
-	import { sectionsOf, valuesOf } from './tally';
+	import { MARKED_LABELS, sectionsOf, valuesOf } from './tally';
 	import { focusInput, inputIn } from './focus';
 
 	let {
@@ -380,7 +380,7 @@
 				// group's photos do.
 				panel.attachments = [
 					...(panel.attachments ?? []),
-					{ id, name: file.name, src, kind, layout: 4 }
+					{ id, name: file.name, src, kind, layout: DEFAULT_LAYOUT }
 				];
 				save();
 			}
@@ -697,6 +697,8 @@
 							type="email"
 							inputmode="email"
 							autocomplete="off"
+							autocapitalize="off"
+							spellcheck={false}
 							bind:value={person.email}
 							maxlength={200}
 							help={look.helpOf('personnel.email')}
@@ -755,8 +757,8 @@
 	label: string,
 	id: string,
 	key: string,
-	value: number,
-	onpick: (layout: number) => void
+	value: PageLayoutType,
+	onpick: (layout: PageLayoutType) => void
 )}
 	<div
 		class="has-help"
@@ -1056,7 +1058,7 @@
 									{@render perPage(
 										'Pages per Page',
 										`${uid}-${file.id}-layout`,
-										'item_attachment.layout',
+										'itemAttachment.layout',
 										file.layout,
 										(layout) => {
 											file.layout = layout;
@@ -1169,14 +1171,14 @@
 						bind:value={item.quantity}
 						placeholder="Qty"
 						aria-label="Quantity of item {itemIndex + 1}"
-						data-input="Quantity"
+						data-input={MARKED_LABELS.quantity}
 					/>
 					<input
 						class={inputClass}
 						bind:value={item.description}
 						placeholder="What it is, e.g. Accessory crates"
 						aria-label="Description of item {itemIndex + 1}"
-						data-input="Description"
+						data-input={MARKED_LABELS.description}
 					/>
 					<button
 						type="button"
@@ -1198,7 +1200,7 @@
 				<button
 					type="button"
 					class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-					data-input="Item"
+					data-input={MARKED_LABELS.item}
 					onclick={() => {
 						panel.items.push(itemOf());
 						save();
@@ -1275,7 +1277,7 @@
 											sortEntries(dayIndex);
 										}}
 										aria-label="Time, on the 24-hour clock"
-										data-input="Time"
+										data-input={MARKED_LABELS.time}
 									/>
 									<input
 										class={inputClass}
@@ -1320,7 +1322,7 @@
 			<button
 				type="button"
 				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-				data-input="Day"
+				data-input={MARKED_LABELS.day}
 				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
 			>
 			<button
@@ -1459,7 +1461,7 @@
 								placeholder="Optional"></textarea>
 						</div>
 						{@render perPage(
-							'Photos per page',
+							'Photos per Page',
 							`${uid}-${group.id}-layout`,
 							'group.layout',
 							group.layout,
@@ -1642,7 +1644,7 @@
 									type="file"
 									accept={ATTACHMENT_ACCEPT}
 									multiple
-									data-input="Photos"
+									data-input={MARKED_LABELS.photos}
 									class="sr-only"
 									onchange={(event) => pickPhotos(event, group)}
 								/>
@@ -1683,7 +1685,7 @@
 		<button
 			type="button"
 			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-			data-input="Photos"
+			data-input={MARKED_LABELS.photos}
 			onclick={addGroup}><span class="icon-[mdi--plus] size-4"></span>Add {word}</button
 		>
 	{/if}

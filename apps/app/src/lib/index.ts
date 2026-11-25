@@ -23,6 +23,7 @@ export * from "./pdf/pdf.utils.ts";
 export * from "./start/places.ts";
 export * from "./presence/presence.constants.ts";
 export * from "./presence/presence.utils.ts";
+export * from "./report/report.constants.ts";
 export * from "./report/report.utils.ts";
 export * from "./rows/rows.remote.ts";
 export * from "./rows/rows.schema.ts";

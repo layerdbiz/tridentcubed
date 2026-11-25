@@ -185,7 +185,7 @@ describe('a panel’s count (#229)', () => {
 });
 
 describe('what keeps a percent under 100% (#305)', () => {
-	function project(owner = 'Capt. Cezary Poninski') {
+	function project(owner = 'Capt. Ana Reyes') {
 		const look = fresh();
 		look.create(draftPanel(look.organization.name, owner));
 		return look;

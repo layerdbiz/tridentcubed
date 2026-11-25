@@ -45,7 +45,11 @@ describe('a new project', () => {
 describe('a project from before stages', () => {
 	it('keeps its groups, descriptions and photos, in order, under the new title', () => {
 		const preloading = { ...groupOf('Preloading'), description: 'On the quay', photos: [stored()] };
-		const loading = { ...groupOf('Loading Operations'), layout: 6, photos: [stored(), stored()] };
+		const loading = {
+			...groupOf('Loading Operations'),
+			layout: 6 as const,
+			photos: [stored(), stored()]
+		};
 		const panel = oldPanel([preloading, loading, groupOf('Securing'), groupOf('Lifting Gear')]);
 		const before = structuredClone(panel.groups);
 

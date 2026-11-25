@@ -4,7 +4,7 @@
 // these rows; Better Auth and the sign-in rule (`access.ts`) are their only writers. #182 added the organization
 // plugin's active organization to the session, the Super admin flag to the user, and one policy: the app's
 // restricted role reads the acting User's own user row. The review fixes added the rate limit's table. #306 added the
-// sessions of the acting organization's Users to what the restricted role reads, for the Activity.
+// record of every sign-in, for the Activity; the sessions themselves stay unread by the restricted role.
 import { relations, sql } from 'drizzle-orm';
 import {
 	bigint,
@@ -17,7 +17,7 @@ import {
 	timestamp,
 	uuid
 } from 'drizzle-orm/pg-core';
-import { appRole, ORGANIZATION_ID, USER_ID } from './policy';
+import { appRole, IS_ADMIN, ORGANIZATION_ID, USER_ID } from './policy';
 
 function id() {
 	return uuid('id')
@@ -79,14 +79,31 @@ export const session = pgTable(
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' })
 	},
+	(table) => [index('session_userId_idx').on(table.userId)]
+).enableRLS();
+
+// Every sign-in, by any way, for the Activity (#306): who, when, the organization the session acted in (none for a
+// Guest) and the device its browser named. Never a session's token or address, which sign its User in; and Log Out
+// removes a session but not its sign-in. Written as the owner when Better Auth makes a session (`recordSignIn` in
+// `access.ts`); the restricted role only reads it, and only as an Admin (or the Super admin), and only the sign-ins
+// of the acting organization's members that did not act in another organization.
+export const signIn = pgTable(
+	'sign_in',
+	{
+		id: id(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		organizationId: uuid('organization_id'),
+		createdAt: time('created_at').defaultNow().notNull(),
+		userAgent: text('user_agent')
+	},
 	(table) => [
-		index('session_userId_idx').on(table.userId),
-		// The Activity (#306): when each User of the acting organization signed in, and on what. Read only; the one
-		// permission check lets only an Admin ask, and the Activity reads no more than the User, the time and the device.
-		pgPolicy('session is in the acting organization', {
+		index('sign_in_user_idx').on(table.userId, table.createdAt),
+		pgPolicy('sign_in is read by an Admin of the acting organization', {
 			for: 'select',
 			to: appRole,
-			using: sql`exists (select 1 from public.member m where m.user_id = "session".user_id and m.organization_id = ${ORGANIZATION_ID})`
+			using: sql`${IS_ADMIN} and exists (select 1 from public.member m where m.user_id = "sign_in".user_id and m.organization_id = ${ORGANIZATION_ID}) and ("sign_in".organization_id is null or "sign_in".organization_id = ${ORGANIZATION_ID})`
 		})
 	]
 ).enableRLS();

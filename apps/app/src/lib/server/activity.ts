@@ -4,68 +4,56 @@
 // function, so the screen and its query keep their shape.
 //
 // Everything comes from what the database already keeps, read through the claims helper as the Admin who asked:
-// - a sign-in is a session Better Auth made (one for every sign-in, by any way), with the device its browser named.
-//   Log Out ends a session and removes it, so a sign-in followed by Log Out drops out of the list; the User's first
-//   sign-in, when their account was made, always stays, and stands in for their last when no session is left;
+// - a sign-in is the record Better Auth's session hook leaves at every sign-in, by any way (`sign_in`): who, when and
+//   the device its browser named, never the session itself. Log Out keeps it. A User with no sign-in recorded (all
+//   theirs came before the record began) has their account's making, their first sign-in, stand in for their last;
 // - a project added and every other change is the change record (the History): who, when, which row and what it was
 //   before and after, of which only the names and the columns that changed are read, never the rows themselves. The
 //   rows a new project starts with (its panels, their photo groups, its first stop), added in the same save, are
 //   counted on the project's own line ("7 panels") rather than given a line each.
-import { desc, isNotNull, sql } from 'drizzle-orm';
+import { desc, isNotNull, type SQL, sql } from 'drizzle-orm';
 import type {
 	ActivityEventType,
 	ActivityResultType,
-	LastSignInType
+	ChangeEventType,
+	LastSignInType,
+	SignInEventType
 } from '#lib/activity/activity.types.js';
 import { toDevice } from '#lib/presence/presence.utils.js';
 import { TABLE_NAMES, type TableNameType } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
-import { change, project, session, team, user } from './db/schema';
+import { change, project, signIn, team, user } from './db/schema';
 import { checkActivity } from './permission';
 
-// What each table's row is called in a sentence ("added the customer Harbor Lines"), as the app's screens say it.
-const THINGS: Record<TableNameType, string> = {
-	customer: 'customer',
-	contact: 'contact',
-	team: 'Team',
-	transport: 'Transport Mode',
-	facility: 'Facility',
-	place: 'place',
-	organization: 'Organization',
-	organization_details: 'Organization',
-	disclaimer_point: 'disclaimer point',
-	help_text: 'Help text',
-	project: 'project',
-	project_team: 'Team Assigned',
-	personnel_company: 'Personnel company',
-	personnel_person: 'Personnel',
-	panel: 'panel',
-	photo_group: 'photo group',
-	photo: 'photo',
-	stop: 'stop',
-	item: 'item',
-	item_attachment: 'attachment',
-	time_log_day: 'Time Log day',
-	time_log_entry: 'Time Log entry'
+// What each table's row is called in a sentence, as the app's screens say it: one ("added the customer Harbor
+// Lines"), and a few of a kind, on a new project's line ("7 panels").
+const ROW_NAMES: Record<TableNameType, { one: string; many: string }> = {
+	customer: { one: 'customer', many: 'customers' },
+	contact: { one: 'contact', many: 'contacts' },
+	team: { one: 'Team', many: 'Team' },
+	transport: { one: 'Transport Mode', many: 'Transport Modes' },
+	facility: { one: 'Facility', many: 'Facilities' },
+	place: { one: 'place', many: 'places' },
+	organization: { one: 'Organization', many: 'Organizations' },
+	organization_details: { one: 'Organization', many: 'Organizations' },
+	disclaimer_point: { one: 'disclaimer point', many: 'disclaimer points' },
+	help_text: { one: 'Help text', many: 'Help texts' },
+	project: { one: 'project', many: 'projects' },
+	project_team: { one: 'Team Assigned', many: 'Team Assigned' },
+	personnel_company: { one: 'Personnel company', many: 'Personnel companies' },
+	personnel_person: { one: 'Personnel', many: 'Personnel' },
+	panel: { one: 'panel', many: 'panels' },
+	photo_group: { one: 'photo group', many: 'photo groups' },
+	photo: { one: 'photo', many: 'photos' },
+	stop: { one: 'stop', many: 'stops' },
+	item: { one: 'item', many: 'items' },
+	item_attachment: { one: 'attachment', many: 'attachments' },
+	time_log_day: { one: 'Time Log day', many: 'Time Log days' },
+	time_log_entry: { one: 'Time Log entry', many: 'Time Log entries' }
 };
 
-/** How many of the newest sign-ins and changes the Activity reads. */
+/** How many sign-ins and changes a page of the Activity reads: the newest, then the next ones on Show Older. */
 export const ACTIVITY_LIMIT = 200;
-
-// A few of a kind, on a new project's line: "7 panels".
-const PLURALS: Partial<Record<TableNameType, string>> = {
-	project_team: 'Team Assigned',
-	personnel_company: 'Personnel companies',
-	personnel_person: 'Personnel',
-	panel: 'panels',
-	photo_group: 'photo groups',
-	photo: 'photos',
-	stop: 'stops',
-	item: 'items',
-	item_attachment: 'attachments',
-	time_log_day: 'Time Log days',
-	time_log_entry: 'Time Log entries'
-};
 
 // A photo spot holds a PDF or a video too (#327).
 const PHOTO_KINDS: Record<string, string> = { pdf: 'PDF', video: 'video' };
@@ -118,13 +106,24 @@ function toLabel(column: string) {
 // The row a change describes, as it is after it, or as it was before a delete.
 const ROW = sql`coalesce(${change.after}, ${change.before})`;
 
-function field(key: string) {
+// The SQL that reads one of the row's values as text, or null when it is empty: its `name`, its `title`.
+function toRowText(key: string) {
 	return sql<string | null>`nullif(${ROW} ->> ${key}, '')`;
 }
 
-// The newest changes, each with the names its row goes by and the columns it changed, never the row itself.
-function readChanges(tx: TransactionType, limit: number) {
-	return tx
+// A time to the millisecond, as a JavaScript date holds it: Show Older's `before` is one, so a page ends between two
+// milliseconds and never between two rows of the same one.
+function toMillisecond(at: SQL) {
+	return sql`date_trunc('milliseconds', ${at})`;
+}
+
+const CHANGE_AT = toMillisecond(sql`${change.at}`);
+const SIGN_IN_AT = toMillisecond(sql`${signIn.createdAt}`);
+
+// The newest changes that match `where`, each with the names its row goes by and the columns it changed, never the
+// row itself.
+function readChanges(tx: TransactionType, where: SQL, limit?: number) {
+	const query = tx
 		.select({
 			id: change.id,
 			at: change.at,
@@ -133,12 +132,12 @@ function readChanges(tx: TransactionType, limit: number) {
 			rowId: change.rowId,
 			operation: change.operation,
 			isNew: sql<boolean>`${change.before} is null`,
-			title: field('title'),
-			name: field('name'),
-			company: field('company'),
-			label: field('label'),
-			kind: field('kind'),
-			projectId: field('projectId'),
+			title: toRowText('title'),
+			name: toRowText('name'),
+			company: toRowText('company'),
+			label: toRowText('label'),
+			kind: toRowText('kind'),
+			projectId: toRowText('projectId'),
 			columns: sql<
 				string[]
 			>`case when ${change.before} is null or ${change.after} is null then array[]::text[]
@@ -146,11 +145,52 @@ function readChanges(tx: TransactionType, limit: number) {
 					where each.value is distinct from ${change.before} -> each.key order by each.key) end`
 		})
 		.from(change)
-		.orderBy(desc(change.at), desc(change.id))
-		.limit(limit);
+		.where(where)
+		.orderBy(desc(change.at), desc(change.id));
+	return limit === undefined ? query : query.limit(limit);
 }
 
 type ChangeRowType = Awaited<ReturnType<typeof readChanges>>[number];
+
+// The newest sign-ins that match `where`: who, when and on what.
+function readSignIns(tx: TransactionType, where: SQL, limit?: number) {
+	const query = tx
+		.select({
+			id: signIn.id,
+			userId: signIn.userId,
+			at: signIn.createdAt,
+			userAgent: signIn.userAgent
+		})
+		.from(signIn)
+		.where(where)
+		.orderBy(desc(signIn.createdAt), desc(signIn.id));
+	return limit === undefined ? query : query.limit(limit);
+}
+
+type PageType<T> = {
+	rows: T[];
+	/** The millisecond the oldest row falls in, when older rows are left; every row of it is in `rows`. */
+	cut?: number;
+};
+
+// One source's newest rows older than `before`: at most `limit`, then the rest of the millisecond the oldest of them
+// falls in, so what one save did is never split between two pages.
+async function readPage<T extends { at: Date }>(
+	read: (where: SQL, limit?: number) => Promise<T[]>,
+	at: SQL,
+	before: string | undefined,
+	limit: number
+): Promise<PageType<T>> {
+	const rows = await read(before ? sql`${at} < ${before}::timestamptz` : sql`true`, limit + 1);
+	if (rows.length <= limit) return { rows };
+	const oldest = rows[limit - 1].at;
+	const rest = await read(sql`${at} = ${oldest.toISOString()}::timestamptz`);
+	const cut = oldest.getTime();
+	return {
+		rows: [...rows.slice(0, limit).filter((row) => row.at.getTime() !== cut), ...rest],
+		cut
+	};
+}
 
 function toDeviceOf(userAgent: string | null) {
 	const device = toDevice(userAgent ?? '');
@@ -161,32 +201,36 @@ function toProjectTitle(title: string | null | undefined) {
 	return title?.trim() || 'Untitled project';
 }
 
-// The rows of a new project added in the same save as it, by the project's change: how many of each kind, in the
-// registry's order. Those rows get no line of their own.
-function toStarts(changes: ChangeRowType[]) {
-	const saveOf = (row: ChangeRowType, projectId: string | null) =>
-		`${row.userId} ${row.at.getTime()} ${projectId}`;
+// One save of one User into one project: its changes share the save's time.
+function toSaveKey(row: ChangeRowType, projectId: string | null) {
+	return `${row.userId} ${row.at.getTime()} ${projectId}`;
+}
+
+// The rows a new project starts with, added in the same save as it, fold into the project's own line: `lines` are the
+// changes that keep a line of their own, and `startedWith` says, for a new project's change, how many of each kind it
+// started with, in the registry's order ("7 panels").
+function foldProjectStarts(changes: ChangeRowType[]) {
 	const counts = new Map<string, Map<TableNameType, number>>();
 	for (const row of changes)
 		if (row.table === 'project' && row.isNew && row.operation === 'put')
-			counts.set(saveOf(row, row.rowId), new Map());
-	const kept = changes.filter((row) => {
+			counts.set(toSaveKey(row, row.rowId), new Map());
+	const lines = changes.filter((row) => {
 		if (row.table === 'project' || !row.isNew || row.operation !== 'put') return true;
-		const started = counts.get(saveOf(row, row.projectId));
+		const started = counts.get(toSaveKey(row, row.projectId));
 		if (!started) return true;
 		const table = row.table as TableNameType;
 		started.set(table, (started.get(table) ?? 0) + 1);
 		return false;
 	});
-	function partsOf(row: ChangeRowType) {
-		const started = counts.get(saveOf(row, row.rowId));
+	function startedWith(row: ChangeRowType) {
+		const started = counts.get(toSaveKey(row, row.rowId));
 		if (!started?.size) return undefined;
 		return TABLE_NAMES.filter((table) => started.has(table)).map((table) => {
 			const count = started.get(table) ?? 0;
-			return `${count} ${count === 1 ? THINGS[table] : (PLURALS[table] ?? THINGS[table])}`;
+			return `${count} ${count === 1 ? ROW_NAMES[table].one : ROW_NAMES[table].many}`;
 		});
 	}
-	return { kept, partsOf };
+	return { lines, startedWith };
 }
 
 function toChangeEvent(
@@ -194,12 +238,12 @@ function toChangeEvent(
 	who: string,
 	projects: Map<string, string>,
 	parts?: string[]
-): ActivityEventType {
+): ChangeEventType {
 	const table = row.table as TableNameType;
 	const kind = row.operation === 'delete' ? 'trash' : row.isNew ? 'add' : 'change';
 	const thing =
 		(table === 'photo' ? PHOTO_KINDS[row.kind ?? ''] : undefined) ??
-		THINGS[table] ??
+		ROW_NAMES[table]?.one ??
 		row.table.replaceAll('_', ' ');
 	// A project goes by its title now, so a project added untitled and named a moment later reads by its name.
 	const name =
@@ -226,44 +270,60 @@ function toChangeEvent(
 	};
 }
 
-// Newest first; what one save did at once lists parents first (a project before its panels).
-function byNewest(a: ActivityEventType, b: ActivityEventType) {
-	const rankOf = (event: ActivityEventType) =>
-		event.table ? TABLE_NAMES.indexOf(event.table) : -1;
-	return Date.parse(b.at) - Date.parse(a.at) || rankOf(a) - rankOf(b) || b.id.localeCompare(a.id);
+// Where a line stands among those of the same moment: a sign-in first, then parents before their rows (a project
+// before its panels), in the registry's order.
+function toRank(event: ActivityEventType) {
+	return event.kind === 'signIn' ? -1 : TABLE_NAMES.indexOf(event.table);
 }
 
+// Newest first; what one save did at once lists parents first.
+function byNewest(a: ActivityEventType, b: ActivityEventType) {
+	return Date.parse(b.at) - Date.parse(a.at) || toRank(a) - toRank(b) || b.id.localeCompare(a.id);
+}
+
+/** Which page of the Activity to read: the newest, or the one `before` the oldest shown (Show Older). */
+export type ActivityPageType = {
+	/** How many sign-ins and changes, about: a millisecond's rows are never split, so a page may hold a few more. */
+	limit?: number;
+	/** An ISO time: only what happened before it. */
+	before?: string;
+};
+
 /**
- * The Activity as `actor` may see it: their organization's newest sign-ins and changes, newest first, and when each
- * of its people last signed in, latest first. Only an Admin may (the one permission check).
+ * The Activity as `actor` may see it: their organization's newest sign-ins and changes (or the next ones `before` the
+ * oldest shown), newest first, and when each of its people last signed in, latest first. Only an Admin may (the one
+ * permission check).
  */
 export async function readActivity(
 	claims: ClaimsType,
 	actor: ActorType,
-	{ limit = ACTIVITY_LIMIT }: { limit?: number } = {}
+	{ limit = ACTIVITY_LIMIT, before }: ActivityPageType = {}
 ): Promise<ActivityResultType> {
 	const verdict = checkActivity(actor);
 	if (!verdict.isAllowed) return verdict;
 	return claims.run(actor, async (tx) => {
-		const changes = await readChanges(tx, limit);
-		const signIns = await tx
-			.select({
-				id: session.id,
-				userId: session.userId,
-				at: session.createdAt,
-				userAgent: session.userAgent
-			})
-			.from(session)
-			.orderBy(desc(session.createdAt), desc(session.id))
-			.limit(limit);
+		const changePage = await readPage(
+			(where, most) => readChanges(tx, where, most),
+			CHANGE_AT,
+			before,
+			limit
+		);
+		const signInPage = await readPage(
+			(where, most) => readSignIns(tx, where, most),
+			SIGN_IN_AT,
+			before,
+			limit
+		);
+		const changes = changePage.rows;
+		const signIns = signInPage.rows;
 		const latest = await tx
-			.selectDistinctOn([session.userId], {
-				userId: session.userId,
-				at: session.createdAt,
-				userAgent: session.userAgent
+			.selectDistinctOn([signIn.userId], {
+				userId: signIn.userId,
+				at: signIn.createdAt,
+				userAgent: signIn.userAgent
 			})
-			.from(session)
-			.orderBy(session.userId, desc(session.createdAt));
+			.from(signIn)
+			.orderBy(signIn.userId, desc(signIn.createdAt), desc(signIn.id));
 		const users = await tx
 			.select({ id: user.id, name: user.name, createdAt: user.createdAt })
 			.from(user);
@@ -280,15 +340,17 @@ export async function readActivity(
 			])
 		);
 
-		const starts = toStarts(changes);
+		const folded = foldProjectStarts(changes);
 		const names = new Map<string, string>();
 		for (const record of records)
 			if (record.userId && !names.has(record.userId)) names.set(record.userId, record.name);
 		for (const each of users) if (!names.has(each.id)) names.set(each.id, each.name);
-		const whoOf = (userId: string | null) => (userId ? names.get(userId) : undefined) ?? 'Someone';
+		function whoOf(userId: string | null) {
+			return (userId ? names.get(userId) : undefined) ?? 'Someone';
+		}
 
 		const events: ActivityEventType[] = [
-			...signIns.map((row): ActivityEventType => ({
+			...signIns.map((row): SignInEventType => ({
 				id: row.id,
 				at: row.at.toISOString(),
 				kind: 'signIn',
@@ -296,8 +358,8 @@ export async function readActivity(
 				userId: row.userId,
 				...toDeviceOf(row.userAgent)
 			})),
-			...starts.kept.map((row) =>
-				toChangeEvent(row, whoOf(row.userId), projects, starts.partsOf(row))
+			...folded.lines.map((row) =>
+				toChangeEvent(row, whoOf(row.userId), projects, folded.startedWith(row))
 			)
 		];
 
@@ -313,14 +375,20 @@ export async function readActivity(
 			};
 		});
 
+		// Where this page ends: both sources hold every row from there on, and it keeps about `limit` lines. What is
+		// older waits for the next page, which reads before it.
+		events.sort(byNewest);
+		const ends = [changePage.cut, signInPage.cut];
+		if (events.length > limit) ends.push(Date.parse(events[limit - 1].at));
+		const end = Math.max(...ends.filter((each) => each !== undefined));
+
 		return {
 			isAllowed: true,
-			events: events.sort(byNewest).slice(0, limit),
+			events: Number.isFinite(end) ? events.filter((event) => Date.parse(event.at) >= end) : events,
 			people: people.sort(
 				(a, b) => Date.parse(b.at) - Date.parse(a.at) || a.who.localeCompare(b.who)
 			),
-			// Older sign-ins or changes are left out.
-			isCut: changes.length >= limit || signIns.length >= limit || events.length > limit
+			...(Number.isFinite(end) ? { olderBefore: new Date(end).toISOString() } : {})
 		};
 	});
 }

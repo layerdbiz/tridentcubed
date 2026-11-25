@@ -519,7 +519,7 @@
 		{:else if !selected.length && icon}
 			<span class="select-pick"
 				><span
-					class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-400"
+					class="flex size-7 shrink-0 items-center justify-center rounded-full bg-base-900/5 text-base-400"
 					><span class="{icon} size-4"></span></span
 				></span
 			>

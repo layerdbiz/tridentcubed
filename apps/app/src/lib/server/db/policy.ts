@@ -24,6 +24,12 @@ export const USER_ID = sql`app.user_id()`;
 export const ORGANIZATION_ID = sql`app.organization_id()`;
 
 /**
+ * Whether the acting User is an Admin, as the one permission check says it: the role the claims carry, or the Super
+ * admin flag on their own user row. For a policy that only an Admin passes (the Activity's sign-ins, #306).
+ */
+export const IS_ADMIN = sql`(app.claims() ->> 'role' = 'admin' or exists (select 1 from public."user" u where u.id = app.user_id() and u.is_super_admin))`;
+
+/**
  * The usual policy of an organization's table: the restricted role reads and writes only the rows of the acting
  * User's organization. A Guest has no organization, so they see nothing. Copy this into a new table's extra config:
  * `(table) => [organizationPolicy('customer')]`.

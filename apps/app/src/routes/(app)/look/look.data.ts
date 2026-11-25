@@ -5,6 +5,7 @@
 import type { CropType } from '#lib/components/photo/photo.types.js';
 import { toAttachmentType } from '#lib/files/files.schema.js';
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
+import { DEFAULT_LAYOUT, type PageLayoutType } from '#lib/report/report.constants.js';
 import { toDuration } from '#lib/presence/presence.utils.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
 import { cityStateOf } from './location';
@@ -107,7 +108,7 @@ export type AttachmentType = {
 	name: string;
 	src: string;
 	kind: 'photo' | 'file';
-	layout: number;
+	layout: PageLayoutType;
 };
 
 /** Whether an Items attachment is a PDF, which prints its pages (#295): known by its name, as it was picked. */
@@ -122,7 +123,7 @@ export type GroupType = {
 	id: string;
 	title: string;
 	description: string;
-	layout: number;
+	layout: PageLayoutType;
 	isEnabled: boolean;
 	photos: PhotoType[];
 };
@@ -679,8 +680,6 @@ export const DATASETS: Record<DatasetType, { label: string; one: string; icon: s
 	facilities: { label: 'Facilities', one: 'Facility', icon: PAGE_ICONS.facilities }
 };
 
-export const LAYOUTS = [1, 2, 4, 6, 8];
-
 let nextId = 0;
 // The page load's own mark, so an id made now never repeats one kept from an earlier visit (LookState keeps the
 // projects in the browser).
@@ -696,7 +695,14 @@ export function itemOf(quantity = '', description = ''): ItemType {
 
 /** A new, empty photo group, four photos to a page. */
 export function groupOf(title = '', isEnabled = true): GroupType {
-	return { id: crypto.randomUUID(), title, description: '', layout: 4, isEnabled, photos: [] };
+	return {
+		id: crypto.randomUUID(),
+		title,
+		description: '',
+		layout: DEFAULT_LAYOUT,
+		isEnabled,
+		photos: []
+	};
 }
 
 // The stages an Operations panel starts with (Justin, 2026-11-18). Each is a photo group like any other: it can be

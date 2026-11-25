@@ -22,6 +22,21 @@ export type InputType = { label: string; value: unknown; isOptional?: boolean };
 /** A section that opens and closes, by its id: a fixed name, or the id of the day, group, leg or company. */
 export type SectionType = { id: string; inputs: InputType[] };
 
+/**
+ * The labels of the inputs a panel marks with `data-input` for the empty-inputs list to find (focus.ts, #305): an
+ * input with no label drawn of its own (an Add button, a file picker) or one read out in more words ("Quantity of
+ * item 2"). The panels mark them with these, so the list and the mark cannot name an input differently.
+ */
+export const MARKED_LABELS = {
+	quantity: 'Quantity',
+	description: 'Description',
+	item: 'Item',
+	day: 'Day',
+	time: 'Time',
+	photos: 'Photos',
+	transportMode: 'Transport Mode'
+} as const;
+
 function isDone(value: unknown) {
 	if (typeof value === 'string') return value.trim().length > 0;
 	if (Array.isArray(value)) return value.length > 0;
@@ -154,13 +169,14 @@ function projectSections(panel: PanelType, contacts: { id: string }[]): SectionT
 // A trip section is one transport mode: the mode, the transport itself once a mode is picked (its field is
 // named for the mode: "Vessel"), then one field for each facility it calls at.
 function transportSections(panel: PanelType): SectionType[] {
-	if (!panel.stops.length) return [{ id: 'transport', inputs: [nothingYet('Transport Mode')] }];
+	if (!panel.stops.length)
+		return [{ id: 'transport', inputs: [nothingYet(MARKED_LABELS.transportMode)] }];
 	return legsOf(panel.stops).map((leg) => {
 		const first = leg.stops[0];
 		return {
 			id: leg.id,
 			inputs: [
-				{ label: 'Transport Mode', value: first.mode },
+				{ label: MARKED_LABELS.transportMode, value: first.mode },
 				...(first.mode ? [{ label: first.mode, value: first.name }] : []),
 				...leg.stops.map((stop) => ({ label: 'Facility', value: stop.facility }))
 			]
@@ -184,7 +200,7 @@ function photoSections(panel: PanelType): SectionType[] {
 				...(panel.key === 'operations'
 					? [{ label: LINK_LABEL, value: toLink(panel.link), isOptional: true }]
 					: []),
-				...(groups.length ? [] : [{ label: 'Photos', value: false }])
+				...(groups.length ? [] : [{ label: MARKED_LABELS.photos, value: false }])
 			]
 		},
 		...groups.map((group) => ({
@@ -192,7 +208,7 @@ function photoSections(panel: PanelType): SectionType[] {
 			inputs: [
 				{ label: 'Title', value: group.title },
 				{ label: 'Description', value: group.description, isOptional: true },
-				{ label: 'Photos', value: group.photos.some(isStored) }
+				{ label: MARKED_LABELS.photos, value: group.photos.some(isStored) }
 			]
 		}))
 	];
@@ -211,23 +227,23 @@ export function sectionsOf(panel: PanelType, contacts: { id: string }[] = []): S
 				id: 'items',
 				inputs: [
 					...panel.items.flatMap((item) => [
-						{ label: 'Quantity', value: item.quantity },
-						{ label: 'Description', value: item.description }
+						{ label: MARKED_LABELS.quantity, value: item.quantity },
+						{ label: MARKED_LABELS.description, value: item.description }
 					]),
 					// #242: the item list read from a spreadsheet is one input, there or not.
 					...(panel.grid ? [{ label: 'Item List', value: true }] : []),
-					...(panel.items.length || panel.grid ? [] : [nothingYet('Item')])
+					...(panel.items.length || panel.grid ? [] : [nothingYet(MARKED_LABELS.item)])
 				]
 			}
 		];
 	if (panel.kind === 'timelog') {
-		if (!panel.days.length) return [{ id: 'timelog', inputs: [nothingYet('Day')] }];
+		if (!panel.days.length) return [{ id: 'timelog', inputs: [nothingYet(MARKED_LABELS.day)] }];
 		return panel.days.map((day) => ({
 			id: day.id,
 			inputs: [
 				{ label: 'Date', value: day.date },
 				...day.entries.flatMap((entry) => [
-					{ label: 'Time', value: entry.time },
+					{ label: MARKED_LABELS.time, value: entry.time },
 					{ label: 'Activity', value: entry.activity }
 				])
 			]

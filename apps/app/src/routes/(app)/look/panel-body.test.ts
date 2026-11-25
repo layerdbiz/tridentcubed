@@ -4,12 +4,12 @@
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { toState } from '../../../test-state.svelte';
-import { draftPanel, type PanelType } from './look.data';
+import { createPanels, draftPanel, itemOf, type PanelType, type ProjectType } from './look.data';
 import type { LookState } from './look.state.svelte';
 import PanelBody from './panel-body.svelte';
 import { inputIn } from './focus';
 import { contactsOf } from './records.data';
-import { sectionsOf } from './tally';
+import { MARKED_LABELS, sectionsOf } from './tally';
 
 const CUSTOMER = {
 	name: 'Gulf Lines',
@@ -235,5 +235,73 @@ describe('the Project panel', () => {
 		await fireEvent.input(description, { target: { value: description.value } });
 
 		expect(panel.introduction).toBe('');
+	});
+});
+
+// #305: the inputs a panel marks for the empty-inputs list by their label (`data-input`), which tally.ts names the
+// same: a rename on either side would leave an entry that opens nothing.
+describe('the inputs the empty-inputs list may name in the other panels', () => {
+	function showPanel(kind: PanelType['kind'], change: (panel: PanelType) => void = () => {}) {
+		const panels = createPanels({ stops: [], team: [] } as unknown as ProjectType);
+		const panel = toState(panels.find((each) => each.kind === kind)!);
+		change(panel);
+		const look = Object.assign(lookOf(panel), {
+			transports: [],
+			facilities: [],
+			variant: () => 'A',
+			has: () => false
+		});
+		const view = render(PanelBody, { props: { look, panel } });
+		return { ...view, panel };
+	}
+
+	function entriesOf(panel: PanelType) {
+		return sectionsOf(panel).flatMap((section) => {
+			const seen = new Map<string, number>();
+			return section.inputs.map((input) => {
+				const nth = seen.get(input.label) ?? 0;
+				seen.set(input.label, nth + 1);
+				return { section: section.id, label: input.label, nth };
+			});
+		});
+	}
+
+	it.each([
+		['an Items panel with no item', 'items', (panel: PanelType) => (panel.items = [])],
+		[
+			'an Items panel with two rows',
+			'items',
+			(panel: PanelType) => (panel.items = [itemOf(), itemOf()])
+		],
+		['a Time Log with no day', 'timelog', () => {}],
+		[
+			'a Time Log day with two entries',
+			'timelog',
+			(panel: PanelType) =>
+				(panel.days = [
+					{
+						id: 'd1',
+						date: '2026-10-27',
+						entries: [
+							{ id: 'e1', time: '', activity: '' },
+							{ id: 'e2', time: '', activity: '' }
+						]
+					}
+				])
+		],
+		['a photo panel with no group', 'photos', (panel: PanelType) => (panel.groups = [])],
+		['a Transport Mode panel with no stop', 'transport', (panel: PanelType) => (panel.stops = [])]
+	] as const)('finds every entry of %s', (_, kind, change) => {
+		const { container, panel } = showPanel(kind, change);
+		const root = container.firstElementChild as HTMLElement;
+
+		const entries = entriesOf(panel).filter((entry) =>
+			Object.values<string>(MARKED_LABELS).includes(entry.label)
+		);
+		const found = entries.map((entry) => inputIn(root, entry));
+
+		expect(entries.length).toBeGreaterThan(0);
+		expect(found.every(Boolean)).toBe(true);
+		expect(new Set(found).size).toBe(found.length);
 	});
 });

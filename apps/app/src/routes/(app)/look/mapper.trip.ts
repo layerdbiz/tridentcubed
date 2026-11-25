@@ -5,6 +5,7 @@
 //
 // Stops load with the lists (registry scope `organization`), so the lists can show a project's route and the
 // Transport Mode and Facility pages the projects that call on them before the project opens.
+import { toPageLayout } from '#lib/report/report.utils.js';
 import type { RowType } from '#lib/rows/rows.schema.js';
 import {
 	type AttachmentType,
@@ -124,7 +125,7 @@ export function takePanelRows(look: LookState, panel: PanelType, rows: RowType[]
 				name: text(row.values, 'name'),
 				src: text(row.values, 'file'),
 				kind: text(row.values, 'kind') === 'file' ? 'file' : 'photo',
-				layout: Number(row.values.layout ?? 4)
+				layout: toPageLayout(row.values.layout)
 			})
 		);
 	}

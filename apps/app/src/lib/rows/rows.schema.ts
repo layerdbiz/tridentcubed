@@ -18,6 +18,7 @@
 // The order of `TABLES` is the order a batch's puts are applied in: a parent comes before its children.
 // The rules of who may change what are not here: they live in the one permission check (`#lib/server/permission.ts`).
 import * as v from 'valibot';
+import { LAYOUTS } from '#lib/report/report.constants.js';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
 /** The most an item list read from a spreadsheet may take in its panel's row, as JSON (#242): about 2,000 rows. */
@@ -292,7 +293,7 @@ export const TABLES = {
 			position: POSITION,
 			title: TEXT,
 			description: TEXT,
-			layout: v.picklist([1, 2, 4, 6, 8]),
+			layout: v.picklist(LAYOUTS),
 			isEnabled: v.boolean()
 		}
 	},
@@ -357,7 +358,7 @@ export const TABLES = {
 			file: PICTURE,
 			kind: v.picklist(['photo', 'file']),
 			// #295: how many of a PDF's pages share a report page, as a photo group's `layout`.
-			layout: v.picklist([1, 2, 4, 6, 8])
+			layout: v.picklist(LAYOUTS)
 		}
 	},
 	time_log_day: {
