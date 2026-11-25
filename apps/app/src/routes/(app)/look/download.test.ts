@@ -1,9 +1,10 @@
 // Download in parts (#240): a report too big for one request prints as several that each fit, and the PDFs that come
 // back are joined into one, in page order. The server is played by a function that answers each request; the PDFs
 // are real ones, made and read back with the same library that joins them.
-import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
+import { PDFArray, PDFDocument, PDFName, PDFNumber, PDFRef, PDFString } from 'pdf-lib';
 import { describe, expect, it } from 'vite-plus/test';
 import {
+	boxIn,
 	DownloadError,
 	joinPdfs,
 	PART_LIMIT,
@@ -276,5 +277,65 @@ describe('joining the parts into one PDF', () => {
 			['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((label) => `https://example.com/${label}`)
 		);
 		expect(pdf.getPage(0).getSize()).toEqual({ width: 595, height: 842 });
+	});
+});
+
+// The Table of Contents' links (#301): each line opens the page it names, whichever part that page was printed in,
+// so they go in once the parts are one PDF. A link's box is where its line sits on the page, as shares of the page.
+describe('linking the contents to their pages', () => {
+	// Each link of a page that opens a page of the same PDF: the page it opens, and its corners in points.
+	function goTosOf(pdf: PDFDocument, at: number) {
+		const refs = pdf.getPages().map((page) => page.ref);
+		const annotations = pdf.getPage(at).node.Annots();
+		const found: { to: number; rect: number[] }[] = [];
+		for (let index = 0; index < (annotations?.size() ?? 0); index += 1) {
+			const link = annotations?.lookup(index) as unknown as { get(name: PDFName): unknown };
+			const dest = link.get(PDFName.of('Dest')) as PDFArray | undefined;
+			if (!dest) continue;
+			const rect = (link.get(PDFName.of('Rect')) as PDFArray)
+				.asArray()
+				.map((corner) => (corner as PDFNumber).asNumber());
+			found.push({ to: refs.indexOf(dest.get(0) as PDFRef), rect });
+		}
+		return found;
+	}
+
+	it('places a line on its page as shares of the page, at whatever zoom the page is drawn', () => {
+		const page = { x: 100, y: 50, width: 297.5, height: 421 };
+		const line = { x: 129.75, y: 134.2, width: 238, height: 21.05 };
+		const box = boxIn(page, line);
+		expect(box.x).toBeCloseTo(0.1);
+		expect(box.y).toBeCloseTo(0.2);
+		expect(box.width).toBeCloseTo(0.8);
+		expect(box.height).toBeCloseTo(0.05);
+	});
+
+	it('opens a page printed in another part from a line of the contents', async () => {
+		const joined = await joinPdfs(
+			[await pdfOf(['cover', 'contents']), await pdfOf(['report', 'photos'])],
+			'r.pdf',
+			[{ on: 1, to: 3, box: { x: 0.1, y: 0.2, width: 0.8, height: 0.05 } }]
+		);
+
+		const pdf = await PDFDocument.load(joined);
+		const [link] = goTosOf(pdf, 1);
+		expect(link.to).toBe(3);
+		// 595 by 842 points, measured from the bottom left: 59.5 across, 842 - 0.25 * 842 up, and so on.
+		const [left, bottom, right, top] = link.rect;
+		expect(left).toBeCloseTo(59.5);
+		expect(bottom).toBeCloseTo(631.5);
+		expect(right).toBeCloseTo(535.5);
+		expect(top).toBeCloseTo(673.6);
+	});
+
+	it('links the contents of a report printed in one part, keeping its own links', async () => {
+		const joined = await joinPdfs([await pdfOf(['cover', 'contents', 'report'])], 'r.pdf', [
+			{ on: 1, to: 2, box: { x: 0, y: 0, width: 1, height: 0.1 } }
+		]);
+
+		const pdf = await PDFDocument.load(joined);
+		expect(pdf.getPageCount()).toBe(3);
+		expect(goTosOf(pdf, 1).map((link) => link.to)).toEqual([2]);
+		expect(pdf.getPage(1).node.Annots()?.size()).toBe(2);
 	});
 });

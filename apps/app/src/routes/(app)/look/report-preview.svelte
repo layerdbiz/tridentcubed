@@ -62,7 +62,16 @@
 	} from './look.data';
 	import { customerOf, locationOf } from './records.data';
 	import { cityStateOf, partsOf } from './location';
-	import { DownloadError, joinPdfs, PART_LIMIT, printParts, sizeOf, toParts } from './download';
+	import {
+		boxIn,
+		DownloadError,
+		joinPdfs,
+		PART_LIMIT,
+		printParts,
+		sizeOf,
+		toParts,
+		type PageLinkType
+	} from './download';
 	import { downloadToast } from './toasts';
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
 	import {
@@ -907,6 +916,15 @@
 		});
 	});
 
+	// A line of the Table of Contents opens its page (#301): presenting, that page is shown; otherwise it comes to the
+	// top of the view, across it, as Stack shows a page.
+	function goTo(index: number) {
+		const rect = rects[index];
+		if (!rect) return;
+		if (isPresenting) return presentation.go(index);
+		viewport.fitWidth(rect);
+	}
+
 	function refit() {
 		if (layout === 'column') viewport.fitWidth(rects[targetIndex]);
 		else viewport.fitAll();
@@ -1115,9 +1133,23 @@
 			const slim = slimOf(shown[index]);
 			if (slim) image.src = slim;
 		}
+		// The contents' links go in once the parts are one PDF (`linksOf`): the printer makes none of its own.
+		for (const link of copy.querySelectorAll('a[data-goto]')) link.removeAttribute('href');
 		copy.style.cssText = `width: ${W}px; height: ${H}px`;
 		copy.classList.remove('ring-4', 'ring-primary/70');
 		return copy.outerHTML;
+	}
+
+	// A page's links to other pages, the contents' lines (#301), each where it sits on the page as drawn here: the
+	// page the export prints, from the same markup and styles. `at` is the page's place, from 0.
+	function linksOf(node: HTMLElement, at: number): PageLinkType[] {
+		const page = node.getBoundingClientRect();
+		if (!page.width || !page.height) return [];
+		return [...node.querySelectorAll<HTMLElement>('[data-goto]')].map((link) => ({
+			on: at,
+			to: Number(link.dataset.goto) - 1,
+			box: boxIn(page, link.getBoundingClientRect())
+		}));
 	}
 
 	// Lets the screen draw before the next piece of work: slimming a page's photos holds it still, and a toast that
@@ -1152,6 +1184,7 @@
 				.map((node) => node.outerHTML)
 				.join('\n');
 			const pages: string[] = [];
+			const links: PageLinkType[] = [];
 			for (const [at, node] of nodes.entries()) {
 				progress.reach(
 					(PREPARED * at) / count,
@@ -1165,6 +1198,7 @@
 					);
 				}
 				pages.push(sheetOf(node));
+				links.push(...linksOf(node, at));
 			}
 			if (!count) throw new DownloadError('There are no pages to print yet.');
 
@@ -1191,7 +1225,7 @@
 
 			progress.reach(PRINTED, JOINED, 'Putting the pages together');
 			await pause();
-			const pdf = await joinPdfs(pdfs, filename);
+			const pdf = await joinPdfs(pdfs, filename, links);
 
 			progress.reach(JOINED, 100, 'Saving the PDF');
 			const url = URL.createObjectURL(new Blob([pdf as BlobPart], { type: 'application/pdf' }));
@@ -1582,17 +1616,27 @@
 <!-- One line of the Table of Contents: a section, or one of its parts set in under it. -->
 {#snippet contentsLine(line: ContentLineType | undefined)}
 	{#if line}
-		<li
-			class="flex items-baseline gap-2 {line.isSub
-				? 'py-[3px] pl-8 text-[11px] text-slate-600'
-				: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
-		>
-			<span class="w-6 shrink-0 font-semibold text-slate-950 tabular-nums">{line.number}</span>
-			<span>{line.title}</span>
-			<span
-				class="h-[3px] min-w-4 flex-1 bg-[radial-gradient(circle,var(--color-slate-400)_0.8px,transparent_1.1px)] bg-size-[7px_3px] bg-bottom bg-repeat-x"
-			></span>
-			<span class="min-w-5 shrink-0 text-right text-slate-950 tabular-nums">{line.page}</span>
+		<!-- A link to the page it names (#301): here it opens that page, and in the PDF a link drawn over it does. -->
+		<li>
+			<a
+				href={line.to ? `#page-${line.to}` : undefined}
+				data-goto={line.to || undefined}
+				data-no-pan
+				onclick={(event) => {
+					event.preventDefault();
+					goTo(line.to - 1);
+				}}
+				class="group flex items-baseline gap-2 {line.isSub
+					? 'py-[3px] pl-8 text-[11px] text-slate-600'
+					: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
+			>
+				<span class="w-6 shrink-0 font-semibold text-slate-950 tabular-nums">{line.number}</span>
+				<span class="group-hover:underline">{line.title}</span>
+				<span
+					class="h-[3px] min-w-4 flex-1 bg-[radial-gradient(circle,var(--color-slate-400)_0.8px,transparent_1.1px)] bg-size-[7px_3px] bg-bottom bg-repeat-x"
+				></span>
+				<span class="min-w-5 shrink-0 text-right text-slate-950 tabular-nums">{line.page}</span>
+			</a>
 		</li>
 	{/if}
 {/snippet}
