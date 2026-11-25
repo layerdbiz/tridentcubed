@@ -3,7 +3,8 @@
 // with no policy, so Supabase's publishable key reads none of them. Only the server, as the database owner, reaches
 // these rows; Better Auth and the sign-in rule (`access.ts`) are their only writers. #182 added the organization
 // plugin's active organization to the session, the Super admin flag to the user, and one policy: the app's
-// restricted role reads the acting User's own user row. The review fixes added the rate limit's table.
+// restricted role reads the acting User's own user row. The review fixes added the rate limit's table. #306 added the
+// sessions of the acting organization's Users to what the restricted role reads, for the Activity.
 import { relations, sql } from 'drizzle-orm';
 import {
 	bigint,
@@ -78,7 +79,16 @@ export const session = pgTable(
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' })
 	},
-	(table) => [index('session_userId_idx').on(table.userId)]
+	(table) => [
+		index('session_userId_idx').on(table.userId),
+		// The Activity (#306): when each User of the acting organization signed in, and on what. Read only; the one
+		// permission check lets only an Admin ask, and the Activity reads no more than the User, the time and the device.
+		pgPolicy('session is in the acting organization', {
+			for: 'select',
+			to: appRole,
+			using: sql`exists (select 1 from public.member m where m.user_id = "session".user_id and m.organization_id = ${ORGANIZATION_ID})`
+		})
+	]
 ).enableRLS();
 
 export const account = pgTable(

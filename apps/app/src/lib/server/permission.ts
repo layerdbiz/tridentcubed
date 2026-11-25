@@ -7,6 +7,7 @@
 //   Archived status, and deleting a project that is not their own Draft.
 // - A Manager may also change the organization, its details and its disclaimer points (#184, #303); Team may not.
 // - Only an Admin changes the Help text of the inputs (#299).
+// - Only an Admin sees the Activity (#306): who signed in, and every change (`checkActivity`).
 // - The email domain, which decides who joins as staff, is set in the database only.
 // - An Admin (and the Super admin) may do all of it.
 // - Nobody demotes or removes the Super admin or the organization's last Admin.
@@ -67,6 +68,7 @@ const REASONS = {
 	organizationCreate: 'An organization cannot be made from the app.',
 	member: 'Only an Admin can change who is in the organization.',
 	help: 'Only an Admin can change the help text.',
+	activity: 'Only an Admin can see the Activity.',
 	role: 'Only an Admin can change a Team role.',
 	teamEmail:
 		'Only an Admin can change the email of an Admin’s or Manager’s Team record before they sign in.',
@@ -198,4 +200,10 @@ export function checkPermission(actor: ActorType, change: ChangeType): VerdictTy
 		if (reason) return { isAllowed: false, reason };
 	}
 	return { isAllowed: true };
+}
+
+/** Whether `actor` may see the Activity (#306): an Admin, the Super admin among them. */
+export function checkActivity(actor: ActorType): VerdictType {
+	if (!actor.organizationId) return { isAllowed: false, reason: REASONS.guest };
+	return isAdmin(actor) ? { isAllowed: true } : { isAllowed: false, reason: REASONS.activity };
 }

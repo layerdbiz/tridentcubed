@@ -1,4 +1,6 @@
 /* ROOT */
+export * from "./activity/activity.remote.ts";
+export * from "./activity/activity.types.ts";
 export * from "./auth/auth.remote.ts";
 export * from "./definitions/definitions.ts";
 export * from "./files/files.remote.ts";

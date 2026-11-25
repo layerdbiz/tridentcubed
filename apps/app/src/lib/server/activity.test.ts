@@ -1,0 +1,254 @@
+// The Activity (#306), through the real sign-in and the one save command on the in-process database: what an Admin
+// reads, newest first, and when each person last signed in. Every email and name here is made up.
+import { describe, expect, it } from 'vite-plus/test';
+import type { RowChangeType } from '#lib/rows/rows.schema.js';
+import { readActivity } from './activity';
+import type { ActorType } from './db/claims';
+import { TRIDENT_CUBED } from './db/seed';
+import * as schema from './db/schema';
+import { saveBatch } from './rows';
+import { createTestSignIn } from './testing';
+
+type TestType = Awaited<ReturnType<typeof createTestSignIn>>;
+
+const IPHONE =
+	'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1';
+const EDGE =
+	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0';
+
+async function grantAdmin(test: TestType, email: string) {
+	await test.db
+		.insert(schema.accessGrant)
+		.values({ email, organizationId: TRIDENT_CUBED.id, role: 'admin' });
+}
+
+async function save(
+	test: TestType,
+	actor: ActorType,
+	...changes: Omit<RowChangeType, 'changeId'>[]
+) {
+	const result = await saveBatch(test.claims, actor, {
+		changes: changes.map((change) => ({ changeId: crypto.randomUUID(), ...change }))
+	});
+	if (!result.isSaved) throw new Error(result.reason);
+}
+
+async function readAs(test: TestType, actor: ActorType) {
+	const result = await readActivity(test.claims, actor);
+	if (!result.isAllowed) throw new Error(result.reason);
+	return result;
+}
+
+describe('the Activity', () => {
+	it('merges sign-ins, projects added and every change, newest first, each saying who', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const project = crypto.randomUUID();
+		await save(test, ana, {
+			table: 'project',
+			id: project,
+			operation: 'put',
+			values: { title: 'Hull survey' }
+		});
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const customer = crypto.randomUUID();
+		await save(test, tom, {
+			table: 'customer',
+			id: customer,
+			operation: 'put',
+			values: { name: 'Harbor Lines' }
+		});
+		await save(test, tom, {
+			table: 'project',
+			id: project,
+			operation: 'put',
+			values: { subtitle: 'Port of Houston', customerId: customer }
+		});
+		await save(test, ana, { table: 'customer', id: customer, operation: 'delete' });
+
+		const { events } = await readAs(test, ana);
+
+		expect(
+			events.map(({ kind, who, thing, name, columns }) => ({ kind, who, thing, name, columns }))
+		).toEqual([
+			{ kind: 'trash', who: 'Ana Reyes', thing: 'customer', name: 'Harbor Lines', columns: [] },
+			{
+				kind: 'change',
+				who: 'Tom Diaz',
+				thing: 'project',
+				name: 'Hull survey',
+				columns: ['Customer', 'Subtitle']
+			},
+			{ kind: 'add', who: 'Tom Diaz', thing: 'customer', name: 'Harbor Lines', columns: [] },
+			{ kind: 'signIn', who: 'Tom Diaz', thing: undefined, name: undefined, columns: undefined },
+			{ kind: 'add', who: 'Ana Reyes', thing: 'project', name: 'Hull survey', columns: [] },
+			{ kind: 'signIn', who: 'Ana Reyes', thing: undefined, name: undefined, columns: undefined }
+		]);
+		const times = events.map((event) => Date.parse(event.at));
+		expect(times).toEqual([...times].sort((a, b) => b - a));
+	});
+
+	it('gives when each person last signed in and on what, latest first, and their first sign-in once logged out', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		await test.signIn('ana.reyes@tridentcubed.com', new Headers({ 'user-agent': IPHONE }));
+		const tom = await test.signIn('tom.diaz@tridentcubed.com');
+		await test.auth.api.signOut({ headers: new Headers({ cookie: tom.cookie }) });
+		const ana = (
+			await test.signIn('ana.reyes@tridentcubed.com', new Headers({ 'user-agent': EDGE }))
+		).actor;
+
+		const { people, events } = await readAs(test, ana);
+
+		expect(
+			people.map(({ who, isFirst, device, deviceKind }) => ({ who, isFirst, device, deviceKind }))
+		).toEqual([
+			{ who: 'Ana Reyes', isFirst: false, device: 'Windows · Edge', deviceKind: 'computer' },
+			{ who: 'Tom Diaz', isFirst: true, device: undefined, deviceKind: undefined }
+		]);
+		const [last, first] = events.filter((event) => event.who === 'Ana Reyes');
+		expect(people[0].at).toBe(last.at);
+		expect(first).toMatchObject({ kind: 'signIn', device: 'iPhone · Safari', deviceKind: 'phone' });
+		// Tom's one sign-in ended with Log Out, so it is not in the list; his account's making still says when.
+		expect(events.some((event) => event.who === 'Tom Diaz')).toBe(false);
+		expect(Date.parse(people[1].at)).toBeGreaterThan(Date.parse(first.at));
+		expect(Date.parse(people[1].at)).toBeLessThan(Date.parse(last.at));
+	});
+
+	it('names the project a change inside one belongs to, and labels what changed as the screens do', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const project = crypto.randomUUID();
+		const panel = crypto.randomUUID();
+		await save(
+			test,
+			ana,
+			{ table: 'project', id: project, operation: 'put', values: { title: '' } },
+			{
+				table: 'panel',
+				id: panel,
+				operation: 'put',
+				values: { projectId: project, kind: 'photos', key: 'operations', name: 'Operations' }
+			}
+		);
+		await save(test, ana, {
+			table: 'panel',
+			id: panel,
+			operation: 'put',
+			values: { link: 'https://files.example/job', isEnabled: false }
+		});
+
+		const { events } = await readAs(test, ana);
+
+		expect(events[0]).toMatchObject({
+			kind: 'change',
+			thing: 'panel',
+			name: 'Operations',
+			project: 'Untitled project',
+			columns: ['On or Off', 'URL']
+		});
+	});
+
+	it('counts what a new project starts with on the project’s own line, the project first', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const project = crypto.randomUUID();
+		const panel = (name: string, key: string): Omit<RowChangeType, 'changeId'> => ({
+			table: 'panel',
+			id: crypto.randomUUID(),
+			operation: 'put',
+			values: { projectId: project, kind: 'photos', key, name }
+		});
+		await save(test, ana, panel('Operations', 'operations'), panel('Damages', 'damages'), {
+			table: 'project',
+			id: project,
+			operation: 'put',
+			values: { title: 'Hull survey' }
+		});
+		const later = panel('Discharge', 'discharge');
+		await save(test, ana, later);
+
+		const { events } = await readAs(test, ana);
+
+		expect(events.map(({ kind, thing, name, parts }) => ({ kind, thing, name, parts }))).toEqual([
+			{ kind: 'add', thing: 'panel', name: 'Discharge', parts: undefined },
+			{ kind: 'add', thing: 'project', name: 'Hull survey', parts: ['2 panels'] },
+			{ kind: 'signIn', thing: undefined, name: undefined, parts: undefined }
+		]);
+	});
+
+	it('names a project by its title now, though it was untitled when added', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const project = crypto.randomUUID();
+		await save(test, ana, { table: 'project', id: project, operation: 'put', values: {} });
+		await save(test, ana, {
+			table: 'project',
+			id: project,
+			operation: 'put',
+			values: { title: 'Hull survey' }
+		});
+
+		const { events } = await readAs(test, ana);
+
+		expect(events.map(({ kind, name }) => ({ kind, name }))).toEqual([
+			{ kind: 'change', name: 'Hull survey' },
+			{ kind: 'add', name: 'Hull survey' },
+			{ kind: 'signIn', name: undefined }
+		]);
+	});
+
+	it('is an Admin’s only: a Manager, a Team member and a Guest are told why', async () => {
+		const test = await createTestSignIn();
+		await test.db.insert(schema.accessGrant).values({
+			email: 'lee.park@tridentcubed.com',
+			organizationId: TRIDENT_CUBED.id,
+			role: 'manager'
+		});
+		const manager = (await test.signIn('lee.park@tridentcubed.com')).actor;
+		const team = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const guest = (await test.signIn('sam@elsewhere.example')).actor;
+
+		for (const actor of [manager, team])
+			expect(await readActivity(test.claims, actor)).toEqual({
+				isAllowed: false,
+				reason: 'Only an Admin can see the Activity.'
+			});
+		expect(await readActivity(test.claims, guest)).toEqual({
+			isAllowed: false,
+			reason: 'You are waiting for access. An Admin of the organization can let you in.'
+		});
+	});
+
+	it('shows nothing of another organization', async () => {
+		const test = await createTestSignIn();
+		const theirs = '22222222-2222-4222-8222-222222222222';
+		await test.db
+			.insert(schema.organization)
+			.values({ id: theirs, name: 'Theirs', slug: 'theirs' });
+		await test.db
+			.insert(schema.organizationDetails)
+			.values({ id: theirs, organizationId: theirs, emailDomain: 'theirs.example' });
+		await test.db
+			.insert(schema.accessGrant)
+			.values({ email: 'kim@theirs.example', organizationId: theirs, role: 'admin' });
+		const kim = (await test.signIn('kim@theirs.example')).actor;
+		await save(test, kim, {
+			table: 'customer',
+			id: crypto.randomUUID(),
+			operation: 'put',
+			values: { name: 'Their Customer' }
+		});
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+
+		const { events, people } = await readAs(test, ana);
+
+		expect(events.map((event) => event.who)).toEqual(['Ana Reyes']);
+		expect(people.map((person) => person.who)).toEqual(['Ana Reyes']);
+	});
+});
