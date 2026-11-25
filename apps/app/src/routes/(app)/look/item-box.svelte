@@ -189,11 +189,12 @@
 			border-color 0.15s,
 			background 0.15s;
 	}
-	/* Ready for a paste, or a file held over it: blue, and no taller. */
+	/* Ready for a paste, or a file held over it: blue, and no taller. The blue is the theme's own variable, which a
+	   finished or frozen panel sets to its status colour (panel-item.svelte, #328). */
 	.box:has(textarea:focus),
 	.box.over {
-		background: color-mix(in srgb, var(--color-primary) 8%, white);
-		border-color: var(--color-primary);
+		background: color-mix(in srgb, var(--theme-color-primary) 8%, white);
+		border-color: var(--theme-color-primary);
 		border-style: solid;
 	}
 	textarea {
@@ -250,7 +251,7 @@
 	}
 	.box:has(textarea:focus) li,
 	.box.over li {
-		color: var(--color-primary);
+		color: var(--theme-color-primary);
 	}
 	.choose {
 		align-items: center;
@@ -272,7 +273,7 @@
 		background: #f8fafc;
 	}
 	.choose:focus-within {
-		outline: 2px solid var(--color-primary);
+		outline: 2px solid var(--theme-color-primary);
 		outline-offset: 2px;
 	}
 	.slim .inside {

@@ -39,17 +39,19 @@ body:has(.look)::-webkit-scrollbar,
 
 /* An input's ? (#299), the library's Help (#284) beside the label: grey, blue while its input is focused or its help
    is open, and hidden while the input is empty and not being typed in, as the library's inputs do. `has-help` marks
-   the block holding the label and the input, `data-empty` an input with nothing in it. */
+   the block holding the label and the input, `data-empty` an input with nothing in it. Its blue is the theme's own
+   variable, which a finished or frozen panel sets to its status colour (panel-item.svelte), so the ? turns green
+   with the rest of the panel (#328); `--color-primary` is worked out once at the root and would stay blue. */
 .has-help .help {
 	color: var(--color-slate-400);
 }
 .has-help:focus-within .help,
 .has-help .help[aria-expanded='true'] {
-	color: var(--color-primary);
+	color: var(--theme-color-primary);
 }
 @media (hover: hover) {
 	.has-help .help:hover {
-		color: var(--color-primary);
+		color: var(--theme-color-primary);
 	}
 }
 .has-help[data-empty]:not(:focus-within) .help:not([aria-expanded='true']) {
