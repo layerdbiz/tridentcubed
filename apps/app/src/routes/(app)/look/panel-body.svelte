@@ -697,6 +697,8 @@
 							type="email"
 							inputmode="email"
 							autocomplete="off"
+							autocapitalize="off"
+							spellcheck={false}
 							bind:value={person.email}
 							maxlength={200}
 							help={look.helpOf('personnel.email')}
