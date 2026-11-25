@@ -21,6 +21,7 @@
 	import Photo from '#lib/components/photo/photo.svelte';
 	import type { CropType, SizeType } from '#lib/components/photo/photo.types.js';
 	import { isWhole, toCrop } from '#lib/components/photo/photo.utils.js';
+	import { ATTACHMENT_NOUNS } from '#lib/files/files.schema.js';
 	import { toVideoLink } from '#lib/video/video.utils.js';
 	import Dots from './dots.svelte';
 	import type { GroupType, PhotoType } from './look.data';
@@ -159,7 +160,7 @@
 		const gone = photo;
 		if (!gone) return;
 		look.confirm({
-			title: 'Delete photo?',
+			title: `Delete ${ATTACHMENT_NOUNS[gone.kind ?? 'photo']}?`,
 			note: `It leaves the ${word} and the report.`,
 			onyes: () => {
 				const at = group.photos.findIndex((each) => each.id === gone.id);

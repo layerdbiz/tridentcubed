@@ -23,7 +23,15 @@ import { createTestSignIn } from '#lib/server/testing.js';
 import { draftPanel, type GroupType, type PanelType } from './look.data';
 import { LookState } from './look.state.svelte';
 import { isOfProject, takeProject, takeReads, takeRows, toRows } from './mapper';
-import { addGroup, addPhotos, countLabelOf, movePhoto, type ReadersType, uploadOf } from './photos';
+import {
+	addGroup,
+	addPhotos,
+	countLabelOf,
+	filesLabelOf,
+	movePhoto,
+	type ReadersType,
+	uploadOf
+} from './photos';
 
 type TestType = Awaited<ReturnType<typeof createTestSignIn>>;
 type DeviceType = { look: LookState; confirmed: RowType[]; actor: ActorType };
@@ -810,5 +818,20 @@ describe('PDFs and videos in a photo group (#327)', () => {
 		expect(isRead).toBe(false);
 		expect(uploads.asked).toEqual([]);
 		expect((await save(mine)).changes.filter((change) => change.table === 'photo')).toEqual([]);
+	});
+});
+
+describe('filesLabelOf: what a drop says it added (#327)', () => {
+	it('counts each kind it takes, and leaves out what a photo group does not take', () => {
+		const files = [
+			new File(['x'], 'deck.jpg', { type: 'image/jpeg' }),
+			new File(['x'], 'hold.jpg', { type: 'image/jpeg' }),
+			new File(['x'], 'bill.pdf', { type: 'application/pdf' }),
+			new File(['x'], 'lift.mov', { type: '' }),
+			new File(['x'], 'notes.txt', { type: 'text/plain' })
+		];
+
+		expect(filesLabelOf(files)).toBe('2 photos, 1 PDF, 1 video');
+		expect(filesLabelOf(files.slice(2, 3))).toBe('1 PDF');
 	});
 });

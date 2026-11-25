@@ -221,7 +221,7 @@ export type AttachmentOptionsType = {
 	/** The row it is: its picture goes in that row's `file` column and the PDF or video itself in `source`. */
 	for: Omit<FileTargetType, 'column'>;
 	/** What a toast calls it. */
-	noun: 'PDF' | 'video';
+	noun: string;
 	/** Makes its picture on the device and reads it (pdf.utils.ts, video.utils.ts). */
 	make: (file: File) => Promise<MadeType>;
 	/** Gets both addresses once both files are in storage: put them in the row. */

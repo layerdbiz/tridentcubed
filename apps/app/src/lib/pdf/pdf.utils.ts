@@ -97,12 +97,6 @@ export async function drawPage(pdf: PDFDocumentProxy, page: number, width: numbe
 	}
 }
 
-/** A page's own shape, its rotation taken in: what its spot shows it as. */
-export async function shapeOf(pdf: PDFDocumentProxy, page: number) {
-	const viewport = (await pdf.getPage(page)).getViewport({ scale: 1 });
-	return { width: viewport.width, height: viewport.height };
-}
-
 /** A picked PDF, read before it goes (#327): how many pages it has, and its first page as the picture that shows. */
 export async function readPdf(file: File): Promise<MadeType> {
 	const pdf = await openPdf(new Uint8Array(await file.arrayBuffer()));

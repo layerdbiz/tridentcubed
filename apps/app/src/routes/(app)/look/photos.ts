@@ -14,7 +14,13 @@
 // storage before the mapper saves it.
 import type { Progress } from '@layerd/ui';
 import { SvelteMap } from 'svelte/reactivity';
-import { toAttachmentKind, toAttachmentType, toTyped } from '#lib/files/files.schema.js';
+import {
+	ATTACHMENT_NOUNS,
+	type AttachmentKindType,
+	toAttachmentKind,
+	toAttachmentType,
+	toTyped
+} from '#lib/files/files.schema.js';
 import {
 	type AttachmentUpload,
 	type MadeType,
@@ -57,17 +63,22 @@ export function hasFiles(event: DragEvent) {
  * What a photo group holds, in words (#327): "3 photos", or with PDFs and videos among them "3 photos, 1 PDF, 2
  * videos". An empty group holds "0 photos".
  */
-export function countLabelOf(photos: PhotoType[]) {
-	const counts = { photo: 0, PDF: 0, video: 0 };
-	for (const photo of photos) {
-		if (photo.kind === 'pdf') counts.PDF += 1;
-		else if (photo.kind === 'video') counts.video += 1;
-		else counts.photo += 1;
-	}
+export function countLabelOf(photos: ReadonlyArray<Pick<PhotoType, 'kind'>>) {
+	const counts: Record<AttachmentKindType, number> = { photo: 0, pdf: 0, video: 0 };
+	for (const photo of photos) counts[photo.kind ?? 'photo'] += 1;
 	const parts = Object.entries(counts)
-		.filter(([noun, count]) => count || (noun === 'photo' && !photos.length))
-		.map(([noun, count]) => `${count} ${noun}${count === 1 ? '' : 's'}`);
+		.filter(([kind, count]) => count || (kind === 'photo' && !photos.length))
+		.map(([kind, count]) => {
+			const noun = ATTACHMENT_NOUNS[kind as AttachmentKindType];
+			return `${count} ${noun}${count === 1 ? '' : 's'}`;
+		});
 	return parts.join(', ');
+}
+
+/** How many of each kind a list of picked or dropped files holds, as a sentence says it: "2 photos, 1 PDF". */
+export function filesLabelOf(files: readonly File[]) {
+	const kinds = files.map((file) => toAttachmentKind(file)).filter((kind) => kind !== '');
+	return countLabelOf(kinds.map((kind) => ({ kind: kind === 'photo' ? undefined : kind })));
 }
 
 /** A new, empty group at the end of a photo panel: the one in the panel's list, so changes to it show. */
@@ -121,8 +132,9 @@ export function addPhotos(panel: PanelType, files: File[], options: AddPhotosTyp
 	const batch = options.toast && new UploadBatch(options.toast());
 	// A photo deleted from the panel on its way no longer counts in the toast (moved to another panel's group, it
 	// keeps only its own mark).
-	const isThere = (id: string) => () =>
-		panel.groups.some((each) => each.photos.some((one) => one.id === id));
+	function isThere(id: string) {
+		return () => panel.groups.some((each) => each.photos.some((one) => one.id === id));
+	}
 	for (const file of taken) {
 		const kind = toAttachmentKind(file);
 		if (kind === 'pdf' || kind === 'video') {
@@ -168,7 +180,7 @@ function addAttachment(
 	const readers = options.readers ?? BROWSER_READERS;
 	const settings = {
 		for: { table: 'photo' as const, id, projectId: options.projectId },
-		noun: kind === 'pdf' ? ('PDF' as const) : ('video' as const),
+		noun: ATTACHMENT_NOUNS[kind],
 		make: async (picked: File) => {
 			const made = await readers[kind](picked);
 			// Its picture shows in its tile as soon as it is made, before anything is stored.

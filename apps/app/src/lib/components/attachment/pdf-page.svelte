@@ -12,7 +12,7 @@
 		picture = '',
 		class: className = ''
 	}: {
-		/** The PDF's file address (`/files/<id>`). */
+		/** The PDF's file address (`/files/<id>`); none while it is still on its way. */
 		source: string;
 		/** Which page, from 1. */
 		page: number;
@@ -46,7 +46,7 @@
 
 <div
 	class="relative overflow-hidden bg-slate-100 {className}"
-	data-pdf={source}
+	data-pdf={source || undefined}
 	data-pdf-page={page}
 	bind:clientWidth={width}
 >

@@ -2499,12 +2499,14 @@
 										<!-- #312: the photo as it is cropped for this spot, placed in percentages so the PDF prints it the same. -->
 										<!-- #327: a PDF's page shown whole; a video as its thumbnail with a play button and its length, a
 										     link that opens the video in the app (the PDF cannot play it). -->
-										{@const hasCaption = Boolean(photo.description) && page === 1}
+										{@const hasDescription = Boolean(photo.description) && page === 1}
 										{@const kind = photo.kind ?? 'photo'}
 										<figure class="relative overflow-hidden rounded">
-											{#if photo.kind === 'pdf' && photo.source}
+											<!-- A PDF still on its way has no stored file yet: its first page shows its picture, whole, and
+											     its other pages wait as quiet placeholders. -->
+											{#if photo.kind === 'pdf'}
 												<PdfPage
-													source={photo.source}
+													source={photo.source ?? ''}
 													{page}
 													picture={photo.src}
 													class="w-full {PHOTO_SIZES[group.layout]}"
@@ -2568,7 +2570,7 @@
 														? 'Video'
 														: ''}</span
 											>
-											{#if hasCaption}
+											{#if hasDescription}
 												<figcaption
 													class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/40 to-transparent px-2 pt-5 pb-1.5 font-medium text-white {group.layout <=
 													2

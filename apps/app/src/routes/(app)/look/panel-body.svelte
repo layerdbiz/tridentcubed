@@ -46,7 +46,12 @@
 	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
-	import { ATTACHMENT_ICONS, ATTACHMENT_NAMES, toPictureType } from '#lib/files/files.schema.js';
+	import {
+		ATTACHMENT_ICONS,
+		ATTACHMENT_NAMES,
+		ATTACHMENT_NOUNS,
+		toPictureType
+	} from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import ImageField from './image-field.svelte';
@@ -82,6 +87,7 @@
 		addPhotos,
 		ATTACHMENT_ACCEPT,
 		countLabelOf,
+		filesLabelOf,
 		hasFiles,
 		movePhoto,
 		uploadOf
@@ -471,14 +477,15 @@
 		event.preventDefault();
 		event.stopPropagation();
 		dropping = '';
-		const count = addPhotos(panel, [...(event.dataTransfer?.files ?? [])], {
+		const files = [...(event.dataTransfer?.files ?? [])];
+		const count = addPhotos(panel, files, {
 			group,
 			projectId: look.projectId,
 			toast: createPhotoToast
 		});
 		if (!count) return;
 		if (!openGroups.includes(group.id)) openGroups = [...openGroups, group.id];
-		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added`);
+		look.say(`${filesLabelOf(files)} added`);
 		save();
 	}
 
@@ -522,11 +529,12 @@
 	// photo panel that is open: it joins that group where it was dropped, or at its end, and is saved like any change.
 	const PHOTO_ZONE = 'photos';
 	function dropPhoto(group: PanelType['groups'][number], from: number, id: string, to?: number) {
+		const kind = group.photos[from]?.kind ?? 'photo';
 		if (!movePhoto(look.panels, group.id, from, id, to)) return;
 		const target = look.panels.flatMap((item) => item.groups ?? []).find((item) => item.id === id);
 		if (panel.groups.some((item) => item.id === id) && !openGroups.includes(id))
 			openGroups = [...openGroups, id];
-		look.say(`Photo moved to ${target?.title || 'the other group'}`);
+		look.say(`${ATTACHMENT_NAMES[kind]} moved to ${target?.title || 'the other group'}`);
 		save();
 	}
 
@@ -1644,11 +1652,7 @@
 													? remove(
 															group.photos,
 															photo,
-															photo.kind === 'pdf'
-																? 'Delete PDF?'
-																: photo.kind === 'video'
-																	? 'Delete video?'
-																	: 'Delete photo?',
+															`Delete ${ATTACHMENT_NOUNS[photo.kind ?? 'photo']}?`,
 															`It leaves the ${word} and the report.`
 														)
 													: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}

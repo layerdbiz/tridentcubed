@@ -51,11 +51,18 @@ export const ATTACHMENT_ICONS: Record<AttachmentKindType, string> = {
 	video: 'icon-[mdi--video]'
 };
 
-/** What each kind of attachment is called, beside its icon. */
+/** What each kind of attachment is called, beside its icon or starting a sentence. */
 export const ATTACHMENT_NAMES: Record<AttachmentKindType, string> = {
 	photo: 'Photo',
 	pdf: 'PDF',
 	video: 'Video'
+};
+
+/** What each kind of attachment is called inside a sentence: "Delete video?", "2 photos, 1 PDF". */
+export const ATTACHMENT_NOUNS: Record<AttachmentKindType, string> = {
+	photo: 'photo',
+	pdf: 'PDF',
+	video: 'video'
 };
 
 // The PDFs and videos a photo group takes, by the ending a file's name may have, for a browser that hands one over

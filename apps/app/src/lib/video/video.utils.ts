@@ -4,6 +4,7 @@
 // a link that opens the real video in the app (`toVideoLink`).
 //
 // Making the video smaller (WebM, #307) is a later ticket: for now it goes to storage as it came.
+import { FILE_PREFIX } from '#lib/files/files.schema.js';
 import type { MadeType } from '#lib/files/files.state.svelte.js';
 
 /** Where the app plays a stored video: `/video/<file id>`, behind sign-in like every app address. */
@@ -17,7 +18,7 @@ const WAIT_MS = 15_000;
 
 /** The app's address that plays the video stored at `source` (`/files/<id>`); none for anything else. */
 export function toVideoLink(origin: string, source: string) {
-	const id = source.startsWith('/files/') ? source.slice('/files/'.length) : '';
+	const id = source.startsWith(FILE_PREFIX) ? source.slice(FILE_PREFIX.length) : '';
 	return /^[0-9a-f-]{36}$/i.test(id) ? `${origin}${VIDEO_PATH}/${id}` : '';
 }
 
@@ -76,7 +77,7 @@ function toJpeg(canvas: HTMLCanvasElement) {
 
 // A plain dark thumbnail, for a video this device cannot draw a frame of (an iPhone's HEVC in some browsers): the
 // play button and the length still show on it.
-async function plainThumbnail() {
+async function createPlainThumbnail() {
 	const canvas = document.createElement('canvas');
 	canvas.width = 1280;
 	canvas.height = 720;
@@ -118,7 +119,13 @@ export async function readVideo(file: File): Promise<MadeType> {
 	try {
 		await when(video, 'loadedmetadata');
 		duration = Number.isFinite(video.duration) ? video.duration : 0;
-		if (video.readyState < 2) await when(video, 'loadeddata');
+		if (video.readyState < 2) {
+			// An iPhone loads no frame of a video that never plays: a muted play starts it, paused again at once.
+			const loaded = when(video, 'loadeddata');
+			await video.play().catch(() => undefined);
+			video.pause();
+			await loaded;
+		}
 		const at = toThumbnailTime(duration);
 		if (at > 0) {
 			const seeked = when(video, 'seeked');
@@ -133,7 +140,7 @@ export async function readVideo(file: File): Promise<MadeType> {
 		video.load();
 		URL.revokeObjectURL(url);
 	}
-	const picture = blob ?? (await plainThumbnail());
+	const picture = blob ?? (await createPlainThumbnail());
 	const name = `${file.name.replace(/\.[^.]+$/, '')}.jpg`;
 	return { picture: new File([picture], name, { type: 'image/jpeg' }), duration };
 }
