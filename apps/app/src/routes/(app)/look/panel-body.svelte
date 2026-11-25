@@ -70,8 +70,10 @@
 	import ItemBox from './item-box.svelte';
 	import ItemTable from './item-table.svelte';
 	import {
+		attach,
 		createdDayOf,
 		createId,
+		dropUntyped,
 		FACILITY_ICONS,
 		groupWordOf,
 		isPdfAttachment,
@@ -222,8 +224,7 @@
 		if (toSaved(kept.grid).length > GRID_LIMIT) return false;
 		panel.grid = kept.grid;
 		skipped = kept.skipped.rows || kept.skipped.columns ? kept.skipped : undefined;
-		const filled = panel.items.filter((item) => item.quantity.trim() || item.description.trim());
-		panel.items.splice(0, panel.items.length, ...filled);
+		dropUntyped(panel.items);
 		save();
 		const count = toTable(kept.grid).rows.length;
 		look.say(`${count} ${count === 1 ? 'item' : 'items'} added as a table`);
@@ -382,10 +383,7 @@
 				sending = sending.filter((other) => other.id !== id);
 				// #295: a PDF prints its pages four to a report page until another layout is picked, as a new photo
 				// group's photos do.
-				panel.attachments = [
-					...(panel.attachments ?? []),
-					{ id, name: file.name, src, kind, layout: DEFAULT_LAYOUT }
-				];
+				attach(panel, { id, name: file.name, src, kind, layout: DEFAULT_LAYOUT });
 				save();
 			}
 		});

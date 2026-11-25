@@ -232,6 +232,17 @@ describe('the inputs the other panels hold', () => {
 		expect(emptyOf(sectionsOf(panel))).toEqual([]);
 	});
 
+	it('still counts a row someone started beside the PDF', () => {
+		const panel = panelOf('items');
+		panel.items = [{ id: 'a', quantity: '2', description: '' }];
+		panel.attachments = [
+			{ id: 'b', name: 'Packing List.pdf', src: 'files/b.pdf', kind: 'file', layout: 4 }
+		];
+		expect(emptyOf(sectionsOf(panel))).toEqual([
+			{ section: 'items', label: 'Description', nth: 0 }
+		]);
+	});
+
 	it('still asks for an item when the only attachment is a photo', () => {
 		const panel = panelOf('items');
 		panel.items = [];

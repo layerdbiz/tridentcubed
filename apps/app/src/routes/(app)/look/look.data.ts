@@ -693,6 +693,21 @@ export function itemOf(quantity = '', description = ''): ItemType {
 	return { id: crypto.randomUUID(), quantity, description };
 }
 
+/**
+ * Once the Items panel holds its item list whole (a spreadsheet's rows, #242, or a PDF, #290), a row to type into
+ * that was never typed in goes, so the panel does not count an empty input beside a full list.
+ */
+export function dropUntyped(items: ItemType[]) {
+	const typed = items.filter((item) => item.quantity.trim() || item.description.trim());
+	items.splice(0, items.length, ...typed);
+}
+
+/** A file joins the Items panel's attachments; a PDF is the item list itself (#290). */
+export function attach(panel: PanelType, file: AttachmentType) {
+	panel.attachments = [...(panel.attachments ?? []), file];
+	if (isPdfAttachment(file)) dropUntyped(panel.items);
+}
+
 /** A new, empty photo group, four photos to a page. */
 export function groupOf(title = '', isEnabled = true): GroupType {
 	return {
