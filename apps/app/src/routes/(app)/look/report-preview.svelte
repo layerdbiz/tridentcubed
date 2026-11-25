@@ -63,14 +63,13 @@
 	import { customerOf, locationOf } from './records.data';
 	import { cityStateOf, partsOf } from './location';
 	import {
-		boxIn,
 		DownloadError,
 		joinPdfs,
 		PART_LIMIT,
 		printParts,
 		sizeOf,
-		toParts,
-		type PageLinkType
+		toPageLink,
+		toParts
 	} from './download';
 	import { downloadToast } from './toasts';
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
@@ -1133,23 +1132,9 @@
 			const slim = slimOf(shown[index]);
 			if (slim) image.src = slim;
 		}
-		// The contents' links go in once the parts are one PDF (`linksOf`): the printer makes none of its own.
-		for (const link of copy.querySelectorAll('a[data-goto]')) link.removeAttribute('href');
 		copy.style.cssText = `width: ${W}px; height: ${H}px`;
 		copy.classList.remove('ring-4', 'ring-primary/70');
 		return copy.outerHTML;
-	}
-
-	// A page's links to other pages, the contents' lines (#301), each where it sits on the page as drawn here: the
-	// page the export prints, from the same markup and styles. `at` is the page's place, from 0.
-	function linksOf(node: HTMLElement, at: number): PageLinkType[] {
-		const page = node.getBoundingClientRect();
-		if (!page.width || !page.height) return [];
-		return [...node.querySelectorAll<HTMLElement>('[data-goto]')].map((link) => ({
-			on: at,
-			to: Number(link.dataset.goto) - 1,
-			box: boxIn(page, link.getBoundingClientRect())
-		}));
 	}
 
 	// Lets the screen draw before the next piece of work: slimming a page's photos holds it still, and a toast that
@@ -1184,7 +1169,6 @@
 				.map((node) => node.outerHTML)
 				.join('\n');
 			const pages: string[] = [];
-			const links: PageLinkType[] = [];
 			for (const [at, node] of nodes.entries()) {
 				progress.reach(
 					(PREPARED * at) / count,
@@ -1198,7 +1182,6 @@
 					);
 				}
 				pages.push(sheetOf(node));
-				links.push(...linksOf(node, at));
 			}
 			if (!count) throw new DownloadError('There are no pages to print yet.');
 
@@ -1225,7 +1208,7 @@
 
 			progress.reach(PRINTED, JOINED, 'Putting the pages together');
 			await pause();
-			const pdf = await joinPdfs(pdfs, filename, links);
+			const pdf = await joinPdfs(pdfs, filename);
 
 			progress.reach(JOINED, 100, 'Saving the PDF');
 			const url = URL.createObjectURL(new Blob([pdf as BlobPart], { type: 'application/pdf' }));
@@ -1616,12 +1599,15 @@
 <!-- One line of the Table of Contents: a section, or one of its parts set in under it. -->
 {#snippet contentsLine(line: ContentLineType | undefined)}
 	{#if line}
-		<!-- A link to the page it names (#301): here it opens that page, and in the PDF a link drawn over it does. -->
+		<!-- A link to the page it names (#301). Here a tap opens that page (`data-tap`: the pages still move from a drag
+		     that starts on it). Printed, it is a link to the report link of that page, which the PDF's join turns into
+		     a link to the page itself (download.ts). -->
 		<li>
 			<a
-				href={line.to ? `#page-${line.to}` : undefined}
-				data-goto={line.to || undefined}
-				data-no-pan
+				href={line.to ? toPageLink(linkOf(line.to), line.to) : undefined}
+				data-tap
+				draggable="false"
+				tabindex="-1"
 				onclick={(event) => {
 					event.preventDefault();
 					goTo(line.to - 1);

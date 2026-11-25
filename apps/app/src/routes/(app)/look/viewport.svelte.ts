@@ -20,6 +20,20 @@ const EDGE_PANELS = 24;
 // Where the zoom bar moves from the phone's bottom corner to the desktop's right edge (Tailwind's `md`).
 const WIDE = 768;
 
+// A press that moves less than this is a tap.
+const TAP = 6;
+
+/**
+ * A tap on something on a page that answers one (`data-tap`: a line of the Table of Contents, #301) clicks it. Such
+ * a thing is not left out of the moves the way a button is, so the pages still move from a drag that starts on it,
+ * and the click it would get after a press the pages took is given to it here. Whether one was tapped.
+ */
+export function tapOn(target: EventTarget | null) {
+	const tapped = target instanceof Element ? target.closest<HTMLElement>('[data-tap]') : null;
+	tapped?.click();
+	return Boolean(tapped);
+}
+
 function clampZoom(zoom: number) {
 	return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
 }
@@ -237,6 +251,8 @@ function gesturesOf(viewport: Viewport, element: HTMLElement) {
 	const pointers = new Map<number, { x: number; y: number }>();
 	let pinch: { distance: number; zoom: number; mx: number; my: number } | undefined;
 	let samples: { x: number; y: number; t: number }[] = [];
+	// The one finger or button down, while it could still be a tap.
+	let press: { x: number; y: number; target: EventTarget | null } | undefined;
 
 	const local = (event: { clientX: number; clientY: number }) => {
 		const box = element.getBoundingClientRect();
@@ -250,11 +266,12 @@ function gesturesOf(viewport: Viewport, element: HTMLElement) {
 	function down(event: PointerEvent) {
 		if (
 			event.button !== 0 ||
-			(event.target as HTMLElement).closest('button, a, input, [data-no-pan]')
+			(event.target as HTMLElement).closest('button, a:not([data-tap]), input, [data-no-pan]')
 		)
 			return;
 		element.setPointerCapture(event.pointerId);
 		pointers.set(event.pointerId, local(event));
+		press = pointers.size === 1 ? { ...local(event), target: event.target } : undefined;
 		viewport.hold();
 		viewport.isMoving = true;
 		samples = [{ ...local(event), t: event.timeStamp }];
@@ -269,6 +286,7 @@ function gesturesOf(viewport: Viewport, element: HTMLElement) {
 		if (!before) return;
 		const now = local(event);
 		pointers.set(event.pointerId, now);
+		if (press && Math.hypot(now.x - press.x, now.y - press.y) > TAP) press = undefined;
 		if (pointers.size === 2 && pinch) {
 			const mid = middle();
 			viewport.zoomTo(pinch.zoom * (mid.distance / pinch.distance), mid.x, mid.y, false);
@@ -287,6 +305,9 @@ function gesturesOf(viewport: Viewport, element: HTMLElement) {
 		if (pointers.size < 2) pinch = undefined;
 		if (pointers.size) return;
 		viewport.isMoving = false;
+		const tapped = event.type === 'pointerup' ? press : undefined;
+		press = undefined;
+		if (tapped && tapOn(tapped.target)) return;
 		const first = samples[0];
 		const last = samples[samples.length - 1];
 		const dt = last && first ? last.t - first.t : 0;
@@ -315,7 +336,8 @@ function gesturesOf(viewport: Viewport, element: HTMLElement) {
 	}
 
 	function dblclick(event: MouseEvent) {
-		if ((event.target as HTMLElement).closest('button, a, input, [data-no-pan]')) return;
+		if ((event.target as HTMLElement).closest('button, a, input, [data-no-pan], [data-tap]'))
+			return;
 		const point = local(event);
 		viewport.zoomTo(viewport.zoom < 0.95 ? 1 : viewport.zoom * 0.5, point.x, point.y);
 	}

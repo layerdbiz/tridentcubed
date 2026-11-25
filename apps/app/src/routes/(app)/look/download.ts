@@ -146,57 +146,53 @@ export async function printParts(
 	return pdfs;
 }
 
-/** A box on a page, as shares of the page's width and height from its top left corner: the same at any zoom. */
-export type BoxType = { x: number; y: number; width: number; height: number };
+// The Table of Contents' links (#301). Each line is printed as a link, so the printer draws its box exactly where the
+// line is in the page it lays out. Its address is the report link of its page (#216) ending in #page-<n>: the join
+// finds those and makes each open page n of the PDF itself, which may be in a part printed apart from the contents.
+// A link the join could not make (a page the PDF does not have) still opens that page of the Preview in the app.
 
-/** Where `inner` sits on `page`, both as the screen has them, as shares of the page: what the page prints at. */
-export function boxIn(page: BoxType, inner: BoxType): BoxType {
-	return {
-		x: (inner.x - page.x) / page.width,
-		y: (inner.y - page.y) / page.height,
-		width: inner.width / page.width,
-		height: inner.height / page.height
-	};
+/** The address a contents line's link is printed with: `address`, the report link of its page, marked with it. */
+export function toPageLink(address: string, page: number) {
+	return `${address}#page-${page}`;
+}
+
+/** The page a printed link opens, from 1, when it is a contents line's; 0 for any other link (a QR code's). */
+export function pageOfLink(address: string) {
+	const found = /#page-(\d+)$/.exec(address);
+	return found ? Number(found[1]) : 0;
 }
 
 /**
- * A link from one page of the PDF to another: a line of the Table of Contents to the page it names (#301). `on` and
- * `to` count the pages from 0, the cover first.
+ * The parts' PDFs as one, in order, every page with its links, the contents' lines opening their pages. A single
+ * part is the whole report already: it is kept as the printer made it, language and tags and all, and only its
+ * contents' links are changed. The library that does this is fetched when a PDF is made.
  */
-export type PageLinkType = { on: number; to: number; box: BoxType };
-
-/**
- * The parts' PDFs as one, in order, every page with its links, and the links between its pages added. The pages
- * print in parts, so a contents line on the second page may name a page another part printed: those links can only
- * go in once the parts are one. A single part with no links to add is the whole report already and comes back as
- * it is. The library that joins them is fetched only when there is something to do.
- */
-export async function joinPdfs(pdfs: Uint8Array[], filename: string, links: PageLinkType[] = []) {
-	if (pdfs.length === 1 && !links.length) return pdfs[0];
-	const { PDFDocument } = await import('pdf-lib');
-	const whole = await PDFDocument.create();
-	for (const bytes of pdfs) {
+export async function joinPdfs(pdfs: Uint8Array[], filename: string) {
+	const { PDFDict, PDFDocument, PDFHexString, PDFName, PDFString } = await import('pdf-lib');
+	const isWhole = pdfs.length === 1;
+	const whole = isWhole ? await PDFDocument.load(pdfs[0]) : await PDFDocument.create();
+	for (const bytes of isWhole ? [] : pdfs) {
 		const part = await PDFDocument.load(bytes);
 		for (const page of await whole.copyPages(part, part.getPageIndices())) whole.addPage(page);
 	}
+
 	const pages = whole.getPages();
-	for (const { on, to, box } of links) {
-		const page = pages[on];
-		const target = pages[to];
-		if (!page || !target) continue;
-		// A PDF measures from the bottom left, in points.
-		const sheet = page.getMediaBox();
-		const left = sheet.x + box.x * sheet.width;
-		const top = sheet.y + (1 - box.y) * sheet.height;
-		const link = whole.context.obj({
-			Type: 'Annot',
-			Subtype: 'Link',
-			Rect: [left, top - box.height * sheet.height, left + box.width * sheet.width, top],
-			Border: [0, 0, 0],
+	for (const page of pages) {
+		for (const ref of page.node.Annots()?.asArray() ?? []) {
+			const link = whole.context.lookup(ref);
+			if (!(link instanceof PDFDict)) continue;
+			const action = link.lookup(PDFName.of('A'));
+			if (!(action instanceof PDFDict)) continue;
+			// The printer writes an address as a string or as hex.
+			const address = action.get(PDFName.of('URI'));
+			const isText = address instanceof PDFString || address instanceof PDFHexString;
+			const target = isText ? pages[pageOfLink(address.decodeText()) - 1] : undefined;
+			if (!target) continue;
+			link.delete(PDFName.of('A'));
 			// The page opened at its top, at the zoom the reader is at.
-			Dest: [target.ref, 'XYZ', null, target.getMediaBox().y + target.getHeight(), null]
-		});
-		page.node.addAnnot(whole.context.register(link));
+			const top = target.getMediaBox().y + target.getHeight();
+			link.set(PDFName.of('Dest'), whole.context.obj([target.ref, 'XYZ', null, top, null]));
+		}
 	}
 	whole.setTitle(filename.replace(/\.pdf$/i, ''));
 	return whole.save();
