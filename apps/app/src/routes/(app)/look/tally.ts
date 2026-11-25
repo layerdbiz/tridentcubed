@@ -95,9 +95,9 @@ function projectSections(panel: PanelType, contacts: { id: string }[]): SectionT
 			inputs: [
 				field('Organization'),
 				{ label: 'Team Lead', value: panel.owner },
-				// A job may need only one of Trident's people, its Team Lead (Justin, 2026-11-25, #328): with a lead
-				// picked the Team Assigned holds nothing more to fill in, so a lead-only project can reach 100%.
-				{ label: 'Team Assigned', value: panel.assigned.length ? panel.assigned : panel.owner }
+				// A job may need only one of Trident's people, its Team Lead (Justin, 2026-11-25, #328): the Team
+				// Assigned is done once someone is assigned or a lead is picked, so a lead-only project reaches 100%.
+				{ label: 'Team Assigned', value: panel.assigned.length > 0 || Boolean(panel.owner) }
 			]
 		},
 		...(panel.personnel ?? []).map((company) => ({

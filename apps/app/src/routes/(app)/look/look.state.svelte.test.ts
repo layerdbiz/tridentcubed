@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { draftOf, draftPanel, itemOf, STAGES, type ClientType } from './look.data';
-import { LookState, metricsOf, toFollowing } from './look.state.svelte';
+import { isMovedOn, LookState, metricsOf, toFollowing, toWorkBefore } from './look.state.svelte';
 import { sectionsOf, tallyOf } from './tally';
 
 // The tests run on Svelte's server build, where LookState's effects do nothing: what is checked here is the state
@@ -267,6 +267,19 @@ describe('a project’s status following its work (#328)', () => {
 		look.project.status = 'Draft';
 		look.advance();
 		expect(look.project.status).toBe('Ready');
+	});
+
+	it('moves a project opened whose work moved on since it was saved: a lead-only Draft saved at 99%', () => {
+		const before = toWorkBefore({ status: 'Draft', progress: 99 });
+		expect(isMovedOn(before, { isStarted: true, isDone: true })).toBe(true);
+		expect(isMovedOn(before, { isStarted: true, isDone: false })).toBe(true);
+	});
+
+	it('leaves a status picked by hand until the work moves on: 100% kept In Progress stays In Progress', () => {
+		const before = toWorkBefore({ status: 'In Progress', progress: 100 });
+		expect(isMovedOn(before, { isStarted: true, isDone: true })).toBe(false);
+		const undone = { isStarted: true, isDone: false };
+		expect(isMovedOn(undone, { isStarted: true, isDone: true })).toBe(true);
 	});
 
 	it('never moves Ready back, nor Review, Revision or any state after it', () => {

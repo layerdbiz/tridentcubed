@@ -190,7 +190,7 @@
 			background 0.15s;
 	}
 	/* Ready for a paste, or a file held over it: blue, and no taller. The blue is the theme's own variable, which a
-	   finished panel sets to its green (#328). */
+	   finished or frozen panel sets to its status colour (panel-item.svelte, #328). */
 	.box:has(textarea:focus),
 	.box.over {
 		background: color-mix(in srgb, var(--theme-color-primary) 8%, white);
