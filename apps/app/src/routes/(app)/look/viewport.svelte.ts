@@ -106,6 +106,15 @@ export class Viewport {
 		this.zoomTo(this.zoom * factor);
 	}
 
+	// Put the canvas exactly here, past the edges too: a presentation lays its pages a screen apart (#324).
+	moveTo(x: number, y: number, zoom: number, isAnimated = false) {
+		this.#animate(isAnimated);
+		if (zoom !== this.zoom) this.#sharpen();
+		this.x = x;
+		this.y = y;
+		this.zoom = zoom;
+	}
+
 	// Bring one page to the top of the view, zooming out first if it would not fit across. A page already wholly on
 	// screen stays where it is, and one wholly in view across only moves up, so pages spread out in rows keep their
 	// place (#322).

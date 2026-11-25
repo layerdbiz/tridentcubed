@@ -1,22 +1,62 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the preview's controls, standing up in one black bar (Justin's note 28): a zoom slider in blue
-	// (its knob grows and shows the percent while you hold it), fit and page-layout buttons, and Download at the bottom.
-	// No + and − buttons: the slider, pinch and scroll do that.
+	// (its knob grows and shows the percent while you hold it), the fit button, the mode menu, and Download at the
+	// bottom. No + and − buttons: the slider, pinch and scroll do that. #324 (Justin, 2026-11-25): one button for how
+	// the pages lie, its icon the mode they are in, and a menu that pops out beside it with Stack, Spread and Present
+	// (a play button: the pages one at a time).
+	import type { LayoutType } from './presentation.svelte';
 	import { ZOOM_MAX, ZOOM_MIN, type Viewport } from './viewport.svelte';
 
 	let {
 		viewport,
 		layout,
 		onfit,
-		onlayout,
+		onmode,
 		ondownload
 	}: {
 		viewport: Viewport;
-		layout: 'column' | 'spread';
+		layout: LayoutType;
 		onfit: () => void;
-		onlayout: () => void;
+		onmode: (mode: LayoutType) => void;
 		ondownload: () => void;
 	} = $props();
+
+	const MODES: { id: LayoutType; name: string; hint: string; label: string; icon: string }[] = [
+		{
+			id: 'column',
+			name: 'Stack',
+			hint: 'One under another',
+			label: 'Stack the pages',
+			icon: 'icon-[mdi--view-sequential-outline]'
+		},
+		{
+			id: 'spread',
+			name: 'Spread',
+			hint: 'Every page at once',
+			label: 'Spread the pages out',
+			icon: 'icon-[mdi--view-grid-outline]'
+		},
+		{
+			id: 'present',
+			name: 'Present',
+			hint: 'One page at a time',
+			label: 'Present the pages',
+			icon: 'icon-[mdi--play-circle-outline]'
+		}
+	];
+	const now = $derived(MODES.find((mode) => mode.id === layout) ?? MODES[0]);
+	let isOpen = $state(false);
+	let menu: HTMLDivElement | undefined = $state();
+
+	function pick(mode: LayoutType) {
+		isOpen = false;
+		if (mode !== layout) onmode(mode);
+	}
+
+	// Anywhere else shuts the menu, and so does Escape.
+	function onpointerdown(event: PointerEvent) {
+		if (isOpen && !menu?.contains(event.target as Node)) isOpen = false;
+	}
 
 	let track: HTMLDivElement | undefined = $state();
 	let isHeld = $state(false);
@@ -48,6 +88,11 @@
 
 	const hover = 'hover:bg-white/10';
 </script>
+
+<svelte:document
+	onpointerdowncapture={onpointerdown}
+	onkeydown={(event) => isOpen && event.key === 'Escape' && (isOpen = false)}
+/>
 
 <div
 	class="flex w-12 flex-col items-center gap-1 rounded-full bg-black py-2 text-white shadow-xl shadow-black/25"
@@ -106,18 +151,49 @@
 		title="Fit to the screen"
 		onclick={onfit}><span class="icon-[mdi--fit-to-screen-outline] size-5"></span></button
 	>
-	<button
-		type="button"
-		class="flex size-9 items-center justify-center rounded-full {hover}"
-		aria-label={layout === 'column' ? 'Spread the pages out' : 'Stack the pages'}
-		title={layout === 'column' ? 'Spread the pages out' : 'Stack the pages'}
-		onclick={onlayout}
-		><span
-			class="{layout === 'column'
-				? 'icon-[mdi--view-grid-outline]'
-				: 'icon-[mdi--view-sequential-outline]'} size-5"
-		></span></button
+	<div
+		bind:this={menu}
+		class="relative"
 	>
+		<!-- A small notch at its left shows that the menu comes out that way. -->
+		<button
+			type="button"
+			class="relative flex size-9 items-center justify-center rounded-full before:absolute before:top-1/2 before:left-px before:-translate-y-1/2 before:border-y-4 before:border-r-4 before:border-l-0 before:border-y-transparent before:border-r-white/55 before:transition-opacity {isOpen
+				? 'bg-white text-black before:opacity-0'
+				: 'bg-white/10 hover:bg-white/15'}"
+			aria-haspopup="menu"
+			aria-expanded={isOpen}
+			aria-label="{now.name}: choose how the pages lie"
+			title="{now.name}: choose how the pages lie"
+			onclick={() => (isOpen = !isOpen)}><span class="{now.icon} size-5"></span></button
+		>
+		<div
+			class="absolute right-[calc(100%+16px)] -bottom-2 grid origin-bottom-right gap-0.5 rounded-[18px] bg-black p-1.5 shadow-xl shadow-black/30 transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] md:top-1/2 md:bottom-auto md:origin-right md:-translate-y-1/2 {isOpen
+				? ''
+				: 'pointer-events-none translate-x-2 scale-[0.92] opacity-0'}"
+			role="menu"
+			aria-label="How the pages lie"
+		>
+			{#each MODES as mode (mode.id)}
+				<button
+					type="button"
+					class="grid grid-cols-[20px_auto] items-center justify-items-start gap-x-3 rounded-xl py-2 pr-4 pl-3 text-left {mode.id ===
+					layout
+						? 'bg-white text-black'
+						: 'text-white hover:bg-white/10'}"
+					role="menuitemradio"
+					aria-checked={mode.id === layout}
+					tabindex={isOpen ? 0 : -1}
+					title={mode.label}
+					onclick={() => pick(mode.id)}
+				>
+					<span class="{mode.icon} row-span-2 size-5"></span>
+					<span class="text-[13px] font-semibold whitespace-nowrap">{mode.name}</span>
+					<span class="text-[11px] font-medium whitespace-nowrap opacity-60">{mode.hint}</span>
+				</button>
+			{/each}
+		</div>
+	</div>
 	<button
 		type="button"
 		class="mt-1 flex size-10 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/30 hover:brightness-110"
