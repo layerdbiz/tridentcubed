@@ -21,6 +21,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
 	import AccountMenu from './account-menu.svelte';
+	import ActivityPage from './activity-page.svelte';
 	import Avatar from './avatar.svelte';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
@@ -620,6 +621,17 @@
 				{look}
 				{isWide}
 			/>
+		</div>
+	{/if}
+
+	{#if look.screen === 'activity'}
+		<!-- The Activity (#306): an Admin's, opened from the menu on their profile picture, sliding in like the
+		     Organization. -->
+		<div
+			class="fixed inset-0 z-50"
+			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
+		>
+			<ActivityPage {look} />
 		</div>
 	{/if}
 

@@ -21,7 +21,7 @@ src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql
                                Storage or a local folder), convert.ts (a picture the device could not
                                read, converted on the server and swapped in, #294), export.ts (the PDF
                                export: who may ask, the print document, the file name), pdf-browser.ts
-                               (the export browser)
+                               (the export browser), activity.ts (the Activity's read, #306)
 scripts/seed-sql.ts            prints the one seed as SQL (`pnpm --silent --filter app db:seed-sql`)
 src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.remote.ts (`saveRows`,
                                `fetchLists`), rows.utils.ts (the difference), rows.state.svelte.ts (the sync loop)
@@ -32,7 +32,8 @@ src/lib/files/                 files: files.schema.ts (the upload and convert re
                                `AttachmentUpload` for a PDF or video and the picture made of it, #327)
 src/lib/pdf/                   PDFs in photo groups (#327): pdf.utils.ts (PDF.js on the device: a PDF's pages
                                counted and drawn, once), pdf.constants.ts (the decoders, fonts and character
-                               maps PDF.js reads for some PDFs, served with the app)
+                               maps PDF.js reads for some PDFs, served with the app), pdf.state.svelte.ts (a
+                               stored PDF's page count read from the PDF itself, for an Items PDF, #295)
 src/lib/video/                 videos in photo groups (#327): video.utils.ts (the length and the Thumbnail
                                made on the device, the app address that plays one)
 src/lib/components/attachment/ pdf-page.svelte: one page of a stored PDF in its spot on the Preview
@@ -51,6 +52,8 @@ src/routes/local-files/        the local folder store's signed addresses (no Sup
 src/routes/report/             a report's link, /report/<project>/<page>: what a report page's QR code
                                holds; sends the browser on to that project's Preview (behind sign-in)
 src/lib/report/                the report link: report.utils.ts builds it and the app address it opens
+src/lib/activity/              the Activity (#306): activity.remote.ts (`fetchActivity`, an Admin's only) and
+                               activity.types.ts; the screen is routes/(app)/look/activity-page.svelte
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
 src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <route>.<role>.ts beside it

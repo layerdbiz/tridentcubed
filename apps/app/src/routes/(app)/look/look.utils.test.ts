@@ -101,6 +101,24 @@ describe('the address', () => {
 		expect(reload(look, toAddress(look, new URL(HOME))).screen).toBe('settings');
 	});
 
+	it('lands an Admin’s reload on the Activity, and anyone else’s on the dashboard (#306)', () => {
+		const admin = new LookState();
+		admin.role = 'admin';
+		admin.openActivity();
+		const address = toAddress(admin, new URL(HOME));
+		const next = new LookState();
+		next.role = 'admin';
+		openAddress(next, address.searchParams);
+		expect(next.screen).toBe('activity');
+
+		const team = new LookState();
+		team.role = 'team';
+		openAddress(team, address.searchParams);
+		expect(team.screen).toBe('dashboard');
+		team.openActivity();
+		expect(team.screen).toBe('dashboard');
+	});
+
 	it('opens the dashboard for a project or record that is not there', () => {
 		const look = new LookState();
 		openAddress(look, new URLSearchParams('screen=workspace&project=p1&tab=edit'));

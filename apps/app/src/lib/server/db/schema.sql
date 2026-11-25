@@ -516,7 +516,8 @@ CREATE TABLE "item_attachment" (
 	"position" integer DEFAULT 0 NOT NULL,
 	"name" text DEFAULT '' NOT NULL,
 	"file" text DEFAULT '' NOT NULL,
-	"kind" text DEFAULT 'photo' NOT NULL
+	"kind" text DEFAULT 'photo' NOT NULL,
+	"layout" integer DEFAULT 4 NOT NULL
 );
 
 --> statement-breakpoint
@@ -744,6 +745,8 @@ CREATE INDEX "time_log_entry_project_idx" ON "time_log_entry" USING btree ("proj
 CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.user_id());
 --> statement-breakpoint
 CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
+--> statement-breakpoint
+CREATE POLICY "session is in the acting organization" ON "session" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "session".user_id and m.organization_id = app.organization_id()));
 --> statement-breakpoint
 CREATE POLICY "organization is the acting one" ON "organization" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.organization_id());
 --> statement-breakpoint

@@ -288,6 +288,40 @@ export async function placePdfPages(
 		return source;
 	}
 
+	// Each PDF's pages go in through one copy of it (#295), so what its pages share (a letterhead, a font) is put in
+	// the report once, not once a page: the report then weighs about what the PDF does.
+	const embeddings = new Map<string, Promise<Map<number, import('pdf-lib').PDFEmbeddedPage>>>();
+	function embeddedOf(address: string) {
+		let embedded = embeddings.get(address);
+		if (!embedded) {
+			embedded = sourceOf(address).then(async (source) => {
+				const found = new Map<number, import('pdf-lib').PDFEmbeddedPage>();
+				const originals = source?.getPages() ?? [];
+				const wanted = placements
+					.filter((placement) => placement.source === address && originals[placement.at])
+					.map((placement) => placement.at);
+				const ats = [...new Set(wanted)];
+				const boxes = ats.map((at) => {
+					const crop = originals[at].getCropBox();
+					return {
+						left: crop.x,
+						bottom: crop.y,
+						right: crop.x + crop.width,
+						top: crop.y + crop.height
+					};
+				});
+				const pages = await report.embedPages(
+					ats.map((at) => originals[at]),
+					boxes
+				);
+				for (const [index, at] of ats.entries()) found.set(at, pages[index]);
+				return found;
+			});
+			embeddings.set(address, embedded);
+		}
+		return embedded;
+	}
+
 	for (const placement of placements) {
 		const page = pages[placement.page];
 		if (!page) continue;
@@ -300,14 +334,8 @@ export async function placePdfPages(
 		};
 		const source = await sourceOf(placement.source);
 		const original = source?.getPages()[placement.at];
-		if (original) {
-			const crop = original.getCropBox();
-			const embedded = await report.embedPage(original, {
-				left: crop.x,
-				bottom: crop.y,
-				right: crop.x + crop.width,
-				top: crop.y + crop.height
-			});
+		const embedded = (await embeddedOf(placement.source)).get(placement.at);
+		if (original && embedded) {
 			const turn = toTurn(original.getRotation().angle);
 			const shown =
 				turn === 90 || turn === 270

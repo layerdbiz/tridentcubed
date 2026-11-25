@@ -265,7 +265,7 @@ What finds the choices for what someone types, such as places from an outside se
 _Avoid_: source (in the business glossary that is where a value comes from), API (for the piece), a prop name per service
 
 **Toast**:
-A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24).
+A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305).
 _Avoid_: snackbar, progress toast (as a component of its own), loading bar
 
 **Selection bar**:

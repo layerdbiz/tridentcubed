@@ -21,6 +21,7 @@
 	import { openAddress, placeOf, toAddress } from './look.utils';
 	import { isOfProject, takeProject, takeReads, takeRows, toRows } from './mapper';
 	import { downloadToast, photoToasts } from './toasts';
+	import { toEmptyNote } from './tally';
 
 	type SelfType = { userId: string; role: LookState['role'] | null; isSuperAdmin: boolean };
 
@@ -55,6 +56,16 @@
 	openAddress(look, page.url.searchParams);
 	// svelte-ignore state_referenced_locally
 	onready(look);
+
+	// What keeps a percent under 100% (#305): the empty inputs the toast lists, read anew as each is filled in. Once
+	// nothing is left, or the project is left, the toast is done and goes.
+	const empties = $derived(look.empties);
+	const emptyPanel = $derived(
+		look.panels.find((panel) => panel.id === look.emptyFor?.panelId)?.name
+	);
+	$effect(() => {
+		if (look.emptyFor && !empties.length) untrack(() => look.closeEmpty());
+	});
 
 	// Any change to what saves: the sync loop sends it a second after the last one.
 	$effect(() => {
@@ -185,7 +196,7 @@
 </div>
 
 <!-- The toasts, one over the other (#293): the download's progress (#240), one for each set of photos picked
-     together, then the short notes. -->
+     together, what keeps a percent under 100% (#305), then the short notes. -->
 <div
 	class="pointer-events-none fixed inset-x-0 bottom-28 z-[90] flex flex-col items-center gap-2 px-4 md:bottom-20"
 >
@@ -199,5 +210,10 @@
 			label="Upload photos"
 		/>
 	{/each}
+	<Toast
+		text={toEmptyNote(empties.length, emptyPanel)}
+		items={empties.map((input) => ({ label: input.text, onclick: () => look.openInput(input) }))}
+		onclose={() => look.closeEmpty()}
+	/>
 	<Toast text={look.toast} />
 </div>

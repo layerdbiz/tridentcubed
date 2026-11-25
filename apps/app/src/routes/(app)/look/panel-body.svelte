@@ -43,6 +43,10 @@
 	// #229 (Justin, 2026-11-18): what a section counts is not written here beside its inputs any more. Every
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
+	// #305: an entry of the list of what keeps a percent under 100% opens its input: its panel opens
+	// (LookState.openInput), then its section here, and the focus goes to the input (focus.ts finds it by its section,
+	// label and place among the inputs with that label, as tally.ts lists them).
+	import { untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import { Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
@@ -59,6 +63,7 @@
 	} from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
+	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
 	import ImageField from './image-field.svelte';
 	import { generatedOf, INTRODUCTION_LABEL } from './introduction';
 	import ItemBox from './item-box.svelte';
@@ -68,6 +73,7 @@
 		createId,
 		FACILITY_ICONS,
 		groupWordOf,
+		isPdfAttachment,
 		itemOf,
 		LAYOUTS,
 		newPerson,
@@ -104,6 +110,7 @@
 	import { sortable } from './sortable';
 	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
 	import { sectionsOf, valuesOf } from './tally';
+	import { focusInput, inputIn } from './focus';
 
 	let {
 		look,
@@ -326,6 +333,36 @@
 		return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 	}
 
+	// The section an entry of the empty-inputs list opens (#305). The Transport panel's legs open themselves
+	// (transport-legs.svelte); the Items panel has no sections.
+	function openSection(id: string) {
+		if (panel.kind === 'project') {
+			if (!openSections.includes(id)) openSections = [...openSections, id];
+		} else if (panel.kind === 'timelog') {
+			if (!openDays.includes(id)) openDays = [...openDays, id];
+		} else if (panel.kind !== 'transport' && panel.kind !== 'items') {
+			if (!openGroups.includes(id)) openGroups = [...openGroups, id];
+		}
+	}
+
+	// The focus goes to the input once the panel and its section have slid open. A panel is drawn twice, for the
+	// phone and the desk, and only the one on screen takes it.
+	const SETTLE = 260;
+	let root = $state<HTMLFieldSetElement>();
+	$effect(() => {
+		const wanted = look.reaching;
+		const shown = root;
+		if (!wanted || wanted.panelId !== panel.id || !shown) return;
+		untrack(() => openSection(wanted.section));
+		const timer = setTimeout(() => {
+			if (!shown.getClientRects().length || look.reaching !== wanted) return;
+			look.reaching = undefined;
+			// An input the panel does not draw (none should be missing) leaves the panel itself brought into view.
+			focusInput(inputIn(shown, wanted) ?? shown);
+		}, SETTLE);
+		return () => clearTimeout(timer);
+	});
+
 	// The item list attached as photos or as the file it came as, of any kind (#188, #233): each file goes to private
 	// storage through the upload helper, showing in place while it goes, and joins the panel's attachments once it is
 	// there.
@@ -339,7 +376,12 @@
 			kind: kind === 'photo' ? 'photo' : 'document',
 			ondone: (src) => {
 				sending = sending.filter((other) => other.id !== id);
-				panel.attachments = [...(panel.attachments ?? []), { id, name: file.name, src, kind }];
+				// #295: a PDF prints its pages four to a report page until another layout is picked, as a new photo
+				// group's photos do.
+				panel.attachments = [
+					...(panel.attachments ?? []),
+					{ id, name: file.name, src, kind, layout: 4 }
+				];
 				save();
 			}
 		});
@@ -551,6 +593,7 @@
 {#snippet teamBlock()}
 	<Group
 		title="Organization"
+		section="team"
 		values={counted('team')}
 		icon={PAGE_ICONS.team}
 		isOpen={openSections.includes('team')}
@@ -597,6 +640,7 @@
 	{#each personnel as company, companyIndex (company.id)}
 		<Group
 			title={company.company || `Personnel ${companyIndex + 1}`}
+			section={company.id}
 			values={counted(company.id)}
 			icon="icon-[mdi--account-multiple-outline]"
 			tone="bg-slate-900/[0.06] text-slate-600"
@@ -705,6 +749,53 @@
 	</span>
 {/snippet}
 
+<!-- How many share a report page, 1, 2, 4, 6 or 8 (run 9 note 17: each button draws its own layout): a photo group's
+     photos, and the pages of a PDF attached to the Items panel (#295). -->
+{#snippet perPage(
+	label: string,
+	id: string,
+	key: string,
+	value: number,
+	onpick: (layout: number) => void
+)}
+	<div
+		class="has-help"
+		role="group"
+		aria-labelledby={id}
+	>
+		<p class={labelClass}>
+			<span {id}>{label}</span>
+			{#if look.helpOf(key)}<Help
+					{label}
+					text={look.helpOf(key)}
+				/>{/if}
+		</p>
+		<div class="flex gap-1.5">
+			{#each LAYOUTS as layout (layout)}
+				<button
+					type="button"
+					class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {value ===
+					layout
+						? 'bg-primary text-white shadow-md shadow-primary/25'
+						: 'bg-white text-slate-500 hover:text-primary'}"
+					onclick={() => onpick(layout)}
+				>
+					<!-- The page in miniature: one column for one or two, two columns from four up. -->
+					<span
+						class="grid h-4 w-3 gap-px {layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}"
+						style="grid-template-rows: repeat({layout <= 2 ? layout : layout / 2}, 1fr)"
+						aria-hidden="true"
+					>
+						{#each Array.from({ length: layout }, (_, at) => at) as cell (cell)}
+							<span class="rounded-[1px] bg-current"></span>
+						{/each}
+					</span>{layout}
+				</button>
+			{/each}
+		</div>
+	</div>
+{/snippet}
+
 {#snippet unpicked(isShown: boolean)}
 	{#if isShown}<span
 			class="size-1.5 rounded-full bg-warning"
@@ -713,6 +804,7 @@
 {/snippet}
 
 <fieldset
+	bind:this={root}
 	disabled={!panel.isEnabled || (!isDraft && look.isFrozen)}
 	class="min-w-0 space-y-3"
 	oninput={() => save()}
@@ -721,6 +813,7 @@
 		{@const contact = contacts.find((item) => item.id === panel.contact) ?? contacts[0]}
 		<Group
 			title="Project"
+			section="project"
 			values={counted('project')}
 			icon={PAGE_ICONS.projects}
 			isOpen={openSections.includes('project')}
@@ -781,6 +874,7 @@
 		</Group>
 		<Group
 			title="Customer"
+			section="customer"
 			values={counted('customer')}
 			icon={PAGE_ICONS.customers}
 			isOpen={openSections.includes('customer')}
@@ -919,6 +1013,59 @@
 									)}><span class="icon-[mdi--close] size-4"></span></button
 							>
 						</span>
+					{:else if isPdfAttachment(file)}
+						<!-- #295: a PDF prints its pages, as many to a report page as picked here, laid out like a photo
+						     group's photos. One whose pages cannot be read prints its name. -->
+						{@const count = pageCountOf(file.src)}
+						<div
+							class="w-full overflow-hidden rounded-2xl bg-slate-900/[0.02] ring-1 ring-slate-200"
+						>
+							<div class="flex items-center gap-2 py-2.5 pr-1.5 pl-3">
+								<span class="{ATTACHMENT_ICONS.pdf} size-5 shrink-0 text-primary"></span>
+								<div class="min-w-0 flex-1">
+									<a
+										href={file.src || undefined}
+										target="_blank"
+										rel="noopener"
+										class="block truncate text-[13px] font-bold text-slate-900 hover:underline"
+										>{file.name}</a
+									>
+									<p class="truncate text-xs text-slate-500">
+										{count === undefined
+											? ATTACHMENT_NAMES.pdf
+											: count === 0
+												? 'Its pages could not be read, so it prints its name'
+												: `${count} ${count === 1 ? 'page' : 'pages'}`}
+									</p>
+								</div>
+								<button
+									type="button"
+									class="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-danger"
+									aria-label="Remove {file.name}"
+									onclick={() =>
+										remove(
+											panel.attachments ?? [],
+											file,
+											`Remove ${file.name}?`,
+											'It leaves the cargo description.'
+										)}><span class="icon-[mdi--close] size-4"></span></button
+								>
+							</div>
+							{#if count !== 0}
+								<div class="border-t border-slate-200 px-3 pt-2 pb-3">
+									{@render perPage(
+										'Pages per Page',
+										`${uid}-${file.id}-layout`,
+										'item_attachment.layout',
+										file.layout,
+										(layout) => {
+											file.layout = layout;
+											save();
+										}
+									)}
+								</div>
+							{/if}
+						</div>
 					{:else}
 						<span
 							class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] py-2 pr-8 pl-3 text-xs text-slate-700"
@@ -1022,12 +1169,14 @@
 						bind:value={item.quantity}
 						placeholder="Qty"
 						aria-label="Quantity of item {itemIndex + 1}"
+						data-input="Quantity"
 					/>
 					<input
 						class={inputClass}
 						bind:value={item.description}
 						placeholder="What it is, e.g. Accessory crates"
 						aria-label="Description of item {itemIndex + 1}"
+						data-input="Description"
 					/>
 					<button
 						type="button"
@@ -1049,6 +1198,7 @@
 				<button
 					type="button"
 					class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+					data-input="Item"
 					onclick={() => {
 						panel.items.push(itemOf());
 						save();
@@ -1075,6 +1225,7 @@
 						sortKey={panel.days.length > 1 ? `days-${panel.id}` : ''}
 						index={dayIndex}
 						title="Day {dayIndex + 1}"
+						section={day.id}
 						values={counted(day.id)}
 						meta={day.date || 'No date'}
 						icon="icon-[mdi--calendar-blank-outline]"
@@ -1124,6 +1275,7 @@
 											sortEntries(dayIndex);
 										}}
 										aria-label="Time, on the 24-hour clock"
+										data-input="Time"
 									/>
 									<input
 										class={inputClass}
@@ -1168,6 +1320,7 @@
 			<button
 				type="button"
 				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+				data-input="Day"
 				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
 			>
 			<button
@@ -1257,6 +1410,7 @@
 				>
 					<Group
 						title={group.title || `Untitled ${word}`}
+						section={group.id}
 						values={counted(group.id)}
 						meta={countLabelOf(group.photos)}
 						isEnabled={group.isEnabled}
@@ -1304,45 +1458,16 @@
 								bind:value={group.description}
 								placeholder="Optional"></textarea>
 						</div>
-						<div
-							class="has-help"
-							role="group"
-							aria-labelledby="{uid}-{group.id}-layout"
-						>
-							<p class={labelClass}>
-								<span id="{uid}-{group.id}-layout">Photos per page</span>
-								{#if look.helpOf('group.layout')}<Help
-										label="Photos per page"
-										text={look.helpOf('group.layout')}
-									/>{/if}
-							</p>
-							<div class="flex gap-1.5">
-								{#each LAYOUTS as layout (layout)}
-									<button
-										type="button"
-										class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {group.layout ===
-										layout
-											? 'bg-primary text-white shadow-md shadow-primary/25'
-											: 'bg-white text-slate-500 hover:text-primary'}"
-										onclick={() => {
-											group.layout = layout;
-											save();
-										}}
-									>
-										<!-- The page in miniature: one column for one or two, two columns from four up. -->
-										<span
-											class="grid h-4 w-3 gap-px {layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}"
-											style="grid-template-rows: repeat({layout <= 2 ? layout : layout / 2}, 1fr)"
-											aria-hidden="true"
-										>
-											{#each Array.from({ length: layout }, (_, at) => at) as cell (cell)}
-												<span class="rounded-[1px] bg-current"></span>
-											{/each}
-										</span>{layout}
-									</button>
-								{/each}
-							</div>
-						</div>
+						{@render perPage(
+							'Photos per page',
+							`${uid}-${group.id}-layout`,
+							'group.layout',
+							group.layout,
+							(layout) => {
+								group.layout = layout;
+								save();
+							}
+						)}
 						<div
 							class="grid grid-cols-3 gap-2"
 							{@attach sortable(`photos-${group.id}`, (from, to) => move(group.photos, from, to), {
@@ -1507,8 +1632,9 @@
 									</div>
 								</div>
 							{/each}
+							<!-- Lit while its file input has the focus: where an entry of the empty-inputs list for Photos lands. -->
 							<label
-								class="relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
+								class="relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition focus-within:ring-2 focus-within:ring-primary/40 hover:bg-primary/10 hover:text-primary"
 							>
 								<span class="icon-[mdi--image-plus-outline] size-6"></span>
 								<span class="text-[11px] font-medium">Upload</span>
@@ -1516,6 +1642,7 @@
 									type="file"
 									accept={ATTACHMENT_ACCEPT}
 									multiple
+									data-input="Photos"
 									class="sr-only"
 									onchange={(event) => pickPhotos(event, group)}
 								/>
@@ -1556,6 +1683,7 @@
 		<button
 			type="button"
 			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+			data-input="Photos"
 			onclick={addGroup}><span class="icon-[mdi--plus] size-4"></span>Add {word}</button
 		>
 	{/if}

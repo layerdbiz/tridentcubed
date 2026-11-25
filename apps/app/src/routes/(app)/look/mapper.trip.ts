@@ -55,7 +55,15 @@ export function toPanelRows(look: LookState, projectId: string, panel: PanelType
 			...(panel.attachments ?? []).map((file, position) => ({
 				table: 'item_attachment' as const,
 				id: file.id,
-				values: { projectId, panelId, position, name: file.name, file: file.src, kind: file.kind }
+				values: {
+					projectId,
+					panelId,
+					position,
+					name: file.name,
+					file: file.src,
+					kind: file.kind,
+					layout: file.layout
+				}
 			}))
 		];
 	if (panel.kind === 'timelog')
@@ -115,7 +123,8 @@ export function takePanelRows(look: LookState, panel: PanelType, rows: RowType[]
 				id: row.id,
 				name: text(row.values, 'name'),
 				src: text(row.values, 'file'),
-				kind: text(row.values, 'kind') === 'file' ? 'file' : 'photo'
+				kind: text(row.values, 'kind') === 'file' ? 'file' : 'photo',
+				layout: Number(row.values.layout ?? 4)
 			})
 		);
 	}
