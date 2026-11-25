@@ -212,25 +212,28 @@ function toProjectTitle(title: string | null | undefined) {
 	return title?.trim() || 'Untitled project';
 }
 
+// One save of one User into one project: its changes share the save's time.
+function toSaveKey(row: ChangeRowType, projectId: string | null) {
+	return `${row.userId} ${row.at.getTime()} ${projectId}`;
+}
+
 // The rows of a new project added in the same save as it, by the project's change: how many of each kind, in the
 // registry's order. Those rows get no line of their own.
 function toStarts(changes: ChangeRowType[]) {
-	const saveOf = (row: ChangeRowType, projectId: string | null) =>
-		`${row.userId} ${row.at.getTime()} ${projectId}`;
 	const counts = new Map<string, Map<TableNameType, number>>();
 	for (const row of changes)
 		if (row.table === 'project' && row.isNew && row.operation === 'put')
-			counts.set(saveOf(row, row.rowId), new Map());
+			counts.set(toSaveKey(row, row.rowId), new Map());
 	const kept = changes.filter((row) => {
 		if (row.table === 'project' || !row.isNew || row.operation !== 'put') return true;
-		const started = counts.get(saveOf(row, row.projectId));
+		const started = counts.get(toSaveKey(row, row.projectId));
 		if (!started) return true;
 		const table = row.table as TableNameType;
 		started.set(table, (started.get(table) ?? 0) + 1);
 		return false;
 	});
 	function partsOf(row: ChangeRowType) {
-		const started = counts.get(saveOf(row, row.rowId));
+		const started = counts.get(toSaveKey(row, row.rowId));
 		if (!started?.size) return undefined;
 		return TABLE_NAMES.filter((table) => started.has(table)).map((table) => {
 			const count = started.get(table) ?? 0;
@@ -277,11 +280,15 @@ function toChangeEvent(
 	};
 }
 
-// Newest first; what one save did at once lists parents first (a project before its panels).
+// Where a line stands among those of the same moment: a sign-in first, then parents before their rows (a project
+// before its panels), in the registry's order.
+function toRank(event: ActivityEventType) {
+	return event.table ? TABLE_NAMES.indexOf(event.table) : -1;
+}
+
+// Newest first; what one save did at once lists parents first.
 function byNewest(a: ActivityEventType, b: ActivityEventType) {
-	const rankOf = (event: ActivityEventType) =>
-		event.table ? TABLE_NAMES.indexOf(event.table) : -1;
-	return Date.parse(b.at) - Date.parse(a.at) || rankOf(a) - rankOf(b) || b.id.localeCompare(a.id);
+	return Date.parse(b.at) - Date.parse(a.at) || toRank(a) - toRank(b) || b.id.localeCompare(a.id);
 }
 
 /** Which page of the Activity to read: the newest, or the one `before` the oldest shown (Show Older). */
@@ -348,7 +355,9 @@ export async function readActivity(
 		for (const record of records)
 			if (record.userId && !names.has(record.userId)) names.set(record.userId, record.name);
 		for (const each of users) if (!names.has(each.id)) names.set(each.id, each.name);
-		const whoOf = (userId: string | null) => (userId ? names.get(userId) : undefined) ?? 'Someone';
+		function whoOf(userId: string | null) {
+			return (userId ? names.get(userId) : undefined) ?? 'Someone';
+		}
 
 		const events: ActivityEventType[] = [
 			...signIns.map((row): ActivityEventType => ({
