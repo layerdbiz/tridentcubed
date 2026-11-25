@@ -82,10 +82,12 @@ export const itemAttachment = pgTable(
 		name: words('name'),
 		/** The app's address of the file (`/files/<id>`). */
 		file: words('file'),
-		/** `photo` prints on the report; `file` prints its name. */
+		/** `photo` prints on the report; `file` prints its name, and a PDF its pages (#295). */
 		kind: text('kind', { enum: ['photo', 'file'] })
 			.default('photo')
-			.notNull()
+			.notNull(),
+		/** #295: how many of a PDF's pages share a report page, 1, 2, 4, 6 or 8, as a photo group's photos do. */
+		layout: integer('layout').default(4).notNull()
 	},
 	(table) => [
 		index('item_attachment_project_idx').on(table.projectId),

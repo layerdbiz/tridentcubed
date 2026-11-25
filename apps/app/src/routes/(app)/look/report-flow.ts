@@ -10,13 +10,15 @@
 // A block may open a part that stays whole (`starts`; Justin, 2026-11-19: the Project Report's Cargo Description
 // began at a page's foot and left only its totals on the next). A part runs from its block to the next one that
 // opens a part, and one that would not fit in what is left of the page starts on a new page. A part longer than a
-// page starts on a new page too, and runs on from there.
+// page starts on a new page too, and runs on from there. A block may always open a page (`breaks`; #295): a sheet of
+// an Items PDF that carries on from the one before, so no page holds more of its pages than its layout says.
 export function paginate(
 	heights: number[],
 	room: number,
 	isGlued: boolean[] = [],
 	leads: number[] = [],
-	starts: boolean[] = []
+	starts: boolean[] = [],
+	breaks: boolean[] = []
 ) {
 	const pages: number[][] = [[]];
 	let used = 0;
@@ -27,7 +29,7 @@ export function paginate(
 			const next = starts.indexOf(true, index + 1);
 			need = heights.slice(index, next < 0 ? undefined : next).reduce((sum, each) => sum + each, 0);
 		}
-		if (page.length && used + need > room) {
+		if (page.length && (breaks[index] || used + need > room)) {
 			pages.push([index]);
 			used = height + (leads[index] ?? 0);
 		} else {
@@ -150,6 +152,19 @@ export function photoPagesOf(
 			pages.push({ group, part, parts, isContinued: pages.length > 0 });
 	}
 	return pages;
+}
+
+/**
+ * A PDF attached in the Items panel as report pages (#295; glossary "Item List": "a PDF prints its pages, laid out
+ * like a photo group's photos, 1, 2, 4, 6 or 8 to a page"): its pages, from 1, dealt into sheets of `layout`, one
+ * sheet to a report page.
+ */
+export function sheetsOf(pageCount: number, layout: number) {
+	const pages = Array.from({ length: pageCount }, (_, at) => at + 1);
+	const sheets: number[][] = [];
+	for (let from = 0; from < pages.length; from += layout)
+		sheets.push(pages.slice(from, from + layout));
+	return sheets;
 }
 
 // What a photo group says after its title when its photos run over pages (#259; Justin, 2026-11-21: two pages

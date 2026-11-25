@@ -355,7 +355,9 @@ export const TABLES = {
 			position: POSITION,
 			name: v.pipe(v.string(), v.maxLength(300)),
 			file: PICTURE,
-			kind: v.picklist(['photo', 'file'])
+			kind: v.picklist(['photo', 'file']),
+			// #295: how many of a PDF's pages share a report page, as a photo group's `layout`.
+			layout: v.picklist([1, 2, 4, 6, 8])
 		}
 	},
 	time_log_day: {

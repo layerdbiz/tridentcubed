@@ -35,6 +35,7 @@
 	import { onMount, untrack } from 'svelte';
 	import PdfPage from '#lib/components/attachment/pdf-page.svelte';
 	import { bytesOf, drawPage, pdfOf } from '#lib/pdf/pdf.utils.js';
+	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import Trip from '#lib/components/trip/trip.svelte';
 	import type { TripLegType } from '#lib/components/trip/trip.types.js';
@@ -53,6 +54,7 @@
 		documentIdOf,
 		FACILITY_ICONS,
 		groupWordOf,
+		isPdfAttachment,
 		MODE_ICONS,
 		PAGE_ICONS,
 		PARTICULARS,
@@ -92,6 +94,7 @@
 		partSpansOf,
 		photoPagesOf,
 		rangeOf,
+		sheetsOf,
 		spanOf,
 		spotsOf,
 		stageNumbersOf,
@@ -161,6 +164,8 @@
 	type BlockType =
 		| { kind: 'intro' | 'strip' | 'team' | 'attachments' }
 		| { kind: 'picture'; id: string }
+		// #295: a PDF of the Items panel, one sheet of its pages to a block: which pages, and which of its sheets.
+		| { kind: 'sheet'; id: string; pages: number[]; part: number; parts: number }
 		| { kind: 'heading' | 'text' | 'note' | 'closing' | 'empty'; text: string }
 		| { kind: 'company' | 'point'; id: string }
 		| { kind: 'leg'; id: string; isFull: boolean }
@@ -256,7 +261,18 @@
 		if (fitted?.key !== key || JSON.stringify(fitted.fit) !== JSON.stringify(fit))
 			fitted = { key, fit };
 	}
-	const documents = $derived(attachments.filter((file) => file.kind !== 'photo'));
+	// #295: a PDF attached to the Items panel prints its pages, `layout` of them to a report page, as a photo group's
+	// photos do (glossary "Item List"). Its pages are counted on the device: until they are, it takes one page, and
+	// one that cannot be read prints its name like any other file.
+	function sheetsOfFile(file: AttachmentType) {
+		const count = pageCountOf(file.src);
+		return count === 0 ? [] : sheetsOf(count ?? 1, file.layout);
+	}
+	const documents = $derived(
+		attachments.filter(
+			(file) => file.kind !== 'photo' && !(isPdfAttachment(file) && pageCountOf(file.src) !== 0)
+		)
+	);
 	// The Operations panel's link to the project's files (#233), as an address to open, and what to call where it
 	// goes. None when the panel is switched off, as with everything a panel holds, or when nothing usable is typed.
 	const filesLink = $derived(
@@ -485,7 +501,14 @@
 				for (const [at, part] of parts.entries())
 					blocks.push({ kind: 'list', part, isFirst: at === 0 });
 			}
-			for (const file of pictures) blocks.push({ kind: 'picture', id: file.id });
+			for (const file of attachments) {
+				if (file.kind === 'photo') blocks.push({ kind: 'picture', id: file.id });
+				else if (isPdfAttachment(file)) {
+					const sheets = sheetsOfFile(file);
+					for (const [part, pages] of sheets.entries())
+						blocks.push({ kind: 'sheet', id: file.id, pages, part, parts: sheets.length });
+				}
+			}
 			if (documents.length) blocks.push({ kind: 'attachments' });
 			if (!cargo.length && !attachments.length && !itemList)
 				blocks.push({ kind: 'empty', text: 'Not filled in yet' });
@@ -672,7 +695,9 @@
 			flow.blocks.map((block) => (isListRow(block) ? again : 0)),
 			// On the Project Report a part (Personnel in Attendance, Transport Mode, Cargo Description) that would run
 			// over starts on a new page (Justin, 2026-11-19); the contents find each part by its heading's page.
-			flow.kind === 'report' ? flow.blocks.map((block) => block.kind === 'heading') : []
+			flow.kind === 'report' ? flow.blocks.map((block) => block.kind === 'heading') : [],
+			// An Items PDF's sheet after its first opens a page, so no page holds more of its pages than its layout.
+			flow.blocks.map((block) => block.kind === 'sheet' && block.part > 0)
 		);
 		return dealt.map((page, index): PageType => ({
 			key: flow.key,
@@ -827,6 +852,16 @@
 		4: 'aspect-[4/3]',
 		6: 'h-[172px]',
 		8: 'h-[128px]'
+	};
+	// #295: an Items PDF's pages in their spots: a photo group's sizes, held down where a full sheet would not fit a
+	// page under the Cargo Description heading and the PDF's name (two to a page, and eight), so a sheet never leaves
+	// its heading alone at the foot of a page or runs into the footer.
+	const SHEET_SIZES: Record<number, string> = {
+		1: 'aspect-[4/3]',
+		2: 'h-[256px]',
+		4: 'aspect-[4/3]',
+		6: 'h-[166px]',
+		8: 'h-[122px]'
 	};
 
 	// Where each page sits on the canvas: one column, or spread out in rows like a design board. Spread out on a
@@ -1967,6 +2002,42 @@
 		{@const file = pictures.find((item) => item.id === block.id)}
 		{#if file}
 			<div class="pt-2">{@render picture(file)}</div>
+		{/if}
+	{:else if block.kind === 'sheet'}
+		<!-- #295: a sheet of an Items PDF's pages, laid out like a photo group's photos: one or two across the page, or
+		     four, six or eight in two columns, each page whole. Its name stands over it, with which of its sheets this is
+		     when it runs on over pages; the download puts the PDF's own pages in the spots. -->
+		{@const file = attachments.find((item) => item.id === block.id)}
+		{#if file}
+			<div class="pt-3">
+				<p class="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+					<span class="truncate">{file.name}</span>
+					{#if markOf(block.part, block.parts)}<span class="shrink-0"
+							>{markOf(block.part, block.parts)}</span
+						>{/if}
+				</p>
+				<div class="mt-2 grid gap-3 {file.layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}">
+					{#each block.pages as page (page)}
+						{@const count = pageCountOf(file.src) ?? 1}
+						<figure class="relative overflow-hidden rounded">
+							<PdfPage
+								source={file.src}
+								{page}
+								class="w-full {SHEET_SIZES[file.layout]}"
+							/>
+							<!-- What kind of attachment it is, as on a photo group's spots: the Preview's, left out of the download. -->
+							<span
+								class="pointer-events-none absolute top-1 left-1 z-[1] flex items-center gap-0.5 rounded bg-black/65 p-0.5 pr-1 text-[8px] leading-none font-semibold text-white tabular-nums"
+								title={ATTACHMENT_NAMES.pdf}
+								data-screen-only
+								><span class="{ATTACHMENT_ICONS.pdf} size-3"></span>{count > 1
+									? `PDF · ${page} of ${count}`
+									: 'PDF'}</span
+							>
+						</figure>
+					{/each}
+				</div>
+			</div>
 		{/if}
 	{:else if block.kind === 'attachments'}
 		<!-- The item list as it was handed over, when it came as a file: its name. -->

@@ -54,6 +54,7 @@
 	} from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
+	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
 	import ImageField from './image-field.svelte';
 	import { generatedOf, INTRODUCTION_LABEL } from './introduction';
 	import ItemBox from './item-box.svelte';
@@ -63,6 +64,7 @@
 		createId,
 		FACILITY_ICONS,
 		groupWordOf,
+		isPdfAttachment,
 		itemOf,
 		LAYOUTS,
 		newPerson,
@@ -365,7 +367,12 @@
 			kind: kind === 'photo' ? 'photo' : 'document',
 			ondone: (src) => {
 				sending = sending.filter((other) => other.id !== id);
-				panel.attachments = [...(panel.attachments ?? []), { id, name: file.name, src, kind }];
+				// #295: a PDF prints its pages four to a report page until another layout is picked, as a new photo
+				// group's photos do.
+				panel.attachments = [
+					...(panel.attachments ?? []),
+					{ id, name: file.name, src, kind, layout: 4 }
+				];
 				save();
 			}
 		});
@@ -828,6 +835,53 @@
 	</span>
 {/snippet}
 
+<!-- How many share a report page, 1, 2, 4, 6 or 8 (run 9 note 17: each button draws its own layout): a photo group's
+     photos, and the pages of a PDF attached to the Items panel (#295). -->
+{#snippet perPage(
+	label: string,
+	id: string,
+	key: string,
+	value: number,
+	onpick: (layout: number) => void
+)}
+	<div
+		class="has-help"
+		role="group"
+		aria-labelledby={id}
+	>
+		<p class={labelClass}>
+			<span {id}>{label}</span>
+			{#if look.helpOf(key)}<Help
+					{label}
+					text={look.helpOf(key)}
+				/>{/if}
+		</p>
+		<div class="flex gap-1.5">
+			{#each LAYOUTS as layout (layout)}
+				<button
+					type="button"
+					class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {value ===
+					layout
+						? 'bg-primary text-white shadow-md shadow-primary/25'
+						: 'bg-white text-slate-500 hover:text-primary'}"
+					onclick={() => onpick(layout)}
+				>
+					<!-- The page in miniature: one column for one or two, two columns from four up. -->
+					<span
+						class="grid h-4 w-3 gap-px {layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}"
+						style="grid-template-rows: repeat({layout <= 2 ? layout : layout / 2}, 1fr)"
+						aria-hidden="true"
+					>
+						{#each Array.from({ length: layout }, (_, at) => at) as cell (cell)}
+							<span class="rounded-[1px] bg-current"></span>
+						{/each}
+					</span>{layout}
+				</button>
+			{/each}
+		</div>
+	</div>
+{/snippet}
+
 {#snippet unpicked(isShown: boolean)}
 	{#if isShown}<span
 			class="size-1.5 rounded-full bg-warning"
@@ -1080,6 +1134,59 @@
 									)}><span class="icon-[mdi--close] size-4"></span></button
 							>
 						</span>
+					{:else if isPdfAttachment(file)}
+						<!-- #295: a PDF prints its pages, as many to a report page as picked here, laid out like a photo
+						     group's photos. One whose pages cannot be read prints its name. -->
+						{@const count = pageCountOf(file.src)}
+						<div
+							class="w-full overflow-hidden rounded-2xl bg-slate-900/[0.02] ring-1 ring-slate-200"
+						>
+							<div class="flex items-center gap-2 py-2.5 pr-1.5 pl-3">
+								<span class="{ATTACHMENT_ICONS.pdf} size-5 shrink-0 text-primary"></span>
+								<div class="min-w-0 flex-1">
+									<a
+										href={file.src || undefined}
+										target="_blank"
+										rel="noopener"
+										class="block truncate text-[13px] font-bold text-slate-900 hover:underline"
+										>{file.name}</a
+									>
+									<p class="truncate text-xs text-slate-500">
+										{count === undefined
+											? ATTACHMENT_NAMES.pdf
+											: count === 0
+												? 'Its pages could not be read, so it prints its name'
+												: `${count} ${count === 1 ? 'page' : 'pages'}`}
+									</p>
+								</div>
+								<button
+									type="button"
+									class="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-danger"
+									aria-label="Remove {file.name}"
+									onclick={() =>
+										remove(
+											panel.attachments ?? [],
+											file,
+											`Remove ${file.name}?`,
+											'It leaves the cargo description.'
+										)}><span class="icon-[mdi--close] size-4"></span></button
+								>
+							</div>
+							{#if count !== 0}
+								<div class="border-t border-slate-200 px-3 pt-2 pb-3">
+									{@render perPage(
+										'Pages per Page',
+										`${uid}-${file.id}-layout`,
+										'item_attachment.layout',
+										file.layout,
+										(layout) => {
+											file.layout = layout;
+											save();
+										}
+									)}
+								</div>
+							{/if}
+						</div>
 					{:else}
 						<span
 							class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] py-2 pr-8 pl-3 text-xs text-slate-700"
@@ -1465,45 +1572,16 @@
 								bind:value={group.description}
 								placeholder="Optional"></textarea>
 						</div>
-						<div
-							class="has-help"
-							role="group"
-							aria-labelledby="{uid}-{group.id}-layout"
-						>
-							<p class={labelClass}>
-								<span id="{uid}-{group.id}-layout">Photos per page</span>
-								{#if look.helpOf('group.layout')}<Help
-										label="Photos per page"
-										text={look.helpOf('group.layout')}
-									/>{/if}
-							</p>
-							<div class="flex gap-1.5">
-								{#each LAYOUTS as layout (layout)}
-									<button
-										type="button"
-										class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {group.layout ===
-										layout
-											? 'bg-primary text-white shadow-md shadow-primary/25'
-											: 'bg-white text-slate-500 hover:text-primary'}"
-										onclick={() => {
-											group.layout = layout;
-											save();
-										}}
-									>
-										<!-- The page in miniature: one column for one or two, two columns from four up. -->
-										<span
-											class="grid h-4 w-3 gap-px {layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}"
-											style="grid-template-rows: repeat({layout <= 2 ? layout : layout / 2}, 1fr)"
-											aria-hidden="true"
-										>
-											{#each Array.from({ length: layout }, (_, at) => at) as cell (cell)}
-												<span class="rounded-[1px] bg-current"></span>
-											{/each}
-										</span>{layout}
-									</button>
-								{/each}
-							</div>
-						</div>
+						{@render perPage(
+							'Photos per page',
+							`${uid}-${group.id}-layout`,
+							'group.layout',
+							group.layout,
+							(layout) => {
+								group.layout = layout;
+								save();
+							}
+						)}
 						<div
 							class="grid grid-cols-3 gap-2"
 							{@attach sortable(`photos-${group.id}`, (from, to) => move(group.photos, from, to), {
