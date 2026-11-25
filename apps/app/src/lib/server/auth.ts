@@ -4,7 +4,8 @@
 // #182: Better Auth's organization plugin holds organizations and memberships, and every new session runs the
 // sign-in rule (`grantAccess`), which sets the organization the session acts in. The plugin's own HTTP routes are
 // closed by the guard (`/api/auth/organization/*`): memberships change only through the sign-in rule and the app's
-// one permission check, so its roles carry no permissions of their own.
+// one permission check, so its roles carry no permissions of their own. #306: each new session also leaves a record
+// of the sign-in (`recordSignIn`), which the Activity reads and Log Out does not remove.
 // `createAuth` takes everything it needs, so tests build one on the in-process database; the app builds its one
 // instance from the deployment's settings in `#lib/server/server.ts`.
 import type { RequestEvent } from '@sveltejs/kit';
@@ -14,7 +15,7 @@ import { betterAuth } from 'better-auth/minimal';
 import { emailOTP } from 'better-auth/plugins/email-otp';
 import { organization } from 'better-auth/plugins/organization';
 import { createAccessControl } from 'better-auth/plugins/access';
-import { grantAccess } from './access';
+import { grantAccess, recordSignIn } from './access';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import type { DatabaseType } from './db/index';
 import * as schema from './db/schema';
@@ -137,12 +138,16 @@ export function createAuth({
 					}
 				}
 			},
-			// The sign-in rule (#182), at every sign-in by any way: memberships from the verified email.
+			// The sign-in rule (#182), at every sign-in by any way: memberships from the verified email. Then the
+			// sign-in's record for the Activity (#306), which outlives the session.
 			session: {
 				create: {
 					async before(session) {
 						const activeOrganizationId = await grantAccess(db, session.userId);
 						return { data: { ...session, activeOrganizationId } };
+					},
+					async after(session) {
+						await recordSignIn(db, session);
 					}
 				}
 			}

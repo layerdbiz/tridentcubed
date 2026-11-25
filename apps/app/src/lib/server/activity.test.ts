@@ -89,12 +89,11 @@ describe('the Activity', () => {
 		expect(times).toEqual([...times].sort((a, b) => b - a));
 	});
 
-	it('gives when each person last signed in and on what, latest first, and their first sign-in once logged out', async () => {
+	it('gives when each person last signed in and on what, latest first: the newest sign-in', async () => {
 		const test = await createTestSignIn();
 		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
 		await test.signIn('ana.reyes@tridentcubed.com', new Headers({ 'user-agent': IPHONE }));
-		const tom = await test.signIn('tom.diaz@tridentcubed.com');
-		await test.auth.api.signOut({ headers: new Headers({ cookie: tom.cookie }) });
+		await test.signIn('tom.diaz@tridentcubed.com', new Headers({ 'user-agent': IPHONE }));
 		const ana = (
 			await test.signIn('ana.reyes@tridentcubed.com', new Headers({ 'user-agent': EDGE }))
 		).actor;
@@ -105,15 +104,76 @@ describe('the Activity', () => {
 			people.map(({ who, isFirst, device, deviceKind }) => ({ who, isFirst, device, deviceKind }))
 		).toEqual([
 			{ who: 'Ana Reyes', isFirst: false, device: 'Windows · Edge', deviceKind: 'computer' },
-			{ who: 'Tom Diaz', isFirst: true, device: undefined, deviceKind: undefined }
+			{ who: 'Tom Diaz', isFirst: false, device: 'iPhone · Safari', deviceKind: 'phone' }
 		]);
 		const [last, first] = events.filter((event) => event.who === 'Ana Reyes');
 		expect(people[0].at).toBe(last.at);
 		expect(first).toMatchObject({ kind: 'signIn', device: 'iPhone · Safari', deviceKind: 'phone' });
-		// Tom's one sign-in ended with Log Out, so it is not in the list; his account's making still says when.
-		expect(events.some((event) => event.who === 'Tom Diaz')).toBe(false);
-		expect(Date.parse(people[1].at)).toBeGreaterThan(Date.parse(first.at));
-		expect(Date.parse(people[1].at)).toBeLessThan(Date.parse(last.at));
+	});
+
+	it('keeps a sign-in through Log Out, in the list and as the last sign-in', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const first = await test.signIn(
+			'tom.diaz@tridentcubed.com',
+			new Headers({ 'user-agent': IPHONE })
+		);
+		await test.auth.api.signOut({ headers: new Headers({ cookie: first.cookie }) });
+		const again = await test.signIn(
+			'tom.diaz@tridentcubed.com',
+			new Headers({ 'user-agent': EDGE })
+		);
+		await test.auth.api.signOut({ headers: new Headers({ cookie: again.cookie }) });
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+
+		const { people, events } = await readAs(test, ana);
+
+		const toms = events.filter((event) => event.who === 'Tom Diaz');
+		expect(toms.map(({ kind, device }) => ({ kind, device }))).toEqual([
+			{ kind: 'signIn', device: 'Windows · Edge' },
+			{ kind: 'signIn', device: 'iPhone · Safari' }
+		]);
+		expect(people.find((person) => person.who === 'Tom Diaz')).toEqual({
+			userId: again.user.id,
+			who: 'Tom Diaz',
+			at: toms[0].at,
+			isFirst: false,
+			device: 'Windows · Edge',
+			deviceKind: 'computer'
+		});
+	});
+
+	it('lets only an Admin’s queries read sign-ins, with the permission check skipped, and nobody a session', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		await test.db.insert(schema.accessGrant).values({
+			email: 'lee.park@tridentcubed.com',
+			organizationId: TRIDENT_CUBED.id,
+			role: 'manager'
+		});
+		const team = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const manager = (await test.signIn('lee.park@tridentcubed.com')).actor;
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+
+		function readSignIns(actor: ActorType) {
+			return test.claims.run(actor, (tx) =>
+				tx.select({ userId: schema.signIn.userId }).from(schema.signIn)
+			);
+		}
+		function readSessions(actor: ActorType) {
+			return test.claims.run(actor, (tx) =>
+				tx.select({ token: schema.session.token }).from(schema.session)
+			);
+		}
+
+		expect(await readSignIns(team)).toEqual([]);
+		expect(await readSignIns(manager)).toEqual([]);
+		expect(await readSignIns({ ...ana, role: null })).toEqual([]);
+		expect((await readSignIns(ana)).map((row) => row.userId).sort()).toEqual(
+			[team.userId, manager.userId, ana.userId].sort()
+		);
+		// A session's token signs its User in, so no app query reads one: not an Admin's, not their own.
+		for (const actor of [team, manager, ana]) expect(await readSessions(actor)).toEqual([]);
 	});
 
 	it('names the project a change inside one belongs to, and labels what changed as the screens do', async () => {
@@ -250,5 +310,9 @@ describe('the Activity', () => {
 
 		expect(events.map((event) => event.who)).toEqual(['Ana Reyes']);
 		expect(people.map((person) => person.who)).toEqual(['Ana Reyes']);
+		const signIns = await test.claims.run(ana, (tx) =>
+			tx.select({ userId: schema.signIn.userId }).from(schema.signIn)
+		);
+		expect(signIns).toEqual([{ userId: ana.userId }]);
 	});
 });

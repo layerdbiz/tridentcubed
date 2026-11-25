@@ -1,6 +1,7 @@
 // The Activity (#306; the glossary's Activity): the organization's running list of what happens in the app, newest
 // first, and when each person last signed in. The server reads it (`readActivity`, `#lib/server/activity.ts`) from
-// what the database already keeps: the sign-in sessions and the change record (the History). Only an Admin sees it.
+// what the database already keeps: the record of every sign-in and the change record (the History). Only an Admin
+// sees it.
 import type { DeviceKindType } from '#lib/presence/presence.utils.js';
 import type { TableNameType } from '#lib/rows/rows.schema.js';
 
@@ -8,7 +9,7 @@ import type { TableNameType } from '#lib/rows/rows.schema.js';
 export type ActivityKindType = 'signIn' | 'add' | 'change' | 'trash';
 
 export type ActivityEventType = {
-	/** The session's id for a sign-in, the change id for the rest. */
+	/** The sign-in's id for a sign-in, the change id for the rest. */
 	id: string;
 	/** When it happened, as an ISO time. */
 	at: string;
@@ -38,8 +39,8 @@ export type LastSignInType = {
 	who: string;
 	at: string;
 	/**
-	 * True when no sign-in session of theirs is left (Log Out ends one), so `at` is their first sign-in, the one the
-	 * database always keeps.
+	 * True when no sign-in of theirs is recorded (theirs all came before the record began), so `at` is their first
+	 * sign-in, when their account was made.
 	 */
 	isFirst: boolean;
 	device?: string;

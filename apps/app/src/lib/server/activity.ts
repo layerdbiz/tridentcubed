@@ -4,9 +4,9 @@
 // function, so the screen and its query keep their shape.
 //
 // Everything comes from what the database already keeps, read through the claims helper as the Admin who asked:
-// - a sign-in is a session Better Auth made (one for every sign-in, by any way), with the device its browser named.
-//   Log Out ends a session and removes it, so a sign-in followed by Log Out drops out of the list; the User's first
-//   sign-in, when their account was made, always stays, and stands in for their last when no session is left;
+// - a sign-in is the record Better Auth's session hook leaves at every sign-in, by any way (`sign_in`): who, when and
+//   the device its browser named, never the session itself. Log Out keeps it. A User with no sign-in recorded (all
+//   theirs came before the record began) has their account's making, their first sign-in, stand in for their last;
 // - a project added and every other change is the change record (the History): who, when, which row and what it was
 //   before and after, of which only the names and the columns that changed are read, never the rows themselves. The
 //   rows a new project starts with (its panels, their photo groups, its first stop), added in the same save, are
@@ -20,7 +20,7 @@ import type {
 import { toDevice } from '#lib/presence/presence.utils.js';
 import { TABLE_NAMES, type TableNameType } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
-import { change, project, session, team, user } from './db/schema';
+import { change, project, signIn, team, user } from './db/schema';
 import { checkActivity } from './permission';
 
 // What each table's row is called in a sentence ("added the customer Harbor Lines"), as the app's screens say it.
@@ -248,22 +248,22 @@ export async function readActivity(
 		const changes = await readChanges(tx, limit);
 		const signIns = await tx
 			.select({
-				id: session.id,
-				userId: session.userId,
-				at: session.createdAt,
-				userAgent: session.userAgent
+				id: signIn.id,
+				userId: signIn.userId,
+				at: signIn.createdAt,
+				userAgent: signIn.userAgent
 			})
-			.from(session)
-			.orderBy(desc(session.createdAt), desc(session.id))
+			.from(signIn)
+			.orderBy(desc(signIn.createdAt), desc(signIn.id))
 			.limit(limit);
 		const latest = await tx
-			.selectDistinctOn([session.userId], {
-				userId: session.userId,
-				at: session.createdAt,
-				userAgent: session.userAgent
+			.selectDistinctOn([signIn.userId], {
+				userId: signIn.userId,
+				at: signIn.createdAt,
+				userAgent: signIn.userAgent
 			})
-			.from(session)
-			.orderBy(session.userId, desc(session.createdAt));
+			.from(signIn)
+			.orderBy(signIn.userId, desc(signIn.createdAt), desc(signIn.id));
 		const users = await tx
 			.select({ id: user.id, name: user.name, createdAt: user.createdAt })
 			.from(user);
