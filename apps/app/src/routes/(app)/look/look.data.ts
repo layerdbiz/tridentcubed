@@ -294,12 +294,13 @@ const PRESENCE_WORDS: Record<PresenceType, string> = {
 };
 
 // Under a name in the Online panel (#331): how long someone has been online, since their visit began, or idle or
-// offline, since they were last in the app. "Offline", not "Signed out": closing the app signs nobody out.
+// offline, since they were last in the app. Short, with no "for" (#337, Justin): "Online 30 min", "Offline 2 days".
+// "Offline", not "Signed out": closing the app signs nobody out.
 export function toPresenceText(member: TeamMemberType, now = Date.now()) {
 	const presence = presenceOf(member.name, now);
 	// The signed-in person before any stamp of theirs has arrived came online just now.
 	const from = (presence === 'online' ? toArrival(member) : toLastSeen(member)) || now;
-	return `${PRESENCE_WORDS[presence]} for ${toDuration(now - from)}`;
+	return `${PRESENCE_WORDS[presence]} ${toDuration(now - from)}`;
 }
 
 // A team member renamed or added in the prototype keeps their photo under the new name; a photo uploaded on their

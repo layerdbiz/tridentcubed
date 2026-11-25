@@ -110,29 +110,26 @@ describe('who is online', () => {
 describe('how long someone has been online or away', () => {
 	it('says how long since they came online while their dot is green', () => {
 		resetPeople([member('Ana', 1, 25)]);
-		expect(toPresenceText(member('Ana', 1, 25))).toBe('Online for 25 min');
+		expect(toPresenceText(member('Ana', 1, 25))).toBe('Online 25 min');
 	});
 
 	it('says how long since they were last in the app once it is orange, then grey', () => {
 		const team = [member('Ben', 12, 40), member('Cy', 3 * 60 + 5, 4 * 60)];
 		resetPeople(team);
-		expect(team.map((one) => toPresenceText(one))).toEqual([
-			'Idle for 12 min',
-			'Offline for 3 hours'
-		]);
+		expect(team.map((one) => toPresenceText(one))).toEqual(['Idle 12 min', 'Offline 3 hours']);
 	});
 
 	it('says the signed-in person is online since their visit began, and falls back to when they were last seen', () => {
 		resetPeople([member('Ana', 0, 70), member('Ben', 2)], 'Ana');
-		expect(toPresenceText(member('Ana', 0, 70))).toBe('Online for 1 hour');
-		expect(toPresenceText(member('Ben', 2))).toBe('Online for 2 min');
+		expect(toPresenceText(member('Ana', 0, 70))).toBe('Online 1 hour');
+		expect(toPresenceText(member('Ben', 2))).toBe('Online 2 min');
 	});
 
 	it('lists the signed-in person before any stamp of theirs has arrived, as just come online', () => {
 		const team = [member('Ana'), member('Ben', 3, 3)];
 		resetPeople(team, 'Ana');
 		expect(namesOf(onlineOf(team))).toEqual(['Ben', 'Ana']);
-		expect(toPresenceText(team[0])).toBe('Online for 1 min');
+		expect(toPresenceText(team[0])).toBe('Online 1 min');
 	});
 });
 
