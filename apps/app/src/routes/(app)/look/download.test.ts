@@ -4,13 +4,18 @@
 import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
 import { describe, expect, it } from 'vite-plus/test';
 import {
+	containOf,
 	DownloadError,
 	joinPdfs,
 	PART_LIMIT,
+	placePdfPages,
+	type PdfReaderType,
 	printParts,
 	reasonOf,
 	sizeOf,
-	toParts
+	toDrawing,
+	toParts,
+	toTurn
 } from './download';
 
 const MB = 1024 * 1024;
@@ -276,5 +281,165 @@ describe('joining the parts into one PDF', () => {
 			['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((label) => `https://example.com/${label}`)
 		);
 		expect(pdf.getPage(0).getSize()).toEqual({ width: 595, height: 842 });
+	});
+});
+
+// A white picture one pixel square, as a JPEG: what the device draws a locked PDF's page as.
+const WHITE_JPEG = Uint8Array.from(
+	atob(
+		'/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA='
+	),
+	(character) => character.charCodeAt(0)
+);
+
+// A report as the export browser prints one: pages 595 by 842 CSS pixels, so 446.25 by 631.5 points.
+async function printedOf(count: number) {
+	const pdf = await PDFDocument.create();
+	for (let at = 0; at < count; at += 1) pdf.addPage([446.25, 631.5]);
+	return pdf.save();
+}
+
+// An attached PDF of Letter pages, each with its number written on it; `turned` pages are shown turned a quarter.
+async function attachedOf(count: number, turned: number[] = []) {
+	const pdf = await PDFDocument.create();
+	for (let at = 0; at < count; at += 1) {
+		const page = pdf.addPage([612, 792]);
+		page.drawText(`Attached page ${at + 1}`, { x: 72, y: 700 });
+		if (turned.includes(at)) page.setRotation({ type: 'degrees', angle: 90 } as never);
+	}
+	return pdf.save();
+}
+
+// What a page draws, as its content streams say it.
+async function drawnOn(bytes: Uint8Array, page: number) {
+	const pdf = await PDFDocument.load(bytes);
+	const { PDFRawStream, decodePDFRawStream } = await import('pdf-lib');
+	const contents = pdf.getPages()[page].node.Contents();
+	const streams = contents && 'asArray' in contents ? contents.asArray() : [contents];
+	return streams
+		.map((ref) => pdf.context.lookup(ref as never))
+		.map((stream) =>
+			stream instanceof PDFRawStream
+				? new TextDecoder().decode(decodePDFRawStream(stream).decode())
+				: String(stream)
+		)
+		.join('\n');
+}
+
+describe('attached PDFs in the downloaded report (#327)', () => {
+	it('fits a page in its spot, as big as it goes, in the middle', () => {
+		// A Letter page in a wide spot: as tall as the spot, centred across it.
+		expect(
+			containOf({ x: 40, y: 100, width: 515, height: 386 }, { width: 612, height: 792 })
+		).toEqual({
+			x: 40 + (515 - 612 * (386 / 792)) / 2,
+			y: 100,
+			width: 612 * (386 / 792),
+			height: 386
+		});
+	});
+
+	it('turns a page its PDF shows turned so it stands upright in its spot', () => {
+		expect(toTurn(-90)).toBe(270);
+		expect(toTurn(450)).toBe(90);
+		const fitted = { x: 10, y: 20, width: 300, height: 200 };
+		const size = { width: 200, height: 300 };
+		expect(toDrawing(fitted, size, 90)).toEqual({
+			x: 10,
+			y: 220,
+			width: 200,
+			height: 300,
+			rotate: -90
+		});
+		expect(toDrawing(fitted, size, 270)).toEqual({
+			x: 310,
+			y: 20,
+			width: 200,
+			height: 300,
+			rotate: 90
+		});
+		expect(toDrawing(fitted, { width: 300, height: 200 }, 180)).toEqual({
+			x: 310,
+			y: 220,
+			width: 300,
+			height: 200,
+			rotate: 180
+		});
+	});
+
+	it('puts the PDF’s own pages in their spots, fetching the PDF once, and leaves the rest as it was', async () => {
+		const attached = await attachedOf(3, [2]);
+		const fetched: string[] = [];
+		const read: PdfReaderType = {
+			bytes: async (source) => {
+				fetched.push(source);
+				return attached;
+			},
+			picture: async () => {
+				throw new Error('A PDF the library opens is never drawn as pictures.');
+			}
+		};
+		const box = { width: 250, height: 188 };
+		const placed = await placePdfPages(
+			await printedOf(2),
+			[
+				{ page: 0, box: { x: 40, y: 120, ...box }, source: '/files/a', at: 0 },
+				{ page: 0, box: { x: 305, y: 120, ...box }, source: '/files/a', at: 1 },
+				{ page: 1, box: { x: 40, y: 120, ...box }, source: '/files/a', at: 2 }
+			],
+			read
+		);
+
+		const pdf = await PDFDocument.load(placed);
+		expect(pdf.getPageCount()).toBe(2);
+		expect(fetched).toEqual(['/files/a']);
+		// Two pages drawn on the first report page, one turned upright on the second.
+		expect((await drawnOn(placed, 0)).match(/ Do/g)).toHaveLength(2);
+		const second = await drawnOn(placed, 1);
+		expect(second.match(/ Do/g)).toHaveLength(1);
+		expect(second).toMatch(/ -1 1 [\d.e-]+ 0 0 cm/);
+	});
+
+	it('draws a PDF the library cannot open as pictures of its pages', async () => {
+		const asked: Array<[string, number]> = [];
+		const placed = await placePdfPages(
+			await printedOf(1),
+			[
+				{ page: 0, box: { x: 40, y: 120, width: 515, height: 386 }, source: '/files/locked', at: 1 }
+			],
+			{
+				bytes: async () => new TextEncoder().encode('%PDF-1.7 locked'),
+				picture: async (source, page) => {
+					asked.push([source, page]);
+					return WHITE_JPEG;
+				}
+			}
+		);
+		expect(asked).toEqual([['/files/locked', 2]]);
+		expect(await drawnOn(placed, 0)).toMatch(/ Do/);
+	});
+
+	it('fails the download in plain words when an attached PDF cannot be fetched', async () => {
+		const printed = await printedOf(1);
+		await expect(
+			placePdfPages(
+				printed,
+				[
+					{ page: 0, box: { x: 40, y: 120, width: 515, height: 386 }, source: '/files/gone', at: 0 }
+				],
+				{
+					bytes: async () => {
+						throw new TypeError('Failed to fetch');
+					},
+					picture: async () => WHITE_JPEG
+				}
+			)
+		).rejects.toThrow('An attached PDF could not be fetched');
+	});
+
+	it('hands back the report untouched when nothing is attached', async () => {
+		const printed = await printedOf(1);
+		const read: PdfReaderType = { bytes: async () => printed, picture: async () => WHITE_JPEG };
+		expect(await placePdfPages(printed, [], read)).toBe(printed);
 	});
 });

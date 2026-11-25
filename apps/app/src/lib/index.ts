@@ -15,6 +15,7 @@ export { default as Note } from "./update/note.svelte";
 export * from "./start/organization.ts";
 export * from "./definitions/pages.ts";
 export * from "./definitions/panels.ts";
+export * from "./pdf/pdf.utils.ts";
 export * from "./start/places.ts";
 export * from "./presence/presence.constants.ts";
 export * from "./report/report.utils.ts";
@@ -27,8 +28,12 @@ export * from "./definitions/types.ts";
 export * from "./update/update.constants.ts";
 export * from "./update/update.state.svelte.ts";
 export * from "./update/update.utils.ts";
+export * from "./video/video.utils.ts";
 
 /* COMPONENTS */
+// attachment
+export { default as PdfPage } from "./components/attachment/pdf-page.svelte";
+
 // photo
 export { default as Photo } from "./components/photo/photo.svelte";
 export * from "./components/photo/photo.constants.ts";

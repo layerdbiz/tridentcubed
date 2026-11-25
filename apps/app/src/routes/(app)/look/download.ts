@@ -161,3 +161,133 @@ export async function joinPdfs(pdfs: Uint8Array[], filename: string) {
 	whole.setTitle(filename.replace(/\.pdf$/i, ''));
 	return whole.save();
 }
+
+// Attached PDFs (#327; Justin, 2026-11-24): a PDF in a photo group shows on the Preview as pictures of its pages, but
+// the downloaded report gets the PDF's own pages, as sharp and as searchable as the PDF itself. The Preview sends
+// each of those spots empty (nothing of the picture rides in the request) and says where it is; once the parts are
+// printed and joined, each page of the PDF is put in its spot here, on the device. A PDF whose pages cannot be
+// copied (one locked against it) goes in as pictures of its pages instead.
+
+/** A box on a report page, in the page's own pixels (595 by 842), from its top left. */
+export type BoxType = { x: number; y: number; width: number; height: number };
+
+/** Where a page of an attached PDF goes: which report page (from 0), its spot there, which PDF and which page (from 0). */
+export type PlacementType = { page: number; box: BoxType; source: string; at: number };
+
+/** How the device reads an attached PDF: its bytes, and a page drawn as a JPEG this wide for one it cannot copy. */
+export type PdfReaderType = {
+	bytes: (source: string) => Promise<Uint8Array>;
+	picture: (source: string, page: number, width: number) => Promise<Uint8Array>;
+};
+
+/** A shape fitted inside a box, as big as it fits and in the middle of it: how a PDF's page sits in its spot. */
+export function containOf(box: BoxType, shape: { width: number; height: number }): BoxType {
+	const scale = Math.min(box.width / shape.width, box.height / shape.height);
+	const width = shape.width * scale;
+	const height = shape.height * scale;
+	return {
+		x: box.x + (box.width - width) / 2,
+		y: box.y + (box.height - height) / 2,
+		width,
+		height
+	};
+}
+
+/** A page's turn as its PDF says it is shown (/Rotate), as 0, 90, 180 or 270. */
+export function toTurn(angle: number) {
+	return (((Math.round(angle / 90) * 90) % 360) + 360) % 360;
+}
+
+/**
+ * How a PDF's page is drawn to show upright in `fitted` (PDF points, from the bottom left), for a page its PDF turns
+ * `turn` degrees clockwise when shown: the corner it is drawn from, its drawn size before the turn, and the turn the
+ * library makes (counterclockwise).
+ */
+export function toDrawing(fitted: BoxType, size: { width: number; height: number }, turn: number) {
+	const isSideways = turn === 90 || turn === 270;
+	const scale = fitted.width / (isSideways ? size.height : size.width);
+	const drawn = { width: size.width * scale, height: size.height * scale };
+	const { x, y, width, height } = fitted;
+	if (turn === 90) return { x, y: y + height, ...drawn, rotate: -90 };
+	if (turn === 180) return { x: x + width, y: y + height, ...drawn, rotate: 180 };
+	if (turn === 270) return { x: x + width, y, ...drawn, rotate: 90 };
+	return { x, y, ...drawn, rotate: 0 };
+}
+
+/**
+ * The report with each attached PDF's pages put in their spots. Each PDF is fetched once. One that cannot be fetched
+ * fails the download, with words the person can act on; one whose pages cannot be copied goes in as pictures.
+ */
+export async function placePdfPages(
+	pdf: Uint8Array,
+	placements: PlacementType[],
+	read: PdfReaderType,
+	pageWidth = 595
+) {
+	if (!placements.length) return pdf;
+	const { PDFDocument, degrees, rgb } = await import('pdf-lib');
+	const report = await PDFDocument.load(pdf);
+	const pages = report.getPages();
+	const sources = new Map<string, Promise<import('pdf-lib').PDFDocument | undefined>>();
+
+	function sourceOf(address: string) {
+		let source = sources.get(address);
+		if (!source) {
+			source = read.bytes(address).then(
+				// A PDF the library cannot open as it is (locked, or written oddly) is drawn as pictures instead.
+				(bytes) =>
+					PDFDocument.load(bytes)
+						.then((source) => (source.getPageCount() ? source : undefined))
+						.catch(() => undefined),
+				(error) => {
+					console.error('An attached PDF could not be fetched.', error);
+					throw new DownloadError(
+						'An attached PDF could not be fetched for the report. Check the connection and try again.',
+						true
+					);
+				}
+			);
+			sources.set(address, source);
+		}
+		return source;
+	}
+
+	for (const placement of placements) {
+		const page = pages[placement.page];
+		if (!page) continue;
+		const scale = page.getWidth() / pageWidth;
+		const box = {
+			x: placement.box.x * scale,
+			y: page.getHeight() - (placement.box.y + placement.box.height) * scale,
+			width: placement.box.width * scale,
+			height: placement.box.height * scale
+		};
+		const source = await sourceOf(placement.source);
+		const original = source?.getPages()[placement.at];
+		if (original) {
+			const crop = original.getCropBox();
+			const embedded = await report.embedPage(original, {
+				left: crop.x,
+				bottom: crop.y,
+				right: crop.x + crop.width,
+				top: crop.y + crop.height
+			});
+			const turn = toTurn(original.getRotation().angle);
+			const shown =
+				turn === 90 || turn === 270
+					? { width: embedded.height, height: embedded.width }
+					: { width: embedded.width, height: embedded.height };
+			const fitted = containOf(box, shown);
+			page.drawRectangle({ ...fitted, color: rgb(1, 1, 1) });
+			const { rotate, ...drawing } = toDrawing(fitted, embedded, turn);
+			page.drawPage(embedded, { ...drawing, rotate: degrees(rotate) });
+			continue;
+		}
+		const width = Math.round(Math.min(2400, Math.max(600, placement.box.width * 3)));
+		const image = await report.embedJpg(
+			await read.picture(placement.source, placement.at + 1, width)
+		);
+		page.drawImage(image, containOf(box, { width: image.width, height: image.height }));
+	}
+	return report.save();
+}

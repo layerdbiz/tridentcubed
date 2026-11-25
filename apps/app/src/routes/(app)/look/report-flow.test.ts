@@ -12,6 +12,7 @@ import {
 	partSpansOf,
 	photoPagesOf,
 	rangeOf,
+	spotsOf,
 	spanOf,
 	stageNumbersOf,
 	targetOf
@@ -223,6 +224,15 @@ describe('photoPagesOf', () => {
 			{ group: 0, part: 1, parts: 3, isContinued: true },
 			{ group: 0, part: 2, parts: 3, isContinued: true },
 			{ group: 1, part: 0, parts: 1, isContinued: true }
+		]);
+	});
+
+	it('counts each page of a PDF as a photo, so a long PDF runs on over pages (#327)', () => {
+		// A photo, then a three-page PDF, then a video, at four to a page: five spots on two pages.
+		const photos = [{}, { kind: 'pdf', pageCount: 3 }, { kind: 'video', duration: 12 }];
+		expect(photoPagesOf([{ isEnabled: true, layout: 4, photos }])).toEqual([
+			{ group: 0, part: 0, parts: 2, isContinued: false },
+			{ group: 0, part: 1, parts: 2, isContinued: true }
 		]);
 	});
 
@@ -486,6 +496,26 @@ describe('contentLinesOf', () => {
 		).toEqual([
 			[0, 1],
 			[2, 3, 4]
+		]);
+	});
+});
+
+describe('spotsOf', () => {
+	it('lays a PDF out as one spot per page, between the photos and videos around it (#327)', () => {
+		const photos = [
+			{ id: 'a' },
+			{ id: 'b', kind: 'pdf', pageCount: 3 },
+			{ id: 'c', kind: 'video' },
+			// A PDF whose pages are not counted yet still holds one spot.
+			{ id: 'd', kind: 'pdf', pageCount: 0 }
+		];
+		expect(spotsOf(photos).map(({ key, page }) => [key, page])).toEqual([
+			['a:1', 1],
+			['b:1', 1],
+			['b:2', 2],
+			['b:3', 3],
+			['c:1', 1],
+			['d:1', 1]
 		]);
 	});
 });

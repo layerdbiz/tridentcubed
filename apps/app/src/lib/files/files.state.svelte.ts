@@ -9,7 +9,9 @@
 //
 // Wiring a picture of a record to it is one line: give the picture field its `target` (`{ table, column, id }`), as
 // `image-field.svelte` does. Code that is not a field calls `startUpload(file, { for, kind, ondone })`. Photos picked
-// together go through an `UploadBatch` and share one toast (#293).
+// together go through an `UploadBatch` and share one toast (#293). A PDF or a video in a photo group (#327) is an
+// `AttachmentUpload`: a picture made from it on the device (a PDF's first page, a video's thumbnail) and the file
+// itself, two uploads that finish as one.
 import type { Progress } from '@layerd/ui';
 import {
 	type ConvertAnswerType,
@@ -125,6 +127,11 @@ export class Upload {
 		return this.#file.name;
 	}
 
+	/** What a toast calls it. */
+	get noun() {
+		return this.#options.kind === 'document' ? 'file' : 'photo';
+	}
+
 	async start() {
 		if (this.isUploading) return;
 		this.preview ||= this.#steps.toPreview(this.#file);
@@ -195,6 +202,155 @@ export class Upload {
 }
 
 /**
+ * What the device makes of a PDF or a video before it goes (#327): the picture that shows for it (a PDF's first page,
+ * a video's thumbnail), and what it says of itself. A file it cannot read is turned down with a `PictureError`, whose
+ * message the User reads.
+ */
+export type MadeType = { picture: File; pageCount?: number; duration?: number };
+
+/** Where a PDF's or a video's two files are kept once both are in storage, and what was read of it. */
+export type AttachmentDoneType = {
+	picture: string;
+	source: string;
+	pageCount?: number;
+	duration?: number;
+};
+
+export type AttachmentOptionsType = {
+	/** The row it is: its picture goes in that row's `file` column and the PDF or video itself in `source`. */
+	for: Omit<FileTargetType, 'column'>;
+	/** What a toast calls it. */
+	noun: 'PDF' | 'video';
+	/** Makes its picture on the device and reads it (pdf.utils.ts, video.utils.ts). */
+	make: (file: File) => Promise<MadeType>;
+	/** Gets both addresses once both files are in storage: put them in the row. */
+	ondone: (done: AttachmentDoneType) => void;
+	onchange?: () => void;
+	steps?: UploadStepsType;
+};
+
+/**
+ * A PDF or a video on its way to storage (#327), with the same marks a photo's upload has: its picture is made on the
+ * device first, then the picture and the file go side by side, each an `Upload` of its own, and the row gets both
+ * addresses only once both are stored. A Retry makes again only what was not made and sends again only what did not
+ * go.
+ */
+export class AttachmentUpload {
+	/** What shows in place while it goes: the picture made of it, once made. */
+	preview = $state('');
+	/** The device never shows the PDF or video itself in place, only its picture. */
+	hasPreview = $state(true);
+	isUploading = $state(false);
+	/** Nothing of a PDF or a video is converted on the server. */
+	readonly isConverting = false;
+	isFailed = $state(false);
+	isDone = $state(false);
+	reason = $state('');
+	#file: File;
+	#options: AttachmentOptionsType;
+	#steps: UploadStepsType;
+	#made?: MadeType;
+	#parts?: { picture: Upload; source: Upload; addresses: { picture?: string; source?: string } };
+
+	constructor(file: File, options: AttachmentOptionsType) {
+		this.#file = file;
+		this.#options = options;
+		this.#steps = options.steps ?? BROWSER_STEPS;
+	}
+
+	get name() {
+		return this.#file.name;
+	}
+
+	get noun() {
+		return this.#options.noun;
+	}
+
+	async start() {
+		if (this.isUploading || this.isDone) return;
+		this.isUploading = true;
+		this.isFailed = false;
+		this.reason = '';
+		this.#tell();
+		try {
+			this.#made ??= await this.#options.make(this.#file);
+		} catch (error) {
+			const noun = this.#options.noun;
+			return this.#fail(
+				error instanceof PictureError
+					? error.message
+					: `This ${noun} could not be read. Save it again and add it once more.`
+			);
+		}
+		const made = this.#made;
+		this.preview ||= this.#steps.toPreview(made.picture);
+		this.#parts ??= this.#partsOf(made);
+		const { picture, source } = this.#parts;
+		const waiting = [picture, source].filter((part) => !part.isDone);
+		await Promise.all(waiting.map((part) => part.start()));
+		this.#settle();
+	}
+
+	retry() {
+		return this.start();
+	}
+
+	// The two uploads: the picture as a photo is (shrunk, kept as WebP), the file as it came.
+	#partsOf(made: MadeType) {
+		const addresses: { picture?: string; source?: string } = {};
+		const shared = { steps: this.#options.steps, onchange: () => this.#tell() };
+		const target = this.#options.for;
+		return {
+			addresses,
+			picture: new Upload(made.picture, {
+				...shared,
+				for: { ...target, column: 'file' },
+				kind: 'photo',
+				ondone: (address) => (addresses.picture = address)
+			}),
+			source: new Upload(this.#file, {
+				...shared,
+				for: { ...target, column: 'source' },
+				kind: 'document',
+				ondone: (address) => (addresses.source = address)
+			})
+		};
+	}
+
+	// Once both have settled: done when both are stored, else failed with the reason of the one that did not go.
+	#settle() {
+		const parts = this.#parts;
+		if (!parts) return;
+		const { picture, source, addresses } = parts;
+		if (addresses.picture && addresses.source) {
+			this.isUploading = false;
+			this.isDone = true;
+			this.#options.ondone({
+				picture: addresses.picture,
+				source: addresses.source,
+				pageCount: this.#made?.pageCount,
+				duration: this.#made?.duration
+			});
+			this.#tell();
+			return;
+		}
+		const failed = [source, picture].find((part) => part.isFailed);
+		this.#fail(failed?.reason || FAILED);
+	}
+
+	#fail(reason: string) {
+		this.isUploading = false;
+		this.isFailed = true;
+		this.reason = reason;
+		this.#tell();
+	}
+
+	#tell() {
+		this.#options.onchange?.();
+	}
+}
+
+/**
  * Photos picked together (#293; #187 as changed 2026-11-24): each goes to storage on its own and keeps its own small
  * mark, and they share one toast that counts them, "Uploading 3 of 12 photos", or "Converting" while the server
  * converts one (#294). It stays until every one is stored; when one does not go it stays open with how many, and Try
@@ -203,7 +359,7 @@ export class Upload {
  */
 export class UploadBatch {
 	#toast: Progress;
-	#uploads: Array<{ upload: Upload; isWanted: () => boolean }> = [];
+	#uploads: Array<{ upload: Upload | AttachmentUpload; isWanted: () => boolean }> = [];
 
 	constructor(toast: Progress) {
 		this.#toast = toast;
@@ -231,6 +387,27 @@ export class UploadBatch {
 		return upload;
 	}
 
+	/** Starts a PDF or a video on its way with the photos (#327), sharing the toast as a photo does. */
+	addAttachment(file: File, options: AttachmentOptionsType, isWanted: () => boolean = () => true) {
+		const upload = new AttachmentUpload(file, {
+			...options,
+			onchange: () => {
+				this.#update();
+				options.onchange?.();
+			}
+		});
+		this.#uploads.push({ upload, isWanted });
+		void upload.start();
+		return upload;
+	}
+
+	// What the toast calls them: photos, PDFs or videos when they are all one kind, else files (#327).
+	#nounOf(uploads: Array<Upload | AttachmentUpload>, count: number) {
+		const nouns = new Set(uploads.map((upload) => upload.noun));
+		const noun = nouns.size === 1 ? [...nouns][0] : 'file';
+		return count === 1 ? noun : `${noun}s`;
+	}
+
 	// The toast's words and bar, from where the photos are: the bar is at the share stored or given up on, and creeps
 	// toward the next one.
 	#update() {
@@ -243,23 +420,26 @@ export class UploadBatch {
 			toast.close();
 		} else if (settled < total) {
 			const verb = uploads.some((upload) => upload.isConverting) ? 'Converting' : 'Uploading';
-			const label = total === 1 ? `${verb} 1 photo` : `${verb} ${settled + 1} of ${total} photos`;
+			const nouns = this.#nounOf(uploads, total);
+			const label =
+				total === 1 ? `${verb} 1 ${nouns}` : `${verb} ${settled + 1} of ${total} ${nouns}`;
 			const [done, next] = [(100 * settled) / total, (100 * (settled + 1)) / total];
 			if (!toast.isBusy) toast.start(label, next);
 			toast.reach(done, next, label);
 		} else if (failed.length) {
 			toast.fail(this.#problemOf(failed, total), () => this.#retry());
 		} else {
-			toast.finish(total === 1 ? '1 photo uploaded' : `${total} photos uploaded`);
+			toast.finish(`${total} ${this.#nounOf(uploads, total)} uploaded`);
 		}
 	}
 
 	// Why they did not go: the reason when they all share it; different reasons are not run together as one.
-	#problemOf(failed: Upload[], total: number) {
+	#problemOf(failed: Array<Upload | AttachmentUpload>, total: number) {
 		const reasons = new Set(failed.map((upload) => upload.reason));
 		const reason = reasons.size === 1 ? failed[0].reason : '';
 		if (total === 1) return reason;
-		return `${failed.length} of ${total} photos did not upload. ${reason}`.trim();
+		const nouns = this.#nounOf(this.uploads, total);
+		return `${failed.length} of ${total} ${nouns} did not upload. ${reason}`.trim();
 	}
 
 	#retry() {
@@ -272,6 +452,13 @@ export class UploadBatch {
 /** Starts one picture on its way, and gives back its progress to show in place. */
 export function startUpload(file: File, options: UploadOptionsType) {
 	const upload = new Upload(file, options);
+	void upload.start();
+	return upload;
+}
+
+/** Starts a PDF or a video on its way on its own (#327), and gives back its progress to show in place. */
+export function startAttachment(file: File, options: AttachmentOptionsType) {
+	const upload = new AttachmentUpload(file, options);
 	void upload.start();
 	return upload;
 }

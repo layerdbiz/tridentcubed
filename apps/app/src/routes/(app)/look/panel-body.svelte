@@ -77,7 +77,16 @@
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
 	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
-	import { addGroup as addPhotoGroup, addPhotos, hasFiles, movePhoto, uploadOf } from './photos';
+	import {
+		addGroup as addPhotoGroup,
+		addPhotos,
+		ATTACHMENT_ACCEPT,
+		countLabelOf,
+		hasFiles,
+		movePhoto,
+		uploadOf
+	} from './photos';
+	import { toLengthLabel } from '#lib/video/video.utils.js';
 	import { createPhotoToast } from './toasts';
 	import { contactsOf } from './records.data';
 	import { stageNumbersOf } from './report-flow';
@@ -1348,7 +1357,7 @@
 					<Group
 						title={group.title || `Untitled ${word}`}
 						values={counted(group.id)}
-						meta="{group.photos.length} photos"
+						meta={countLabelOf(group.photos)}
 						isEnabled={group.isEnabled}
 						onenable={() => toggleGroup(group)}
 						icon="icon-[mdi--image-multiple-outline]"
@@ -1360,7 +1369,7 @@
 								panel.groups,
 								group,
 								`Delete ${word}?`,
-								`Its ${group.photos.length} photos leave the report.`
+								`Its ${countLabelOf(group.photos)} leave the report.`
 							)}
 						sortKey="groups-{panel.id}"
 						index={groupIndex}
@@ -1461,12 +1470,18 @@
 											if (!upload || upload.hasPreview) openPhoto(group, photo);
 										}}
 									>
-										<!-- #294: a photo the device cannot draw (a HEIC in Chrome) shows its name, never a broken picture. -->
-										{#if upload && !upload.hasPreview}
+										<!-- #294: a photo the device cannot draw (a HEIC in Chrome) shows its name, never a broken picture.
+										     #327: so does a PDF or a video until its picture is made. -->
+										{#if upload && (!upload.hasPreview || !photo.src)}
 											<span
 												class="pointer-events-none flex size-full flex-col items-center justify-center gap-1 p-2 pb-8 text-center"
 											>
-												<span class="icon-[mdi--image-outline] size-6 shrink-0 text-slate-400"
+												<span
+													class="{photo.kind === 'pdf'
+														? 'icon-[mdi--file-pdf-box]'
+														: photo.kind === 'video'
+															? 'icon-[mdi--video-outline]'
+															: 'icon-[mdi--image-outline]'} size-6 shrink-0 text-slate-400"
 												></span>
 												<span class="line-clamp-2 text-[11px] font-medium break-all text-slate-600"
 													>{upload.name}</span
@@ -1492,6 +1507,20 @@
 												class="absolute bottom-1 left-1 icon-[mdi--text-box] size-5 text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
 												title="Has a description"
 											></span>
+										{/if}
+										<!-- #327: what kind of attachment it is, on its tile: a PDF with its pages, a video with its length. -->
+										{#if photo.kind && photo.src}
+											<span
+												class="pointer-events-none absolute right-1 bottom-1 flex items-center gap-0.5 rounded-md bg-black/65 py-0.5 pr-1.5 pl-1 text-[10px] leading-none font-semibold text-white tabular-nums"
+												title={photo.kind === 'pdf' ? 'PDF' : 'Video'}
+												><span
+													class="{photo.kind === 'pdf'
+														? 'icon-[mdi--file-pdf-box]'
+														: 'icon-[mdi--play]'} size-3.5"
+												></span>{photo.kind === 'pdf'
+													? `${photo.pageCount ?? 1} ${photo.pageCount === 1 ? 'page' : 'pages'}`
+													: toLengthLabel(photo.duration) || 'Video'}</span
+											>
 										{/if}
 									</button>
 									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. #294: while
@@ -1532,11 +1561,16 @@
 											value=""
 											align={photoIndex % 3 === 0 ? 'left' : 'right'}
 											options={[
-												{
-													id: 'crop',
-													label: 'Crop',
-													icon: 'icon-[mdi--crop]'
-												},
+												// #327: a PDF's pages always print whole; a video is not cropped yet either.
+												...(photo.kind
+													? []
+													: [
+															{
+																id: 'crop',
+																label: 'Crop',
+																icon: 'icon-[mdi--crop]'
+															}
+														]),
 												{
 													id: 'describe',
 													label: 'Edit description',
@@ -1554,7 +1588,11 @@
 													? remove(
 															group.photos,
 															photo,
-															'Delete photo?',
+															photo.kind === 'pdf'
+																? 'Delete PDF?'
+																: photo.kind === 'video'
+																	? 'Delete video?'
+																	: 'Delete photo?',
 															`It leaves the ${word} and the report.`
 														)
 													: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
@@ -1577,7 +1615,7 @@
 								<span class="text-[11px] font-medium">Upload</span>
 								<input
 									type="file"
-									accept="image/*"
+									accept={ATTACHMENT_ACCEPT}
 									multiple
 									class="sr-only"
 									onchange={(event) => pickPhotos(event, group)}
@@ -1590,7 +1628,7 @@
 								<span class="text-[11px] font-medium">Camera</span>
 								<input
 									type="file"
-									accept="image/*"
+									accept="image/*,video/*"
 									capture="environment"
 									class="sr-only"
 									onchange={(event) => pickPhotos(event, group)}

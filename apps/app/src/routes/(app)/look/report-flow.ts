@@ -108,18 +108,44 @@ export function heightOf(heights: number[], page: number[]) {
 }
 
 // A photo panel as pages (#215; Justin, 2026-11-18): each group that is switched on starts a page and runs on over
-// as many as its photos need at its photos-per-page, and a group switched off prints nothing. Only the panel's very
+// as many as its photos need at its photos-per-page (a PDF's pages each count as a photo, #327), and a group switched off prints nothing. Only the panel's very
 // first page stands under its title alone; every page after it is a continued one, whichever group it belongs to.
 // Each page knows which of its group's pages it is (`part`, from 0) and how many the group has (`parts`, #259).
 export type PhotoPageType = { group: number; part: number; parts: number; isContinued: boolean };
 
+// How many spots an attachment of a photo group takes (#327): a PDF one for each of its pages, a photo or a video one.
+function spotsIn(photo: unknown) {
+	const { kind, pageCount } = (photo ?? {}) as { kind?: unknown; pageCount?: unknown };
+	return kind === 'pdf' && typeof pageCount === 'number' && pageCount > 1
+		? Math.floor(pageCount)
+		: 1;
+}
+
+/** One spot on a photo group's pages (#327): a photo, a video, or one page of a PDF (`page`, from 1). */
+export type SpotType<T> = { key: string; photo: T; page: number };
+
+/**
+ * A photo group's attachments as the spots its pages are laid out in, in order (#327; Justin, 2026-11-24: "PDFs lay
+ * out exactly like photos per page"): each page of a PDF is a spot of its own, so its pages fill the group's layout
+ * as photos do and run on over pages.
+ */
+export function spotsOf<T extends { id: string }>(photos: readonly T[]): SpotType<T>[] {
+	const spots: SpotType<T>[] = [];
+	for (const photo of photos) {
+		for (let page = 1; page <= spotsIn(photo); page += 1)
+			spots.push({ key: `${photo.id}:${page}`, photo, page });
+	}
+	return spots;
+}
+
 export function photoPagesOf(
-	groups: { isEnabled: boolean; layout: number; photos: unknown[] }[]
+	groups: { isEnabled: boolean; layout: number; photos: readonly unknown[] }[]
 ): PhotoPageType[] {
 	const pages: PhotoPageType[] = [];
 	for (const [group, { isEnabled, layout, photos }] of groups.entries()) {
 		if (!isEnabled) continue;
-		const parts = Math.max(1, Math.ceil(photos.length / layout));
+		const spots = photos.reduce<number>((sum, photo) => sum + spotsIn(photo), 0);
+		const parts = Math.max(1, Math.ceil(spots / layout));
 		for (let part = 0; part < parts; part += 1)
 			pages.push({ group, part, parts, isContinued: pages.length > 0 });
 	}

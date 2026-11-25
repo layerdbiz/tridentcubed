@@ -5,6 +5,7 @@ import {
 	isShownType,
 	isToConvert,
 	isTypeAllowed,
+	toAttachmentKind,
 	toEnding,
 	toPictureType,
 	toTyped
@@ -60,5 +61,29 @@ describe('pictures the server converts', () => {
 		expect(isToConvert({ type: 'image/png', width: 1600, height: 900 }, 'logo')).toBe(true);
 		expect(isToConvert({ type: 'image/jpeg', width: null, height: null }, 'photo')).toBe(false);
 		expect(isToConvert({ type: 'application/pdf', width: 9000 }, 'photo')).toBe(false);
+	});
+});
+
+describe('PDFs and videos in a photo group (#327)', () => {
+	it('knows a picked file by its type, else by its name', () => {
+		expect(toAttachmentKind({ name: 'deck.jpg', type: 'image/jpeg' })).toBe('photo');
+		expect(toAttachmentKind({ name: 'IMG_0001.HEIC', type: '' })).toBe('photo');
+		expect(toAttachmentKind({ name: 'manifest.pdf', type: 'application/pdf' })).toBe('pdf');
+		expect(toAttachmentKind({ name: 'Manifest.PDF', type: '' })).toBe('pdf');
+		expect(toAttachmentKind({ name: 'lift.mov', type: 'video/quicktime' })).toBe('video');
+		expect(toAttachmentKind({ name: 'lift.MOV', type: '' })).toBe('video');
+		expect(toAttachmentKind({ name: 'lift.mp4', type: 'application/octet-stream' })).toBe('video');
+		expect(toAttachmentKind({ name: 'notes.txt', type: 'text/plain' })).toBe('');
+		expect(toAttachmentKind({ name: 'list.xlsx', type: '' })).toBe('');
+	});
+
+	it('keeps a PDF or a video in the attachment column only, and a picture in the picture column only', () => {
+		for (const type of ['application/pdf', 'video/mp4', 'video/quicktime', 'video/webm']) {
+			expect(isTypeAllowed(type, 'photo', 'source')).toBe(true);
+			expect(isTypeAllowed(type, 'photo', 'file')).toBe(false);
+		}
+		expect(isTypeAllowed('image/webp', 'photo', 'source')).toBe(false);
+		expect(isTypeAllowed('text/html', 'photo', 'source')).toBe(false);
+		expect(isTypeAllowed('image/webp', 'photo', 'file')).toBe(true);
 	});
 });

@@ -295,8 +295,15 @@ export const TABLES = {
 			projectId: ID,
 			groupId: ID,
 			position: POSITION,
+			// The picture that shows: the photo itself, a PDF's first page or a video's thumbnail (#327).
 			file: PICTURE,
 			description: TEXT,
+			// #327: what the attachment is, and for a PDF or a video the file itself, how many pages the PDF has and how
+			// long the video runs, in seconds. A photo has no file of its own beside its picture.
+			kind: v.picklist(['photo', 'pdf', 'video']),
+			source: PICTURE,
+			pageCount: v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(10_000)),
+			duration: v.pipe(v.number(), v.minValue(0), v.maxValue(1_000_000)),
 			// #312: how it is framed in its spot in the report; nothing for the whole photo. Kept in jsonb's own key order
 			// (x, y, zoom), so the row a device sends reads the same as the one the server gives back.
 			crop: v.nullable(
