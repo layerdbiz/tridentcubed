@@ -4,9 +4,11 @@
 # (prototypes, #342) are never deleted, and a branch from a fork is left alone.
 #
 # Every run also sweeps branches left behind, so nothing has to be run by hand. A branch goes when
-# either holds:
+# any of these holds:
 # - its newest PR is merged and the branch still points at the commit that PR merged (a branch
 #   someone has pushed to since is kept), or
+# - its newest PR was closed without merging, nothing was pushed since, and its tip is already inside
+#   next or play: the work moved there whole (the overnight branch became next this way, #341), or
 # - everything it changed is already on dev byte for byte, however it got there (squash, cherry-pick,
 #   a copy in another PR), so deleting the name loses nothing, or
 # - it has no commits of its own and no open PR, and its tip is two days old or more: it was cut
@@ -78,13 +80,23 @@ jobs:
 
             # 1. The newest PR for the branch merged and nothing was pushed since.
             newest=$(gh api "repos/$REPO/pulls?state=all&head=$OWNER:$name&sort=updated&direction=desc&per_page=1" \
-              --jq '.[0] | select(. != null) | "\(.number) \(.state) \(.merged_at // "") \(.head.sha)"' 2>/dev/null || true)
+              --jq '.[0] | select(. != null) | "\(.number) \(.state) \(.merged_at // "-") \(.head.sha)"' 2>/dev/null || true)
             if [ -n "$newest" ]; then
+              # "-" stands in for an unmerged PR's empty merged_at, so `set --` still finds four words.
               set -- $newest
               number=$1 state=$2 merged_at=$3 head_sha=$4
-              if [ "$state" = "closed" ] && [ -n "$merged_at" ] && [ "$head_sha" = "$sha" ]; then
+              if [ "$state" = "closed" ] && [ "$merged_at" != "-" ] && [ "$head_sha" = "$sha" ]; then
                 delete "$name" "PR #$number merged"
                 continue
+              fi
+              # 1b. The PR closed unmerged and its whole branch already lives on next or play.
+              if [ "$state" = "closed" ] && [ "$merged_at" = "-" ] && [ "$head_sha" = "$sha" ]; then
+                for home in next play; do
+                  if git merge-base --is-ancestor "$sha" "origin/$home" 2>/dev/null; then
+                    delete "$name" "PR #$number closed, its work is on $home"
+                    continue 2
+                  fi
+                done
               fi
             fi
 
