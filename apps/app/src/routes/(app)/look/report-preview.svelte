@@ -62,7 +62,15 @@
 	} from './look.data';
 	import { customerOf, locationOf } from './records.data';
 	import { cityStateOf, partsOf } from './location';
-	import { DownloadError, joinPdfs, PART_LIMIT, printParts, sizeOf, toParts } from './download';
+	import {
+		DownloadError,
+		joinPdfs,
+		PART_LIMIT,
+		printParts,
+		sizeOf,
+		toPageLink,
+		toParts
+	} from './download';
 	import { downloadToast } from './toasts';
 	import { LINK_TITLE, linkNameOf, toLink } from './link';
 	import {
@@ -907,6 +915,15 @@
 		});
 	});
 
+	// A line of the Table of Contents opens its page (#301): presenting, that page is shown; otherwise it comes to the
+	// top of the view, across it, as Stack shows a page.
+	function goTo(index: number) {
+		const rect = rects[index];
+		if (!rect) return;
+		if (isPresenting) return presentation.go(index);
+		viewport.fitWidth(rect);
+	}
+
 	function refit() {
 		if (layout === 'column') viewport.fitWidth(rects[targetIndex]);
 		else viewport.fitAll();
@@ -1582,17 +1599,30 @@
 <!-- One line of the Table of Contents: a section, or one of its parts set in under it. -->
 {#snippet contentsLine(line: ContentLineType | undefined)}
 	{#if line}
-		<li
-			class="flex items-baseline gap-2 {line.isSub
-				? 'py-[3px] pl-8 text-[11px] text-slate-600'
-				: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
-		>
-			<span class="w-6 shrink-0 font-semibold text-slate-950 tabular-nums">{line.number}</span>
-			<span>{line.title}</span>
-			<span
-				class="h-[3px] min-w-4 flex-1 bg-[radial-gradient(circle,var(--color-slate-400)_0.8px,transparent_1.1px)] bg-size-[7px_3px] bg-bottom bg-repeat-x"
-			></span>
-			<span class="min-w-5 shrink-0 text-right text-slate-950 tabular-nums">{line.page}</span>
+		<!-- A link to the page it names (#301). Here a tap opens that page (`data-tap`: the pages still move from a drag
+		     that starts on it). Printed, it is a link to the report link of that page, which the PDF's join turns into
+		     a link to the page itself (download.ts). -->
+		<li>
+			<a
+				href={line.to ? toPageLink(linkOf(line.to), line.to) : undefined}
+				data-tap
+				draggable="false"
+				tabindex="-1"
+				onclick={(event) => {
+					event.preventDefault();
+					goTo(line.to - 1);
+				}}
+				class="group flex items-baseline gap-2 {line.isSub
+					? 'py-[3px] pl-8 text-[11px] text-slate-600'
+					: 'pt-2.5 pb-[3px] text-[12.5px] font-semibold text-slate-900'}"
+			>
+				<span class="w-6 shrink-0 font-semibold text-slate-950 tabular-nums">{line.number}</span>
+				<span class="group-hover:underline">{line.title}</span>
+				<span
+					class="h-[3px] min-w-4 flex-1 bg-[radial-gradient(circle,var(--color-slate-400)_0.8px,transparent_1.1px)] bg-size-[7px_3px] bg-bottom bg-repeat-x"
+				></span>
+				<span class="min-w-5 shrink-0 text-right text-slate-950 tabular-nums">{line.page}</span>
+			</a>
 		</li>
 	{/if}
 {/snippet}

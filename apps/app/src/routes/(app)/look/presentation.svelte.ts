@@ -5,7 +5,7 @@
 // page when let go past a sixth of the way or flicked. The mouse wheel anywhere turns as many pages as it is turned,
 // one notch a page. Auto-play shows each page four seconds and stops at the last. The bar fades when nothing moves.
 import type { Attachment } from 'svelte/attachments';
-import type { RectType } from './viewport.svelte';
+import { tapOn, type RectType } from './viewport.svelte';
 
 export type SizeType = { width: number; height: number };
 // How the preview lays its pages out: one under another (Stack), spread out in rows (Spread), or one at a time.
@@ -284,7 +284,14 @@ export class Presentation {
 
 function swipeOf(presentation: Presentation, element: HTMLElement) {
 	let press:
-		| { id: number; x: number; y: number; isMoved: boolean; samples: { x: number; t: number }[] }
+		| {
+				id: number;
+				x: number;
+				y: number;
+				target: EventTarget | null;
+				isMoved: boolean;
+				samples: { x: number; t: number }[];
+		  }
 		| undefined;
 
 	function down(event: PointerEvent) {
@@ -299,6 +306,7 @@ function swipeOf(presentation: Presentation, element: HTMLElement) {
 			id: event.pointerId,
 			x: event.clientX,
 			y: event.clientY,
+			target: event.target,
 			isMoved: false,
 			samples: [{ x: event.clientX, t: event.timeStamp }]
 		};
@@ -321,6 +329,8 @@ function swipeOf(presentation: Presentation, element: HTMLElement) {
 		press = undefined;
 		if (event.type === 'pointercancel') return presentation.release(0);
 		if (!done.isMoved) {
+			// A tap on a contents line opens its page (#301) in place of turning one.
+			if (tapOn(done.target)) return;
 			const box = element.getBoundingClientRect();
 			return presentation.turn(tapOf(event.clientX - box.left, box.width));
 		}

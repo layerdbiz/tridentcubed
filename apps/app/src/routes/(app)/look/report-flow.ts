@@ -172,23 +172,43 @@ export function partSpansOf(pages: (string | undefined)[][], first: number) {
 // 2. 3. 3.1). Its pages are these lines dealt out like any flowing section's blocks (#277; Justin, 2026-11-24: "I
 // never want to leave a section cut off"): a section opens a part that stays whole, so one that would not fit with
 // all of its parts moves on to the continued page.
-export type ContentLineType = { number: string; title: string; page: string; isSub: boolean };
+// Each line is a link to the page it names (#301), in the downloaded PDF and in the Preview: `to` is that page, the
+// first of a span (7-12 opens 7), counted from 1 as printed; 0 when the line names none.
+export type ContentLineType = {
+	number: string;
+	title: string;
+	page: string;
+	to: number;
+	isSub: boolean;
+};
 
 export function contentLinesOf(
 	entries: { title: string; page: string; subs: { title: string; page: string }[] }[]
 ) {
 	const lines: ContentLineType[] = [];
 	for (const [at, entry] of entries.entries()) {
-		lines.push({ number: `${at + 1}.`, title: entry.title, page: entry.page, isSub: false });
+		lines.push({
+			number: `${at + 1}.`,
+			title: entry.title,
+			page: entry.page,
+			to: firstPageOf(entry.page),
+			isSub: false
+		});
 		for (const [subAt, sub] of entry.subs.entries())
 			lines.push({
 				number: `${at + 1}.${subAt + 1}`,
 				title: sub.title,
 				page: sub.page,
+				to: firstPageOf(sub.page),
 				isSub: true
 			});
 	}
 	return lines;
+}
+
+/** The page a span as the contents print it starts on (`rangeOf`'s 7-12 is 7); 0 for none. */
+function firstPageOf(range: string) {
+	return Number.parseInt(range, 10) || 0;
 }
 
 // The number each stage of the Operations panel wears, in the panel and before its title in the Preview (Justin,

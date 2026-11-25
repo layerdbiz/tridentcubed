@@ -463,12 +463,21 @@ describe('contentLinesOf', () => {
 
 	it('numbers each section and its parts like an ordered list, one line each', () => {
 		expect(contentLinesOf(entries)).toEqual([
-			{ number: '1.', title: 'Cover', page: '1', isSub: false },
-			{ number: '2.', title: 'Table of Contents', page: '2-3', isSub: false },
-			{ number: '3.', title: 'Damages / Cosmetics', page: '22', isSub: false },
-			{ number: '3.1', title: 'Pre-Cargo Condition', page: '22', isSub: true },
-			{ number: '3.2', title: 'Hatch 2', page: '23', isSub: true }
+			{ number: '1.', title: 'Cover', page: '1', to: 1, isSub: false },
+			{ number: '2.', title: 'Table of Contents', page: '2-3', to: 2, isSub: false },
+			{ number: '3.', title: 'Damages / Cosmetics', page: '22', to: 22, isSub: false },
+			{ number: '3.1', title: 'Pre-Cargo Condition', page: '22', to: 22, isSub: true },
+			{ number: '3.2', title: 'Hatch 2', page: '23', to: 23, isSub: true }
 		]);
+	});
+
+	// #301: a line is a link to its page, in the PDF and in the Preview. One that runs over pages opens the first.
+	it('opens the page each line names, the first of a span', () => {
+		expect(contentLinesOf(entries).map((line) => line.to)).toEqual([1, 2, 22, 22, 23]);
+	});
+
+	it('opens no page from a line that names none', () => {
+		expect(contentLinesOf([{ title: 'Ships Particulars', page: '', subs: [] }])[0].to).toBe(0);
 	});
 
 	it('moves a section that would not fit whole on to the next page, its parts with it', () => {

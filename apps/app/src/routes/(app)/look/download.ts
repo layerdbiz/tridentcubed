@@ -146,17 +146,53 @@ export async function printParts(
 	return pdfs;
 }
 
+// The Table of Contents' links (#301). Each line is printed as a link, so the printer draws its box exactly where the
+// line is in the page it lays out. Its address is the report link of its page (#216) ending in #page-<n>: the join
+// finds those and makes each open page n of the PDF itself, which may be in a part printed apart from the contents.
+// A link the join could not make (a page the PDF does not have) still opens that page of the Preview in the app.
+
+/** The address a contents line's link is printed with: `address`, the report link of its page, marked with it. */
+export function toPageLink(address: string, page: number) {
+	return `${address}#page-${page}`;
+}
+
+/** The page a printed link opens, from 1, when it is a contents line's; 0 for any other link (a QR code's). */
+export function pageOfLink(address: string) {
+	const found = /#page-(\d+)$/.exec(address);
+	return found ? Number(found[1]) : 0;
+}
+
 /**
- * The parts' PDFs as one, in order, every page with its links. One part is the whole report already and comes back
- * as it is. The library that joins them is fetched only when there is something to join.
+ * The parts' PDFs as one, in order, every page with its links, the contents' lines opening their pages. A single
+ * part is the whole report already: it is kept as the printer made it, language and tags and all, and only its
+ * contents' links are changed. The library that does this is fetched when a PDF is made.
  */
 export async function joinPdfs(pdfs: Uint8Array[], filename: string) {
-	if (pdfs.length === 1) return pdfs[0];
-	const { PDFDocument } = await import('pdf-lib');
-	const whole = await PDFDocument.create();
-	for (const bytes of pdfs) {
+	const { PDFDict, PDFDocument, PDFHexString, PDFName, PDFString } = await import('pdf-lib');
+	const isWhole = pdfs.length === 1;
+	const whole = isWhole ? await PDFDocument.load(pdfs[0]) : await PDFDocument.create();
+	for (const bytes of isWhole ? [] : pdfs) {
 		const part = await PDFDocument.load(bytes);
 		for (const page of await whole.copyPages(part, part.getPageIndices())) whole.addPage(page);
+	}
+
+	const pages = whole.getPages();
+	for (const page of pages) {
+		for (const ref of page.node.Annots()?.asArray() ?? []) {
+			const link = whole.context.lookup(ref);
+			if (!(link instanceof PDFDict)) continue;
+			const action = link.lookup(PDFName.of('A'));
+			if (!(action instanceof PDFDict)) continue;
+			// The printer writes an address as a string or as hex.
+			const address = action.get(PDFName.of('URI'));
+			const isText = address instanceof PDFString || address instanceof PDFHexString;
+			const target = isText ? pages[pageOfLink(address.decodeText()) - 1] : undefined;
+			if (!target) continue;
+			link.delete(PDFName.of('A'));
+			// The page opened at its top, at the zoom the reader is at.
+			const top = target.getMediaBox().y + target.getHeight();
+			link.set(PDFName.of('Dest'), whole.context.obj([target.ref, 'XYZ', null, top, null]));
+		}
 	}
 	whole.setTitle(filename.replace(/\.pdf$/i, ''));
 	return whole.save();
