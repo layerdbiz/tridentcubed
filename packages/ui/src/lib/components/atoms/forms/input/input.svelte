@@ -86,10 +86,16 @@
 		})
 	);
 
+	// The input shows at once what its owner kept of what was typed: only the digits, or a date it will not let be
+	// emptied. With a Generated value, an emptied input stays empty under the caret instead.
 	function handleInput(event: Event): void {
-		const text = (event.currentTarget as HTMLInputElement).value;
-		if (generated !== undefined) draft = text;
+		const node = event.currentTarget as HTMLInputElement;
+		const text = node.value;
 		value = text;
+		const kept = value == null ? '' : String(value);
+		const shownNow = kept === text || (generated !== undefined && !kept) ? text : kept;
+		if (shownNow !== text) node.value = shownNow;
+		if (generated !== undefined) draft = shownNow;
 	}
 
 	// A date, time or month with a Generated value has no calendar button (the wand sits there), so a click opens it.
@@ -174,6 +180,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 		{placeholder}
 		name={fieldState.field.name}
 		id={fieldState.field.id}
+		aria-labelledby="{fieldState.field.id}-label"
 		aria-describedby={ariaDescribedby}
 		aria-invalid={ariaInvalid}
 		aria-required={required || undefined}
@@ -227,12 +234,13 @@ Use thse emojis for comments about the state of the input in the examples below.
 	persistSetValue={setPersistedValue}
 >
 	{#snippet component({ props }: { props: ComponentReturn })}
+		<!-- The label sits on the border in the legend, apart from the field, which is named by it. -->
 		<fieldset
 			{...props}
 			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)}`.trim()}
 		>
 			<legend
-				><span>{fieldState.labelText}</span>{#if help}<Help
+				><span id="{fieldState.field.id}-label">{fieldState.labelText}</span>{#if help}<Help
 						label={fieldState.labelText}
 						text={help}
 					/>{/if}</legend

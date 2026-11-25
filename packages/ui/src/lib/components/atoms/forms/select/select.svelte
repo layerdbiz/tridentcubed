@@ -15,12 +15,16 @@
 	// and makes the field typed too, adding the lookup's choices once typing pauses. `oninput` hears the words, `onpick`
 	// a choice.
 	//
-	// Two looks. The notched field is the library's own (#284: the label sits on the border). `variant="soft"` is the
-	// app's panel field (label above, filled and borderless, lit while open), kept so nothing in the app looks different
-	// until its panels move onto the notched field one at a time (#57). Like the Menu it draws its own box rather than
+	// Two looks. The notched field is the library's own (#284: the label sits on the border): the same box as every
+	// input, the pick's picture at its start (a choice's own, or what `mark` draws, or the field's `icon` while nothing
+	// is picked) and a chevron at its end; one that cannot be picked from says why, its label on the border. Its
+	// `variant` leaves out the start (`text icon`) or the end (`icon text`). `variant="soft"` is the app's panel field
+	// (label above, filled and borderless, lit while open), kept for the panels not yet moved onto the notched field,
+	// one at a time, Project panel first (#57). Like the Menu it draws its own box rather than
 	// the base component, since a panel holds many of them; and its Help ? hides while it is empty by the app's rule
 	// on `has-help` and `data-empty` (look.css).
 	import type { Snippet } from 'svelte';
+	import type { Attachment } from 'svelte/attachments';
 	import type { HTMLSelectAttributes } from 'svelte/elements';
 	import '../forms.css';
 	import {
@@ -41,7 +45,7 @@
 	const uid = $props.id();
 
 	export type SelectProps = Omit<FieldProps<string | string[]>, 'variant'> & {
-		/** The notched field's icon arrangement, or `soft`, the app's panel field. */
+		/** The notched field's picture at the start and chevron at the end, or `soft`, the app's panel field. */
 		variant?: FormFieldVariant | 'soft';
 		options?: SelectOptionType[];
 		placeholder?: string;
@@ -81,7 +85,7 @@
 	};
 
 	let {
-		variant = 'text icon',
+		variant = 'icon text icon',
 		label = 'Select',
 		help = undefined,
 		icon = undefined,
@@ -89,7 +93,7 @@
 		name = undefined,
 		id = undefined,
 		options = [],
-		placeholder = 'Choose',
+		placeholder = undefined,
 		disabled = false,
 		required = false,
 		multiple = false,
@@ -156,6 +160,22 @@
 		return selected.map(labelOf).join(', ');
 	});
 	const softIcon = $derived(icon ?? 'icon-[mdi--chevron-right]');
+	// What an empty field says: the soft one Choose unless told otherwise; the notched one holds its label instead.
+	const hint = $derived(placeholder ?? 'Choose');
+	// The notched field's start and end.
+	const hasStart = $derived(variant === 'icon text' || variant === 'icon text icon');
+	const hasEnd = $derived(variant === 'text icon' || variant === 'icon text icon');
+	// A notched field with nothing to pick says why, with its label on the border.
+	const isHinted = $derived(disabled && !selected.length && Boolean(placeholder));
+
+	// A press on the notched field leaves the focus where it is, and the click opens the list. Focus floats the label to
+	// the border and shows its ?, which would slide under a pointer still pressed on an empty field and take the click
+	// (#57); the list's search takes the focus once it is open.
+	const holdFocus: Attachment<HTMLElement> = (node) => {
+		const hold = (event: MouseEvent) => event.preventDefault();
+		node.addEventListener('mousedown', hold);
+		return () => node.removeEventListener('mousedown', hold);
+	};
 
 	// A typed field's words, and what shows for them: the known choices holding them, then what a lookup found.
 	const text = $derived(typeof value === 'string' ? value.trim().toLowerCase() : '');
@@ -190,6 +210,12 @@
 
 	function labelOf(choice: string) {
 		return optionOf(choice)?.label ?? choice;
+	}
+
+	// Whether the notched field has a picture for a pick: one it is given to draw, the choice's own, or its icon.
+	function hasPicture(choice: string) {
+		const option = optionOf(choice);
+		return Boolean(ownMark || icon || option?.image || option?.dot || option?.icon);
 	}
 
 	function pick(choice: string) {
@@ -328,7 +354,7 @@
 		id="{uid}-input"
 		class={classes}
 		value={typeof value === 'string' ? value : ''}
-		placeholder={isSoft ? placeholder : ' '}
+		placeholder={isSoft ? hint : ' '}
 		{disabled}
 		required={isSoft ? undefined : required}
 		name={isSoft ? name : fieldState.field.name}
@@ -376,7 +402,7 @@
 		{#if selected.length}
 			<span class="min-w-0 flex-1 truncate">{shown}</span>
 		{:else}
-			<span class="min-w-0 flex-1 truncate text-slate-400">{placeholder}</span>
+			<span class="min-w-0 flex-1 truncate text-slate-400">{hint}</span>
 		{/if}
 		<span class="mr-1 icon-[mdi--chevron-down] size-4 shrink-0 text-slate-400"></span>
 	</span>
@@ -471,16 +497,37 @@
 	{/snippet}
 
 	{#snippet iconEndEl()}
-		{#if fieldState.trailingIcon}
-			<Icon
-				icon={fieldState.trailingIcon}
-				class="icon end"
-			/>
+		<Icon
+			icon={iconEnd ?? 'icon-[mdi--chevron-down]'}
+			class="icon end"
+		/>
+	{/snippet}
+
+	<!-- The pick's picture at the start: one for each of several picks, or the field's icon, quiet, while nothing is
+	     picked. -->
+	{#snippet pickEl()}
+		{#if selected.length && selected.some(hasPicture)}
+			<span class="select-pick">
+				{#each selected.slice(0, 5) as choice, index (choice)}
+					<span
+						class="relative flex"
+						style="margin-left: {index ? -8 : 0}px; z-index: {10 - index}"
+						>{@render face(choice, 28, true)}</span
+					>
+				{/each}
+			</span>
+		{:else if !selected.length && icon}
+			<span class="select-pick"
+				><span
+					class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-400"
+					><span class="{icon} size-4"></span></span
+				></span
+			>
 		{/if}
 	{/snippet}
 
 	{#snippet optionItems()}
-		{#if placeholder && !multiple}
+		{#if hint && !multiple}
 			<option
 				value=""
 				disabled={required}
@@ -496,8 +543,12 @@
 	{/snippet}
 
 	{#snippet notchedTrigger()}
-		<span class="select-trigger {selected.length ? '' : 'is-placeholder'}">
-			<span class="select-trigger-value">{shown}</span>
+		<span
+			class="select-trigger {selected.length ? '' : 'is-placeholder'}"
+			{@attach holdFocus}
+		>
+			{#if hasStart}{@render pickEl()}{/if}
+			<span class="select-trigger-value">{isHinted ? placeholder : shown}</span>
 		</span>
 	{/snippet}
 
@@ -586,7 +637,7 @@
 			<div class="select-root">
 				<fieldset
 					{...props}
-					class={`field ${props.class} ${fieldState.className}`.trim()}
+					class={`field ${props.class} ${isHinted ? 'field-filled' : fieldState.className}`.trim()}
 				>
 					<legend
 						><span>{fieldState.labelText}</span>{#if help}<Help
@@ -595,11 +646,11 @@
 							/>{/if}</legend
 					>
 					<label for={isTyping ? `${uid}-input` : fieldState.field.id}>
-						{#if variant === 'icon text' || variant === 'icon text icon'}
+						{#if hasStart && (isTyping || children)}
 							{@render iconStartEl()}
 						{/if}
 						{@render selectEl()}
-						{#if variant === 'text icon' || variant === 'icon text icon'}
+						{#if hasEnd}
 							{@render iconEndEl()}
 						{/if}
 					</label>
@@ -654,6 +705,27 @@
 
 	fieldset .select-trigger-value {
 		@apply block w-full truncate;
+	}
+
+	/* The pick's picture sits in the field's own button, so a tap on it opens the list too, and an empty field's label
+	   rests after it. */
+	fieldset:has(.select-pick) {
+		--prefix-width: calc(1.75rem + var(--icon-gap));
+		--legend-float-pad-start: var(--icon-gap);
+	}
+
+	fieldset .select-trigger:has(.select-pick) {
+		gap: var(--icon-gap);
+		padding-inline-start: var(--content-start);
+	}
+
+	fieldset .select-pick {
+		@apply flex shrink-0 items-center;
+	}
+
+	/* The chevron lets a tap through to the button under it. */
+	fieldset :global(.icon.end) {
+		@apply pointer-events-none;
 	}
 
 	fieldset .select-trigger.is-placeholder .select-trigger-value {

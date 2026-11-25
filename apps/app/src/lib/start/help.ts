@@ -38,6 +38,11 @@ export const HELP: readonly HelpType[] = [
 		text: 'Which job this is for the customer on that date, counted from 1. The app fills in the next free one; type a number to use your own. It ends the project number.'
 	},
 	{
+		key: 'project.number',
+		label: 'Project Number',
+		text: 'The project’s reference, made by the app from the customer’s Short Code, the Created Date and the Job Number; nobody types it. It prints in every page’s footer and starts the report’s file name.'
+	},
+	{
 		key: 'project.customer',
 		label: 'Customer',
 		text: 'Who the report is for. Their logo prints on every page, and their Short Code starts the project number.'

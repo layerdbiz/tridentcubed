@@ -8,6 +8,12 @@ function fieldsetOf(element: HTMLElement): HTMLFieldSetElement {
 }
 
 describe('Input', () => {
+	it('is named by its label, which sits apart from it on the border', () => {
+		render(Input, { props: { label: 'Reference Number', value: '' } });
+
+		expect(screen.getByRole('textbox', { name: 'Reference Number' })).toBeTruthy();
+	});
+
 	it('puts a ? after its label that opens its Help text', async () => {
 		render(Input, { props: { label: 'Title', value: 'A title', help: "The report's name." } });
 
@@ -61,5 +67,59 @@ describe('Input', () => {
 		expect(input.value).toBe('');
 		await fireEvent.blur(input);
 		expect(input.value).toBe('1');
+	});
+
+	// Props with a bound value whose owner keeps only part of what is typed: digits, say, or a date that cannot be
+	// emptied. The value is a getter and a setter, as a `bind:value` hands a component.
+	function keeping(
+		props: Record<string, unknown>,
+		keep: (text: string, kept: string) => string,
+		kept: string
+	) {
+		return Object.defineProperty(props, 'value', {
+			enumerable: true,
+			configurable: true,
+			get: () => kept,
+			set: (text: string) => (kept = keep(text, kept))
+		});
+	}
+
+	it('shows at once what its owner kept of what was typed', async () => {
+		render(Input, {
+			props: keeping({ label: 'Job Number' }, (text) => text.replace(/\D/g, ''), '')
+		});
+
+		const input = screen.getByRole('textbox') as HTMLInputElement;
+		await fireEvent.input(input, { target: { value: '12a' } });
+		expect(input.value).toBe('12');
+	});
+
+	it('puts back a value its owner would not let go of', async () => {
+		render(Input, {
+			props: keeping(
+				{ label: 'Created Date', type: 'date' },
+				(text, kept) => text || kept,
+				'2026-10-27'
+			)
+		});
+
+		const input = screen.getByLabelText('Created Date') as HTMLInputElement;
+		await fireEvent.input(input, { target: { value: '' } });
+		expect(input.value).toBe('2026-10-27');
+	});
+
+	it("shows a digit-only owner's digits over the app's value, and keeps an emptied one empty", async () => {
+		render(Input, {
+			props: keeping({ label: 'Job Number', generated: '3' }, (text) => text.replace(/\D/g, ''), '')
+		});
+
+		const input = screen.getByRole('textbox') as HTMLInputElement;
+		input.focus();
+		await fireEvent.input(input, { target: { value: '7x' } });
+		expect(input.value).toBe('7');
+		await fireEvent.input(input, { target: { value: '' } });
+		expect(input.value).toBe('');
+		await fireEvent.blur(input);
+		expect(input.value).toBe('3');
 	});
 });

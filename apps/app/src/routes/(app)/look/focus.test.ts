@@ -31,6 +31,13 @@ describe('the input an entry opens', () => {
 		expect(inputIn(root, { section: 'team', label: 'Team Lead', nth: 0 })?.id).toBe('lead');
 	});
 
+	it('is a library input, named by the label on its border', () => {
+		const root = draw(`
+			<fieldset class="field"><legend><span id="l">Title</span></legend><label for="t"><input id="t" aria-labelledby="l" /></label></fieldset>
+		`);
+		expect(inputIn(root, { section: 'project', label: 'Title', nth: 0 })?.id).toBe('t');
+	});
+
 	it('takes a label over a longer name read out for it: a panel’s Title', () => {
 		const root = draw(`<label for="t">Title</label><input id="t" aria-label="Panel title" />`);
 		expect(inputIn(root, { section: 'panel', label: 'Title', nth: 0 })?.id).toBe('t');

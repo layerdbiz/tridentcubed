@@ -1,7 +1,9 @@
 @reference "#ui.css";
 
 /* Every rule starts at `fieldset.field`, the library's own fields (Input, Textarea, Select): this file loads with
-   them, so a bare `fieldset` would restyle every other fieldset on the page, such as a form's wrapper. */
+   them, so a bare `fieldset` would restyle every other fieldset on the page, such as a form's wrapper. A rule for the
+   field's label, control or icons reaches only its own (`> label >`), never those of the list a Select opens inside
+   it, whose search would otherwise cover the list (#57). */
 fieldset.field {
 	font-size: 1rem;
 
@@ -73,37 +75,37 @@ fieldset.field legend {
 	font-size: var(--legend-font-size);
 }
 
-fieldset.field label {
+fieldset.field > label {
 	@apply pointer-events-auto absolute inset-0 z-0 grid items-center justify-center;
 	@apply grid-cols-[calc(var(--content-start)+var(--prefix-width))_minmax(0,1fr)_calc(var(--content-end)+var(--suffix-width))];
 }
 
-fieldset.field .icon.start,
-fieldset.field .icon.end {
+fieldset.field > label > .icon.start,
+fieldset.field > label > .icon.end {
 	@apply z-2 block shrink-0 overflow-clip bg-base-400 text-base-400 transition-colors;
 	@apply size-(--icon-size);
 }
 
-fieldset.field .icon.start {
+fieldset.field > label > .icon.start {
 	@apply col-start-1 row-start-1 ml-(--content-start) self-center;
 }
 
-fieldset.field .icon.end {
+fieldset.field > label > .icon.end {
 	@apply col-start-3 row-start-1 mr-(--content-end) self-center justify-self-end;
 }
 
-fieldset.field :is(input, select, textarea) {
+fieldset.field > label > :is(input, select, textarea) {
 	@apply relative z-0 col-span-full row-start-1 size-full border-0 bg-transparent text-base-900 outline-0 transition-colors;
 	@apply select-text;
 	@apply rounded-(--field-radius) ps-(--input-pad-start) pe-(--input-pad-end) text-[1em];
 }
 
-fieldset.field input::placeholder,
-fieldset.field textarea::placeholder {
+fieldset.field > label > input::placeholder,
+fieldset.field > label > textarea::placeholder {
 	@apply text-transparent;
 }
 
-fieldset.field:has(.start) :is(input, select, textarea) {
+fieldset.field:has(.start) > label > :is(input, select, textarea) {
 	padding-inline-start: calc(var(--input-pad-start) + var(--notch-padding));
 }
 
@@ -139,11 +141,11 @@ fieldset.field:is(.field-filled, :focus-within) legend {
 	@apply translate-x-0 translate-y-0 scale-100 opacity-100;
 }
 
-fieldset.field:is(.field-filled, :focus-within) label {
+fieldset.field:is(.field-filled, :focus-within) > label {
 	@apply -inset-0.5;
 }
 
-fieldset.field:is(.field-filled, :focus-within) :is(input, select, textarea) {
+fieldset.field:is(.field-filled, :focus-within) > label > :is(input, select, textarea) {
 	@apply outline-0;
 }
 
@@ -155,7 +157,7 @@ fieldset.field:focus-within legend {
 	@apply text-info-500!;
 }
 
-fieldset.field:focus-within .icon {
+fieldset.field:focus-within > label > .icon {
 	@apply bg-info-500 text-info-500;
 }
 
@@ -174,15 +176,15 @@ fieldset.field.field-filled:not(:focus-within) legend {
 	@apply text-base-500;
 }
 
-fieldset.field.field-filled:not(:focus-within) label {
+fieldset.field.field-filled:not(:focus-within) > label {
 	@apply -right-px -left-px;
 }
 
-fieldset.field.field-filled:not(:focus-within) label .icon {
+fieldset.field.field-filled:not(:focus-within) > label > .icon {
 	@apply bg-base-500 text-base-500;
 }
 
-fieldset.field.field-filled:not(:focus-within) label :is(input, select, textarea) {
+fieldset.field.field-filled:not(:focus-within) > label > :is(input, select, textarea) {
 	@apply outline-0;
 }
 
@@ -210,30 +212,30 @@ fieldset.field.field-empty:not(:focus-within) legend .help:not([aria-expanded='t
 
 /* GENERATED VALUE: the app's value in bright blue with a wand at the end; typed over, the text is the input's own
    and the wand turns into a reset that brings the app's value back (#284). */
-fieldset.field.field-generated :is(input, textarea) {
+fieldset.field.field-generated > label > :is(input, textarea) {
 	@apply font-medium text-info-500;
 }
 
-fieldset.field label .generated {
+fieldset.field > label > .generated {
 	@apply z-2 col-start-3 row-start-1 mr-(--content-end) grid size-(--icon-size) shrink-0 place-items-center self-center justify-self-end;
 }
 
-fieldset.field label .generated .icon-mark {
+fieldset.field > label > .generated .icon-mark {
 	@apply block size-full bg-info-500 text-info-500;
 }
 
-fieldset.field label button.generated {
+fieldset.field > label > button.generated {
 	@apply pointer-events-auto cursor-pointer rounded-[0.4em] border-0 bg-transparent p-0 text-info-500;
 	-webkit-tap-highlight-color: transparent;
 	touch-action: manipulation;
 }
 
-fieldset.field label button.generated:focus:not(:focus-visible) {
+fieldset.field > label > button.generated:focus:not(:focus-visible) {
 	@apply outline-0;
 }
 
 @media (hover: hover) {
-	fieldset.field label button.generated:hover {
+	fieldset.field > label > button.generated:hover {
 		@apply bg-info-50;
 	}
 }
@@ -244,11 +246,11 @@ fieldset.field:has(.generated) {
 
 /* A date with a Generated value has the wand or the reset where the browser's calendar button was; a click anywhere
    on it opens the calendar instead. */
-fieldset.field:has(.generated) input::-webkit-calendar-picker-indicator {
+fieldset.field:has(.generated) > label > input::-webkit-calendar-picker-indicator {
 	display: none;
 }
 
-fieldset.field :is(input, textarea):is(:-webkit-autofill, :autofill) {
+fieldset.field > label > :is(input, textarea):is(:-webkit-autofill, :autofill) {
 	-webkit-text-fill-color: currentColor;
 	caret-color: currentColor;
 	transition: background-color 99999s ease-out 0s;

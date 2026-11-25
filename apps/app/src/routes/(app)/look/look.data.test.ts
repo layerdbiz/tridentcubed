@@ -7,6 +7,7 @@ import {
 	nextJobOf,
 	numberOf,
 	onlineOf,
+	projectNumberOf,
 	presenceOf,
 	resetPeople,
 	toJobCode,
@@ -157,6 +158,14 @@ describe('the project number', () => {
 		expect(createdDayOf(susana)).toBe('2026-10-27');
 		expect(numberOf(susana, [susana])).toBe('KOG-2026-10-27-J01');
 		expect(createdDayOf(project('new'))).toBe('2026-11-18');
+	});
+
+	// #300: the Project panel shows the whole number under Job Number, from what its inputs hold, the same number the
+	// report's footer prints.
+	it('is made of the customer’s code, the date and the job, as the panel’s inputs hold them', () => {
+		expect(projectNumberOf('KOGA', '2026-10-27', 3)).toBe('KOG-2026-10-27-J03');
+		const susana = project('susana', { day: '2026-10-27', job: 1 });
+		expect(projectNumberOf('KOGA', '2026-10-27', 1)).toBe(numberOf(susana, [susana]));
 	});
 
 	it('prints the Job Sequence Number as J and two digits', () => {
