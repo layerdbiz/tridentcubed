@@ -23,6 +23,7 @@
 	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
+	import Percent from './percent.svelte';
 	import { addPhotos, filesLabelOf, hasFiles } from './photos';
 	import { createPhotoToast } from './toasts';
 	import ProgressRing from './progress-ring.svelte';
@@ -223,25 +224,17 @@
 				<span class="block text-xs text-slate-500">{metrics.done} of {metrics.total} complete</span>
 			</span>
 		</button>
-		<button
-			type="button"
-			class="ml-2 shrink-0 rounded-lg text-right enabled:cursor-pointer"
+		<Percent
+			class="ml-2"
+			percent={metrics.percent}
+			status={metrics.status}
+			whose={panel.name}
+			tone={isQuiet ? 'text-slate-400' : tone.text}
+			percentTone={panel.isEnabled ? 'text-slate-900' : 'text-slate-300'}
 			disabled={!panel.isEnabled}
-			aria-label="{metrics.percent}% of {panel.name}: show its empty inputs"
 			title={panel.isEnabled ? 'Show what is not filled in yet' : undefined}
 			onclick={() => look.showEmpty(panel.id)}
-		>
-			<span
-				class="block text-lg leading-tight font-semibold tabular-nums {panel.isEnabled
-					? 'text-slate-900'
-					: 'text-slate-300'}">{metrics.percent}%</span
-			>
-			<span
-				class="block text-[10px] font-semibold tracking-[0.12em] uppercase {isQuiet
-					? 'text-slate-400'
-					: tone.text}">{metrics.status}</span
-			>
-		</button>
+		/>
 		{#if style !== 'soft'}
 			<span class="ml-2 flex w-11 shrink-0 justify-center">{@render control(false)}</span>
 		{/if}

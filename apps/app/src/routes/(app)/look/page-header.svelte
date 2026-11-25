@@ -12,6 +12,7 @@
 	import { DATASETS, STATUS, type DatasetType, type StatusType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import Percent from './percent.svelte';
 	import SaveCloud from './save-cloud.svelte';
 
 	let {
@@ -95,28 +96,14 @@
 				</span>
 				{#if hasCloud}<SaveCloud {look} />{/if}
 				{#if progress !== undefined && tone}
-					{#snippet percent()}
-						<span class="block text-lg leading-tight font-semibold text-slate-900 tabular-nums"
-							>{progress}%</span
-						>
-						<span class="block text-[10px] font-semibold tracking-[0.12em] uppercase {tone.tone}"
-							>{status}</span
-						>
-					{/snippet}
-					{#if onprogress}
-						<button
-							type="button"
-							class="shrink-0 cursor-pointer rounded-lg text-right"
-							title="{progress}% of this project is done"
-							aria-label="{progress}% of this project: show its empty inputs"
-							onclick={onprogress}>{@render percent()}</button
-						>
-					{:else}
-						<span
-							class="shrink-0 text-right"
-							title="{progress}% of this project is done">{@render percent()}</span
-						>
-					{/if}
+					<Percent
+						percent={progress}
+						status={status ?? ''}
+						whose="this project"
+						tone={tone.tone}
+						title="{progress}% of this project is done"
+						onclick={onprogress}
+					/>
 				{/if}
 			</div>
 			{#if progress !== undefined && tone}

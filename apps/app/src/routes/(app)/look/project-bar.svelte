@@ -8,6 +8,7 @@
 	import { STATUS } from './look.data';
 	import { themeOf, type LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import Percent from './percent.svelte';
 	import SaveCloud from './save-cloud.svelte';
 
 	let { look, isCloud = false }: { look: LookState; isCloud?: boolean } = $props();
@@ -28,19 +29,13 @@
 		<div class="flex min-h-10 items-center gap-2">
 			<span class="min-w-0 flex-1 truncate font-semibold text-slate-900">{look.project.title}</span>
 			{#if isCloud}<SaveCloud {look} />{/if}
-			<button
-				type="button"
-				class="shrink-0 cursor-pointer rounded-lg text-right"
-				aria-label="{look.overall}% of this project: show its empty inputs"
+			<Percent
+				percent={look.overall}
+				status={look.project.status}
+				whose="this project"
+				tone={status.tone}
 				onclick={() => look.showEmpty()}
-			>
-				<span class="block text-lg leading-tight font-semibold text-slate-900 tabular-nums"
-					>{look.overall}%</span
-				>
-				<span class="block text-[10px] font-semibold tracking-[0.12em] uppercase {status.tone}"
-					>{look.project.status}</span
-				>
-			</button>
+			/>
 		</div>
 		<span class="mt-1.5 block h-2 overflow-hidden rounded-full bg-slate-900/[0.07]">
 			<span
