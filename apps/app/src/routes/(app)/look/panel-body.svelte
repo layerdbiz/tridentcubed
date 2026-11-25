@@ -30,8 +30,12 @@
 	// name and a title.
 	// #217 (Justin, 2026-11-18): the Project section ends with the two parts of the project number a User may type,
 	// side by side: Project Creation Date (today on a new project) and Job Sequence Number (the server's next for
-	// that customer and day, until one is typed); the number they make is not shown here (#225). The Customer section takes
-	// the customer's own number for the job, the Customer Reference Number, labelled Reference Number (#225).
+	// that customer and day, until one is typed). The Customer section takes the customer's own number for the job,
+	// the Customer Reference Number, labelled Reference Number (#225).
+	// #57 (Justin, 2026-11-24): the Project panel is the first moved onto the library's inputs (Input, Textarea,
+	// Select), in the look picked on the inputs prototype (#284): the label on the border, its ? once the label sits
+	// there, the app's values (the Description's sentence, the next Job Number) a Generated value in bright blue with a
+	// reset once typed over, a Select's pick as its picture. What it saves, and when, is unchanged.
 	// #215 (Justin, 2026-11-18): a photo panel opens on its own title, filled in and editable, so Operations or an
 	// added panel can be called what the job calls it; the report and its contents print that title. Its groups
 	// (the Operations panel's stages) each have a switch that leaves them out of the report.
@@ -39,7 +43,7 @@
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
 	import { flip } from 'svelte/animate';
-	import { Help, Menu, Select } from '@layerd/ui';
+	import { Help, Input, Menu, Select, Textarea } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Avatar from './avatar.svelte';
@@ -74,13 +78,11 @@
 		todayIso,
 		type AttachmentType,
 		type FacilityKindType,
-		type FieldType,
 		type PanelType,
 		type PhotoType
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
-	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import {
 		addGroup as addPhotoGroup,
@@ -129,13 +131,6 @@
 		look.members.map((member) => ({ value: member.name, label: member.name }))
 	);
 
-	// The key of a Project panel field's Help text (#299): `project.title` for Title, `project.type` for Project Type.
-	function keyOf(field: FieldType) {
-		if (field.label === 'Project Type') return 'project.type';
-		const [first = '', ...rest] = field.label.split(' ');
-		return `project.${first.toLowerCase()}${rest.join('')}`;
-	}
-
 	function fieldOf(label: string) {
 		return panel.fields.find((field) => field.label === label);
 	}
@@ -147,9 +142,9 @@
 	}
 
 	// The report's opening sentence (#244). The field shows the sentence worked out from the project's records
-	// (introduction.ts) until someone rewords it. Only a rewording is kept: the worked-out sentence left as it is,
-	// or the field cleared, keeps nothing, so the sentence goes on following the records. A project not made yet
-	// has only this panel to read.
+	// (introduction.ts), a Generated value, until someone rewords it. Only a rewording is kept: the worked-out sentence
+	// left as it is, or the field cleared, keeps nothing, so the sentence goes on following the records. A project
+	// not made yet has only this panel to read.
 	const generated = $derived(
 		isDraft
 			? generatedOf({
@@ -159,25 +154,15 @@
 				})
 			: generatedOf(look)
 	);
-	// What is in the field while it is being typed in, so a cleared field stays clear until it is left.
-	let introductionDraft = $state<string>();
 	// The Operations panel's stages wear their number in place of an icon (Justin, 2026-11-19), by the order they
 	// are in, so dragging one to another place renumbers them. Any other photo panel's groups keep the icon.
 	const stageNumbers = $derived(panel.key === 'operations' ? stageNumbersOf(panel.groups) : []);
 
-	// Whether the sentence is someone's own words: it then stays as typed whatever the panels come to hold.
-	const isEdited = $derived(Boolean(panel.introduction?.trim()));
-
-	function setIntroduction(event: Event & { currentTarget: HTMLTextAreaElement }) {
-		introductionDraft = event.currentTarget.value;
-		const typed = introductionDraft.trim();
-		panel.introduction = typed === generated ? '' : typed && introductionDraft;
-	}
-
-	function resetIntroduction() {
-		introductionDraft = undefined;
-		panel.introduction = '';
-		save();
+	// Someone's own words stay as typed whatever the panels come to hold. The field keeps what is typed while it is
+	// in use, so a cleared one stays clear until it is left, and its reset empties it (library Textarea).
+	function setIntroduction(text: string) {
+		const typed = text.trim();
+		panel.introduction = typed === generated ? '' : typed && text;
 	}
 
 	// A different customer has different contacts, so the one picked before no longer applies.
@@ -298,17 +283,6 @@
 		return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 	}
 
-	// The Project panel's lists are the live ones: the organization itself, and the Customers page.
-	function optionsOf(field: FieldType) {
-		const options =
-			field.label === 'Organization'
-				? [look.organization.name]
-				: field.label === 'Customer'
-					? look.customers
-					: (field.options ?? []);
-		return field.value && !options.includes(field.value) ? [field.value, ...options] : options;
-	}
-
 	const customerName = $derived(
 		panel.fields.find((field) => field.label === 'Customer')?.value ?? ''
 	);
@@ -321,27 +295,24 @@
 	}
 
 	// The two inputs of the project number (#217). A project not made yet has no J count of its own, so the one it
-	// will get is worked out here the way the server will: the next of that customer and day. The number itself is
-	// not shown in the panel (Justin, 2026-11-18, #225); it prints in the report's footer.
+	// will get is worked out here the way the server will: the next of that customer and day. It is the Job Number's
+	// Generated value. The number they make is not shown in the panel (#225); it prints in the report's footer.
 	const day = $derived(panel.day || (isDraft ? todayIso() : createdDayOf(look.project)));
 	const nextJob = $derived(
 		nextJobOf(look.projects, customerName, day, isDraft ? undefined : look.projectId)
 	);
 
-	// A date field that is cleared keeps the date it had: a project always has a Project Creation Date.
-	function setDay(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		if (input.value) panel.day = input.value;
-		else input.value = day;
+	// A date field that is cleared keeps the date it had: a project always has a Project Creation Date. The field
+	// shows it again at once (library Input).
+	function setDay(text: string) {
+		if (text) panel.day = text;
 		save();
 	}
 
-	// Digits only, 1 to 999. Cleared, the server gives the next one of that customer and day.
-	function setJob(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		const count = Number(input.value.replace(/\D/g, '').slice(0, 3));
+	// Digits only, 1 to 999, shown at once. Cleared, or reset, the server gives the next one of that customer and day.
+	function setJob(text: string) {
+		const count = Number(text.replace(/\D/g, '').slice(0, 3));
 		panel.job = count > 0 ? count : undefined;
-		input.value = panel.job ? String(panel.job) : '';
 		save();
 	}
 
@@ -396,22 +367,6 @@
 		draft = '';
 		draftKind = asked.kinds?.[0] ?? 'Port';
 		asking = asked;
-	}
-
-	// A dropdown field of plain words (a Project Type). "Add new" asks for the word in the quick sheet.
-	function pickField(field: FieldType, value: string) {
-		field.value = value;
-		save();
-	}
-
-	function askField(field: FieldType) {
-		ask({
-			label: field.label,
-			onadd: (name) => {
-				field.options = [...(field.options ?? []), name];
-				field.value = name;
-			}
-		});
 	}
 
 	function add() {
@@ -575,63 +530,16 @@
 	/>
 {/snippet}
 
-{#snippet fieldBlock(field: FieldType)}
-	{#if field.label === 'Location'}
-		<!-- Where the project is: the shared location field, which suggests places and saves the one picked. -->
-		<PlaceField
-			{look}
-			class="sm:col-span-2"
-			label={field.label}
-			help={look.helpOf(keyOf(field))}
-			isRequired
-			value={field.value}
-			oninput={(text) => {
-				field.value = text;
-				save();
-			}}
-		/>
-	{:else if field.type === 'select'}
-		<Select
-			variant="soft"
-			label={field.label}
-			options={optionsOf(field).map((option) => ({ value: option, label: option }))}
-			value={field.value}
-			icon="icon-[mdi--format-list-bulleted]"
+<!-- Title or Subtitle: the field the panel holds under that label, typed into as it is. -->
+{#snippet textField(label: 'Title' | 'Subtitle', key: string)}
+	{@const field = fieldOf(label)}
+	{#if field}
+		<Input
+			{label}
+			bind:value={field.value}
 			disabled={field.isReadonly}
-			required
-			help={look.helpOf(keyOf(field))}
-			onpick={(option) => pickField(field, option)}
-			onadd={field.isAddable ? () => askField(field) : undefined}
+			help={look.helpOf(key)}
 		/>
-	{:else}
-		<div
-			class="has-help block {field.type === 'textarea' ? 'sm:col-span-2' : ''}"
-			data-empty={field.value ? undefined : ''}
-		>
-			{@render labelOf(
-				field.label,
-				`${uid}-${field.id}`,
-				keyOf(field),
-				!field.value && !field.isReadonly
-			)}
-			{#if field.type === 'textarea'}
-				<textarea
-					id="{uid}-{field.id}"
-					class="{inputClass} min-h-20 resize-y"
-					bind:value={field.value}
-					disabled={field.isReadonly}
-					placeholder="Type here"></textarea>
-			{:else}
-				<input
-					id="{uid}-{field.id}"
-					class={inputClass}
-					type={field.type}
-					bind:value={field.value}
-					disabled={field.isReadonly}
-					placeholder="Type here"
-				/>
-			{/if}
-		</div>
 	{/if}
 {/snippet}
 
@@ -646,7 +554,6 @@
 		ontoggle={() => (openSections = toggle(openSections, 'team'))}
 	>
 		<Select
-			variant="soft"
 			label="Organization"
 			icon="icon-[mdi--domain]"
 			options={[
@@ -662,7 +569,6 @@
 			onpick={(id) => setField('Organization', id)}
 		/>
 		<Select
-			variant="soft"
 			label="Team Lead"
 			mark={face}
 			icon="icon-[mdi--account-tie]"
@@ -673,7 +579,6 @@
 			onpick={setLead}
 		/>
 		<Select
-			variant="soft"
 			label="Team Assigned"
 			mark={face}
 			icon={PAGE_ICONS.team}
@@ -700,7 +605,6 @@
 			<!-- Typed freely, with the customers offered as it is typed: a typed Select. Typing saves through the
 			     fieldset's input like every field here; a pick is no keystroke, so it saves itself. -->
 			<Select
-				variant="soft"
 				isTyped
 				label="Company"
 				icon={PAGE_ICONS.customers}
@@ -714,76 +618,46 @@
 			{#each company.people as person, personIndex (person.id)}
 				{@const id = `${uid}-${person.id}`}
 				<!-- A person: a name and a title, which count toward the percent, and a phone and an email to reach them
-				     (#326), which are optional, so they show no "not filled in" dot and count for nothing. Each input
-				     carries its label and its ? like every other input (#299). A line keeps one person from the next. -->
+				     (#326), which are optional and count for nothing. Each input carries its label and its ? like every
+				     other input (#299). A line keeps one person from the next. -->
 				<div
 					class="flex items-start gap-2 {personIndex
 						? 'border-t border-slate-900/[0.06] pt-3'
 						: ''}"
 				>
-					<div class="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
-						<div
-							class="has-help block"
-							data-empty={person.name ? undefined : ''}
-						>
-							{@render labelOf('Name', `${id}-name`, 'personnel.name', !person.name)}
-							<input
-								id="{id}-name"
-								class={inputClass}
-								bind:value={person.name}
-								placeholder="First and last name"
-							/>
-						</div>
-						<div
-							class="has-help block"
-							data-empty={person.title ? undefined : ''}
-						>
-							{@render labelOf('Title', `${id}-title`, 'personnel.title', !person.title)}
-							<input
-								id="{id}-title"
-								class={inputClass}
-								bind:value={person.title}
-								placeholder="e.g. Foreman"
-							/>
-						</div>
-						<div
-							class="has-help block"
-							data-empty={person.phone ? undefined : ''}
-						>
-							{@render labelOf('Phone', `${id}-phone`, 'personnel.phone')}
-							<input
-								id="{id}-phone"
-								class={inputClass}
-								type="tel"
-								inputmode="tel"
-								autocomplete="off"
-								bind:value={person.phone}
-								maxlength="40"
-								placeholder="Optional"
-							/>
-						</div>
-						<div
-							class="has-help block"
-							data-empty={person.email ? undefined : ''}
-						>
-							{@render labelOf('Email', `${id}-email`, 'personnel.email')}
-							<input
-								id="{id}-email"
-								class={inputClass}
-								type="email"
-								inputmode="email"
-								autocomplete="off"
-								autocapitalize="off"
-								spellcheck="false"
-								bind:value={person.email}
-								maxlength="200"
-								placeholder="Optional"
-							/>
-						</div>
+					<div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
+						<Input
+							label="Name"
+							bind:value={person.name}
+							help={look.helpOf('personnel.name')}
+						/>
+						<Input
+							label="Title"
+							bind:value={person.title}
+							help={look.helpOf('personnel.title')}
+						/>
+						<Input
+							label="Phone"
+							type="tel"
+							inputmode="tel"
+							autocomplete="off"
+							bind:value={person.phone}
+							maxlength={40}
+							help={look.helpOf('personnel.phone')}
+						/>
+						<Input
+							label="Email"
+							type="email"
+							inputmode="email"
+							autocomplete="off"
+							bind:value={person.email}
+							maxlength={200}
+							help={look.helpOf('personnel.email')}
+						/>
 					</div>
 					<button
 						type="button"
-						class="mt-6 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
+						class="mt-3 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
 						aria-label="Delete person {personIndex + 1}"
 						onclick={() =>
 							remove(company.people, person, 'Delete person?', 'They leave the report.')}
@@ -841,152 +715,106 @@
 	oninput={() => save()}
 >
 	{#if panel.kind === 'project'}
-		{@const title = fieldOf('Title')}
-		{@const subtitle = fieldOf('Subtitle')}
 		{@const contact = contacts.find((item) => item.id === panel.contact) ?? contacts[0]}
-		<div class="space-y-3">
-			<Group
-				title="Project"
-				values={counted('project')}
-				icon={PAGE_ICONS.projects}
-				isOpen={openSections.includes('project')}
-				ontoggle={() => (openSections = toggle(openSections, 'project'))}
-			>
-				{#if title}{@render fieldBlock(title)}{/if}
-				{#if subtitle}{@render fieldBlock(subtitle)}{/if}
-				<!-- The report's opening sentence (#244), called Description here (Justin, 2026-11-19): the one worked out
-				     from the project's panels until someone rewords it. What is typed prints in its place and stops
-				     following the panels, so the line under the box always says which of the two it is, and an edited
-				     one shows a reset at its top right that brings the worked-out sentence back (clearing it does too). -->
-				<div class="has-help">
-					{@render labelOf(INTRODUCTION_LABEL, `${uid}-description`, 'project.description')}
-					<div class="relative">
-						<textarea
-							id="{uid}-description"
-							class="{inputClass} field-sizing-content min-h-28 resize-y {isEdited ? 'pr-10' : ''}"
-							maxlength={INTRODUCTION_LIMIT}
-							value={introductionDraft ?? (panel.introduction?.trim() || generated)}
-							oninput={setIntroduction}
-							onblur={() => (introductionDraft = undefined)}></textarea>
-						{#if isEdited}
-							<button
-								type="button"
-								class="absolute top-1.5 right-1.5 flex size-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
-								aria-label="Reset to the auto-generated description"
-								title="Reset"
-								onclick={resetIntroduction}
-								><span class="icon-[mdi--refresh] size-[18px]"></span></button
-							>
-						{/if}
-					</div>
-					<p class="mt-1 flex items-center gap-1 text-xs text-slate-400">
-						{#if isEdited}
-							<span class="icon-[mdi--pencil-outline] size-3.5 shrink-0"></span>
-							Edited. It no longer updates from the panels.
-						{:else}
-							<span class="icon-[mdi--auto-fix] size-3.5 shrink-0"></span>
-							Auto-generated from this project's panels.
-						{/if}
-					</p>
-				</div>
-				<Select
-					variant="soft"
-					label="Project Type"
-					icon="icon-[mdi--package-variant-closed]"
-					options={PROJECT_TYPES.map((type) => ({ value: type, label: type }))}
-					value={fieldOf('Project Type')?.value ?? ''}
-					required
-					help={look.helpOf('project.type')}
-					onpick={(id) => setField('Project Type', id)}
+		<Group
+			title="Project"
+			values={counted('project')}
+			icon={PAGE_ICONS.projects}
+			isOpen={openSections.includes('project')}
+			ontoggle={() => (openSections = toggle(openSections, 'project'))}
+		>
+			{@render textField('Title', 'project.title')}
+			{@render textField('Subtitle', 'project.subtitle')}
+			<!-- The report's opening sentence (#244), called Description here (Justin, 2026-11-19): the one worked out
+			     from the project's panels, a Generated value, until someone rewords it. What is typed prints in its
+			     place and stops following the panels, and its reset brings the worked-out sentence back (clearing it
+			     does too). -->
+			<Textarea
+				label={INTRODUCTION_LABEL}
+				bind:value={() => panel.introduction ?? '', setIntroduction}
+				{generated}
+				onreset={save}
+				maxlength={INTRODUCTION_LIMIT}
+				rows={3}
+				help={look.helpOf('project.description')}
+			/>
+			<Select
+				label="Project Type"
+				icon="icon-[mdi--package-variant-closed]"
+				options={PROJECT_TYPES.map((type) => ({ value: type, label: type }))}
+				value={fieldOf('Project Type')?.value ?? ''}
+				required
+				help={look.helpOf('project.type')}
+				onpick={(id) => setField('Project Type', id)}
+			/>
+			<!-- The two parts of the project number a User may type (#217). -->
+			<div class="grid grid-cols-2 gap-3">
+				<Input
+					class="min-w-0"
+					label="Created Date"
+					type="date"
+					bind:value={() => day, setDay}
+					help={look.helpOf('project.createdDate')}
 				/>
-				<!-- The two parts of the project number a User may type (#217), and the number they make. -->
-				<div class="grid grid-cols-2 gap-3">
-					<div
-						class="has-help block min-w-0"
-						data-empty={day ? undefined : ''}
-					>
-						{@render labelOf('Created Date', `${uid}-day`, 'project.createdDate')}
-						<input
-							id="{uid}-day"
-							class="{inputClass} min-w-0"
-							type="date"
-							value={day}
-							onchange={setDay}
-						/>
-					</div>
-					<div class="has-help block min-w-0">
-						{@render labelOf('Job Number', `${uid}-job`, 'project.jobNumber')}
-						<input
-							id="{uid}-job"
-							class="{inputClass} tabular-nums"
-							inputmode="numeric"
-							maxlength="3"
-							value={panel.job ?? ''}
-							placeholder={String(nextJob)}
-							oninput={setJob}
-						/>
-					</div>
-				</div>
-			</Group>
-			<Group
-				title="Customer"
-				values={counted('customer')}
+				<Input
+					class="min-w-0 tabular-nums"
+					label="Job Number"
+					inputmode="numeric"
+					maxlength={3}
+					bind:value={() => (panel.job ? String(panel.job) : ''), setJob}
+					generated={String(nextJob)}
+					onreset={save}
+					help={look.helpOf('project.jobNumber')}
+				/>
+			</div>
+		</Group>
+		<Group
+			title="Customer"
+			values={counted('customer')}
+			icon={PAGE_ICONS.customers}
+			isOpen={openSections.includes('customer')}
+			ontoggle={() => (openSections = toggle(openSections, 'customer'))}
+		>
+			<Select
+				label="Customer"
+				mark={logo}
 				icon={PAGE_ICONS.customers}
-				isOpen={openSections.includes('customer')}
-				ontoggle={() => (openSections = toggle(openSections, 'customer'))}
-			>
-				<Select
-					variant="soft"
-					label="Customer"
-					mark={logo}
-					icon={PAGE_ICONS.customers}
-					options={look.customers.map((name) => ({ value: name, label: name }))}
-					value={customerName}
-					required
-					help={look.helpOf('project.customer')}
-					onpick={setCustomer}
-					onadd={() => look.addFor('customers', {}, setCustomer)}
-					onedit={(name) => look.editRecord('customers', name)}
-				/>
-				<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
-				<Select
-					variant="soft"
-					label="Contact"
-					icon="icon-[mdi--account]"
-					options={contacts.map((item) => ({
-						value: item.id,
-						label: item.name,
-						note: item.title,
-						image: item.photo
-					}))}
-					value={contact?.id ?? ''}
-					placeholder={customerName
-						? 'No contacts on this customer yet'
-						: 'Choose a customer first'}
-					disabled={!contacts.length}
-					help={look.helpOf('project.contact')}
-					onpick={(id) => {
-						panel.contact = id;
-						save();
-					}}
-				/>
-				<!-- The customer's own number for the job (#217): optional, so it shows no "not filled in" dot. -->
-				<div
-					class="has-help block"
-					data-empty={panel.customerReference ? undefined : ''}
-				>
-					{@render labelOf('Reference Number', `${uid}-reference`, 'project.referenceNumber')}
-					<input
-						id="{uid}-reference"
-						class={inputClass}
-						bind:value={panel.customerReference}
-						maxlength="100"
-						placeholder="Optional, e.g. SO025484"
-					/>
-				</div>
-			</Group>
-			{@render teamBlock()}
-		</div>
+				options={look.customers.map((name) => ({ value: name, label: name }))}
+				value={customerName}
+				required
+				help={look.helpOf('project.customer')}
+				onpick={setCustomer}
+				onadd={() => look.addFor('customers', {}, setCustomer)}
+				onedit={(name) => look.editRecord('customers', name)}
+			/>
+			<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
+			<Select
+				label="Contact"
+				icon="icon-[mdi--account]"
+				options={contacts.map((item) => ({
+					value: item.id,
+					label: item.name,
+					note: item.title,
+					image: item.photo
+				}))}
+				value={contact?.id ?? ''}
+				placeholder={customerName ? 'No contacts on this customer yet' : 'Choose a customer first'}
+				disabled={!contacts.length}
+				help={look.helpOf('project.contact')}
+				onpick={(id) => {
+					panel.contact = id;
+					save();
+				}}
+			/>
+			<!-- The customer's own number for the job (#217): optional. -->
+			<Input
+				label="Reference Number"
+				bind:value={panel.customerReference}
+				maxlength={100}
+				help={look.helpOf('project.referenceNumber')}
+			/>
+		</Group>
+		{@render teamBlock()}
 	{:else if panel.kind === 'transport'}
 		<TransportLegs
 			{look}

@@ -323,6 +323,75 @@ describe('the notched field', () => {
 			'Port, Yard'
 		);
 	});
+
+	// The look settled on the inputs prototype (#284): the same box as every input, the pick's picture at its start and
+	// a chevron at its end (#57 moves the app's panels onto it).
+	it('shows what is picked as its picture at the start, and a chevron at the end', () => {
+		notched({ value: 'Dock' });
+		const field = screen.getByRole('button', { name: 'Project Type' });
+
+		expect(field.querySelector('img')?.getAttribute('src')).toBe('/dock.webp');
+		expect(
+			field.closest('fieldset')?.querySelector('.icon-\\[mdi--chevron-down\\]')
+		).not.toBeNull();
+	});
+
+	it("shows the field's own icon while nothing is picked, and none for choices with no picture", async () => {
+		const { rerender } = notched({ icon: 'icon-[mdi--domain]' });
+		const field = screen.getByRole('button', { name: 'Project Type' });
+		expect(field.querySelector('.icon-\\[mdi--domain\\]')).not.toBeNull();
+
+		await rerender({
+			icon: undefined,
+			options: [{ value: 'Cargo', label: 'Cargo' }],
+			value: 'Cargo'
+		});
+		expect(field.querySelector('img, [class*="icon-"]')).toBeNull();
+	});
+
+	it('draws the picture it is given, one for each of several picks', () => {
+		notched({
+			label: 'Team Assigned',
+			mark: face,
+			options: [],
+			multiple: true,
+			value: ['Ana Ruiz', 'Ben Cho'],
+			many: 'people'
+		});
+		const field = screen.getByRole('button', { name: 'Team Assigned' });
+
+		expect(field.textContent?.trim()).toBe('2 people');
+		expect(
+			within(field)
+				.getAllByRole('img')
+				.map((mark) => mark.getAttribute('aria-label'))
+		).toEqual(['Ana Ruiz', 'Ben Cho']);
+	});
+
+	// Focus floats the label to the border and shows its ?, which would slide under a pointer still pressed on an empty
+	// field and take the click, so the list would not open.
+	it('opens on a click without taking the focus as it is pressed', async () => {
+		notched({ help: 'The kind of survey.' });
+		const field = screen.getByRole('button', { name: 'Project Type' });
+
+		expect(await fireEvent.mouseDown(field.firstElementChild!)).toBe(false);
+		await fireEvent.click(field);
+
+		expect(screen.getByRole('listbox', { name: 'Project Type' })).toBeTruthy();
+	});
+
+	it('says why nothing can be picked, with its label on the border', () => {
+		const { container } = notched({
+			label: 'Contact',
+			options: [],
+			disabled: true,
+			placeholder: 'No contacts on this customer yet'
+		});
+
+		expect(container.textContent).toContain('No contacts on this customer yet');
+		expect(container.querySelector('fieldset')?.classList.contains('field-filled')).toBe(true);
+		expect(screen.queryByRole('button', { name: 'Contact' })).toBeNull();
+	});
 });
 
 describe('a lookup', () => {
