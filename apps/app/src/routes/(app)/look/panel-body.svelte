@@ -1459,7 +1459,7 @@
 								placeholder="Optional"></textarea>
 						</div>
 						{@render perPage(
-							'Photos per page',
+							'Photos per Page',
 							`${uid}-${group.id}-layout`,
 							'group.layout',
 							group.layout,

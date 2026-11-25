@@ -172,7 +172,7 @@ export const HELP: readonly HelpType[] = [
 	},
 	{
 		key: 'group.layout',
-		label: 'Photos per page',
+		label: 'Photos per Page',
 		text: 'How many of these photos print on one report page: fewer means bigger photos.'
 	},
 
