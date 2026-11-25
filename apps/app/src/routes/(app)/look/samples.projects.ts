@@ -162,7 +162,8 @@ function make(look: LookState, sample: SampleType, lead: string, assigned: strin
 	setField(draft, 'Project Type', sample.type);
 	// Only a customer that is really there; a sample never makes one up.
 	if (look.customers.includes(sample.customer)) setField(draft, 'Customer', sample.customer);
-	// The Draft keeps its Project panel unfinished, which is what makes it a Draft.
+	// The Draft keeps its Project panel unfinished (it has no subtitle, type or customer), which is what keeps it a
+	// Draft, and only its Team Lead (#328: a lead alone is team enough).
 	draft.assigned = sample.status === 'Draft' ? [] : assigned;
 	// Every input counts toward the percent (#229), so a sample that is not the Draft has them all.
 	if (sample.status !== 'Draft') draft.customerReference = SAMPLE_REFERENCE;

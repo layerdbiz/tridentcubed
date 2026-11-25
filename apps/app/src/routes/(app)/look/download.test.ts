@@ -1,7 +1,7 @@
 // Download in parts (#240): a report too big for one request prints as several that each fit, and the PDFs that come
 // back are joined into one, in page order. The server is played by a function that answers each request; the PDFs
 // are real ones, made and read back with the same library that joins them.
-import { PDFDocument, PDFName, PDFString } from 'pdf-lib';
+import { PDFArray, PDFDocument, PDFName, PDFNumber, PDFRef, PDFString } from 'pdf-lib';
 import { describe, expect, it } from 'vite-plus/test';
 import {
 	containOf,
@@ -14,6 +14,7 @@ import {
 	reasonOf,
 	sizeOf,
 	toDrawing,
+	toPageLink,
 	toParts,
 	toTurn
 } from './download';
@@ -26,18 +27,27 @@ function pageOf(kilobytes: number, name = 'page') {
 	return `<article data-page="${name}">${'x'.repeat(kilobytes * 1024)}</article>`;
 }
 
-async function pdfOf(labels: string[]) {
+// A printed part as the export browser makes it: each page with its QR code's link, and any other links it is given
+// by its label (a contents page's lines), each a band down the page. `lang` stands for what the printer puts in the
+// document itself (its language, its tags), which a part keeps when it is the whole report.
+async function pdfOf(labels: string[], lines: Record<string, string[]> = {}, lang?: string) {
 	const pdf = await PDFDocument.create();
+	if (lang) pdf.catalog.set(PDFName.of('Lang'), PDFString.of(lang));
 	for (const label of labels) {
 		const page = pdf.addPage([595, 842]);
 		page.drawText(label);
-		const link = pdf.context.obj({
-			Type: 'Annot',
-			Subtype: 'Link',
-			Rect: [0, 0, 50, 50],
-			A: { Type: 'Action', S: 'URI', URI: PDFString.of(`https://example.com/${label}`) }
-		});
-		page.node.set(PDFName.of('Annots'), pdf.context.obj([pdf.context.register(link)]));
+		const addresses = [`https://example.com/${label}`, ...(lines[label] ?? [])];
+		const links = addresses.map((address, at) =>
+			pdf.context.register(
+				pdf.context.obj({
+					Type: 'Annot',
+					Subtype: 'Link',
+					Rect: at ? [40, 800 - 30 * at, 555, 830 - 30 * at] : [0, 0, 50, 50],
+					A: { Type: 'Action', S: 'URI', URI: PDFString.of(address) }
+				})
+			)
+		);
+		page.node.set(PDFName.of('Annots'), pdf.context.obj(links));
 	}
 	return pdf.save();
 }
@@ -255,9 +265,12 @@ describe('the reason a download failed, in plain words', () => {
 });
 
 describe('joining the parts into one PDF', () => {
-	it('hands a single part back as it came', async () => {
-		const only = await pdfOf(['one', 'two']);
-		expect(await joinPdfs([only], 'r.pdf')).toBe(only);
+	it('keeps a single part as the printer made it, its language and tags too', async () => {
+		const joined = await joinPdfs([await pdfOf(['one', 'two'], {}, 'en')], 'r.pdf');
+
+		const pdf = await PDFDocument.load(joined);
+		expect(pdf.getPageCount()).toBe(2);
+		expect(pdf.catalog.lookup(PDFName.of('Lang'), PDFString).decodeText()).toBe('en');
 	});
 
 	it('puts every page of every part into one PDF, in order, with its links', async () => {
@@ -441,5 +454,71 @@ describe('attached PDFs in the downloaded report (#327)', () => {
 		const printed = await printedOf(1);
 		const read: PdfReaderType = { bytes: async () => printed, picture: async () => WHITE_JPEG };
 		expect(await placePdfPages(printed, [], read)).toBe(printed);
+	});
+});
+
+// The Table of Contents' links (#301). Each line is printed as a link, so the printer draws its box exactly where
+// the line is; its address is the report link of its page, ending in #page-<n>. Once the parts are one PDF, each
+// such link is made to open page n of the PDF itself, whichever part printed that page.
+describe('linking the contents to their pages', () => {
+	const APP = 'https://dev.app.tridentcubed.com/report/project-1';
+
+	// Each link of a page: the page of the PDF it opens (from 0), or the address it opens, and its box.
+	async function linksOf(bytes: Uint8Array, at: number) {
+		const pdf = await PDFDocument.load(bytes);
+		const refs = pdf.getPages().map((page) => page.ref);
+		const annotations = pdf.getPage(at).node.Annots()?.asArray() ?? [];
+		return annotations.map((ref) => {
+			const link = pdf.context.lookup(ref) as unknown as { get(name: PDFName): unknown };
+			const rect = (link.get(PDFName.of('Rect')) as PDFArray)
+				.asArray()
+				.map((corner) => (corner as PDFNumber).asNumber());
+			const dest = link.get(PDFName.of('Dest')) as PDFArray | undefined;
+			if (dest) return { to: refs.indexOf(dest.get(0) as PDFRef), rect };
+			const action = pdf.context.lookup(link.get(PDFName.of('A')) as never) as unknown as {
+				get(name: PDFName): PDFString;
+			};
+			return { address: action.get(PDFName.of('URI')).decodeText(), rect };
+		});
+	}
+
+	it('makes a contents line open a page another part printed, where the printer drew it', async () => {
+		const joined = await joinPdfs(
+			[
+				await pdfOf(['cover', 'contents'], { contents: [toPageLink(`${APP}/4`, 4)] }),
+				await pdfOf(['report', 'photos'])
+			],
+			'r.pdf'
+		);
+
+		expect(await linksOf(joined, 1)).toEqual([
+			{ address: 'https://example.com/contents', rect: [0, 0, 50, 50] },
+			{ to: 3, rect: [40, 770, 555, 800] }
+		]);
+	});
+
+	it('links the contents of a report printed in one part', async () => {
+		const lines = [toPageLink(`${APP}/1`, 1), toPageLink(`${APP}/3`, 3)];
+		const joined = await joinPdfs(
+			[await pdfOf(['cover', 'contents', 'report'], { contents: lines })],
+			'r.pdf'
+		);
+
+		const links = await linksOf(joined, 1);
+		expect(links.map((link) => ('to' in link ? link.to : link.address))).toEqual([
+			'https://example.com/contents',
+			0,
+			2
+		]);
+	});
+
+	it('leaves a line naming a page the PDF does not have as a link to the app', async () => {
+		const line = toPageLink(`${APP}/9`, 9);
+		const joined = await joinPdfs(
+			[await pdfOf(['cover', 'contents'], { contents: [line] })],
+			'r.pdf'
+		);
+
+		expect((await linksOf(joined, 1))[1]).toEqual({ address: line, rect: [40, 770, 555, 800] });
 	});
 });
