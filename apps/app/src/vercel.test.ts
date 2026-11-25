@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vite-plus/test';
 // Two Vercel projects read this folder's `vercel.json`: the dev one, whose live branch is `dev`, and the
 // production one, whose live branch is `main`. Vercel calls a build of a project's live branch "production" and
 // every other build "preview". Until #254 the rule named branches, so each push to `dev` also built a preview in
-// the production project that nobody opens, four builds where two were needed.
+// the production project that nobody opens, four builds where two were needed. The dev project also builds
+// `next`, the branch for risky and overnight work, as a preview served at next.app.tridentcubed.com (#341).
 const { ignoreCommand } = JSON.parse(
 	readFileSync(fileURLToPath(new URL('../vercel.json', import.meta.url)), 'utf8')
 ) as { ignoreCommand: string };
@@ -47,7 +48,30 @@ describe.skipIf(!hasShell)('which pushes Vercel builds', () => {
 		);
 	});
 
+	it('builds a push to next in the dev project, the quick place for risky work at next.app', () => {
+		expect(isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'next' })).toBe(true);
+	});
+
+	it('skips a branch whose name only starts with next', () => {
+		expect(isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'next-try' })).toBe(false);
+	});
+
 	it('builds when Vercel does not say which kind of build it is, so a live site never stops updating', () => {
 		expect(isBuilt({ VERCEL_GIT_COMMIT_REF: 'dev' })).toBe(true);
+	});
+});
+
+// Vercel makes no deployment at all for a branch this list leaves out, not even one it then skips, so a push to
+// a ticket branch or to play starts nothing in this folder's projects (#341).
+describe('which branches Vercel deploys from', () => {
+	const { git } = JSON.parse(
+		readFileSync(fileURLToPath(new URL('../vercel.json', import.meta.url)), 'utf8')
+	) as { git: { deploymentEnabled: Record<string, boolean> } };
+
+	it('turns every branch off and then names the ones that deploy', () => {
+		const { '**': everyBranch, ...named } = git.deploymentEnabled;
+		expect(everyBranch).toBe(false);
+		expect(Object.keys(named).toSorted()).toEqual(['dev', 'main', 'next']);
+		expect(Object.values(named).every(Boolean)).toBe(true);
 	});
 });

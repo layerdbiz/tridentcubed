@@ -1,0 +1,1218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Prototype Starter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- PROTOTYPE STARTER (oneezy's standing prototype controls, 2026-11-24). Copy this file to begin any prototype, then
+     edit only the block marked EDIT HERE: the page size, the second menu, and the views with their drawing. Everything
+     else is the controls he asked for, built and checked on the one-page report prototype
+     (/mnt/project-files/project-report-prototype/), and stays as it is. The rule it follows is in project memory,
+     prototype-controls-rule. Standalone HTML: nothing here is app code. -->
+<style>
+:root {
+	--bg: #e9edf3;
+	--fg: #0f172a;
+	--bar-bg: #0f172a;
+	--bar-fg: #f8fafc;
+	--bar-dim: #9aa7b8;
+	--bar-soft: #1f2a3d;
+	--accent: #3b82f6;
+	--font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--bg: #0a101c; --fg: #e6ebf2; --bar-bg: #1c2638; --bar-fg: #f8fafc; --bar-dim: #9aa7b8; --bar-soft: #2a3750; --accent: #60a5fa;
+		color-scheme: dark;
+	}
+}
+:root[data-theme='dark'] {
+	--bg: #0a101c; --fg: #e6ebf2; --bar-bg: #1c2638; --bar-fg: #f8fafc; --bar-dim: #9aa7b8; --bar-soft: #2a3750; --accent: #60a5fa;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+	margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font);
+	padding-block: 52px 84px;
+	padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* The menus: inside the drawer on a phone, inside the panel on a desktop. */
+.views {
+	position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); z-index: 30;
+	display: flex; gap: 6px; align-items: center;
+}
+
+.stage { max-width: 900px; margin: 0 auto; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+.holder { margin: 0 auto; position: relative; box-shadow: 0 1px 3px rgb(15 23 42 / 0.12), 0 24px 48px -24px rgb(15 23 42 / 0.35); }
+
+/* The controls bar folds away to a tab at the foot of the screen; it opens with every switch. */
+.bar { position: fixed; inset: auto 0 0; z-index: 20; display: flex; justify-content: center; padding: 0 max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+.bar-inner { pointer-events: auto; width: min(100%, 460px); display: flex; flex-direction: column; gap: 5px; padding: 9px; border-radius: 18px; background: var(--bar-bg); color: var(--bar-fg); box-shadow: 0 12px 32px -8px rgb(2 6 23 / 0.55); }
+.bar .group { display: flex; flex: 1; gap: 4px; min-width: 0; }
+.bar button { flex: 1; height: 30px; padding: 0 6px; border: 0; border-radius: 9px; background: var(--bar-soft); color: var(--bar-dim); font: inherit; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.bar button[aria-pressed='true'] { background: var(--accent); color: #fff; font-weight: 600; }
+.bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+
+/* The pages lie on a free canvas filling the window, as in the app's Preview: fitted whole at first, the menus and
+   the controls floating over it, and moved and scaled only by the canvas's own drag, scroll, pinch and zoom. */
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; }
+body { padding: 0; }
+.stage {
+	position: fixed; inset: 0; z-index: 0; max-width: none; margin: 0; padding: 0; overflow: hidden;
+	touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab;
+}
+.stage.is-moving, .stage.is-moving .sheet { cursor: grabbing; }
+.canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.canvas.is-layered { will-change: transform; }
+.canvas.is-easing { transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.canvas > .holder { position: absolute; margin: 0; }
+.canvas .sheet { transform: none; cursor: inherit; }
+/* With two pages or more, each has its name above it. */
+.page-name { position: absolute; left: 0; bottom: calc(100% + 10px); font-size: 22px; font-weight: 700; color: var(--fg); white-space: nowrap; }
+
+/* The menus: a button named for what it holds, and a list that opens under it. Views ticks any number on or off;
+   Routes picks one. */
+.views .menu { position: relative; }
+.menu-button {
+	position: relative; display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 32px 0 14px; border: 0;
+	border-radius: 999px; background: var(--bar-bg); color: var(--bar-fg); font: inherit; font-size: 13px; font-weight: 600;
+	box-shadow: 0 6px 18px -6px rgb(2 6 23 / 0.5); cursor: pointer; white-space: nowrap;
+}
+.menu-button::after { content: ''; position: absolute; right: 14px; top: 50%; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-70%) rotate(45deg); }
+.menu-button[aria-expanded='true']::after { transform: translateY(-20%) rotate(-135deg); }
+.menu-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.menu-button .count { display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
+.menu-button .count[hidden] { display: none; }
+.menu-list {
+	position: absolute; top: calc(100% + 6px); right: 0; z-index: 40; min-width: 210px; padding: 6px; border-radius: 14px;
+	display: flex; flex-direction: column; gap: 2px; background: var(--bar-bg); color: var(--bar-fg); box-shadow: 0 16px 36px -10px rgb(2 6 23 / 0.6);
+}
+.menu-list[hidden] { display: none; }
+.menu-item {
+	display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: 9px;
+	background: transparent; color: var(--bar-fg); font: inherit; font-size: 13px; font-weight: 500; text-align: left; white-space: nowrap; cursor: pointer;
+}
+.menu-item:hover, .menu-item:focus-visible { background: var(--bar-soft); outline: none; }
+.menu-item .box { flex: none; display: grid; place-items: center; width: 16px; height: 16px; border: 1.5px solid var(--bar-dim); border-radius: 4px; }
+.menu-item.is-radio .box { border-radius: 50%; }
+.menu-item[aria-checked='true'] .box { background: var(--accent); border-color: var(--accent); }
+.menu-item[aria-checked='true'] .box::after { content: ''; width: 8px; height: 4px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+.menu-item.is-radio[aria-checked='true'] .box::after { width: 6px; height: 6px; border: 0; border-radius: 50%; background: #fff; transform: none; }
+
+/* The controls: each row of buttons is a panel that folds open and shut under its name, its choice beside the name. */
+.sections { display: flex; flex-direction: column; }
+.sec { display: flex; flex-direction: column; border-top: 1px solid rgb(148 163 184 / 0.16); }
+.sec:first-child { border-top: 0; }
+.bar .sec-name {
+	display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 4px; border-radius: 8px;
+	background: transparent; color: var(--bar-fg); font-size: 12px; font-weight: 600; text-align: left;
+}
+.bar .sec-name::before { content: ''; flex: none; width: 6px; height: 6px; border-right: 1.5px solid var(--bar-dim); border-bottom: 1.5px solid var(--bar-dim); transform: rotate(-45deg); }
+.bar .sec-name[aria-expanded='true']::before { transform: translateY(-2px) rotate(45deg); }
+.sec-now { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: 500; color: var(--bar-dim); }
+.sec-body { padding: 0 0 8px; }
+.sec-body[hidden] { display: none; }
+
+/* Switches: one row each, its name and a switch. */
+.bar .group.is-switches { flex-direction: column; gap: 4px; }
+.bar .switch { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 10px; color: var(--bar-fg); }
+.bar .switch .knob { position: relative; flex: none; width: 30px; height: 18px; border-radius: 999px; background: rgb(148 163 184 / 0.35); transition: background 0.15s; }
+.bar .switch .knob::after { content: ''; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.bar .switch[aria-checked='true'] .knob { background: var(--accent); }
+.bar .switch[aria-checked='true'] .knob::after { transform: translateX(12px); }
+
+/* Labels sit outside a piece or part, on its top left corner, so they never cover the design, on the border shown
+   with them, in the label's pink (solid round a piece, dashed round a part). Part labels lie on a layer over
+   the page, each slid right of any label already there. A click or tap on a label copies it: it flashes bright. */
+.canvas .piece > .tag {
+	top: auto !important; right: auto !important; left: -1px !important; bottom: 100% !important; transform: none !important;
+	border-radius: 3px 3px 0 0 !important; pointer-events: auto !important; cursor: copy;
+}
+.canvas .piece > .tag.is-inside { top: 0 !important; bottom: auto !important; border-radius: 0 0 3px 0 !important; }
+.canvas .sheet:not(.no-tags) .piece { outline: 1px solid #db2777; outline-offset: 0; }
+.canvas .is-part { outline: 1px dashed #db2777; outline-offset: -1px; }
+.canvas .marks { position: absolute; inset: 0; z-index: 60; pointer-events: none; }
+.canvas .part-tag {
+	position: absolute; padding: 1px 3px; border-radius: 3px 3px 0 0; background: #db2777; color: #fff; font-size: 6.5px;
+	font-weight: 700; line-height: 1.2; white-space: nowrap; pointer-events: auto; cursor: copy;
+}
+.canvas .is-hot { outline: 2px solid #db2777 !important; outline-offset: 1px !important; }
+.canvas .is-copied { animation: copied 0.9s ease-out; }
+@keyframes copied {
+	0% { background: #db2777; color: #fff; box-shadow: 0 0 0 0 rgb(244 114 182 / 0.9); }
+	20% { background: #fbcfe8; color: #831843; box-shadow: 0 0 0 4px rgb(244 114 182 / 0.55); }
+	100% { background: #db2777; color: #fff; box-shadow: 0 0 0 8px rgb(244 114 182 / 0); }
+}
+/* A link on a page (a pointer, a contents entry) goes to its page, which flashes blue when it lands. */
+.canvas .sheet [data-goto] { cursor: pointer; }
+.canvas > .holder.is-target { animation: landed 1.1s ease-out; }
+@keyframes landed {
+	0% { box-shadow: 0 0 0 0 rgb(37 99 235 / 0.8); }
+	25% { box-shadow: 0 0 0 10px rgb(37 99 235 / 0.45); }
+	100% { box-shadow: 0 0 0 22px rgb(37 99 235 / 0); }
+}
+/* The note that says what was copied. */
+.copy-note {
+	position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 50; padding: 7px 14px; border-radius: 999px;
+	background: var(--bar-bg); color: var(--bar-fg); font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px -8px rgb(2 6 23 / 0.6);
+	transform: translate(-50%, 8px); opacity: 0; pointer-events: none; transition: opacity 0.18s, transform 0.18s;
+}
+.copy-note.is-shown { transform: translate(-50%, 0); opacity: 1; }
+
+/* The Parts panel: one row a piece or part, indented by its level; the row opens its next level, the switch shows
+   its label. */
+.tree { display: flex; flex-direction: column; gap: 1px; }
+.part-row { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 0 2px 0 calc(var(--level) * 10px); border-radius: 7px; }
+.part-row:hover { background: var(--bar-soft); }
+.bar .part-open {
+	position: relative; flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; height: 28px; padding: 0 0 0 16px;
+	border-radius: 7px; background: transparent; color: var(--bar-fg); font-size: 11px; text-align: left;
+}
+.bar .part-open::before {
+	content: ''; position: absolute; left: 4px; top: 50%; width: 5px; height: 5px; border-right: 1.5px solid var(--bar-dim);
+	border-bottom: 1.5px solid var(--bar-dim); transform: translateY(-60%) rotate(-45deg);
+}
+.bar .part-open[aria-expanded='true']::before { transform: translateY(-80%) rotate(45deg); }
+.part-open.is-leaf { position: relative; flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; height: 28px; padding-left: 16px; font-size: 11px; }
+.part-code { flex: none; font-weight: 700; color: #f472b6; font-variant-numeric: tabular-nums; }
+.part-row.is-piece .part-code { color: #f9a8d4; }
+.part-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bar-dim); font-weight: 500; }
+.bar .part-row .switch { flex: none; height: 24px; padding: 0 2px; background: none; }
+.bar .part-row .switch .knob { width: 26px; height: 16px; }
+.bar .part-row .switch .knob::after { width: 12px; height: 12px; }
+.bar .part-row .switch[aria-checked='true'] .knob::after { transform: translateX(10px); }
+.part-all { display: flex; gap: 4px; padding: 2px 2px 4px calc(var(--level) * 10px + 16px); }
+.bar .part-all button { flex: none; height: 22px; padding: 0 9px; border-radius: 7px; font-size: 10px; }
+.part-none { margin: 4px; font-size: 11px; color: var(--bar-dim); }
+
+/* The dock: one panel holding the two menus, stacked, and the folding panels under them. On a phone it is a drawer
+   that slides in from the side chosen under Side, opened and shut by a menu button at the top of that side, and it
+   scrolls when every panel is open. On a desktop it stands at the top of that side, always open, and the pages fit in
+   the room beside it. */
+.dock {
+	position: fixed; top: 0; bottom: 0; right: 0; z-index: 32; width: min(300px, 86vw); overflow-y: auto; overscroll-behavior: contain;
+	display: flex; flex-direction: column; gap: 10px;
+	padding: calc(10px + env(safe-area-inset-top, 0px)) 12px calc(20px + env(safe-area-inset-bottom, 0px));
+	background: var(--bar-bg); color: var(--bar-fg); box-shadow: 0 12px 32px -8px rgb(2 6 23 / 0.55);
+	transform: translateX(100%); visibility: hidden;
+	transition: transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.26s;
+}
+:root[data-side='left'] .dock { right: auto; left: 0; transform: translateX(-100%); }
+:root.is-dock-open .dock { transform: none; visibility: visible; transition: transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dock > * { flex: none; }
+.dock-name { display: flex; align-items: center; height: 40px; padding: 0 52px 0 4px; font-size: 15px; font-weight: 700; }
+:root[data-side='left'] .dock-name { padding: 0 4px 0 52px; }
+.dock .views { position: static; flex-direction: column; align-items: stretch; gap: 6px; }
+.dock .menu-button { width: 100%; height: 34px; border-radius: 10px; background: var(--bar-soft); box-shadow: none; }
+.dock .menu-list { position: static; min-width: 0; margin-top: 4px; padding: 4px; border-radius: 10px; background: rgb(2 6 23 / 0.22); box-shadow: none; }
+.dock .bar { position: static; display: block; padding: 0; pointer-events: auto; }
+.dock .bar-inner { width: 100%; max-height: none; overflow: visible; padding: 6px 0 0; gap: 0; border-radius: 0; background: none; box-shadow: none; border-top: 1px solid var(--bar-soft); }
+/* The menu button: three lines that turn into a cross while the drawer is open. */
+.drawer-button {
+	position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); z-index: 33;
+	display: grid; place-content: center; gap: 4px; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 12px;
+	background: var(--bar-bg); color: var(--bar-fg); box-shadow: 0 6px 18px -6px rgb(2 6 23 / 0.5); cursor: pointer;
+}
+:root[data-side='left'] .drawer-button { right: auto; left: max(12px, env(safe-area-inset-left, 0px)); }
+.drawer-button span { display: block; width: 18px; height: 2px; border-radius: 2px; background: currentColor; transition: transform 0.2s, opacity 0.2s; }
+.drawer-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+:root.is-dock-open .drawer-button { background: var(--bar-soft); box-shadow: none; }
+:root.is-dock-open .drawer-button span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+:root.is-dock-open .drawer-button span:nth-child(2) { opacity: 0; }
+:root.is-dock-open .drawer-button span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+/* Behind the open drawer the pages dim; a tap there shuts it. */
+.scrim { position: fixed; inset: 0; z-index: 31; background: rgb(2 6 23 / 0.4); opacity: 0; pointer-events: none; transition: opacity 0.26s; }
+:root.is-dock-open .scrim { opacity: 1; pointer-events: auto; }
+/* On a desktop the panel stands at the top of its side with the menu button on its corner; hidden, it slides away and
+   the pages fit the whole window. */
+@media (min-width: 760px) and (hover: hover) and (pointer: fine) {
+	.scrim { display: none; }
+	.drawer-button { top: 22px; right: 22px; width: 36px; height: 36px; border-radius: 10px; }
+	:root[data-side='left'] .drawer-button { right: auto; left: 22px; }
+	.dock {
+		top: 12px; right: 12px; bottom: auto; width: 256px; max-height: calc(100vh - 24px); padding: 10px; border-radius: 16px;
+		transform: translateX(calc(100% + 24px));
+	}
+	:root[data-side='left'] .dock { right: auto; left: 12px; transform: translateX(calc(-100% - 24px)); }
+	:root.is-dock-open .dock, :root.is-dock-open[data-side='left'] .dock { transform: none; }
+	.dock-name { height: 36px; padding-right: 48px; }
+	:root[data-side='left'] .dock-name { padding: 0 4px 0 48px; }
+}
+.sec[hidden] { display: none; }
+/* Tune panels (borrowed from the cover route prototype): rows of choices, sliders and switches, each named on its
+   left; a slider shows its value on its right. A panel shows only while a view it tunes is shown. */
+.tune { display: flex; flex-direction: column; gap: 6px; }
+.tune-row, .slider { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tune-name { flex: none; width: 66px; font-size: 11px; font-weight: 500; color: var(--bar-dim); }
+.bar .tune .group button { padding: 0 4px; font-size: 11px; }
+/* Four choices or more take the row under their name. */
+.tune-row.is-wide { flex-direction: column; align-items: stretch; gap: 4px; }
+.slider { height: 28px; padding: 0 2px; }
+.slider input { flex: 1; min-width: 0; margin: 0; accent-color: var(--accent); touch-action: pan-x; }
+.slider output { flex: none; width: 44px; text-align: right; font-size: 11px; font-weight: 600; color: var(--bar-fg); font-variant-numeric: tabular-nums; }
+.bar .tune-switch { height: 30px; padding: 0 2px; background: none; font-size: 11px; font-weight: 500; color: var(--bar-dim); }
+/* Copy settings, under the menus: one press puts every setting on the clipboard as text; where the browser will not,
+   the text shows in a field under it, selected, to copy by hand. */
+.copy-settings {
+	width: 100%; height: 34px; border: 0; border-radius: 10px; background: var(--bar-soft); color: var(--bar-fg); font: inherit;
+	font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.copy-settings:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.copy-text {
+	width: 100%; margin-top: 6px; padding: 8px; border: 1px solid var(--bar-soft); border-radius: 10px; resize: none;
+	background: rgb(2 6 23 / 0.22); color: var(--bar-fg); font: 11px/1.45 ui-monospace, monospace; user-select: text; -webkit-user-select: text;
+}
+.copy-text[hidden] { display: none; }
+
+/* The page: white paper with its own colours in both themes. Piece labels sit at a piece's top left. */
+.sheet { position: absolute; left: 0; top: 0; overflow: hidden; padding: 40px; background: #fff; color: #1e293b; font-size: 14px; line-height: 1.5; }
+.piece { position: relative; }
+.tag { position: absolute; padding: 1px 4px; border-radius: 4px; background: #db2777; color: #fff; font-size: 9px; font-weight: 700; line-height: 1.3; }
+.sheet.no-tags .tag { display: none; }
+</style>
+</head>
+<body>
+
+<button type="button" class="drawer-button" id="drawer-button" aria-controls="dock" aria-expanded="false" aria-label="Open controls"><span></span><span></span><span></span></button>
+<div class="scrim" id="scrim"></div>
+<aside class="dock" id="dock" aria-label="Controls">
+	<div class="dock-name">Controls</div>
+	<div class="copy-box"><button type="button" class="copy-settings" id="copy-settings">Copy settings</button><textarea class="copy-text" id="copy-text" readonly hidden aria-label="Every setting, as text"></textarea></div>
+	<div class="views">
+		<div class="menu" id="menu-views">
+			<button type="button" class="menu-button" aria-haspopup="true" aria-expanded="false"><span>Views</span><span class="count" hidden></span></button>
+			<div class="menu-list" role="menu" aria-label="Views" hidden></div>
+		</div>
+		<div class="menu" id="menu-choices">
+			<button type="button" class="menu-button" aria-haspopup="true" aria-expanded="false"><span id="choice-name">Data</span></button>
+			<div class="menu-list" role="menu" aria-label="Second menu" hidden></div>
+		</div>
+	</div>
+	<nav class="bar" aria-label="Prototype controls">
+		<div class="bar-inner" id="bar">
+			<div class="sections" id="sections"></div>
+		</div>
+	</nav>
+</aside>
+
+<div class="stage" id="stage"><div class="canvas" id="canvas"></div></div>
+<div class="copy-note" id="copy-note" role="status" aria-live="polite"></div>
+
+<template id="page"><article class="sheet" aria-label="Page"></article></template>
+
+<script>
+// ==================== EDIT HERE: what this prototype shows ====================
+// The page's size in points (A4 is 595 x 842, the app's report page).
+const PAGE = { width: 595, height: 842 };
+// The second menu: one pick, named for what it holds (Routes, Data, Sizes...). Each: id (one digit, it goes in the
+// address), name in the menu, name on a button.
+const CHOICE_NAME = 'Data';
+const CHOICES = [
+	['1', 'Few items', 'Few'],
+	['2', 'Some items', 'Some'],
+	['3', 'Many items', 'Many']
+];
+// The views: each design is one view and one page, named by its letter alone (Main, A, B...; no descriptions).
+// letter (its id, in the address), name (in the menu and above its page), short (on its button), and draw(state), which
+// returns the page's HTML, or several pages as a list of { name, html } (they lie down the view's column, or across its
+// row when Vertical, level with the other views' pages; an element marked data-goto="2" is a link to the view's second
+// page, as an internal link in a PDF, and a frame marked data-code="P2" is labelled P2). Label every piece with piece()
+// so it can be named: the view's letter and ONE number per piece, the same piece in every view (M2, A2 and B2 are all
+// the rows). "All the 2s" means every view; "A2" means A alone; "A2.1" is A2's first direct child, "A2.1.3" that
+// child's third (the Parts panel labels them, level by level, each with its own switch; a click on a label copies it).
+const VIEWS = [
+	{ letter: 'main', name: 'Main', short: 'Main', draw: (state) => sample('M', state) },
+	{ letter: 'a', name: 'A', short: 'A', draw: (state) => sample('A', state) },
+	{ letter: 'b', name: 'B', short: 'B', draw: (state) => sample('B', state) }
+];
+// Tune panels (borrowed from the cover route prototype): fine controls for what the views draw, each a folding panel.
+// A panel: key, name, the views it tunes (null: every view; it shows only while one of them is shown), and its rows:
+// ['choice', key, name, options, first?], ['slider', key, name, least, most, step, first, unit] (unit '×', '%', 'px',
+// or 'weight' for a font weight shown by its name), ['switch', key, name, 'on' or 'off']. Each value is state[key],
+// kept like every other control and listed by Copy settings. Leave the list empty for none.
+const TUNES = [
+	{ key: 'rows', name: 'Rows', views: null, rows: [
+		['switch', 'rowsOn', 'Show', 'on'],
+		['choice', 'rowAlign', 'Align', [['left', 'Left'], ['center', 'Center'], ['right', 'Right']]],
+		['slider', 'rowSize', 'Size', 50, 200, 5, 100, '%'],
+		['slider', 'rowWeight', 'Weight', 300, 900, 100, 400, 'weight'],
+		['slider', 'rowAlpha', 'Opacity', 20, 100, 5, 100, '%']
+	] }
+];
+// A labelled piece of the page. The page's frame is numbered the same way in every view by marking it data-piece:
+// the header 0 and the footer 9 (see sample below); pieces 1 to 8 are the design's own.
+function piece(code, html, style = '') {
+	return `<div class="piece" style="${style}"><span class="tag">${code}</span>${html}</div>`;
+}
+// Placeholder drawing for the starter only: replace with the real designs.
+function sample(letter, state) {
+	const rows = state.rowsOn === 'on' ? Number(state.choice) * 3 : 0;
+	const look = `margin:0 0 6px;text-align:${state.rowAlign};font-size:${(14 * state.rowSize) / 100}px;font-weight:${state.rowWeight};opacity:${state.rowAlpha / 100}`;
+	return `<header data-piece="0" style="display:flex;justify-content:space-between;padding-bottom:10px;margin-bottom:24px;border-bottom:1px solid #e2e8f0;font-size:11px"><b>Company</b><span>Header</span></header>
+		${piece(letter + '1', `<h2 style="margin:0;font-size:28px">${letter === 'M' ? 'Main' : 'Design ' + letter}</h2>`)}
+		${piece(letter + '2', Array.from({ length: rows }, (_, index) => `<p style="${look}">Row ${index + 1}</p>`).join(''), 'margin-top:20px')}
+		<footer data-piece="9" style="position:absolute;left:40px;right:40px;bottom:28px;display:flex;justify-content:space-between;font-size:11px;color:#64748b"><span>Footer</span><span>Page 1 of 1</span></footer>`;
+}
+// ==================== end of EDIT HERE ====================
+// Every choice in the controls: the views shown (one or more), the second menu's pick, how the pages lie, the piece
+// labels, the side of the desktop panel, which panels are open, and every tune panel's value. All of it is kept in this
+// browser and comes back next time; an address with a view in it (#main+b2) wins over what was kept.
+const state = {
+	views: [VIEWS[0].letter], choice: CHOICES[0][0], layout: 'row', tags: 'on', partsOn: [], partsOpen: [],
+	side: 'right', open: null, isPanelOpen: true, isDrawerOpen: false, hasSeenParts: false
+};
+// A tune panel's row: ['choice', key, name, options, first?], ['slider', key, name, least, most, step, first, unit]
+// (unit '×', '%', 'px', or 'weight' for a font weight shown by its name), or ['switch', key, name, 'on' or 'off'].
+// Each key starts at its first value: the choice's own first or its first option, the slider's start, the switch's.
+function firstOf(row) {
+	const [kind, , , ...rest] = row;
+	if (kind === 'choice') return rest[1] ?? rest[0][0][0];
+	if (kind === 'slider') return rest[3];
+	return rest[0] ?? 'on';
+}
+function isFit(row, value) {
+	const [kind, , , ...rest] = row;
+	if (kind === 'choice') return rest[0].some(([id]) => id === value);
+	if (kind === 'slider') return typeof value === 'number' && value >= rest[0] && value <= rest[1];
+	return value === 'on' || value === 'off';
+}
+for (const panel of TUNES) for (const row of panel.rows) state[row[1]] = firstOf(row);
+// Give each prototype its own key, so two prototypes never share their choices.
+const KEEP_KEY = 'prototype-starter-controls';
+function load() {
+	try {
+		const kept = JSON.parse(localStorage.getItem(KEEP_KEY) || 'null');
+		if (kept && typeof kept === 'object') {
+			for (const key of Object.keys(state)) if (key in kept) state[key] = kept[key];
+		}
+	} catch {}
+}
+function save() {
+	try {
+		localStorage.setItem(KEEP_KEY, JSON.stringify(state));
+	} catch {}
+}
+load();
+for (const key of ['partsOn', 'partsOpen']) if (!Array.isArray(state[key])) state[key] = [];
+
+document.getElementById('choice-name').textContent = CHOICE_NAME;
+const stage = document.getElementById('stage');
+const canvas = document.getElementById('canvas');
+const pageTemplate = document.getElementById('page');
+const ORDER = VIEWS.map((view) => view.letter);
+state.views = ORDER.filter((letter) => state.views.includes(letter));
+if (!state.views.length) state.views = [ORDER[0]];
+if (!CHOICES.some(([id]) => id === state.choice)) state.choice = CHOICES[0][0];
+for (const panel of TUNES) for (const row of panel.rows) if (!isFit(row, state[row[1]])) state[row[1]] = firstOf(row);
+
+// ---------- The canvas, as in the app's Preview: where its corner sits in the window and how big it is drawn. It
+// opens with every page fitted whole, as big as the window allows with a thin margin all round. ----------
+const EDGE = 10;
+const GAP = 48;
+const NAME_ROOM = 40;
+const content = { width: PAGE.width, height: PAGE.height };
+const view = { x: 0, y: 0, scale: 1 };
+let isFitted = true;
+// On a desktop the panel takes its side of the window, and the pages fit in the room beside it.
+const DESKTOP = matchMedia('(min-width: 760px) and (hover: hover) and (pointer: fine)');
+const dock = document.getElementById('dock');
+function room(side = state.side) {
+	if (!DESKTOP.matches || !state.isPanelOpen) return { left: 0, right: 0 };
+	const width = dock.offsetWidth + 12;
+	return side === 'left' ? { left: width, right: 0 } : { left: 0, right: width };
+}
+function fitScale() {
+	const { left, right } = room();
+	return Math.max(0.03, Math.min((stage.clientWidth - left - right - EDGE * 2) / content.width, (stage.clientHeight - EDGE * 2) / content.height));
+}
+// Keep a corner of the pages on screen, so they can never be lost off the edge.
+function clamp() {
+	const keep = 96;
+	view.x = Math.min(stage.clientWidth - keep, Math.max(keep - content.width * view.scale, view.x));
+	view.y = Math.min(stage.clientHeight - keep, Math.max(keep - content.height * view.scale, view.y));
+}
+// The pages are drawn on a layer the browser keeps ready while they move, then redrawn sharp once still.
+let sharpTimer = 0;
+let easeTimer = 0;
+function place(isEased = false) {
+	clearTimeout(easeTimer);
+	canvas.classList.toggle('is-easing', isEased);
+	if (isEased) easeTimer = setTimeout(() => canvas.classList.remove('is-easing'), 340);
+	canvas.classList.add('is-layered');
+	canvas.style.transform = `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.scale})`;
+	clearTimeout(sharpTimer);
+	sharpTimer = setTimeout(() => canvas.classList.remove('is-layered'), isEased ? 360 : 260);
+}
+function fitPage(isEased = false) {
+	stopGlide();
+	view.scale = fitScale();
+	const { left, right } = room();
+	view.x = left + (stage.clientWidth - left - right - content.width * view.scale) / 2;
+	view.y = (stage.clientHeight - content.height * view.scale) / 2;
+	isFitted = true;
+	place(isEased);
+}
+// Fit one part of the canvas in the window: a page a link goes to, or the row of pages one key holds in every view.
+function fitRect(rect, isEased = false) {
+	stopGlide();
+	const { left, right } = room();
+	view.scale = Math.max(0.03, Math.min((stage.clientWidth - left - right - EDGE * 2) / rect.width, (stage.clientHeight - EDGE * 2) / rect.height));
+	view.x = left + (stage.clientWidth - left - right - rect.width * view.scale) / 2 - rect.x * view.scale;
+	view.y = (stage.clientHeight - rect.height * view.scale) / 2 - rect.y * view.scale;
+	isFitted = false;
+	clamp();
+	place(isEased);
+}
+// The part of the canvas some pages take, with the room for their names above them.
+function rectOf(holders) {
+	const x = Math.min(...holders.map((each) => each.offsetLeft));
+	const y = Math.min(...holders.map((each) => each.offsetTop)) - nameRoom;
+	const right = Math.max(...holders.map((each) => each.offsetLeft + each.offsetWidth));
+	const bottom = Math.max(...holders.map((each) => each.offsetTop + each.offsetHeight));
+	return { x, y, width: right - x, height: bottom - y };
+}
+function panBy(dx, dy) {
+	view.x += dx;
+	view.y += dy;
+	isFitted = false;
+	clamp();
+	place();
+}
+// Zoom the pages alone around a point in the window, keeping what is under it there: from half the fit to many times.
+function zoomAt(next, x, y, isEased = false) {
+	const fit = fitScale();
+	const most = Math.max(fit * 8, 6);
+	const scale = Math.min(most, Math.max(fit * 0.5, next));
+	const across = (x - view.x) / view.scale;
+	const down = (y - view.y) / view.scale;
+	view.scale = scale;
+	view.x = x - across * scale;
+	view.y = y - down * scale;
+	isFitted = false;
+	clamp();
+	place(isEased);
+}
+function isZoomed() {
+	return view.scale > fitScale() * 1.01;
+}
+// After a drag the pages glide on and slow, as in the app.
+let glide = 0;
+function stopGlide() {
+	cancelAnimationFrame(glide);
+}
+function glideOn(vx, vy) {
+	let last = performance.now();
+	const step = (now) => {
+		const dt = Math.min(32, now - last);
+		last = now;
+		const decay = Math.pow(0.94, dt / 16);
+		vx *= decay;
+		vy *= decay;
+		panBy(vx * dt, vy * dt);
+		if (Math.hypot(vx, vy) > 0.02) glide = requestAnimationFrame(step);
+	};
+	glide = requestAnimationFrame(step);
+}
+
+// Flipping the panel's side moves the pages with it: fitted pages fit again beside it, moved ones shift across.
+let sideShown = null;
+function showSide() {
+	if (sideShown === state.side) return;
+	const before = room(sideShown ?? state.side).left;
+	document.documentElement.dataset.side = state.side;
+	const isFirst = sideShown === null;
+	sideShown = state.side;
+	if (isFirst) return;
+	if (isFitted) fitPage(true);
+	else {
+		view.x += room().left - before;
+		clamp();
+		place(true);
+	}
+}
+
+// ---------- Drawing: each view shown is its pages, down a column (Horizontal) or across a row (Vertical). Most views
+// are one page; a view's draw may give several, and pages with the same key (their place, from 1, or their own key) sit
+// level in every view. ----------
+let shownKey = '';
+let nameRoom = 0;
+function pagesFor(each) {
+	const drawn = each.draw(state);
+	return (Array.isArray(drawn) ? drawn : [{ html: drawn }]).map((page, index) => ({ key: page.key ?? `${index + 1}`, name: page.name ?? '', html: page.html }));
+}
+function render() {
+	showSide();
+	const shown = VIEWS.filter((each) => state.views.includes(each.letter));
+	const isRow = state.layout === 'row';
+	const lists = shown.map(pagesFor);
+	const slots = [...lists.reduce((longest, list) => (list.length > longest.length ? list : longest), []).map((page) => page.key)];
+	for (const list of lists) for (const page of list) if (!slots.includes(page.key)) slots.push(page.key);
+	const isNamed = shown.length > 1 || slots.length > 1;
+	nameRoom = isNamed ? NAME_ROOM : 0;
+	const across = isRow ? shown.length : slots.length;
+	const down = isRow ? slots.length : shown.length;
+	content.width = across * PAGE.width + (across - 1) * GAP;
+	content.height = down * (PAGE.height + nameRoom) + (down - 1) * GAP;
+	canvas.style.width = `${content.width}px`;
+	canvas.style.height = `${content.height}px`;
+	canvas.replaceChildren();
+	marks.clear();
+	shown.forEach((each, index) => {
+		for (const item of lists[index]) {
+			const slot = slots.indexOf(item.key);
+			const holder = document.createElement('div');
+			holder.className = 'holder';
+			holder.style.width = `${PAGE.width}px`;
+			holder.style.height = `${PAGE.height}px`;
+			holder.dataset.view = each.letter;
+			holder.dataset.page = item.key;
+			holder.style.left = `${(isRow ? index : slot) * (PAGE.width + GAP)}px`;
+			holder.style.top = `${nameRoom + (isRow ? slot : index) * (PAGE.height + nameRoom + GAP)}px`;
+			const page = pageTemplate.content.firstElementChild.cloneNode(true);
+			if (index === 0 && slot === 0) page.id = 'sheet';
+			holder.append(page);
+			if (isNamed) holder.insertAdjacentHTML('afterbegin', `<span class="page-name">${item.name ? `${each.name} · ${item.name}` : each.name}</span>`);
+			canvas.append(holder);
+			page.style.width = `${PAGE.width}px`;
+			page.style.height = `${PAGE.height}px`;
+			page.innerHTML = item.html;
+			showPieces(page, each.letter);
+		}
+	});
+	// A new set of pages, or a new way of laying them out, fits them all again.
+	const key = `${state.views.join('+')}|${state.layout}|${slots.join(',')}`;
+	if (key !== shownKey) {
+		shownKey = key;
+		fitPage();
+	}
+	showTree();
+	showControls();
+	save();
+	try {
+		history.replaceState(null, '', `#${state.views.join('+')}${state.choice}${state.layout === 'column' ? 'v' : ''}`);
+	} catch {}
+}
+// A link on a page (data-goto, with a page's key) goes to that page in the same view, as an internal link does in a
+// PDF, and the page it lands on flashes.
+function goTo(link) {
+	const from = link.closest('.holder');
+	const target = canvas.querySelector(`.holder[data-view="${from?.dataset.view}"][data-page="${link.dataset.goto}"]`);
+	if (!target) return;
+	fitRect(rectOf([target]), true);
+	target.classList.remove('is-target');
+	void target.offsetWidth;
+	target.classList.add('is-target');
+}
+
+// ---------- Pieces and parts. Each piece carries a label: its view's letter and one number that is the same piece in
+// every view (M3, A3 and B3 are all one piece); the Labels switch shows every piece's label with its border. The page's frame is numbered too: any element marked data-piece (the
+// header 0 and the footer 9, the same in every view) becomes a piece here, so the whole page is covered. A piece's
+// parts are the elements inside it, level by level: M3.1 is M3's first direct child, M3.1.2 that child's second, and
+// so on all the way down (PART_DEPTH is only a guard). Each part has its own switch in
+// the Parts panel and shows nothing until switched on; then its label and its border show together, and only its
+// own. Every label sits outside its piece or part, on its top left corner, on the border (pink, as the label), and
+// slides right when another label is there already. A click or tap on a label copies it. ----------
+const PART_DEPTH = 12;
+const marks = new Map();
+function isShown(element) {
+	const rect = element.getBoundingClientRect();
+	return rect.width > 0 || rect.height > 0;
+}
+function partsOf(element) {
+	if (element instanceof SVGElement) return [];
+	return [...element.children].filter((child) => !child.matches('.tag, .part-tag, .marks, script, style, template, br') && isShown(child));
+}
+// A part is named by what it holds: its first words, or what it is.
+function nameOf(element, code) {
+	let text = (element.innerText || element.textContent || '').replace(/\s+/g, ' ').trim();
+	if (code && text.startsWith(code)) text = text.slice(code.length).trim();
+	if (text) return text.length > 34 ? `${text.slice(0, 33)}…` : text;
+	if (element.matches('img, picture') || element.querySelector('img')) return 'Picture';
+	if (element instanceof SVGElement || element.querySelector('svg')) return 'Icon';
+	if (getComputedStyle(element).backgroundImage !== 'none') return 'Picture';
+	return 'Box';
+}
+function walk(element, code, level, letter) {
+	const entry = { element, code, level, letter, name: nameOf(element, level === 0 ? code : ''), kids: [] };
+	marks.set(code, entry);
+	if (level < PART_DEPTH) partsOf(element).forEach((child, index) => entry.kids.push(walk(child, `${code}.${index + 1}`, level + 1, letter).code));
+	return entry;
+}
+// A view's letter on its labels: M for Main, otherwise the view's own letter.
+function toLabel(letter) {
+	return letter === 'main' ? 'M' : letter.toUpperCase();
+}
+function isPartOn(code) {
+	return state.partsOn.includes(code);
+}
+function setPart(code, isOn) {
+	state.partsOn = state.partsOn.filter((each) => each !== code);
+	if (isOn) state.partsOn.push(code);
+}
+function showPieces(page, letter) {
+	for (const frame of page.querySelectorAll('[data-piece], [data-code]')) {
+		frame.classList.add('piece');
+		if (getComputedStyle(frame).position === 'static') frame.style.position = 'relative';
+		frame.insertAdjacentHTML('afterbegin', `<span class="tag">${frame.dataset.code ?? toLabel(letter) + frame.dataset.piece}</span>`);
+	}
+	page.classList.toggle('no-tags', state.tags === 'off');
+	const pieces = [...page.querySelectorAll('.piece > .tag')].map((tag) => [tag.textContent.trim(), tag.parentElement, tag]);
+	for (const [code, piece] of pieces) walk(piece, code, 0, letter);
+	const sheetBox = page.getBoundingClientRect();
+	// A label that would sit above the page's top edge (the header's) sits just inside its corner instead.
+	for (const [, , tag] of pieces) tag.classList.toggle('is-inside', tag.getBoundingClientRect().top < sheetBox.top);
+	if (!state.partsOn.length) return;
+	const scale = sheetBox.width / page.offsetWidth || 1;
+	function toPage(rect) {
+		return { left: (rect.left - sheetBox.left) / scale, top: (rect.top - sheetBox.top) / scale, right: (rect.right - sheetBox.left) / scale, bottom: (rect.bottom - sheetBox.top) / scale };
+	}
+	const layer = document.createElement('div');
+	layer.className = 'marks';
+	page.append(layer);
+	const taken = state.tags === 'on' ? pieces.map(([, , tag]) => toPage(tag.getBoundingClientRect())) : [];
+	const shown = [...marks.values()].filter((entry) => entry.level > 0 && page.contains(entry.element) && isPartOn(entry.code)).sort((one, two) => one.level - two.level);
+	for (const entry of shown) {
+		entry.element.classList.add('is-part');
+		const label = document.createElement('span');
+		label.className = 'part-tag';
+		label.textContent = entry.code;
+		layer.append(label);
+		const at = toPage(entry.element.getBoundingClientRect());
+		const width = label.offsetWidth;
+		const height = label.offsetHeight;
+		const top = at.top - height < 0 ? at.top : at.top - height;
+		let left = at.left - 1;
+		for (let tries = 0; tries < 60; tries += 1) {
+			const hit = taken.find((each) => left < each.right && left + width > each.left && top < each.bottom && top + height > each.top);
+			if (!hit) break;
+			left = hit.right + 1;
+		}
+		label.style.left = `${left}px`;
+		label.style.top = `${top}px`;
+		taken.push({ left, top, right: left + width, bottom: top + height });
+	}
+}
+// A click or tap on a label copies its text, word for word, and the label flashes; a note says what was copied.
+const copyNote = document.getElementById('copy-note');
+let noteTimer = 0;
+// Text onto the clipboard: the browser's own way first, then the older way; true when either worked.
+async function copyText(text) {
+	try {
+		await navigator.clipboard.writeText(text);
+		return true;
+	} catch {
+		const field = document.createElement('textarea');
+		field.value = text;
+		field.setAttribute('readonly', '');
+		field.style.cssText = 'position:fixed;left:-999px;top:0;opacity:0';
+		document.body.append(field);
+		field.select();
+		let isCopied = false;
+		try {
+			isCopied = document.execCommand('copy');
+		} catch {}
+		field.remove();
+		return isCopied;
+	}
+}
+function showNote(text) {
+	copyNote.textContent = text;
+	copyNote.classList.add('is-shown');
+	clearTimeout(noteTimer);
+	noteTimer = setTimeout(() => copyNote.classList.remove('is-shown'), 1400);
+}
+async function copyLabel(label) {
+	const text = label.textContent.trim();
+	const isCopied = await copyText(text);
+	label.classList.remove('is-copied');
+	void label.offsetWidth;
+	label.classList.add('is-copied');
+	showNote(isCopied ? `Copied ${text}` : `Could not copy ${text}`);
+}
+// The Parts panel: every piece shown, and inside it its parts level by level, each named by what it holds, with its
+// own switch. A row opens its next level; All on and All off switch that whole level. Pointing at a row outlines its
+// part on the page.
+function toSafeText(text) {
+	return text.replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char]);
+}
+function pieceNumber(code) {
+	return Number(code.replace(/^\D+/, ''));
+}
+function treeRow(entry) {
+	const isOpen = state.partsOpen.includes(entry.code);
+	const hasKids = entry.kids.length > 0;
+	const words = `<span class="part-code">${entry.code}</span><span class="part-name">${toSafeText(entry.name)}</span>`;
+	const head = `<div class="part-row${entry.level === 0 ? ' is-piece' : ''}" data-code="${entry.code}" style="--level:${entry.level}">
+		${hasKids ? `<button type="button" class="part-open" data-open="${entry.code}" aria-expanded="${isOpen}">${words}</button>` : `<span class="part-open is-leaf">${words}</span>`}
+		${entry.level > 0 ? `<button type="button" class="switch" role="switch" data-part="${entry.code}" aria-checked="${isPartOn(entry.code)}" aria-label="${entry.code}"><span class="knob"></span></button>` : ''}
+	</div>`;
+	if (!hasKids || !isOpen) return head;
+	return `${head}<div class="part-all" style="--level:${entry.level + 1}"><button type="button" data-all="${entry.code}">All on</button><button type="button" data-none="${entry.code}">All off</button></div>${entry.kids.map((code) => treeRow(marks.get(code))).join('')}`;
+}
+function showTree() {
+	const isPage = (entry) => Number(entry.code.startsWith('P'));
+	const pieces = [...marks.values()].filter((entry) => entry.level === 0).sort((one, two) => ORDER.indexOf(one.letter) - ORDER.indexOf(two.letter) || isPage(one) - isPage(two) || pieceNumber(one.code) - pieceNumber(two.code));
+	const clear = state.partsOn.length ? `<div class="part-all" style="--level:0"><button type="button" data-clear>All parts off</button></div>` : '';
+	tree.innerHTML = clear + (pieces.map(treeRow).join('') || '<p class="part-none">No labelled pieces on these pages.</p>');
+}
+let hotElement = null;
+function showHot(code) {
+	hotElement?.classList.remove('is-hot');
+	hotElement = (code && marks.get(code)?.element) || null;
+	hotElement?.classList.add('is-hot');
+}
+
+// ---------- The controls ----------
+// A view is ticked on or off; the last one left stays on.
+function toggleView(letter) {
+	if (state.views.includes(letter)) {
+		if (state.views.length > 1) state.views = state.views.filter((each) => each !== letter);
+	} else state.views = ORDER.filter((each) => each === letter || state.views.includes(each));
+	render();
+}
+function pick(key, value) {
+	state[key] = value;
+	render();
+}
+const SECTIONS = [
+	['views', 'Views', () => VIEWS.map((each) => [each.letter, each.short]), true],
+	['layout', 'Layout', () => [['row', 'Horizontal'], ['column', 'Vertical']]],
+	['choice', CHOICE_NAME, () => CHOICES.map(([id, , short]) => [id, short])],
+	...TUNES.map((panel) => [panel.key, panel.name, () => [], 'tune']),
+	['tags', 'Labels', () => [['tags', 'Pieces']], 'switches'],
+	['parts', 'Parts', () => [], 'tree'],
+	['side', 'Side', () => [['left', 'Left'], ['right', 'Right']]]
+];
+// A tune panel: its rows one under another, each named on its left: a row of choices, a slider with its value, or a
+// switch.
+const WEIGHT_NAMES = { 300: 'Light', 400: 'Normal', 500: 'Medium', 600: 'Semi', 700: 'Bold', 800: 'Heavy', 900: 'Black' };
+function tunePanel(panel) {
+	return `<div class="tune">${panel.rows
+		.map((row) => {
+			const [kind, key, name, ...rest] = row;
+			const label = name ? `<span class="tune-name">${name}</span>` : '';
+			if (kind === 'choice')
+				return `<div class="tune-row${rest[0].length > 3 ? ' is-wide' : ''}">${label}<div class="group" role="group" aria-label="${name || panel.name}">${rest[0]
+					.map(([value, text]) => `<button type="button" data-tune="${key}" data-value="${value}">${text}</button>`)
+					.join('')}</div></div>`;
+			if (kind === 'slider')
+				return `<label class="slider">${label}<input type="range" data-slide="${key}" min="${rest[0]}" max="${rest[1]}" step="${rest[2]}"><output data-shows="${key}"></output></label>`;
+			return `<button type="button" class="switch tune-switch" role="switch" data-tune-switch="${key}" aria-checked="false"><span>${name}</span><span class="knob"></span></button>`;
+		})
+		.join('')}</div>`;
+}
+// A value as it reads beside its slider and in the copied settings.
+function valueText(row, value) {
+	const unit = row[7];
+	if (unit === 'weight') return WEIGHT_NAMES[value] ?? String(value);
+	if (unit === '×') return `${Number(value).toFixed(value % 1 && Math.round(value * 100) % 10 ? 2 : 1)}×`;
+	return `${Number(value.toFixed(2))}${unit ?? ''}`;
+}
+function rowText(row) {
+	const [kind, key, , ...rest] = row;
+	if (kind === 'choice') return rest[0].find(([id]) => id === state[key])[1];
+	if (kind === 'slider') return valueText(row, state[key]);
+	return state[key] === 'on' ? 'On' : 'Off';
+}
+// What a tune panel shows beside its name: Off when its switch is off; else On (with a switch), its first choice, its
+// first slider and its weight.
+function tuneNow(panel) {
+	const toggle = panel.rows.find(([kind]) => kind === 'switch');
+	if (toggle && state[toggle[1]] === 'off') return 'Off';
+	const choice = panel.rows.find(([kind]) => kind === 'choice');
+	const slider = panel.rows.find(([kind]) => kind === 'slider');
+	const weight = panel.rows.find((row) => row[7] === 'weight' && row !== slider);
+	return [toggle, choice, slider, weight].filter(Boolean).map(rowText).join(' · ');
+}
+// A tune panel's control moves: its value is kept, and the pages are drawn again.
+function retune() {
+	render();
+}
+function tune(key, value) {
+	state[key] = value;
+	showControls();
+	retune();
+	save();
+}
+document.getElementById('sections').innerHTML = SECTIONS.map(
+	([key, label, options, kind]) => `<section class="sec" data-sec="${key}">
+		<button type="button" class="sec-name" aria-expanded="false" aria-controls="sec-${key}"><span>${label}</span><small class="sec-now"></small></button>
+		<div class="sec-body" id="sec-${key}" hidden>${kind === 'tree' ? '<div class="tree" id="tree"></div>' : kind === 'tune' ? tunePanel(TUNES.find((panel) => panel.key === key)) : `<div class="group${kind === 'switches' ? ' is-switches' : ''}" role="group" aria-label="${label}">${options()
+			.map(([value, text]) =>
+				kind === 'switches'
+					? `<button type="button" class="switch" role="switch" data-switch="${value}" aria-checked="false"><span>${text}</span><span class="knob"></span></button>`
+					: `<button type="button" data-key="${key}" data-value="${value}">${text}</button>`
+			)
+			.join('')}</div>`}</div>
+	</section>`
+).join('');
+// Open panels: kept from last time; at first every panel is open.
+if (!Array.isArray(state.open)) state.open = SECTIONS.map(([key]) => key);
+// The Parts panel opens once by itself, the first time it is there.
+if (!state.hasSeenParts && !state.open.includes('parts')) state.open.push('parts');
+state.hasSeenParts = true;
+const tree = document.getElementById('tree');
+tree.addEventListener('pointerover', (event) => showHot(event.target.closest('.part-row')?.dataset.code));
+tree.addEventListener('pointerleave', () => showHot(null));
+document.getElementById('sections').addEventListener('click', (event) => {
+	const name = event.target.closest('.sec-name');
+	if (name) {
+		const key = name.closest('.sec').dataset.sec;
+		state.open = state.open.includes(key) ? state.open.filter((each) => each !== key) : [...state.open, key];
+		showControls();
+		save();
+		return;
+	}
+	const opener = event.target.closest('[data-open]');
+	if (opener) {
+		const code = opener.dataset.open;
+		state.partsOpen = state.partsOpen.includes(code) ? state.partsOpen.filter((each) => each !== code) : [...state.partsOpen, code];
+		showTree();
+		save();
+		return;
+	}
+	const part = event.target.closest('[data-part]');
+	if (part) {
+		setPart(part.dataset.part, !isPartOn(part.dataset.part));
+		render();
+		return;
+	}
+	const level = event.target.closest('[data-all], [data-none]');
+	if (level) {
+		const entry = marks.get(level.dataset.all || level.dataset.none);
+		for (const code of entry?.kids ?? []) setPart(code, Boolean(level.dataset.all));
+		render();
+		return;
+	}
+	if (event.target.closest('[data-clear]')) {
+		state.partsOn = [];
+		render();
+		return;
+	}
+	const tuned = event.target.closest('button[data-tune]');
+	if (tuned) {
+		tune(tuned.dataset.tune, tuned.dataset.value);
+		return;
+	}
+	const tuneSwitch = event.target.closest('button[data-tune-switch]');
+	if (tuneSwitch) {
+		tune(tuneSwitch.dataset.tuneSwitch, state[tuneSwitch.dataset.tuneSwitch] === 'on' ? 'off' : 'on');
+		return;
+	}
+	const toggle = event.target.closest('button[data-switch]');
+	if (toggle) {
+		pick(toggle.dataset.switch, state[toggle.dataset.switch] === 'on' ? 'off' : 'on');
+		return;
+	}
+	const button = event.target.closest('button[data-key]');
+	if (!button) return;
+	if (button.dataset.key === 'views') toggleView(button.dataset.value);
+	else pick(button.dataset.key, button.dataset.value);
+});
+document.getElementById('sections').addEventListener('input', (event) => {
+	const slider = event.target.closest('[data-slide]');
+	if (slider) tune(slider.dataset.slide, Number(slider.value));
+});
+// The menus: Views ticks any number on or off and stays open; the second menu picks one and closes.
+const menus = {
+	views: document.getElementById('menu-views'),
+	choices: document.getElementById('menu-choices')
+};
+menus.views.querySelector('.menu-list').innerHTML = VIEWS.map(
+	(each) => `<button type="button" class="menu-item" role="menuitemcheckbox" data-view="${each.letter}"><span class="box"></span>${each.name}</button>`
+).join('');
+menus.choices.querySelector('.menu-list').innerHTML = CHOICES.map(
+	([id, name]) => `<button type="button" class="menu-item is-radio" role="menuitemradio" data-choice="${id}"><span class="box"></span>${name}</button>`
+).join('');
+function openMenu(menu, isOpen) {
+	menu.querySelector('.menu-list').hidden = !isOpen;
+	menu.querySelector('.menu-button').setAttribute('aria-expanded', String(isOpen));
+}
+for (const menu of Object.values(menus)) {
+	menu.querySelector('.menu-button').addEventListener('click', () => {
+		const isOpen = menu.querySelector('.menu-list').hidden;
+		for (const other of Object.values(menus)) openMenu(other, false);
+		openMenu(menu, isOpen);
+	});
+}
+menus.views.querySelector('.menu-list').addEventListener('click', (event) => {
+	const item = event.target.closest('[data-view]');
+	if (item) toggleView(item.dataset.view);
+});
+menus.choices.querySelector('.menu-list').addEventListener('click', (event) => {
+	const item = event.target.closest('[data-choice]');
+	if (!item) return;
+	openMenu(menus.choices, false);
+	pick('choice', item.dataset.choice);
+});
+// A click anywhere else closes a menu. (On a click, not a press: in the desktop panel an open list closing on the
+// press would move the button under the pointer before the click lands.)
+document.addEventListener(
+	'click',
+	(event) => {
+		for (const menu of Object.values(menus)) if (!menu.contains(event.target)) openMenu(menu, false);
+	},
+	true
+);
+document.addEventListener('keydown', (event) => {
+	if (event.key !== 'Escape') return;
+	for (const menu of Object.values(menus)) openMenu(menu, false);
+	if (!DESKTOP.matches) openDock(false);
+});
+// Copy settings (as on the cover route prototype, his ask 2026-11-24 22:26): every control shown, with its value, as
+// lines of text to paste into a message, so what he sees can be told in words. On the clipboard when the browser
+// allows; otherwise in a field under the button, selected, to copy by hand.
+function settingsText() {
+	const lines = [`${document.title}, settings`];
+	for (const [key, label] of SECTIONS) {
+		const section = document.querySelector(`#sections [data-sec="${key}"]`);
+		if (section.hidden) continue;
+		const panel = TUNES.find((each) => each.key === key);
+		if (panel) lines.push(`${label}: ${panel.rows.map((row) => (row[2] ? `${row[2]} ${rowText(row)}` : rowText(row))).join(', ')}`);
+		else if (key === 'views') lines.push(`Views: ${state.views.map((letter) => VIEWS.find((each) => each.letter === letter).name).join(', ')}`);
+		else if (key === 'parts') lines.push(`Parts: ${state.partsOn.length ? state.partsOn.join(', ') : 'none'}`);
+		else lines.push(`${label}: ${section.querySelector('.sec-now').textContent}`);
+	}
+	return lines.join('\n');
+}
+const copyButton = document.getElementById('copy-settings');
+const copyField = document.getElementById('copy-text');
+let copyTimer = 0;
+copyButton.addEventListener('click', async () => {
+	const text = settingsText();
+	const isCopied = await copyText(text);
+	copyField.hidden = isCopied;
+	if (isCopied) showNote('Copied every setting');
+	else {
+		copyField.value = text;
+		copyField.rows = text.split('\n').length;
+		copyField.focus();
+		copyField.select();
+	}
+	copyButton.textContent = isCopied ? 'Copied' : 'Select and copy the text below';
+	clearTimeout(copyTimer);
+	copyTimer = setTimeout(() => (copyButton.textContent = 'Copy settings'), 2500);
+});
+// Show every control's state: ticks in the menus, pressed buttons, each panel's choice beside its name.
+function showControls() {
+	const count = menus.views.querySelector('.count');
+	count.hidden = state.views.length < 2;
+	count.textContent = String(state.views.length);
+	for (const item of menus.views.querySelectorAll('[data-view]')) item.setAttribute('aria-checked', String(state.views.includes(item.dataset.view)));
+	for (const item of menus.choices.querySelectorAll('[data-choice]')) item.setAttribute('aria-checked', String(item.dataset.choice === state.choice));
+	for (const button of document.querySelectorAll('#sections button[data-key]')) {
+		const value = state[button.dataset.key];
+		button.setAttribute('aria-pressed', String(Array.isArray(value) ? value.includes(button.dataset.value) : value === button.dataset.value));
+	}
+	for (const toggle of document.querySelectorAll('#sections button[data-switch]')) toggle.setAttribute('aria-checked', String(state[toggle.dataset.switch] === 'on'));
+	for (const section of document.querySelectorAll('#sections .sec')) {
+		const key = section.dataset.sec;
+		const panel = TUNES.find((each) => each.key === key);
+		section.hidden = Boolean(panel?.views) && !state.views.some((letter) => panel.views.includes(letter));
+		const isOpen = state.open.includes(key);
+		section.querySelector('.sec-name').setAttribute('aria-expanded', String(isOpen));
+		section.querySelector('.sec-body').hidden = !isOpen;
+		if (key === 'parts') {
+			const count = [...marks.values()].filter((entry) => entry.level > 0 && isPartOn(entry.code)).length;
+			section.querySelector('.sec-now').textContent = count ? `${count} on` : 'None';
+			continue;
+		}
+		if (section.querySelector('[data-switch]')) {
+			section.querySelector('.sec-now').textContent = section.querySelector('[aria-checked="true"]') ? 'On' : 'Off';
+			continue;
+		}
+		if (panel) {
+			section.querySelector('.sec-now').textContent = tuneNow(panel);
+			for (const button of section.querySelectorAll('button[data-tune]')) button.setAttribute('aria-pressed', String(state[button.dataset.tune] === button.dataset.value));
+			for (const toggle of section.querySelectorAll('button[data-tune-switch]')) toggle.setAttribute('aria-checked', String(state[toggle.dataset.tuneSwitch] === 'on'));
+			for (const row of panel.rows.filter(([kind]) => kind === 'slider')) {
+				const slider = section.querySelector(`[data-slide="${row[1]}"]`);
+				if (Number(slider.value) !== state[row[1]]) slider.value = String(state[row[1]]);
+				section.querySelector(`[data-shows="${row[1]}"]`).textContent = valueText(row, state[row[1]]);
+			}
+			continue;
+		}
+		const pressed = [...section.querySelectorAll('button[aria-pressed="true"]')].map((button) => button.textContent);
+		section.querySelector('.sec-now').textContent = pressed.join(', ');
+	}
+	const isOpen = isDockOpen();
+	document.documentElement.classList.toggle('is-dock-open', isOpen);
+	drawerButton.setAttribute('aria-expanded', String(isOpen));
+	drawerButton.setAttribute('aria-label', isOpen ? 'Hide controls' : 'Show controls');
+}
+// The menu button shows and hides the controls: on a desktop the panel (the pages then fit the whole window), on a
+// phone a drawer from the side chosen, which a tap on the dimmed pages also shuts. Each is remembered on its own.
+const drawerButton = document.getElementById('drawer-button');
+function isDockOpen() {
+	return DESKTOP.matches ? state.isPanelOpen : state.isDrawerOpen;
+}
+function openDock(isOpen) {
+	if (isDockOpen() === isOpen) return;
+	if (DESKTOP.matches) state.isPanelOpen = isOpen;
+	else state.isDrawerOpen = isOpen;
+	showControls();
+	save();
+	if (!DESKTOP.matches) return;
+	if (isFitted) fitPage(true);
+	else {
+		clamp();
+		place(true);
+	}
+}
+drawerButton.addEventListener('click', () => openDock(!isDockOpen()));
+document.getElementById('scrim').addEventListener('click', () => openDock(false));
+DESKTOP.addEventListener('change', () => {
+	showControls();
+	if (isFitted) fitPage();
+});
+
+// ---------- Gestures on the canvas, as in the app's Preview. One finger or the mouse drags the pages anywhere in the
+// window and lets them glide on; two fingers pinch them; a click or tap that does not move zooms in to twice the fit
+// where it lands, or back to the fit of every page from any zoom. The browser's own pinch zoom is off for this page
+// (touch-action, and Safari's gesture events), so the menus and the controls never scale. ----------
+const pointers = new Map();
+let pinch = null;
+let press = null;
+let samples = [];
+function middle() {
+	const [a, b] = [...pointers.values()];
+	return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, gap: Math.hypot(a.x - b.x, a.y - b.y) };
+}
+stage.addEventListener('pointerdown', (event) => {
+	if (event.button !== 0 || event.target.closest('a, button, input, select')) return;
+	stage.setPointerCapture(event.pointerId);
+	pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+	stopGlide();
+	canvas.classList.remove('is-easing');
+	stage.classList.add('is-moving');
+	samples = [{ x: event.clientX, y: event.clientY, t: event.timeStamp }];
+	if (pointers.size === 1) press = { x: event.clientX, y: event.clientY, isMoved: false, onPage: Boolean(event.target.closest('.sheet')), label: event.target.closest('.piece > .tag, .part-tag'), link: event.target.closest('.sheet [data-goto]') };
+	if (pointers.size === 2) {
+		const mid = middle();
+		pinch = { gap: mid.gap, scale: view.scale, x: mid.x, y: mid.y };
+		if (press) press.isMoved = true;
+	}
+});
+stage.addEventListener('pointermove', (event) => {
+	const before = pointers.get(event.pointerId);
+	if (!before) return;
+	const now = { x: event.clientX, y: event.clientY };
+	pointers.set(event.pointerId, now);
+	if (pointers.size === 2 && pinch) {
+		const mid = middle();
+		zoomAt((pinch.scale * mid.gap) / pinch.gap, mid.x, mid.y);
+		panBy(mid.x - pinch.x, mid.y - pinch.y);
+		pinch.x = mid.x;
+		pinch.y = mid.y;
+		return;
+	}
+	if (press && Math.hypot(now.x - press.x, now.y - press.y) > 4) press.isMoved = true;
+	if (press && !press.isMoved) return;
+	panBy(now.x - before.x, now.y - before.y);
+	samples.push({ ...now, t: event.timeStamp });
+	samples = samples.filter((sample) => event.timeStamp - sample.t < 90);
+});
+function lift(event) {
+	if (!pointers.delete(event.pointerId)) return;
+	if (pointers.size < 2) pinch = null;
+	if (pointers.size) return;
+	stage.classList.remove('is-moving');
+	const tap = press;
+	press = null;
+	if (event.type === 'pointerup' && tap && !tap.isMoved) {
+		if (tap.label) {
+			copyLabel(tap.label);
+			return;
+		}
+		if (tap.link) {
+			goTo(tap.link);
+			return;
+		}
+		if (tap.onPage || isZoomed()) {
+			if (isZoomed()) fitPage(true);
+			else zoomAt(fitScale() * 2, event.clientX, event.clientY, true);
+		}
+		return;
+	}
+	const first = samples[0];
+	const last = samples[samples.length - 1];
+	const dt = first && last ? last.t - first.t : 0;
+	if (dt > 10 && event.timeStamp - last.t < 60) glideOn((last.x - first.x) / dt, (last.y - first.y) / dt);
+}
+stage.addEventListener('pointerup', lift);
+stage.addEventListener('pointercancel', lift);
+// A long press must not open the picture menu, and a picture must not start a drag of its own.
+stage.addEventListener('contextmenu', (event) => event.preventDefault());
+stage.addEventListener('dragstart', (event) => event.preventDefault());
+// Scrolling (a mouse wheel, or two fingers on a trackpad) moves the pages; with Ctrl or Cmd held, or a trackpad
+// pinch, which browsers send the same way, it scales them around the pointer.
+window.addEventListener(
+	'wheel',
+	(event) => {
+		if (event.target.closest('.dock, .bar, .views')) return;
+		event.preventDefault();
+		stopGlide();
+		const unit = event.deltaMode === 1 ? 16 : 1;
+		if (event.ctrlKey || event.metaKey) zoomAt(view.scale * Math.exp(-event.deltaY * unit * 0.0025), event.clientX, event.clientY);
+		else if (event.shiftKey && !event.deltaX) panBy(-event.deltaY * unit, 0);
+		else panBy(-event.deltaX * unit, -event.deltaY * unit);
+	},
+	{ passive: false }
+);
+// Safari on a Mac sends a trackpad pinch as gesture events: they scale the pages. On a phone the fingers already
+// pinch them above, so there they are only stopped.
+let gesture = null;
+document.addEventListener('gesturestart', (event) => {
+	event.preventDefault();
+	gesture = pointers.size ? null : { scale: view.scale };
+});
+document.addEventListener('gesturechange', (event) => {
+	event.preventDefault();
+	if (gesture && !pointers.size) zoomAt(gesture.scale * event.scale, event.clientX, event.clientY);
+});
+document.addEventListener('gestureend', (event) => {
+	event.preventDefault();
+	gesture = null;
+});
+
+// The arrow keys step one view shown to the next.
+document.addEventListener('keydown', (event) => {
+	if (event.target.closest('input, textarea, select, [contenteditable]')) return;
+	if ((event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') || state.views.length !== 1) return;
+	const index = ORDER.indexOf(state.views[0]) + (event.key === 'ArrowRight' ? 1 : -1);
+	state.views = [ORDER[(index + ORDER.length) % ORDER.length]];
+	render();
+});
+// An address with views in it (#main+b2, #a3, #main+a2v) opens them: the views, the second menu's pick, and v for
+// Vertical.
+function fromHash() {
+	const match = /^#([a-z+]+?)([1-9])?(v)?$/.exec(location.hash);
+	if (!match) return;
+	const views = match[1].split('+').filter((letter) => ORDER.includes(letter));
+	if (!views.length) return;
+	state.views = ORDER.filter((letter) => views.includes(letter));
+	if (match[2] && CHOICES.some(([id]) => id === match[2])) state.choice = match[2];
+	state.layout = match[3] ? 'column' : 'row';
+}
+window.addEventListener('hashchange', () => {
+	fromHash();
+	render();
+});
+// A new window size keeps fitted pages fitted, and moved or zoomed ones on screen.
+window.addEventListener('resize', () => {
+	if (isFitted) fitPage();
+	else {
+		clamp();
+		place();
+	}
+});
+fromHash();
+document.documentElement.dataset.side = state.side;
+render();
+</script>
+</body>
+</html>
