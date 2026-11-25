@@ -1,12 +1,14 @@
 // Every request (#181, #182): Better Auth's own routes (/api/auth/*) are answered by Better Auth; every other request
 // finds its session into `event.locals` (renewing it once a day of use) and who its User is (`locals.actor`: their
 // organization, role and Super admin flag, or a Guest with none), then passes the sign-in guard. A staff User's use of
-// the app stamps their Team record as seen (#185), at most once a minute.
+// the app stamps their Team record as seen (#185), at most once a minute, with the device the request came from (#331).
 import { building } from '$app/env';
 import { json } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit/hooks';
 import { sequence } from '@sveltejs/kit/hooks';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
+import { DEVICE_COOKIE } from '#lib/presence/presence.constants.js';
+import { toDevice } from '#lib/presence/presence.utils.js';
 import { findActor, stampSeen } from '#lib/server/access.js';
 import { type AccessType, isClosed, toGuard } from '#lib/server/guard.js';
 import { getServer } from '#lib/server/server.js';
@@ -22,7 +24,11 @@ const handleSession: Handle = async ({ event, resolve }) => {
 		event.locals.user = found.user;
 		event.locals.session = found.session;
 		event.locals.actor = await findActor(claims, found.user, found.session.activeOrganizationId);
-		await stampSeen(claims, event.locals.actor).catch(() => undefined);
+		const device = toDevice(
+			event.request.headers.get('user-agent') ?? '',
+			event.cookies.get(DEVICE_COOKIE)
+		);
+		await stampSeen(claims, event.locals.actor, { device }).catch(() => undefined);
 	}
 	return svelteKitHandler({ event, resolve, auth, building });
 };

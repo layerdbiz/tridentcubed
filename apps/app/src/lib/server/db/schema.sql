@@ -200,6 +200,8 @@ CREATE TABLE "team" (
 	"user_id" uuid,
 	"last_seen" timestamp with time zone,
 	"online_since" timestamp with time zone,
+	"device" text,
+	"device_name" text,
 	CONSTRAINT "team_role_check" CHECK (role in ('admin', 'manager', 'team'))
 );
 

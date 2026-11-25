@@ -17,6 +17,7 @@ export * from "./definitions/pages.ts";
 export * from "./definitions/panels.ts";
 export * from "./start/places.ts";
 export * from "./presence/presence.constants.ts";
+export * from "./presence/presence.utils.ts";
 export * from "./report/report.utils.ts";
 export * from "./rows/rows.remote.ts";
 export * from "./rows/rows.schema.ts";

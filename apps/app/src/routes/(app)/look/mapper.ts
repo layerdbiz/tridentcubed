@@ -4,6 +4,7 @@
 //
 // `toRows` must give back exactly what `takeRows` took in (order included), so the sync loop's difference after a
 // load is empty. A new table adds its part to both, and a round trip to `mapper.test.ts`.
+import { toDeviceKind } from '#lib/presence/presence.utils.js';
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import {
 	type ClientType,
@@ -145,7 +146,9 @@ function toMember(row: SavedRowType): TeamMemberType {
 		created: toStamp(row.createdAt),
 		updated: toStamp(row.updatedAt),
 		seen: values.lastSeen ? String(values.lastSeen) : undefined,
-		since: values.onlineSince ? String(values.onlineSince) : undefined
+		since: values.onlineSince ? String(values.onlineSince) : undefined,
+		device: toDeviceKind(values.device),
+		deviceName: values.deviceName ? String(values.deviceName) : undefined
 	};
 }
 

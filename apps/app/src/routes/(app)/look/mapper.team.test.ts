@@ -140,7 +140,7 @@ describe('Team records', () => {
 
 		await stampSeen(test.claims, actor);
 		const first = memberOf((await open(other)).look, 'Tom')?.seen;
-		await stampSeen(test.claims, actor, Date.now() + 1000);
+		await stampSeen(test.claims, actor, { now: Date.now() + 1000 });
 		const second = memberOf((await open(other)).look, 'Tom')?.seen;
 
 		expect(first).toBeTruthy();
@@ -154,7 +154,7 @@ describe('Team records', () => {
 		const start = Date.parse('2026-11-18T09:00:00Z');
 		const minutes = (count: number) => start + count * 60_000;
 		const tomAt = async (now: number) => {
-			await stampSeen(test.claims, actor, now);
+			await stampSeen(test.claims, actor, { now });
 			const tom = memberOf((await open(other)).look, 'Tom');
 			return { seen: toTime(tom?.seen), since: toTime(tom?.since) };
 		};
@@ -164,6 +164,33 @@ describe('Team records', () => {
 		expect(await tomAt(minutes(6))).toEqual({ seen: minutes(6), since: minutes(0) });
 		expect(await tomAt(minutes(12))).toEqual({ seen: minutes(12), since: minutes(12) });
 		expect(memberOf((await open(other)).look, 'Duncan Cooke')?.since).toBeFalsy();
+	});
+
+	it('stamps the device someone used last, and keeps the one before when a request says none', async () => {
+		const { actor } = await test.signIn('tom@tridentcubed.com');
+		const other = (await test.signIn('mia@tridentcubed.com')).actor;
+		const start = Date.parse('2026-11-25T09:00:00Z');
+		const deviceAt = async (now: number, device?: { kind: 'phone' | 'computer'; name: string }) => {
+			await stampSeen(test.claims, actor, { now, device });
+			const tom = memberOf((await open(other)).look, 'Tom');
+			return { device: tom?.device, deviceName: tom?.deviceName };
+		};
+
+		expect(await deviceAt(start, { kind: 'phone', name: 'iPhone · Safari' })).toEqual({
+			device: 'phone',
+			deviceName: 'iPhone · Safari'
+		});
+		expect(await deviceAt(start + 120_000, { kind: 'computer', name: 'Windows · Chrome' })).toEqual(
+			{
+				device: 'computer',
+				deviceName: 'Windows · Chrome'
+			}
+		);
+		expect(await deviceAt(start + 240_000)).toEqual({
+			device: 'computer',
+			deviceName: 'Windows · Chrome'
+		});
+		expect(memberOf((await open(other)).look, 'Duncan Cooke')?.device).toBeFalsy();
 	});
 });
 
