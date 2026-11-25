@@ -7,6 +7,7 @@ import { toState } from '../../../test-state.svelte';
 import { draftPanel, type PanelType } from './look.data';
 import type { LookState } from './look.state.svelte';
 import PanelBody from './panel-body.svelte';
+import { inputIn } from './focus';
 import { contactsOf } from './records.data';
 import { sectionsOf } from './tally';
 
@@ -106,6 +107,30 @@ describe('the Project panel', () => {
 			'Team Assigned'
 		]);
 		expect(labelsOf(container)).toEqual(counted);
+	});
+
+	// #305: an entry of the list of what keeps a percent under 100% puts the focus on its input, found by its label
+	// and which of its section's inputs with that label it is.
+	it('lets the empty-inputs list find every input it may name, each a control of its own', async () => {
+		const { container, look, panel } = show((panel) => {
+			panel.fields.find((field) => field.label === 'Customer')!.value = CUSTOMER.name;
+		});
+		await openSection('Customer');
+		await openSection('Organization');
+		const root = container.querySelector('fieldset')!;
+
+		const entries = sectionsOf(panel, contactsOf(look, CUSTOMER.name))
+			.filter((section) => ['project', 'customer', 'team'].includes(section.id))
+			.flatMap((section) =>
+				section.inputs.map((input) => ({ section: section.id, label: input.label, nth: 0 }))
+			);
+		const found = entries.map((entry) => inputIn(root, entry));
+
+		expect(entries).toHaveLength(12);
+		expect(found.every(Boolean)).toBe(true);
+		expect(new Set(found).size).toBe(found.length);
+		expect(found[0]).toBe(fieldOf('Title'));
+		expect(found[3]).toBe(screen.getByRole('button', { name: 'Project Type' }));
 	});
 
 	it('puts each input’s ? after its label, with its Help text', () => {

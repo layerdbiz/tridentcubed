@@ -1,15 +1,27 @@
 // Finding, among the inputs a panel draws, the one an entry of the empty-inputs list names (#305), to put the focus on
 // it. tally.ts lists a section's inputs by label in the order the panel draws them, so an input is found by its
 // section (the part drawn with `data-section`, else the panel itself), its label and which of that section's inputs
-// with this label it is. An input's name is the label drawn for it, else the name read out for it (a picker's
-// button); an input with neither, or one read out in more words ("Quantity of item 2"), says it with `data-input`.
+// with this label it is. An input's name is the label it is named by (the library's inputs, whose label sits on their
+// border, #57), else the label drawn for it, else the name read out for it (a picker's button); an input with none of
+// these, or one read out in more words ("Quantity of item 2"), says it with `data-input`.
 import type { EmptyType } from './tally';
 
 const CONTROLS = 'input, textarea, select, button';
 
-function nameOf(control: HTMLElement, labels: Map<string, string>) {
+// The words of the elements an input names as its label (`aria-labelledby`), looked for in the part it is in.
+function labelledOf(control: HTMLElement, part: HTMLElement) {
+	const ids = control.getAttribute('aria-labelledby')?.split(/\s+/).filter(Boolean) ?? [];
+	const words = ids
+		.map((id) => part.querySelector(`[id="${id.replace(/["\\]/g, '\\$&')}"]`)?.textContent ?? '')
+		.join(' ')
+		.trim();
+	return words || undefined;
+}
+
+function nameOf(control: HTMLElement, part: HTMLElement, labels: Map<string, string>) {
 	return (
 		control.dataset.input ??
+		labelledOf(control, part) ??
 		(control.id ? labels.get(control.id) : undefined) ??
 		control.getAttribute('aria-label') ??
 		''
@@ -27,7 +39,7 @@ export function inputIn(root: HTMLElement, empty: EmptyType): HTMLElement | unde
 		// Only this part's own: never an input of a section drawn inside it.
 		const owner = control.closest('[data-section]');
 		const isOwn = part === root ? !owner || !root.contains(owner) : owner === part;
-		return isOwn && nameOf(control, labels) === empty.label;
+		return isOwn && nameOf(control, part, labels) === empty.label;
 	});
 	return named[empty.nth];
 }
