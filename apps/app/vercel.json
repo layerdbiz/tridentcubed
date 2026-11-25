@@ -1,4 +1,4 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-	"ignoreCommand": "[ \"${VERCEL_ENV:-production}\" != \"production\" ]"
+	"ignoreCommand": "[ \"${VERCEL_ENV:-production}\" != \"production\" ] && [ \"${VERCEL_GIT_COMMIT_REF#feature/}\" = \"$VERCEL_GIT_COMMIT_REF\" ]"
 }

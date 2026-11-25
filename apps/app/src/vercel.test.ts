@@ -47,6 +47,18 @@ describe.skipIf(!hasShell)('which pushes Vercel builds', () => {
 		);
 	});
 
+	it('builds a preview of a feature branch, so a run that stays off dev still has a link to open', () => {
+		expect(
+			isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'feature/280-november-feedback' })
+		).toBe(true);
+	});
+
+	it('skips a branch whose name only contains feature', () => {
+		expect(isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'fix/1-feature/x' })).toBe(
+			false
+		);
+	});
+
 	it('builds when Vercel does not say which kind of build it is, so a live site never stops updating', () => {
 		expect(isBuilt({ VERCEL_GIT_COMMIT_REF: 'dev' })).toBe(true);
 	});
