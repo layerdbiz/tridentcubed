@@ -742,7 +742,7 @@
 								autocomplete="off"
 								bind:value={person.phone}
 								maxlength="40"
-								placeholder="Optional, e.g. +1 713 555 0100"
+								placeholder="Optional"
 							/>
 						</div>
 						<div
@@ -760,7 +760,7 @@
 								spellcheck="false"
 								bind:value={person.email}
 								maxlength="200"
-								placeholder="Optional, e.g. name@company.com"
+								placeholder="Optional"
 							/>
 						</div>
 					</div>
