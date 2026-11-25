@@ -115,10 +115,24 @@ describe('the inputs each section of the Project panel holds', () => {
 	it('counts a company of personnel: its name, then a name and a title for each person', () => {
 		const panel = panelOf('project');
 		panel.personnel = [
-			{ id: 'crew', company: 'Mammoet', people: [{ id: 'p1', name: 'Ilse', title: '' }] }
+			{
+				id: 'crew',
+				company: 'Mammoet',
+				people: [{ id: 'p1', name: 'Ilse', title: '', phone: '', email: '' }]
+			}
 		];
 		expect(labelsOf(panel, 'crew')).toEqual(['Company', 'Name', 'Title']);
 		expect(toTally(valuesOf(sectionsOf(panel), 'crew'))).toBe('2 of 3 complete');
+	});
+
+	it("leaves a person's phone and email out of the count: a job is complete without them (#326)", () => {
+		const panel = panelOf('project');
+		const person = { id: 'p1', name: 'Ilse', title: 'Rigger', phone: '', email: '' };
+		panel.personnel = [{ id: 'crew', company: 'Mammoet', people: [person] }];
+		expect(toTally(valuesOf(sectionsOf(panel), 'crew'))).toBe('3 of 3 complete');
+		person.phone = '+31 10 555 0100';
+		person.email = 'ilse@mammoet.example';
+		expect(labelsOf(panel, 'crew')).toEqual(['Company', 'Name', 'Title']);
 	});
 });
 

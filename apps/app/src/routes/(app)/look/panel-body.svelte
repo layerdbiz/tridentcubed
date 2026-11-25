@@ -695,24 +695,78 @@
 				onpick={save}
 			/>
 			{#each company.people as person, personIndex (person.id)}
-				<div class="flex items-start gap-2">
+				{@const id = `${uid}-${person.id}`}
+				<!-- A person: a name and a title, which count toward the percent, and a phone and an email to reach them
+				     (#326), which are optional, so they show no "not filled in" dot and count for nothing. Each input
+				     carries its label and its ? like every other input (#299). A line keeps one person from the next. -->
+				<div
+					class="flex items-start gap-2 {personIndex
+						? 'border-t border-slate-900/[0.06] pt-3'
+						: ''}"
+				>
 					<div class="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
-						<input
-							class={inputClass}
-							bind:value={person.name}
-							placeholder="Name"
-							aria-label="Name of person {personIndex + 1}"
-						/>
-						<input
-							class={inputClass}
-							bind:value={person.title}
-							placeholder="Title"
-							aria-label="Title of person {personIndex + 1}"
-						/>
+						<div
+							class="has-help block"
+							data-empty={person.name ? undefined : ''}
+						>
+							{@render labelOf('Name', `${id}-name`, 'personnel.name', !person.name)}
+							<input
+								id="{id}-name"
+								class={inputClass}
+								bind:value={person.name}
+								placeholder="First and last name"
+							/>
+						</div>
+						<div
+							class="has-help block"
+							data-empty={person.title ? undefined : ''}
+						>
+							{@render labelOf('Title', `${id}-title`, 'personnel.title', !person.title)}
+							<input
+								id="{id}-title"
+								class={inputClass}
+								bind:value={person.title}
+								placeholder="e.g. Foreman"
+							/>
+						</div>
+						<div
+							class="has-help block"
+							data-empty={person.phone ? undefined : ''}
+						>
+							{@render labelOf('Phone', `${id}-phone`, 'personnel.phone')}
+							<input
+								id="{id}-phone"
+								class={inputClass}
+								type="tel"
+								inputmode="tel"
+								autocomplete="off"
+								bind:value={person.phone}
+								maxlength="40"
+								placeholder="Optional, e.g. +1 713 555 0100"
+							/>
+						</div>
+						<div
+							class="has-help block"
+							data-empty={person.email ? undefined : ''}
+						>
+							{@render labelOf('Email', `${id}-email`, 'personnel.email')}
+							<input
+								id="{id}-email"
+								class={inputClass}
+								type="email"
+								inputmode="email"
+								autocomplete="off"
+								autocapitalize="off"
+								spellcheck="false"
+								bind:value={person.email}
+								maxlength="200"
+								placeholder="Optional, e.g. name@company.com"
+							/>
+						</div>
 					</div>
 					<button
 						type="button"
-						class="mt-2 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
+						class="mt-6 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
 						aria-label="Delete person {personIndex + 1}"
 						onclick={() =>
 							remove(company.people, person, 'Delete person?', 'They leave the report.')}

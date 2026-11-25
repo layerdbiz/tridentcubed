@@ -77,11 +77,11 @@ export type ItemType = { id: string; quantity: string; description: string };
 // Someone on the job who is not on the team (run 19, Justin 2026-11-10): typed into the Project panel's Team
 // section and printed under the team on the report.
 // Run 21: they are added by company, a company and then the people from it, each a name and a title. No photo:
-// nobody has one to hand on a job.
+// nobody has one to hand on a job. #326: and a phone and an email to reach them, printed like a team member's.
 export type PersonnelType = {
 	id: string;
 	company: string;
-	people: { id: string; name: string; title: string }[];
+	people: { id: string; name: string; title: string; phone: string; email: string }[];
 };
 // Something attached to the Items panel in place of typed rows, or beside them: a photo of the item list, or the
 // list itself as a file of any kind (#233). A photo prints on the report, whole; a file prints its name.
@@ -892,8 +892,8 @@ export function draftOf(page: Exclude<DatasetType, 'projects'>) {
 	return { name: '', kind: 'Port', city: '' } satisfies FacilityType as FacilityType;
 }
 
-export function newPerson() {
-	return { id: crypto.randomUUID(), name: '', title: '' };
+export function newPerson(): PersonnelType['people'][number] {
+	return { id: crypto.randomUUID(), name: '', title: '', phone: '', email: '' };
 }
 
 // A company's people on the job, starting with one empty line to type into.

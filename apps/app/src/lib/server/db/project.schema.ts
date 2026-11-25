@@ -107,7 +107,7 @@ export const personnelCompany = pgTable(
 	]
 ).enableRLS();
 
-/** A company's people on the job, in order: a name and a title each. */
+/** A company's people on the job, in order: a name, a title, and a phone and an email to reach them (#326). */
 export const personnelPerson = pgTable(
 	'personnel_person',
 	{
@@ -118,7 +118,9 @@ export const personnelPerson = pgTable(
 			.references(() => personnelCompany.id, { onDelete: 'cascade' }),
 		position: integer('position').default(0).notNull(),
 		name: words('name'),
-		title: words('title')
+		title: words('title'),
+		phone: words('phone'),
+		email: words('email')
 	},
 	(table) => [
 		index('personnel_person_project_idx').on(table.projectId),

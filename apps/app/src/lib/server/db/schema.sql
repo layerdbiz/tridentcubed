@@ -372,7 +372,9 @@ CREATE TABLE "personnel_person" (
 	"company_id" uuid NOT NULL,
 	"position" integer DEFAULT 0 NOT NULL,
 	"name" text DEFAULT '' NOT NULL,
-	"title" text DEFAULT '' NOT NULL
+	"title" text DEFAULT '' NOT NULL,
+	"phone" text DEFAULT '' NOT NULL,
+	"email" text DEFAULT '' NOT NULL
 );
 
 --> statement-breakpoint
