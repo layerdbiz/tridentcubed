@@ -1,9 +1,16 @@
 // A report's link (#216): the short address the QR code on a report page holds, `<app>/report/<project>/<page>`,
 // and where in the app it opens. Short, so the code stays easy to scan at the size it prints; an address of its
 // own, so codes already printed keep working when the app's own address for a screen changes. The route
-// (routes/report) sends it on to the project's Preview, which stays behind sign-in like every app address.
+// (routes/report) sends it on to the project's Preview, which stays behind sign-in like every app address. And how
+// many share a report page, as a row keeps it (`toPageLayout`).
+import { DEFAULT_LAYOUT, LAYOUTS, type PageLayoutType } from './report.constants';
 
 const REPORT_PATH = '/report';
+
+/** How many share a report page, as a row keeps it: one of `LAYOUTS`, else the default. */
+export function toPageLayout(value: unknown): PageLayoutType {
+	return LAYOUTS.find((layout) => layout === Number(value)) ?? DEFAULT_LAYOUT;
+}
 
 /** A page number as an address gives it: a whole number from 1; anything else is no page (0). */
 export function toPageNumber(value: string | null | undefined) {

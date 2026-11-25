@@ -1,6 +1,6 @@
 // A report's link (#216): what a report page's QR code holds, and where in the app it opens.
 import { describe, expect, it } from 'vite-plus/test';
-import { toPageNumber, toReportAddress, toReportLink } from './report.utils';
+import { toPageLayout, toPageNumber, toReportAddress, toReportLink } from './report.utils';
 
 const APP = 'https://dev.app.tridentcubed.com';
 const PROJECT = '0b9f3c1e-6a52-4d1b-9c47-2f8e5a7d3b10';
@@ -37,5 +37,13 @@ describe('a report link', () => {
 		expect(toPageNumber('0')).toBe(0);
 		expect(toPageNumber('5x')).toBe(0);
 		expect(toPageNumber(null)).toBe(0);
+	});
+});
+
+describe('how many share a report page (a photo group’s or an Items PDF’s layout)', () => {
+	it('is 1, 2, 4, 6 or 8 as saved, and 4 when a row has none or one the app does not offer', () => {
+		expect([1, 2, 4, 6, 8].map(toPageLayout)).toEqual([1, 2, 4, 6, 8]);
+		expect(toPageLayout('6')).toBe(6);
+		for (const value of [undefined, null, '', 3, 0, 'four']) expect(toPageLayout(value)).toBe(4);
 	});
 });

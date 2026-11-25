@@ -62,6 +62,7 @@
 		toPictureType
 	} from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
+	import { DEFAULT_LAYOUT, LAYOUTS, type PageLayoutType } from '#lib/report/report.constants.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
 	import ImageField from './image-field.svelte';
@@ -75,7 +76,6 @@
 		groupWordOf,
 		isPdfAttachment,
 		itemOf,
-		LAYOUTS,
 		newPerson,
 		newPersonnel,
 		nextJobOf,
@@ -380,7 +380,7 @@
 				// group's photos do.
 				panel.attachments = [
 					...(panel.attachments ?? []),
-					{ id, name: file.name, src, kind, layout: 4 }
+					{ id, name: file.name, src, kind, layout: DEFAULT_LAYOUT }
 				];
 				save();
 			}
@@ -757,8 +757,8 @@
 	label: string,
 	id: string,
 	key: string,
-	value: number,
-	onpick: (layout: number) => void
+	value: PageLayoutType,
+	onpick: (layout: PageLayoutType) => void
 )}
 	<div
 		class="has-help"

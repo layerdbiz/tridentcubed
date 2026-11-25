@@ -15,6 +15,7 @@ import {
 	text,
 	uuid
 } from 'drizzle-orm/pg-core';
+import { DEFAULT_LAYOUT } from '../../report/report.constants';
 import { organizationPolicy } from './policy';
 import { panel, project } from './project.schema';
 import { rowColumns } from './rows';
@@ -42,7 +43,7 @@ export const photoGroup = pgTable(
 		title: words('title'),
 		description: words('description'),
 		/** Photos per report page: 1, 2, 4, 6 or 8. */
-		layout: integer('layout').default(4).notNull(),
+		layout: integer('layout').default(DEFAULT_LAYOUT).notNull(),
 		/** Switched off, it keeps what it holds and leaves the report (#215). */
 		isEnabled: boolean('is_enabled').default(true).notNull()
 	},
