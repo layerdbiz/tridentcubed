@@ -220,6 +220,27 @@ describe('the inputs the other panels hold', () => {
 		expect(tallyOf(items.inputs.map((input) => input.value))).toEqual({ done: 1, total: 1 });
 	});
 
+	it('counts an attached PDF as the item list, so a panel with only a PDF is complete (#290)', () => {
+		const panel = panelOf('items');
+		panel.items = [];
+		panel.attachments = [
+			{ id: 'a', name: 'Packing List.pdf', src: 'files/a.pdf', kind: 'file', layout: 4 }
+		];
+		const [items] = sectionsOf(panel);
+		expect(items.inputs.map((input) => input.label)).toEqual(['Item List']);
+		expect(tallyOf(items.inputs.map((input) => input.value))).toEqual({ done: 1, total: 1 });
+		expect(emptyOf(sectionsOf(panel))).toEqual([]);
+	});
+
+	it('still asks for an item when the only attachment is a photo', () => {
+		const panel = panelOf('items');
+		panel.items = [];
+		panel.attachments = [
+			{ id: 'a', name: 'list.jpg', src: 'files/a.webp', kind: 'photo', layout: 4 }
+		];
+		expect(emptyOf(sectionsOf(panel))).toEqual([{ section: 'items', label: 'Item', nth: 0 }]);
+	});
+
 	it('counts a day of the time log: its date, then a time and an activity for each entry', () => {
 		const panel = panelOf('timelog');
 		panel.days = [
