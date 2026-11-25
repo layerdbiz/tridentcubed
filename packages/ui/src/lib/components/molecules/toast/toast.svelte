@@ -76,7 +76,7 @@
 									type="button"
 									class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-white/90 hover:bg-white/10 hover:text-white"
 									onclick={item.onclick}
-									><span class="icon-[mdi--circle-outline] size-3.5 shrink-0 text-amber-400"
+									><span class="icon-[mdi--circle-outline] size-3.5 shrink-0 text-warning-400"
 									></span><span class="min-w-0 flex-1 truncate">{item.label}</span><span
 										class="icon-[mdi--chevron-right] size-4 shrink-0 text-white/40"
 									></span></button
