@@ -6,8 +6,19 @@ import type { Attachment } from 'svelte/attachments';
 
 export type RectType = { x: number; y: number; width: number; height: number };
 
-export const ZOOM_MIN = 0.15;
+// Low enough for four pages to a row to fit across a phone (#322).
+export const ZOOM_MIN = 0.1;
 export const ZOOM_MAX = 3;
+
+// The space kept around the pages spread out in rows (#322). On a phone a slim edge, the same above as at the sides.
+// On a desktop, room at the right for the zoom bar (20 px in, 48 px wide) and the same at the left so they sit
+// centred, room at the bottom for the bar there, and a little at the top. Next to the panels they start just past them.
+const EDGE = 16;
+const EDGE_WIDE = 88;
+const EDGE_TOP = 32;
+const EDGE_PANELS = 24;
+// Where the zoom bar moves from the phone's bottom corner to the desktop's right edge (Tailwind's `md`).
+const WIDE = 768;
 
 function clampZoom(zoom: number) {
 	return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
@@ -95,39 +106,98 @@ export class Viewport {
 		this.zoomTo(this.zoom * factor);
 	}
 
-	// Bring one page to the top of the view, zooming out first if it would not fit across.
+	// Bring one page to the top of the view, zooming out first if it would not fit across. A page already wholly on
+	// screen stays where it is, and one wholly in view across only moves up, so pages spread out in rows keep their
+	// place (#322).
 	focus(rect: RectType, isAnimated = true) {
-		this.#animate(isAnimated);
 		const room = this.width - this.left - this.right;
 		const fits = (room - 48) / rect.width;
+		const x = this.x + rect.x * this.zoom;
+		const y = this.y + rect.y * this.zoom;
+		const isAcross =
+			this.zoom <= fits && x >= this.left && x + rect.width * this.zoom <= this.width - this.right;
+		const isDown = y >= this.top && y + rect.height * this.zoom <= this.height;
+		if (isAcross && isDown) return;
+		this.#animate(isAnimated);
 		if (this.zoom > fits) {
 			this.zoom = clampZoom(fits);
 			this.#sharpen();
 		}
-		const gap = this.isLeft ? 24 : (room - rect.width * this.zoom) / 2;
-		this.x = this.left + gap - rect.x * this.zoom;
+		this.#place(rect, !isAcross);
+	}
+
+	fitWidth(rect: RectType, isAnimated = true) {
+		this.#animate(isAnimated);
+		this.zoom = clampZoom(Math.min(1, (this.width - this.left - this.right - 48) / rect.width));
+		this.#sharpen();
+		this.#place(rect);
+	}
+
+	// Put one page at the top of the view, and across next to the panels or centred.
+	#place(rect: RectType, isAcross = true) {
+		if (isAcross) {
+			const room = this.width - this.left - this.right;
+			const gap = this.isLeft ? 24 : (room - rect.width * this.zoom) / 2;
+			this.x = this.left + gap - rect.x * this.zoom;
+		}
 		this.y = this.top + 24 - rect.y * this.zoom;
 		this.#clamp();
 	}
 
-	fitWidth(rect: RectType, isAnimated = true) {
-		this.zoom = clampZoom(Math.min(1, (this.width - this.left - this.right - 48) / rect.width));
-		this.#sharpen();
-		this.focus(rect, isAnimated);
+	// A desktop: the zoom bar stands at the right edge and the pages spread out fill the screen both ways.
+	get isWide() {
+		return this.width >= WIDE;
 	}
 
-	// Show every page from the top, where reading starts (Justin's run 9 note 20), centred across (run 11).
+	// The room the pages spread out in rows fill (#322).
+	get room(): RectType {
+		const side = this.isWide ? EDGE_WIDE : EDGE;
+		const before = this.isLeft ? EDGE_PANELS : side;
+		const above = this.isWide ? EDGE_TOP : EDGE;
+		const below = this.isWide ? EDGE_WIDE : EDGE;
+		return {
+			x: this.left + before,
+			y: this.top + above,
+			width: this.width - this.left - this.right - before - side,
+			height: this.height - this.top - above - below
+		};
+	}
+
+	// How many pages to a row show every page in the room as big as they can be (#322; a desktop's choice). When two
+	// draw them the same size, the one with more to a row, which reaches further across the room.
+	columnsFor(count: number, page: { width: number; height: number }, gap: number) {
+		const room = this.room;
+		let best = 1;
+		let bestZoom = 0;
+		for (let across = 1; across <= count; across++) {
+			const rows = Math.ceil(count / across);
+			const zoom = Math.min(
+				room.width / (across * (page.width + gap) - gap),
+				room.height / (rows * (page.height + gap) - gap)
+			);
+			if (zoom >= bestZoom) {
+				best = across;
+				bestZoom = zoom;
+			}
+		}
+		return best;
+	}
+
+	// The pages spread out in rows fill the room (#322; Justin, 2026-11-25: "I want to see the whole screen filled up
+	// with pages"): on a desktop every page at once, centred both ways (run 11), or from the left beside the panels;
+	// on a phone four to a row across the width, from the top, where reading starts (run 9 note 20). Never past the
+	// pages' own size.
 	fitAll(isAnimated = true) {
 		this.#animate(isAnimated);
-		const room = this.width - this.left - this.right;
-		const tall = this.height - this.top;
-		this.zoom = clampZoom(
-			Math.min((room - 64) / this.content.width, (tall - 64) / this.content.height)
-		);
+		const room = this.room;
+		const across = room.width / this.content.width;
+		const fit = this.isWide ? Math.min(across, room.height / this.content.height) : across;
+		this.zoom = clampZoom(Math.min(1, fit));
 		this.#sharpen();
-		this.x =
-			this.left + (this.isLeft ? 24 : Math.max(32, (room - this.content.width * this.zoom) / 2));
-		this.y = this.top + 32;
+		const spareAcross = Math.max(0, room.width - this.content.width * this.zoom);
+		const spareDown = Math.max(0, room.height - this.content.height * this.zoom);
+		this.x = room.x + (this.isLeft ? 0 : spareAcross / 2);
+		this.y = room.y + (this.isWide ? spareDown / 2 : 0);
 	}
 
 	glide(vx: number, vy: number) {

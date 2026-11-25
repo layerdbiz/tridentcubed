@@ -796,25 +796,39 @@
 		8: 'h-[128px]'
 	};
 
-	// Where each page sits on the canvas: one column, or spread out in rows like a design board.
+	// Where each page sits on the canvas: one column, or spread out in rows like a design board. Spread out on a
+	// desktop, as many to a row as show every page on the screen at its biggest; on a phone four, across the width
+	// (#322).
 	const COLUMNS = 4;
 	const GAP = 48;
-	const rects = $derived(
-		pages.map((_, index): RectType =>
-			layout === 'column'
-				? { x: 0, y: index * (H + GAP), width: W, height: H }
-				: {
-						x: (index % COLUMNS) * (W + GAP),
-						y: Math.floor(index / COLUMNS) * (H + GAP),
-						width: W,
-						height: H
-					}
-		)
+	const columns = $derived(
+		layout === 'column'
+			? 1
+			: viewport.isWide
+				? viewport.columnsFor(pages.length, { width: W, height: H }, GAP)
+				: Math.max(1, Math.min(COLUMNS, pages.length))
 	);
+	const rects = $derived(
+		pages.map((_, index): RectType => ({
+			x: (index % columns) * (W + GAP),
+			y: Math.floor(index / columns) * (H + GAP),
+			width: W,
+			height: H
+		}))
+	);
+	// When the rows change shape on a desktop (the window is resized, a panel adds or takes pages), the pages are
+	// laid out to fill the screen again. A change of layout is left to its own eased refit.
+	let shape = '';
 	$effect(() => {
-		const columns = layout === 'column' ? 1 : Math.min(COLUMNS, pages.length);
 		const rows = Math.ceil(pages.length / columns);
 		viewport.content = { width: columns * (W + GAP) - GAP, height: rows * (H + GAP) - GAP };
+		const next = `${layout}:${columns}x${rows}`;
+		untrack(() => {
+			const isRefit =
+				shape.startsWith(`${layout}:`) && next !== shape && layout === 'spread' && viewport.isWide;
+			shape = next;
+			if (isRefit) viewport.fitAll(false);
+		});
 	});
 
 	const KEY_OF: Record<string, string> = {
