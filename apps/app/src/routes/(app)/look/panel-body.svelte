@@ -112,6 +112,10 @@
 	import { MARKED_LABELS, sectionsOf, valuesOf } from './tally';
 	import { focusInput, inputIn } from './focus';
 
+	// Words people type in sentences keep the phone's own help: a capital to start, autocorrect and spelling. The
+	// library's inputs switch all three off, which suits codes and addresses but not names, titles and descriptions.
+	const TYPING = { autocapitalize: 'sentences', autocorrect: 'on', spellcheck: true } as const;
+
 	let {
 		look,
 		panel,
@@ -581,6 +585,7 @@
 	{#if field}
 		<Input
 			{label}
+			{...TYPING}
 			bind:value={field.value}
 			disabled={field.isReadonly}
 			help={look.helpOf(key)}
@@ -675,11 +680,13 @@
 					<div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
 						<Input
 							label="Name"
+							{...TYPING}
 							bind:value={person.name}
 							help={look.helpOf('personnel.name')}
 						/>
 						<Input
 							label="Title"
+							{...TYPING}
 							bind:value={person.title}
 							help={look.helpOf('personnel.title')}
 						/>
@@ -829,6 +836,8 @@
 			     does too). -->
 			<Textarea
 				label={INTRODUCTION_LABEL}
+				autocapitalize={TYPING.autocapitalize}
+				spellcheck={TYPING.spellcheck}
 				bind:value={() => panel.introduction ?? '', setIntroduction}
 				{generated}
 				onreset={save}

@@ -175,6 +175,18 @@ describe('the Project panel', () => {
 		expect(look.saved).toHaveBeenCalled();
 	});
 
+	it('keeps the phone’s capitals, autocorrect and spelling on the words people type', () => {
+		show();
+
+		const title = fieldOf('Title');
+		expect(title.getAttribute('autocapitalize')).toBe('sentences');
+		expect(title.getAttribute('autocorrect')).toBe('on');
+		expect(title.getAttribute('spellcheck')).toBe('true');
+		const description = screen.getByRole('textbox', { name: /Description/ }) as HTMLTextAreaElement;
+		expect(description.getAttribute('autocapitalize')).toBe('sentences');
+		expect(description.getAttribute('spellcheck')).toBe('true');
+	});
+
 	it('saves the title as it is typed', async () => {
 		const { panel, look } = show();
 
