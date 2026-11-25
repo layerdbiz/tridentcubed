@@ -9,6 +9,7 @@
 	// go off with them, so its sections could not be opened to read (Justin, 2026-11-16).
 	// #215 (Justin, 2026-11-18): a section that can be left out of the report has a switch in its header, as a panel
 	// that can be left out does (`onenable`). Switched off it keeps what it holds, greys, and says it is left out.
+	// #305: `section` is its id in tally.ts, so an entry of the empty-inputs list finds its inputs (focus.ts).
 	import type { Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { toTally } from './tally';
@@ -28,6 +29,7 @@
 		deleteLabel = 'Delete',
 		sortKey = '',
 		index = 0,
+		section = '',
 		actions,
 		image,
 		children
@@ -51,6 +53,8 @@
 		deleteLabel?: string;
 		sortKey?: string;
 		index?: number;
+		// The section's id in tally.ts (`sectionsOf`).
+		section?: string;
 		actions?: Snippet;
 		// A picture in place of the icon: a transport's own photo.
 		image?: string;
@@ -62,6 +66,7 @@
 	class="rounded-2xl bg-slate-900/[0.03] transition"
 	data-sort={sortKey || undefined}
 	data-index={index}
+	data-section={section || undefined}
 >
 	<div
 		role="button"

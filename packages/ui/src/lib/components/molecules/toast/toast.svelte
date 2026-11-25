@@ -8,11 +8,17 @@
 	// Try Again and Close. It began as the PDF download's toast in the app (#240) and keeps its look. Each job gets its
 	// own toast, and the page stacks them in a column; each slides in from below, like the toggle's toast look, and
 	// slides out too when the page takes it off its stack (a global transition).
+	// Given `items` (#305) it lists them under its message, each a tap that does what it says (the app's list of the
+	// empty inputs that keep a percent under 100%, each opening its input). Such a toast stays until it is closed or
+	// its list is empty: it never goes by itself.
 	//
 	// It keeps the app's slate shades so the PDF download looks as it did; trading them for theme colours belongs to
 	// "UI library cleanup" (#33).
 	import { fly } from 'svelte/transition';
 	import { Component, type ComponentProps, type ComponentReturn, type Progress } from '@layerd/ui';
+
+	/** One entry of a toast's list: what it says, and what a tap on it does. */
+	export type ToastItemType = { label: string; onclick: () => void };
 
 	export interface ToastProps extends Omit<ComponentProps, 'label'> {
 		/** The work under way: the toast shows while it is open. */
@@ -21,16 +27,23 @@
 		text?: string;
 		/** What the work is called, read out for the bar: "Download PDF". */
 		label?: string;
+		/** A list under the message, each entry a tap; the toast shows while the list has something in it. */
+		items?: ToastItemType[];
+		/** Puts a Close at the top right of a toast with a list. */
+		onclose?: () => void;
 	}
 
-	let { progress, text = '', label = '', ...props }: ToastProps = $props();
+	let { progress, text = '', label = '', items, onclose, ...props }: ToastProps = $props();
 
-	const isShown = $derived(progress ? progress.isOpen : Boolean(text));
+	const isShown = $derived(progress ? progress.isOpen : items ? items.length > 0 : Boolean(text));
 	// Taps go through a toast to what is under it, except on a failure's Try Again and Close.
+	// A list is tapped, so a toast with one takes taps everywhere.
 	const shape = $derived(
-		!progress
-			? 'rounded-full px-4 py-2.5'
-			: `w-full max-w-sm rounded-2xl px-4 py-3 ${progress.problem ? 'pointer-events-auto' : ''}`
+		items
+			? 'pointer-events-auto w-full max-w-sm rounded-2xl py-3 pr-2 pl-4'
+			: !progress
+				? 'rounded-full px-4 py-2.5'
+				: `w-full max-w-sm rounded-2xl px-4 py-3 ${progress.problem ? 'pointer-events-auto' : ''}`
 	);
 </script>
 
@@ -44,7 +57,34 @@
 				aria-live="polite"
 				transition:fly|global={{ y: 16, duration: 200 }}
 			>
-				{#if !progress}
+				{#if items}
+					<div class="flex items-start gap-2">
+						<p class="min-w-0 flex-1 pt-1 font-medium">{text}</p>
+						{#if onclose}
+							<button
+								type="button"
+								class="flex size-8 shrink-0 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
+								aria-label="Close"
+								onclick={onclose}><span class="icon-[mdi--close] size-5"></span></button
+							>
+						{/if}
+					</div>
+					<ul class="mt-1.5 -ml-2 max-h-44 overflow-y-auto overscroll-contain pr-2">
+						{#each items as item, index (index)}
+							<li>
+								<button
+									type="button"
+									class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-white/90 hover:bg-white/10 hover:text-white"
+									onclick={item.onclick}
+									><span class="icon-[mdi--circle-outline] size-3.5 shrink-0 text-amber-400"
+									></span><span class="min-w-0 flex-1 truncate">{item.label}</span><span
+										class="icon-[mdi--chevron-right] size-4 shrink-0 text-white/40"
+									></span></button
+								>
+							</li>
+						{/each}
+					</ul>
+				{:else if !progress}
 					{text}
 				{:else if progress.problem}
 					<div class="flex items-start gap-2.5">

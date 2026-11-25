@@ -81,4 +81,43 @@ describe('Toast', () => {
 		render(Toast, { props: { text: '' } });
 		expect(screen.queryByRole('status')).toBeNull();
 	});
+
+	// #305: what keeps a percent under 100%, each entry opening its input.
+	it('lists things under its message, each one a tap that does what it says', async () => {
+		const open = vi.fn();
+		render(Toast, {
+			props: {
+				text: '2 empty inputs in the Project panel',
+				items: [
+					{ label: 'Team Lead, Project panel', onclick: () => open('lead') },
+					{ label: 'Team Assigned, Project panel', onclick: () => open('assigned') }
+				]
+			}
+		});
+
+		expect(screen.getByRole('status').textContent).toContain('2 empty inputs in the Project panel');
+		await fireEvent.click(screen.getByRole('button', { name: 'Team Assigned, Project panel' }));
+		expect(open).toHaveBeenCalledWith('assigned');
+	});
+
+	it('stays with its list until it is closed: it does not go by itself', async () => {
+		const close = vi.fn();
+		render(Toast, {
+			props: {
+				text: '1 empty input in the Items panel',
+				items: [{ label: 'Quantity, Items panel', onclick: () => undefined }],
+				onclose: close
+			}
+		});
+
+		vi.advanceTimersByTime(60_000);
+		expect(screen.getByRole('status')).not.toBeNull();
+		await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+		expect(close).toHaveBeenCalledOnce();
+	});
+
+	it('shows nothing once its list is empty', () => {
+		render(Toast, { props: { text: 'Nothing left', items: [], onclose: () => undefined } });
+		expect(screen.queryByRole('status')).toBeNull();
+	});
 });

@@ -63,6 +63,15 @@
 		open = open.includes(id) ? open.filter((item) => item !== id) : [...open, id];
 	}
 
+	// An entry of the empty-inputs list opens its leg (#305); the panel body then puts the focus on the input.
+	$effect(() => {
+		const wanted = look.reaching;
+		if (!wanted || wanted.panelId !== panel.id) return;
+		untrack(() => {
+			if (!open.includes(wanted.section)) open = [...open, wanted.section];
+		});
+	});
+
 	function headOf(leg: LegType) {
 		return leg.stops[0];
 	}
@@ -193,6 +202,7 @@
 		{@const legId = leg.id}
 		<Group
 			title={first.name || `Transport Mode ${index + 1}`}
+			section={leg.id}
 			values={valuesOf(sections, leg.id)}
 			icon={MODE_ICONS[first.mode] ?? 'icon-[mdi--transit-connection-variant]'}
 			image={photoOf(leg)}
@@ -292,5 +302,6 @@
 <button
 	type="button"
 	class="{BUTTON} bg-slate-900 text-white hover:bg-slate-700"
+	data-input="Transport Mode"
 	onclick={add}><span class="icon-[mdi--plus] size-4"></span>Add Transport Mode</button
 >
