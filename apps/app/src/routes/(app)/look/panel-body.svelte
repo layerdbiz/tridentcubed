@@ -109,7 +109,7 @@
 	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
 	import { sortable } from './sortable';
 	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
-	import { sectionsOf, valuesOf } from './tally';
+	import { MARKED_LABELS, sectionsOf, valuesOf } from './tally';
 	import { focusInput, inputIn } from './focus';
 
 	let {
@@ -1171,14 +1171,14 @@
 						bind:value={item.quantity}
 						placeholder="Qty"
 						aria-label="Quantity of item {itemIndex + 1}"
-						data-input="Quantity"
+						data-input={MARKED_LABELS.quantity}
 					/>
 					<input
 						class={inputClass}
 						bind:value={item.description}
 						placeholder="What it is, e.g. Accessory crates"
 						aria-label="Description of item {itemIndex + 1}"
-						data-input="Description"
+						data-input={MARKED_LABELS.description}
 					/>
 					<button
 						type="button"
@@ -1200,7 +1200,7 @@
 				<button
 					type="button"
 					class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-					data-input="Item"
+					data-input={MARKED_LABELS.item}
 					onclick={() => {
 						panel.items.push(itemOf());
 						save();
@@ -1277,7 +1277,7 @@
 											sortEntries(dayIndex);
 										}}
 										aria-label="Time, on the 24-hour clock"
-										data-input="Time"
+										data-input={MARKED_LABELS.time}
 									/>
 									<input
 										class={inputClass}
@@ -1322,7 +1322,7 @@
 			<button
 				type="button"
 				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-				data-input="Day"
+				data-input={MARKED_LABELS.day}
 				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
 			>
 			<button
@@ -1644,7 +1644,7 @@
 									type="file"
 									accept={ATTACHMENT_ACCEPT}
 									multiple
-									data-input="Photos"
+									data-input={MARKED_LABELS.photos}
 									class="sr-only"
 									onchange={(event) => pickPhotos(event, group)}
 								/>
@@ -1685,7 +1685,7 @@
 		<button
 			type="button"
 			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-			data-input="Photos"
+			data-input={MARKED_LABELS.photos}
 			onclick={addGroup}><span class="icon-[mdi--plus] size-4"></span>Add {word}</button
 		>
 	{/if}

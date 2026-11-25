@@ -3,7 +3,8 @@
 // section (the part drawn with `data-section`, else the panel itself), its label and which of that section's inputs
 // with this label it is. An input's name is the label it is named by (the library's inputs, whose label sits on their
 // border, #57), else the label drawn for it, else the name read out for it (a picker's button); an input with none of
-// these, or one read out in more words ("Quantity of item 2"), says it with `data-input`.
+// these, or one read out in more words ("Quantity of item 2"), says it with `data-input`, from tally.ts's
+// `MARKED_LABELS`.
 import type { EmptyType } from './tally';
 
 const CONTROLS = 'input, textarea, select, button';

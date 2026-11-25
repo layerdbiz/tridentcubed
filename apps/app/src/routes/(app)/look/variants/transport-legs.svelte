@@ -43,7 +43,7 @@
 	import type { LookState } from '../look.state.svelte';
 	import { Menu, Select } from '@layerd/ui';
 	import { sortable } from '../sortable';
-	import { sectionsOf, valuesOf } from '../tally';
+	import { MARKED_LABELS, sectionsOf, valuesOf } from '../tally';
 
 	let { look, panel, onsave }: { look: LookState; panel: PanelType; onsave: () => void } = $props();
 
@@ -302,6 +302,6 @@
 <button
 	type="button"
 	class="{BUTTON} bg-slate-900 text-white hover:bg-slate-700"
-	data-input="Transport Mode"
+	data-input={MARKED_LABELS.transportMode}
 	onclick={add}><span class="icon-[mdi--plus] size-4"></span>Add Transport Mode</button
 >
