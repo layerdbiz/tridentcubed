@@ -1,7 +1,7 @@
 // The device the menu's Online panel shows beside each person (#331): what the browser says about itself, plus the
 // app's own hint for what it cannot say, and how long someone has been online or away, in words.
 import { describe, expect, it } from 'vite-plus/test';
-import { toDevice, toDeviceHint, toDuration } from './presence.utils';
+import { toDevice, toDeviceHint, toDeviceKind, toDuration } from './presence.utils';
 
 // Real browser strings, as each device sends them.
 const AGENTS = {
@@ -29,7 +29,9 @@ const AGENTS = {
 		'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0',
 	chromebook:
 		'Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-	linuxFirefox: 'Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0'
+	linuxFirefox: 'Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0',
+	exportBrowser:
+		'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/131.0.0.0 Safari/537.36'
 };
 
 describe('the device someone is on', () => {
@@ -91,6 +93,20 @@ describe('the device someone is on', () => {
 			kind: 'computer',
 			name: 'Windows · Chrome'
 		});
+	});
+
+	it("takes the server's own PDF browser, which carries the member's cookies, for nobody's device", () => {
+		expect(toDevice(AGENTS.exportBrowser, 'touch')).toEqual({ kind: '', name: '' });
+	});
+
+	it('reads a kind back from a row only when it is one', () => {
+		expect(['phone', 'tablet', 'computer', 'watch', null].map(toDeviceKind)).toEqual([
+			'phone',
+			'tablet',
+			'computer',
+			undefined,
+			undefined
+		]);
 	});
 });
 

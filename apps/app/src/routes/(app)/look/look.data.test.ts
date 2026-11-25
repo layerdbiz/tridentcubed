@@ -127,6 +127,13 @@ describe('how long someone has been online or away', () => {
 		expect(toPresenceText(member('Ana', 0, 70))).toBe('Online for 1 hour');
 		expect(toPresenceText(member('Ben', 2))).toBe('Online for 2 min');
 	});
+
+	it('lists the signed-in person before any stamp of theirs has arrived, as just come online', () => {
+		const team = [member('Ana'), member('Ben', 3, 3)];
+		resetPeople(team, 'Ana');
+		expect(namesOf(onlineOf(team))).toEqual(['Ben', 'Ana']);
+		expect(toPresenceText(team[0])).toBe('Online for 1 min');
+	});
 });
 
 function project(id: string, values: Partial<ProjectType> = {}): ProjectType {

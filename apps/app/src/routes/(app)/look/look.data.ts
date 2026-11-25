@@ -247,14 +247,20 @@ export function presenceOf(name: string, now = Date.now()): PresenceType {
 // same order; then the grey ones, whoever was in the app last at the top. The signed-in person is ordered like
 // everyone else.
 export function onlineOf(members: TeamMemberType[], now = Date.now()) {
-	const known = members.filter((member) => member.seen);
-	const of = (presence: PresenceType) =>
-		known.filter((member) => presenceOf(member.name, now) === presence);
+	const known = members.filter((member) => member.seen || member.name === selfName);
 	return [
-		...of('online').toSorted((a, b) => toArrival(b) - toArrival(a)),
-		...of('idle').toSorted((a, b) => toArrival(b) - toArrival(a)),
-		...of('offline').toSorted((a, b) => toLastSeen(b) - toLastSeen(a))
+		...newestFirst(withPresence(known, 'online', now), toArrival),
+		...newestFirst(withPresence(known, 'idle', now), toArrival),
+		...newestFirst(withPresence(known, 'offline', now), toLastSeen)
 	];
+}
+
+function withPresence(members: TeamMemberType[], presence: PresenceType, now: number) {
+	return members.filter((member) => presenceOf(member.name, now) === presence);
+}
+
+function newestFirst(members: TeamMemberType[], toTime: (member: TeamMemberType) => number) {
+	return members.toSorted((a, b) => toTime(b) - toTime(a));
 }
 
 // When someone came online, as the server stamped it; a record it has not stamped that way says when it was last
@@ -277,7 +283,8 @@ const PRESENCE_WORDS: Record<PresenceType, string> = {
 // offline, since they were last in the app. "Offline", not "Signed out": closing the app signs nobody out.
 export function toPresenceText(member: TeamMemberType, now = Date.now()) {
 	const presence = presenceOf(member.name, now);
-	const from = presence === 'online' ? toArrival(member) : toLastSeen(member);
+	// The signed-in person before any stamp of theirs has arrived came online just now.
+	const from = (presence === 'online' ? toArrival(member) : toLastSeen(member)) || now;
 	return `${PRESENCE_WORDS[presence]} for ${toDuration(now - from)}`;
 }
 

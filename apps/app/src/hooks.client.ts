@@ -10,6 +10,10 @@ import { ensureRandomUuid } from './uuid';
 ensureRandomUuid();
 install.listen(window);
 leaveDeviceHint();
+// The installed app and a tab of the same browser share the cookie: the window in use says which it is.
+document.addEventListener('visibilitychange', () => {
+	if (document.visibilityState === 'visible') leaveDeviceHint();
+});
 
 function leaveDeviceHint() {
 	const isInstalled =

@@ -1,8 +1,9 @@
 <script lang="ts">
 	// The menu's Online panel (#212, #226; #331, Justin, 2026-11-25): everyone who has used the app, and nobody else.
 	// Green dots first, whoever came online last at the top, then the orange dots, then the grey ones, whoever was in
-	// the app last at the top (`onlineOf`, look.data.ts). Under each name, how long they have been online or away, and
-	// the device they last used, as the server read it from their browser. Everything comes from stamps the server
+	// the app last at the top (`onlineOf`, look.data.ts). Under each name, how long they have been online or away (in
+	// place of their job title, which this list showed before), and the device they last used, as the server read it
+	// from their browser. Everything comes from stamps the server
 	// sets when someone uses the app (#185), so nobody here is made up. The list keeps time while it is open. A tap
 	// opens their Team record.
 	import type { DeviceKindType } from '#lib/presence/presence.utils.js';

@@ -5,7 +5,9 @@
 // app sets as it starts). Only the kind and a short name are kept, never the browser's own words. What it cannot
 // tell it leaves out: an Android tablet that says "Mobile" reads as a phone.
 
-export type DeviceKindType = 'phone' | 'tablet' | 'computer';
+export const DEVICE_KINDS = ['phone', 'tablet', 'computer'] as const;
+
+export type DeviceKindType = (typeof DEVICE_KINDS)[number];
 
 export type DeviceType = {
 	// Empty when the browser says nothing the app knows.
@@ -36,8 +38,12 @@ const BROWSERS: [RegExp, string][] = [
 	[/Safari\//, 'Safari']
 ];
 
-/** The device a request came from, by its browser's words (`user-agent`) and the app's hint (`toDeviceHint`). */
+/**
+ * The device a request came from, by its browser's words (`user-agent`) and the app's hint (`toDeviceHint`). The
+ * server's own browser, which prints PDFs as the member who asked (#240), is nobody's device.
+ */
 export function toDevice(userAgent: string, hint = ''): DeviceType {
+	if (/Headless/.test(userAgent)) return { kind: '', name: '' };
 	const flags = new Set(hint.split('.'));
 	let system = SYSTEMS.find(([pattern]) => pattern.test(userAgent))?.[1] ?? '';
 	// An iPad says it is a Mac; only a Mac with a touch screen is one.
@@ -47,6 +53,11 @@ export function toDevice(userAgent: string, hint = ''): DeviceType {
 		? 'Installed app'
 		: (BROWSERS.find(([pattern]) => pattern.test(userAgent))?.[1] ?? '');
 	return { kind: toKind(system, userAgent), name: [system, browser].filter(Boolean).join(' · ') };
+}
+
+/** A device kind read back from a row, or nothing for a value that is not one. */
+export function toDeviceKind(value: unknown): DeviceKindType | undefined {
+	return DEVICE_KINDS.find((kind) => kind === value);
 }
 
 function toKind(system: string, userAgent: string): DeviceKindType {
