@@ -20,7 +20,7 @@
 		STATUS,
 		type ProjectType
 	} from './look.data';
-	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
+	import { metricsOf, themeOf, toneOf, type LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import PageView from './page-view.svelte';
 	import ProjectLogo from './project-logo.svelte';
@@ -258,7 +258,8 @@
 
 		<section>
 			<h3 class={HEADING}>Panels</h3>
-			<div class="divide-y divide-slate-900/[0.05] {CARD}">
+			<!-- In the state's colour once the project is Sent, Complete or Archived, as on Edit (#335). -->
+			<div class="divide-y divide-slate-900/[0.05] {CARD} {themeOf(project.status)}">
 				{#each panels as panel (panel.id)}
 					{@const metrics = metricsOf(panel, look)}
 					{@const tone = toneOf(metrics.status)}

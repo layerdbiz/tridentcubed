@@ -2,10 +2,11 @@
 	// PROTOTYPE (#161): the panels of the open project, in report order, spaced apart. Photo panels drag to reorder
 	// by the whole card, and the preview follows the new order. Add panel sits after the last panel (back in place,
 	// Justin's run 9 note 18). Run 11 (2026-10-26 19:22): a Sent or Complete project is read only; a line at the top
-	// says so in the state's colour, with Unsend on a Sent one, and Add panel goes.
+	// says so in the state's colour, with Unsend on a Sent one, and Add panel goes. Its panels, shut or open, are all
+	// in that colour too (themeOf, #335).
 	import { flip } from 'svelte/animate';
 	import { STATUS } from './look.data';
-	import type { LookState } from './look.state.svelte';
+	import { themeOf, type LookState } from './look.state.svelte';
 	import PanelItem from './panel-item.svelte';
 	import { sortable } from './sortable';
 
@@ -36,7 +37,7 @@
 	</div>
 {/if}
 <div
-	class="space-y-4"
+	class="space-y-4 {themeOf(look.project.status)}"
 	data-frozen={look.isFrozen || undefined}
 	{@attach sortable('panels', (from, to) => look.movePanel(from, to))}
 >

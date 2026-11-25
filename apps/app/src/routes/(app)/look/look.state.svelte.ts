@@ -148,6 +148,24 @@ export function toneOf(status: PanelStatusType) {
 	return { bar: 'bg-primary', text: 'text-primary', ring: 'stroke-primary' };
 }
 
+// A Sent, Complete or Archived project is drawn all in its status colour, everything that otherwise shows progress
+// (Justin, 2026-11-25, #335: "whenever I do sent, those should all turn to purple"; Complete all green, even a
+// panel still in progress; Archived "the whole everything should be gray"). The other states keep the progress
+// colours: green for what is complete, blue for what is under way, grey for what is to do. The colours are set
+// once, on the Edit tab's project bar and panel list: the theme's blue and green are read where they are used
+// (@theme inline), so every ring, icon, word and bar under them follows, open panels included.
+const THEMES: Partial<Record<StatusType, string>> = {
+	Sent: '[--theme-color-primary:var(--color-violet-500)] [--theme-color-success:var(--color-violet-500)]',
+	Complete: '[--theme-color-primary:var(--theme-color-success)]',
+	Archived:
+		'[--theme-color-primary:var(--color-slate-400)] [--theme-color-success:var(--color-slate-400)]'
+};
+
+/** The classes that draw a whole Edit tab in its project's status colour, or none for a project still in work. */
+export function themeOf(status: StatusType) {
+	return THEMES[status] ?? '';
+}
+
 export class LookState {
 	screen = $state<ScreenType>('dashboard');
 	view = $state<ViewType>('table');
