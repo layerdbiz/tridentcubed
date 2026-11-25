@@ -3,6 +3,7 @@
 // since #185), and the helpers every screen reads. Carried over from the look prototype (#161); since V1 (#180) no
 // sample projects, transports or facilities ship (Justin's rule of 2026-11-10: every value on screen is real).
 import type { CropType } from '#lib/components/photo/photo.types.js';
+import { toAttachmentType } from '#lib/files/files.schema.js';
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
 import { toDuration } from '#lib/presence/presence.utils.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
@@ -99,8 +100,22 @@ export type PersonnelType = {
 	people: { id: string; name: string; title: string; phone: string; email: string }[];
 };
 // Something attached to the Items panel in place of typed rows, or beside them: a photo of the item list, or the
-// list itself as a file of any kind (#233). A photo prints on the report, whole; a file prints its name.
-export type AttachmentType = { id: string; name: string; src: string; kind: 'photo' | 'file' };
+// list itself as a file of any kind (#233). A photo prints on the report, whole; a file prints its name. #295: a PDF
+// prints its pages, `layout` of them to a report page (1, 2, 4, 6 or 8), as a photo group's photos do.
+export type AttachmentType = {
+	id: string;
+	name: string;
+	src: string;
+	kind: 'photo' | 'file';
+	layout: number;
+};
+
+/** Whether an Items attachment is a PDF, which prints its pages (#295): known by its name, as it was picked. */
+export function isPdfAttachment(file: Pick<AttachmentType, 'kind' | 'name'>) {
+	return (
+		file.kind === 'file' && toAttachmentType({ name: file.name, type: '' }) === 'application/pdf'
+	);
+}
 // A photo panel's group; in the Operations panel a group is a stage (#215). Switched off, it keeps what it holds
 // and leaves the report: its pages, its line in the contents and its count toward the percent.
 export type GroupType = {

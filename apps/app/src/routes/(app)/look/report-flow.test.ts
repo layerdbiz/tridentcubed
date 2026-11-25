@@ -11,6 +11,7 @@ import {
 	paginate,
 	partSpansOf,
 	photoPagesOf,
+	sheetsOf,
 	rangeOf,
 	spotsOf,
 	spanOf,
@@ -526,5 +527,33 @@ describe('spotsOf', () => {
 			['c:1', 1],
 			['d:1', 1]
 		]);
+	});
+});
+
+describe('sheetsOf: an Items PDF as report pages (#295)', () => {
+	it('prints a three-page PDF at four to a page on one report page', () => {
+		expect(sheetsOf(3, 4)).toEqual([[1, 2, 3]]);
+	});
+
+	it('runs a longer PDF on over as many report pages as its layout needs', () => {
+		expect(sheetsOf(9, 4)).toEqual([[1, 2, 3, 4], [5, 6, 7, 8], [9]]);
+		expect(sheetsOf(3, 1)).toEqual([[1], [2], [3]]);
+		expect(sheetsOf(8, 8)).toEqual([[1, 2, 3, 4, 5, 6, 7, 8]]);
+	});
+
+	it('has no sheet for a PDF with no pages read', () => {
+		expect(sheetsOf(0, 4)).toEqual([]);
+	});
+});
+
+describe('paginate, with blocks that always open a page (#295)', () => {
+	it('puts a PDF sheet that carries on from another on a page of its own, though it would fit', () => {
+		// Five pages at four to a page: a full sheet, then a short one that would fit under it. No report page
+		// holds more of its pages than its layout.
+		expect(paginate([50, 400, 150], 606, [], [], [], [false, false, true])).toEqual([[0, 1], [2]]);
+	});
+
+	it('does not leave the first page empty when it opens the section', () => {
+		expect(paginate([400, 150], 606, [], [], [], [true, true])).toEqual([[0], [1]]);
 	});
 });

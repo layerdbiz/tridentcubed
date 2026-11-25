@@ -189,7 +189,7 @@ describe('the trip', () => {
 });
 
 describe('the items', () => {
-	it('saves the item rows and the attached photo and spreadsheet in order, and another member sees them', async () => {
+	it('saves the item rows and the attached photo, spreadsheet and PDF in order, and another member sees them', async () => {
 		const mine = await open(tom);
 		const id = create(mine.look);
 		const panel = panelOf(mine.look, 'items');
@@ -198,9 +198,30 @@ describe('the items', () => {
 		panel.items.push(itemOf('27', 'Accessory crates'), itemOf('', 'Spare parts'));
 		const photo = crypto.randomUUID();
 		const sheet = crypto.randomUUID();
+		const pdf = crypto.randomUUID();
 		panel.attachments = [
-			{ id: photo, name: 'list.jpg', src: `/files/${crypto.randomUUID()}`, kind: 'photo' },
-			{ id: sheet, name: 'manifest.xlsx', src: `/files/${crypto.randomUUID()}`, kind: 'file' }
+			{
+				id: photo,
+				name: 'list.jpg',
+				src: `/files/${crypto.randomUUID()}`,
+				kind: 'photo',
+				layout: 4
+			},
+			{
+				id: sheet,
+				name: 'manifest.xlsx',
+				src: `/files/${crypto.randomUUID()}`,
+				kind: 'file',
+				layout: 4
+			},
+			// #295: a PDF keeps how many of its pages share a report page.
+			{
+				id: pdf,
+				name: 'packing list.pdf',
+				src: `/files/${crypto.randomUUID()}`,
+				kind: 'file',
+				layout: 2
+			}
 		];
 		const items = JSON.parse(JSON.stringify(panel.items));
 		const attachments = JSON.parse(JSON.stringify(panel.attachments));
@@ -225,6 +246,7 @@ describe('the items', () => {
 			'Transformers'
 		]);
 		expect(panelOf(again.look, 'items').attachments?.map((file) => file.id)).toEqual([
+			pdf,
 			sheet,
 			photo
 		]);
@@ -342,7 +364,7 @@ describe('the freeze', () => {
 		const id = create(mine.look);
 		buildTrip(mine.look);
 		panelOf(mine.look, 'items').attachments = [
-			{ id: crypto.randomUUID(), name: 'list.jpg', src: '', kind: 'photo' }
+			{ id: crypto.randomUUID(), name: 'list.jpg', src: '', kind: 'photo', layout: 4 }
 		];
 		panelOf(mine.look, 'timelog').days.push({
 			id: crypto.randomUUID(),
@@ -414,7 +436,7 @@ describe('Row Level Security', () => {
 		create(mine.look);
 		buildTrip(mine.look);
 		panelOf(mine.look, 'items').attachments = [
-			{ id: crypto.randomUUID(), name: 'list.jpg', src: '', kind: 'photo' }
+			{ id: crypto.randomUUID(), name: 'list.jpg', src: '', kind: 'photo', layout: 4 }
 		];
 		panelOf(mine.look, 'timelog').days.push({
 			id: crypto.randomUUID(),

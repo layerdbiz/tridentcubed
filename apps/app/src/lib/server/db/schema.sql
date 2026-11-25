@@ -516,7 +516,8 @@ CREATE TABLE "item_attachment" (
 	"position" integer DEFAULT 0 NOT NULL,
 	"name" text DEFAULT '' NOT NULL,
 	"file" text DEFAULT '' NOT NULL,
-	"kind" text DEFAULT 'photo' NOT NULL
+	"kind" text DEFAULT 'photo' NOT NULL,
+	"layout" integer DEFAULT 4 NOT NULL
 );
 
 --> statement-breakpoint
