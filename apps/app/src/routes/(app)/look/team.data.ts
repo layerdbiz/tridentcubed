@@ -1,6 +1,7 @@
 // A Team record as the screens hold it (#161 look G; #185). The real Trident Cubed team is the database's now: the one
 // seed (`#lib/server/db/seed.ts`) loads it, with the photos as the app's own files, and the mapper (`mapper.ts`)
 // turns its rows into these. Records are named by name on screen; `id` is the row's.
+import type { DeviceKindType } from '#lib/presence/presence.utils.js';
 
 export type TeamMemberType = {
 	// Its row's id, made on the device (#185).
@@ -25,6 +26,9 @@ export type TeamMemberType = {
 	seen?: string;
 	// When they came online: the start of the visit `seen` is part of (#226). It orders the menu's Online panel.
 	since?: string;
+	// The device they last used the app on, as the server read it (#331): its kind, and its system and browser.
+	device?: DeviceKindType;
+	deviceName?: string;
 };
 
 // The day the sample rows were made: what a record that came with the prototype says for created and updated.

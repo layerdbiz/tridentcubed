@@ -1,9 +1,10 @@
 <script lang="ts">
 	// PROTOTYPE (#161): one person's photo in a white border, with a presence dot top right (Justin's note 9): green
-	// online, orange idle, grey offline. Presence is made up (team.data.ts).
+	// online, orange idle, grey offline, from when the server last saw them (`presenceOf`). A list that keeps its own
+	// time (the menu's Online panel, #331) gives the dot it read, so the dot and its words never disagree.
 	import { toCrossOrigin } from '#lib/files/files.schema.js';
 	import { personOf, presenceOf } from './look.data';
-	import { PRESENCE_TONES } from './team.data';
+	import { PRESENCE_TONES, type PresenceType } from './team.data';
 
 	let {
 		name,
@@ -12,7 +13,8 @@
 		isMuted = false,
 		hasPresence = true,
 		badge,
-		badgeScale = 0.42
+		badgeScale = 0.42,
+		presence: given
 	}: {
 		name: string;
 		size?: number;
@@ -25,9 +27,11 @@
 		badge?: string;
 		// How wide the mark is, as a share of the face: smaller on a big photo (the report's signature).
 		badgeScale?: number;
+		// The dot to show, when the screen has read it already.
+		presence?: PresenceType;
 	} = $props();
 
-	const presence = $derived(presenceOf(name));
+	const presence = $derived(given ?? presenceOf(name));
 	// Someone with no photo yet shows a person icon on grey, the way a customer with no logo shows its page's icon.
 	const photo = $derived(personOf(name).photo);
 	const hasPhoto = $derived(!photo.startsWith('data:image/svg+xml,'));

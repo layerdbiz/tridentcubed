@@ -1,7 +1,9 @@
 // Team records (spec #179 "Tables", #185; the glossary's Team record): one person on the organization's Team page.
 // A staff User is tied to one at sign-in (`user_id`, set by the server only), and a tied record's role is their
 // membership's role. `last_seen` is stamped by the server when its User uses the app, at most once a minute; the
-// online dots read it, and `online_since` is when that visit began, which orders the menu's Online panel (#226). Names are unique among the records outside the Trash, whatever their capitals. Row Level
+// online dots read it, and `online_since` is when that visit began, which orders the menu's Online panel (#226). With
+// them it stamps the device that visit is on (`device`, `device_name`, #331): its kind and a short name, never the
+// browser's own words. Names are unique among the records outside the Trash, whatever their capitals. Row Level
 // Security keeps the table to the acting organization.
 import { integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import { user } from './auth.schema';
@@ -35,7 +37,11 @@ export const team = pgTable(
 		/** When its User last used the app. Set by the server only. */
 		lastSeen: timestamp('last_seen', { withTimezone: true }),
 		/** When its User came online: the start of the visit `lastSeen` is part of (#226). Set by the server only. */
-		onlineSince: timestamp('online_since', { withTimezone: true })
+		onlineSince: timestamp('online_since', { withTimezone: true }),
+		/** The kind of device its User last used the app on: phone, tablet or computer (#331). Set by the server only. */
+		device: text('device'),
+		/** That device's system and browser, as the menu shows it: "iPhone · Safari" (#331). Set by the server only. */
+		deviceName: text('device_name')
 	},
 	(table) => [
 		uniqueIndex('team_name_idx').on(table.organizationId, lowerName()).where(NOT_IN_TRASH),

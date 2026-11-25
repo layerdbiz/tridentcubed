@@ -15,6 +15,7 @@
 // claims helper as the User themselves. `hooks.server.ts` puts it on `event.locals.actor`.
 import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { ONLINE_MINUTES } from '../presence/presence.constants';
+import type { DeviceType } from '../presence/presence.utils';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
 import type { DatabaseType } from './db/index';
 import type { RoleType } from './db/organization.schema';
@@ -218,9 +219,14 @@ const STAMPED = new Map<string, number>();
  * Stamps the acting User's Team record as seen now (#185): their online dot. The server does it on every request of
  * a member, at most once a minute (here, and again in the database, for the servers that do not share this memory).
  * It also stamps when they came online (#226): now, when they were last seen longer ago than a green dot lasts (or
- * never); otherwise the visit they are in keeps the start it had.
+ * never); otherwise the visit they are in keeps the start it had. And the device the request came from (#331), when
+ * it says one; a request that does not keeps the device stamped before.
  */
-export async function stampSeen(claims: ClaimsType, actor: ActorType, now = Date.now()) {
+export async function stampSeen(
+	claims: ClaimsType,
+	actor: ActorType,
+	{ now = Date.now(), device }: { now?: number; device?: DeviceType } = {}
+) {
 	if (!actor.organizationId) return;
 	const key = `${actor.userId} ${actor.organizationId}`;
 	if (now - (STAMPED.get(key) ?? 0) < 60_000) return;
@@ -232,7 +238,8 @@ export async function stampSeen(claims: ClaimsType, actor: ActorType, now = Date
 			.update(team)
 			.set({
 				lastSeen: at,
-				onlineSince: sql`case when ${team.lastSeen} >= ${toStamp(away)} then coalesce(${team.onlineSince}, ${toStamp(at)}) else ${toStamp(at)} end`
+				onlineSince: sql`case when ${team.lastSeen} >= ${toStamp(away)} then coalesce(${team.onlineSince}, ${toStamp(at)}) else ${toStamp(at)} end`,
+				...(device?.kind ? { device: device.kind, deviceName: device.name } : {})
 			})
 			.where(
 				and(

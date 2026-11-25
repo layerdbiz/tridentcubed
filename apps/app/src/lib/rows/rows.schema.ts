@@ -11,7 +11,7 @@
 //   opens (#186).
 // - `isNamed`: the screens name its rows by `name`, so a name is unique on its page among rows outside the Trash,
 //   and the rows in the Trash still load, so a project that used one still shows its name.
-// - `reads`: columns the server sets that still load with the row (a Team record's User and last seen), so the
+// - `reads`: columns the server sets that still load with the row (a Team record's User, last seen and device), so the
 //   screens can show them. A device never sends them, but for one that is also among `columns` (a project's J
 //   count), which the server sets when the device sets none.
 //
@@ -201,7 +201,7 @@ export const TABLES = {
 	team: {
 		scope: 'organization',
 		isNamed: true,
-		reads: ['userId', 'lastSeen', 'onlineSince'],
+		reads: ['userId', 'lastSeen', 'onlineSince', 'device', 'deviceName'],
 		columns: {
 			name: NAME,
 			title: TEXT,

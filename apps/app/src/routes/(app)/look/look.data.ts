@@ -4,6 +4,7 @@
 // sample projects, transports or facilities ship (Justin's rule of 2026-11-10: every value on screen is real).
 import type { CropType } from '#lib/components/photo/photo.types.js';
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
+import { toDuration } from '#lib/presence/presence.utils.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
 import { cityStateOf } from './location';
 import { seen, touch } from './registry.svelte';
@@ -231,32 +232,53 @@ export function personOf(name: string): PersonType {
 }
 
 // The dot on a face: green within five minutes of being in the app, amber within the hour, grey after. The server
-// stamps when each person was last in the app (#185); the signed-in person is in it now.
-export function presenceOf(name: string): PresenceType {
+// stamps when each person was last in the app (#185); the signed-in person is in it now. `now` is the time to read the
+// dot at, so a list that keeps time (the menu's Online panel) reads every dot at one time.
+export function presenceOf(name: string, now = Date.now()): PresenceType {
 	if (name && name === selfName) return 'online';
 	const last = personOf(name).seen;
 	if (!last) return 'offline';
-	const minutes = (Date.now() - new Date(last).getTime()) / 60000;
+	const minutes = (now - new Date(last).getTime()) / 60000;
 	return minutes < ONLINE_MINUTES ? 'online' : minutes < IDLE_MINUTES ? 'idle' : 'offline';
 }
 
-// The menu's Online panel (#212; #226, Justin, 2026-11-18): the Team records with a green dot, whoever came online
-// last at the top; under them the ones who have left, their dot orange, in that same order. Someone is off the list
-// when their orange dot ends. The signed-in person is ordered like everyone else.
-export function onlineOf(members: TeamMemberType[]) {
-	return [...arrivalsOf(members, 'online'), ...arrivalsOf(members, 'idle')];
-}
-
-function arrivalsOf(members: TeamMemberType[], presence: PresenceType) {
-	return members
-		.filter((member) => presenceOf(member.name) === presence)
-		.toSorted((a, b) => toArrival(b) - toArrival(a));
+// The menu's Online panel (#212; #226, Justin, 2026-11-18; #331, 2026-11-25): the Team records of the people who have
+// used the app, and nobody else. Green dots first, whoever came online last at the top; then the orange dots in that
+// same order; then the grey ones, whoever was in the app last at the top. The signed-in person is ordered like
+// everyone else.
+export function onlineOf(members: TeamMemberType[], now = Date.now()) {
+	const known = members.filter((member) => member.seen);
+	const of = (presence: PresenceType) =>
+		known.filter((member) => presenceOf(member.name, now) === presence);
+	return [
+		...of('online').toSorted((a, b) => toArrival(b) - toArrival(a)),
+		...of('idle').toSorted((a, b) => toArrival(b) - toArrival(a)),
+		...of('offline').toSorted((a, b) => toLastSeen(b) - toLastSeen(a))
+	];
 }
 
 // When someone came online, as the server stamped it; a record it has not stamped that way says when it was last
 // seen.
 function toArrival(member: TeamMemberType) {
 	return new Date(member.since ?? member.seen ?? 0).getTime();
+}
+
+function toLastSeen(member: TeamMemberType) {
+	return new Date(member.seen ?? 0).getTime();
+}
+
+const PRESENCE_WORDS: Record<PresenceType, string> = {
+	online: 'Online',
+	idle: 'Idle',
+	offline: 'Offline'
+};
+
+// Under a name in the Online panel (#331): how long someone has been online, since their visit began, or idle or
+// offline, since they were last in the app. "Offline", not "Signed out": closing the app signs nobody out.
+export function toPresenceText(member: TeamMemberType, now = Date.now()) {
+	const presence = presenceOf(member.name, now);
+	const from = presence === 'online' ? toArrival(member) : toLastSeen(member);
+	return `${PRESENCE_WORDS[presence]} for ${toDuration(now - from)}`;
 }
 
 // A team member renamed or added in the prototype keeps their photo under the new name; a photo uploaded on their

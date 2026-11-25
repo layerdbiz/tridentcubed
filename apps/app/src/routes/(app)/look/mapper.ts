@@ -145,7 +145,9 @@ function toMember(row: SavedRowType): TeamMemberType {
 		created: toStamp(row.createdAt),
 		updated: toStamp(row.updatedAt),
 		seen: values.lastSeen ? String(values.lastSeen) : undefined,
-		since: values.onlineSince ? String(values.onlineSince) : undefined
+		since: values.onlineSince ? String(values.onlineSince) : undefined,
+		device: values.device ? (String(values.device) as TeamMemberType['device']) : undefined,
+		deviceName: values.deviceName ? String(values.deviceName) : undefined
 	};
 }
 
