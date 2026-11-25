@@ -50,8 +50,11 @@ export type LastSignInType = {
 export type ActivityType = {
 	events: ActivityEventType[];
 	people: LastSignInType[];
-	/** True when older sign-ins or changes were left out: only the newest are read. */
-	isCut: boolean;
+	/**
+	 * When older sign-ins or changes are left out, the ISO time to read them before (Show Older): a page holds only
+	 * the newest.
+	 */
+	olderBefore?: string;
 };
 
 /** What the Activity's read answers: the Activity, or why this User may not see it. */

@@ -284,6 +284,49 @@ describe('the Activity', () => {
 		});
 	});
 
+	it('reads older entries before the oldest shown, page by page: none twice, none lost, a save never split', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const project = crypto.randomUUID();
+		await save(
+			test,
+			ana,
+			{ table: 'project', id: project, operation: 'put', values: { title: 'Hull survey' } },
+			...['operations', 'damages', 'discharge'].map((key): Omit<RowChangeType, 'changeId'> => ({
+				table: 'panel',
+				id: crypto.randomUUID(),
+				operation: 'put',
+				values: { projectId: project, kind: 'photos', key, name: key }
+			}))
+		);
+		for (const name of ['North Yard', 'South Yard', 'East Yard']) {
+			await save(test, ana, {
+				table: 'customer',
+				id: crypto.randomUUID(),
+				operation: 'put',
+				values: { name }
+			});
+			await test.signIn('tom.diaz@tridentcubed.com');
+		}
+		const whole = await readAs(test, ana);
+
+		const pages = [];
+		let before: string | undefined;
+		do {
+			const page = await readActivity(test.claims, ana, { limit: 2, before });
+			if (!page.isAllowed) throw new Error(page.reason);
+			pages.push(page.events);
+			before = page.olderBefore;
+		} while (before && pages.length < 20);
+
+		expect(whole.olderBefore).toBeUndefined();
+		expect(whole.events).toHaveLength(8);
+		expect(pages.length).toBeGreaterThan(2);
+		expect(pages.flat().map((event) => event.id)).toEqual(whole.events.map((event) => event.id));
+		expect(pages.flat().find((event) => event.thing === 'project')?.parts).toEqual(['3 panels']);
+	});
+
 	it('shows nothing of another organization', async () => {
 		const test = await createTestSignIn();
 		const theirs = '22222222-2222-4222-8222-222222222222';

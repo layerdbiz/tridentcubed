@@ -11,7 +11,7 @@
 //   before and after, of which only the names and the columns that changed are read, never the rows themselves. The
 //   rows a new project starts with (its panels, their photo groups, its first stop), added in the same save, are
 //   counted on the project's own line ("7 panels") rather than given a line each.
-import { desc, isNotNull, sql } from 'drizzle-orm';
+import { desc, isNotNull, type SQL, sql } from 'drizzle-orm';
 import type {
 	ActivityEventType,
 	ActivityResultType,
@@ -49,7 +49,7 @@ const THINGS: Record<TableNameType, string> = {
 	time_log_entry: 'Time Log entry'
 };
 
-/** How many of the newest sign-ins and changes the Activity reads. */
+/** How many sign-ins and changes a page of the Activity reads: the newest, then the next ones on Show Older. */
 export const ACTIVITY_LIMIT = 200;
 
 // A few of a kind, on a new project's line: "7 panels".
@@ -122,9 +122,19 @@ function field(key: string) {
 	return sql<string | null>`nullif(${ROW} ->> ${key}, '')`;
 }
 
-// The newest changes, each with the names its row goes by and the columns it changed, never the row itself.
-function readChanges(tx: TransactionType, limit: number) {
-	return tx
+// A time to the millisecond, as a JavaScript date holds it: Show Older's `before` is one, so a page ends between two
+// milliseconds and never between two rows of the same one.
+function toMillisecond(at: SQL) {
+	return sql`date_trunc('milliseconds', ${at})`;
+}
+
+const CHANGE_AT = toMillisecond(sql`${change.at}`);
+const SIGN_IN_AT = toMillisecond(sql`${signIn.createdAt}`);
+
+// The newest changes that match `where`, each with the names its row goes by and the columns it changed, never the
+// row itself.
+function readChanges(tx: TransactionType, where: SQL, limit?: number) {
+	const query = tx
 		.select({
 			id: change.id,
 			at: change.at,
@@ -146,11 +156,52 @@ function readChanges(tx: TransactionType, limit: number) {
 					where each.value is distinct from ${change.before} -> each.key order by each.key) end`
 		})
 		.from(change)
-		.orderBy(desc(change.at), desc(change.id))
-		.limit(limit);
+		.where(where)
+		.orderBy(desc(change.at), desc(change.id));
+	return limit === undefined ? query : query.limit(limit);
 }
 
 type ChangeRowType = Awaited<ReturnType<typeof readChanges>>[number];
+
+// The newest sign-ins that match `where`: who, when and on what.
+function readSignIns(tx: TransactionType, where: SQL, limit?: number) {
+	const query = tx
+		.select({
+			id: signIn.id,
+			userId: signIn.userId,
+			at: signIn.createdAt,
+			userAgent: signIn.userAgent
+		})
+		.from(signIn)
+		.where(where)
+		.orderBy(desc(signIn.createdAt), desc(signIn.id));
+	return limit === undefined ? query : query.limit(limit);
+}
+
+type PageType<T> = {
+	rows: T[];
+	/** The millisecond the oldest row falls in, when older rows are left; every row of it is in `rows`. */
+	cut?: number;
+};
+
+// One source's newest rows older than `before`: at most `limit`, then the rest of the millisecond the oldest of them
+// falls in, so what one save did is never split between two pages.
+async function readPage<T extends { at: Date }>(
+	read: (where: SQL, limit?: number) => Promise<T[]>,
+	at: SQL,
+	before: string | undefined,
+	limit: number
+): Promise<PageType<T>> {
+	const rows = await read(before ? sql`${at} < ${before}::timestamptz` : sql`true`, limit + 1);
+	if (rows.length <= limit) return { rows };
+	const oldest = rows[limit - 1].at;
+	const rest = await read(sql`${at} = ${oldest.toISOString()}::timestamptz`);
+	const cut = oldest.getTime();
+	return {
+		rows: [...rows.slice(0, limit).filter((row) => row.at.getTime() !== cut), ...rest],
+		cut
+	};
+}
 
 function toDeviceOf(userAgent: string | null) {
 	const device = toDevice(userAgent ?? '');
@@ -233,29 +284,41 @@ function byNewest(a: ActivityEventType, b: ActivityEventType) {
 	return Date.parse(b.at) - Date.parse(a.at) || rankOf(a) - rankOf(b) || b.id.localeCompare(a.id);
 }
 
+/** Which page of the Activity to read: the newest, or the one `before` the oldest shown (Show Older). */
+export type ActivityPageType = {
+	/** How many sign-ins and changes, about: a millisecond's rows are never split, so a page may hold a few more. */
+	limit?: number;
+	/** An ISO time: only what happened before it. */
+	before?: string;
+};
+
 /**
- * The Activity as `actor` may see it: their organization's newest sign-ins and changes, newest first, and when each
- * of its people last signed in, latest first. Only an Admin may (the one permission check).
+ * The Activity as `actor` may see it: their organization's newest sign-ins and changes (or the next ones `before` the
+ * oldest shown), newest first, and when each of its people last signed in, latest first. Only an Admin may (the one
+ * permission check).
  */
 export async function readActivity(
 	claims: ClaimsType,
 	actor: ActorType,
-	{ limit = ACTIVITY_LIMIT }: { limit?: number } = {}
+	{ limit = ACTIVITY_LIMIT, before }: ActivityPageType = {}
 ): Promise<ActivityResultType> {
 	const verdict = checkActivity(actor);
 	if (!verdict.isAllowed) return verdict;
 	return claims.run(actor, async (tx) => {
-		const changes = await readChanges(tx, limit);
-		const signIns = await tx
-			.select({
-				id: signIn.id,
-				userId: signIn.userId,
-				at: signIn.createdAt,
-				userAgent: signIn.userAgent
-			})
-			.from(signIn)
-			.orderBy(desc(signIn.createdAt), desc(signIn.id))
-			.limit(limit);
+		const changePage = await readPage(
+			(where, most) => readChanges(tx, where, most),
+			CHANGE_AT,
+			before,
+			limit
+		);
+		const signInPage = await readPage(
+			(where, most) => readSignIns(tx, where, most),
+			SIGN_IN_AT,
+			before,
+			limit
+		);
+		const changes = changePage.rows;
+		const signIns = signInPage.rows;
 		const latest = await tx
 			.selectDistinctOn([signIn.userId], {
 				userId: signIn.userId,
@@ -313,14 +376,20 @@ export async function readActivity(
 			};
 		});
 
+		// Where this page ends: both sources hold every row from there on, and it keeps about `limit` lines. What is
+		// older waits for the next page, which reads before it.
+		events.sort(byNewest);
+		const ends = [changePage.cut, signInPage.cut];
+		if (events.length > limit) ends.push(Date.parse(events[limit - 1].at));
+		const end = Math.max(...ends.filter((each) => each !== undefined));
+
 		return {
 			isAllowed: true,
-			events: events.sort(byNewest).slice(0, limit),
+			events: Number.isFinite(end) ? events.filter((event) => Date.parse(event.at) >= end) : events,
 			people: people.sort(
 				(a, b) => Date.parse(b.at) - Date.parse(a.at) || a.who.localeCompare(b.who)
 			),
-			// Older sign-ins or changes are left out.
-			isCut: changes.length >= limit || signIns.length >= limit || events.length > limit
+			...(Number.isFinite(end) ? { olderBefore: new Date(end).toISOString() } : {})
 		};
 	});
 }
