@@ -143,7 +143,13 @@ describe('the Project panel', () => {
 				id: crypto.randomUUID(),
 				company: 'KOGA',
 				people: [
-					{ ...newPerson(), name: 'Ana', title: 'Surveyor' },
+					{
+						...newPerson(),
+						name: 'Ana',
+						title: 'Surveyor',
+						phone: '+1 713 555 0100',
+						email: 'ana@koga.example'
+					},
 					{ ...newPerson(), name: 'Bo', title: 'Agent' }
 				]
 			},
@@ -184,6 +190,11 @@ describe('the Project panel', () => {
 		).toEqual([
 			['KOGA', ['Ana', 'Bo']],
 			['Port of Houston', ['Cy']]
+		]);
+		// How to reach someone of another company comes back with them (#326); one left empty stays empty.
+		expect(shown.personnel?.[0].people.map(({ phone, email }) => [phone, email])).toEqual([
+			['+1 713 555 0100', 'ana@koga.example'],
+			['', '']
 		]);
 
 		// Reordered, one taken off and put back, a person moved: the same rows, in the new order.
