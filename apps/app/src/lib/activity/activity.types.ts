@@ -8,30 +8,43 @@ import type { TableNameType } from '#lib/rows/rows.schema.js';
 /** A sign-in, a row added (a project among them), a row changed, or a row moved to the Trash. */
 export type ActivityKindType = 'signIn' | 'add' | 'change' | 'trash';
 
-export type ActivityEventType = {
+/** What every line of the Activity says: when, and who. */
+type ActivityLineType = {
 	/** The sign-in's id for a sign-in, the change id for the rest. */
 	id: string;
 	/** When it happened, as an ISO time. */
 	at: string;
-	kind: ActivityKindType;
 	/** Who did it: their Team record's name, else their User's name, else "Someone" for a User no longer there. */
 	who: string;
 	userId: string | null;
-	/** What kind of row it was, as the app says it in a sentence: "project", "customer", "photo". Not for a sign-in. */
-	thing?: string;
-	table?: TableNameType;
+};
+
+/** A sign-in, and the device it came from. */
+export type SignInEventType = ActivityLineType & {
+	kind: 'signIn';
+	/** The device a sign-in came from, as the Online list says it: "iPhone · Safari". */
+	device?: string;
+	deviceKind?: DeviceKindType;
+};
+
+/** A row added, changed or moved to the Trash. */
+export type ChangeEventType = ActivityLineType & {
+	kind: Exclude<ActivityKindType, 'signIn'>;
+	/** What kind of row it was, as the app says it in a sentence: "project", "customer", "photo". */
+	thing: string;
+	table: TableNameType;
 	/** The row's own name or title, when it has one. */
 	name?: string;
 	/** The title of the project a row inside one belongs to. */
 	project?: string;
 	/** What a new project started with, added in the same save and given no line of their own: "7 panels". */
 	parts?: string[];
-	/** What a change changed, as the app labels it: "Title", "Status". */
-	columns?: string[];
-	/** The device a sign-in came from, as the Online list says it: "iPhone · Safari". */
-	device?: string;
-	deviceKind?: DeviceKindType;
+	/** What a change changed, as the app labels it: "Title", "Status". Empty for an add or a move to the Trash. */
+	columns: string[];
 };
+
+/** One line of the Activity: a sign-in, or a change to a row. */
+export type ActivityEventType = SignInEventType | ChangeEventType;
 
 /** When one person last signed in, and on what. */
 export type LastSignInType = {

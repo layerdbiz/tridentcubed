@@ -1,6 +1,7 @@
 // The Activity (#306), through the real sign-in and the one save command on the in-process database: what an Admin
 // reads, newest first, and when each person last signed in. Every email and name here is made up.
 import { describe, expect, it } from 'vite-plus/test';
+import type { ActivityEventType } from '#lib/activity/activity.types.js';
 import type { RowChangeType } from '#lib/rows/rows.schema.js';
 import { readActivity } from './activity';
 import type { ActorType } from './db/claims';
@@ -31,6 +32,15 @@ async function save(
 		changes: changes.map((change) => ({ changeId: crypto.randomUUID(), ...change }))
 	});
 	if (!result.isSaved) throw new Error(result.reason);
+}
+
+// Any line's words side by side, whatever its kind: a sign-in has no row, so its row's words are left out.
+type LineType = Partial<Record<'thing' | 'name' | 'project' | 'device', string>> &
+	Partial<Record<'parts' | 'columns', string[]>> &
+	Pick<ActivityEventType, 'id' | 'at' | 'kind' | 'who'>;
+
+function toLine(event: ActivityEventType): LineType {
+	return event;
 }
 
 async function readAs(test: TestType, actor: ActorType) {
@@ -70,7 +80,9 @@ describe('the Activity', () => {
 		const { events } = await readAs(test, ana);
 
 		expect(
-			events.map(({ kind, who, thing, name, columns }) => ({ kind, who, thing, name, columns }))
+			events
+				.map(toLine)
+				.map(({ kind, who, thing, name, columns }) => ({ kind, who, thing, name, columns }))
 		).toEqual([
 			{ kind: 'trash', who: 'Ana Reyes', thing: 'customer', name: 'Harbor Lines', columns: [] },
 			{
@@ -128,7 +140,7 @@ describe('the Activity', () => {
 
 		const { people, events } = await readAs(test, ana);
 
-		const toms = events.filter((event) => event.who === 'Tom Diaz');
+		const toms = events.filter((event) => event.who === 'Tom Diaz').map(toLine);
 		expect(toms.map(({ kind, device }) => ({ kind, device }))).toEqual([
 			{ kind: 'signIn', device: 'Windows · Edge' },
 			{ kind: 'signIn', device: 'iPhone · Safari' }
@@ -233,7 +245,9 @@ describe('the Activity', () => {
 
 		const { events } = await readAs(test, ana);
 
-		expect(events.map(({ kind, thing, name, parts }) => ({ kind, thing, name, parts }))).toEqual([
+		expect(
+			events.map(toLine).map(({ kind, thing, name, parts }) => ({ kind, thing, name, parts }))
+		).toEqual([
 			{ kind: 'add', thing: 'panel', name: 'Discharge', parts: undefined },
 			{ kind: 'add', thing: 'project', name: 'Hull survey', parts: ['2 panels'] },
 			{ kind: 'signIn', thing: undefined, name: undefined, parts: undefined }
@@ -255,7 +269,7 @@ describe('the Activity', () => {
 
 		const { events } = await readAs(test, ana);
 
-		expect(events.map(({ kind, name }) => ({ kind, name }))).toEqual([
+		expect(events.map(toLine).map(({ kind, name }) => ({ kind, name }))).toEqual([
 			{ kind: 'change', name: 'Hull survey' },
 			{ kind: 'add', name: 'Hull survey' },
 			{ kind: 'signIn', name: undefined }
@@ -324,7 +338,12 @@ describe('the Activity', () => {
 		expect(whole.events).toHaveLength(8);
 		expect(pages.length).toBeGreaterThan(2);
 		expect(pages.flat().map((event) => event.id)).toEqual(whole.events.map((event) => event.id));
-		expect(pages.flat().find((event) => event.thing === 'project')?.parts).toEqual(['3 panels']);
+		expect(
+			pages
+				.flat()
+				.map(toLine)
+				.find((event) => event.thing === 'project')?.parts
+		).toEqual(['3 panels']);
 	});
 
 	it('shows nothing of another organization', async () => {

@@ -124,7 +124,8 @@
 			: `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
 	}
 
-	function article(thing: string) {
+	// "a customer", "an attachment".
+	function toIndefiniteArticle(thing: string) {
 		return /^[aeiou]/i.test(thing) ? 'an' : 'a';
 	}
 
@@ -150,17 +151,16 @@
 
 <!-- What happened, in words: who first, then what they did, the names they did it to in bold. -->
 {#snippet sentence(event: ActivityEventType)}
-	{@const thing = event.thing ?? ''}
 	<b class="font-semibold text-slate-900">{event.who}</b>
 	{#if event.kind === 'signIn'}
 		signed in
 	{:else if event.kind === 'add'}
-		added {event.name ? `the ${thing}` : `${article(thing)} ${thing}`}
+		added {event.name ? `the ${event.thing}` : `${toIndefiniteArticle(event.thing)} ${event.thing}`}
 		{#if event.name}<b class="font-semibold text-slate-900">{event.name}</b>{/if}
 		{#if event.project !== undefined}to <b class="font-semibold text-slate-900">{event.project}</b
 			>{/if}
 	{:else}
-		{event.kind === 'trash' ? 'moved' : 'changed'} the {thing}
+		{event.kind === 'trash' ? 'moved' : 'changed'} the {event.thing}
 		{#if event.name}<b class="font-semibold text-slate-900">{event.name}</b>{/if}
 		{#if event.project !== undefined}in <b class="font-semibold text-slate-900">{event.project}</b
 			>{/if}
@@ -216,11 +216,13 @@
 			<span class="block text-sm leading-snug break-words text-slate-600"
 				>{@render sentence(event)}</span
 			>
-			{#if event.kind === 'signIn' && event.device}
-				<span class="mt-0.5 flex">{@render device(event.deviceKind, event.device)}</span>
+			{#if event.kind === 'signIn'}
+				{#if event.device}
+					<span class="mt-0.5 flex">{@render device(event.deviceKind, event.device)}</span>
+				{/if}
 			{:else if event.parts?.length}
 				<span class="mt-0.5 block text-xs text-slate-500">With {toList(event.parts)}</span>
-			{:else if event.columns?.length}
+			{:else if event.columns.length}
 				<span class="mt-0.5 block text-xs text-slate-500">{event.columns.join(', ')}</span>
 			{/if}
 		</span>

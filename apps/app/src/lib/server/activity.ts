@@ -15,7 +15,9 @@ import { desc, isNotNull, type SQL, sql } from 'drizzle-orm';
 import type {
 	ActivityEventType,
 	ActivityResultType,
-	LastSignInType
+	ChangeEventType,
+	LastSignInType,
+	SignInEventType
 } from '#lib/activity/activity.types.js';
 import { toDevice } from '#lib/presence/presence.utils.js';
 import { TABLE_NAMES, type TableNameType } from '#lib/rows/rows.schema.js';
@@ -23,49 +25,35 @@ import type { ActorType, ClaimsType, TransactionType } from './db/claims';
 import { change, project, signIn, team, user } from './db/schema';
 import { checkActivity } from './permission';
 
-// What each table's row is called in a sentence ("added the customer Harbor Lines"), as the app's screens say it.
-const THINGS: Record<TableNameType, string> = {
-	customer: 'customer',
-	contact: 'contact',
-	team: 'Team',
-	transport: 'Transport Mode',
-	facility: 'Facility',
-	place: 'place',
-	organization: 'Organization',
-	organization_details: 'Organization',
-	disclaimer_point: 'disclaimer point',
-	help_text: 'Help text',
-	project: 'project',
-	project_team: 'Team Assigned',
-	personnel_company: 'Personnel company',
-	personnel_person: 'Personnel',
-	panel: 'panel',
-	photo_group: 'photo group',
-	photo: 'photo',
-	stop: 'stop',
-	item: 'item',
-	item_attachment: 'attachment',
-	time_log_day: 'Time Log day',
-	time_log_entry: 'Time Log entry'
+// What each table's row is called in a sentence, as the app's screens say it: one ("added the customer Harbor
+// Lines"), and a few of a kind, on a new project's line ("7 panels").
+const ROW_NAMES: Record<TableNameType, { one: string; many: string }> = {
+	customer: { one: 'customer', many: 'customers' },
+	contact: { one: 'contact', many: 'contacts' },
+	team: { one: 'Team', many: 'Team' },
+	transport: { one: 'Transport Mode', many: 'Transport Modes' },
+	facility: { one: 'Facility', many: 'Facilities' },
+	place: { one: 'place', many: 'places' },
+	organization: { one: 'Organization', many: 'Organizations' },
+	organization_details: { one: 'Organization', many: 'Organizations' },
+	disclaimer_point: { one: 'disclaimer point', many: 'disclaimer points' },
+	help_text: { one: 'Help text', many: 'Help texts' },
+	project: { one: 'project', many: 'projects' },
+	project_team: { one: 'Team Assigned', many: 'Team Assigned' },
+	personnel_company: { one: 'Personnel company', many: 'Personnel companies' },
+	personnel_person: { one: 'Personnel', many: 'Personnel' },
+	panel: { one: 'panel', many: 'panels' },
+	photo_group: { one: 'photo group', many: 'photo groups' },
+	photo: { one: 'photo', many: 'photos' },
+	stop: { one: 'stop', many: 'stops' },
+	item: { one: 'item', many: 'items' },
+	item_attachment: { one: 'attachment', many: 'attachments' },
+	time_log_day: { one: 'Time Log day', many: 'Time Log days' },
+	time_log_entry: { one: 'Time Log entry', many: 'Time Log entries' }
 };
 
 /** How many sign-ins and changes a page of the Activity reads: the newest, then the next ones on Show Older. */
 export const ACTIVITY_LIMIT = 200;
-
-// A few of a kind, on a new project's line: "7 panels".
-const PLURALS: Partial<Record<TableNameType, string>> = {
-	project_team: 'Team Assigned',
-	personnel_company: 'Personnel companies',
-	personnel_person: 'Personnel',
-	panel: 'panels',
-	photo_group: 'photo groups',
-	photo: 'photos',
-	stop: 'stops',
-	item: 'items',
-	item_attachment: 'attachments',
-	time_log_day: 'Time Log days',
-	time_log_entry: 'Time Log entries'
-};
 
 // A photo spot holds a PDF or a video too (#327).
 const PHOTO_KINDS: Record<string, string> = { pdf: 'PDF', video: 'video' };
@@ -118,7 +106,8 @@ function toLabel(column: string) {
 // The row a change describes, as it is after it, or as it was before a delete.
 const ROW = sql`coalesce(${change.after}, ${change.before})`;
 
-function field(key: string) {
+// The SQL that reads one of the row's values as text, or null when it is empty: its `name`, its `title`.
+function toRowText(key: string) {
 	return sql<string | null>`nullif(${ROW} ->> ${key}, '')`;
 }
 
@@ -143,12 +132,12 @@ function readChanges(tx: TransactionType, where: SQL, limit?: number) {
 			rowId: change.rowId,
 			operation: change.operation,
 			isNew: sql<boolean>`${change.before} is null`,
-			title: field('title'),
-			name: field('name'),
-			company: field('company'),
-			label: field('label'),
-			kind: field('kind'),
-			projectId: field('projectId'),
+			title: toRowText('title'),
+			name: toRowText('name'),
+			company: toRowText('company'),
+			label: toRowText('label'),
+			kind: toRowText('kind'),
+			projectId: toRowText('projectId'),
 			columns: sql<
 				string[]
 			>`case when ${change.before} is null or ${change.after} is null then array[]::text[]
@@ -217,14 +206,15 @@ function toSaveKey(row: ChangeRowType, projectId: string | null) {
 	return `${row.userId} ${row.at.getTime()} ${projectId}`;
 }
 
-// The rows of a new project added in the same save as it, by the project's change: how many of each kind, in the
-// registry's order. Those rows get no line of their own.
-function toStarts(changes: ChangeRowType[]) {
+// The rows a new project starts with, added in the same save as it, fold into the project's own line: `lines` are the
+// changes that keep a line of their own, and `startedWith` says, for a new project's change, how many of each kind it
+// started with, in the registry's order ("7 panels").
+function foldProjectStarts(changes: ChangeRowType[]) {
 	const counts = new Map<string, Map<TableNameType, number>>();
 	for (const row of changes)
 		if (row.table === 'project' && row.isNew && row.operation === 'put')
 			counts.set(toSaveKey(row, row.rowId), new Map());
-	const kept = changes.filter((row) => {
+	const lines = changes.filter((row) => {
 		if (row.table === 'project' || !row.isNew || row.operation !== 'put') return true;
 		const started = counts.get(toSaveKey(row, row.projectId));
 		if (!started) return true;
@@ -232,15 +222,15 @@ function toStarts(changes: ChangeRowType[]) {
 		started.set(table, (started.get(table) ?? 0) + 1);
 		return false;
 	});
-	function partsOf(row: ChangeRowType) {
+	function startedWith(row: ChangeRowType) {
 		const started = counts.get(toSaveKey(row, row.rowId));
 		if (!started?.size) return undefined;
 		return TABLE_NAMES.filter((table) => started.has(table)).map((table) => {
 			const count = started.get(table) ?? 0;
-			return `${count} ${count === 1 ? THINGS[table] : (PLURALS[table] ?? THINGS[table])}`;
+			return `${count} ${count === 1 ? ROW_NAMES[table].one : ROW_NAMES[table].many}`;
 		});
 	}
-	return { kept, partsOf };
+	return { lines, startedWith };
 }
 
 function toChangeEvent(
@@ -248,12 +238,12 @@ function toChangeEvent(
 	who: string,
 	projects: Map<string, string>,
 	parts?: string[]
-): ActivityEventType {
+): ChangeEventType {
 	const table = row.table as TableNameType;
 	const kind = row.operation === 'delete' ? 'trash' : row.isNew ? 'add' : 'change';
 	const thing =
 		(table === 'photo' ? PHOTO_KINDS[row.kind ?? ''] : undefined) ??
-		THINGS[table] ??
+		ROW_NAMES[table]?.one ??
 		row.table.replaceAll('_', ' ');
 	// A project goes by its title now, so a project added untitled and named a moment later reads by its name.
 	const name =
@@ -283,7 +273,7 @@ function toChangeEvent(
 // Where a line stands among those of the same moment: a sign-in first, then parents before their rows (a project
 // before its panels), in the registry's order.
 function toRank(event: ActivityEventType) {
-	return event.table ? TABLE_NAMES.indexOf(event.table) : -1;
+	return event.kind === 'signIn' ? -1 : TABLE_NAMES.indexOf(event.table);
 }
 
 // Newest first; what one save did at once lists parents first.
@@ -350,7 +340,7 @@ export async function readActivity(
 			])
 		);
 
-		const starts = toStarts(changes);
+		const folded = foldProjectStarts(changes);
 		const names = new Map<string, string>();
 		for (const record of records)
 			if (record.userId && !names.has(record.userId)) names.set(record.userId, record.name);
@@ -360,7 +350,7 @@ export async function readActivity(
 		}
 
 		const events: ActivityEventType[] = [
-			...signIns.map((row): ActivityEventType => ({
+			...signIns.map((row): SignInEventType => ({
 				id: row.id,
 				at: row.at.toISOString(),
 				kind: 'signIn',
@@ -368,8 +358,8 @@ export async function readActivity(
 				userId: row.userId,
 				...toDeviceOf(row.userAgent)
 			})),
-			...starts.kept.map((row) =>
-				toChangeEvent(row, whoOf(row.userId), projects, starts.partsOf(row))
+			...folded.lines.map((row) =>
+				toChangeEvent(row, whoOf(row.userId), projects, folded.startedWith(row))
 			)
 		];
 
