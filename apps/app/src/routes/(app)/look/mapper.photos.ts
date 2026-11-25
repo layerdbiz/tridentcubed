@@ -2,15 +2,20 @@
 // A group is a `photo_group` row of its panel and a photo a `photo` row of its group, each with its place in the
 // list as `position`. A photo saves only once its file is in storage: while it uploads, or after its upload failed,
 // it shows on this device and keeps its place, but nothing of it is sent (photos.ts holds its upload). #312: a photo's
-// crop is kept on its row, and so moves with it to another group.
+// crop is kept on its row, and so moves with it to another group. #327: a PDF or a video is a `photo` row too, its
+// picture in `file` and the PDF or video itself in `source`.
 import type { CropType } from '#lib/components/photo/photo.types.js';
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import type { GroupType, PanelType, PhotoType } from './look.data';
 import { byPosition, text } from './mapper.utils';
 
-/** Whether a photo's file is in storage yet: a photo on its way shows its own preview (a `blob:` address). */
+/**
+ * Whether a photo's file is in storage yet: a photo on its way shows its own preview (a `blob:` address). A PDF or a
+ * video is stored once its picture and the file itself both are (#327).
+ */
 export function isStored(photo: PhotoType) {
-	return Boolean(photo.src) && !photo.src.startsWith('blob:');
+	const isPicture = Boolean(photo.src) && !photo.src.startsWith('blob:');
+	return photo.kind ? isPicture && Boolean(photo.source) : isPicture;
 }
 
 // A crop as its row keeps it: in jsonb's own key order (x, y, zoom), so a row sent reads the same as the row the
@@ -26,6 +31,18 @@ function cropOf(values: RowType['values']): CropType | undefined {
 	return typeof zoom === 'number' && typeof x === 'number' && typeof y === 'number'
 		? { zoom, x, y }
 		: undefined;
+}
+
+// What a PDF or a video adds to a photo (#327): nothing for a photo, so a photo reads as it always has.
+function attachmentOf(values: RowType['values']): Partial<PhotoType> {
+	const kind = values.kind;
+	if (kind === 'pdf') {
+		return { kind, source: text(values, 'source'), pageCount: Number(values.pageCount ?? 0) };
+	}
+	if (kind === 'video') {
+		return { kind, source: text(values, 'source'), duration: Number(values.duration ?? 0) };
+	}
+	return {};
 }
 
 /** A photo panel's groups and their stored photos as rows, in order. */
@@ -55,7 +72,11 @@ export function toPhotoRows(projectId: string, panel: PanelType): RowType[] {
 					position: index,
 					file: photo.src,
 					description: photo.description,
-					crop: toSavedCrop(photo.crop)
+					crop: toSavedCrop(photo.crop),
+					kind: photo.kind ?? 'photo',
+					source: photo.kind ? (photo.source ?? '') : '',
+					pageCount: photo.kind === 'pdf' ? (photo.pageCount ?? 0) : 0,
+					duration: photo.kind === 'video' ? (photo.duration ?? 0) : 0
 				}
 			});
 	}
@@ -80,7 +101,8 @@ export function takePhotos(panel: PanelType, rows: SavedRowType[]) {
 					id: photo.id,
 					src: text(photo.values, 'file'),
 					description: text(photo.values, 'description'),
-					crop: cropOf(photo.values)
+					crop: cropOf(photo.values),
+					...attachmentOf(photo.values)
 				}))
 		}));
 }

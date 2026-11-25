@@ -21,6 +21,8 @@
 	import Photo from '#lib/components/photo/photo.svelte';
 	import type { CropType, SizeType } from '#lib/components/photo/photo.types.js';
 	import { isWhole, toCrop } from '#lib/components/photo/photo.utils.js';
+	import { ATTACHMENT_NOUNS } from '#lib/files/files.schema.js';
+	import { toVideoLink } from '#lib/video/video.utils.js';
 	import Dots from './dots.svelte';
 	import type { GroupType, PhotoType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -158,7 +160,7 @@
 		const gone = photo;
 		if (!gone) return;
 		look.confirm({
-			title: 'Delete photo?',
+			title: `Delete ${ATTACHMENT_NOUNS[gone.kind ?? 'photo']}?`,
 			note: `It leaves the ${word} and the report.`,
 			onyes: () => {
 				const at = group.photos.findIndex((each) => each.id === gone.id);
@@ -278,6 +280,9 @@
 		{ id: 'text', label: 'Text', icon: 'icon-[mdi--pencil-outline]' },
 		{ id: 'reset', label: 'Reset', icon: 'icon-[mdi--restore]' }
 	] as const;
+
+	// #327: a PDF's pages print whole and a video is not cropped yet, so either has its description alone.
+	const tools = $derived(photo?.kind ? TOOLS.filter((tool) => tool.id === 'text') : TOOLS);
 
 	function pick(tool: (typeof TOOLS)[number]['id']) {
 		if (tool === 'reset') reset();
@@ -467,7 +472,7 @@
 				{/if}
 			</div>
 			<div class="flex justify-around md:justify-center md:gap-2">
-				{#each TOOLS as tool (tool.id)}
+				{#each tools as tool (tool.id)}
 					<button
 						type="button"
 						class="{toolClass} {mode === tool.id ? 'bg-white/14 text-white' : ''}"
@@ -477,6 +482,22 @@
 						><span class="{tool.icon} size-6 md:size-5"></span><span>{tool.label}</span></button
 					>
 				{/each}
+				<!-- #327: a PDF opens whole in the browser; a video plays in the app's player. -->
+				{#if photo?.kind && photo.source}
+					<a
+						class={toolClass}
+						href={photo.kind === 'video'
+							? toVideoLink(location.origin, photo.source) || photo.source
+							: photo.source}
+						target="_blank"
+						rel="noopener"
+						><span
+							class="{photo.kind === 'video'
+								? 'icon-[mdi--play-circle-outline]'
+								: 'icon-[mdi--open-in-new]'} size-6 md:size-5"
+						></span><span>{photo.kind === 'video' ? 'Play' : 'Open'}</span></a
+					>
+				{/if}
 				<div
 					class="relative"
 					data-menu

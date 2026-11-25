@@ -266,7 +266,7 @@ One line of a time log day: a time and an activity.
 _Avoid_: description, text (for the activity)
 
 **Photo group**:
-A set of photos in a panel section, with a layout that says how many share a page: 1 or 2 across the page, or 4, 6 or 8 in two columns.
+A set of photos in a panel section, with a layout that says how many share a page: 1 or 2 across the page, or 4, 6 or 8 in two columns. It takes PDFs and videos too, laid out the same way: each page of a PDF takes a spot of its own, shown whole, and a video takes one spot as its Thumbnail (Justin, 2026-11-24). Every tile in the panel, and every spot on the Preview, wears an icon that says whether it is a photo, a PDF or a video; the Preview's marks stay out of the downloaded PDF (Justin, 2026-11-25).
 _Avoid_: section (as a group's name)
 
 **Operations panel**:
@@ -288,12 +288,16 @@ The switch on a photo group. Off, the group keeps its text and photos and leaves
 An image the surveyor adds to a photo group, with its own description, written by tapping the photo; the description prints on the photo, and in the panel an icon on the photo shows it has one. One kind of attachment.
 _Avoid_: caption
 
+**Thumbnail**:
+The picture a video shows as in its photo group, made automatically from one of its frames when it is added, with a play button in the middle and its length at the bottom right. In the downloaded PDF it is a link that opens the video in the app, since a PDF cannot play it (Justin, 2026-11-24).
+_Avoid_: poster, preview (the Preview is the report on screen)
+
 **Crop**:
 How a photo is framed in its spot in the report: zoomed in on part of it, always in the photo's own shape. It belongs to that spot, shows as it changes while the surveyor edits, and prints in the preview and the PDF; the photo and everything it recorded never change, and no new image is made (Justin, 2026-11-24).
 _Avoid_: edit (for the crop), zoom (as something apart from the crop)
 
 **Attachment**:
-A File a User adds to a project: a photo, a video or a document. It keeps every detail the file it came from carried, such as the time and place it was taken, even when the app makes it smaller or changes its format (Justin, 2026-11-24), and follows its report's rules for deleting and restoring. It always shows, whatever format it arrived in: one the device cannot read is turned into one it can before anyone sees it (Justin, 2026-11-24).
+A File a User adds to a project: a photo, a video or a document. It keeps every detail the file it came from carried, such as the time and place it was taken, even when the app makes it smaller or changes its format (Justin, 2026-11-24), and follows its report's rules for deleting and restoring. It always shows, whatever format it arrived in: one the device cannot read is turned into one it can before anyone sees it (Justin, 2026-11-24). In the downloaded PDF an attached PDF's pages go in as the PDF's own pages, text and all, and only as pictures when the PDF is locked against copying them; the Preview shows each page as a picture (Justin, 2026-11-24).
 _Avoid_: asset (in surveying that is the vessel or cargo surveyed), media, upload, uploaded file
 
 **File**:

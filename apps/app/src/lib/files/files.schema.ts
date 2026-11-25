@@ -28,8 +28,72 @@ export const FILE_TYPES: Record<string, string> = {
 	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
 	'application/vnd.ms-excel': 'xls',
 	'text/csv': 'csv',
-	'application/pdf': 'pdf'
+	'application/pdf': 'pdf',
+	// #327: a video attached to a photo group, kept as it came for now (making it smaller is #307's).
+	'video/mp4': 'mp4',
+	'video/quicktime': 'mov',
+	'video/webm': 'webm'
 };
+
+/**
+ * What an attachment of a photo group is (#327; glossary "Attachment"): a photo, a PDF whose pages print in the
+ * group's layout, or a video that prints as its thumbnail.
+ */
+export type AttachmentKindType = 'photo' | 'pdf' | 'video';
+
+/**
+ * The icon that says what kind of attachment it is, on its tile in the edit panel and on its spot on the Preview, so
+ * a photo, a PDF and a video are told apart at a glance (#327; Justin, 2026-11-25).
+ */
+export const ATTACHMENT_ICONS: Record<AttachmentKindType, string> = {
+	photo: 'icon-[mdi--image]',
+	pdf: 'icon-[mdi--file-pdf-box]',
+	video: 'icon-[mdi--video]'
+};
+
+/** What each kind of attachment is called, beside its icon or starting a sentence. */
+export const ATTACHMENT_NAMES: Record<AttachmentKindType, string> = {
+	photo: 'Photo',
+	pdf: 'PDF',
+	video: 'Video'
+};
+
+/** What each kind of attachment is called inside a sentence: "Delete video?", "2 photos, 1 PDF". */
+export const ATTACHMENT_NOUNS: Record<AttachmentKindType, string> = {
+	photo: 'photo',
+	pdf: 'PDF',
+	video: 'video'
+};
+
+// The PDFs and videos a photo group takes, by the ending a file's name may have, for a browser that hands one over
+// with no type.
+const ATTACHMENT_ENDINGS: Record<string, string> = {
+	pdf: 'application/pdf',
+	mp4: 'video/mp4',
+	m4v: 'video/mp4',
+	mov: 'video/quicktime',
+	webm: 'video/webm'
+};
+
+/** The types a photo group's PDF or video may be kept as (`photo.source`). */
+export const ATTACHMENT_TYPES = [...new Set(Object.values(ATTACHMENT_ENDINGS))];
+
+/** A PDF's or a video's type: the browser's when it is one the app keeps, else its name's, else empty. */
+export function toAttachmentType(file: { name: string; type: string }) {
+	const type = file.type.split(';')[0].trim().toLowerCase();
+	if (ATTACHMENT_TYPES.includes(type)) return type;
+	if (type.startsWith('video/')) return '';
+	const ending = file.name.includes('.') ? (file.name.split('.').pop()?.toLowerCase() ?? '') : '';
+	return ATTACHMENT_ENDINGS[ending] ?? '';
+}
+
+/** What a picked or dropped file becomes in a photo group: a photo, a PDF, a video, or nothing it takes (''). */
+export function toAttachmentKind(file: { name: string; type: string }): AttachmentKindType | '' {
+	if (toPictureType(file).startsWith('image/')) return 'photo';
+	const type = toAttachmentType(file);
+	if (type === 'application/pdf') return 'pdf';
+	return type.startsWith('video/') ? 'video' : '';
+}
 
 /**
  * Pictures a device may not be able to read (HEIC in Chrome on Windows and Android, TIFF), with the ending the
@@ -128,6 +192,8 @@ export const STORAGE_BUCKET = {
 
 /** The columns that take any file, not only a picture: an item attachment (#188, #233). */
 const DOCUMENT_COLUMNS = ['item_attachment/file'];
+/** The column that takes a photo group's PDF or video (#327); its picture goes in `photo/file`. */
+const ATTACHMENT_COLUMNS = ['photo/source'];
 
 // A type as browsers write one: letters, digits and a few marks either side of one slash (its length is the upload
 // request's to cap). It goes into a header of the upload, so nothing else is let through.
@@ -139,6 +205,7 @@ const TYPE = /^[\w.+-]+\/[\w.+-]+$/;
  */
 export function isTypeAllowed(type: string, table: string, column: string) {
 	if (DOCUMENT_COLUMNS.includes(`${table}/${column}`)) return TYPE.test(type);
+	if (ATTACHMENT_COLUMNS.includes(`${table}/${column}`)) return ATTACHMENT_TYPES.includes(type);
 	if (isConvertibleType(type)) return true;
 	return Object.hasOwn(FILE_TYPES, type) && !DOCUMENT_TYPES.includes(type);
 }

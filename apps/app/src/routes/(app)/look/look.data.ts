@@ -71,7 +71,21 @@ export type EntryType = { id: string; time: string; activity: string };
 export type DayType = { id: string; date: string; entries: EntryType[] };
 // Each photo has its own description, written from the photo's ⋮ or a tap, shown over it in the preview. #312: its
 // `crop` is how it is framed in its spot in the report (glossary "Crop"); none shows the whole photo.
-export type PhotoType = { id: string; src: string; description: string; crop?: CropType };
+export type PhotoType = {
+	id: string;
+	/** The picture that shows: the photo itself, a PDF's first page, a video's thumbnail. */
+	src: string;
+	description: string;
+	crop?: CropType;
+	/** #327: a PDF or a video attached in the photo's place (glossary "Attachment"); none is a photo. */
+	kind?: 'pdf' | 'video';
+	/** #327: the PDF or the video itself, by its file address. */
+	source?: string;
+	/** #327: how many pages the PDF has. */
+	pageCount?: number;
+	/** #327: how long the video runs, in seconds. */
+	duration?: number;
+};
 // One row of the Items panel: how many and what (Justin's run 9 note 24), the way the sample reports list cargo
 // ("2x transformers and 27x accessory crates"). A manifest's extra columns may come later.
 export type ItemType = { id: string; quantity: string; description: string };

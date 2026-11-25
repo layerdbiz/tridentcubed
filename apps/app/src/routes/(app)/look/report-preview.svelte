@@ -33,12 +33,15 @@
 	// facility, transport, facility; a transport's page with its photo, particulars and facilities; the signature
 	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
+	import PdfPage from '#lib/components/attachment/pdf-page.svelte';
+	import { bytesOf, drawPage, pdfOf } from '#lib/pdf/pdf.utils.js';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import Trip from '#lib/components/trip/trip.svelte';
 	import type { TripLegType } from '#lib/components/trip/trip.types.js';
-	import { toCrossOrigin } from '#lib/files/files.schema.js';
+	import { ATTACHMENT_ICONS, ATTACHMENT_NAMES, toCrossOrigin } from '#lib/files/files.schema.js';
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toReportLink } from '#lib/report/report.utils.js';
+	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import { introductionOf, listOf } from './introduction';
@@ -66,6 +69,9 @@
 		DownloadError,
 		joinPdfs,
 		PART_LIMIT,
+		type PdfReaderType,
+		placePdfPages,
+		type PlacementType,
 		printParts,
 		sizeOf,
 		toPageLink,
@@ -87,6 +93,7 @@
 		photoPagesOf,
 		rangeOf,
 		spanOf,
+		spotsOf,
 		stageNumbersOf,
 		targetOf,
 		type ContentLineType
@@ -330,6 +337,10 @@
 		return id ? toReportLink(document.location.origin, id, page) : siteLink;
 	}
 	const documentNumber = $derived(documentIdOf(look.project, look.projects, company));
+	// What a video's thumbnail opens (#327): the video played in the app this report was made in.
+	function videoLinkOf(source: string | undefined) {
+		return toVideoLink(document.location.origin, source ?? '') || undefined;
+	}
 
 	// The trip as legs (legs.ts): one transport and the facilities it calls at.
 	const legs = $derived(
@@ -1124,11 +1135,18 @@
 		}
 	}
 
-	// One page as it is sent: its markup as drawn, at the page's own size, its big photos slimmed.
+	// One page as it is sent: its markup as drawn, at the page's own size, its big photos slimmed. #327: an attached
+	// PDF's page goes as its empty spot; its own page is put there once the report is printed (`placementsOf`). The
+	// marks that say what kind each attachment is stay on the Preview.
 	function sheetOf(node: HTMLElement) {
 		const copy = node.cloneNode(true) as HTMLElement;
+		for (const mark of copy.querySelectorAll('[data-screen-only]')) mark.remove();
 		const shown = node.querySelectorAll('img');
 		for (const [index, image] of copy.querySelectorAll('img').entries()) {
+			if (image.hasAttribute('data-pdf-picture')) {
+				image.remove();
+				continue;
+			}
 			const slim = slimOf(shown[index]);
 			if (slim) image.src = slim;
 		}
@@ -1136,6 +1154,37 @@
 		copy.classList.remove('ring-4', 'ring-primary/70');
 		return copy.outerHTML;
 	}
+
+	// Where each attached PDF's page sits on a report page (#327), in the page's own pixels, however far the canvas
+	// is zoomed: what the download puts the PDF's own pages in.
+	function placementsOf(node: HTMLElement, page: number): PlacementType[] {
+		const sheet = node.getBoundingClientRect();
+		const scale = sheet.width / W || 1;
+		return [...node.querySelectorAll<HTMLElement>('[data-pdf][data-pdf-page]')].map((spot) => {
+			const rect = spot.getBoundingClientRect();
+			return {
+				page,
+				box: {
+					x: (rect.left - sheet.left) / scale,
+					y: (rect.top - sheet.top) / scale,
+					width: rect.width / scale,
+					height: rect.height / scale
+				},
+				source: spot.dataset.pdf ?? '',
+				at: Number(spot.dataset.pdfPage) - 1
+			};
+		});
+	}
+
+	// How the download reads an attached PDF: its bytes, fetched once, and a page drawn as a JPEG for one whose pages
+	// cannot be copied.
+	const PDF_READER: PdfReaderType = {
+		bytes: bytesOf,
+		picture: async (source, page, width) => {
+			const blob = await drawPage(await pdfOf(source), page, width);
+			return new Uint8Array(await blob.arrayBuffer());
+		}
+	};
 
 	// Lets the screen draw before the next piece of work: slimming a page's photos holds it still, and a toast that
 	// is never drawn says nothing (the "Making the PDF" note that never showed, #240). A hidden tab draws nothing,
@@ -1169,6 +1218,7 @@
 				.map((node) => node.outerHTML)
 				.join('\n');
 			const pages: string[] = [];
+			const placements: PlacementType[] = [];
 			for (const [at, node] of nodes.entries()) {
 				progress.reach(
 					(PREPARED * at) / count,
@@ -1182,6 +1232,7 @@
 					);
 				}
 				pages.push(sheetOf(node));
+				placements.push(...placementsOf(node, at));
 			}
 			if (!count) throw new DownloadError('There are no pages to print yet.');
 
@@ -1208,7 +1259,9 @@
 
 			progress.reach(PRINTED, JOINED, 'Putting the pages together');
 			await pause();
-			const pdf = await joinPdfs(pdfs, filename);
+			const joined = await joinPdfs(pdfs, filename);
+			if (placements.length) progress.reach(PRINTED, JOINED, 'Putting in the attached PDFs');
+			const pdf = await placePdfPages(joined, placements, PDF_READER, W);
 
 			progress.reach(JOINED, 100, 'Saving the PDF');
 			const url = URL.createObjectURL(new Blob([pdf as BlobPart], { type: 'application/pdf' }));
@@ -2439,7 +2492,8 @@
 								</div>
 							{:else if item.kind === 'photos' && item.panel}
 								{@const group = item.panel.groups[item.group ?? 0]}
-								{@const shown = group.photos.slice(
+								<!-- #327: a PDF's pages each take a spot, so they fill the layout as photos do. -->
+								{@const shown = spotsOf(group.photos).slice(
 									(item.part ?? 0) * group.layout,
 									((item.part ?? 0) + 1) * group.layout
 								)}
@@ -2464,21 +2518,87 @@
 									<p class="mt-1 text-[11px] text-slate-500">{group.description}</p>
 								{/if}
 								<div class="mt-4 grid gap-3 {group.layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}">
-									{#each shown as photo (photo.id)}
+									{#each shown as { key, photo, page } (key)}
 										<!-- #312: the photo as it is cropped for this spot, placed in percentages so the PDF prints it the same. -->
+										<!-- #327: a PDF's page shown whole; a video as its thumbnail with a play button and its length, a
+										     link that opens the video in the app (the PDF cannot play it). -->
+										{@const hasDescription = Boolean(photo.description) && page === 1}
+										{@const kind = photo.kind ?? 'photo'}
 										<figure class="relative overflow-hidden rounded">
-											<Photo
-												src={photo.src}
-												crossorigin={toCrossOrigin(photo.src)}
-												crop={photo.crop}
-												class="w-full {PHOTO_SIZES[group.layout]}"
-											/>
-											{#if photo.description}
+											<!-- A PDF still on its way has no stored file yet: its first page shows its picture, whole, and
+											     its other pages wait as quiet placeholders. -->
+											{#if photo.kind === 'pdf'}
+												<PdfPage
+													source={photo.source ?? ''}
+													{page}
+													picture={photo.src}
+													class="w-full {PHOTO_SIZES[group.layout]}"
+												/>
+											{:else if photo.kind === 'video'}
+												<a
+													href={videoLinkOf(photo.source)}
+													target="_blank"
+													rel="noopener"
+													class="relative block"
+													aria-label="Play the video{photo.description
+														? `: ${photo.description}`
+														: ''}"
+												>
+													<Photo
+														src={photo.src}
+														crossorigin={toCrossOrigin(photo.src)}
+														crop={photo.crop}
+														class="w-full {PHOTO_SIZES[group.layout]}"
+													/>
+													<span class="absolute inset-0 flex items-center justify-center">
+														<span
+															class="flex items-center justify-center rounded-full bg-black/55 text-white {group.layout <=
+															2
+																? 'size-14'
+																: 'size-9'}"
+															><span
+																class="icon-[mdi--play] {group.layout <= 2 ? 'size-9' : 'size-6'}"
+															></span></span
+														>
+													</span>
+													{#if toLengthLabel(photo.duration)}
+														<span
+															class="absolute right-1.5 bottom-1.5 z-[1] rounded bg-black/70 px-1 py-px text-[8px] leading-tight font-semibold text-white tabular-nums"
+															>{toLengthLabel(photo.duration)}</span
+														>
+													{/if}
+												</a>
+											{:else}
+												<Photo
+													src={photo.src}
+													crossorigin={toCrossOrigin(photo.src)}
+													crop={photo.crop}
+													class="w-full {PHOTO_SIZES[group.layout]}"
+												/>
+											{/if}
+											<!-- #327: what kind of attachment each spot holds, at a glance (Justin, 2026-11-25): a mark on
+											     the Preview only, left out of the download (sheetOf), so the report the client reads stays clean. -->
+											<span
+												class="pointer-events-none absolute top-1 left-1 z-[1] flex items-center gap-0.5 rounded bg-black/65 p-0.5 text-[8px] leading-none font-semibold text-white tabular-nums {kind ===
+												'photo'
+													? ''
+													: 'pr-1'}"
+												title={ATTACHMENT_NAMES[kind]}
+												data-screen-only
+												><span class="{ATTACHMENT_ICONS[kind]} size-3"></span>{kind === 'pdf'
+													? (photo.pageCount ?? 1) > 1
+														? `PDF · ${page} of ${photo.pageCount}`
+														: 'PDF'
+													: kind === 'video'
+														? 'Video'
+														: ''}</span
+											>
+											{#if hasDescription}
 												<figcaption
-													class="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/40 to-transparent px-2 pt-5 pb-1.5 font-medium text-white {group.layout <=
+													class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/40 to-transparent px-2 pt-5 pb-1.5 font-medium text-white {group.layout <=
 													2
 														? 'text-[10px]'
-														: 'truncate text-[8px]'}"
+														: 'truncate text-[8px]'} {photo.kind === 'video' ? 'pr-10' : ''}"
 												>
 													{photo.description}
 												</figcaption>

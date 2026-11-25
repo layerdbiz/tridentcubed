@@ -46,7 +46,12 @@
 	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
-	import { toPictureType } from '#lib/files/files.schema.js';
+	import {
+		ATTACHMENT_ICONS,
+		ATTACHMENT_NAMES,
+		ATTACHMENT_NOUNS,
+		toPictureType
+	} from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import ImageField from './image-field.svelte';
@@ -77,7 +82,17 @@
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
 	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
-	import { addGroup as addPhotoGroup, addPhotos, hasFiles, movePhoto, uploadOf } from './photos';
+	import {
+		addGroup as addPhotoGroup,
+		addPhotos,
+		ATTACHMENT_ACCEPT,
+		countLabelOf,
+		filesLabelOf,
+		hasFiles,
+		movePhoto,
+		uploadOf
+	} from './photos';
+	import { toLengthLabel } from '#lib/video/video.utils.js';
 	import { createPhotoToast } from './toasts';
 	import { contactsOf } from './records.data';
 	import { stageNumbersOf } from './report-flow';
@@ -462,14 +477,15 @@
 		event.preventDefault();
 		event.stopPropagation();
 		dropping = '';
-		const count = addPhotos(panel, [...(event.dataTransfer?.files ?? [])], {
+		const files = [...(event.dataTransfer?.files ?? [])];
+		const count = addPhotos(panel, files, {
 			group,
 			projectId: look.projectId,
 			toast: createPhotoToast
 		});
 		if (!count) return;
 		if (!openGroups.includes(group.id)) openGroups = [...openGroups, group.id];
-		look.say(`${count} ${count === 1 ? 'photo' : 'photos'} added`);
+		look.say(`${filesLabelOf(files)} added`);
 		save();
 	}
 
@@ -513,11 +529,12 @@
 	// photo panel that is open: it joins that group where it was dropped, or at its end, and is saved like any change.
 	const PHOTO_ZONE = 'photos';
 	function dropPhoto(group: PanelType['groups'][number], from: number, id: string, to?: number) {
+		const kind = group.photos[from]?.kind ?? 'photo';
 		if (!movePhoto(look.panels, group.id, from, id, to)) return;
 		const target = look.panels.flatMap((item) => item.groups ?? []).find((item) => item.id === id);
 		if (panel.groups.some((item) => item.id === id) && !openGroups.includes(id))
 			openGroups = [...openGroups, id];
-		look.say(`Photo moved to ${target?.title || 'the other group'}`);
+		look.say(`${ATTACHMENT_NAMES[kind]} moved to ${target?.title || 'the other group'}`);
 		save();
 	}
 
@@ -1402,7 +1419,7 @@
 					<Group
 						title={group.title || `Untitled ${word}`}
 						values={counted(group.id)}
-						meta="{group.photos.length} photos"
+						meta={countLabelOf(group.photos)}
 						isEnabled={group.isEnabled}
 						onenable={() => toggleGroup(group)}
 						icon="icon-[mdi--image-multiple-outline]"
@@ -1414,7 +1431,7 @@
 								panel.groups,
 								group,
 								`Delete ${word}?`,
-								`Its ${group.photos.length} photos leave the report.`
+								`Its ${countLabelOf(group.photos)} leave the report.`
 							)}
 						sortKey="groups-{panel.id}"
 						index={groupIndex}
@@ -1515,12 +1532,16 @@
 											if (!upload || upload.hasPreview) openPhoto(group, photo);
 										}}
 									>
-										<!-- #294: a photo the device cannot draw (a HEIC in Chrome) shows its name, never a broken picture. -->
-										{#if upload && !upload.hasPreview}
+										<!-- #294: a photo the device cannot draw (a HEIC in Chrome) shows its name, never a broken picture.
+										     #327: so does a PDF or a video until its picture is made. -->
+										{#if upload && (!upload.hasPreview || !photo.src)}
 											<span
 												class="pointer-events-none flex size-full flex-col items-center justify-center gap-1 p-2 pb-8 text-center"
 											>
-												<span class="icon-[mdi--image-outline] size-6 shrink-0 text-slate-400"
+												<span
+													class="{ATTACHMENT_ICONS[
+														photo.kind ?? 'photo'
+													]} size-6 shrink-0 text-slate-400"
 												></span>
 												<span class="line-clamp-2 text-[11px] font-medium break-all text-slate-600"
 													>{upload.name}</span
@@ -1546,6 +1567,24 @@
 												class="absolute bottom-1 left-1 icon-[mdi--text-box] size-5 text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
 												title="Has a description"
 											></span>
+										{/if}
+										<!-- #327: what kind of attachment it is, on every tile (Justin, 2026-11-25): a photo by its icon, a PDF
+										     with its pages, a video with its length. -->
+										{#if photo.src}
+											{@const kind = photo.kind ?? 'photo'}
+											<span
+												class="pointer-events-none absolute right-1 bottom-1 flex items-center gap-0.5 rounded-md bg-black/65 py-0.5 text-[10px] leading-none font-semibold text-white tabular-nums {kind ===
+												'photo'
+													? 'px-0.5'
+													: 'pr-1.5 pl-1'}"
+												title={ATTACHMENT_NAMES[kind]}
+												aria-label={ATTACHMENT_NAMES[kind]}
+												><span class="{ATTACHMENT_ICONS[kind]} size-3.5"></span>{kind === 'pdf'
+													? `${photo.pageCount ?? 1} ${photo.pageCount === 1 ? 'page' : 'pages'}`
+													: kind === 'video'
+														? toLengthLabel(photo.duration) || 'Video'
+														: ''}</span
+											>
 										{/if}
 									</button>
 									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. #294: while
@@ -1586,11 +1625,16 @@
 											value=""
 											align={photoIndex % 3 === 0 ? 'left' : 'right'}
 											options={[
-												{
-													id: 'crop',
-													label: 'Crop',
-													icon: 'icon-[mdi--crop]'
-												},
+												// #327: a PDF's pages always print whole; a video is not cropped yet either.
+												...(photo.kind
+													? []
+													: [
+															{
+																id: 'crop',
+																label: 'Crop',
+																icon: 'icon-[mdi--crop]'
+															}
+														]),
 												{
 													id: 'describe',
 													label: 'Edit description',
@@ -1608,7 +1652,7 @@
 													? remove(
 															group.photos,
 															photo,
-															'Delete photo?',
+															`Delete ${ATTACHMENT_NOUNS[photo.kind ?? 'photo']}?`,
 															`It leaves the ${word} and the report.`
 														)
 													: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
@@ -1631,7 +1675,7 @@
 								<span class="text-[11px] font-medium">Upload</span>
 								<input
 									type="file"
-									accept="image/*"
+									accept={ATTACHMENT_ACCEPT}
 									multiple
 									class="sr-only"
 									onchange={(event) => pickPhotos(event, group)}
@@ -1644,7 +1688,7 @@
 								<span class="text-[11px] font-medium">Camera</span>
 								<input
 									type="file"
-									accept="image/*"
+									accept="image/*,video/*"
 									capture="environment"
 									class="sr-only"
 									onchange={(event) => pickPhotos(event, group)}

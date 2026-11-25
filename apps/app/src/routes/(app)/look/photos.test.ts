@@ -23,7 +23,15 @@ import { createTestSignIn } from '#lib/server/testing.js';
 import { draftPanel, type GroupType, type PanelType } from './look.data';
 import { LookState } from './look.state.svelte';
 import { isOfProject, takeProject, takeReads, takeRows, toRows } from './mapper';
-import { addGroup, addPhotos, movePhoto, uploadOf } from './photos';
+import {
+	addGroup,
+	addPhotos,
+	countLabelOf,
+	filesLabelOf,
+	movePhoto,
+	type ReadersType,
+	uploadOf
+} from './photos';
 
 type TestType = Awaited<ReturnType<typeof createTestSignIn>>;
 type DeviceType = { look: LookState; confirmed: RowType[]; actor: ActorType };
@@ -675,5 +683,155 @@ describe('adding photos', () => {
 		expect(panelOf(after.look, 'discharge').groups[0].photos.map((photo) => photo.id)).toEqual(
 			group.photos.map((photo) => photo.id)
 		);
+	});
+});
+
+describe('PDFs and videos in a photo group (#327)', () => {
+	// What the device reads of a PDF and a video: a picture of the first page or a frame, and its pages or length.
+	const readers: ReadersType = {
+		pdf: async () => ({
+			picture: new File(['page'], 'manifest.jpg', { type: 'image/jpeg' }),
+			pageCount: 3
+		}),
+		video: async () => ({
+			picture: new File(['frame'], 'lift.jpg', { type: 'image/jpeg' }),
+			duration: 12.4
+		})
+	};
+
+	it('go where photos go, save once their picture and their file are both stored, and come back the same', async () => {
+		const uploads = createUploads();
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const operations = panelOf(mine.look, 'operations');
+		const group = addGroup(operations);
+		group.title = 'Loading Operations';
+		await save(mine);
+		const toast = new Progress();
+		const files = [
+			picture('deck.jpg'),
+			new File(['%PDF-1.7'], 'manifest.pdf', { type: 'application/pdf' }),
+			// An iPhone video dropped on Windows can come with no type: it is known by its name.
+			new File(['mov'], 'lift.MOV', { type: '' })
+		];
+
+		expect(
+			addPhotos(operations, files, {
+				group,
+				projectId: id,
+				steps: uploads.steps,
+				readers,
+				toast: () => toast
+			})
+		).toBe(3);
+		expect(group.photos.map((photo) => photo.kind)).toEqual([undefined, 'pdf', 'video']);
+		expect(toast.label).toBe('Uploading 1 of 3 files');
+		expect((await save(mine)).changes).toEqual([]);
+
+		await uploads.settle();
+		expect(toast.label).toBe('3 files uploaded');
+		const [, pdf, video] = group.photos;
+		const askedFor = (photoId: string) =>
+			uploads.asked
+				.filter((request) => request.for.id === photoId)
+				.map((request) => `${request.for.column} ${request.type}`)
+				.sort();
+		expect(askedFor(pdf.id)).toEqual(['file image/webp', 'source application/pdf']);
+		expect(askedFor(video.id)).toEqual(['file image/webp', 'source video/quicktime']);
+		expect(pdf).toMatchObject({ kind: 'pdf', pageCount: 3 });
+		expect(video).toMatchObject({ kind: 'video', duration: 12.4 });
+		for (const each of [pdf, video]) {
+			expect(each.src).toMatch(/^\/files\//);
+			expect(each.source).toMatch(/^\/files\//);
+			expect(each.source).not.toBe(each.src);
+			expect(uploadOf(each)).toBeUndefined();
+		}
+		expect(countLabelOf(group.photos)).toBe('1 photo, 1 PDF, 1 video');
+
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+		const theirGroup = panelOf(theirs.look, 'operations').groups.find(
+			(each) => each.id === group.id
+		);
+		expect(theirGroup?.photos).toEqual(group.photos);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+		toast.close();
+	});
+
+	it('says why on its tile when the device cannot read it, and saves nothing of it', async () => {
+		const uploads = createUploads();
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const operations = panelOf(mine.look, 'operations');
+		const group = addGroup(operations);
+		const { PictureError } = await import('#lib/files/files.schema.js');
+		addPhotos(operations, [new File(['x'], 'locked.pdf', { type: 'application/pdf' })], {
+			group,
+			projectId: id,
+			steps: uploads.steps,
+			readers: {
+				...readers,
+				pdf: async () => {
+					throw new PictureError('This PDF needs a password to open.');
+				}
+			}
+		});
+		await uploads.settle();
+		const [locked] = group.photos;
+		expect(uploadOf(locked)?.isFailed).toBe(true);
+		expect(uploadOf(locked)?.reason).toBe('This PDF needs a password to open.');
+		expect(uploads.asked).toEqual([]);
+		expect((await save(mine)).changes.filter((change) => change.table === 'photo')).toEqual([]);
+	});
+
+	it('says at once that a video over 20 MB is too big, before reading it or sending anything', async () => {
+		const uploads = createUploads();
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const operations = panelOf(mine.look, 'operations');
+		const group = addGroup(operations);
+		const { MAX_FILE_BYTES } = await import('#lib/files/files.schema.js');
+		let isRead = false;
+		addPhotos(
+			operations,
+			[new File([new Uint8Array(MAX_FILE_BYTES + 1)], 'crane.mp4', { type: 'video/mp4' })],
+			{
+				group,
+				projectId: id,
+				steps: uploads.steps,
+				readers: {
+					...readers,
+					video: async (file) => {
+						isRead = true;
+						return readers.video(file);
+					}
+				}
+			}
+		);
+		await uploads.settle();
+		const [video] = group.photos;
+		expect(uploadOf(video)?.isFailed).toBe(true);
+		expect(uploadOf(video)?.reason).toBe(
+			'This video is bigger than 20 MB, the most the app takes for now.'
+		);
+		expect(isRead).toBe(false);
+		expect(uploads.asked).toEqual([]);
+		expect((await save(mine)).changes.filter((change) => change.table === 'photo')).toEqual([]);
+	});
+});
+
+describe('filesLabelOf: what a drop says it added (#327)', () => {
+	it('counts each kind it takes, and leaves out what a photo group does not take', () => {
+		const files = [
+			new File(['x'], 'deck.jpg', { type: 'image/jpeg' }),
+			new File(['x'], 'hold.jpg', { type: 'image/jpeg' }),
+			new File(['x'], 'bill.pdf', { type: 'application/pdf' }),
+			new File(['x'], 'lift.mov', { type: '' }),
+			new File(['x'], 'notes.txt', { type: 'text/plain' })
+		];
+
+		expect(filesLabelOf(files)).toBe('2 photos, 1 PDF, 1 video');
+		expect(filesLabelOf(files.slice(2, 3))).toBe('1 PDF');
 	});
 });

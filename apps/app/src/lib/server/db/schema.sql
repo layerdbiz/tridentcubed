@@ -459,7 +459,11 @@ CREATE TABLE "photo" (
 	"position" integer DEFAULT 0 NOT NULL,
 	"file" text DEFAULT '' NOT NULL,
 	"description" text DEFAULT '' NOT NULL,
-	"crop" jsonb
+	"crop" jsonb,
+	"kind" text DEFAULT 'photo' NOT NULL,
+	"source" text DEFAULT '' NOT NULL,
+	"page_count" integer DEFAULT 0 NOT NULL,
+	"duration" double precision DEFAULT 0 NOT NULL
 );
 
 --> statement-breakpoint
