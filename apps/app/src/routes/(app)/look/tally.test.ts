@@ -5,6 +5,7 @@ import {
 	organizationSectionsOf,
 	sectionsOf,
 	tallyOf,
+	toPercent,
 	toTally,
 	valuesOf
 } from './tally';
@@ -46,6 +47,17 @@ describe('how much of a section is filled in', () => {
 
 	it('has one thing to do when nothing is in it yet', () => {
 		expect(toTally([])).toBe('0 of 1 complete');
+	});
+});
+
+describe('a percent', () => {
+	it('reads 100 only once everything is done, and 0 only while nothing is (#328)', () => {
+		expect(toPercent(199, 200)).toBe(99);
+		expect(toPercent(200, 200)).toBe(100);
+		expect(toPercent(1, 300)).toBe(1);
+		expect(toPercent(0, 300)).toBe(0);
+		expect(toPercent(1, 2)).toBe(50);
+		expect(toPercent(0, 0)).toBe(0);
 	});
 });
 
@@ -110,6 +122,15 @@ describe('the inputs each section of the Project panel holds', () => {
 			'Team Lead',
 			'Team Assigned'
 		]);
+	});
+
+	it('counts the Team Assigned as done with only a Team Lead: the lead alone is the team (Justin, 2026-11-25)', () => {
+		const panel = draftPanel('Trident Cubed', 'Ana');
+		expect(toTally(valuesOf(sectionsOf(panel), 'team'))).toBe('3 of 3 complete');
+		panel.owner = '';
+		expect(toTally(valuesOf(sectionsOf(panel), 'team'))).toBe('1 of 3 complete');
+		panel.assigned = ['Ben'];
+		expect(toTally(valuesOf(sectionsOf(panel), 'team'))).toBe('2 of 3 complete');
 	});
 
 	it('counts a company of personnel: its name, then a name and a title for each person', () => {

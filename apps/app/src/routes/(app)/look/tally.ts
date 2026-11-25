@@ -30,6 +30,16 @@ export function tallyOf(values: unknown[]): TallyType {
 	return { done: values.filter(isDone).length, total: values.length };
 }
 
+/**
+ * A share as a whole percent that never says more or less than is so: 100 only once everything is done and 0 only
+ * while nothing is (#328: 199 of 200 rounded up to 100%, and a panel read Complete with an input still empty).
+ */
+export function toPercent(done: number, total: number) {
+	if (!total || done <= 0) return 0;
+	if (done >= total) return 100;
+	return Math.min(99, Math.max(1, Math.round((done / total) * 100)));
+}
+
 /** "2 of 7 complete". A section with nothing in it yet has one thing to do, as a panel with no rows does. */
 export function toTally(values: unknown[]) {
 	const { done, total } = tallyOf(values);
@@ -85,7 +95,9 @@ function projectSections(panel: PanelType, contacts: { id: string }[]): SectionT
 			inputs: [
 				field('Organization'),
 				{ label: 'Team Lead', value: panel.owner },
-				{ label: 'Team Assigned', value: panel.assigned }
+				// A job may need only one of Trident's people, its Team Lead (Justin, 2026-11-25, #328): with a lead
+				// picked the Team Assigned holds nothing more to fill in, so a lead-only project can reach 100%.
+				{ label: 'Team Assigned', value: panel.assigned.length ? panel.assigned : panel.owner }
 			]
 		},
 		...(panel.personnel ?? []).map((company) => ({

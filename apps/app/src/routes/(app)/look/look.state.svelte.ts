@@ -12,6 +12,7 @@
 // onto the project's row as they change, so its Page, rows and cards follow Edit); every project and record keeps
 // when it was made and last changed; one `add` and one `patch` serve the + sheet and every Edit tab. Run 17: the
 // places picked in location fields are kept with their coordinates (`places`), and the map pins read them.
+import { untrack } from 'svelte';
 import { DEFAULT_CHART, type ChartKindType, type RangeType } from './chart.data';
 import {
 	clientOf as clientOfName,
@@ -42,7 +43,7 @@ import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
 import { contactsOf, type PageType } from './records.data';
-import { hasRequired, sectionsOf, tallyOf } from './tally';
+import { hasRequired, sectionsOf, tallyOf, toPercent } from './tally';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import type { TeamMemberType } from './team.data';
@@ -77,7 +78,7 @@ export function metricsOf(panel: PanelType, look: LookState): MetricsType {
 	const total = Math.max(1, tally.total);
 	// A panel switched off is not planned: it reads like any other panel, with nothing of its total done, 0% (#225).
 	if (!panel.isEnabled) return { done: 0, total, percent: 0, status: 'Not planned' };
-	const percent = Math.round((tally.done / total) * 100);
+	const percent = toPercent(tally.done, total);
 	const status: PanelStatusType =
 		percent >= 100 ? 'Complete' : percent === 0 ? 'To do' : 'In progress';
 	return { done: tally.done, total, percent, status };
@@ -88,7 +89,33 @@ export function percentOf(panels: PanelType[], look: LookState) {
 	const enabled = panels.filter((panel) => panel.isEnabled).map((panel) => metricsOf(panel, look));
 	const done = enabled.reduce((sum, item) => sum + item.done, 0);
 	const total = enabled.reduce((sum, item) => sum + item.total, 0);
-	return total ? Math.round((done / total) * 100) : 0;
+	return total ? toPercent(done, total) : 0;
+}
+
+// Whether every input of a project's switched-on panels is filled in: its 100%, which only then reads 100.
+function isDoneOf(panels: PanelType[], look: LookState) {
+	const enabled = panels.filter((panel) => panel.isEnabled);
+	return (
+		enabled.length > 0 &&
+		enabled.every((panel) => {
+			const { done, total } = metricsOf(panel, look);
+			return done === total;
+		})
+	);
+}
+
+// What moves a project's status by itself (#328, Justin 2026-11-25: "it needs to automatically change ... if it's
+// at 100%, it needs to turn into a ready state"). A Draft becomes In Progress once its Project panel is complete
+// (`isStarted`, Justin 2026-11-10), and a Draft or In Progress project becomes Ready once every input of its
+// switched-on panels is filled in (`isDone`, its 100%). Nothing moves back: a Ready project stays Ready when it is
+// edited (ADR 0006), and Review, Revision and the states after it are only ever picked by hand.
+export function toFollowing(
+	status: StatusType,
+	{ isStarted, isDone }: { isStarted: boolean; isDone: boolean }
+): StatusType {
+	if (status !== 'Draft' && status !== 'In Progress') return status;
+	if (isDone) return 'Ready';
+	return isStarted ? 'In Progress' : status;
 }
 
 // Run 9 kept the projects, their panels and the lists in this browser. The database replaced that storage table by
@@ -201,6 +228,13 @@ export class LookState {
 	panels = $derived(this.workspaces[this.projectId] ?? []);
 	overall = $derived(percentOf(this.panels, this));
 	isFrozen = $derived(FROZEN.includes(this.project?.status));
+	// How far the open project's work has got, for its status (`toFollowing`): its Project panel complete, and every
+	// input filled in. Two yes-or-no answers, so the step below runs again only when one of them changes.
+	#isStarted = $derived.by(() => {
+		const panel = this.panels.find((item) => item.kind === 'project');
+		return panel ? hasRequired(sectionsIn(panel, this)) : false;
+	});
+	#isDone = $derived(isDoneOf(this.panels, this));
 
 	#saveTimer: ReturnType<typeof setTimeout> | undefined;
 	#toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -214,6 +248,15 @@ export class LookState {
 		}
 		// The Project panel is the project: its row follows the panel as it is typed in.
 		$effect(() => this.#syncProject());
+		// Its status follows its work (#328) whatever filled the last input in: a keystroke, a pick that lands a
+		// moment later, a photo whose upload finishes, or a project opened that was already done. The status is read
+		// untracked, so one picked by hand stays until the work moves on.
+		$effect(() => {
+			const isStarted = this.#isStarted;
+			const isDone = this.#isDone;
+			if (this.screen !== 'workspace' || !this.isLoaded(this.projectId)) return;
+			untrack(() => this.#follow(this.projectId, { isStarted, isDone }));
+		});
 	}
 
 	// Opens or shuts one of the menu's panels, and keeps that on the device (#212).
@@ -468,7 +511,7 @@ export class LookState {
 				: panel
 		);
 		this.open(id, 'edit');
-		this.#advance(id);
+		this.advance(id);
 	}
 
 	// Deleting a project sends it and everything in it to the Trash (#186). Only an Admin deletes a project that is
@@ -489,25 +532,32 @@ export class LookState {
 		this.asking = ask;
 	}
 
-	// Called by every input, so the "Saved" badge shows auto-save at work.
+	// Called by every input, so the "Saved" badge shows auto-save at work. The status follows in the effect above.
 	saved() {
 		this.project.updated = nowIso();
 		this.flash();
-		// After the browser has finished with this input (a drop-down's new value lands a moment later).
-		const id = this.projectId;
-		setTimeout(() => this.#advance(id));
 	}
 
-	// A Draft becomes In Progress by itself once its Project panel is complete (Justin, 2026-11-10): every field
-	// filled, an owner, and someone assigned. Nothing else moves a status automatically. It does not wait for the
-	// input that is optional (a reference number), which still counts (#229).
-	#advance(id: string) {
+	// Moves a project's status on as far as its work has got (`toFollowing`): In Progress once its Project panel is
+	// complete (every input but the optional reference number, #229; a Team Lead is team enough, #328), Ready once
+	// every input of its switched-on panels is filled in.
+	advance(id = this.projectId) {
+		const panels = this.workspaces[id];
+		const panel = panels?.find((item) => item.kind === 'project');
+		if (!panels || !panel) return;
+		this.#follow(id, {
+			isStarted: hasRequired(sectionsIn(panel, this)),
+			isDone: isDoneOf(panels, this)
+		});
+	}
+
+	#follow(id: string, work: { isStarted: boolean; isDone: boolean }) {
 		const project = this.projects.find((item) => item.id === id);
-		const panel = this.workspaces[id]?.find((item) => item.kind === 'project');
-		if (!project || !panel || project.status !== 'Draft') return;
-		if (!hasRequired(sectionsIn(panel, this))) return;
-		project.status = 'In Progress';
-		this.say(`"${project.title}" is now In Progress`);
+		if (!project) return;
+		const status = toFollowing(project.status, work);
+		if (status === project.status) return;
+		project.status = status;
+		this.say(`"${project.title}" is now ${status}`);
 	}
 
 	// Any status, picked by hand in the Change Status sheet or a ⋮ shortcut. Sent keeps what it was before, so

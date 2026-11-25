@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { draftOf, draftPanel, STAGES, type ClientType } from './look.data';
-import { LookState, metricsOf } from './look.state.svelte';
+import { draftOf, draftPanel, itemOf, STAGES, type ClientType } from './look.data';
+import { LookState, metricsOf, toFollowing } from './look.state.svelte';
 import { sectionsOf, tallyOf } from './tally';
 
 // The tests run on Svelte's server build, where LookState's effects do nothing: what is checked here is the state
@@ -154,11 +154,11 @@ describe('a panel’s count (#229)', () => {
 		}
 	});
 
-	it('reads a new project’s Project panel as 5 of 11: its introduction, date, job number, organization and Team Lead', () => {
+	it('reads a new project’s Project panel as 6 of 11: its introduction, date, job number, organization, Team Lead and so its team (#328)', () => {
 		const look = fresh();
 		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));
 		const panel = look.panels.find((item) => item.kind === 'project')!;
-		expect(metricsOf(panel, look)).toMatchObject({ done: 5, total: 11 });
+		expect(metricsOf(panel, look)).toMatchObject({ done: 6, total: 11 });
 	});
 
 	it('counts the Contact once the picked customer has contacts', () => {
@@ -188,11 +188,93 @@ describe('a Draft', () => {
 		expect(metricsOf(panel, look).status).toBe('In progress');
 	});
 
-	it('stays a Draft while an input that is not optional is empty', () => {
+	it('becomes In Progress with only its Team Lead picked, nobody else assigned (#328)', () => {
 		const look = fresh();
 		const draft = draftPanel(look.organization.name, 'Capt. Cezary Poninski');
 		for (const field of draft.fields) field.value ||= 'Barge move';
 		look.create(draft);
+		expect(look.project.status).toBe('In Progress');
+	});
+
+	it('stays a Draft while an input that is not optional is empty', () => {
+		const look = fresh();
+		const draft = draftPanel(look.organization.name, 'Capt. Cezary Poninski');
+		for (const field of draft.fields) field.value ||= 'Barge move';
+		draft.fields.find((field) => field.label === 'Subtitle')!.value = '';
+		look.create(draft);
 		expect(look.project.status).toBe('Draft');
+	});
+
+	it('stays a Draft with no Team Lead, whoever is assigned', () => {
+		const look = fresh();
+		const draft = draftPanel(look.organization.name, '');
+		for (const field of draft.fields) field.value ||= 'Barge move';
+		draft.assigned = ['Michael Boone'];
+		look.create(draft);
+		expect(look.project.status).toBe('Draft');
+	});
+});
+
+// A new project whose Project panel is filled in, and then every other switched-on panel: a trip with its mode,
+// vessel and facility, an item, a day of the time log, and the photo panels switched off.
+function finished() {
+	const look = fresh();
+	const draft = draftPanel(look.organization.name, 'Capt. Cezary Poninski');
+	for (const field of draft.fields) field.value ||= 'Barge move';
+	draft.customerReference = 'S00025484';
+	look.create(draft);
+	for (const panel of look.panels) {
+		if (panel.kind === 'photos') panel.isEnabled = false;
+		if (panel.kind === 'transport')
+			panel.stops = panel.stops.map((stop) => ({
+				...stop,
+				mode: 'Vessel',
+				name: 'BBC Amber',
+				facility: 'Port of Galveston'
+			}));
+		if (panel.kind === 'items') panel.items = [itemOf('2', 'Power transformers')];
+		if (panel.kind === 'timelog')
+			panel.days = [
+				{
+					id: 'day',
+					date: '2026-11-25',
+					entries: [{ id: 'entry', time: '08:00', activity: 'Arrived' }]
+				}
+			];
+	}
+	return look;
+}
+
+describe('a project’s status following its work (#328)', () => {
+	it('turns Ready once every input is filled in, at 100%', () => {
+		const look = finished();
+		expect(look.overall).toBe(100);
+		look.advance();
+		expect(look.project.status).toBe('Ready');
+	});
+
+	it('stays In Progress with one input still empty, and does not read 100% for it', () => {
+		const look = finished();
+		const timelog = look.panels.find((panel) => panel.kind === 'timelog')!;
+		timelog.days[0].entries[0].activity = '';
+		look.advance();
+		expect(look.overall).toBeLessThan(100);
+		expect(look.project.status).toBe('In Progress');
+	});
+
+	it('goes from Draft straight to Ready when the last input filled is in the Project panel', () => {
+		const look = finished();
+		look.project.status = 'Draft';
+		look.advance();
+		expect(look.project.status).toBe('Ready');
+	});
+
+	it('never moves Ready back, nor Review, Revision or any state after it', () => {
+		const done = { isStarted: true, isDone: true };
+		const undone = { isStarted: false, isDone: false };
+		expect(toFollowing('Ready', undone)).toBe('Ready');
+		for (const status of ['Review', 'Revision', 'Sent', 'Complete', 'Archived'] as const)
+			expect(toFollowing(status, done)).toBe(status);
+		expect(toFollowing('In Progress', undone)).toBe('In Progress');
 	});
 });
