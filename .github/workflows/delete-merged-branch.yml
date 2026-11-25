@@ -1,7 +1,7 @@
 # Deletes a pull request's head branch once the PR is merged, so nobody has to tap "Delete branch"
 # on GitHub. Stands in for the repository setting "Automatically delete head branches", which a
-# cloud session cannot switch on. `dev` and `main` are never deleted, and a branch from a fork is
-# left alone.
+# cloud session cannot switch on. `dev`, `main`, `next` (risky and overnight work, #341) and `play`
+# (prototypes, #342) are never deleted, and a branch from a fork is left alone.
 #
 # Every run also sweeps branches left behind, so nothing has to be run by hand. A branch goes when
 # either holds:
@@ -45,7 +45,7 @@ jobs:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           case "$BRANCH" in
-            dev|main) echo "kept: $BRANCH is protected"; exit 0 ;;
+            dev|main|next|play) echo "kept: $BRANCH is protected"; exit 0 ;;
           esac
           if gh api -X DELETE "repos/$REPO/git/refs/heads/$BRANCH"; then
             echo "deleted: $BRANCH"
@@ -73,7 +73,7 @@ jobs:
           git for-each-ref --format='%(refname:strip=3) %(objectname)' refs/remotes/origin |
           while read -r name sha; do
             case "$name" in
-              dev|main|HEAD) continue ;;
+              dev|main|next|play|HEAD) continue ;;
             esac
 
             # 1. The newest PR for the branch merged and nothing was pushed since.

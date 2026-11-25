@@ -47,7 +47,26 @@ describe.skipIf(!hasShell)('which pushes Vercel builds', () => {
 		);
 	});
 
+	it('skips a push to next, which only the app builds', () => {
+		expect(isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'next' })).toBe(false);
+	});
+
 	it('builds when Vercel does not say which kind of build it is, so a live site never stops updating', () => {
 		expect(isBuilt({ VERCEL_GIT_COMMIT_REF: 'dev' })).toBe(true);
+	});
+});
+
+// Vercel makes no deployment at all for a branch this list leaves out, not even one it then skips, so a push to
+// a ticket branch or to play starts nothing in this folder's projects (#341).
+describe('which branches Vercel deploys from', () => {
+	const { git } = JSON.parse(
+		readFileSync(fileURLToPath(new URL('../vercel.json', import.meta.url)), 'utf8')
+	) as { git: { deploymentEnabled: Record<string, boolean> } };
+
+	it('turns every branch off and then names the ones that deploy', () => {
+		const { '**': everyBranch, ...named } = git.deploymentEnabled;
+		expect(everyBranch).toBe(false);
+		expect(Object.keys(named).toSorted()).toEqual(['dev', 'main']);
+		expect(Object.values(named).every(Boolean)).toBe(true);
 	});
 });
