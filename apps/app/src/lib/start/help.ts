@@ -131,6 +131,11 @@ export const HELP: readonly HelpType[] = [
 		label: 'Description',
 		text: 'What the item is, such as Accessory crates. Rows pasted from a spreadsheet become the items table.'
 	},
+	{
+		key: 'itemAttachment.layout',
+		label: 'Pages per Page',
+		text: 'How many of this PDF’s pages print on one report page: fewer means bigger pages.'
+	},
 
 	// The Time Log panel.
 	{

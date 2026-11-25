@@ -1056,7 +1056,7 @@
 									{@render perPage(
 										'Pages per Page',
 										`${uid}-${file.id}-layout`,
-										'item_attachment.layout',
+										'itemAttachment.layout',
 										file.layout,
 										(layout) => {
 											file.layout = layout;
