@@ -38,6 +38,9 @@ const BROWSERS: [RegExp, string][] = [
 	[/Safari\//, 'Safari']
 ];
 
+// What the name says in place of a browser for the installed app.
+const INSTALLED_APP = 'Installed app';
+
 /**
  * The device a request came from, by its browser's words (`user-agent`) and the app's hint (`toDeviceHint`). The
  * server's own browser, which prints PDFs as the member who asked (#240), is nobody's device.
@@ -50,9 +53,56 @@ export function toDevice(userAgent: string, hint = ''): DeviceType {
 	if (system === 'Mac' && flags.has('touch')) system = 'iPad';
 	if (!system) return { kind: '', name: '' };
 	const browser = flags.has('app')
-		? 'Installed app'
+		? INSTALLED_APP
 		: (BROWSERS.find(([pattern]) => pattern.test(userAgent))?.[1] ?? '');
 	return { kind: toKind(system, userAgent), name: [system, browser].filter(Boolean).join(' · ') };
+}
+
+// The icons beside a name in the Online panel (#337; Justin, 2026-11-25: "an iPhone on iOS or an Android using
+// Chrome [...] or Windows using Edge"), read from the kind and the name the server stamped. The kind is grey, the
+// system and the browser are their own logos. Whole class names, so Tailwind finds them.
+const KIND_ICONS: Record<DeviceKindType, string> = {
+	phone: 'icon-[mdi--cellphone]',
+	tablet: 'icon-[mdi--tablet]',
+	computer: 'icon-[mdi--laptop]'
+};
+
+const SYSTEM_ICONS: Record<string, string> = {
+	iPhone: 'icon-[logos--apple]',
+	iPad: 'icon-[logos--apple]',
+	Mac: 'icon-[logos--apple]',
+	Android: 'icon-[logos--android-icon]',
+	Windows: 'icon-[logos--microsoft-windows-icon]',
+	ChromeOS: 'icon-[logos--chrome]',
+	Linux: 'icon-[logos--linux-tux]'
+};
+
+const BROWSER_ICONS: Record<string, string> = {
+	Safari: 'icon-[logos--safari]',
+	Chrome: 'icon-[logos--chrome]',
+	Edge: 'icon-[logos--microsoft-edge]',
+	Firefox: 'icon-[logos--firefox]',
+	Opera: 'icon-[logos--opera]',
+	'Samsung Internet': 'icon-[mdi--web]'
+};
+
+export type DeviceIconsType = {
+	kind: string;
+	system: string;
+	browser: string;
+	// The installed app, which the panel shows by the app's own icon in place of a browser.
+	isApp: boolean;
+};
+
+/** The icons for a stamped device; a part the app has no icon for is empty, and its words stay as the label. */
+export function toDeviceIcons(kind: DeviceKindType | undefined, name: string): DeviceIconsType {
+	const [system = '', browser = ''] = name.split(' · ');
+	return {
+		kind: kind ? KIND_ICONS[kind] : '',
+		system: SYSTEM_ICONS[system] ?? '',
+		browser: BROWSER_ICONS[browser] ?? '',
+		isApp: browser === INSTALLED_APP
+	};
 }
 
 /** A device kind read back from a row, or nothing for a value that is not one. */

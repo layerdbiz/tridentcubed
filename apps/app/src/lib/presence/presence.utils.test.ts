@@ -1,7 +1,7 @@
 // The device the menu's Online panel shows beside each person (#331): what the browser says about itself, plus the
 // app's own hint for what it cannot say, and how long someone has been online or away, in words.
 import { describe, expect, it } from 'vite-plus/test';
-import { toDevice, toDeviceHint, toDeviceKind, toDuration } from './presence.utils';
+import { toDevice, toDeviceHint, toDeviceIcons, toDeviceKind, toDuration } from './presence.utils';
 
 // Real browser strings, as each device sends them.
 const AGENTS = {
@@ -120,6 +120,64 @@ describe("the app's hint about its device", () => {
 
 	it('does not take one stray touch point (some computers report one) for a touch screen', () => {
 		expect(toDeviceHint({ touchPoints: 1, isInstalled: false })).toBe('');
+	});
+});
+
+describe('the icons beside a name', () => {
+	it('shows the kind of device, its system and its browser', () => {
+		expect(toDeviceIcons('phone', 'iPhone · Safari')).toEqual({
+			kind: 'icon-[mdi--cellphone]',
+			system: 'icon-[logos--apple]',
+			browser: 'icon-[logos--safari]',
+			isApp: false
+		});
+		expect(toDeviceIcons('phone', 'Android · Chrome')).toEqual({
+			kind: 'icon-[mdi--cellphone]',
+			system: 'icon-[logos--android-icon]',
+			browser: 'icon-[logos--chrome]',
+			isApp: false
+		});
+		expect(toDeviceIcons('computer', 'Windows · Edge')).toEqual({
+			kind: 'icon-[mdi--laptop]',
+			system: 'icon-[logos--microsoft-windows-icon]',
+			browser: 'icon-[logos--microsoft-edge]',
+			isApp: false
+		});
+		expect(toDeviceIcons('tablet', 'iPad · Firefox')).toMatchObject({
+			kind: 'icon-[mdi--tablet]',
+			system: 'icon-[logos--apple]',
+			browser: 'icon-[logos--firefox]'
+		});
+	});
+
+	it("marks the installed app, which shows the app's own icon in place of a browser", () => {
+		expect(toDeviceIcons('phone', 'Android · Installed app')).toEqual({
+			kind: 'icon-[mdi--cellphone]',
+			system: 'icon-[logos--android-icon]',
+			browser: '',
+			isApp: true
+		});
+	});
+
+	it('leaves out what it has no icon for', () => {
+		expect(toDeviceIcons('phone', 'iPhone')).toEqual({
+			kind: 'icon-[mdi--cellphone]',
+			system: 'icon-[logos--apple]',
+			browser: '',
+			isApp: false
+		});
+		expect(toDeviceIcons(undefined, '')).toEqual({
+			kind: '',
+			system: '',
+			browser: '',
+			isApp: false
+		});
+		expect(toDeviceIcons('computer', 'Plan 9 · Mosaic')).toEqual({
+			kind: 'icon-[mdi--laptop]',
+			system: '',
+			browser: '',
+			isApp: false
+		});
 	});
 });
 
