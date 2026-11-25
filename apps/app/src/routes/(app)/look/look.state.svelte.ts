@@ -48,7 +48,7 @@ import { hasRequired, sectionsOf, tallyOf, toPercent } from './tally';
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import type { TeamMemberType } from './team.data';
 
-export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings';
+export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings' | 'activity';
 export type ViewType = 'table' | 'cards' | 'board';
 // A project has Edit (its panels, once called Panels) and Preview; a record has Page (how it reads) and Edit.
 export type TabType = 'page' | 'edit' | 'preview';
@@ -414,6 +414,15 @@ export class LookState {
 		this.tab = 'page';
 		this.tabProgress = 0;
 		this.screen = 'settings';
+	}
+
+	// The Activity (#306): an Admin's own screen, opened from the menu on their profile picture.
+	openActivity() {
+		if (!this.isAdmin) return;
+		if (this.screen === 'workspace') this.#keepProject();
+		this.tab = 'page';
+		this.tabProgress = 0;
+		this.screen = 'activity';
 	}
 
 	// The organization's new name follows it into every project's Organization drop-down.

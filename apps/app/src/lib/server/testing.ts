@@ -61,11 +61,11 @@ export async function createTestSignIn() {
 	}
 
 	// Signs a User in by email the way the login page does, and gives back the user, their Cookie header and who
-	// the server takes them to be.
-	async function signIn(email: string) {
+	// the server takes them to be. `headers` are the browser's, such as the user agent its session keeps.
+	async function signIn(email: string, headers?: Headers) {
 		const sent = await sendCode(auth, email, { ip: nextAddress() });
 		if (!sent.isSent) throw new Error(sent.message);
-		const result = await verifyCode(auth, { email, code: readCode(email) });
+		const result = await verifyCode(auth, { email, code: readCode(email), headers });
 		if (!result.isSignedIn) throw new Error(result.message);
 		return { ...result, actor: await readActor(result.cookie) };
 	}

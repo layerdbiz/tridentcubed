@@ -745,6 +745,8 @@ CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "t
 --> statement-breakpoint
 CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
 --> statement-breakpoint
+CREATE POLICY "session is in the acting organization" ON "session" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "session".user_id and m.organization_id = app.organization_id()));
+--> statement-breakpoint
 CREATE POLICY "organization is the acting one" ON "organization" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "organization name changes in the acting one" ON "organization" AS PERMISSIVE FOR UPDATE TO "trident_app" USING (id = app.organization_id()) WITH CHECK (id = app.organization_id());

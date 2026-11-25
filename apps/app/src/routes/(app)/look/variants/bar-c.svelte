@@ -53,6 +53,8 @@
 	// Inside the Organization the bar shows its own icon and name. The icon and name are those of the last thing
 	// opened, so they do not change while they slide away.
 	const ORGANIZATION = { name: 'Organization', icon: 'icon-[mdi--domain]' };
+	// The Activity (#306) is one view, so it has no tabs.
+	const ACTIVITY = { name: 'Activity', icon: 'icon-[mdi--timeline-clock-outline]' };
 	let inside = $state({ name: DATASETS[PAGES[0]].label, icon: PAGE_ICONS[PAGES[0]] });
 	const leadIcon = $derived(isInside ? inside.icon : PAGE_ICONS[lead]);
 	const isLeadOn = $derived(isInside || look.navSection === lead);
@@ -91,10 +93,12 @@
 	$effect(() => {
 		if (look.screen === 'record' || look.screen === 'settings') tabs = RECORD;
 		else if (look.screen === 'workspace') tabs = PROJECT;
+		else if (look.screen === 'activity') tabs = [];
 	});
 
 	$effect(() => {
 		if (look.screen === 'settings') inside = ORGANIZATION;
+		else if (look.screen === 'activity') inside = ACTIVITY;
 		else if (isInside) inside = { name: DATASETS[home].label, icon: PAGE_ICONS[home] };
 	});
 
@@ -212,11 +216,11 @@
 					role="tablist"
 					aria-label={tabs.map((tab) => TABS[tab]).join(' or ')}
 				>
-					<span
-						class="absolute inset-y-0 left-0 rounded-full bg-primary"
-						style="width: {mark.width}px; transform: translateX({mark.x}px)"
-						aria-hidden="true"
-					></span>
+					{#if tabs.length}<span
+							class="absolute inset-y-0 left-0 rounded-full bg-primary"
+							style="width: {mark.width}px; transform: translateX({mark.x}px)"
+							aria-hidden="true"
+						></span>{/if}
 					{#each tabs as tab (tab)}
 						{@const isOn = shown === tab}
 						<button
