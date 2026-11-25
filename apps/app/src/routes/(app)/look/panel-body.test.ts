@@ -1,7 +1,7 @@
 // The Project panel on the library's inputs (#57): every input the notched field with its ? and, where the app makes
 // the value, the Generated value look, in the panel's order, each section drawing exactly the inputs its count reads
-// (tally.ts); what it saves and when unchanged.
-import { fireEvent, render, screen } from '@testing-library/svelte';
+// (tally.ts); what it saves and when unchanged; and the whole project number under Job Number (#300).
+import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { toState } from '../../../test-state.svelte';
 import { draftPanel, type PanelType } from './look.data';
@@ -113,6 +113,28 @@ describe('the Project panel', () => {
 
 		for (const name of ['Title', 'Subtitle', 'Description', 'Project Type', 'Job Number'])
 			expect(screen.getByRole('button', { name: `What goes in ${name}?` })).toBeTruthy();
+	});
+
+	it('shows the whole project number under Job Number, as a value the app made', () => {
+		const { container } = show((panel) => {
+			panel.fields.find((field) => field.label === 'Customer')!.value = CUSTOMER.name;
+		});
+
+		const line = screen.getByText('GUL-2026-10-27-J01').closest('p')!;
+		expect(within(line).getByTitle('Made by the app')).toBeTruthy();
+		const job = fieldOf('Job Number').closest('fieldset')!;
+		expect(job.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		expect(container.textContent).not.toContain('GUL-2026-10-27-J02');
+	});
+
+	it('follows a typed Job Number in the project number', async () => {
+		show((panel) => {
+			panel.fields.find((field) => field.label === 'Customer')!.value = CUSTOMER.name;
+		});
+
+		await fireEvent.input(fieldOf('Job Number'), { target: { value: '7' } });
+
+		expect(screen.getByText('GUL-2026-10-27-J07')).toBeTruthy();
 	});
 
 	it('saves the Project Type picked from its list, and the worked-out Description follows it', async () => {

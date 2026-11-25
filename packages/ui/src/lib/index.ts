@@ -39,6 +39,7 @@ export { default as Divider, type DividerProps } from "./components/atoms/divide
 export { default as Example, type ExampleProps } from "./components/atoms/example/example.svelte";
 export { default as ExampleOld, type ExampleOldProps } from "./components/atoms/example-old/example-old.svelte";
 export * from "./components/atoms/forms/field.svelte.ts";
+export { default as Generated, type GeneratedProps } from "./components/atoms/forms/generated/generated.svelte";
 export { default as Help, type HelpProps } from "./components/atoms/forms/help/help.svelte";
 export { default as Icon, type IconProps } from "./components/atoms/icon/icon.svelte";
 export { default as IconTheme } from "./components/atoms/icon/icon-theme.svelte";

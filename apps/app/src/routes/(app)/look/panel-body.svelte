@@ -35,7 +35,8 @@
 	// #57 (Justin, 2026-11-24): the Project panel is the first moved onto the library's inputs (Input, Textarea,
 	// Select), in the look picked on the inputs prototype (#284): the label on the border, its ? once the label sits
 	// there, the app's values (the Description's sentence, the next Job Number) a Generated value in bright blue with a
-	// reset once typed over, a Select's pick as its picture. What it saves, and when, is unchanged.
+	// reset once typed over, a Select's pick as its picture. Under the Job Number, the whole project number the two
+	// make, as a Generated value line (#300; hidden from 2026-11-18, #225). What it saves, and when, is unchanged.
 	// #215 (Justin, 2026-11-18): a photo panel opens on its own title, filled in and editable, so Operations or an
 	// added panel can be called what the job calls it; the report and its contents print that title. Its groups
 	// (the Operations panel's stages) each have a switch that leaves them out of the report.
@@ -43,7 +44,7 @@
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
 	import { flip } from 'svelte/animate';
-	import { Help, Input, Menu, Select, Textarea } from '@layerd/ui';
+	import { Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Avatar from './avatar.svelte';
@@ -75,6 +76,7 @@
 		PAGE_ICONS,
 		panelNameOf,
 		PROJECT_TYPES,
+		projectNumberOf,
 		todayIso,
 		type AttachmentType,
 		type FacilityKindType,
@@ -296,11 +298,12 @@
 
 	// The two inputs of the project number (#217). A project not made yet has no J count of its own, so the one it
 	// will get is worked out here the way the server will: the next of that customer and day. It is the Job Number's
-	// Generated value. The number they make is not shown in the panel (#225); it prints in the report's footer.
+	// Generated value, and the number they make shows under them (#300), as the report's footer prints it.
 	const day = $derived(panel.day || (isDraft ? todayIso() : createdDayOf(look.project)));
 	const nextJob = $derived(
 		nextJobOf(look.projects, customerName, day, isDraft ? undefined : look.projectId)
 	);
+	const projectNumber = $derived(projectNumberOf(customerName, day, panel.job ?? nextJob));
 
 	// A date field that is cleared keeps the date it had: a project always has a Project Creation Date. The field
 	// shows it again at once (library Input).
@@ -747,24 +750,32 @@
 				help={look.helpOf('project.type')}
 				onpick={(id) => setField('Project Type', id)}
 			/>
-			<!-- The two parts of the project number a User may type (#217). -->
-			<div class="grid grid-cols-2 gap-3">
-				<Input
-					class="min-w-0"
-					label="Created Date"
-					type="date"
-					bind:value={() => day, setDay}
-					help={look.helpOf('project.createdDate')}
-				/>
-				<Input
-					class="min-w-0 tabular-nums"
-					label="Job Number"
-					inputmode="numeric"
-					maxlength={3}
-					bind:value={() => (panel.job ? String(panel.job) : ''), setJob}
-					generated={String(nextJob)}
-					onreset={save}
-					help={look.helpOf('project.jobNumber')}
+			<!-- The two parts of the project number a User may type (#217), and under them the number they make
+			     (#300). -->
+			<div class="space-y-2">
+				<div class="grid grid-cols-2 gap-3">
+					<Input
+						class="min-w-0"
+						label="Created Date"
+						type="date"
+						bind:value={() => day, setDay}
+						help={look.helpOf('project.createdDate')}
+					/>
+					<Input
+						class="min-w-0 tabular-nums"
+						label="Job Number"
+						inputmode="numeric"
+						maxlength={3}
+						bind:value={() => (panel.job ? String(panel.job) : ''), setJob}
+						generated={String(nextJob)}
+						onreset={save}
+						help={look.helpOf('project.jobNumber')}
+					/>
+				</div>
+				<Generated
+					label="Project Number"
+					value={projectNumber}
+					help={look.helpOf('project.number')}
 				/>
 			</div>
 		</Group>

@@ -487,7 +487,12 @@ export function numberOf(project: ProjectType, projects: ProjectType[], client =
 		(other) => other.client === project.client && createdDayOf(other) === date
 	);
 	const count = project.job ?? Math.max(1, sameDay.length - sameDay.indexOf(project));
-	return `${clientOf(client).code}-${date}-${toJobCode(count)}`;
+	return projectNumberOf(client, date, count);
+}
+
+/** The project number made of its three parts: the customer (by name), the Created Date and the Job Number (#300). */
+export function projectNumberOf(client: string, day: string, job: number) {
+	return `${clientOf(client).code}-${day}-${toJobCode(job)}`;
 }
 
 // The customer's own number for the job as the report prints it (#217): "#SO025484", whether or not it was typed
