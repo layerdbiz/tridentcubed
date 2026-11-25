@@ -776,4 +776,39 @@ describe('PDFs and videos in a photo group (#327)', () => {
 		expect(uploads.asked).toEqual([]);
 		expect((await save(mine)).changes.filter((change) => change.table === 'photo')).toEqual([]);
 	});
+
+	it('says at once that a video over 20 MB is too big, before reading it or sending anything', async () => {
+		const uploads = createUploads();
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const operations = panelOf(mine.look, 'operations');
+		const group = addGroup(operations);
+		const { MAX_FILE_BYTES } = await import('#lib/files/files.schema.js');
+		let isRead = false;
+		addPhotos(
+			operations,
+			[new File([new Uint8Array(MAX_FILE_BYTES + 1)], 'crane.mp4', { type: 'video/mp4' })],
+			{
+				group,
+				projectId: id,
+				steps: uploads.steps,
+				readers: {
+					...readers,
+					video: async (file) => {
+						isRead = true;
+						return readers.video(file);
+					}
+				}
+			}
+		);
+		await uploads.settle();
+		const [video] = group.photos;
+		expect(uploadOf(video)?.isFailed).toBe(true);
+		expect(uploadOf(video)?.reason).toBe(
+			'This video is bigger than 20 MB, the most the app takes for now.'
+		);
+		expect(isRead).toBe(false);
+		expect(uploads.asked).toEqual([]);
+		expect((await save(mine)).changes.filter((change) => change.table === 'photo')).toEqual([]);
+	});
 });

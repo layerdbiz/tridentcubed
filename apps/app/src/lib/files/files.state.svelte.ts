@@ -18,6 +18,7 @@ import {
 	CONVERT_PATH,
 	type ConvertRequestType,
 	type FileTargetType,
+	MAX_FILE_BYTES,
 	PictureError,
 	type PictureKindType,
 	toDocumentType,
@@ -272,6 +273,13 @@ export class AttachmentUpload {
 		this.isFailed = false;
 		this.reason = '';
 		this.#tell();
+		// Told at once, before it is read or anything of it goes (#307 makes big videos smaller).
+		if (this.#file.size > MAX_FILE_BYTES) {
+			const noun = this.#options.noun;
+			return this.#fail(
+				`This ${noun} is bigger than ${MAX_FILE_BYTES / 1024 / 1024} MB, the most the app takes for now.`
+			);
+		}
 		try {
 			this.#made ??= await this.#options.make(this.#file);
 		} catch (error) {
