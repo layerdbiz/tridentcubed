@@ -25,6 +25,8 @@ import {
 	type UploadOptionsType,
 	type UploadStepsType
 } from '#lib/files/files.state.svelte.js';
+import { readPdf } from '#lib/pdf/pdf.utils.js';
+import { readVideo } from '#lib/video/video.utils.js';
 import { groupOf, type GroupType, type PanelType, type PhotoType } from './look.data';
 
 // The photos on their way, or whose upload failed, by photo id. A photo whose file is stored has none.
@@ -39,10 +41,7 @@ export type ReadersType = {
 	video: (file: File) => Promise<MadeType>;
 };
 
-const BROWSER_READERS: ReadersType = {
-	pdf: async (file) => (await import('#lib/pdf/pdf.utils.js')).readPdf(file),
-	video: async (file) => (await import('#lib/video/video.utils.js')).readVideo(file)
-};
+const BROWSER_READERS: ReadersType = { pdf: readPdf, video: readVideo };
 
 /** The upload of a photo still on its way or that failed: its mark and its Retry. */
 export function uploadOf(photo: PhotoType) {

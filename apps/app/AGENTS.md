@@ -26,9 +26,16 @@ scripts/seed-sql.ts            prints the one seed as SQL (`pnpm --silent --filt
 src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.remote.ts (`saveRows`,
                                `fetchLists`), rows.utils.ts (the difference), rows.state.svelte.ts (the sync loop)
 src/lib/files/                 files: files.schema.ts (the upload and convert requests, the picture sizes and
-                               the types the server converts), files.remote.ts (`askUpload`), files.utils.ts
-                               (shrink, or send untouched, on the device), files.state.svelte.ts (the upload
-                               helper: `Upload`, `startUpload`)
+                               the types the server converts, what kind an attachment is and its icon),
+                               files.remote.ts (`askUpload`), files.utils.ts (shrink, or send untouched, on the
+                               device), files.state.svelte.ts (the upload helper: `Upload`, `startUpload`, and
+                               `AttachmentUpload` for a PDF or video and the picture made of it, #327)
+src/lib/pdf/                   PDFs in photo groups (#327): pdf.utils.ts (PDF.js on the device: a PDF's pages
+                               counted and drawn, once), pdf.constants.ts (the decoders, fonts and character
+                               maps PDF.js reads for some PDFs, served with the app)
+src/lib/video/                 videos in photo groups (#327): video.utils.ts (the length and the Thumbnail
+                               made on the device, the app address that plays one)
+src/lib/components/attachment/ pdf-page.svelte: one page of a stored PDF in its spot on the Preview
 src/lib/metadata/              metadata.utils.ts: every metadata field of a picture carried byte for byte into
                                the shrunk copy, the original's field list for the File row (#292), and the
                                time and place the file says; the test pictures in fixtures/ (drawn, no
@@ -39,6 +46,7 @@ src/routes/waiting/            Waiting for access, where a Guest is kept (server
 src/routes/(app)/              the signed-in app, drawn on the device (ssr off in its +layout.ts)
 src/routes/api/                server routes the app calls: export/pdf, places, convert (#294)
 src/routes/files/[id]/         the app's address of a file: checks the member, sends on to a signed link
+src/routes/video/[id]/         plays a stored video: what a video's Thumbnail links to in the PDF (#327)
 src/routes/local-files/        the local folder store's signed addresses (no Supabase settings only)
 src/routes/report/             a report's link, /report/<project>/<page>: what a report page's QR code
                                holds; sends the browser on to that project's Preview (behind sign-in)

@@ -46,7 +46,7 @@
 	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
 	import TransportLegs from './variants/transport-legs.svelte';
-	import { toPictureType } from '#lib/files/files.schema.js';
+	import { ATTACHMENT_ICONS, ATTACHMENT_NAMES, toPictureType } from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import ImageField from './image-field.svelte';
@@ -1477,11 +1477,9 @@
 												class="pointer-events-none flex size-full flex-col items-center justify-center gap-1 p-2 pb-8 text-center"
 											>
 												<span
-													class="{photo.kind === 'pdf'
-														? 'icon-[mdi--file-pdf-box]'
-														: photo.kind === 'video'
-															? 'icon-[mdi--video-outline]'
-															: 'icon-[mdi--image-outline]'} size-6 shrink-0 text-slate-400"
+													class="{ATTACHMENT_ICONS[
+														photo.kind ?? 'photo'
+													]} size-6 shrink-0 text-slate-400"
 												></span>
 												<span class="line-clamp-2 text-[11px] font-medium break-all text-slate-600"
 													>{upload.name}</span
@@ -1508,18 +1506,22 @@
 												title="Has a description"
 											></span>
 										{/if}
-										<!-- #327: what kind of attachment it is, on its tile: a PDF with its pages, a video with its length. -->
-										{#if photo.kind && photo.src}
+										<!-- #327: what kind of attachment it is, on every tile (Justin, 2026-11-25): a photo by its icon, a PDF
+										     with its pages, a video with its length. -->
+										{#if photo.src}
+											{@const kind = photo.kind ?? 'photo'}
 											<span
-												class="pointer-events-none absolute right-1 bottom-1 flex items-center gap-0.5 rounded-md bg-black/65 py-0.5 pr-1.5 pl-1 text-[10px] leading-none font-semibold text-white tabular-nums"
-												title={photo.kind === 'pdf' ? 'PDF' : 'Video'}
-												><span
-													class="{photo.kind === 'pdf'
-														? 'icon-[mdi--file-pdf-box]'
-														: 'icon-[mdi--play]'} size-3.5"
-												></span>{photo.kind === 'pdf'
+												class="pointer-events-none absolute right-1 bottom-1 flex items-center gap-0.5 rounded-md bg-black/65 py-0.5 text-[10px] leading-none font-semibold text-white tabular-nums {kind ===
+												'photo'
+													? 'px-0.5'
+													: 'pr-1.5 pl-1'}"
+												title={ATTACHMENT_NAMES[kind]}
+												aria-label={ATTACHMENT_NAMES[kind]}
+												><span class="{ATTACHMENT_ICONS[kind]} size-3.5"></span>{kind === 'pdf'
 													? `${photo.pageCount ?? 1} ${photo.pageCount === 1 ? 'page' : 'pages'}`
-													: toLengthLabel(photo.duration) || 'Video'}</span
+													: kind === 'video'
+														? toLengthLabel(photo.duration) || 'Video'
+														: ''}</span
 											>
 										{/if}
 									</button>

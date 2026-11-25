@@ -24,6 +24,22 @@ export const SHARPNESS = 2.5;
 
 type LibraryType = typeof import('pdfjs-dist');
 
+/**
+ * How PDF.js gets the files it reads only for some PDFs (pdf.constants.ts), by the kind of file and its name: its
+ * `BinaryDataFactory`. The build gives each file an address of its own, so PDF.js is handed this rather than a folder
+ * to read them from.
+ */
+export class LibraryFiles {
+	async fetch({ kind, filename }: { kind: string; filename: string }) {
+		const { LIBRARY_FILES, LIBRARY_FOLDERS } = await import('./pdf.constants.js');
+		const address = LIBRARY_FILES[`/node_modules/pdfjs-dist/${LIBRARY_FOLDERS[kind]}/${filename}`];
+		if (!address) throw new Error(`PDF.js has no file ${filename}.`);
+		const response = await fetch(address);
+		if (!response.ok) throw new Error(`PDF.js's ${filename} answered ${response.status}.`);
+		return new Uint8Array(await response.arrayBuffer());
+	}
+}
+
 let library: Promise<LibraryType> | undefined;
 
 function loadLibrary() {
@@ -43,7 +59,12 @@ function loadLibrary() {
 export async function openPdf(bytes: Uint8Array): Promise<PDFDocumentProxy> {
 	const pdfjs = await loadLibrary();
 	try {
-		return await pdfjs.getDocument({ data: bytes.slice() }).promise;
+		return await pdfjs.getDocument({
+			data: bytes.slice(),
+			BinaryDataFactory: LibraryFiles,
+			useWorkerFetch: false,
+			cMapPacked: true
+		}).promise;
 	} catch (error) {
 		if (error instanceof Error && error.name === 'PasswordException')
 			throw new PictureError(LOCKED);

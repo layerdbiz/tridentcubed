@@ -41,6 +41,23 @@ export const FILE_TYPES: Record<string, string> = {
  */
 export type AttachmentKindType = 'photo' | 'pdf' | 'video';
 
+/**
+ * The icon that says what kind of attachment it is, on its tile in the edit panel and on its spot on the Preview, so
+ * a photo, a PDF and a video are told apart at a glance (#327; Justin, 2026-11-25).
+ */
+export const ATTACHMENT_ICONS: Record<AttachmentKindType, string> = {
+	photo: 'icon-[mdi--image]',
+	pdf: 'icon-[mdi--file-pdf-box]',
+	video: 'icon-[mdi--video]'
+};
+
+/** What each kind of attachment is called, beside its icon. */
+export const ATTACHMENT_NAMES: Record<AttachmentKindType, string> = {
+	photo: 'Photo',
+	pdf: 'PDF',
+	video: 'Video'
+};
+
 // The PDFs and videos a photo group takes, by the ending a file's name may have, for a browser that hands one over
 // with no type.
 const ATTACHMENT_ENDINGS: Record<string, string> = {

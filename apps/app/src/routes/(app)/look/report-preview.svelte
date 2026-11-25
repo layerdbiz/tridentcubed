@@ -34,10 +34,11 @@
 	// at the foot of the last page. Their A versions print as they did, on one page each.
 	import { onMount, untrack } from 'svelte';
 	import PdfPage from '#lib/components/attachment/pdf-page.svelte';
+	import { bytesOf, drawPage, pdfOf } from '#lib/pdf/pdf.utils.js';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import Trip from '#lib/components/trip/trip.svelte';
 	import type { TripLegType } from '#lib/components/trip/trip.types.js';
-	import { toCrossOrigin } from '#lib/files/files.schema.js';
+	import { ATTACHMENT_ICONS, ATTACHMENT_NAMES, toCrossOrigin } from '#lib/files/files.schema.js';
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toReportLink } from '#lib/report/report.utils.js';
 	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
@@ -1125,9 +1126,11 @@
 	}
 
 	// One page as it is sent: its markup as drawn, at the page's own size, its big photos slimmed. #327: an attached
-	// PDF's page goes as its empty spot; its own page is put there once the report is printed (`placementsOf`).
+	// PDF's page goes as its empty spot; its own page is put there once the report is printed (`placementsOf`). The
+	// marks that say what kind each attachment is stay on the Preview.
 	function sheetOf(node: HTMLElement) {
 		const copy = node.cloneNode(true) as HTMLElement;
+		for (const mark of copy.querySelectorAll('[data-screen-only]')) mark.remove();
 		const shown = node.querySelectorAll('img');
 		for (const [index, image] of copy.querySelectorAll('img').entries()) {
 			if (image.hasAttribute('data-pdf-picture')) {
@@ -1166,9 +1169,8 @@
 	// How the download reads an attached PDF: its bytes, fetched once, and a page drawn as a JPEG for one whose pages
 	// cannot be copied.
 	const PDF_READER: PdfReaderType = {
-		bytes: async (source) => (await import('#lib/pdf/pdf.utils.js')).bytesOf(source),
+		bytes: bytesOf,
 		picture: async (source, page, width) => {
-			const { drawPage, pdfOf } = await import('#lib/pdf/pdf.utils.js');
 			const blob = await drawPage(await pdfOf(source), page, width);
 			return new Uint8Array(await blob.arrayBuffer());
 		}
@@ -2490,6 +2492,7 @@
 										<!-- #327: a PDF's page shown whole; a video as its thumbnail with a play button and its length, a
 										     link that opens the video in the app (the PDF cannot play it). -->
 										{@const hasCaption = Boolean(photo.description) && page === 1}
+										{@const kind = photo.kind ?? 'photo'}
 										<figure class="relative overflow-hidden rounded">
 											{#if photo.kind === 'pdf' && photo.source}
 												<PdfPage
@@ -2540,6 +2543,23 @@
 													class="w-full {PHOTO_SIZES[group.layout]}"
 												/>
 											{/if}
+											<!-- #327: what kind of attachment each spot holds, at a glance (Justin, 2026-11-25): a mark on
+											     the Preview only, left out of the download (sheetOf), so the report the client reads stays clean. -->
+											<span
+												class="pointer-events-none absolute top-1 left-1 z-[1] flex items-center gap-0.5 rounded bg-black/65 p-0.5 text-[8px] leading-none font-semibold text-white tabular-nums {kind ===
+												'photo'
+													? ''
+													: 'pr-1'}"
+												title={ATTACHMENT_NAMES[kind]}
+												data-screen-only
+												><span class="{ATTACHMENT_ICONS[kind]} size-3"></span>{kind === 'pdf'
+													? (photo.pageCount ?? 1) > 1
+														? `PDF · ${page} of ${photo.pageCount}`
+														: 'PDF'
+													: kind === 'video'
+														? 'Video'
+														: ''}</span
+											>
 											{#if hasCaption}
 												<figcaption
 													class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/40 to-transparent px-2 pt-5 pb-1.5 font-medium text-white {group.layout <=
