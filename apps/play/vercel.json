@@ -1,12 +1,14 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-	"git": {
-		"deploymentEnabled": { "**": false, "play": true }
-	},
 	"headers": [
 		{
 			"source": "/(.*)",
-			"headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+			"headers": [
+				{
+					"key": "X-Robots-Tag",
+					"value": "noindex, nofollow"
+				}
+			]
 		}
 	]
 }

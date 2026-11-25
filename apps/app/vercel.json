@@ -1,7 +1,4 @@
 {
 	"$schema": "https://openapi.vercel.sh/vercel.json",
-	"git": {
-		"deploymentEnabled": { "**": false, "main": true, "dev": true, "next": true }
-	},
 	"ignoreCommand": "[ \"${VERCEL_ENV:-production}\" != \"production\" ] && [ \"$VERCEL_GIT_COMMIT_REF\" != \"next\" ]"
 }
