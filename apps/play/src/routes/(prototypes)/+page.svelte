@@ -4,10 +4,6 @@
 
 <svelte:head>
 	<title>Trident Cubed Play</title>
-	<meta
-		name="robots"
-		content="noindex"
-	/>
 </svelte:head>
 
 <main class="min-h-dvh bg-slate-50 px-4 py-10 text-slate-900">

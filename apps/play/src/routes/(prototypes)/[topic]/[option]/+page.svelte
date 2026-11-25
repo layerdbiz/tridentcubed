@@ -6,10 +6,6 @@
 
 <svelte:head>
 	<title>{data.topicLabel} {data.prototype.label} · Trident Cubed Play</title>
-	<meta
-		name="robots"
-		content="noindex"
-	/>
 </svelte:head>
 
 <div class="flex h-dvh flex-col bg-slate-950">
