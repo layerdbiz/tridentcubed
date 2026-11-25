@@ -3,6 +3,7 @@
 // The project number's typed parts and the customer's own number for the job (#217).
 import { describe, expect, it } from 'vite-plus/test';
 import {
+	attach,
 	createdDayOf,
 	nextJobOf,
 	numberOf,
@@ -13,6 +14,9 @@ import {
 	toJobCode,
 	toPresenceText,
 	toReference,
+	createPanels,
+	itemOf,
+	type PanelType,
 	type ProjectType
 } from './look.data';
 import type { TeamMemberType } from './team.data';
@@ -193,5 +197,45 @@ describe('the Customer Reference Number', () => {
 		expect(toReference('')).toBe('');
 		expect(toReference(undefined)).toBe('');
 		expect(toReference(' # ')).toBe('');
+	});
+});
+
+describe('a file attached to the Items panel', () => {
+	function itemsPanel() {
+		const project = {
+			title: '',
+			subtitle: '',
+			type: '',
+			team: [],
+			stops: []
+		} as unknown as ProjectType;
+		return createPanels(project).find((panel) => panel.kind === 'items') as PanelType;
+	}
+
+	it('takes away the row never typed in when a PDF is the item list (#290)', () => {
+		const panel = itemsPanel();
+		expect(panel.items).toHaveLength(1);
+		attach(panel, {
+			id: 'a',
+			name: 'Packing List.pdf',
+			src: 'files/a.pdf',
+			kind: 'file',
+			layout: 4
+		});
+		expect(panel.attachments?.map((file) => file.name)).toEqual(['Packing List.pdf']);
+		expect(panel.items).toEqual([]);
+	});
+
+	it('keeps a row someone typed in', () => {
+		const panel = itemsPanel();
+		panel.items.push(itemOf('2', 'Pump skid'));
+		attach(panel, { id: 'a', name: 'list.pdf', src: 'files/a.pdf', kind: 'file', layout: 4 });
+		expect(panel.items.map((item) => item.description)).toEqual(['Pump skid']);
+	});
+
+	it('leaves the rows alone for a photo of the list', () => {
+		const panel = itemsPanel();
+		attach(panel, { id: 'a', name: 'list.jpg', src: 'files/a.webp', kind: 'photo', layout: 4 });
+		expect(panel.items).toHaveLength(1);
 	});
 });

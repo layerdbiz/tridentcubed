@@ -13,7 +13,7 @@
 import { INTRODUCTION_LABEL } from './introduction';
 import { legsOf } from './legs';
 import { LINK_LABEL, toLink } from './link';
-import type { OrganizationType, PanelType } from './look.data';
+import { isPdfAttachment, type OrganizationType, type PanelType } from './look.data';
 import { isStored } from './mapper.photos';
 
 export type TallyType = { done: number; total: number };
@@ -214,6 +214,11 @@ function photoSections(panel: PanelType): SectionType[] {
 	];
 }
 
+/** Whether the Items panel holds its item list as a whole: read from a spreadsheet, or an attached PDF. */
+function hasItemList(panel: PanelType) {
+	return Boolean(panel.grid) || (panel.attachments ?? []).some(isPdfAttachment);
+}
+
 /**
  * The inputs each section of a panel holds, as the panel draws them. `contacts` are the picked customer's, which
  * the Project panel's Contact field reads.
@@ -230,9 +235,10 @@ export function sectionsOf(panel: PanelType, contacts: { id: string }[] = []): S
 						{ label: MARKED_LABELS.quantity, value: item.quantity },
 						{ label: MARKED_LABELS.description, value: item.description }
 					]),
-					// #242: the item list read from a spreadsheet is one input, there or not.
-					...(panel.grid ? [{ label: 'Item List', value: true }] : []),
-					...(panel.items.length || panel.grid ? [] : [nothingYet(MARKED_LABELS.item)])
+					// #242: the item list read from a spreadsheet is one input, there or not. #290 (Justin, 2026-11-25):
+					// an attached PDF is the item list too, so a panel holding only a PDF is complete.
+					...(hasItemList(panel) ? [{ label: 'Item List', value: true }] : []),
+					...(panel.items.length || hasItemList(panel) ? [] : [nothingYet(MARKED_LABELS.item)])
 				]
 			}
 		];
