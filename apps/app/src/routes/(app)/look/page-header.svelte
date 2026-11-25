@@ -6,7 +6,8 @@
 	// runs from 0 to 1 and shows the rest: at 0 (the Page) nothing else, so the picture runs to the top; at 1 (Edit,
 	// Preview) the white blurred bar with the name, the save cloud and, for a project, its percent, state and
 	// progress. In between they fade, so it follows a swipe. `isLight` says the Page is showing a photo, where the
-	// two icons are white. `hasChevron` (Header C) draws back as a chevron, not an arrow.
+	// two icons are white. `hasChevron` (Header C) draws back as a chevron, not an arrow. `onprogress` makes the
+	// percent a button: a project's lists its empty inputs (#305).
 	import type { Snippet } from 'svelte';
 	import { DATASETS, STATUS, type DatasetType, type StatusType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -26,7 +27,8 @@
 		hasCloud = false,
 		hasChevron = false,
 		height = $bindable(0),
-		mark
+		mark,
+		onprogress
 	}: {
 		look: LookState;
 		// What the ⋮ acts on: its page, and a project's id or a record's name. Left out (the Organization), there is
@@ -46,6 +48,8 @@
 		height?: number;
 		// A logo or a face before the name.
 		mark?: Snippet;
+		// What a tap on the percent does; left out, it is not a button.
+		onprogress?: () => void;
 	} = $props();
 
 	const shown = $derived(Math.min(1, Math.max(0, reveal)));
@@ -91,17 +95,28 @@
 				</span>
 				{#if hasCloud}<SaveCloud {look} />{/if}
 				{#if progress !== undefined && tone}
-					<span
-						class="shrink-0 text-right"
-						title="{progress}% of this project is done"
-					>
+					{#snippet percent()}
 						<span class="block text-lg leading-tight font-semibold text-slate-900 tabular-nums"
 							>{progress}%</span
 						>
 						<span class="block text-[10px] font-semibold tracking-[0.12em] uppercase {tone.tone}"
 							>{status}</span
 						>
-					</span>
+					{/snippet}
+					{#if onprogress}
+						<button
+							type="button"
+							class="shrink-0 cursor-pointer rounded-lg text-right"
+							title="{progress}% of this project is done"
+							aria-label="{progress}% of this project: show its empty inputs"
+							onclick={onprogress}>{@render percent()}</button
+						>
+					{:else}
+						<span
+							class="shrink-0 text-right"
+							title="{progress}% of this project is done">{@render percent()}</span
+						>
+					{/if}
 				{/if}
 			</div>
 			{#if progress !== undefined && tone}

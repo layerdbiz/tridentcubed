@@ -135,6 +135,7 @@
 			isLight={isPhoto}
 			hasCloud={look.variant('bar') !== 'A'}
 			hasChevron={look.variant('header') === 'C'}
+			onprogress={() => look.showEmpty()}
 			bind:height={top}
 		/>
 	{:else}

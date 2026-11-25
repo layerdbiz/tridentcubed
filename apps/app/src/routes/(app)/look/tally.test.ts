@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { createPanels, draftPanel, type PanelType, type ProjectType } from './look.data';
 import {
+	emptyOf,
 	hasRequired,
 	organizationSectionsOf,
 	sectionsOf,
 	tallyOf,
+	toEmptyNote,
 	toPercent,
 	toTally,
 	valuesOf
@@ -282,6 +284,70 @@ describe('the inputs the other panels hold', () => {
 		const panel = panelOf('discharge');
 		const inputs = sectionsOf(panel).flatMap((section) => section.inputs);
 		expect(tallyOf(inputs.map((input) => input.value))).toEqual({ done: 1, total: 2 });
+	});
+});
+
+describe('the empty inputs that keep a panel under 100% (#305)', () => {
+	it('names the one input MSC Susana’s Project section reads 5 of 6 for: its Subtitle', () => {
+		const panel = panelOf('project');
+		const sections = sectionsOf(panel, [{ id: 'steve' }]).filter(
+			(section) => section.id === 'project'
+		);
+		expect(emptyOf(sections)).toEqual([{ section: 'project', label: 'Subtitle', nth: 0 }]);
+	});
+
+	it('names the Team Lead and the Team Assigned of a team with nobody on it, in the order the panel draws them', () => {
+		const panel = draftPanel('Trident Cubed', '');
+		const team = sectionsOf(panel).filter((section) => section.id === 'team');
+		expect(emptyOf(team)).toEqual([
+			{ section: 'team', label: 'Team Lead', nth: 0 },
+			{ section: 'team', label: 'Team Assigned', nth: 0 }
+		]);
+	});
+
+	it('says which of the inputs with the same label it is: the second row’s Quantity', () => {
+		const panel = panelOf('items');
+		panel.items = [
+			{ id: 'a', quantity: '2', description: 'Transformers' },
+			{ id: 'b', quantity: '', description: 'Accessory crates' }
+		];
+		expect(emptyOf(sectionsOf(panel))).toEqual([{ section: 'items', label: 'Quantity', nth: 1 }]);
+	});
+
+	it('names an optional input too, since it counts toward the percent: a stage’s Description', () => {
+		const panel = panelOf('operations');
+		const [, stage] = sectionsOf(panel);
+		expect(emptyOf([stage]).map((input) => input.label)).toEqual(['Description', 'Photos']);
+	});
+
+	it('names the one thing to do of a panel with no rows yet: a day, an item, a transport mode', () => {
+		const timelog = panelOf('timelog');
+		timelog.days = [];
+		const items = panelOf('items');
+		items.items = [];
+		const transport = panelOf('transport');
+		transport.stops = [];
+		expect(emptyOf(sectionsOf(timelog))).toEqual([{ section: 'timelog', label: 'Day', nth: 0 }]);
+		expect(emptyOf(sectionsOf(items))).toEqual([{ section: 'items', label: 'Item', nth: 0 }]);
+		expect(emptyOf(sectionsOf(transport))).toEqual([
+			{ section: 'transport', label: 'Transport Mode', nth: 0 }
+		]);
+		// Each reads as it did, 0 of 1.
+		expect(
+			tallyOf(sectionsOf(timelog).flatMap((section) => valuesOf([section], section.id)))
+		).toEqual({ done: 0, total: 1 });
+	});
+
+	it('says how many there are, and where', () => {
+		expect(toEmptyNote(1, 'Items')).toBe('1 empty input in the Items panel');
+		expect(toEmptyNote(3, 'Project')).toBe('3 empty inputs in the Project panel');
+		expect(toEmptyNote(12)).toBe('12 empty inputs in this project');
+	});
+
+	it('names nothing once every input holds something', () => {
+		const panel = panelOf('items');
+		panel.items = [{ id: 'a', quantity: '2', description: 'Transformers' }];
+		expect(emptyOf(sectionsOf(panel))).toEqual([]);
 	});
 });
 

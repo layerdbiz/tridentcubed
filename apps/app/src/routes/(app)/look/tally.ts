@@ -8,6 +8,8 @@
 // pick, a list with something in it, or a plain yes). A switch, the photos-per-page buttons and a facility's
 // Start, Stop or End are settings, not inputs, and do not count; nor does an input that is greyed out because
 // there is nothing to pick (the Contact of a customer with no contacts). An input added to a panel is added here.
+// #305: tapping a panel's or the project's percent lists the inputs that keep it under 100% (`emptyOf`), read from
+// this same list, so every input a count is short of is named, and each one opens its input.
 import { INTRODUCTION_LABEL } from './introduction';
 import { legsOf } from './legs';
 import { LINK_LABEL, toLink } from './link';
@@ -51,11 +53,47 @@ export function valuesOf(sections: SectionType[], id: string) {
 	return sections.find((section) => section.id === id)?.inputs.map((input) => input.value) ?? [];
 }
 
+/**
+ * An input that holds nothing yet (#305): its section, its label, and which of that section's inputs with this label
+ * it is, from 0 (the second row's Quantity is 1), so the screen can find it among the inputs it draws.
+ */
+export type EmptyType = { section: string; label: string; nth: number };
+
+/**
+ * The inputs these sections hold that are not done, in the order the panel draws them: what keeps the count under
+ * its total and the percent under 100. An optional input counts toward the percent, so it is named too.
+ */
+export function emptyOf(sections: SectionType[]): EmptyType[] {
+	const empty: EmptyType[] = [];
+	for (const section of sections) {
+		const seen = new Map<string, number>();
+		for (const input of section.inputs) {
+			const nth = seen.get(input.label) ?? 0;
+			seen.set(input.label, nth + 1);
+			if (!isDone(input.value)) empty.push({ section: section.id, label: input.label, nth });
+		}
+	}
+	return empty;
+}
+
+/** What the list of them is headed: "3 empty inputs in the Project panel", or "in this project". */
+export function toEmptyNote(count: number, panelName?: string) {
+	const where = panelName ? `the ${panelName} panel` : 'this project';
+	return `${count} empty ${count === 1 ? 'input' : 'inputs'} in ${where}`;
+}
+
 /** Whether nothing a status waits for is missing: every input but the optional ones holds something. */
 export function hasRequired(sections: SectionType[]) {
 	return sections.every((section) =>
 		section.inputs.every((input) => input.isOptional || isDone(input.value))
 	);
+}
+
+// A panel with no rows yet (no transport mode, no item, no day) still has one thing to do, or it would read
+// complete with nothing in it; that one thing is named for what is added first (#305: the list of what keeps a
+// panel under 100% names it, so it says the same as the count).
+function nothingYet(label: string): InputType {
+	return { label, value: false };
 }
 
 function projectSections(panel: PanelType, contacts: { id: string }[]): SectionType[] {
@@ -116,6 +154,7 @@ function projectSections(panel: PanelType, contacts: { id: string }[]): SectionT
 // A trip section is one transport mode: the mode, the transport itself once a mode is picked (its field is
 // named for the mode: "Vessel"), then one field for each facility it calls at.
 function transportSections(panel: PanelType): SectionType[] {
+	if (!panel.stops.length) return [{ id: 'transport', inputs: [nothingYet('Transport Mode')] }];
 	return legsOf(panel.stops).map((leg) => {
 		const first = leg.stops[0];
 		return {
@@ -176,11 +215,13 @@ export function sectionsOf(panel: PanelType, contacts: { id: string }[] = []): S
 						{ label: 'Description', value: item.description }
 					]),
 					// #242: the item list read from a spreadsheet is one input, there or not.
-					...(panel.grid ? [{ label: 'Item List', value: true }] : [])
+					...(panel.grid ? [{ label: 'Item List', value: true }] : []),
+					...(panel.items.length || panel.grid ? [] : [nothingYet('Item')])
 				]
 			}
 		];
-	if (panel.kind === 'timelog')
+	if (panel.kind === 'timelog') {
+		if (!panel.days.length) return [{ id: 'timelog', inputs: [nothingYet('Day')] }];
 		return panel.days.map((day) => ({
 			id: day.id,
 			inputs: [
@@ -191,6 +232,7 @@ export function sectionsOf(panel: PanelType, contacts: { id: string }[] = []): S
 				])
 			]
 		}));
+	}
 	return photoSections(panel);
 }
 

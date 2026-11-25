@@ -4,7 +4,7 @@
 	// both, from where the title starts (run 9 notes 10 and 12), and a ⋮ at the far right with what can be done to the
 	// whole project (note 11), the same MoreMenu the dashboard's lists use. `isCloud` adds the save cloud after the
 	// title (the phone has it on the floating bar). A Sent, Complete or Archived project's bar is all in its status
-	// colour, the cloud too (themeOf, #335).
+	// colour, the cloud too (themeOf, #335). #305: a tap on the percent lists the project's empty inputs in a toast.
 	import { STATUS } from './look.data';
 	import { themeOf, type LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
@@ -28,14 +28,19 @@
 		<div class="flex min-h-10 items-center gap-2">
 			<span class="min-w-0 flex-1 truncate font-semibold text-slate-900">{look.project.title}</span>
 			{#if isCloud}<SaveCloud {look} />{/if}
-			<span class="shrink-0 text-right">
+			<button
+				type="button"
+				class="shrink-0 cursor-pointer rounded-lg text-right"
+				aria-label="{look.overall}% of this project: show its empty inputs"
+				onclick={() => look.showEmpty()}
+			>
 				<span class="block text-lg leading-tight font-semibold text-slate-900 tabular-nums"
 					>{look.overall}%</span
 				>
 				<span class="block text-[10px] font-semibold tracking-[0.12em] uppercase {status.tone}"
 					>{look.project.status}</span
 				>
-			</span>
+			</button>
 		</div>
 		<span class="mt-1.5 block h-2 overflow-hidden rounded-full bg-slate-900/[0.07]">
 			<span

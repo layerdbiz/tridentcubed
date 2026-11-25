@@ -16,6 +16,9 @@
 	// own; a frozen panel is never quiet, so its "To do" takes the colour too.
 	// Run 26 (Justin, 2026-11-11), Panel List B: a panel with nothing done yet is quiet, its icon and its "To do"
 	// grey like its empty ring; blue starts with the first thing filled in.
+	// #305: the percent and state are a button of their own beside the one that opens the panel: a tap on them lists
+	// the panel's empty inputs in a toast (LookState.showEmpty). A panel switched off counts for nothing, so its
+	// percent lists nothing.
 	import { slide } from 'svelte/transition';
 	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
@@ -219,18 +222,25 @@
 				     (Justin, 2026-11-18, #225). -->
 				<span class="block text-xs text-slate-500">{metrics.done} of {metrics.total} complete</span>
 			</span>
-			<span class="shrink-0 text-right">
-				<span
-					class="block text-lg leading-tight font-semibold tabular-nums {panel.isEnabled
-						? 'text-slate-900'
-						: 'text-slate-300'}">{metrics.percent}%</span
-				>
-				<span
-					class="block text-[10px] font-semibold tracking-[0.12em] uppercase {isQuiet
-						? 'text-slate-400'
-						: tone.text}">{metrics.status}</span
-				>
-			</span>
+		</button>
+		<button
+			type="button"
+			class="ml-2 shrink-0 rounded-lg text-right enabled:cursor-pointer"
+			disabled={!panel.isEnabled}
+			aria-label="{metrics.percent}% of {panel.name}: show its empty inputs"
+			title={panel.isEnabled ? 'Show what is not filled in yet' : undefined}
+			onclick={() => look.showEmpty(panel.id)}
+		>
+			<span
+				class="block text-lg leading-tight font-semibold tabular-nums {panel.isEnabled
+					? 'text-slate-900'
+					: 'text-slate-300'}">{metrics.percent}%</span
+			>
+			<span
+				class="block text-[10px] font-semibold tracking-[0.12em] uppercase {isQuiet
+					? 'text-slate-400'
+					: tone.text}">{metrics.status}</span
+			>
 		</button>
 		{#if style !== 'soft'}
 			<span class="ml-2 flex w-11 shrink-0 justify-center">{@render control(false)}</span>
