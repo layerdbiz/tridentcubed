@@ -164,18 +164,18 @@
 		@apply block size-full;
 	}
 
-	/* What it opens is drawn outside the label, so none of the label's type carries over. The sheet's layer is drawn
-	   by the Dialog, outside this file's scope. */
+	/* What it opens is drawn outside the label, so none of the label's type carries over. The sheet is drawn by the
+	   Dialog, outside this file's scope, and keeps the Dialog's own padding. */
 	.help-pop,
 	:global(.help-layer) {
-		@apply pointer-events-auto m-0 border-0 p-0 text-left font-normal tracking-normal whitespace-normal select-text;
+		@apply pointer-events-auto text-left font-normal tracking-normal whitespace-normal select-text;
 		font-size: 1rem;
 		line-height: 1.5;
 		-webkit-tap-highlight-color: transparent;
 	}
 
 	.help-pop {
-		@apply pointer-events-none fixed inset-auto z-[120] h-fit rounded-2xl bg-base-900 px-3.5 py-3 text-xs text-white/90 shadow-xl;
+		@apply pointer-events-none fixed inset-auto z-[120] m-0 h-fit rounded-2xl border-0 bg-base-900 px-3.5 py-3 text-xs text-white/90 shadow-xl;
 		transform-origin: top left;
 	}
 

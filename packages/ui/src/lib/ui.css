@@ -10,6 +10,7 @@
 @import './css/1-theme/fonts.css';
 @import './css/1-theme/size.css';
 @import './css/1-theme/radii.css';
+@import './css/1-theme/overlay.css';
 
 /* 2. Base */
 @import './css/2-base/base.css' layer(base);

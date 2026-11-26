@@ -114,4 +114,24 @@ describe('Dialog', () => {
 		await pull(screen.getByRole('heading', { name: "What's New" }), 160, true);
 		expect(onclose).toHaveBeenCalledTimes(1);
 	});
+
+	// Its look is set from outside (Justin, 2026-11-26), like the Button's.
+	it('wears the look it is given on the sheet that shows, not on the layer over the page', () => {
+		const { dialog } = show({ lite: true, neutral: true, class: 'gap-2' });
+		const sheet = dialog.querySelector('.dialog-sheet')!;
+
+		expect(sheet.className).toContain('theme-lite-neutral');
+		expect(sheet.className).toContain('gap-2');
+		expect(sheet.className).not.toContain('bg-sheet');
+		expect(dialog.className).not.toMatch(/theme-|gap-2/);
+	});
+
+	it("is the theme's sheet colour until it is given a look, with no colour of its own", () => {
+		const { dialog } = show();
+		const sheet = dialog.querySelector('.dialog-sheet')!;
+
+		expect(sheet.className).toContain('bg-sheet');
+		expect(sheet.className).not.toMatch(/\btheme-|-(slate|gray|zinc)-|bg-white/);
+		expect(dialog.innerHTML).not.toMatch(/-(slate|gray|zinc)-|bg-white/);
+	});
 });

@@ -6,10 +6,14 @@
 	// The Dialog (glossary, #375): the box that opens over the page. On a phone it slides up from the bottom as a
 	// sheet; drag it down (or flick it) or tap outside to close; dragging up only stretches a little and springs back.
 	// No close button. From md up it is a centred box (the help's kind stays a sheet). Escape closes it too. It is the browser's own <dialog>, in the
-	// top layer, so it covers the floating bar wherever it is opened from, and white runs on below its bottom edge, so
-	// dragging it up never shows a gap. It began as the app's sheet (Justin's note 14, from the look prototype #161:
-	// the install how-to, add, save, change status, confirm, the dashboard ? cards) and keeps its look, slate shades
-	// included, which belong to "UI library cleanup" (#33).
+	// top layer, so it covers the floating bar wherever it is opened from, and its colour runs on below its bottom
+	// edge, so dragging it up never shows a gap. It began as the app's sheet (Justin's note 14, from the look
+	// prototype #161: the install how-to, add, save, change status, confirm, the dashboard ? cards).
+	//
+	// Its look is set from outside (Justin, 2026-11-26), like the Button's: it is the base component, and `color`,
+	// `appearance`, their shorthands and `class` land on the sheet, the box that shows, which is white until it is
+	// given a look (the theme's sheet colour). The scrim, the sheet's shadow and its grab handle are the theme's too
+	// (css/1-theme/overlay.css).
 	//
 	// It opens as a modal: the page behind it is shut until it closes, and the focus goes into it, onto the dialog
 	// itself rather than its first input, so a phone's keyboard does not jump up (an input marked autofocus takes it
@@ -142,15 +146,16 @@
 
 <Component {...props}>
 	{#snippet component({ props: root }: { props: ComponentReturn })}
+		{@const { class: look = '', ...layer } = root}
 		<svelte:element
 			this={isModal ? 'dialog' : 'div'}
-			{...root}
-			class={`${root.class ?? ''} dialog`.trim()}
+			{...layer}
+			class="dialog"
 			popover={isModal ? undefined : 'manual'}
 			role={isModal ? undefined : 'dialog'}
 			aria-label={label}
 			tabindex="-1"
-			style={`${root.style ? `${root.style}; ` : ''}--dialog-lift: ${lift}px`}
+			style={`${layer.style ? `${layer.style}; ` : ''}--dialog-lift: ${lift}px`}
 			oncancel={cancel}
 			onclose={() => onclose()}
 			onmousedown={isModal ? undefined : (event: MouseEvent) => event.preventDefault()}
@@ -158,14 +163,18 @@
 		>
 			<button
 				type="button"
-				class="fixed inset-0 cursor-default border-0 bg-slate-950/30 p-0"
+				class="fixed inset-0 cursor-default border-0 bg-scrim p-0"
 				aria-label="Close"
 				tabindex="-1"
 				onclick={() => onclose()}
 				transition:fade|global={{ duration: 180 }}
 			></button>
 			<div
-				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none rounded-t-[28px] bg-white px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgb(15_23_42/0.18)] after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-white {isTall
+				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none rounded-t-[28px] {/\btheme-/.test(
+					look
+				)
+					? ''
+					: 'bg-sheet'} px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-sheet after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-inherit {look} {isTall
 					? 'top-[calc(env(safe-area-inset-top)+0.75rem)] flex flex-col'
 					: ''} {isModal
 					? 'md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden'
@@ -183,7 +192,7 @@
 				transition:fly|global={{ y: 320, duration: 260 }}
 			>
 				<span
-					class="mx-auto mb-4 block h-1.5 w-10 shrink-0 rounded-full bg-slate-200 {isModal
+					class="mx-auto mb-4 block h-1.5 w-10 shrink-0 rounded-full bg-grab {isModal
 						? 'md:hidden'
 						: ''}"
 				></span>
