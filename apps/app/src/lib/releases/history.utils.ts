@@ -10,11 +10,22 @@ import {
 	isAppChange,
 	toReleaseChanges,
 	type ChangeKindType,
-	type ReleaseChangeType
+	type ReleaseChangeType,
+	type ReleaseRefType
 } from './releases.utils.ts';
 
-/** A commit and when it landed: `landed` counts the branch's own commits, oldest first, from 0. */
-export type LandedType = { subject: string; at: string; landed: number };
+/**
+ * A commit and when it landed: `landed` counts the branch's own commits, oldest first, from 0. `release` is the
+ * version of the first release that held it (#400); none while it is not released.
+ */
+export type LandedType = {
+	subject: string;
+	at: string;
+	landed: number;
+	/** The commit itself, for the server's own use. */
+	commit?: string;
+	release?: string;
+};
 
 /** What a change is in What's New: new, better than before (a feature for a ticket already out), or a fix. */
 export type HistoryKindType = ChangeKindType | 'improved';
@@ -25,6 +36,8 @@ export type HistoryChangeType = Omit<ReleaseChangeType, 'kind'> & {
 	at: string;
 	/** Which of the branch's commits brought it, oldest 0. */
 	landed: number;
+	/** The version of the first release that held it; none while it is not released. */
+	release?: string;
 };
 
 /** One batch of work: its changes and the words written for it, if any. */
@@ -35,11 +48,21 @@ export type HistoryBatchType = {
 	to: string;
 	title?: string;
 	summary?: string;
+	/** The release that brought it, with the link to its notes (#400); none while it is not released. */
+	release?: ReleaseRefType;
 	changes: HistoryChangeType[];
 };
 
-/** Everything a build knows of its branch: its commit, the branch's commits (short), and the batches, newest first. */
-export type HistoryType = { head: string; chain: string[]; batches: HistoryBatchType[] };
+/**
+ * Everything a build knows of its branch: its commit, the branch's commits (short), the batches, newest first, and
+ * its version as people read it (#400), empty while nothing is released.
+ */
+export type HistoryType = {
+	head: string;
+	chain: string[];
+	batches: HistoryBatchType[];
+	version?: string;
+};
 
 /** Words written for a batch: they go to the batch that holds `at`. */
 export type NoteType = { at: string; title: string; summary: string };
@@ -70,12 +93,16 @@ export function toHistoryChanges(landed: LandedType[]): HistoryChangeType[] {
 		if (!change || !isAppChange(change) || seen.has(change.text)) continue;
 		seen.add(change.text);
 		const kind = PERF.test(commit.subject.trim()) ? 'improved' : change.kind;
-		changes.push({ ...change, kind, at: commit.at, landed: commit.landed });
+		const release = commit.release ? { release: commit.release } : {};
+		changes.push({ ...change, kind, at: commit.at, landed: commit.landed, ...release });
 	}
 	return changes;
 }
 
-/** The changes, oldest first, folded into batches, oldest first. */
+/**
+ * The changes, oldest first, folded into batches, oldest first. A release ends a batch (#400): a batch never holds
+ * the changes of two releases, or of a release and what is not released yet.
+ */
 export function toBatches(changes: HistoryChangeType[], settings = BATCHES): HistoryBatchType[] {
 	const runs: HistoryChangeType[][] = [];
 	for (const change of changes) {
@@ -83,17 +110,20 @@ export function toBatches(changes: HistoryChangeType[], settings = BATCHES): His
 		const time = Date.parse(change.at);
 		const isNear =
 			run &&
+			run[0].release === change.release &&
 			time - Date.parse(run.at(-1)!.at) <= settings.gapHours * HOUR &&
 			time - Date.parse(run[0].at) <= settings.longestHours * HOUR;
 		if (isNear) run.push(change);
 		else runs.push([change]);
 	}
-	// A small batch joins the one after it.
+	// A small batch joins the one after it, in the same release.
 	const joined: HistoryChangeType[][] = [];
 	let waiting: HistoryChangeType[] = [];
 	for (const [index, run] of runs.entries()) {
 		const batch = [...waiting, ...run];
-		if (batch.length < settings.fewest && index < runs.length - 1) waiting = batch;
+		const next = runs[index + 1];
+		if (batch.length < settings.fewest && next && next[0].release === run[0].release)
+			waiting = batch;
 		else {
 			joined.push(batch);
 			waiting = [];
@@ -121,23 +151,39 @@ function toImproved(batch: HistoryChangeType[], batches: HistoryChangeType[][]) 
 	);
 }
 
-/** The batches with the words written for them, newest first, and each batch's changes newest first. */
+export type HistoryOptionsType = {
+	/** The releases the branch knows, published or being made (#400). */
+	releases?: ReleaseRefType[];
+	/** The build's version as people read it. */
+	version?: string;
+	settings?: HistoryBatchSettingsType;
+};
+
+/**
+ * The batches with the words written for them and the release that brought them, newest first, and each batch's
+ * changes newest first.
+ */
 export function toHistory(
 	head: string,
 	chain: string[],
 	landed: LandedType[],
 	notes: NoteType[] = [],
-	settings = BATCHES
+	{ releases = [], version, settings = BATCHES }: HistoryOptionsType = {}
 ): HistoryType {
 	const batches = toBatches(toHistoryChanges(landed), settings).map((batch) => {
 		const note = notes.find(
 			(each) =>
 				Date.parse(each.at) >= Date.parse(batch.from) && Date.parse(each.at) <= Date.parse(batch.to)
 		);
-		const newestFirst = { ...batch, changes: batch.changes.toReversed() };
+		const release = releases.find((each) => each.version === batch.changes[0].release);
+		const newestFirst: HistoryBatchType = {
+			...batch,
+			...(release ? { release } : {}),
+			changes: batch.changes.toReversed()
+		};
 		return note ? { ...newestFirst, title: note.title, summary: note.summary } : newestFirst;
 	});
-	return { head, chain, batches: batches.reverse() };
+	return { head, chain, batches: batches.reverse(), ...(version ? { version } : {}) };
 }
 
 /** Where a commit sits on the branch, oldest 0, or -1 when the branch does not hold it. */

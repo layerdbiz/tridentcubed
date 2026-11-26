@@ -13,6 +13,8 @@ declare global {
 	const __BUILD_BRANCH__: string;
 	/** The Vercel deployment this build is, written in the same way. */
 	const __DEPLOYMENT_ID__: string;
+	/** This build's version as people read it, from the release tags (#157, #400): v1.1.0; empty before any release. */
+	const __APP_VERSION__: string;
 
 	namespace App {
 		// interface Error {}

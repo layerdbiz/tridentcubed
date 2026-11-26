@@ -1,9 +1,11 @@
 <script lang="ts">
-	// What's New (#363, #396, #399), the one window for what the app has brought: every update the branch ever took,
-	// folded into batches of work (history.utils.ts) like the Activity's Grouped view, newest first, each a section of
-	// the library Accordion in the look the page hands it (`fold`). A batch shows its title, its day and how many new
-	// features, improvements and fixes it holds; open, its words and the changes, each kind under its heading. What
-	// landed since this device last pressed the button says New, and its batches start open with the newest.
+	// What's New (#363, #396, #399, #400), the one window for what the app has brought: every update the branch ever
+	// took, folded into batches of work (history.utils.ts) like the Activity's Grouped view, newest first, each a section
+	// of the library Accordion in the look the page hands it (`fold`). A batch shows its title, the release that brought
+	// it, its day and how many new features, improvements and fixes it holds; open, its words, the changes, each kind
+	// under its heading, and the link to that release's notes on GitHub. The head names the newest version. With no
+	// release yet the batches are the same, with no version. What landed since this device last pressed the button says
+	// New, and its batches start open with the newest.
 	//
 	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and on the branches in
 	// POP_UP_BRANCHES the moment a new version is out, in place of the update note. With a newer version out, the
@@ -22,6 +24,7 @@
 	import type { HistoryBatchType } from './history.utils';
 	import { CHECK_EVERY, HAS_POP_UP } from './releases.constants';
 	import { whatsNew } from './releases.state.svelte';
+	import { toBatchCounts, toBatchTitle, toBatchWhen } from './releases.utils';
 	import WindowHead from './window-head.svelte';
 
 	let {
@@ -42,6 +45,16 @@
 	const step = $derived(update.step);
 	const batches = $derived(whatsNew.history?.batches ?? []);
 	const freshCount = $derived(whatsNew.fresh.length);
+	const version = $derived(whatsNew.history?.version ?? '');
+	const note = $derived(
+		freshCount === 1
+			? '1 new since you last looked'
+			: freshCount > 1
+				? `${freshCount} new since you last looked`
+				: whatsNew.isNewer
+					? 'A new version is ready'
+					: 'Every update, newest first'
+	);
 
 	const BUTTON = {
 		none: 'Got it',
@@ -49,52 +62,6 @@
 		waiting: 'Will update once saved',
 		switching: 'Updating…'
 	};
-
-	const PARTS: { from: number; label: string }[] = [
-		{ from: 21, label: 'night' },
-		{ from: 17, label: 'evening' },
-		{ from: 12, label: 'afternoon' },
-		{ from: 5, label: 'morning' },
-		{ from: 0, label: 'night' }
-	];
-
-	// A batch with no words written for it is named by when it began, as people say it: Wednesday evening.
-	function toTitle(batch: HistoryBatchType) {
-		if (batch.title) return batch.title;
-		const from = new Date(batch.from);
-		const day = from.toLocaleDateString('en-US', { weekday: 'long' });
-		const part = PARTS.find((each) => from.getHours() >= each.from)!.label;
-		return `${day} ${part}`;
-	}
-
-	function toDay(at: string, isYear = true) {
-		return new Date(at).toLocaleDateString('en-US', {
-			month: 'long',
-			day: 'numeric',
-			...(isYear ? { year: 'numeric' } : {})
-		});
-	}
-
-	// The day it was released, or the days it ran over: November 24 – 25, 2026.
-	function toWhen(batch: HistoryBatchType) {
-		const from = new Date(batch.from);
-		const to = new Date(batch.to);
-		if (toDay(batch.from) === toDay(batch.to)) return toDay(batch.to);
-		if (from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth()) {
-			return `${toDay(batch.from, false)} – ${to.getDate()}, ${to.getFullYear()}`;
-		}
-		return `${toDay(batch.from, false)} – ${toDay(batch.to)}`;
-	}
-
-	function toCounts(batch: HistoryBatchType) {
-		const count = (kind: string) => batch.changes.filter((change) => change.kind === kind).length;
-		const parts = [
-			[count('feature'), 'new'],
-			[count('improved'), 'improved'],
-			[count('fix'), count('fix') === 1 ? 'fix' : 'fixes']
-		] as const;
-		return parts.filter(([number]) => number > 0).map(([number, words]) => `${number} ${words}`);
-	}
 
 	function freshIn(batch: HistoryBatchType) {
 		const seenAt = whatsNew.seenAt;
@@ -159,13 +126,7 @@
 		{#snippet header()}
 			<WindowHead
 				title="What's New"
-				note={freshCount === 1
-					? '1 new since you last looked'
-					: freshCount > 1
-						? `${freshCount} new since you last looked`
-						: whatsNew.isNewer
-							? 'A new version is ready'
-							: 'Every update, newest first'}
+				note={version ? `${version} · ${note}` : note}
 				onclose={dismiss}
 			/>
 		{/snippet}
@@ -183,11 +144,14 @@
 								{#snippet head()}
 									<span class="min-w-0 flex-1">
 										<span class="block text-[15px] leading-snug font-semibold text-slate-800"
-											>{toTitle(batch)}</span
+											>{toBatchTitle(batch)}</span
 										>
 										<span class="mt-0.5 block text-xs leading-snug text-slate-500">
-											<span class="whitespace-nowrap">{toWhen(batch)}</span>
-											{#each toCounts(batch) as count (count)}<span class="whitespace-nowrap"
+											{#if batch.release}<span
+													class="font-semibold whitespace-nowrap text-slate-600"
+													>v{batch.release.version}{' · '}</span
+												>{/if}<span class="whitespace-nowrap">{toBatchWhen(batch)}</span>
+											{#each toBatchCounts(batch) as count (count)}<span class="whitespace-nowrap"
 													>{' · '}{count}</span
 												>{/each}
 										</span>
@@ -208,6 +172,18 @@
 										seenAt={whatsNew.seenAt}
 									/>
 								</div>
+								{#if batch.release}
+									<Button
+										secondary
+										ghost
+										sm
+										href={batch.release.url}
+										external
+										icon="icon-[mdi--github]"
+										label="v{batch.release.version} release notes"
+										class="mt-3 -ml-2"
+									/>
+								{/if}
 							</Accordion>
 						</li>
 					{/each}

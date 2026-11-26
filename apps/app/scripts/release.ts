@@ -1,28 +1,37 @@
-// Works out the next release and writes it (#157): `node apps/app/scripts/release.ts`, run by
-// .github/workflows/release.yml after each merge into dev. It reads the commits since the last `v*` tag, applies the
-// release rule (src/lib/releases/releases.utils.ts), puts the new release at the top of
-// src/lib/releases/releases.json, which the app shows in What's New (#363), and writes its notes for the GitHub
-// release. The workflow commits that file, tags the commit and makes the GitHub release; this script never touches
-// git beyond reading it. Plain Node, no packages, so the workflow needs no install.
+// Works out the release a push to dev makes and writes its notes (#157): `node apps/app/scripts/release.ts`, run by
+// .github/workflows/release.yml on each push to dev. It reads the tags and the commits since the newest one, applies
+// the release rule (src/lib/releases/releases.utils.ts), and writes the notes the GitHub release shows: What's New's
+// batches of work with their titles and words, then the changes outside the app. The workflow tags the commit and
+// publishes the release; this script never writes to git. Plain Node, no packages, so the workflow needs no install.
 //
-//   --first          allow the first release, v1.0.0, when no tag exists yet; without it, nothing is made
+//   --first          allow the first release, v1.0.0, though releases are not turned on (IS_RELEASING)
 //   --since <ref>    for the first release only: list the changes made after this commit, tag or day (2026-11-20)
 //   --notes <file>   where to write the release notes (Markdown)
 //   --dry-run        print what the release would be, and write nothing
 //
-// It says what it made in GITHUB_OUTPUT when that is set: `version=1.1.0`, or nothing when there is no release.
-import { execFileSync } from 'node:child_process';
-import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+// It says what it found in GITHUB_OUTPUT when that is set: `version=1.1.0`, or nothing when there is no release. A
+// commit that already has its tag (a run done again) gets that version and its notes, so a GitHub release that
+// failed to publish is made the second time.
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import type { CommitType, ReleaseType } from '../src/lib/releases/releases.utils.ts';
-import { planRelease, toReleaseNotes } from '../src/lib/releases/releases.utils.ts';
-
-const RELEASES = fileURLToPath(new URL('../src/lib/releases/releases.json', import.meta.url));
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
-// Between fields and between commits, characters no commit title or body holds.
-const FIELD = '\u001f';
-const RECORD = '\u001e';
+import { readLanded } from '../src/lib/releases/history.server.ts';
+import { toHistory } from '../src/lib/releases/history.utils.ts';
+import { NOTES } from '../src/lib/releases/notes.ts';
+import {
+	git,
+	readReleaseCommits,
+	readReleaseState,
+	readTags,
+	toReleaseRange,
+	type TagType
+} from '../src/lib/releases/releases.server.ts';
+import {
+	FIRST_SUMMARY,
+	IS_RELEASING,
+	isAppChange,
+	toReleaseChanges,
+	toReleaseNotes
+} from '../src/lib/releases/releases.utils.ts';
 
 const { values } = parseArgs({
 	options: {
@@ -33,54 +42,72 @@ const { values } = parseArgs({
 	}
 });
 
-function git(...args: string[]) {
-	return execFileSync('git', args, { encoding: 'utf8' }).trim();
-}
-
-function readCommits(range: string[]): CommitType[] {
-	return git('log', '--no-merges', `--format=%s${FIELD}%b${RECORD}`, ...range)
-		.split(RECORD)
-		.map((record) => record.trim())
-		.filter(Boolean)
-		.map((record) => {
-			const [subject, body] = record.split(FIELD);
-			return { subject, body };
-		});
-}
-
 function say(line: string) {
 	process.stdout.write(`${line}\n`);
 }
 
-const last = git('tag', '--list', 'v[0-9]*', '--sort=-v:refname', '--merged', 'HEAD')
-	.split('\n')
-	.find(Boolean)
-	?.slice(1);
+const head = git('rev-parse', 'HEAD');
+// A push that replaced dev's history names a commit that is gone: the first release then lists nothing after it.
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+let since = values.since;
+if (since && !DAY.test(since)) {
+	try {
+		git('rev-parse', '--verify', '--quiet', `${since}^{commit}`);
+	} catch {
+		say(`${since} is not a commit here, so the first release lists only its welcome line.`);
+		since = undefined;
+	}
+}
+const tags = readTags();
+const own = tags.find((tag) => tag.commit === head);
 
-if (!last && !values.first) {
-	say(
-		'No release: there is no v* tag yet, and the first release is made only by a hand run (--first).'
-	);
-	process.exit(0);
+let version: string;
+let last: TagType | undefined;
+if (own) {
+	// Done again: the release this commit already is.
+	version = own.version;
+	last = tags[tags.indexOf(own) - 1];
+} else {
+	const state = readReleaseState(head, {
+		branch: 'dev',
+		isOn: IS_RELEASING || values.first,
+		since
+	});
+	if (!state.planned) {
+		say(
+			state.last
+				? `No release: nothing since v${state.last.version} is a new feature or a fix.`
+				: 'No release: releases are not turned on yet (IS_RELEASING in src/lib/releases/releases.utils.ts).'
+		);
+		process.exit(0);
+	}
+	version = state.planned.version;
+	last = state.last;
 }
 
-let range: string[] | undefined;
-if (last) range = [`v${last}..HEAD`];
-else if (values.since)
-	range = DAY.test(values.since) ? [`--since=${values.since}`, 'HEAD'] : [`${values.since}..HEAD`];
+// The release's own commits, and What's New's batches made of them.
+const range = toReleaseRange(head, last, since);
+const held = new Set(
+	range
+		? git('rev-list', ...range)
+				.split('\n')
+				.filter(Boolean)
+		: []
+);
+const { chain, landed } = readLanded(head);
+const batches = toHistory(
+	head,
+	chain,
+	landed.filter((each) => each.commit && held.has(each.commit)),
+	NOTES
+).batches;
+const others = toReleaseChanges(readReleaseCommits(head, last, since)).filter(
+	(change) => !isAppChange(change)
+);
+const notes = toReleaseNotes({ summary: last ? undefined : FIRST_SUMMARY, batches, others });
 
-const release = planRelease(last, range ? readCommits(range) : []);
-if (!release) {
-	say(`No release: nothing since v${last} is a new feature or a fix.`);
-	process.exit(0);
-}
-
-const notes = toReleaseNotes(release);
-say(`v${release.version}, ${release.date}\n\n${notes}`);
+say(`v${version}${own ? ' (tagged already)' : ''}\n\n${notes}`);
 if (values['dry-run']) process.exit(0);
 
-const releases = JSON.parse(readFileSync(RELEASES, 'utf8')) as ReleaseType[];
-writeFileSync(RELEASES, `${JSON.stringify([release, ...releases], null, '\t')}\n`);
 if (values.notes) writeFileSync(values.notes, notes);
-if (process.env.GITHUB_OUTPUT)
-	appendFileSync(process.env.GITHUB_OUTPUT, `version=${release.version}\n`);
+if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);

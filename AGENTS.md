@@ -12,7 +12,11 @@ Oneezy skills and any other skill where they disagree.
   the database but never rename or remove anything, since dev.app reads the
   same data.
 - **`dev`** takes `next` only on Justin's explicit word, after he has
-  checked the work on next.app. That merge is when the checks run.
+  checked the work on next.app. That merge is when the checks run. It is a
+  fast-forward, `git push origin origin/next:dev`, never a squash: the
+  release made from that push (#157) and What's New read every commit, and
+  dev stays inside next. If dev holds a commit next lacks, merge dev into
+  next first.
 - **`main`** changes only when Justin says so: never merge into, push to,
   or modify it.
 - **`play`** holds the team's prototypes at play.tridentcubed.com (#342),

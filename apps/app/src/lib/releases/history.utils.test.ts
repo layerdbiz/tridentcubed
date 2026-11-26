@@ -94,6 +94,42 @@ describe("What's New's history", () => {
 		expect(history.batches[0].summary).toBe('Pin anything, find anything.');
 	});
 
+	it('ends a batch where a release ends, and keeps a small one inside its own release', () => {
+		const landed = landedAt([0, 1, 2, 3, 4]).map((each, index) => ({
+			...each,
+			release: index < 1 ? '1.0.0' : index < 4 ? '1.1.0' : undefined
+		}));
+		const batches = toBatches(toHistoryChanges(landed));
+
+		expect(batches.map((batch) => batch.changes.map((change) => change.release))).toEqual([
+			['1.0.0'],
+			['1.1.0', '1.1.0', '1.1.0'],
+			[undefined]
+		]);
+	});
+
+	it('gives each batch the release that brought it and the build its version (#400)', () => {
+		const landed = landedAt([0, 1, 2, 10, 11, 12]).map((each, index) => ({
+			...each,
+			...(index < 3 ? { release: '1.0.0' } : {})
+		}));
+		const release = { version: '1.0.0', date: '2026-11-25', url: 'https://example.com/v1.0.0' };
+		const history = toHistory('abc', ['a', 'b'], landed, [], {
+			releases: [release],
+			version: 'v1.1.0-next.3'
+		});
+
+		expect(history.version).toBe('v1.1.0-next.3');
+		expect(history.batches.map((batch) => batch.release)).toEqual([undefined, release]);
+	});
+
+	it('is the batches of today, with no version, while nothing is released', () => {
+		const history = toHistory('abc', ['a', 'b'], landedAt([0, 1, 2]));
+
+		expect(history.version).toBeUndefined();
+		expect(history.batches[0].release).toBeUndefined();
+	});
+
 	it('tells which changes landed after the commit last seen, and none for a commit it does not hold', () => {
 		const history = toHistory(
 			'cccccccccccccc',
