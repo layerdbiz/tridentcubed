@@ -12,7 +12,7 @@
 	//
 	// Its look is set from outside (Justin, 2026-11-26), like the Button's: it is the base component, and `color`,
 	// `appearance`, their shorthands and `class` land on the sheet, the box that shows, which is white until it is
-	// given a look (the theme's sheet colour). The scrim, the sheet's shadow and its grab handle are the theme's too
+	// given a look (the theme's surface). The scrim, the sheet's shadow and its grab handle are the theme's too
 	// (css/1-theme/overlay.css).
 	//
 	// It opens as a modal: the page behind it is shut until it closes, and the focus goes into it, onto the dialog
@@ -174,7 +174,7 @@
 					look
 				)
 					? ''
-					: 'bg-sheet'} px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-sheet after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-inherit {look} {isTall
+					: 'bg-surface'} px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-sheet after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-inherit {look} {isTall
 					? 'top-[calc(env(safe-area-inset-top)+0.75rem)] flex flex-col'
 					: ''} {isModal
 					? 'md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden'

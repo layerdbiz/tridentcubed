@@ -9,11 +9,11 @@ The library adopts Tailwind's names wherever it can, so many words here are Tail
 ### The base component system
 
 **Base component system**:
-The shared foundation every reusable component is built on. Made of the base component, Root, and the base props.
+The shared foundation every reusable component is built on. Made of the base component, Root, and the base props. Every component in the library starts from the base component and takes its look from outside (Justin, 2026-11-26).
 _Avoid_: runtime, base runtime, runtime architecture
 
 **Base component**:
-The public component new components start from. It turns styling props into theme classes, multiplies itself by total, attaches the base props, and hands layout to Root.
+The public component every component starts from. It turns styling props into theme classes, multiplies itself by total, attaches the base props, and hands layout to Root.
 _Avoid_: Component runtime
 
 **Root**:
@@ -92,6 +92,13 @@ A friendly color name a theme defines: base, neutral, primary, secondary, accent
 
 **Status color**:
 The theme colors that signal state: info, warning, success, danger. Meant to be wearable as a Color like the others; not wired yet.
+
+**Surface**:
+The theme's color for what is raised over the page when no look is given: a dialog's sheet, a switch's thumb, the ring round an avatar. White unless a theme sets it. With it, the overlay colors a theme sets the same way: the scrim that dims the page, the grab handle, the sheet's shadow.
+
+**Look set from outside**:
+A component's look comes only from what its caller gives it (Color, Appearance, Size, their shorthands, class) and from the theme, never from colors fixed inside it, so one component serves every screen. Every library component is built this way (Justin, 2026-11-26); `CODING_STANDARDS.md` says how, and the look check enforces it.
+_Avoid_: built-in look, fixed look
 
 **Color scale**:
 The eleven steps, 50 through 950, generated from one theme color: lighter below 500, the color itself at 500, darker above.
@@ -316,4 +323,4 @@ A template filled with real content: the level a user actually sees. Atomic desi
 **App component**:
 A component owned by one app and specific to what that app is about, such as a vessel selector, composed from reusable UI and never published in the library. Rare by intent; the reusable UI names are generic on purpose.
 
-Any level may be built on the base component; the level says what a component is made of, not how it is built. A component's level is what it is to its author; built-in niceties, such as a section's dividers, do not make it a molecule.
+Every level is built on the base component; the level says what a component is made of, not how it is built. A component's level is what it is to its author; built-in niceties, such as a section's dividers, do not make it a molecule.
