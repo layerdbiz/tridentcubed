@@ -3,7 +3,7 @@
 // is `#lib/server/files.ts`, through the claims helper.
 import { command, query } from '$app/server';
 import * as v from 'valibot';
-import { createUpload, readFileDetails } from '#lib/server/files.js';
+import { createUpload, readFieldList, readFileDetails } from '#lib/server/files.js';
 import { requireSignedIn } from '#lib/server/server.js';
 import { UPLOAD_REQUEST } from './files.schema';
 
@@ -28,4 +28,13 @@ export const fetchFileDetails = query.batch(v.pipe(v.string(), v.uuid()), async 
 	const { actor, claims } = await requireSignedIn();
 	const found = await readFileDetails(claims, actor, ids);
 	return (id) => found.get(id) ?? null;
+});
+
+/**
+ * Every metadata field of the original a photo came from (#292), for the photo pop-up's Details (#343): read only
+ * when they open, since it can run to a few hundred KB; nothing for a file that is not the User's organization's.
+ */
+export const fetchFieldList = query(v.pipe(v.string(), v.uuid()), async (id) => {
+	const { actor, claims } = await requireSignedIn();
+	return (await readFieldList(claims, actor, id)) ?? null;
 });

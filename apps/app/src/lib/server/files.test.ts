@@ -154,8 +154,27 @@ describe('a file row', () => {
 			saved: { type: 'image/webp', size: 12, width: 640, height: 320 },
 			carried: 'all',
 			hasFieldList: true,
-			isOriginalKept: false
+			isOriginalKept: false,
+			taken: { from: '' }
 		});
+	});
+
+	it('says when and where a photo was taken, beside what it was and became (#343)', async () => {
+		const taken = {
+			from: 'file' as const,
+			at: '2026-11-26T11:35:12.000Z',
+			latitude: 29.76,
+			longitude: -95.37
+		};
+		const photo = await upload(team, {
+			...logoOf(),
+			for: { table: 'customer', column: 'picture' },
+			taken
+		});
+
+		expect((await readFileDetails(test.claims, team, [photo.id])).get(photo.id)?.taken).toEqual(
+			taken
+		);
 	});
 
 	it('takes the file as it was sent for its original when the device names no other (#343)', async () => {
