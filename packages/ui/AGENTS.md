@@ -46,5 +46,6 @@ the select's slate shades (its `variant="soft"` look
 with its own box, and the typed list and choice marks the notched field
 shares with it: kept from the app's picker and place field on #298, the
 app's panel look until #57), the switch's slate off track (kept from the
-app's stage switch on #378): all listed on "UI library cleanup" (#33),
+app's stage switch on #378), the accordion's slate shades (kept from the
+app's panel groups on #389): all listed on "UI library cleanup" (#33),
 changed there, not mid-feature.
