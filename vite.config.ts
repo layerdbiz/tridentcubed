@@ -30,6 +30,14 @@ const outOfScope = [
 ];
 
 export default defineConfig({
+	// Before every commit, `vp staged` formats and lints the staged files (.vite-hooks/pre-commit, #370).
+	// Every lint rule here but one is a warning, so warnings stop the commit, or nothing would: the
+	// repo has none. The last flag lets a commit of only ignored or unlintable files (a barrel, a YAML
+	// file) pass; the ignore patterns below still decide what is checked.
+	staged: {
+		'*.{js,mjs,cjs,ts,svelte,css,json,yml,yaml}':
+			'vp check --fix --deny-warnings --no-error-on-unmatched-pattern'
+	},
 	fmt: {
 		useTabs: true,
 		singleQuote: true,

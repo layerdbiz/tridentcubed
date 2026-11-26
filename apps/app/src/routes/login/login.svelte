@@ -14,6 +14,7 @@
 	import { install } from '#lib/install/install.state.svelte.js';
 	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
 	import { readWaiting, toWaiting } from './waiting';
+	import { Divider } from '@layerd/ui';
 
 	// Written here until it comes from the release on GitHub (Justin, 2026-11-17: "for now, just do v1.0.0").
 	const VERSION = 'v1.0.0';
@@ -119,16 +120,12 @@
 				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase md:text-4xl">Trident Cubed</p>
 				<p class="mt-2 font-mono text-sm text-slate-400">{VERSION}</p>
 			</div>
-			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
-			<svg
-				class="pointer-events-none block h-[60px] w-full fill-white lg:h-[120px]"
-				viewBox="0 0 1200 120"
-				preserveAspectRatio="none"
-				aria-hidden="true"
-				><path
-					d="M1200,0v120H0C41,68.89,288.87-55.15,578.87,30.29c178.24,53.05,440.37,74.74,621.13-30.29Z"
-				/></svg
-			>
+			<!-- The website's wave, the library's Divider (#376): the white of what comes next rising into the dark. -->
+			<Divider
+				shape="waves"
+				color="text-white"
+				bleed={false}
+			/>
 		</div>
 		<!-- Up one pixel over the wave, so no line of the dark shows between them. -->
 		<div

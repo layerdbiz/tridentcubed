@@ -368,6 +368,15 @@ _Avoid_: entity, item, resource
 One record's screen, shared by all four kinds, with two tabs: Page, how it reads with its projects, first, and Edit.
 _Avoid_: detail page, profile (that is the User's own)
 
+**Pinned**:
+The menu's list, at its top above Recents, of the projects and records a User pinned from their ⋮ menu (Pin, Unpin); each User's own, newest first (#346).
+_Avoid_: favourites, starred, bookmarks
+_Not_: the map's pin, the marker where a record sits on the map
+
+**Search**:
+The menu's pop-up that finds projects and records as they are typed, names first (#345); Ctrl K or ⌘ K on a desktop.
+_Avoid_: finder, command palette
+
 **Label**:
 What a list page sorts by: a project's status, a customer's type, a Team record's labels, a transport's transport type and a facility's type. A page's labels are its board columns, its filter options and its chart's slices, in the same colours and order; a record with none sits under Other.
 _Avoid_: tag, category, group
@@ -404,7 +413,7 @@ Any number of free tags on a record, whatever its kind, beside its type: a custo
 _Avoid_: tags, types, categories
 
 **icon**:
-The symbol the app shows for a project, transport or facility that has no image of its own: its page's symbol in the main menu (a folder for projects), or its type's or mode's where those have one. A person with no photo shows their initials instead (the first letter of the first and last name, on their role's colour: purple for an Admin, blue for a Manager, grey for a Team user; black on white for Personnel), and a customer with no logo shows its code on sky blue; a company added on the spot as Personnel shows its code in white on black (#355). It belongs to the app and is never a field of a record.
+The symbol the app shows for a project, transport or facility that has no image of its own: its page's symbol in the main menu (a folder for projects), or its type's or mode's where those have one. A person with no photo shows their initials instead, and a customer or a Personnel company with no logo its code, on a circle coloured by role or kind (#355). It belongs to the app and is never a field of a record.
 _Avoid_: logo, avatar, placeholder
 
 **logo**:

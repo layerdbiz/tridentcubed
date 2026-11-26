@@ -36,16 +36,16 @@
 		badgeScale?: number;
 		// The dot to show, when the screen has read it already.
 		presence?: PresenceType;
-		// Whose initials these are when there is no photo, in place of the Team record's role: a customer's contact,
-		// or Personnel added on the spot on a project (black on white, #355).
+		// Whose initials these are when there is no photo, in place of the Team record's role: a project's Personnel
+		// (black on white, #355).
 		tone?: InitialsToneType;
 	} = $props();
 
 	const presence = $derived(given ?? presenceOf(name));
 	// Someone with no photo yet shows their initials on their role's colour (#355), never a person icon.
-	const own = $derived(personOf(name).photo);
+	const saved = $derived(personOf(name).photo);
 	const photo = $derived(
-		tone && isInitialsPicture(own) ? toInitialsPicture(initialsOf(name), tone) : own
+		tone && isInitialsPicture(saved) ? toInitialsPicture(initialsOf(name), tone) : saved
 	);
 	const dot = $derived(Math.max(8, Math.round(size * 0.28)));
 </script>
@@ -54,15 +54,24 @@
 	class="relative inline-block shrink-0"
 	style="width: {size}px; height: {size}px"
 >
-	<img
-		src={photo}
-		crossorigin={toCrossOrigin(photo)}
-		alt={name}
-		draggable="false"
-		class="size-full rounded-full bg-slate-200 object-cover ring-2 {ring} {isMuted
-			? 'grayscale'
-			: ''}"
-	/>
+	{#if isInitialsPicture(photo) && !initialsOf(name)}
+		<!-- No name typed yet, so no letters: the person icon on grey. -->
+		<span
+			class="flex size-full items-center justify-center rounded-full bg-slate-200 text-slate-400 ring-2 {ring}"
+			role="img"
+			aria-label={name}><span class="icon-[mdi--account] size-[62%]"></span></span
+		>
+	{:else}
+		<img
+			src={photo}
+			crossorigin={toCrossOrigin(photo)}
+			alt={name}
+			draggable="false"
+			class="size-full rounded-full bg-slate-200 object-cover ring-2 {ring} {isMuted
+				? 'grayscale'
+				: ''}"
+		/>
+	{/if}
 	{#if badge}
 		<span
 			class="absolute -right-1 -bottom-1 overflow-hidden rounded-full bg-black ring-[1.5px] ring-white"

@@ -43,6 +43,20 @@ export function organizationPolicy(table: string, column: SQL = sql`organization
 	});
 }
 
+/**
+ * The policy of a table that is each User's own (the menu's pins, #346): the restricted role reads and writes only the
+ * acting User's rows in the acting organization. Its rows carry `user_id`, which the server sets.
+ */
+export function userPolicy(table: string) {
+	const own = sql`organization_id = ${ORGANIZATION_ID} and user_id = ${USER_ID}`;
+	return pgPolicy(`${table} of the acting user`, {
+		for: 'all',
+		to: appRole,
+		using: own,
+		withCheck: own
+	});
+}
+
 export const CLAIMS_SQL = `
 DO $$ BEGIN
 	IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${APP_ROLE}') THEN

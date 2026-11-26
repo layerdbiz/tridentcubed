@@ -1489,7 +1489,7 @@
 	{@const phone = contact?.phone.trim()}
 	{@const email = contact?.email.trim()}
 	<div class="flex min-w-0 flex-col items-center rounded-xl bg-slate-50 px-1.5 py-2 text-center">
-		<!-- Anyone without the organization's badge was added on the spot: black initials on white (#355). -->
+		<!-- Anyone without the organization's badge is Personnel: black initials on white (#355). -->
 		<Avatar
 			{name}
 			size={36}
@@ -1698,8 +1698,8 @@
 			<!-- Anyone else on the job, by company, in the same cards with no badge, and the phone and email typed for
 			     them on the project (#326), as a team member's card shows theirs. -->
 			<div class="pt-2">
-				<!-- Its company's circle by its name: a customer's logo or code, or one added on the spot in white on
-				     black (#355). -->
+				<!-- Its company's circle by its name: a customer's logo or code, or any other company's code in white
+				     on black (#355). -->
 				<div class="flex items-center gap-1 pb-1">
 					{#if other.company.trim()}
 						<ClientLogo

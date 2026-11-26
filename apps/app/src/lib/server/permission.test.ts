@@ -412,6 +412,27 @@ describe('the one permission check', () => {
 		});
 	}
 
+	it('lets only its owner change or unpin a pin (#346), whatever their role', () => {
+		const pin = (owner: ActorType, operation: 'put' | 'delete'): ChangeType => ({
+			table: 'pinned',
+			operation,
+			columns: operation === 'put' ? ['pinnedAt'] : [],
+			values: operation === 'put' ? { organizationId: ORG } : undefined,
+			row: { organizationId: ORG, userId: owner.userId }
+		});
+		for (const operation of ['put', 'delete'] as const) {
+			expect(checkPermission(actors.team, pin(actors.team, operation)).isAllowed).toBe(true);
+			expect(checkPermission(actors.super, pin(actors.team, operation))).toEqual({
+				isAllowed: false,
+				reason: 'A pin is only its owner’s.'
+			});
+		}
+		expect(
+			checkPermission(actors.team, { table: 'pinned', operation: 'put', columns: ['page'] })
+				.isAllowed
+		).toBe(true);
+	});
+
 	it('gives a plain reason with every refusal', () => {
 		expect(checkPermission(actors.guest, ownDraft())).toEqual({
 			isAllowed: false,
