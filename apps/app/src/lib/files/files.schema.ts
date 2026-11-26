@@ -344,6 +344,8 @@ export type FileDetailsType = {
 	hasFieldList: boolean;
 	/** The untouched original is still in storage beside the copy (#294). */
 	isOriginalKept: boolean;
+	/** When and where it was taken, and whether the photo or the phone said so (ADR 0004). */
+	taken: TakenType;
 };
 
 // Types as people say them, where the part after the slash is not it already (#349).
@@ -399,6 +401,111 @@ export function toCarriedLabel(carried: CarriedType, hasFieldList: boolean) {
 export function toOriginalFacts(file: { name: string; type: string; original?: FileFactsType }) {
 	if (file.original) return file.original;
 	return { type: toPictureType({ name: file.name, type: '' }) || file.type };
+}
+
+/** One group of the original's metadata fields as people read it (#343): EXIF, GPS, XMP, and each field's words. */
+export type FieldGroupType = { name: string; fields: Array<{ name: string; value: string }> };
+
+// The groups' usual names, in the order a person looks for them: when and how (EXIF), where (GPS), then the rest.
+const FIELD_GROUPS: Record<string, string> = {
+	exif: 'EXIF',
+	gps: 'GPS',
+	xmp: 'XMP',
+	iptc: 'IPTC',
+	makerNotes: 'Maker notes',
+	composite: 'Composite',
+	file: 'File',
+	jfif: 'JFIF',
+	png: 'PNG',
+	pngFile: 'PNG file',
+	pngText: 'PNG text',
+	riff: 'RIFF',
+	gif: 'GIF',
+	mpf: 'MPF',
+	photoshop: 'Photoshop',
+	icc: 'Colour profile (ICC)',
+	Thumbnail: 'Thumbnail',
+	Images: 'Images'
+};
+
+// A base64 text's length in bytes.
+function toBase64Bytes(text: string) {
+	return Math.floor((text.length * 3) / 4) - (text.endsWith('==') ? 2 : text.endsWith('=') ? 1 : 0);
+}
+
+// What one field says, in words: its description, else its value, with the forms the field list keeps a long or
+// unusual value in (`toStorableJson`) said plainly.
+function toFieldWords(item: unknown): string {
+	if (item === null || item === undefined) return '';
+	if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')
+		return String(item);
+	if (Array.isArray(item)) return item.map(toFieldWords).join(', ');
+	if (typeof item !== 'object') return '';
+	const field = item as Record<string, unknown>;
+	if (typeof field.description === 'string' || typeof field.description === 'number') {
+		return String(field.description);
+	}
+	if ('value' in field) return toFieldWords(field.value);
+	if (Array.isArray(field.codes))
+		return String.fromCharCode(...(field.codes as number[])).replace(/\0+$/, '');
+	if (typeof field.base64 === 'string') return `Binary data, ${toBase64Bytes(field.base64)} bytes`;
+	if (typeof field.characters === 'number') return `Text, ${field.characters} characters`;
+	if (typeof field.bytes === 'number') return `Picture, ${field.bytes} bytes`;
+	return JSON.stringify(item);
+}
+
+/**
+ * Every metadata field of the original, grouped and in words (#343; the field list kept by #292): what the photo
+ * pop-up's Details list, EXIF and GPS first.
+ */
+export function toFieldGroups(list: FieldListType | undefined): FieldGroupType[] {
+	if (!list) return [];
+	const order = Object.keys(FIELD_GROUPS);
+	const keys = Object.keys(list).sort((a, b) => {
+		const [at, bt] = [order.indexOf(a), order.indexOf(b)];
+		return (at < 0 ? order.length : at) - (bt < 0 ? order.length : bt);
+	});
+	const groups: FieldGroupType[] = [];
+	for (const key of keys) {
+		const group = list[key];
+		if (!group || typeof group !== 'object' || Array.isArray(group)) continue;
+		// XMP's `_raw` is its whole packet as one text, every field of which is listed on its own already.
+		const fields = Object.entries(group as Record<string, unknown>)
+			.filter(([name]) => name !== '_raw')
+			.map(([name, item]) => ({ name, value: toFieldWords(item) }));
+		if (fields.length) groups.push({ name: FIELD_GROUPS[key] ?? key, fields });
+	}
+	return groups;
+}
+
+/** The fields written out as plain text, a group to a paragraph, to copy and paste. */
+export function toFieldText(groups: FieldGroupType[]) {
+	return groups
+		.map((group) =>
+			[group.name, ...group.fields.map((field) => `${field.name}: ${field.value}`)].join('\n')
+		)
+		.join('\n\n');
+}
+
+/** Where a photo's time and place came from, in words; nothing when nobody said. */
+export function toTakenFromLabel(from: TakenFromType) {
+	if (from === 'file') return 'Read from the photo';
+	if (from === 'device') return 'From the phone when it was added';
+	return '';
+}
+
+/** Where it was taken, as latitude and longitude to five places (about a metre); nothing without both. */
+export function toPlaceLabel(taken: TakenType) {
+	const { latitude, longitude } = taken;
+	if (latitude === undefined || longitude === undefined) return '';
+	return `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+}
+
+/** A map of where it was taken, to open in a new tab; nothing without both latitude and longitude. */
+export function toMapLink(taken: TakenType) {
+	const { latitude, longitude } = taken;
+	if (latitude === undefined || longitude === undefined) return '';
+	return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 }
 
 const UUID = v.pipe(v.string(), v.uuid());
