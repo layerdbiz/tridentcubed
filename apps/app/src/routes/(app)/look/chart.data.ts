@@ -4,9 +4,10 @@
 // and the list (run 12 note 13: one number everywhere). The pie's slices are the page's labels, the same as the
 // board's columns (note 11).
 import { cityStateOf } from './location';
-import { clientOf, personOf, STATUS, type DatasetType } from './look.data';
+import { clientOf, PAGE_ICONS, STATUS, type DatasetType, type ProjectType } from './look.data';
 import type { LookState } from './look.state.svelte';
 import type { PlaceType } from './map.data';
+import { faceOf, logoOf } from './marks';
 import {
 	columnsOf,
 	countOf,
@@ -183,8 +184,8 @@ export function pinsAt(saved: PlaceType[], items: PinItemType[]): PinType[] {
 	return [...pins.values()].sort((a, b) => a.count - b.count);
 }
 
-// How a record draws on the map: a customer's logo, a team's face, or a transport mode's or facility's icon, on the
-// colour of its first label.
+// How a record draws on the map: a customer's logo or code, a team member's face or two letters (#355, the same as
+// every other avatar), or a transport mode's or facility's icon, on the colour of its first label.
 export function pinOfRecord(
 	look: LookState,
 	record: RecordType,
@@ -195,14 +196,28 @@ export function pinOfRecord(
 		name: record.key,
 		image:
 			record.page === 'customers'
-				? customerOf(look, record.key).icon
+				? customerOf(look, record.key).icon || logoOf(record.key).src
 				: record.page === 'team'
-					? personOf(record.key).photo
+					? faceOf(record.key, { hasPresence: false }).src
 					: undefined,
 		icon: record.icon || undefined,
 		tone: record.tone.bg,
 		page: record.page,
 		id: record.key
+	};
+}
+
+// How a project draws on the map: its customer's logo, or else the project icon (as in its list), on its state's
+// colour. Never a letter of its title.
+export function pinOfProject(project: ProjectType): PinItemType {
+	return {
+		city: project.location,
+		name: project.title,
+		image: clientOf(project.client).icon || undefined,
+		icon: PAGE_ICONS.projects,
+		tone: STATUS[project.status].dot,
+		page: 'projects',
+		id: project.id
 	};
 }
 
@@ -212,14 +227,7 @@ export function pinsOf(look: LookState, dataset: DatasetType, filter: string) {
 	return pinsAt(
 		look.places,
 		dataset === 'projects'
-			? shownProjects(look, filter).map((project) => ({
-					city: project.location,
-					name: project.title,
-					image: clientOf(project.client).icon || undefined,
-					tone: STATUS[project.status].dot,
-					page: dataset,
-					id: project.id
-				}))
+			? shownProjects(look, filter).map(pinOfProject)
 			: shownRecords(look, dataset, filter).map((record) =>
 					pinOfRecord(
 						look,

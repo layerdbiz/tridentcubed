@@ -11,8 +11,10 @@ describe('initialsOf', () => {
 		expect(initialsOf('Mary Anne Smith')).toBe('MS');
 	});
 
-	it('shows the first letter of a one-word name', () => {
-		expect(initialsOf('Michael')).toBe('M');
+	// A person always shows two letters, never one (Justin, 2026-11-26).
+	it('shows the first two letters of a one-word name', () => {
+		expect(initialsOf('Michael')).toBe('MI');
+		expect(initialsOf("O'Neill")).toBe('ON');
 	});
 
 	it('reads lower case names in capitals and skips a title in front', () => {
@@ -33,6 +35,10 @@ describe('toCode', () => {
 	it('makes one up from the name when none is typed', () => {
 		expect(toCode('NMT Projects')).toBe('NMT');
 		expect(toCode('Blue Water Shipping', '')).toBe('BLU');
+	});
+
+	it('keeps the numbers in a name, so a code has its three characters', () => {
+		expect(toCode('3M Company')).toBe('3MC');
 	});
 });
 

@@ -1,28 +1,27 @@
-// A face or a logo for a record with no picture yet (#355, Justin, 2026-11-26): a person shows two initials, the
-// first of the first name and of the last; a customer or another company shows its code. Projects, transport modes
-// and facilities keep their icon.
+// A face or a logo for a record with no picture yet (#355, Justin, 2026-11-26): a person always shows two letters,
+// the first of the first name and of the last; a customer or another company shows its three-letter code. Projects,
+// transport modes and facilities keep their icon.
 
-/** The letters a person's circle shows: first and last name's first letters, or the one of a one-word name. */
-export function initialsOf(name: string) {
-	const words = name
+// A name's letters and numbers, word by word, with no title in front.
+function wordsOf(name: string) {
+	return name
 		.replace(/^\s*Capt\.\s+/, '')
 		.split(/\s+/)
-		.map((word) => word.match(/[\p{L}\p{N}]/u)?.[0] ?? '')
-		.filter(Boolean);
-	if (words.length < 2) return (words[0] ?? '').toUpperCase();
-	return `${words[0]}${words.at(-1)}`.toUpperCase();
+		.map((word) => word.match(/[\p{L}\p{N}]/gu) ?? [])
+		.filter((letters) => letters.length);
+}
+
+/** A person's two letters: the first of the first name and of the last, or a one-word name's first two. */
+export function initialsOf(name: string) {
+	const words = wordsOf(name);
+	const first = words[0] ?? [];
+	const letters = words.length > 1 ? [first[0], words.at(-1)?.[0]] : first.slice(0, 2);
+	return letters.join('').toUpperCase();
 }
 
 /** A company's code: the one typed for it, or else the first three letters of its name, made up by the app. */
 export function toCode(name: string, typed = '') {
-	return (
-		typed.trim() ||
-		name
-			.replace(/[^a-z]/gi, '')
-			.slice(0, 3)
-			.toUpperCase() ||
-		'TC'
-	);
+	return typed.trim() || wordsOf(name).flat().slice(0, 3).join('').toUpperCase() || 'TC';
 }
 
 /**

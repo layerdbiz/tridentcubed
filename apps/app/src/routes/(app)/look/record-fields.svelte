@@ -5,7 +5,7 @@
 	// only reads `value` and reports each change through `set`; who keeps the change is the caller's business. A
 	// customer has any number of contacts (2026-11-10). Since #373 every input is the library's notched field with its
 	// ? on the border, like the Project panel's: Input for what is typed, Select for what is picked.
-	import { Button, Input, Select, toCode } from '@layerd/ui';
+	import { Button, initialsOf, Input, Select, toCode, toInitialsPicture } from '@layerd/ui';
 	import ImageField from './image-field.svelte';
 	import {
 		FACILITY_ICONS,
@@ -65,6 +65,11 @@
 	// The Short Code the app makes from the name (a Generated value), shown until someone types over it; none before
 	// the name is typed.
 	const madeCode = $derived(customer?.name.trim() ? toCode(customer.name) : '');
+	// With no logo yet, its code in the Logo field, as every other circle shows it (#355); with no letters either,
+	// the field's own empty frame.
+	const codePicture = $derived(
+		customer?.name.trim() ? toInitialsPicture(toCode(customer.name, customer.code), 'customer') : ''
+	);
 	// A record's name as it is typed, kept here until the Name is left; then the record is renamed.
 	let typedName = $state<string>();
 	// What the record's inputs' Help text keys start with (#299): `customer.name`, `facility.city`.
@@ -176,7 +181,8 @@
 			<ImageField
 				label="Logo"
 				shape="logo"
-				value={customer.icon}
+				value={customer.icon || codePicture}
+				canRemove={Boolean(customer.icon)}
 				target={{ table: 'customer', column: 'logo', id: customer.id }}
 				help={look.helpOf('customer.logo')}
 				hint="Shows on its rows and cards, and in the footer of every report page."
@@ -373,7 +379,9 @@
 					<ImageField
 						label="Photo"
 						shape="face"
-						value={contact.photo}
+						value={contact.photo ||
+							(contact.name.trim() ? toInitialsPicture(initialsOf(contact.name), 'customer') : '')}
+						canRemove={Boolean(contact.photo)}
 						target={{ table: 'contact', column: 'photo', id: contact.id }}
 						help={look.helpOf('contact.photo')}
 						onpick={(url) => setContact(contact.id, { photo: url })}
