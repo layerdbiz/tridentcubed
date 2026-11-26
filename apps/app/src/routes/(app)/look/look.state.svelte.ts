@@ -149,6 +149,20 @@ export function isMovedOn(before: WorkType, work: WorkType) {
 	return (work.isStarted && !before.isStarted) || (work.isDone && !before.isDone);
 }
 
+/** A project's first stop's facility: the one it had when last seen (none when it has just opened), the one it has
+ * now (empty with no stop), and that facility's city now. */
+type FirstStopType = { was?: string; now: string; city: string };
+
+/**
+ * Where a project is (run 19): the city of its first stop's facility, taken when someone picks that facility or
+ * changes it while the project is open; else the place it already had, also once its last stop goes. Opening a
+ * project changes nothing (2026-11-26): a facility's address may have moved on since the project was saved, and
+ * taking it then would save a change nobody made, under the name of whoever opened it.
+ */
+export function toLocation(location: string, { was, now, city }: FirstStopType) {
+	return was !== undefined && now && now !== was ? city : location;
+}
+
 // Run 9 kept the projects, their panels and the lists in this browser. The database replaced that storage table by
 // table: customers (#183), the team (#185), the Transport Modes, Facilities, places and organization (#184), and
 // projects and their panels (#186). Nothing is kept here any more, and what an earlier version kept is cleared.
@@ -289,6 +303,8 @@ export class LookState {
 	#isDone = $derived(this.overall === 100);
 
 	#saveTimer: ReturnType<typeof setTimeout> | undefined;
+	// Each project's first stop's facility as it was last seen here, for `toLocation`; not state, as nothing draws it.
+	#firstFacilities = new Map<string, string>();
 	#toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 	// Everything comes from the server: the lists at start, a project's panels as it opens (#186).
@@ -517,19 +533,22 @@ export class LookState {
 		if (!panel || !project || FROZEN.includes(project.status)) return;
 		const value = (label: string) =>
 			panel.fields.find((field) => field.label === label)?.value ?? '';
-		// Where the project is: the city of its first stop's facility (run 19). No stop yet keeps what it had.
-		const first = this.panels
-			.find((item) => item.kind === 'transport')
-			?.stops.find((stop) => stop.facility);
-		const city = first
-			? (this.facilities.find((facility) => facility.name === first.facility)?.city ?? '')
-			: project.location;
+		// Where the project is: the city of its first stop's facility, once it is picked or changed (`toLocation`).
+		const first =
+			this.panels.find((item) => item.kind === 'transport')?.stops.find((stop) => stop.facility)
+				?.facility ?? '';
+		const location = toLocation(project.location, {
+			was: this.#firstFacilities.get(project.id),
+			now: first,
+			city: this.facilities.find((facility) => facility.name === first)?.city ?? ''
+		});
+		this.#firstFacilities.set(project.id, first);
 		const next = {
 			title: value('Title').trim() || 'Untitled project',
 			subtitle: value('Subtitle'),
 			type: value('Project Type'),
 			client: value('Customer'),
-			location: city
+			location
 		};
 		for (const [key, text] of Object.entries(next) as [keyof typeof next, string][])
 			if (project[key] !== text) project[key] = text;
