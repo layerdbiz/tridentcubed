@@ -103,12 +103,22 @@ describe('a selection of photos', () => {
 		expect(picked(selection)).toEqual(['e']);
 	});
 
-	it('adds a held photo to the selection in its panel, and never twice', () => {
+	it('takes a hold while selecting as a slow tap: it adds the photo, and takes off one already selected', () => {
 		const selection = new Selection();
 		selection.hold(OPERATIONS.id, 'a');
 		selection.hold(OPERATIONS.id, 'd');
-		selection.hold(OPERATIONS.id, 'd');
 		expect(selection.ids).toEqual(['a', 'd']);
+		selection.hold(OPERATIONS.id, 'd');
+		expect(selection.ids).toEqual(['a']);
+	});
+
+	it('counts a Shift-click from the last photo still picked, not one just taken off', () => {
+		const selection = new Selection();
+		selection.hold(OPERATIONS.id, 'b');
+		selection.tap(OPERATIONS, 'e', TAP);
+		selection.tap(OPERATIONS, 'e', TAP);
+		selection.tap(OPERATIONS, 'c', { ...TAP, shiftKey: true });
+		expect(picked(selection)).toEqual(['b', 'c']);
 	});
 
 	it('ends with nothing selected and no sheet open, leaving open the panel the photos were dragged to', () => {

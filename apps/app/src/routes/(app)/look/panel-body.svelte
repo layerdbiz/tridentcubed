@@ -525,10 +525,15 @@
 	function dropPhoto(group: PanelType['groups'][number], from: number, id: string, to?: number) {
 		const kind = group.photos[from]?.kind ?? 'photo';
 		if (!movePhoto(look.panels, group.id, from, id, to)) return;
+		showMoved(ATTACHMENT_NAMES[kind], id);
+	}
+
+	// Moved into group `id`: it opens when it is one of this panel's, the toast says where they went, and it is saved.
+	function showMoved(what: string, id: string) {
 		const target = look.panels.flatMap((item) => item.groups ?? []).find((item) => item.id === id);
 		if (panel.groups.some((item) => item.id === id) && !openGroups.includes(id))
 			openGroups = [...openGroups, id];
-		look.say(`${ATTACHMENT_NAMES[kind]} moved to ${target?.title || 'the other group'}`);
+		look.say(`${what} moved to ${target?.title || 'the other group'}`);
 		save();
 	}
 
@@ -538,14 +543,10 @@
 	const isSelecting = $derived(selection.isIn(panel.id));
 
 	function dropSelection(id: string, to?: number) {
-		const photos = selection.photosIn(look.panels);
-		const target = look.panels.flatMap((item) => item.groups ?? []).find((item) => item.id === id);
+		const what = countLabelOf(selection.photosIn(look.panels));
 		if (!movePhotos(look.panels, selection.ids, id, to)) return;
-		if (panel.groups.some((item) => item.id === id) && !openGroups.includes(id))
-			openGroups = [...openGroups, id];
-		look.say(`${countLabelOf(photos)} moved to ${target?.title || 'the other group'}`);
 		selection.end();
-		save();
+		showMoved(what, id);
 	}
 
 	// The selected photos' tiles in this panel as it is drawn here (a panel is drawn twice, for the phone and the

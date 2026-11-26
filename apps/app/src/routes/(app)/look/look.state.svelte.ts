@@ -349,6 +349,11 @@ export class LookState {
 		this.filter = 'All';
 	}
 
+	/** Whether photos are being selected where the Selection bar shows: a project's Edit tab (#402). */
+	get isSelecting() {
+		return this.selection.isOn && this.screen === 'workspace' && this.tab === 'edit';
+	}
+
 	// The page of what is open, never the list last visited (Justin, 2026-11-16: his own Team page, opened from his
 	// picture while on Projects, said Projects). A project belongs to Projects and a record to its own page. The
 	// dashboard and the Organization, which is none of the five pages, give the list on show or last on show.

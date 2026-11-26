@@ -92,9 +92,7 @@
 		look.record ? recordOf(look, look.record.page, look.record.key) : undefined
 	);
 
-	const isSelecting = $derived(
-		look.selection.isOn && look.screen === 'workspace' && look.tab === 'edit'
-	);
+	const isSelecting = $derived(look.isSelecting);
 
 	const CANVAS = 'bg-slate-100';
 	// The cards and the list run the full width of the main part, inside its padding (2026-11-10: "see more"); a very

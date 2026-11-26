@@ -1,12 +1,12 @@
-// The Selection bar (UI glossary, #402): while things are selected it takes the menu bar's place, bright blue, with
-// white icons for what can be done to all of them at once and an X at its far right that ends the selection. These
-// tests pin what it shows and what each press does; where it sits is its owner's, set from outside.
+// The Selection bar (UI glossary, #402): while things are selected it takes the menu bar's place, with icons for what
+// can be done to all of them at once and an X at its far right that ends the selection. These tests pin what it shows
+// and what each press does; its look and where it sits are its owner's, set from outside.
 import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import SelectionBar from './selection-bar.svelte';
 
 function show(props: Record<string, unknown> = {}) {
-	const describe = vi.fn();
+	const describeAll = vi.fn();
 	const remove = vi.fn();
 	const onclose = vi.fn();
 	const result = render(SelectionBar, {
@@ -16,7 +16,7 @@ function show(props: Record<string, unknown> = {}) {
 				{
 					label: 'One description for all',
 					icon: 'icon-[mdi--text-box-edit-outline]',
-					onclick: describe
+					onclick: describeAll
 				},
 				{ label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', onclick: remove }
 			],
@@ -24,7 +24,7 @@ function show(props: Record<string, unknown> = {}) {
 			...props
 		}
 	});
-	return { ...result, describe, remove, onclose };
+	return { ...result, describeAll, remove, onclose };
 }
 
 describe('SelectionBar', () => {
@@ -41,12 +41,12 @@ describe('SelectionBar', () => {
 	});
 
 	it('does each action when its icon is pressed, in the order given, with the X last', async () => {
-		const { describe, remove } = show();
+		const { describeAll, remove } = show();
 		const names = screen.getAllByRole('button').map((button) => button.getAttribute('aria-label'));
 		expect(names).toEqual(['One description for all', 'Delete', 'End selection']);
 		await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 		expect(remove).toHaveBeenCalledOnce();
-		expect(describe).not.toHaveBeenCalled();
+		expect(describeAll).not.toHaveBeenCalled();
 	});
 
 	it('ends the selection from its X', async () => {
@@ -62,6 +62,13 @@ describe('SelectionBar', () => {
 		show({ accent: true, lite: true });
 		const bar = screen.getByRole('navigation');
 		expect(bar.className).toContain('theme-lite-accent');
+		expect(bar.className).not.toContain('theme-heavy-primary');
+	});
+
+	it('wears any colour given as a shorthand, danger too', () => {
+		show({ danger: true });
+		const bar = screen.getByRole('navigation');
+		expect(bar.className).toContain('theme-heavy-danger');
 		expect(bar.className).not.toContain('theme-heavy-primary');
 	});
 

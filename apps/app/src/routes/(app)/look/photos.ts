@@ -155,12 +155,9 @@ export function describePhotos(panels: PanelType[], ids: readonly string[], desc
 }
 
 function takeOut(group: GroupType, ids: readonly string[]) {
-	let count = 0;
-	for (let at = group.photos.length - 1; at >= 0; at -= 1) {
-		if (!ids.includes(group.photos[at].id)) continue;
-		group.photos.splice(at, 1);
-		count += 1;
-	}
+	const kept = group.photos.filter((photo) => !ids.includes(photo.id));
+	const count = group.photos.length - kept.length;
+	if (count) group.photos = kept;
 	return count;
 }
 

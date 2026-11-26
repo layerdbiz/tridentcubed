@@ -40,11 +40,9 @@ export class Selection {
 		return this.isOn && this.panelId === panelId;
 	}
 
-	/** A photo held still: it starts a selection, or joins the one in its panel. */
+	/** A photo held still and let go: it starts a selection; while its panel is selecting it is a slow tap. */
 	hold(panelId: string, id: string) {
-		if (!this.isIn(panelId)) return this.#start(panelId, id);
-		if (!this.has(id)) this.ids = [...this.ids, id];
-		this.#anchor = id;
+		this.#toggle(panelId, id);
 	}
 
 	/**
@@ -85,7 +83,8 @@ export class Selection {
 	#toggle(panelId: string, id: string) {
 		if (!this.isIn(panelId)) return this.#start(panelId, id);
 		this.ids = this.has(id) ? this.ids.filter((each) => each !== id) : [...this.ids, id];
-		this.#anchor = id;
+		// Shift counts from the last one picked that is still selected.
+		this.#anchor = this.ids.at(-1) ?? '';
 		if (!this.ids.length) this.end();
 	}
 

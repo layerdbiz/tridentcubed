@@ -431,13 +431,18 @@ describe('several photos selected', () => {
 		damages.isEnabled = true;
 		damages.groups.push(groupOf({ title: 'Dent', photos: [stored('G')] }));
 		expect((await save(mine)).result.isSaved).toBe(true);
-		const words = (panel: PanelType) =>
-			panel.groups.map((group) => [group.title, group.photos.map((photo) => photo.description)]);
-		const idOf = (description: string) =>
-			mine.look.panels
+		function words(panel: PanelType) {
+			return panel.groups.map((group) => [
+				group.title,
+				group.photos.map((photo) => photo.description)
+			]);
+		}
+		function idOf(description: string) {
+			return mine.look.panels
 				.flatMap((panel) => panel.groups ?? [])
 				.flatMap((group) => group.photos)
 				.find((photo) => photo.description === description)!.id;
+		}
 		return { mine, id, discharge, damages, words, idOf };
 	}
 

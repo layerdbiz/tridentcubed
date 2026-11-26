@@ -92,7 +92,7 @@ export * from "./components/molecules/logo/logo.data.ts";
 export { default as Menu, type MenuOptionType, type MenuProps } from "./components/molecules/menu/menu.svelte";
 export { default as Navbar } from "./components/molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./components/molecules/preview/preview.svelte";
-export { default as SelectionBar, type SelectionBarProps } from "./components/molecules/selection-bar/selection-bar.svelte";
+export { default as SelectionBar, type SelectionActionType, type SelectionBarProps } from "./components/molecules/selection-bar/selection-bar.svelte";
 export { default as Slider, type SliderProps } from "./components/molecules/slider/slider.svelte";
 export { default as Stack, type StackItemType, type StackProps } from "./components/molecules/stack/stack.svelte";
 export * from "./components/molecules/toast/toast.svelte.ts";

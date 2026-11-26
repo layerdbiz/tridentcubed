@@ -4,7 +4,7 @@
 	 * @layout horizontal
 	 */
 	// The Selection bar (UI glossary, #402): while things are selected it takes the menu bar's place, at its exact size,
-	// with white icons for what can be done to all of them at once and an X at its far right that ends the selection
+	// with icons for what can be done to all of them at once and an X at its far right that ends the selection
 	// (Justin, 2026-11-24). How many are selected stands on its left, where the menu bar has its page's name. Where it
 	// sits is its owner's, given as `class`, so it can take the place of whatever bar the owner has.
 	//
@@ -21,11 +21,11 @@
 	} from '@layerd/ui';
 
 	/** One thing the Selection bar does to everything selected: its name, read out and shown on hover, and its icon. */
-	export type SelectionActionType = {
+	export interface SelectionActionType {
 		label: string;
 		icon: string;
 		onclick: () => void;
-	};
+	}
 
 	export interface SelectionBarProps extends Omit<ComponentProps, 'label'> {
 		/** How many are selected, shown as "3 Selected"; none leaves the count out and spreads the icons. */
@@ -55,9 +55,9 @@
 	}: SelectionBarProps = $props();
 
 	// A colour or appearance given as a shorthand (`accent`, `lite`) wins over the defaults, as on any base component.
-	const COLORS = ['base', 'neutral', 'primary', 'secondary', 'accent'] as const;
+	const COLORS = ['base', 'neutral', 'primary', 'secondary', 'accent', 'danger'] as const;
 	const APPEARANCES = ['heavy', 'lite', 'outline', 'ghost', 'glass', 'gradient'] as const;
-	const worn = $derived({
+	const themed = $derived({
 		...props,
 		color: COLORS.find((each) => props[each] === true) ?? color,
 		appearance: APPEARANCES.find((each) => props[each] === true) ?? appearance
@@ -68,7 +68,7 @@
 		'flex h-[2.75em] w-[3em] shrink-0 items-center justify-center rounded-full text-current transition-colors hover:bg-current/15 active:bg-current/25 *:size-[1.75em]';
 </script>
 
-<Component {...worn}>
+<Component {...themed}>
 	{#snippet component({ props: root }: { props: ComponentReturn })}
 		<nav
 			{...root}

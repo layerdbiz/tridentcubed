@@ -17,9 +17,7 @@
 	const photos = $derived(selection.photosIn(look.panels));
 	const label = $derived(countLabelOf(photos));
 	const described = $derived(photos.filter((photo) => photo.description.trim()));
-	const isShown = $derived(
-		selection.isOn && look.screen === 'workspace' && look.tab === 'edit' && photos.length > 0
-	);
+	const isShown = $derived(look.isSelecting && photos.length > 0);
 	let words = $state('');
 	let search = $state('');
 
@@ -131,7 +129,6 @@
 		transition:fade={{ duration: 160 }}
 	>
 		<SelectionBar
-			class="shadow-lg"
 			count={photos.length}
 			actions={[
 				{
