@@ -18,6 +18,11 @@
 
 	let { look, onclose }: { look: LookState; onclose: () => void } = $props();
 
+	// A line too long for its row fades out at its end rather than ending in "…", which would take a found word's mark
+	// when the cut falls inside it.
+	const CUT =
+		'overflow-hidden whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]';
+
 	let query = $state('');
 	let active = $state(0);
 	let list: HTMLElement | undefined = $state();
@@ -128,9 +133,8 @@
 						/>
 					{/if}
 					<span class="min-w-0 flex-1">
-						<span class="block truncate text-[15px] text-slate-900">{@render marked(row.name)}</span
-						>
-						{#if row.line}<span class="block truncate text-sm text-slate-500"
+						<span class="block {CUT} text-[15px] text-slate-900">{@render marked(row.name)}</span>
+						{#if row.line}<span class="block {CUT} text-sm text-slate-500"
 								>{@render marked(row.line)}</span
 							>{/if}
 					</span>
