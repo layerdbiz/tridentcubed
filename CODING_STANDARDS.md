@@ -43,5 +43,7 @@ what it cannot see:
    not grow a screen's look.
 8. **No exception without Justin.** "It repeats in every row" or "it was
    that way in the app" is not a reason to skip the base component or fix a
-   colour. Measure it, and bring him the numbers. An exception he agrees to
+   colour: a component that asks for no layout takes the base component's
+   light path, which keeps a list row quick. If it is still slow, measure
+   it and bring him the numbers. An exception he agrees to
    is written in `packages/ui/look.json` with his name and the date.

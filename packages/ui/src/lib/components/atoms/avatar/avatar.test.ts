@@ -101,4 +101,23 @@ describe('Avatar', () => {
 
 		expect((container.firstElementChild as HTMLElement).style.width).toBe('22px');
 	});
+
+	// Built on the base component (Justin, 2026-11-26), its look is set from outside, like the Button's.
+	it('wears the look it is given on its box', () => {
+		const { container } = render(Avatar, {
+			props: { src: '/files/ana.webp', alt: 'Ana', lite: true, primary: true, class: 'shadow' }
+		});
+
+		const box = container.firstElementChild as HTMLElement;
+		expect(box.className).toContain('theme-lite-primary');
+		expect(box.className).toContain('shadow');
+		expect(box.className).toContain('avatar');
+	});
+
+	it('is still one box and a picture, as light as before', () => {
+		const { container } = render(Avatar, { props: { src: '/files/ana.webp', alt: 'Ana' } });
+
+		expect(container.children).toHaveLength(1);
+		expect(container.firstElementChild?.children).toHaveLength(1);
+	});
 });

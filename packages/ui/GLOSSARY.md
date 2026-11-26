@@ -23,6 +23,9 @@ _Avoid_: root runtime, public Root
 **Default renderer**:
 The base component's built-in rendering: the requested tag with content or layout snippets inside.
 
+**Light path**:
+How the base component draws a component that asks for no layout and none of the base props: straight from the base component, without Root, the same element with the same attributes and content Root would give it. It keeps a component that repeats in every list row, such as the Avatar, as quick as a plain element. Anything else takes the full path through Root.
+
 **Root override**:
 A component taking over the base component's rendering with its own markup while Root still does layout beneath it. Spoken forms: root snippet, root component.
 _Avoid_: takeover, legacy snippet, custom renderer, render override

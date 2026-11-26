@@ -22,7 +22,10 @@ unfinished and stay unused.
   `CODING_STANDARDS.md` says what that means). The look check
   (`../tools/src/checks/look.ts`) stops a commit of a component that does
   not render `<Component` or names a palette colour. The default renderer at
-  every tier (ADR 0001); `Root` is imported only by the base component.
+  every tier (ADR 0001); `Root` is imported only by the base component. A
+  piece that repeats in every list row stays on it too: the base
+  component's light path (`base/light.ts`) draws a component that asks for
+  no layout without Root, as quick as a plain element (measured 2026-11-26).
 - Props type `<Name>Props extends ComponentProps`; base props never change
   a component's own layout. Canonical rail names and `icon=` in new code.
 - `variant` is the component's own union of looks (button, toggle and
@@ -47,8 +50,8 @@ the module singletons in `observe` and `scroll`, five rune-free
 
 Components that broke the look rule before the look check began are listed
 in `look.json` with what they had then (the menu list #297, the toast #293,
-the select's lists #298, the avatar and stack #379, the compact field #387,
-and older ones). Each is fixed, not extended: it may get better, never
+the select's lists #298, the avatar's and stack's greys #379, and older
+ones). Each is fixed, not extended: it may get better, never
 worse. Nothing joins that list, or this one, without Justin's yes, written
 with his name and the date; a piece that is slow on the base component is
 measured and the numbers go to him, it does not skip the base on its own.

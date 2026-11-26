@@ -23,16 +23,21 @@
 	/**
 	 * @tags ui, avatar
 	 */
+	import { Component, type ComponentProps, type ComponentRenderArgs } from '@layerd/ui';
 	// Every little round picture in the app, a face or a logo (#379, Justin, 2026-11-26: one component, never
 	// several): the photo or logo; with none, the name's initials (or a company's code) on the colours of its role or
-	// kind (#355); with no letters either, an icon on grey, or on a colour it is given. A presence dot sits at the top right, or a badge at the
-	// bottom right in its place. It repeats in every dashboard row, so it is one element and a picture, with no base
-	// component (#365 item 7, like the menu list's rows on #297), and the dot and the badge are drawn by the element
-	// itself rather than elements of their own.
+	// kind (#355); with no letters either, an icon on grey, or on a colour it is given. A presence dot sits at the top
+	// right, or a badge at the bottom right in its place, both drawn by the element itself.
+	//
+	// It is the base component (Justin, 2026-11-26), so `color`, `appearance`, their shorthands and `class` land on its
+	// box. It repeats in every dashboard row, so it takes the base component's light path: one element and a picture,
+	// one {#if}, no whitespace between the parts (measured on #379 and again on 2026-11-26). Its frame (`ring`) and
+	// its icon's colours (`tint`) are set from outside; the grey under a photo and the default tint are still slate,
+	// listed in packages/ui/look.json until the theme has a colour for them.
 
 	export type PresenceType = 'online' | 'idle' | 'offline';
 
-	export interface AvatarProps {
+	export interface AvatarProps extends Omit<ComponentProps, 'size' | 'label' | 'children'> {
 		// The picture: a photo or a logo. None draws the initials.
 		src?: string;
 		// Who or what it is: read out in place of the picture, and its initials when there is none.
@@ -48,7 +53,7 @@
 		size?: number;
 		// Round for a face, a rounded square for an app-icon style logo.
 		shape?: 'circle' | 'rounded';
-		// `cover` fills the circle (a photo), `contain` keeps the whole artwork on white (a logo).
+		// `cover` fills the circle (a photo), `contain` keeps the whole artwork on the theme's surface, white (a logo).
 		fit?: 'cover' | 'contain';
 		// The frame around the picture, as classes (`ring-2 ring-white`).
 		ring?: string;
@@ -86,34 +91,41 @@
 		tint = 'bg-slate-200 text-slate-400',
 		crossorigin,
 		title,
-		class: className = ''
+		class: className = '',
+		...props
 	}: AvatarProps = $props();
 
 	const picture = $derived(src || toLetters(name, initials, tone));
 </script>
 
 <!-- No whitespace between the parts: every space is one more node in every row (#379, measured). -->
-<span
-	class="avatar relative inline-block shrink-0 {className}"
-	style={toBoxStyle(size, badge, badgeScale)}
-	data-presence={badge ? undefined : presence}
-	data-badge={badge ? '' : undefined}
-	{title}
-	>{#if picture}<img
-			src={picture}
-			alt={alt ?? name ?? ''}
-			{crossorigin}
-			draggable="false"
-			class="size-full {shape === 'circle' ? 'rounded-full' : 'rounded-[24%]'} {fit === 'contain'
-				? 'bg-white object-contain'
-				: 'bg-slate-200 object-cover'} {ring} {isMuted ? 'grayscale' : ''}"
-		/>{:else}<span
-			class="flex size-full items-center justify-center {tint} {shape === 'circle'
-				? 'rounded-full'
-				: 'rounded-[24%]'} {ring}"
-			role="img"
-			aria-label={alt ?? name ?? ''}><span class="{fallback} size-[58%]"></span></span
-		>{/if}</span
+<Component
+	{...props}
+	tag="span"
+	class={`avatar relative inline-block shrink-0 ${className}`}
+	>{#snippet component({ props: root }: ComponentRenderArgs)}<span
+			{...root}
+			style={toBoxStyle(size, badge, badgeScale)}
+			data-presence={badge ? undefined : presence}
+			data-badge={badge ? '' : undefined}
+			{title}
+			>{#if picture}<img
+					src={picture}
+					alt={alt ?? name ?? ''}
+					{crossorigin}
+					draggable="false"
+					class="size-full {shape === 'circle' ? 'rounded-full' : 'rounded-[24%]'} {fit ===
+					'contain'
+						? 'bg-surface object-contain'
+						: 'bg-slate-200 object-cover'} {ring} {isMuted ? 'grayscale' : ''}"
+				/>{:else}<span
+					class="flex size-full items-center justify-center {tint} {shape === 'circle'
+						? 'rounded-full'
+						: 'rounded-[24%]'} {ring}"
+					role="img"
+					aria-label={alt ?? name ?? ''}><span class="{fallback} size-[58%]"></span></span
+				>{/if}</span
+		>{/snippet}</Component
 >
 
 <style lang="postcss">
@@ -124,7 +136,7 @@
 		content: '';
 		width: var(--dot);
 		height: var(--dot);
-		@apply absolute top-0 right-0 rounded-full ring-2 ring-white;
+		@apply absolute top-0 right-0 rounded-full ring-2 ring-surface;
 	}
 	.avatar[data-presence='online']::after {
 		@apply bg-success;
@@ -142,6 +154,6 @@
 		width: var(--mark);
 		height: var(--mark);
 		background: black var(--badge) center / cover no-repeat;
-		@apply absolute -right-1 -bottom-1 rounded-full ring-[1.5px] ring-white;
+		@apply absolute -right-1 -bottom-1 rounded-full ring-[1.5px] ring-surface;
 	}
 </style>
