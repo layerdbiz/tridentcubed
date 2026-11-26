@@ -2,8 +2,14 @@
 // installs, what it does with a request, what it removes when a new version takes over, and the one message that
 // lets it take over an open app (#202). It keeps files, never data: remote functions, server routes, file
 // addresses and anything that is not a plain read are left alone.
+//
+// Which version answers (#401). Vercel keeps an open app on the deployment it started with, by a cookie (Skew
+// Protection). A browser whose cookie names an older deployment reaches that one with every request Vercel does not
+// count as a page load: the new version's files came back "not found", so it never installed, and Reload brought
+// the old app back every time. So a request from here names its deployment: an install asks for its files from the
+// deployment it was built in, and a page load asks the newest one.
 import { KEPT_STATIC, MANIFEST_PATH, OFFLINE_PATH } from '#lib/install/install.constants.js';
-import { TAKE_OVER } from '#lib/update/update.constants.js';
+import { DEPLOYMENT_HEADER, TAKE_OVER } from '#lib/update/update.constants.js';
 
 /** What the rule reads of a request; a real `Request` fits. */
 export type AskedType = Pick<Request, 'method' | 'mode' | 'url'>;
@@ -15,14 +21,10 @@ export type DeviceType = {
 	kept: ReadonlySet<string>;
 	/** Reads a stored answer by its path. */
 	read: (path: string) => Promise<Response | undefined>;
-	/** Sends the request on to the network. */
+	/** Sends the request on to the network as it came. */
 	ask: () => Promise<Response>;
-	/**
-	 * The browser's own request for a page load (navigation preload), where the browser makes one; it gives nothing
-	 * for a request that is not a page load. A request the service worker sends reaches the server as a plain read,
-	 * and only the browser's own arrives as a page load.
-	 */
-	preload?: () => Promise<Response | undefined>;
+	/** Asks the newest version for the page (`toNewestPage`). */
+	askPage: () => Promise<Response>;
 };
 
 export type FilesType = {
@@ -98,43 +100,51 @@ export function isTakeOver(message: unknown) {
 	return message === TAKE_OVER;
 }
 
+/**
+ * How the install step asks for its files: from the deployment this version was built in (`deployment`), so a
+ * browser kept on an older one still gets them. Off Vercel (no deployment) it asks plainly.
+ */
+export function toOwnFiles(deployment: string): RequestInit {
+	return deployment ? { headers: { [DEPLOYMENT_HEADER]: deployment } } : {};
+}
+
+/**
+ * How a page load is sent on: to the newest version, whichever one the browser is kept on, and never answered from
+ * the browser's own cache, so the page always comes with the cookie that keeps the browser on the version that
+ * served it. Off Vercel (no deployment) only the cache is skipped.
+ */
+export function toNewestPage(request: Request, deployment: string): Request {
+	if (!deployment) return new Request(request, { cache: 'no-store' });
+	const headers = new Headers(request.headers);
+	headers.set(DEPLOYMENT_HEADER, '');
+	return new Request(request, { headers, cache: 'no-store' });
+}
+
 async function fromDevice(path: string, { read, ask }: DeviceType) {
 	return (await read(path)) ?? ask();
 }
 
-// A page load is the browser's own request where it made one. A host that keeps a visitor on the version they
-// started with (Vercel's Skew Protection, by a cookie) moves them to the newest version on a page load only, and
-// a request sent from here does not arrive as one: the visitor stayed on the old version, and the update note came
-// back after every tap.
-async function load({ preload, ask }: DeviceType) {
-	return (await preload?.()) ?? ask();
-}
-
-async function fromNetwork(device: DeviceType) {
+async function fromNetwork({ askPage, read }: DeviceType) {
 	try {
-		return await load(device);
+		return await askPage();
 	} catch (error) {
-		const screen = await device.read(OFFLINE_PATH);
+		const screen = await read(OFFLINE_PATH);
 		if (screen) return screen;
 		throw error;
 	}
 }
 
 /**
- * Where a request's answer comes from. A kept file comes from the device; a page request goes to the network and
+ * Where a request's answer comes from. A kept file comes from the device; a page load goes to the newest version and
  * gets the Needs Internet screen only when the network fails. `undefined` leaves the request alone: the browser
- * sends it as if there were no service worker.
- *
- * A page load of an address that is not a page (a sign-in callback, a download) is never answered from here. Where
- * the browser has already made its own request for it, that request is handed back as it came: left alone, the
- * browser would ask a second time, and a sign-in code works once.
+ * sends it as if there were no service worker, and so does a page load of an address that is not a page (a sign-in
+ * callback, a download).
  */
 export function answer(asked: AskedType, device: DeviceType): Promise<Response> | undefined {
 	if (asked.method !== 'GET') return undefined;
 	const url = new URL(asked.url);
 	if (url.origin !== device.origin) return undefined;
 	if (device.kept.has(url.pathname)) return fromDevice(url.pathname, device);
-	if (asked.mode !== 'navigate') return undefined;
-	if (isPage(url.pathname)) return fromNetwork(device);
-	return device.preload ? load(device) : undefined;
+	if (asked.mode !== 'navigate' || !isPage(url.pathname)) return undefined;
+	return fromNetwork(device);
 }

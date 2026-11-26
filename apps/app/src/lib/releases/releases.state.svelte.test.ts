@@ -158,4 +158,60 @@ describe("What's New", () => {
 		await Promise.resolve();
 		expect(whatsNew.hasFailed).toBe(true);
 	});
+
+	// Justin, 2026-11-26: nobody ever stays on an old version (#401).
+	it('opens on opening the app on an older version even with everything seen, offering the reload', async () => {
+		const { whatsNew } = createApp({ own: 1, newest: 2, seen: 2 });
+
+		await whatsNew.start();
+
+		expect(whatsNew.isOpen).toBe(true);
+		expect(whatsNew.fresh).toEqual([]);
+		expect(whatsNew.isNewer).toBe(true);
+	});
+
+	it('opens again when SvelteKit finds a newer version and everything was already seen on another tab', async () => {
+		const { whatsNew, server } = createApp({ own: 1, seen: 1 });
+		await whatsNew.start();
+		server.history = createHistory(2);
+		whatsNew.seen = `${CHAIN[2]}0000`;
+
+		await whatsNew.check();
+
+		expect(whatsNew.fresh).toEqual([]);
+		expect(whatsNew.isOpen).toBe(true);
+	});
+
+	it('closed with the X or a tap outside while a newer version is out, counts as the button and shuts', async () => {
+		const { whatsNew, server, store } = createApp({ own: 1, seen: 1 });
+		await whatsNew.start();
+		server.history = createHistory(3);
+		await whatsNew.check();
+
+		expect(whatsNew.dismiss()).toBe(true);
+
+		expect(store.seen).toBe(`${CHAIN[3]}0000`);
+		expect(whatsNew.isOpen).toBe(false);
+	});
+
+	it('closed with the X with nothing newer to load, leaves what is new as new', async () => {
+		const { whatsNew } = createApp({ own: 3, seen: 1 });
+		await whatsNew.start();
+
+		expect(whatsNew.dismiss()).toBe(false);
+
+		expect(whatsNew.isOpen).toBe(false);
+		expect(whatsNew.fresh).toHaveLength(2);
+	});
+
+	it('stays shut on a first visit to an older version only where it does not open by itself', async () => {
+		const live = createApp({ own: 1, newest: 2 });
+		const quiet = createApp({ own: 1, newest: 2, isLive: false });
+
+		await live.whatsNew.start();
+		await quiet.whatsNew.start();
+
+		expect(live.whatsNew.isOpen).toBe(true);
+		expect(quiet.whatsNew.isOpen).toBe(false);
+	});
 });

@@ -11,6 +11,8 @@ declare global {
 	const __BUILD_COMMIT__: string;
 	/** The branch this build was made from, written in the same way. */
 	const __BUILD_BRANCH__: string;
+	/** The Vercel deployment this build is, written in the same way. */
+	const __DEPLOYMENT_ID__: string;
 
 	namespace App {
 		// interface Error {}
