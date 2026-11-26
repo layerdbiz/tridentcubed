@@ -30,7 +30,7 @@ unfinished and stay unused.
   out; white and black are allowed.
 - Responsive layout branches on `mq` in the consumer (ADR 0002); the base
   component system is breakpoint-blind.
-- The empty placeholders (`checkbox`, `radio`, `navbar`, `about`,
+- The empty placeholders (`checkbox`, `navbar`, `about`,
   `contact`, `home`) and the `*.data.ts` sample files stay until the
   database work decides them.
 

@@ -284,6 +284,14 @@ _Avoid_: avatar group, face pile
 The box that opens over the page and shuts the rest until it closes: a sheet rising from the bottom on a phone, which a pull down closes, and a centred box from tablet width. Escape and a tap outside close it too, and the focus goes into it and back to what opened it. The help ?'s kind leaves the focus in the input being typed in (#375).
 _Avoid_: popup, bottom sheet (as a component of its own), drawer
 
+**Tabs**:
+A row of choices where the picked one decides what shows beside or under it, such as Photo or Map, or a dashboard's count cards. One is always picked; the arrow keys move along the row (#382).
+_Avoid_: segmented control, switcher, toggle (a toggle opens and closes)
+
+**Pick-one group**:
+A row of choices where exactly one is a field's value, such as how many photos share a report page. The library's Radio draws it as one row, not as round dots (#382).
+_Avoid_: radio buttons (for the look), button group, segmented control
+
 **Selection bar**:
 The bright blue bar that takes the menu bar's place, at its exact size, while things are selected: white icons for what can be done to all of them at once, and an X at its far right that ends the selection, as a tap anywhere else does. Selected things wear a border of the same blue (Justin, 2026-11-24).
 _Avoid_: action bar, toolbar, bulk menu

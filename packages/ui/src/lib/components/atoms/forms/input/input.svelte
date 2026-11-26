@@ -108,10 +108,13 @@
 		if (generated !== undefined) draft = shownNow;
 	}
 
+	// A date, time or month draws its own mask (mm/dd/yyyy) when empty in a desktop browser, so its label stays up on
+	// the border rather than sitting on the mask (an empty Time Log day, #374).
+	const isMasked = $derived(/^(date|datetime-local|month|time|week)$/.test(String(type)));
+
 	// A date, time or month with a Generated value has no calendar button (the wand sits there), so a click opens it.
 	function openPicker(): void {
-		if (generated === undefined || !/^(date|datetime-local|month|time|week)$/.test(String(type)))
-			return;
+		if (generated === undefined || !isMasked) return;
 		try {
 			inputNode?.showPicker?.();
 		} catch {
@@ -281,7 +284,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 		<!-- The label sits on the border in the legend, apart from the field, which is named by it. -->
 		<fieldset
 			{...props}
-			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)} ${error ? 'field-invalid' : ''}`.trim()}
+			class={`field ${props.class} ${isMasked ? 'field-filled' : fieldState.className} ${toGeneratedClass(generatedState)} ${error ? 'field-invalid' : ''}`.trim()}
 		>
 			<legend
 				><span id="{fieldState.field.id}-label">{fieldState.labelText}</span>{#if help}<Help
