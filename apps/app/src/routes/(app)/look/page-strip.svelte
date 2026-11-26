@@ -2,7 +2,8 @@
 	// Presentation's strip (#324; Justin, 2026-11-25): the report's pages small, in a row under the page shown, centred
 	// when they all fit, their ends fading out; the page shown is lit and kept in the middle, and a tap goes to a page.
 	// Each small page is a copy of the page drawn on the canvas, taken again whenever the pages change. The pages are
-	// the library's Tabs (#382), so the arrow keys move from page to page.
+	// the library's Tabs (#382), one stop for Tab; the presentation's own keys turn the page (report-preview takes them
+	// first), and a page tab that has focus hands it on to the page shown.
 	import { Tabs } from '@layerd/ui';
 
 	let {
@@ -56,6 +57,8 @@
 		const lit = slots[at]?.parentElement;
 		const list = lit?.parentElement;
 		if (!list || !lit) return;
+		if (list.contains(document.activeElement) && document.activeElement !== lit)
+			lit.focus({ preventScroll: true });
 		list.scrollTo({
 			left: lit.offsetLeft - (list.clientWidth - lit.offsetWidth) / 2,
 			behavior: 'smooth'

@@ -115,10 +115,20 @@ describe('Tabs', () => {
 		expect(onpick).toHaveBeenLastCalledWith('Other');
 	});
 
-	it('keys on a tab’s own button go to that button: a button’s Enter is its own click', async () => {
+	it('leaves a button tab’s Enter to the button, whose own click picks it', async () => {
 		const { tab, onpick } = show();
 
 		await fireEvent.keyDown(tab('Android'), { key: 'Enter' });
+		expect(onpick).not.toHaveBeenCalled();
+	});
+
+	it('leaves the taps and keys of a button inside a card to that button', async () => {
+		const { tab, onpick } = show({}, 'div');
+		const inner = tab('Android').querySelector('button')!;
+
+		await fireEvent.click(inner);
+		await fireEvent.keyDown(inner, { key: 'Enter' });
+		await fireEvent.keyDown(inner, { key: 'ArrowRight' });
 		expect(onpick).not.toHaveBeenCalled();
 	});
 

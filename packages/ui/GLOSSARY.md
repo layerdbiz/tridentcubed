@@ -268,6 +268,14 @@ _Avoid_: source (in the business glossary that is where a value comes from), API
 A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305).
 _Avoid_: snackbar, progress toast (as a component of its own), loading bar
 
+**Tabs**:
+A row of choices where the picked one decides what shows beside or under it, such as Photo or Map, or a dashboard's count cards. One is always picked; the arrow keys move along the row (#382).
+_Avoid_: segmented control, switcher, toggle (a toggle opens and closes)
+
+**Pick-one group**:
+A row of choices where exactly one is a field's value, such as how many photos share a report page. The library's Radio draws it as one row, not as round dots (#382).
+_Avoid_: radio buttons (for the look), button group, segmented control
+
 **Selection bar**:
 The bright blue bar that takes the menu bar's place, at its exact size, while things are selected: white icons for what can be done to all of them at once, and an X at its far right that ends the selection, as a tap anywhere else does. Selected things wear a border of the same blue (Justin, 2026-11-24).
 _Avoid_: action bar, toolbar, bulk menu

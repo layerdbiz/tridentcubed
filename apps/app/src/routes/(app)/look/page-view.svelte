@@ -64,6 +64,10 @@
 	// Map or Photo, as picked; until someone picks, the map when there is a place to show on it (Justin,
 	// 2026-11-16: "instead of defaulting to the photo view, I want to default to the map view").
 	let picked = $state<boolean>();
+	const VIEWS = [
+		{ isMap: false, label: 'Photo', icon: 'icon-[mdi--image]' },
+		{ isMap: true, label: 'Map', icon: 'icon-[mdi--map]' }
+	];
 	const isMap = $derived(picked ?? (pins.length > 0 || route.length > 0));
 	// Which photo is in view, the dots for it, and which photos have their picture yet (slides.svelte.ts).
 	const slides = new Slides();
@@ -182,21 +186,18 @@
 				<Tabs
 					class="pointer-events-auto flex rounded-full p-1 {GLASS}"
 					label="Picture or map"
-					options={[false, true]}
-					value={isMap}
-					onpick={(value) => (picked = value)}
+					options={VIEWS}
+					value={VIEWS[Number(isMap)]}
+					onpick={(view) => (picked = view.isMap)}
 				>
-					{#snippet option({ value, isOn, props })}
-						{@const [label, icon] = value
-							? ['Map', 'icon-[mdi--map]']
-							: ['Photo', 'icon-[mdi--image]']}
+					{#snippet option({ value: view, isOn, props })}
 						<button
 							{...props}
 							class="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-semibold transition {isOn
 								? isDark
 									? 'bg-white text-slate-900'
 									: 'bg-slate-900 text-white'
-								: ''}"><span class="{icon} size-4"></span>{label}</button
+								: ''}"><span class="{view.icon} size-4"></span>{view.label}</button
 						>
 					{/snippet}
 				</Tabs>

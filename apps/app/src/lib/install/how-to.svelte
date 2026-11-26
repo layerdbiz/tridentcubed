@@ -31,8 +31,7 @@
 		}
 	] as const;
 
-	let picked = $state<(typeof PHONES)[number]['id']>('iphone');
-	const phone = $derived(PHONES.find((item) => item.id === picked) ?? PHONES[0]);
+	let phone = $state<(typeof PHONES)[number]>(PHONES[0]);
 </script>
 
 <Sheet
@@ -53,18 +52,17 @@
 	<Tabs
 		class="mt-5 grid grid-cols-2 rounded-full bg-slate-900/[0.05] p-1"
 		label="Your phone"
-		options={PHONES.map((item) => item.id)}
-		bind:value={picked}
+		options={PHONES}
+		bind:value={phone}
 	>
-		{#snippet option({ value, isOn, props })}
-			{@const item = PHONES.find((each) => each.id === value) ?? PHONES[0]}
+		{#snippet option({ value: item, isOn, props })}
 			<button
 				{...props}
 				type="button"
 				class="flex h-9 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition {isOn
 					? 'bg-white text-slate-900 shadow-sm'
 					: 'text-slate-500'}"
-				id="{uid}-{value}"
+				id="{uid}-{item.id}"
 				aria-controls="{uid}-steps"
 				><span class="{item.icon} size-[18px]"></span>{item.label}</button
 			>

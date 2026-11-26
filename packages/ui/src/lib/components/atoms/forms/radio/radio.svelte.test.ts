@@ -90,6 +90,7 @@ describe('Radio', () => {
 
 		expect(choice('8').matches(':disabled')).toBe(true);
 		await fireEvent.click(choice('8'));
+		await fireEvent.keyDown(choice('4'), { key: 'ArrowRight' });
 		expect(onpick).not.toHaveBeenCalled();
 	});
 });
