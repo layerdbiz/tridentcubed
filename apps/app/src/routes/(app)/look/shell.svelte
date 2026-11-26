@@ -512,11 +512,11 @@
 							aria-label="Open menu"
 							onclick={() => (drawer = 1)}><span class="icon-[mdi--menu] size-6"></span></button
 						>
-						<!-- A phone: your own picture, which opens the menu the sidebar's picture opens (Justin, 2026-11-16);
-						     the bell is in the menu. A desktop keeps the bell here, its picture being in the sidebar. -->
-						{#if isWide}
-							{@render bellButton()}
-						{:else}
+						<!-- Your own picture, which opens the menu the sidebar's picture opens (Justin, 2026-11-16). A phone
+						     has the bell in its menu. A desktop has the bell here too, just left of the picture (#348, Justin,
+						     2026-11-25: "for the desktop only"); the sidebar keeps its picture as well. -->
+						<div class="flex items-center gap-2">
+							{#if isWide}{@render bellButton()}{/if}
 							<AccountMenu
 								{look}
 								align="right"
@@ -531,7 +531,7 @@
 									>
 								{/snippet}
 							</AccountMenu>
-						{/if}
+						</div>
 					</header>
 					<div class="min-h-0 flex-1 pt-1 md:pt-0">
 						<HeroChart

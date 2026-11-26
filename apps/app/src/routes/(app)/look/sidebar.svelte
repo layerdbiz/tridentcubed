@@ -11,6 +11,7 @@
 	// and the cog and Admin both open Settings. Run 18 (Justin, 2026-11-10): Admin is out of the menu for now; the
 	// signed-in person's row and the cog both open Settings, where the organization is edited. #212 (Justin,
 	// 2026-11-18): Recent is "Recents", a panel that slides open and shut (menu-panel.svelte), with Online under it.
+	// #346 (Justin, 2026-11-25): Pinned sits above them, what this person pinned from a ⋮ menu (pins.ts).
 	import type { Snippet } from 'svelte';
 	import AccountMenu from './account-menu.svelte';
 	import Avatar from './avatar.svelte';
@@ -19,6 +20,7 @@
 	import type { LookState } from './look.state.svelte';
 	import MenuPanel from './menu-panel.svelte';
 	import OnlineList from './online-list.svelte';
+	import { pinnedOf } from './pins';
 	import RecentList from './recent-list.svelte';
 	import { ROLE_LABELS } from './team.data';
 
@@ -37,6 +39,7 @@
 
 	// The signed-in person's Team record; until it has loaded, their role alone.
 	const me = $derived(look.me ?? { name: '', role: look.role });
+	const pinned = $derived(pinnedOf(look));
 	// The one column every icon centres in.
 	const COLUMN = 'flex w-14 shrink-0 justify-center';
 	// Words never wrap while the sidebar narrows; folded to icons they fade out.
@@ -102,6 +105,27 @@
 		class="mt-4 w-full flex-1 overflow-y-auto px-3 pb-6 {FADE}"
 		{@attach fadeTop}
 	>
+		<MenuPanel
+			title="Pinned"
+			isOpen={look.menuPanels.pinned}
+			ontoggle={() => look.toggleMenuPanel('pinned')}
+			words={WORDS}
+		>
+			{#if pinned.length}
+				<RecentList
+					{look}
+					items={pinned}
+					size={32}
+					width={56}
+					words={WORDS}
+					onpick={onnavigate}
+				/>
+			{:else}
+				<p class="px-4 pt-0.5 pb-1.5 text-xs text-slate-400 {WORDS}">
+					Pin anything from its ⋮ menu.
+				</p>
+			{/if}
+		</MenuPanel>
 		<MenuPanel
 			title="Recents"
 			isOpen={look.menuPanels.recents}

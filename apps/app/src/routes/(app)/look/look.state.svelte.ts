@@ -38,6 +38,7 @@ import {
 import { knowPlaces } from './location';
 import type { PlaceType } from './map.data';
 import { readMenuPanels, writeMenuPanels, type MenuPanelsType } from './menu-panels';
+import type { PinType } from './pins';
 import type { RowType } from '#lib/rows/rows.schema.js';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
@@ -212,6 +213,8 @@ export class LookState {
 	// The menu's panels (#212): which are open, the same in the sidebar and the phone's drawer, and remembered on
 	// the device (menu-panels.ts).
 	menuPanels = $state(readMenuPanels());
+	// The signed-in person's own pins (#346, pins.ts), newest first: the menu's Pinned list.
+	pins = $state<PinType[]>([]);
 	// Which way the dashboard's next page slides in: 1 from the right, -1 from the left.
 	slide = $state(0);
 	// The record on show: which page it belongs to and its name.
