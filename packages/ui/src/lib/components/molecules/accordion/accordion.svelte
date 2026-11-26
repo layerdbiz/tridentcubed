@@ -5,8 +5,8 @@
 	 */
 	// A folding section (#389), grown from the app's panel groups (the days, stages, stops, companies...): a header that
 	// opens and shuts it, and what it holds, drawn only while open and slid open and shut by script, so it animates on
-	// iPhone Safari too (no `interpolate-size`). `open` opens and shuts it from outside; without `ontoggle` a press on
-	// the header does it alone (bind `open` to follow it), with `ontoggle` the press is the owner's to act on.
+	// iPhone Safari too (no `interpolate-size`). `open` opens and shuts it from outside; a press on the header opens or
+	// shuts it and tells `ontoggle`, as the Switch tells `onchange` (bind `open` or keep it in step from `ontoggle`).
 	// The header is not a button: a disabled fieldset round the section (a Sent or Complete project) would switch a
 	// button off, and the section could not be opened to read. `controls` sit on its right (a switch); a press on them
 	// never folds the section or starts a drag. `grip` names the header for a drag-to-reorder script (`data-grip`). At
@@ -19,7 +19,7 @@
 	export interface AccordionProps extends ComponentProps {
 		/** Whether it is open (bindable). */
 		open?: boolean;
-		/** Hears each press on the header with the state it asks for, and opens or shuts the section itself. */
+		/** Told after each press on the header, with whether it is now open. */
 		ontoggle?: (open: boolean) => void;
 		/** What the section is: the header's content, before its controls and the chevron. */
 		head: Snippet;
@@ -32,7 +32,6 @@
 		/** Deletes the section: a Delete at the foot, on the far right. */
 		ondelete?: () => void;
 		deleteLabel?: string;
-		children?: Snippet;
 	}
 
 	let {
@@ -49,8 +48,8 @@
 	}: AccordionProps = $props();
 
 	function toggle(): void {
-		if (ontoggle) ontoggle(!open);
-		else open = !open;
+		open = !open;
+		ontoggle?.(open);
 	}
 
 	// A press on the header's controls is theirs alone.
@@ -62,7 +61,7 @@
 		if (!isControl(event)) toggle();
 	}
 
-	function key(event: KeyboardEvent): void {
+	function pressKey(event: KeyboardEvent): void {
 		if (isControl(event) || (event.key !== 'Enter' && event.key !== ' ')) return;
 		event.preventDefault();
 		toggle();
@@ -83,7 +82,7 @@
 				data-grip={grip}
 				title={grip ? 'Hold and drag to reorder' : undefined}
 				onclick={press}
-				onkeydown={key}
+				onkeydown={pressKey}
 			>
 				{@render head()}
 				{#if controls}

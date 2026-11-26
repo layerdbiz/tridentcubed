@@ -40,6 +40,7 @@ describe('Accordion', () => {
 
 		await fireEvent.keyDown(headerOf(), { key: 'Enter' });
 		expect(headerOf().getAttribute('aria-expanded')).toBe('false');
+		expect(screen.queryByText('Photos of the deck')).toBeNull();
 
 		await fireEvent.keyDown(headerOf(), { key: ' ' });
 		expect(headerOf().getAttribute('aria-expanded')).toBe('true');
@@ -56,13 +57,16 @@ describe('Accordion', () => {
 		expect(headerOf().getAttribute('aria-expanded')).toBe('false');
 	});
 
-	it('leaves the opening to its owner when the owner hears each press', async () => {
+	it('tells its owner after each press whether it is now open', async () => {
 		const ontoggle = vi.fn();
 		show({ ontoggle });
 
 		await fireEvent.click(headerOf());
-		expect(ontoggle).toHaveBeenCalledWith(true);
-		expect(headerOf().getAttribute('aria-expanded')).toBe('false');
+		expect(ontoggle).toHaveBeenLastCalledWith(true);
+		expect(headerOf().getAttribute('aria-expanded')).toBe('true');
+
+		await fireEvent.click(headerOf());
+		expect(ontoggle).toHaveBeenLastCalledWith(false);
 	});
 
 	it('never folds on a press of its header’s controls, which never start a drag', async () => {
@@ -85,8 +89,12 @@ describe('Accordion', () => {
 
 	it('ends with its owner’s actions and a Delete', async () => {
 		const ondelete = vi.fn();
-		show({ open: true, ondelete, deleteLabel: 'Delete Stage' });
+		const actions = createRawSnippet(() => ({
+			render: () => '<button type="button">Add Stop</button>'
+		}));
+		show({ open: true, actions, ondelete, deleteLabel: 'Delete Stage' });
 
+		expect(screen.getByRole('button', { name: 'Add Stop' })).toBeTruthy();
 		await fireEvent.click(screen.getByRole('button', { name: 'Delete Stage' }));
 		expect(ondelete).toHaveBeenCalledOnce();
 	});

@@ -66,7 +66,7 @@
 
 <Accordion
 	open={isOpen}
-	ontoggle={() => ontoggle()}
+	{ontoggle}
 	grip={sortKey || undefined}
 	controls={onenable ? enable : undefined}
 	{actions}
@@ -113,17 +113,14 @@
 	{@render children()}
 </Accordion>
 
-<!-- The in-the-report switch: a tap or a key on it switches, and does not open the section or start a drag. A Sent or
-     Complete project's fields are off, and this goes off with them. -->
+<!-- The in-the-report switch, in the header's controls, where a tap or a key on it never opens the section or starts a
+     drag. A Sent or Complete project's fields are off, and this goes off with them. -->
 {#snippet enable()}
 	<Switch
 		size="sm"
 		checked={isEnabled}
 		label="{isEnabled ? 'Leave out' : 'Put back'} {title}"
 		title={isEnabled ? 'In the report' : 'Left out of the report'}
-		data-no-drag
-		onclick={(event) => event.stopPropagation()}
-		onkeydown={(event: KeyboardEvent) => event.stopPropagation()}
 		onchange={onenable}
 	/>
 {/snippet}
