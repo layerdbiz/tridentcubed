@@ -102,7 +102,7 @@ async function toPixels(bytes: Uint8Array, kind: PictureKindType) {
 		}
 	}
 	const image = sharp(bytes, { failOn: 'error' });
-	const { width = 0, height = 0, orientation = 1 } = await image.metadata();
+	const { width, height, orientation = 1 } = await image.metadata();
 	// Orientation 5 to 8 turn the picture a quarter, so upright its sides swap.
 	const full = orientation >= 5 ? { width: height, height: width } : { width, height };
 	// Upright, and the colour numbers as they are: the original's own profile goes with them (`keepIccProfile`).

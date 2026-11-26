@@ -80,7 +80,9 @@ describe('Input', () => {
 			enumerable: true,
 			configurable: true,
 			get: () => kept,
-			set: (text: string) => (kept = keep(text, kept))
+			set: (text: string) => {
+				kept = keep(text, kept);
+			}
 		});
 	}
 
