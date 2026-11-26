@@ -5,11 +5,14 @@
 // onto the newest version when one is out (update.state.svelte.ts holds when, so a change being saved is never lost).
 //
 // "Seen" is the commit this device last pressed the button on: every change that landed after it is new. The history
-// comes from the newest version (routes/api/history.json), so an open app learns what a newer one brought. Closed with
-// the X, it opens by itself again only for a further version; the profile menu opens it any time.
+// comes from the newest version (routes/api/history.json), so an open app learns what a newer one brought. With a
+// newer version out, the X or a tap outside counts as the button (Justin, 2026-11-26: nobody ever stays on an old
+// version, #401); with none, what is new stays new and it opens by itself again only for a further version. The
+// profile menu opens it any time.
 //
 // It knows nothing of the browser: this build's commit, where the seen commit is kept and where the history is read
 // are handed to it.
+import { untrack } from 'svelte';
 import { BUILD_COMMIT, HAS_POP_UP, HISTORY_PATH } from './releases.constants';
 import { SHORT, toLanded, toNewSince, type HistoryType } from './history.utils';
 
@@ -57,27 +60,38 @@ export class WhatsNewState {
 		this.#options = options;
 	}
 
-	/** On opening the app: opens on what came since the last press, if anything did. */
+	/**
+	 * On opening the app: opens on what came since the last press, if anything did, and on a newer version than the
+	 * one opened, if it opens by itself, so the reload is offered even when everything was seen.
+	 */
 	async start() {
 		const { own, store } = this.#options;
 		this.seen = store.read() ?? '';
 		await this.#read();
 		const history = this.history;
 		if (!history) return;
+		const isNewerOffered = this.#options.isLive && this.isNewer;
 		// A first visit, or a press on a commit this branch does not hold: nothing counts as new until the next one.
-		if (!this.seen || toLanded(history, this.seen) < 0) return this.#see(own || history.head);
-		if (this.fresh.length > 0) this.isOpen = true;
+		if (!this.seen || toLanded(history, this.seen) < 0) {
+			this.#see(own || history.head);
+			this.isOpen = isNewerOffered;
+			return;
+		}
+		if (this.fresh.length > 0 || isNewerOffered) this.isOpen = true;
 	}
 
-	/** Asks for the newest history; opens on it when a new version brought something, if it opens by itself. */
+	/**
+	 * Asks for the newest history; opens on it when a new version brought something, if it opens by itself. Asked from
+	 * an effect, it never makes the effect hang on the history: the answer would ask again, without end (#401).
+	 */
 	async check() {
 		if (this.#isReading) return;
-		const before = this.history?.head;
+		const before = untrack(() => this.history?.head);
 		await this.#read();
 		const head = this.history?.head;
 		if (!head || head === before) return;
-		if (this.#options.isLive && this.fresh.length > 0 && this.#closedOn !== head)
-			this.isOpen = true;
+		const isWorthOpening = this.fresh.length > 0 || this.isNewer;
+		if (this.#options.isLive && isWorthOpening && this.#closedOn !== head) this.isOpen = true;
 	}
 
 	/** From the profile menu: the whole history, read again. */
@@ -90,6 +104,20 @@ export class WhatsNewState {
 	close() {
 		this.isOpen = false;
 		this.#closedOn = this.history?.head ?? '';
+	}
+
+	/**
+	 * The X, a tap outside or Escape. With a newer version out it counts as the button, and the window shuts while the
+	 * reload follows: true then. With none, it is `close`.
+	 */
+	dismiss() {
+		if (!this.isNewer) {
+			this.close();
+			return false;
+		}
+		this.acknowledge();
+		this.isOpen = false;
+		return true;
 	}
 
 	/** The button: everything up to the newest version is seen. True when that version still has to be loaded. */

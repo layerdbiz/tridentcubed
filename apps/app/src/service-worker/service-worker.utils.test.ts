@@ -1,11 +1,11 @@
 // What the service worker does with a request (#201): a kept file (a built file of this version, or one of the
-// named static files) comes from the device, a page
-// request goes to the network and gets the Needs Internet screen only when the network fails, and everything else
-// is left alone. Also what it stores when it installs, what it removes when a new version takes over, and the one
-// message that lets a waiting version take over an open app (#202).
+// named static files) comes from the device, a page load goes to the newest version (#401) and gets the Needs
+// Internet screen only when the network fails, and everything else is left alone. Also what it stores when it
+// installs and where it asks for it, what it removes when a new version takes over, and the one message that lets a
+// waiting version take over an open app (#202).
 import { describe, expect, it } from 'vite-plus/test';
 import { KEPT_STATIC, LOGO, OFFLINE_PATH } from '#lib/install/install.constants.js';
-import { TAKE_OVER } from '#lib/update/update.constants.js';
+import { DEPLOYMENT_HEADER, TAKE_OVER } from '#lib/update/update.constants.js';
 import {
 	type AskedType,
 	answer,
@@ -13,7 +13,9 @@ import {
 	isTakeOver,
 	toFiles,
 	toKept,
-	toOld
+	toNewestPage,
+	toOld,
+	toOwnFiles
 } from './service-worker.utils';
 
 const ORIGIN = 'https://app.tridentcubed.com';
@@ -22,11 +24,7 @@ const KEPT = toKept([{ path: BUILT.slice(1) }, { path: '_app/immutable/assets/ap
 const NO_SIGNAL = new TypeError('Failed to fetch');
 
 /** A device holding the files it should, in front of a network that answers, or fails when `isCut`. */
-function device({
-	isCut = false,
-	stored = [...KEPT, OFFLINE_PATH],
-	browser = undefined as 'asks' | 'asks nothing' | undefined
-} = {}) {
+function device({ isCut = false, stored = [...KEPT, OFFLINE_PATH] } = {}) {
 	const asked: string[] = [];
 	const read: string[] = [];
 	return {
@@ -48,14 +46,12 @@ function device({
 						if (isCut) throw NO_SIGNAL;
 						return new Response(`network:${full.url}`);
 					},
-					// The browser's own request for a page load (navigation preload), where the browser makes one.
-					preload: browser
-						? async () => {
-								if (browser === 'asks nothing') return undefined;
-								if (isCut) throw NO_SIGNAL;
-								return new Response(`browser:${full.url}`);
-							}
-						: undefined
+					// The page asked of the newest version, whatever version the browser is kept on.
+					askPage: async () => {
+						asked.push(full.url);
+						if (isCut) throw NO_SIGNAL;
+						return new Response(`newest:${full.url}`);
+					}
 				}
 			);
 		}
@@ -104,13 +100,13 @@ describe('the service worker’s rule', () => {
 		expect(phone.asked).toEqual([]);
 	});
 
-	it('sends a page request to the network and answers with what the network gave', async () => {
+	it('asks the newest version for a page and answers with what it gave', async () => {
 		const phone = device();
 
 		expect(await text(phone.answer({ url: '/?screen=workspace', mode: 'navigate' }))).toBe(
-			'network:/?screen=workspace'
+			'newest:/?screen=workspace'
 		);
-		expect(await text(phone.answer({ url: '/login', mode: 'navigate' }))).toBe('network:/login');
+		expect(await text(phone.answer({ url: '/login', mode: 'navigate' }))).toBe('newest:/login');
 		expect(phone.read).toEqual([]);
 	});
 
@@ -133,7 +129,8 @@ describe('the service worker’s rule', () => {
 				origin: ORIGIN,
 				kept: KEPT,
 				read: async () => new Response('screen'),
-				ask: async () => new Response('down', { status: 503 })
+				ask: async () => new Response('down', { status: 503 }),
+				askPage: async () => new Response('down', { status: 503 })
 			}
 		);
 
@@ -146,7 +143,7 @@ describe('the service worker’s rule', () => {
 		await expect(phone.answer({ url: '/', mode: 'navigate' })).rejects.toBe(NO_SIGNAL);
 	});
 
-	it('never answers a remote function, a server route or a file address, even opened as a page, when the browser asked nothing itself', () => {
+	it('never answers a remote function, a server route or a file address, even opened as a page', () => {
 		const phone = device({ isCut: true });
 
 		for (const mode of ['cors', 'same-origin', 'navigate'] as const) {
@@ -163,61 +160,8 @@ describe('the service worker’s rule', () => {
 		expect(phone.asked).toEqual([]);
 	});
 
-	// A page load the service worker asks for itself reaches the server as a plain read, not as a page load. A host
-	// that keeps a visitor on the version they started with (Vercel's Skew Protection) moves them to the newest
-	// version on a page load only, so the update note came back after every tap. The browser's own request is one.
-	it('answers a page request with the browser’s own request, and asks nothing itself', async () => {
-		const phone = device({ browser: 'asks' });
-
-		expect(await text(phone.answer({ url: '/?screen=workspace', mode: 'navigate' }))).toBe(
-			'browser:/?screen=workspace'
-		);
-		expect(await text(phone.answer({ url: '/login', mode: 'navigate' }))).toBe('browser:/login');
-		expect(phone.asked).toEqual([]);
-		expect(phone.read).toEqual([]);
-	});
-
-	it('asks the network for a page itself when the browser made no request of its own', async () => {
-		const phone = device({ browser: 'asks nothing' });
-
-		expect(await text(phone.answer({ url: '/login', mode: 'navigate' }))).toBe('network:/login');
-	});
-
-	it('answers with the Needs Internet screen when the browser’s own request fails', async () => {
-		const phone = device({ browser: 'asks', isCut: true });
-
-		expect(await text(phone.answer({ url: '/login', mode: 'navigate' }))).toBe(
-			`device:${OFFLINE_PATH}`
-		);
-		expect(phone.asked).toEqual([]);
-	});
-
-	// The browser has already asked: left alone, it would ask a second time, and a sign-in code works once.
-	it('hands back the browser’s own request for an address that is not a page, so it is asked once', async () => {
-		const phone = device({ browser: 'asks' });
-
-		for (const url of [
-			'/api/auth/callback/google?code=1',
-			'/api/export/pdf',
-			'/files/5f0c1d6e',
-			'/manifest.webmanifest'
-		])
-			expect(await text(phone.answer({ url, mode: 'navigate' }))).toBe(`browser:${url}`);
-		expect(phone.asked).toEqual([]);
-		expect(phone.read).toEqual([]);
-	});
-
-	it('never shows the Needs Internet screen for an address that is not a page', async () => {
-		const phone = device({ browser: 'asks', isCut: true });
-
-		await expect(phone.answer({ url: '/api/export/pdf', mode: 'navigate' })).rejects.toBe(
-			NO_SIGNAL
-		);
-		expect(phone.read).toEqual([]);
-	});
-
-	it('leaves every request that is not a page load alone, whatever the browser can do', () => {
-		const phone = device({ browser: 'asks' });
+	it('leaves every request that is not a page load alone', () => {
+		const phone = device();
 
 		for (const mode of ['cors', 'same-origin', 'no-cors'] as const) {
 			expect(phone.answer({ url: '/_app/remote/abc123/fetchLists', mode })).toBeUndefined();
@@ -246,6 +190,44 @@ describe('the service worker’s rule', () => {
 		expect(phone.answer({ url: 'https://tridentcubed.com/', mode: 'navigate' })).toBeUndefined();
 		expect(phone.answer({ url: `https://cdn.example.com${BUILT}` })).toBeUndefined();
 		expect(phone.asked).toEqual([]);
+	});
+});
+
+// Vercel keeps a browser on the deployment it started with, by a cookie. A browser kept on an older one asked it for
+// the new version's files and got "not found", so the new version never installed and Reload brought the old app
+// back (#401). A request naming its deployment reaches that one, whatever the cookie says; named empty, the newest.
+describe('which version the service worker asks', () => {
+	it('asks for its own files from the deployment it was built in', () => {
+		const request = new Request(`${ORIGIN}${BUILT}`, toOwnFiles('dpl_new'));
+
+		expect(request.headers.get(DEPLOYMENT_HEADER)).toBe('dpl_new');
+	});
+
+	it('asks for its own files plainly off Vercel', () => {
+		expect(new Request(`${ORIGIN}${BUILT}`, toOwnFiles('')).headers.has(DEPLOYMENT_HEADER)).toBe(
+			false
+		);
+	});
+
+	it('asks the newest version for a page, never the browser’s cache, keeping the rest of the request', () => {
+		const page = new Request(`${ORIGIN}/projects?screen=workspace`, {
+			headers: { accept: 'text/html' },
+			redirect: 'manual'
+		});
+		const sent = toNewestPage(page, 'dpl_new');
+
+		expect(sent.url).toBe(page.url);
+		expect(sent.headers.get(DEPLOYMENT_HEADER)).toBe('');
+		expect(sent.headers.get('accept')).toBe('text/html');
+		expect(sent.cache).toBe('no-store');
+		expect(sent.redirect).toBe('manual');
+	});
+
+	it('only skips the browser’s cache for a page off Vercel', () => {
+		const sent = toNewestPage(new Request(`${ORIGIN}/`), '');
+
+		expect(sent.headers.has(DEPLOYMENT_HEADER)).toBe(false);
+		expect(sent.cache).toBe('no-store');
 	});
 });
 
