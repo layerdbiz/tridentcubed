@@ -75,4 +75,33 @@ describe('Switch', () => {
 		expect(button.classList).toContain('bg-success');
 		expect(button.classList).not.toContain('bg-primary');
 	});
+
+	it("wears its colour from outside while on, primary unless told, and the theme's neutral while off", async () => {
+		const { button } = show({ accent: true, lite: true });
+
+		expect(button.classList).toContain('bg-neutral-500');
+		expect(button.className).not.toMatch(/theme-/);
+		await fireEvent.click(button);
+		expect(button.classList).toContain('theme-lite-accent');
+		expect(button.classList).not.toContain('bg-neutral-500');
+	});
+
+	it("is on in the theme's primary when no colour is given", () => {
+		const { button } = show({ checked: true });
+
+		expect(button.classList).toContain('theme-heavy-primary');
+	});
+
+	it('takes its size from the base ladder and any class from outside', () => {
+		const { button } = show({ size: 'lg', class: 'ring-4 ring-white' });
+
+		expect(button.classList).toContain('lg');
+		expect(button.classList).toContain('ring-4');
+	});
+
+	it('keeps no fixed colour of its own but white for the thumb', () => {
+		const { button } = show({ checked: true });
+
+		expect(button.outerHTML).not.toMatch(/slate|gray|zinc/);
+	});
 });

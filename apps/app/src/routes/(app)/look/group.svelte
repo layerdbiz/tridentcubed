@@ -12,9 +12,19 @@
 	// #305: `section` is its id in tally.ts, so an entry of the empty-inputs list finds its inputs (focus.ts).
 	// #389: the folding itself is the library's Accordion (header, grip, controls, slide, foot row with Delete); this
 	// file keeps what is the app's own: the icon, the name and its tally, the meta and the in-the-report switch.
+	// 2026-11-26 (Justin): a library piece's look is set from outside, so the panel groups' look is given here: the
+	// faint box, the grey chevron and the red Delete (until #384 picks the Delete's Button type).
 	import type { Snippet } from 'svelte';
 	import { Accordion, Avatar, Switch } from '@layerd/ui';
 	import { toTally } from './tally';
+
+	// The Delete at a group's foot: red words and bin on no box, faintly red behind under a pointer.
+	const DELETE_LOOK = {
+		unstyled: true,
+		icon: 'icon-[mdi--trash-can-outline] size-[18px]',
+		class:
+			'ml-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger/10'
+	};
 
 	let {
 		title,
@@ -65,6 +75,9 @@
 </script>
 
 <Accordion
+	class="rounded-2xl bg-slate-900/[0.03] transition"
+	icon="icon-[mdi--chevron-down] text-slate-400"
+	deleteButton={DELETE_LOOK}
 	open={isOpen}
 	{ontoggle}
 	grip={sortKey || undefined}
