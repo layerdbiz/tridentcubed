@@ -25,6 +25,7 @@ export * from "./base/helpers/text.ts";
 export * from "./base/helpers/total.svelte.ts";
 
 /* UTILS */
+export * from "./utils/pick.ts";
 export * from "./utils/trackevent.ts";
 
 /* COMPONENTS */
@@ -53,13 +54,14 @@ export { default as Metadata } from "./components/atoms/metadata/metadata.svelte
 export { default as Nav } from "./components/atoms/nav/nav.svelte";
 export { default as Number } from "./components/atoms/number/number.svelte";
 export * from "./components/atoms/number/number.data.ts";
-export { default as Radio } from "./components/atoms/forms/radio/radio.svelte";
+export { default as Radio, type RadioProps } from "./components/atoms/forms/radio/radio.svelte";
 export { default as Section } from "./components/atoms/section/section.svelte";
 export * from "./components/atoms/section/section.data.ts";
 export * from "./components/atoms/forms/select/select.svelte.ts";
 export { default as Select } from "./components/atoms/forms/select/select.svelte";
 export { default as Switch } from "./components/atoms/forms/switch/switch.svelte";
 export { default as Table, type TableColumn, type TableProps } from "./components/atoms/table/table.svelte";
+export { default as Tabs, type TabsProps } from "./components/atoms/tabs/tabs.svelte";
 export { default as Text, type TextProps } from "./components/atoms/text/text.svelte";
 export * from "./components/atoms/text/text.data.ts";
 export { default as Textarea } from "./components/atoms/forms/textarea/textarea.svelte";
