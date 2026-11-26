@@ -12,6 +12,7 @@
 	// #305: `section` is its id in tally.ts, so an entry of the empty-inputs list finds its inputs (focus.ts).
 	import type { Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
+	import { Switch } from '@layerd/ui';
 	import { toTally } from './tally';
 
 	let {
@@ -117,23 +118,16 @@
 		{#if onenable}
 			<!-- Its own button inside the header: a tap or a key on it switches, and does not open the section or
 			     start a drag. A Sent or Complete project's fields are off, and this goes off with them. -->
-			<button
-				type="button"
-				role="switch"
-				aria-checked={isEnabled}
-				aria-label="{isEnabled ? 'Leave out' : 'Put back'} {title}"
+			<Switch
+				size="sm"
+				checked={isEnabled}
+				label="{isEnabled ? 'Leave out' : 'Put back'} {title}"
 				title={isEnabled ? 'In the report' : 'Left out of the report'}
-				class="flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors disabled:opacity-50 {isEnabled
-					? 'justify-end bg-primary'
-					: 'justify-start bg-slate-300'}"
 				data-no-drag
-				onclick={(event) => {
-					event.stopPropagation();
-					onenable();
-				}}
-				onkeydown={(event) => event.stopPropagation()}
-				><span class="size-4 rounded-full bg-white shadow"></span></button
-			>
+				onclick={(event) => event.stopPropagation()}
+				onkeydown={(event: KeyboardEvent) => event.stopPropagation()}
+				onchange={onenable}
+			/>
 		{/if}
 		<span
 			class="icon-[mdi--chevron-down] size-5 shrink-0 text-slate-400 transition {isOpen

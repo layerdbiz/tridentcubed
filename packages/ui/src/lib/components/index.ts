@@ -29,7 +29,7 @@ export { default as Section } from "./atoms/section/section.svelte";
 export * from "./atoms/section/section.data.ts";
 export * from "./atoms/forms/select/select.svelte.ts";
 export { default as Select } from "./atoms/forms/select/select.svelte";
-export { default as Switch } from "./atoms/forms/switch/switch.svelte";
+export { default as Switch, type SwitchProps } from "./atoms/forms/switch/switch.svelte";
 export { default as Table, type TableColumn, type TableProps } from "./atoms/table/table.svelte";
 export { default as Text, type TextProps } from "./atoms/text/text.svelte";
 export * from "./atoms/text/text.data.ts";

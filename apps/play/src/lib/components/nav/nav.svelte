@@ -114,7 +114,7 @@
 						{@render linkItem(item)}
 
 						{#if item.children?.length}
-							<ul class="border-slate-300 pl-2">
+							<ul class="my-[0.75em] border-slate-300 pl-2">
 								{#each item.children as child (child.href)}
 									<li class="font-normal">
 										{@render linkItem(child)}
