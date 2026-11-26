@@ -6,7 +6,7 @@
 	// state label is filled with its own colour. A project with no photos shows a dark card with its customer's logo.
 	// Run 18 (Justin, 2026-11-10): the lines over the photo are the list row's own (project-lines.svelte), progress
 	// bar included, so nothing runs along the card's bottom edge; the ⋮ is bare white dots with no circle behind.
-	import { Button } from '@layerd/ui';
+	import { Button, Chip } from '@layerd/ui';
 	import { STATUS, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProjectLines from './project-lines.svelte';
@@ -123,10 +123,10 @@
 			</span>
 		</div>
 	</div>
-	<span
-		class="pointer-events-none absolute top-3 left-3 rounded-full px-3 py-1.5 text-xs font-semibold text-white shadow-sm {status.bar}"
-		>{project.status}</span
-	>
+	<Chip
+		label={project.status}
+		class="pointer-events-none absolute top-3 left-3 px-3 py-1.5 text-xs font-semibold text-white shadow-sm {status.bar}"
+	/>
 	<div class="absolute top-2 right-2">
 		<MoreMenu
 			{look}

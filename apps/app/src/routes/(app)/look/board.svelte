@@ -7,6 +7,7 @@
 	// label, transport by Sea, Air, Rail and Road, facilities by kind. Something with two labels shows in both columns.
 	// Columns run to the bottom of the screen and each scrolls on its own, fading out under the floating bar. A mouse
 	// drags the board sideways from any part of a column but its cards; a finger swipes it.
+	import { Badge } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { FADE, fadeTop } from './fade';
@@ -73,10 +74,11 @@
 		>
 			<p class="flex shrink-0 items-center gap-2 px-2 py-2 text-xs font-semibold text-slate-600">
 				<span class="size-2 rounded-full {column.tone.bg}"></span>{column.label}
-				<span
-					class="ml-auto min-w-6 rounded-full px-2 py-0.5 text-center text-[11px] font-bold text-white tabular-nums {column
-						.tone.bg}">{column.items.length}</span
-				>
+				<Badge
+					count={column.items.length}
+					max={Infinity}
+					class="ml-auto h-auto min-w-6 px-2 py-0.5 text-[11px] text-white {column.tone.bg}"
+				/>
 			</p>
 			<div
 				class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain pb-28 {FADE}"

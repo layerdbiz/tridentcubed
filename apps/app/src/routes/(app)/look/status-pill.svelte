@@ -6,7 +6,7 @@
 	import { STATUS, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { STATES } from './records.data';
-	import { Menu, type MenuOptionType } from '@layerd/ui';
+	import { Chip, Menu, type MenuOptionType } from '@layerd/ui';
 
 	let { look, project }: { look: LookState; project: ProjectType } = $props();
 
@@ -25,11 +25,10 @@
 	onpick={(status) => look.setStatus(project, status as ProjectType['status'])}
 >
 	{#snippet trigger()}
-		<span
+		<Chip
 			title="Change Status"
-			class="inline-flex items-center gap-1 rounded-full py-1 pr-2 pl-3 text-xs font-semibold text-white {STATUS[
-				project.status
-			].bar}">{project.status}<span class="icon-[mdi--chevron-down] size-4"></span></span
+			class="gap-1 py-1 pr-2 pl-3 text-xs font-semibold text-white {STATUS[project.status].bar}"
+			>{project.status}<span class="icon-[mdi--chevron-down] size-4"></span></Chip
 		>
 	{/snippet}
 </Menu>

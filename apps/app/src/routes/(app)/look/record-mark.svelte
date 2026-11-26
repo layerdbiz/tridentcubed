@@ -5,9 +5,9 @@
 	// open, grey when they are all done, 9+ above nine, none at all with no projects. A team member's photo has a ring
 	// in their role's colour, so admins and managers stand out at a glance (note 8): purple for an admin, blue for a
 	// manager, grey for a Team user (#355, Justin, 2026-11-26; before that blue, violet and none).
-	import { Avatar } from '@layerd/ui';
+	import { Avatar, Badge } from '@layerd/ui';
 	import { faceOf, logoOf } from './marks';
-	import { badgeOf, type RecordType } from './records.data';
+	import type { RecordType } from './records.data';
 
 	let {
 		record,
@@ -61,13 +61,14 @@
 		/>
 	{/if}
 	{#if hasBadge && record.count}
-		<span
-			class="absolute -right-1 -bottom-1 flex items-center justify-center rounded-full px-1 font-bold text-white tabular-nums ring-2 ring-white {record.open
+		<Badge
+			count={record.count}
+			max={9}
+			class="absolute -right-1 -bottom-1 px-1 text-white ring-2 ring-white {record.open
 				? 'bg-primary'
 				: 'bg-slate-400'}"
 			style="min-width: {badge}px; height: {badge}px; font-size: {Math.round(badge * 0.6)}px"
 			title="{record.count} project{record.count === 1 ? '' : 's'}, {record.open} open"
-			>{badgeOf(record.count)}</span
-		>
+		/>
 	{/if}
 </span>

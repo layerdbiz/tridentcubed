@@ -1,8 +1,10 @@
 /* COMPONENTS */
 // atoms
 export { default as Avatar, type AvatarProps } from "./atoms/avatar/avatar.svelte";
+export { default as Badge, type BadgeProps } from "./atoms/badge/badge.svelte";
 export { default as Button, type ButtonProps } from "./atoms/button/button.svelte";
 export { default as Checkbox } from "./atoms/forms/checkbox/checkbox.svelte";
+export { default as Chip, type ChipProps } from "./atoms/chip/chip.svelte";
 export { default as Colorss } from "./atoms/Colorss.svelte";
 export { default as Compact, type CompactProps } from "./atoms/forms/compact/compact.svelte";
 export { default as Container, type ContainerProps } from "./atoms/container/container.svelte";
