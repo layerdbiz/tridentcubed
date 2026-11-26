@@ -15,6 +15,12 @@ const COMPONENT_TESTS = globSync('src/**/*.svelte', { cwd: root })
 
 export default createAppConfig({
 	root,
+	// The commit and the branch this build is made from, as Vercel names them, for the new version window (#396):
+	// src/lib/update/changes.constants.ts. Empty in a build anywhere else.
+	define: {
+		__BUILD_COMMIT__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA ?? ''),
+		__BUILD_BRANCH__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_REF ?? '')
+	},
 	// The service worker shows the Needs Internet screen at whatever address was asked for (#201), so its links to
 	// the app's styles start at the root, not beside the page.
 	paths: { relative: false },
