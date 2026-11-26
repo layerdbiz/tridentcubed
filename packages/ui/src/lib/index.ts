@@ -58,7 +58,7 @@ export { default as Section } from "./components/atoms/section/section.svelte";
 export * from "./components/atoms/section/section.data.ts";
 export * from "./components/atoms/forms/select/select.svelte.ts";
 export { default as Select } from "./components/atoms/forms/select/select.svelte";
-export { default as Switch } from "./components/atoms/forms/switch/switch.svelte";
+export { default as Switch, type SwitchProps } from "./components/atoms/forms/switch/switch.svelte";
 export { default as Table, type TableColumn, type TableProps } from "./components/atoms/table/table.svelte";
 export { default as Text, type TextProps } from "./components/atoms/text/text.svelte";
 export * from "./components/atoms/text/text.data.ts";
