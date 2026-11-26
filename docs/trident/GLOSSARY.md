@@ -17,16 +17,25 @@ _Avoid_: the app, survey app
 **Website**:
 tridentcubed.com, the marketing site in `apps/site`.
 
+**Next app**:
+next.app.tridentcubed.com: the Report Generator with the work that has not reached the dev address yet, where Justin checks it first. It shares the dev address's data (#341).
+_Avoid_: staging, beta, preview
+
 **Playground**:
-`apps/play`, where UI ideas are tried with no rules.
+play.tridentcubed.com, built from `apps/play`: where the team's prototypes are shown, with made-up data only (#342).
+_Avoid_: play app, sandbox
 
 **Company overview**:
 `apps/overview`, an overview of the company itself: employees, competitors, market research. Nothing to do with reports.
 _Avoid_: dashboard, report app, slideshow
 
 **Prototype**:
-The Report Generator as built before V1: the `apps/app` that saves to the browser only. Kept under `.archive/apps/app` as reference once the V1 app exists, deleted when V1 ships; concepts are taken from it, code is not. The look prototype (#161), the last design prototype, is not this: its screens became V1's (2026-11-12, #179).
-_Avoid_: the old app, legacy app, V0
+A standalone page that tries one design idea with made-up data, flipped through and tuned before the real thing is built, and shown on the Playground. The look prototype (#161) was one; its screens became V1's (2026-11-12, #179).
+_Avoid_: mockup, demo
+
+**Pre-V1 app**:
+The Report Generator as built before V1: the `apps/app` that saves to the browser only. Kept under `.archive/apps/app` as reference once the V1 app exists, deleted when V1 ships; concepts are taken from it, code is not. Called the Prototype until 2026-11-25, when that word came to mean a design page.
+_Avoid_: Prototype, the old app, legacy app, V0
 
 ### Signing in and access
 
@@ -184,7 +193,7 @@ _Avoid_: owner, project owner, lead, creator, author
 
 **Personnel**:
 People on the job who are not on the organization's team, such as a customer's surveyor. They are added by company in the Project panel's Team section with Add Personnel: a company (typed, or picked from the customers), then each of its people as a name and a title. They print under the team in Personnel in Attendance, each company under its own name.
-_Avoid_: attendees, guests, contacts (those are a customer's)
+_Avoid_: attendees, guests, contacts (those are a customer's), on-the-spot people
 
 **Trash**:
 Where a deleted project goes: hidden, restorable by an admin, emptied only by an admin.
@@ -453,7 +462,7 @@ The line in the profile picture menu, between Organization and Log Out, and the 
 _Avoid_: Download, Get the app, Add to Home Screen (that is one of the iPhone's own steps)
 
 **Test copy**:
-The installed app taken from the dev address. It reads Trident Dev under its icon, where the real one reads Trident, and what it saves is test data. The team uses it until the real address goes live, then installs once more from there and signs in.
+The installed app taken from the dev address. It reads Trident Dev under its icon, where the real one reads Trident. Since 2026-11-25 the team keeps its real projects there (Justin), until the real address goes live; then it installs once more from there and signs in.
 _Avoid_: dev app, beta, staging app
 
 **Needs Internet screen**:
@@ -463,6 +472,20 @@ _Avoid_: offline page, error page, no connection screen
 **Update note**:
 The small "New version, tap to update" note an open Report Generator shows when a newer version is ready. A tap switches to it, and only once every change is Saved.
 _Avoid_: update banner, update prompt, popup
+
+### Releases
+
+**Release**:
+A numbered version of the Report Generator, such as v1.1.0, with its release notes. The app shows the number of the release it runs.
+_Avoid_: build, deploy, drop
+
+**Release notes**:
+A release's new features and bug fixes, each in a line or two, with before and after pictures where a change has them.
+_Avoid_: changelog, patch notes, update message
+
+**What's New**:
+The window everyone sees once per release, the next time they open the Report Generator after it: the version number, then its release notes. Not the Update note, which only offers the switch (#363).
+_Avoid_: popup, announcement, changelog
 
 ### Definitions and data
 
