@@ -45,6 +45,7 @@ slate and amber shades (kept from the app's PDF download toast on #293),
 the select's slate shades (its typed list and choice marks, kept from the
 app's picker and place field on #298; its grey panel look went on #388),
 the switch's slate off track (kept from the app's stage switch on #378),
+the accordion's slate shades (kept from the app's panel groups on #389),
 the dialog's slate scrim, sheet shadow and grab handle and its own md:
 switch from a bottom sheet to a centred box (kept from the app's sheet on
 #375, used in seven places), the avatar's and stack's plain spans and
