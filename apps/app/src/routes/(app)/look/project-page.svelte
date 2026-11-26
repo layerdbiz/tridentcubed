@@ -4,7 +4,7 @@
 	// report's photos on top, swiping, or a map of the trip, its stops joined by a line; over them what the project's
 	// card shows (state, customer, title, percent, where the trip runs, the team); and in the sheet below, the rest to
 	// read: its numbers, its details, the team, the trip stop by stop and each panel's progress. A panel opens on Edit.
-	import { Avatar, ProgressBar, Stack } from '@layerd/ui';
+	import { Avatar, ListRow, ProgressBar, Stack } from '@layerd/ui';
 	import { cityStateOf } from './location';
 	import { pinOfRecord, pinsAt } from './chart.data';
 	import {
@@ -199,25 +199,23 @@
 				<h3 class={HEADING}>Team</h3>
 				<div class="divide-y divide-slate-900/[0.05] {CARD}">
 					{#each project.team as name (name)}
-						<button
-							class="flex w-full items-center gap-3 px-4 py-2.5 text-left"
+						<ListRow
+							tag="button"
+							class="gap-3 px-4 py-2.5"
 							onclick={() => look.openRecord('team', name)}
+							label={personOf(name).name}
+							labelClass="text-sm font-medium text-slate-900"
+							note={look.members.find((member) => member.name === name)?.title ?? ''}
+							noteClass="text-xs text-slate-500"
 						>
-							<Avatar
-								{...faceOf(name)}
-								size={36}
-								ring="ring-2 ring-slate-200"
-							/>
-							<span class="min-w-0 flex-1">
-								<span class="block truncate text-sm font-medium text-slate-900"
-									>{personOf(name).name}</span
-								>
-								<span class="block truncate text-xs text-slate-500"
-									>{look.members.find((member) => member.name === name)?.title ?? ''}</span
-								>
-							</span>
-							<span class="icon-[mdi--chevron-right] size-5 text-slate-300"></span>
-						</button>
+							{#snippet start()}<Avatar
+									{...faceOf(name)}
+									size={36}
+									ring="ring-2 ring-slate-200"
+								/>{/snippet}
+							{#snippet end()}<span class="icon-[mdi--chevron-right] size-5 text-slate-300"
+								></span>{/snippet}
+						</ListRow>
 					{/each}
 				</div>
 			</section>

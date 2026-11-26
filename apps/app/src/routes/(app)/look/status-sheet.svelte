@@ -4,7 +4,7 @@
 	// from any project's ⋮ menu (the status on its Page opens the same list as a menu, status-pill.svelte, #376). The
 	// ⋮ menu keeps its shortcuts (Mark Sent, Mark Complete); this is for everything else, such as back to Review or on
 	// to Archived.
-	import { Dialog } from '@layerd/ui';
+	import { Dialog, ListRow } from '@layerd/ui';
 	import { STATUS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { STATES } from './records.data';
@@ -24,9 +24,10 @@
 		<div class="mt-4 space-y-1">
 			{#each STATES as status (status)}
 				{@const isOn = project.status === status}
-				<button
+				<ListRow
+					tag="button"
 					type="button"
-					class="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm transition {isOn
+					class="gap-3 rounded-2xl px-3 py-2.5 text-sm transition {isOn
 						? 'bg-primary/[0.08] font-semibold text-slate-900'
 						: 'text-slate-700 hover:bg-slate-900/[0.04]'}"
 					aria-pressed={isOn}
@@ -34,11 +35,13 @@
 						look.setStatus(project, status);
 						look.statusFor = undefined;
 					}}
+					label={status}
 				>
-					<span class="size-3 shrink-0 rounded-full {STATUS[status].dot}"></span>
-					<span class="flex-1">{status}</span>
-					{#if isOn}<span class="icon-[mdi--check] size-5 text-primary"></span>{/if}
-				</button>
+					{#snippet start()}<span class="size-3 shrink-0 rounded-full {STATUS[status].dot}"
+						></span>{/snippet}
+					{#snippet end()}{#if isOn}<span class="icon-[mdi--check] size-5 text-primary"
+							></span>{/if}{/snippet}
+				</ListRow>
 			{/each}
 		</div>
 	</Dialog>

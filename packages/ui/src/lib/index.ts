@@ -57,6 +57,7 @@ export * from "./components/atoms/avatar/initials.ts";
 export { default as Input } from "./components/atoms/forms/input/input.svelte";
 export { default as Link } from "./components/atoms/link/link.svelte";
 export * from "./components/atoms/link/link.data.ts";
+export { default as ListRow, type ListRowProps } from "./components/atoms/list-row/list-row.svelte";
 export { default as Metadata } from "./components/atoms/metadata/metadata.svelte";
 export { default as Nav } from "./components/atoms/nav/nav.svelte";
 export { default as Number } from "./components/atoms/number/number.svelte";
