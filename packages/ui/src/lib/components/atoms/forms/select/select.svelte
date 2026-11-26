@@ -123,6 +123,8 @@
 	let blurTimer: ReturnType<typeof setTimeout> | undefined;
 	// How wide the start control is, so the field's words start after it.
 	let startWidth = $state(0);
+	// How tall the pick's picture is drawn: the field's --pick-size, which follows its font, measured once it shows.
+	let pickSize = $state(0);
 
 	const isTyping = $derived(isTyped || Boolean(lookup));
 	const selected = $derived.by(() => {
@@ -395,20 +397,23 @@
      picked. -->
 {#snippet pickEl()}
 	{#if selected.length && selected.some(hasPicture)}
-		<span class="select-pick">
+		<span
+			class="select-pick"
+			bind:clientHeight={pickSize}
+		>
 			{#each selected.slice(0, 5) as choice, index (choice)}
 				<span
 					class="relative flex"
-					style="margin-left: {index ? -8 : 0}px; z-index: {10 - index}"
-					>{@render face(choice, 28, true)}</span
+					style="margin-left: {index ? -Math.round((pickSize || 32) / 4) : 0}px; z-index: {10 -
+						index}">{@render face(choice, pickSize || 32, true)}</span
 				>
 			{/each}
 		</span>
 	{:else if !selected.length && icon}
 		<span class="select-pick"
 			><span
-				class="flex size-7 shrink-0 items-center justify-center rounded-full bg-base-900/5 text-base-400"
-				><span class="{icon} size-4"></span></span
+				class="flex aspect-square h-full shrink-0 items-center justify-center rounded-full bg-base-900/5 text-base-400"
+				><span class="{icon} size-1/2"></span></span
 			></span
 		>
 	{/if}
@@ -605,35 +610,48 @@
 		@apply block w-full truncate;
 	}
 
+	/* The pick's picture and a start control are one size, which follows the field's font, the same small way in from
+	   the box's edge as from its top and bottom (#388): a fixed size outgrew a smaller box. */
+	fieldset {
+		--pick-size: 2em;
+		--pick-inset: 0.5em;
+	}
+
 	/* The pick's picture sits in the field's own button, so a tap on it opens the list too, and an empty field's label
 	   rests after it. */
 	fieldset:has(.select-pick) {
-		--prefix-width: calc(1.75rem + var(--icon-gap));
+		--prefix-width: calc(
+			var(--pick-size) + var(--pick-inset) + var(--icon-gap) - var(--content-start)
+		);
 		--legend-float-pad-start: var(--icon-gap);
 	}
 
 	fieldset .select-trigger:has(.select-pick) {
 		gap: var(--icon-gap);
-		padding-inline-start: var(--content-start);
+		padding-inline-start: var(--pick-inset);
 	}
 
 	fieldset .select-pick {
-		@apply flex shrink-0 items-center;
+		@apply flex h-(--pick-size) shrink-0 items-center;
 	}
 
-	/* A control of its own at the start, such as a facility's Start chip (#388): over the field's button, as far in from
-	   the edge as from the top, and the words and an empty field's label rest after it. */
+	/* A control of its own at the start, such as a facility's Start chip (#388): over the field's button, as tall as the
+	   pick's picture and as far in, and the words and an empty field's label rest after it. Its own button fills it. */
 	fieldset:has(.select-start) {
-		--start-inset: 0.5em;
 		--prefix-width: calc(
-			var(--start-width, 0px) + var(--start-inset) + var(--icon-gap) - var(--content-start)
+			var(--start-width, 0px) + var(--pick-inset) + var(--icon-gap) - var(--content-start)
 		);
 		--legend-float-pad-start: var(--icon-gap);
 	}
 
 	fieldset .select-start {
-		@apply z-2 col-start-1 row-start-1 flex self-center justify-self-start;
-		margin-inline-start: var(--start-inset);
+		@apply z-2 col-start-1 row-start-1 flex h-(--pick-size) self-center justify-self-start;
+		margin-inline-start: var(--pick-inset);
+	}
+
+	fieldset .select-start > :global(*),
+	fieldset .select-start > :global(* > button) {
+		@apply h-full;
 	}
 
 	/* A second row's label stays off the border, kept for a screen reader: forms.css's legend rules outrank the plain
