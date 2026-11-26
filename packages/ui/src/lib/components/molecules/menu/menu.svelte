@@ -25,9 +25,16 @@
 	// zoom bar's dark one), every choice is drawn in that look's words, the hint under its name a quieter shade of
 	// them, and the picked choice wears the look's two colours swapped, read off the list as it opens; a look with no
 	// fill of its own tints the picked choice with its words instead.
+	//
+	// `isRow` stands the choices in a row of library Buttons, each its icon alone, named by its label (read out, and
+	// shown on a hover), the picked one heavy and the others ghost, any Button prop given through `choiceButton` (the
+	// zoom bar's Slide-out Row, Justin, 2026-11-26: Stack, Spread and Present). The row slides out of its button's
+	// side, its choices following one after another from the one nearest the button, and slides back in the same way.
+	// It has no fill or shadow of its own, so a row is only its buttons until it is given a look from outside.
 	import { untrack, type Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { scale } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
+	import { fly, scale } from 'svelte/transition';
 	import {
 		Avatar,
 		Button,
@@ -61,8 +68,11 @@
 		// What the button shows, told the picked choice and whether the list is open.
 		trigger?: Snippet<[MenuOptionType | undefined, boolean]>;
 		// In place of `trigger`, the menu hangs from the library Button: its look, or any other Button prop, set from
-		// outside (#386, the list menus' round icons).
-		button?: Partial<ButtonProps>;
+		// outside (#386, the list menus' round icons); or a function of the picked choice and whether the list is open
+		// that gives them (the zoom bar's mode button, its icon the mode the pages are in, lit while its row is out).
+		button?:
+			| Partial<ButtonProps>
+			| ((current: MenuOptionType | undefined, isOpen: boolean) => Partial<ButtonProps>);
 		// Draws what stands at the left of a choice, in place of its icon or image (a picker's faces and logos).
 		// The second argument says the choice is the one picked.
 		mark?: Snippet<[MenuOptionType, boolean]>;
@@ -76,6 +86,10 @@
 		// How far from its button the list stands, in pixels.
 		offset?: number;
 		isWide?: boolean;
+		// Stands the choices in a row of library Buttons, each its icon alone.
+		isRow?: boolean;
+		// Any Button prop for every choice in a row: its size, or a look in place of the heavy and the ghost.
+		choiceButton?: Partial<ButtonProps>;
 		// Given, the menu picks several: every id in it is ticked, and a pick does not close the list (run 19).
 		values?: string[];
 		isSearchable?: boolean;
@@ -96,6 +110,8 @@
 		opens = 'down',
 		offset = 8,
 		isWide = false,
+		isRow = false,
+		choiceButton = {},
 		values,
 		isSearchable = false,
 		onadd,
@@ -136,6 +152,15 @@
 		}
 	};
 	const SWAPPED = 'bg-(--menu-ink) font-medium text-(--menu-paper)';
+	// How far a row's choices come from, and which edge of the row it slides out from, for each way it opens: a row
+	// on the left of its button slides out leftwards, its choices coming from the button's side.
+	const SLIDES = {
+		left: { x: 24, y: 0, edges: (gone: number) => `0 0 0 ${gone}%` },
+		right: { x: -24, y: 0, edges: (gone: number) => `0 ${gone}% 0 0` },
+		down: { x: 0, y: -24, edges: (gone: number) => `0 0 ${gone}% 0` },
+		up: { x: 0, y: 24, edges: (gone: number) => `${gone}% 0 0 0` }
+	};
+	const ROW_SPEED = { duration: 240, easing: quintOut };
 
 	let isOpen = $state(false);
 	let root: HTMLDivElement | undefined = $state();
@@ -170,8 +195,9 @@
 		if (box.bottom < viewTop || box.top > viewTop + viewHeight) return '';
 		const rows = options.reduce((sum, option) => sum + (option.note ? 52 : 44), 0);
 		// A list beside its button is measured once it shows; one under or over it keeps the reckoning, so which way
-		// it opens never changes on a scroll.
-		const tall = (isBeside && height) || rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
+		// it opens never changes on a scroll. A row is one button high.
+		const tall =
+			(isBeside && height) || (isRow ? 44 : rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0));
 		if (isBeside) return besideOf(box, viewTop, viewHeight, tall);
 		const below = viewTop + viewHeight - box.bottom - 24;
 		const above = box.top - viewTop - 24;
@@ -189,9 +215,7 @@
 			innerWidth - 16,
 			edge === 'right' ? box.right - 8 : innerWidth - box.left - 8
 		);
-		const across = isWide
-			? `width: ${Math.min(Math.max(box.width, 192), room)}px`
-			: `min-width: ${Math.min(192, room)}px; max-width: ${room}px`;
+		const across = isWide ? `width: ${Math.min(Math.max(box.width, 192), room)}px` : widthOf(room);
 		return `${x}; ${y}; ${across}; max-height: ${most}px`;
 	}
 
@@ -222,7 +246,29 @@
 			innerWidth - 16,
 			opens === 'left' ? box.left - offset - 8 : innerWidth - box.right - offset - 8
 		);
-		return `${x}; ${y}; min-width: ${Math.min(192, room)}px; max-width: ${room}px; max-height: ${most}px`;
+		return `${x}; ${y}; ${widthOf(room)}; max-height: ${most}px`;
+	}
+
+	// A list is at least 192px wide; a row is only as wide as its choices. Neither is wider than the room it has.
+	function widthOf(room: number) {
+		return isRow
+			? `max-width: ${room}px`
+			: `min-width: ${Math.min(192, room)}px; max-width: ${room}px`;
+	}
+
+	// How the list comes and goes: a list grows from a little smaller, and a row slides out of its button's side.
+	function reveal(node: Element) {
+		if (!isRow) return scale(node, { start: 0.95, duration: 140 });
+		const { edges } = SLIDES[opens];
+		return {
+			...ROW_SPEED,
+			css: (t: number) => `clip-path: inset(${edges((1 - t) * 100)} round 999px)`
+		};
+	}
+
+	// A row's choice comes out after the ones nearer its button, 30ms apart.
+	function delayOf(index: number) {
+		return (opens === 'left' ? options.length - 1 - index : index) * 30;
 	}
 
 	function toggle() {
@@ -315,11 +361,12 @@
 {#snippet inside(look: string)}
 	{@const tone = /\btheme-/.test(look) ? TONES.worn : TONES.plain}
 	{#if button}
+		{@const own = typeof button === 'function' ? button(current, isOpen) : button}
 		<Button
-			{...button}
+			{...own}
 			aria-haspopup="listbox"
 			aria-expanded={isOpen}
-			aria-label={button['aria-label'] ?? label}
+			aria-label={own['aria-label'] ?? label}
 			onclick={toggle}
 		/>
 	{:else}
@@ -335,113 +382,145 @@
 	{#if isOpen}
 		<div
 			popover="manual"
-			class="fixed z-[120] m-0 flex flex-col overflow-hidden rounded-2xl border-0 {tone.box} text-left shadow-menu {look}"
+			class="fixed z-[120] m-0 flex overflow-hidden border-0 text-left {isRow
+				? 'rounded-full'
+				: `flex-col rounded-2xl ${tone.box} shadow-menu`} {look}"
 			style="inset: auto; {place}; {swap}"
-			transition:scale={{ start: 0.95, duration: 140 }}
+			transition:reveal
 			{@attach lift}
 		>
-			{#if isSearchable}
-				<label class="flex shrink-0 items-center gap-2 border-b px-3.5 py-2.5 {tone.search}">
-					<span class="icon-[mdi--magnify] size-[18px] shrink-0"></span>
-					<input
-						class="w-full min-w-0 border-0 bg-transparent p-0 text-sm outline-none focus:ring-0 {tone.field}"
-						type="search"
-						placeholder="Search"
-						aria-label="Search {label}"
-						autocomplete="off"
-						bind:value={query}
-						onkeydown={(event) => {
-							if (event.key !== 'Enter') return;
-							event.preventDefault();
-							if (shown[0]) pick(shown[0].id);
-						}}
-						{@attach ready}
-					/>
-				</label>
-			{/if}
-			<!-- `flex-auto`, not `flex-1`: Safari before this year's (17.4 to 26.4 tested) gives a list that starts from
-			     nothing no height inside a floating box, so every dropdown opened empty (2026-11-18). -->
-			<div
-				class="min-h-0 flex-auto overflow-y-auto overscroll-contain p-1.5"
-				role="listbox"
-				aria-label={label}
-			>
-				{#if onadd}
-					<button
-						type="button"
-						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition {tone.add}"
-						onclick={() => {
-							isOpen = false;
-							onadd();
-						}}
-					>
+			{#if isRow}
+				{@const { x, y } = SLIDES[opens]}
+				<div
+					class="flex gap-0.5 p-1"
+					role="listbox"
+					aria-label={label}
+					aria-orientation="horizontal"
+				>
+					{#each options as option, index (option.id)}
+						{@const isOn = values ? values.includes(option.id) : option.id === value}
 						<span
-							class="flex size-7 shrink-0 items-center justify-center rounded-full {tone.addMark}"
-							><span class="icon-[mdi--plus] size-[18px]"></span></span
+							class="flex"
+							in:fly|global={{ ...ROW_SPEED, x, y, delay: delayOf(index) }}
+							out:fly|global={{ ...ROW_SPEED, x, y }}
 						>
-						<span class="flex-1">Add new {addLabel || label}</span>
-					</button>
+							<Button
+								appearance={isOn ? 'heavy' : 'ghost'}
+								{...choiceButton}
+								icon={option.icon}
+								role="option"
+								aria-selected={isOn}
+								aria-label={option.label}
+								title={option.label}
+								onclick={() => pick(option.id)}
+							/>
+						</span>
+					{/each}
+				</div>
+			{:else}
+				{#if isSearchable}
+					<label class="flex shrink-0 items-center gap-2 border-b px-3.5 py-2.5 {tone.search}">
+						<span class="icon-[mdi--magnify] size-[18px] shrink-0"></span>
+						<input
+							class="w-full min-w-0 border-0 bg-transparent p-0 text-sm outline-none focus:ring-0 {tone.field}"
+							type="search"
+							placeholder="Search"
+							aria-label="Search {label}"
+							autocomplete="off"
+							bind:value={query}
+							onkeydown={(event) => {
+								if (event.key !== 'Enter') return;
+								event.preventDefault();
+								if (shown[0]) pick(shown[0].id);
+							}}
+							{@attach ready}
+						/>
+					</label>
 				{/if}
-				{#each shown as option (option.id)}
-					{@const isOn = values ? values.includes(option.id) : option.id === value}
-					<div class="group/option flex items-center">
+				<!-- `flex-auto`, not `flex-1`: Safari before this year's (17.4 to 26.4 tested) gives a list that starts from
+			     nothing no height inside a floating box, so every dropdown opened empty (2026-11-18). -->
+				<div
+					class="min-h-0 flex-auto overflow-y-auto overscroll-contain p-1.5"
+					role="listbox"
+					aria-label={label}
+				>
+					{#if onadd}
 						<button
 							type="button"
-							role="option"
-							aria-selected={isOn}
-							class="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition {option.isDanger
-								? 'font-medium text-danger hover:bg-danger/10'
-								: !isOn
-									? tone.choice
-									: tone === TONES.worn && swap
-										? SWAPPED
-										: tone.picked}"
-							onclick={() => pick(option.id)}
+							class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition {tone.add}"
+							onclick={() => {
+								isOpen = false;
+								onadd();
+							}}
 						>
-							{#if mark}{@render mark(option, isOn)}{:else}
-								{#if option.image}<Avatar
-										src={option.image}
-										size={28}
-										fit={option.fit}
-									/>{/if}
-								{#if option.icon}<span
-										class="{option.icon} size-[18px] shrink-0 {option.isDanger ? '' : tone.icon}"
-									></span>{/if}
-								{#if option.dot}<span class="size-2.5 shrink-0 rounded-full {option.dot}"
-									></span>{/if}
-							{/if}
-							<!-- The name, and under it what places it (a facility's city, a contact's title) in grey: two
-							     lines, so a long name never pushes the pencil out of view (Justin, 2026-11-24). -->
-							{#if option.note}
-								<span class="flex min-w-0 flex-1 flex-col">
-									<span class="truncate">{option.label}</span>
-									<span class="truncate text-xs font-normal {tone.quiet}">{option.note}</span>
-								</span>
-							{:else}
-								<span class="min-w-0 flex-1 truncate">{option.label}</span>
-							{/if}
-							{#if option.count !== undefined}<span class="text-xs tabular-nums {tone.quiet}"
-									>{option.count}</span
-								>{/if}
-							{#if isOn}<span class="icon-[mdi--check] size-4 shrink-0 {tone.tick}"></span>{/if}
+							<span
+								class="flex size-7 shrink-0 items-center justify-center rounded-full {tone.addMark}"
+								><span class="icon-[mdi--plus] size-[18px]"></span></span
+							>
+							<span class="flex-1">Add new {addLabel || label}</span>
 						</button>
-						{#if onedit}
+					{/if}
+					{#each shown as option (option.id)}
+						{@const isOn = values ? values.includes(option.id) : option.id === value}
+						<div class="group/option flex items-center">
 							<button
 								type="button"
-								class="flex size-9 shrink-0 items-center justify-center rounded-full transition {tone.pencil}"
-								aria-label="Edit {option.label}"
-								title="Edit"
-								onclick={() => {
-									isOpen = false;
-									onedit(option.id);
-								}}><span class="icon-[mdi--pencil-outline] size-[18px]"></span></button
+								role="option"
+								aria-selected={isOn}
+								class="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition {option.isDanger
+									? 'font-medium text-danger hover:bg-danger/10'
+									: !isOn
+										? tone.choice
+										: tone === TONES.worn && swap
+											? SWAPPED
+											: tone.picked}"
+								onclick={() => pick(option.id)}
 							>
-						{/if}
-					</div>
-				{:else}
-					<p class="px-3 py-2 text-sm {tone.quiet}">Nothing matches</p>
-				{/each}
-			</div>
+								{#if mark}{@render mark(option, isOn)}{:else}
+									{#if option.image}<Avatar
+											src={option.image}
+											size={28}
+											fit={option.fit}
+										/>{/if}
+									{#if option.icon}<span
+											class="{option.icon} size-[18px] shrink-0 {option.isDanger ? '' : tone.icon}"
+										></span>{/if}
+									{#if option.dot}<span class="size-2.5 shrink-0 rounded-full {option.dot}"
+										></span>{/if}
+								{/if}
+								<!-- The name, and under it what places it (a facility's city, a contact's title) in grey: two
+							     lines, so a long name never pushes the pencil out of view (Justin, 2026-11-24). -->
+								{#if option.note}
+									<span class="flex min-w-0 flex-1 flex-col">
+										<span class="truncate">{option.label}</span>
+										<span class="truncate text-xs font-normal {tone.quiet}">{option.note}</span>
+									</span>
+								{:else}
+									<span class="min-w-0 flex-1 truncate">{option.label}</span>
+								{/if}
+								{#if option.count !== undefined}<span class="text-xs tabular-nums {tone.quiet}"
+										>{option.count}</span
+									>{/if}
+								{#if isOn}<span class="icon-[mdi--check] size-4 shrink-0 {tone.tick}"></span>{/if}
+							</button>
+							{#if onedit}
+								<button
+									type="button"
+									class="flex size-9 shrink-0 items-center justify-center rounded-full transition {tone.pencil}"
+									aria-label="Edit {option.label}"
+									title="Edit"
+									onclick={() => {
+										isOpen = false;
+										onedit(option.id);
+									}}><span class="icon-[mdi--pencil-outline] size-[18px]"></span></button
+								>
+							{/if}
+						</div>
+					{:else}
+						<p class="px-3 py-2 text-sm {tone.quiet}">Nothing matches</p>
+					{/each}
+				</div>
+			{/if}
 		</div>
 	{/if}
 {/snippet}
