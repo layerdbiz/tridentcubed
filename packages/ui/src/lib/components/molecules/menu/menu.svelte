@@ -22,6 +22,7 @@
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { scale } from 'svelte/transition';
+	import { Avatar } from '@layerd/ui';
 
 	export interface MenuOptionType {
 		id: string;
@@ -29,8 +30,9 @@
 		// A second, quieter line under the label: a facility's city, a contact's title.
 		note?: string;
 		icon?: string;
-		// A round picture in place of an icon: a face or a logo.
+		// A round picture in place of an icon: a face or a logo, and how it fills its circle (a logo `contain`).
 		image?: string;
+		fit?: 'cover' | 'contain';
 		dot?: string;
 		count?: number;
 		// A delete in a ⋮ menu reads red.
@@ -260,10 +262,10 @@
 							onclick={() => pick(option.id)}
 						>
 							{#if mark}{@render mark(option, isOn)}{:else}
-								{#if option.image}<img
+								{#if option.image}<Avatar
 										src={option.image}
-										alt=""
-										class="size-7 shrink-0 rounded-full bg-slate-200 object-cover"
+										size={28}
+										fit={option.fit}
 									/>{/if}
 								{#if option.icon}<span
 										class="{option.icon} size-[18px] shrink-0 {option.isDanger

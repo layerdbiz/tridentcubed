@@ -5,9 +5,8 @@
 	// only reads `value` and reports each change through `set`; who keeps the change is the caller's business. A
 	// customer has any number of contacts (2026-11-10). Since #373 every input is the library's notched field with its
 	// ? on the border, like the Project panel's: Input for what is typed, Select for what is picked.
-	import { Input, Select } from '@layerd/ui';
+	import { Input, Select, toCode } from '@layerd/ui';
 	import ImageField from './image-field.svelte';
-	import { toCode } from './initials';
 	import {
 		FACILITY_ICONS,
 		MODE_ICONS,

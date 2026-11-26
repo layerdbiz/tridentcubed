@@ -3,8 +3,7 @@
 	// initials on their role's colour (#355), in a white border, with a presence dot top right (Justin's note 9): green
 	// online, orange idle, grey offline, from when the server last saw them (`presenceOf`). A list that keeps its own
 	// time (the menu's Online panel, #331) gives the dot it read, so the dot and its words never disagree.
-	import { Avatar } from '@layerd/ui';
-	import type { InitialsToneType } from './initials';
+	import { Avatar, type InitialsToneType } from '@layerd/ui';
 	import { faceOf } from './marks';
 	import type { PresenceType } from './team.data';
 

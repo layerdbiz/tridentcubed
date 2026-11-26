@@ -17,12 +17,12 @@
 	// screen edge to edge, down behind the sheet; a swipe slides the pages without fading them; the bell's list sits
 	// over the list's menus. Run 15 (2026-11-10): Settings is a screen of its own (settings-page.svelte), opened from
 	// the menu's cog or Admin, and slides in like a record.
+	import { Avatar } from '@layerd/ui';
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
 	import AccountMenu from './account-menu.svelte';
 	import ActivityPage from './activity-page.svelte';
-	import Avatar from './avatar.svelte';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
 	import AddSheet from './add-sheet.svelte';
@@ -30,6 +30,7 @@
 	import ListMenus from './list-menus.svelte';
 	import { PAGES } from './look.data';
 	import { PIN_SIZES, type ClosenessType } from './map.utils';
+	import { faceOf } from './marks';
 	import type { LookState } from './look.state.svelte';
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
@@ -536,8 +537,9 @@
 									<span
 										class="flex rounded-full transition {isOpen ? 'ring-2 ring-primary/50' : ''}"
 										><Avatar
-											name={look.me?.name ?? ''}
+											{...faceOf(look.me?.name ?? '')}
 											size={40}
+											ring="ring-2 ring-white"
 										/></span
 									>
 								{/snippet}

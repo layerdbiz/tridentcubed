@@ -269,7 +269,7 @@ A short message that pops up over the page and goes away by itself. Given progre
 _Avoid_: snackbar, progress toast (as a component of its own), loading bar
 
 **Avatar**:
-One round picture standing for someone or something: a face or a logo, or an icon on grey when there is none. It can wear a presence dot (green online, orange idle, grey offline) at the top right, or a badge in its place at the bottom right. Plain and light, since it repeats in every list row (#379).
+One round picture standing for someone or something: a face or a logo. With no picture it draws the name's initials (or a company's code) on the colours of its role or kind (#355), and with no letters either an icon on grey, or on a colour it is given (a transport's mode). It can wear a presence dot (green online, orange idle, grey offline) at the top right, or a badge in its place at the bottom right. The only round picture in the app: every face, logo and record mark is one (Justin, 2026-11-26). Plain and light, since it repeats in every list row (#379).
 _Avoid_: profile picture, user icon
 
 **Stack**:

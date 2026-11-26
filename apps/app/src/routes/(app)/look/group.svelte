@@ -12,7 +12,7 @@
 	// #305: `section` is its id in tally.ts, so an entry of the empty-inputs list finds its inputs (focus.ts).
 	import type { Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
-	import { Switch } from '@layerd/ui';
+	import { Avatar, Switch } from '@layerd/ui';
 	import { toTally } from './tally';
 
 	let {
@@ -84,11 +84,11 @@
 		}}
 	>
 		{#if image}
-			<img
+			<Avatar
 				src={image}
 				alt=""
-				draggable="false"
-				class="size-8 shrink-0 rounded-full bg-white object-cover ring-1 ring-slate-900/10"
+				size={32}
+				ring="ring-1 ring-slate-900/10"
 			/>
 		{:else if number}
 			<span

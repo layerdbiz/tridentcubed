@@ -4,8 +4,7 @@
 	// where it is; its projects are the badge on its icon. The ⋮ sits top right and the › under it, as on a project's
 	// row; a tap opens its own page.
 	import { Stack } from '@layerd/ui';
-	import Faces from './faces.svelte';
-	import { logoOf } from './marks';
+	import { facesOf, logoOf } from './marks';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import PlaceLine from './place-line.svelte';
@@ -33,8 +32,8 @@
 			<span class="flex items-center justify-between gap-2">
 				<span class="truncate font-medium text-slate-900">{record.key}</span>
 				{#if record.people.length}
-					<Faces
-						names={record.people}
+					<Stack
+						items={facesOf(record.people)}
 						size={22}
 						max={3}
 					/>
@@ -42,8 +41,7 @@
 					<Stack
 						class="shrink-0"
 						items={record.logos.slice(0, 3).map((name) => ({
-							...logoOf(name),
-							shape: 'circle',
+							...logoOf(name, { shape: 'circle' }),
 							id: name,
 							ring: 'ring-2 ring-white'
 						}))}

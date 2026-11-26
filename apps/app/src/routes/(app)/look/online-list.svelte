@@ -8,8 +8,9 @@
 	// is made up. The list keeps time while it is open. A tap opens their Team record.
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toDeviceIcons } from '#lib/presence/presence.utils.js';
-	import Avatar from './avatar.svelte';
+	import { Avatar } from '@layerd/ui';
 	import { onlineOf, presenceOf, toPresenceText } from './look.data';
+	import { faceOf } from './marks';
 	import type { LookState } from './look.state.svelte';
 	import type { PresenceType, TeamMemberType } from './team.data';
 
@@ -62,10 +63,9 @@
 			style="width: {width}px"
 		>
 			<Avatar
-				name={member.name}
+				{...faceOf(member.name, { presence })}
 				{size}
-				{presence}
-				ring="ring-slate-200"
+				ring="ring-2 ring-slate-200"
 			/>
 		</span>
 		<span class="min-w-0 flex-1 {words}">

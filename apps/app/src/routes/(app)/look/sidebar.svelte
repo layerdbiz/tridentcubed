@@ -13,12 +13,13 @@
 	// 2026-11-18): Recent is "Recents", a panel that slides open and shut (menu-panel.svelte), with Online under it.
 	// #346 (Justin, 2026-11-25): Pinned sits above them, what this person pinned from a ⋮ menu (pins.ts). #345: Search
 	// heads the sections and opens the search pop-up (`onsearch`, search-popup.svelte).
+	import { Avatar } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 	import AccountMenu from './account-menu.svelte';
-	import Avatar from './avatar.svelte';
 	import { FADE, fadeTop } from './fade';
 	import { DATASETS, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { faceOf } from './marks';
 	import MenuPanel from './menu-panel.svelte';
 	import OnlineList from './online-list.svelte';
 	import { pinnedOf } from './pins';
@@ -194,9 +195,9 @@
 					>
 						<span class={COLUMN}
 							><Avatar
-								name={me.name}
+								{...faceOf(me.name)}
 								size={40}
-								ring="ring-slate-200"
+								ring="ring-2 ring-slate-200"
 							/></span
 						>
 						<span class="min-w-0 flex-1 text-sm {WORDS}"

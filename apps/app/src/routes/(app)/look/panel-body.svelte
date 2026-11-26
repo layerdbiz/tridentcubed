@@ -48,12 +48,20 @@
 	// label and place among the inputs with that label, as tally.ts lists them).
 	import { untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
-	import { Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
+	import {
+		Avatar,
+		Generated,
+		Help,
+		initialsOf,
+		Input,
+		Menu,
+		Select,
+		Textarea,
+		toInitialsPicture
+	} from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
-	import Avatar from './avatar.svelte';
-	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
-	import { initialsOf, toInitialsPicture } from './initials';
+	import { faceOf, logoOf } from './marks';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import {
 		ATTACHMENT_ICONS,
@@ -544,16 +552,16 @@
 <!-- A person in a Select is the app's own face, a customer its logo (Select's `mark`). -->
 {#snippet face(name: string, size: number)}
 	<Avatar
-		{name}
+		{...faceOf(name)}
 		{size}
+		ring="ring-2 ring-white"
 	/>
 {/snippet}
 
 {#snippet logo(name: string, size: number)}
-	<ClientLogo
-		{name}
+	<Avatar
+		{...logoOf(name, { shape: 'circle' })}
 		{size}
-		shape="circle"
 	/>
 {/snippet}
 
@@ -589,7 +597,9 @@
 				{
 					value: look.organization.name,
 					label: look.organization.name,
-					image: look.organization.logo
+					image: look.organization.logo,
+					// The organization's own artwork, kept whole on white like a customer's logo.
+					fit: 'contain'
 				}
 			]}
 			value={fieldOf('Organization')?.value ?? ''}

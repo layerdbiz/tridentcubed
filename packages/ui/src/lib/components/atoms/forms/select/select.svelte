@@ -26,6 +26,7 @@
 	import type { HTMLSelectAttributes } from 'svelte/elements';
 	import '../forms.css';
 	import {
+		Avatar,
 		Component,
 		type ComponentReturn,
 		createFormField,
@@ -135,6 +136,7 @@
 			note: option.note,
 			icon: option.icon,
 			image: option.image,
+			fit: option.fit,
 			dot: option.dot
 		}))
 	);
@@ -242,12 +244,11 @@
 	{#if ownMark}
 		{@render ownMark(choice, size)}
 	{:else if option?.image}
-		<img
+		<Avatar
 			src={option.image}
-			alt=""
-			draggable="false"
-			class="shrink-0 rounded-full bg-white object-cover ring-1 ring-slate-900/10"
-			style="width: {size}px; height: {size}px"
+			{size}
+			fit={option.fit}
+			ring="ring-1 ring-slate-900/10"
 		/>
 	{:else if option?.dot}
 		<span
