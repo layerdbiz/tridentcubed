@@ -57,8 +57,9 @@ function getNavSections(routes: RouteMeta[]): NavSection[] {
 	const sections: NavSection[] = [];
 	const mqRoutes = getGroupRoutes(routes, 'mq');
 	const playRoutes = getGroupRoutes(routes, 'play');
+	// The shell's own pages (#342) list everything themselves.
 	const otherRoutes = routes
-		.filter((route) => route.group !== 'mq' && route.group !== 'play')
+		.filter((route) => route.group !== 'mq' && route.group !== 'play' && route.group !== 'shell')
 		.sort(sortRoutes);
 
 	if (mqRoutes.length) {

@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1"
+		/>
+		<meta
+			name="robots"
+			content="noindex, nofollow"
+		/>
+		<title>Button: Pill</title>
+		<!-- A second variant of the same component, to compare side by side in play (#342). Made-up labels only. -->
+		<style>
+			:root {
+				--bg: #f8fafc;
+				--fg: #0f172a;
+				--muted: #64748b;
+				--primary: #2563eb;
+				--on-primary: #fff;
+				--soft: #dbeafe;
+				color-scheme: light;
+			}
+			:root[data-theme='dark'] {
+				--bg: #0a101c;
+				--fg: #e6ebf2;
+				--muted: #96a3b5;
+				--primary: #60a5fa;
+				--on-primary: #0a101c;
+				--soft: #1e3a5f;
+				color-scheme: dark;
+			}
+			* {
+				box-sizing: border-box;
+			}
+			body {
+				margin: 0;
+				padding: 24px;
+				background: var(--bg);
+				color: var(--fg);
+				font:
+					15px/1.4 system-ui,
+					-apple-system,
+					'Segoe UI',
+					Roboto,
+					sans-serif;
+			}
+			h2 {
+				margin: 0 0 10px;
+				color: var(--muted);
+				font-size: 11px;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+			}
+			.row {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 10px;
+				align-items: center;
+				margin-bottom: 24px;
+			}
+			.pill {
+				height: 40px;
+				padding: 0 20px;
+				border: 0;
+				border-radius: 999px;
+				background: var(--primary);
+				color: var(--on-primary);
+				font: inherit;
+				font-weight: 600;
+				cursor: pointer;
+			}
+			.pill.is-soft {
+				background: var(--soft);
+				color: var(--primary);
+			}
+			.pill.is-small {
+				height: 30px;
+				padding: 0 14px;
+				font-size: 13px;
+			}
+		</style>
+	</head>
+	<body>
+		<h2>Kinds</h2>
+		<div class="row">
+			<button class="pill">Save report</button>
+			<button class="pill is-soft">Add photos</button>
+		</div>
+		<h2>Sizes</h2>
+		<div class="row">
+			<button class="pill is-small">Small</button>
+			<button class="pill">Medium</button>
+		</div>
+	</body>
+</html>

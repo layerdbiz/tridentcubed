@@ -9,7 +9,9 @@
      edit only the block marked EDIT HERE: the page size, the second menu, and the views with their drawing. Everything
      else is the controls he asked for, built and checked on the one-page report prototype
      (/mnt/project-files/project-report-prototype/), and stays as it is. The rule it follows is in project memory,
-     prototype-controls-rule. Standalone HTML: nothing here is app code. -->
+     prototype-controls-rule. Standalone HTML: nothing here is app code.
+     2026-11-26: two fingers pinch anywhere, on a page's own buttons, fields and lists too (#361); Layout has Grid,
+     the pages several across and several down, with Across (Auto or a number) (#362). -->
 <style>
 :root {
 	--bg: #e9edf3;
@@ -66,6 +68,9 @@ body { padding: 0; }
 	touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab;
 }
 .stage.is-moving, .stage.is-moving .sheet { cursor: grabbing; }
+/* Nothing on the pages scrolls or zooms by the browser's own touch handling, not even a list that scrolls by itself:
+   the canvas's gestures take every finger (a finger on a page's list scrolls it through them). */
+.canvas, .canvas * { touch-action: none !important; }
 .canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .canvas.is-layered { will-change: transform; }
 .canvas.is-easing { transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
@@ -361,8 +366,11 @@ function sample(letter, state) {
 // Every choice in the controls: the views shown (one or more), the second menu's pick, how the pages lie, the piece
 // labels, the side of the desktop panel, which panels are open, and every tune panel's value. All of it is kept in this
 // browser and comes back next time; an address with a view in it (#main+b2) wins over what was kept.
+// Grid: how many pages across. Auto fits as many as the window holds at a size to read, in whole sets of the views
+// shown, so one piece's pages in every view sit side by side (M3 beside A3).
+const ACROSS = [['auto', 'Auto'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['6', '6'], ['8', '8']];
 const state = {
-	views: [VIEWS[0].letter], choice: CHOICES[0][0], layout: 'row', tags: 'on', partsOn: [], partsOpen: [],
+	views: [VIEWS[0].letter], choice: CHOICES[0][0], layout: 'row', across: 'auto', tags: 'on', partsOn: [], partsOpen: [],
 	side: 'right', open: null, isPanelOpen: true, isDrawerOpen: false, hasSeenParts: false
 };
 // A tune panel's row: ['choice', key, name, options, first?], ['slider', key, name, least, most, step, first, unit]
@@ -407,12 +415,16 @@ const ORDER = VIEWS.map((view) => view.letter);
 state.views = ORDER.filter((letter) => state.views.includes(letter));
 if (!state.views.length) state.views = [ORDER[0]];
 if (!CHOICES.some(([id]) => id === state.choice)) state.choice = CHOICES[0][0];
+if (!['row', 'column', 'grid'].includes(state.layout)) state.layout = 'row';
+if (!ACROSS.some(([id]) => id === state.across)) state.across = 'auto';
 for (const panel of TUNES) for (const row of panel.rows) if (!isFit(row, state[row[1]])) state[row[1]] = firstOf(row);
 
 // ---------- The canvas, as in the app's Preview: where its corner sits in the window and how big it is drawn. It
 // opens with every page fitted whole, as big as the window allows with a thin margin all round. ----------
 const EDGE = 10;
 const GAP = 48;
+// Grid on Auto draws every page at least this much of its size (see gridAcross).
+const GRID_LEAST = 0.4;
 const NAME_ROOM = 40;
 const content = { width: PAGE.width, height: PAGE.height };
 const view = { x: 0, y: 0, scale: 1 };
@@ -427,7 +439,11 @@ function room(side = state.side) {
 }
 function fitScale() {
 	const { left, right } = room();
-	return Math.max(0.03, Math.min((stage.clientWidth - left - right - EDGE * 2) / content.width, (stage.clientHeight - EDGE * 2) / content.height));
+	const wide = (stage.clientWidth - left - right - EDGE * 2) / content.width;
+	const tall = (stage.clientHeight - EDGE * 2) / content.height;
+	// A grid taller than the window fits its width instead (never bigger than life), from its top, and scrolls down.
+	if (state.layout === 'grid' && tall < wide) return Math.max(0.03, Math.min(wide, Math.max(tall, 1)));
+	return Math.max(0.03, Math.min(wide, tall));
 }
 // Keep a corner of the pages on screen, so they can never be lost off the edge.
 function clamp() {
@@ -452,9 +468,53 @@ function fitPage(isEased = false) {
 	view.scale = fitScale();
 	const { left, right } = room();
 	view.x = left + (stage.clientWidth - left - right - content.width * view.scale) / 2;
-	view.y = (stage.clientHeight - content.height * view.scale) / 2;
+	view.y = Math.max(EDGE, (stage.clientHeight - content.height * view.scale) / 2);
 	isFitted = true;
 	place(isEased);
+}
+// Back to the fit from a zoom. On a grid taller than the window it keeps the row the tap was on where it is.
+function fitBack(x, y) {
+	if (content.height * fitScale() <= stage.clientHeight - EDGE * 2) {
+		fitPage(true);
+		return;
+	}
+	stopGlide();
+	const { left, right } = room();
+	const down = (y - view.y) / view.scale;
+	view.scale = fitScale();
+	view.x = left + (stage.clientWidth - left - right - content.width * view.scale) / 2;
+	view.y = y - down * view.scale;
+	isFitted = false;
+	clamp();
+	place(true);
+}
+// How many pages across the grid lays: a number picked, or Auto: every page whole on screen when that draws them at
+// least GRID_LEAST of their size, else as many across as the window's width holds at that size (the rest below).
+function gridAcross(sets, keys) {
+	const count = sets * keys;
+	if (state.across !== 'auto') return Math.max(1, Math.min(count, Number(state.across)));
+	const { left, right } = room();
+	const width = stage.clientWidth - left - right - EDGE * 2;
+	const height = stage.clientHeight - EDGE * 2;
+	const wideAt = (n) => width / (n * PAGE.width + (n - 1) * GAP);
+	let best = sets;
+	let bestScale = 0;
+	for (let n = sets; n <= count; n += sets) {
+		const rows = Math.ceil(count / n);
+		const scale = Math.min(wideAt(n), height / (rows * (PAGE.height + nameRoom) + (rows - 1) * GAP));
+		if (scale > bestScale) [best, bestScale] = [n, scale];
+	}
+	if (bestScale >= GRID_LEAST) return best;
+	let n = sets;
+	while (n + sets <= count && wideAt(n + sets) >= GRID_LEAST) n += sets;
+	return n;
+}
+// The grid's last shape, so a new window size or the panel shown or hidden lays it out again when Auto would change.
+const grid = { sets: 1, keys: 1, across: 1 };
+function relayout() {
+	if (state.layout !== 'grid' || state.across !== 'auto' || gridAcross(grid.sets, grid.keys) === grid.across) return false;
+	render();
+	return true;
 }
 // Fit one part of the canvas in the window: a page a link goes to, or the row of pages one key holds in every view.
 function fitRect(rect, isEased = false) {
@@ -535,9 +595,10 @@ function showSide() {
 	}
 }
 
-// ---------- Drawing: each view shown is its pages, down a column (Horizontal) or across a row (Vertical). Most views
-// are one page; a view's draw may give several, and pages with the same key (their place, from 1, or their own key) sit
-// level in every view. ----------
+// ---------- Drawing: each view shown is its pages, down a column (Horizontal), across a row (Vertical), or in a Grid
+// several across and several down, one piece's pages in every view side by side. Most views are one page; a view's
+// draw may give several, and pages with the same key (their place, from 1, or their own key) sit level in every view
+// (side by side in a grid). ----------
 let shownKey = '';
 let nameRoom = 0;
 function pagesFor(each) {
@@ -553,8 +614,16 @@ function render() {
 	for (const list of lists) for (const page of list) if (!slots.includes(page.key)) slots.push(page.key);
 	const isNamed = shown.length > 1 || slots.length > 1;
 	nameRoom = isNamed ? NAME_ROOM : 0;
-	const across = isRow ? shown.length : slots.length;
-	const down = isRow ? slots.length : shown.length;
+	let across = isRow ? shown.length : slots.length;
+	let down = isRow ? slots.length : shown.length;
+	// Where each page lies: its column and row.
+	let spotOf = (index, slot) => (isRow ? [index, slot] : [slot, index]);
+	if (state.layout === 'grid') {
+		across = gridAcross(shown.length, slots.length);
+		Object.assign(grid, { sets: shown.length, keys: slots.length, across });
+		down = Math.ceil((shown.length * slots.length) / across);
+		spotOf = (index, slot) => [(slot * shown.length + index) % across, Math.floor((slot * shown.length + index) / across)];
+	}
 	content.width = across * PAGE.width + (across - 1) * GAP;
 	content.height = down * (PAGE.height + nameRoom) + (down - 1) * GAP;
 	canvas.style.width = `${content.width}px`;
@@ -570,8 +639,9 @@ function render() {
 			holder.style.height = `${PAGE.height}px`;
 			holder.dataset.view = each.letter;
 			holder.dataset.page = item.key;
-			holder.style.left = `${(isRow ? index : slot) * (PAGE.width + GAP)}px`;
-			holder.style.top = `${nameRoom + (isRow ? slot : index) * (PAGE.height + nameRoom + GAP)}px`;
+			const [column, row] = spotOf(index, slot);
+			holder.style.left = `${column * (PAGE.width + GAP)}px`;
+			holder.style.top = `${nameRoom + row * (PAGE.height + nameRoom + GAP)}px`;
 			const page = pageTemplate.content.firstElementChild.cloneNode(true);
 			if (index === 0 && slot === 0) page.id = 'sheet';
 			holder.append(page);
@@ -583,8 +653,14 @@ function render() {
 			showPieces(page, each.letter);
 		}
 	});
+	// A page's name longer than its page shrinks to fit over it, so it never runs into the next page's name.
+	const names = [...canvas.querySelectorAll('.page-name')];
+	const nameWidths = names.map((name) => name.scrollWidth);
+	names.forEach((name, index) => {
+		if (nameWidths[index] > PAGE.width) name.style.fontSize = `${Math.max(11, Math.floor((22 * PAGE.width) / nameWidths[index]))}px`;
+	});
 	// A new set of pages, or a new way of laying them out, fits them all again.
-	const key = `${state.views.join('+')}|${state.layout}|${slots.join(',')}`;
+	const key = `${state.views.join('+')}|${state.layout}|${across}|${slots.join(',')}`;
 	if (key !== shownKey) {
 		shownKey = key;
 		fitPage();
@@ -593,7 +669,7 @@ function render() {
 	showControls();
 	save();
 	try {
-		history.replaceState(null, '', `#${state.views.join('+')}${state.choice}${state.layout === 'column' ? 'v' : ''}`);
+		history.replaceState(null, '', `#${state.views.join('+')}${state.choice}${{ column: 'v', grid: 'g' }[state.layout] ?? ''}`);
 	} catch {}
 }
 // A link on a page (data-goto, with a page's key) goes to that page in the same view, as an internal link does in a
@@ -780,7 +856,8 @@ function pick(key, value) {
 }
 const SECTIONS = [
 	['views', 'Views', () => VIEWS.map((each) => [each.letter, each.short]), true],
-	['layout', 'Layout', () => [['row', 'Horizontal'], ['column', 'Vertical']]],
+	['layout', 'Layout', () => [['row', 'Horizontal'], ['column', 'Vertical'], ['grid', 'Grid']]],
+	['across', 'Across', () => ACROSS],
 	['choice', CHOICE_NAME, () => CHOICES.map(([id, , short]) => [id, short])],
 	...TUNES.map((panel) => [panel.key, panel.name, () => [], 'tune']),
 	['tags', 'Labels', () => [['tags', 'Pieces']], 'switches'],
@@ -1012,7 +1089,7 @@ function showControls() {
 	for (const section of document.querySelectorAll('#sections .sec')) {
 		const key = section.dataset.sec;
 		const panel = TUNES.find((each) => each.key === key);
-		section.hidden = Boolean(panel?.views) && !state.views.some((letter) => panel.views.includes(letter));
+		section.hidden = key === 'across' ? state.layout !== 'grid' : Boolean(panel?.views) && !state.views.some((letter) => panel.views.includes(letter));
 		const isOpen = state.open.includes(key);
 		section.querySelector('.sec-name').setAttribute('aria-expanded', String(isOpen));
 		section.querySelector('.sec-body').hidden = !isOpen;
@@ -1037,7 +1114,7 @@ function showControls() {
 			continue;
 		}
 		const pressed = [...section.querySelectorAll('button[aria-pressed="true"]')].map((button) => button.textContent);
-		section.querySelector('.sec-now').textContent = pressed.join(', ');
+		section.querySelector('.sec-now').textContent = key === 'across' && state.across === 'auto' ? `Auto (${grid.across})` : pressed.join(', ');
 	}
 	const isOpen = isDockOpen();
 	document.documentElement.classList.toggle('is-dock-open', isOpen);
@@ -1057,6 +1134,7 @@ function openDock(isOpen) {
 	showControls();
 	save();
 	if (!DESKTOP.matches) return;
+	if (relayout()) return;
 	if (isFitted) fitPage(true);
 	else {
 		clamp();
@@ -1067,63 +1145,148 @@ drawerButton.addEventListener('click', () => openDock(!isDockOpen()));
 document.getElementById('scrim').addEventListener('click', () => openDock(false));
 DESKTOP.addEventListener('change', () => {
 	showControls();
+	if (relayout()) return;
 	if (isFitted) fitPage();
 });
 
 // ---------- Gestures on the canvas, as in the app's Preview. One finger or the mouse drags the pages anywhere in the
 // window and lets them glide on; two fingers pinch them; a click or tap that does not move zooms in to twice the fit
-// where it lands, or back to the fit of every page from any zoom. The browser's own pinch zoom is off for this page
-// (touch-action, and Safari's gesture events), so the menus and the controls never scale. ----------
+// where it lands, or back to the fit from any zoom. The browser's own pinch zoom is off for this page (touch-action,
+// and Safari's gesture events), so the menus and the controls never scale.
+// Fingers count wherever they land (#361): on a page's own buttons, fields, lists and live parts as well as on the
+// space around the pages, so two fingers pinch anywhere. One finger on a page's control still taps it; once it moves
+// it drags the pages instead (or scrolls the list it is in, then the pages) and the tap is dropped. A slider, a text
+// box or anything marked data-own-drag keeps its own drag. With the mouse a page's controls keep their press, as
+// before. Inside a live part (class live: the app's own components mounted in a page) a tap is the components' and
+// never zooms. ----------
+const CONTROLS = 'a, button, input, select, textarea, label, summary, [contenteditable], [role=button], [role=option], [role=menuitem], [role=menuitemcheckbox], [role=menuitemradio], [role=checkbox], [role=radio], [role=switch], [role=tab], [role=combobox], [role=slider]';
+const OWN_DRAG = 'input[type=range], [role=slider], textarea, [contenteditable], [data-own-drag]';
 const pointers = new Map();
 let pinch = null;
 let press = null;
 let samples = [];
+// How far the pages have moved in this drag (a list a finger scrolls takes its share), for the glide after it.
+const moved = { x: 0, y: 0 };
 function middle() {
 	const [a, b] = [...pointers.values()];
 	return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, gap: Math.hypot(a.x - b.x, a.y - b.y) };
 }
-stage.addEventListener('pointerdown', (event) => {
-	if (event.button !== 0 || event.target.closest('a, button, input, select')) return;
-	stage.setPointerCapture(event.pointerId);
-	pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-	stopGlide();
-	canvas.classList.remove('is-easing');
-	stage.classList.add('is-moving');
-	samples = [{ x: event.clientX, y: event.clientY, t: event.timeStamp }];
-	if (pointers.size === 1) press = { x: event.clientX, y: event.clientY, isMoved: false, onPage: Boolean(event.target.closest('.sheet')), label: event.target.closest('.piece > .tag, .part-tag'), link: event.target.closest('.sheet [data-goto]') };
-	if (pointers.size === 2) {
-		const mid = middle();
-		pinch = { gap: mid.gap, scale: view.scale, x: mid.x, y: mid.y };
-		if (press) press.isMoved = true;
+// A press that became a drag or a pinch drops the click the browser may still send when the fingers lift.
+let isDropping = false;
+let dropUntil = 0;
+window.addEventListener(
+	'click',
+	(event) => {
+		if (!isDropping && performance.now() > dropUntil) return;
+		event.preventDefault();
+		event.stopPropagation();
+	},
+	true
+);
+// The box a finger is in that scrolls by itself (a long list), if any, up to its page.
+function scrollerOf(element) {
+	for (let box = element; box && box !== canvas; box = box.parentElement) {
+		if (!(box instanceof HTMLElement)) continue;
+		const look = getComputedStyle(box);
+		const isTall = box.scrollHeight > box.clientHeight + 1 && /auto|scroll/.test(look.overflowY);
+		const isWide = box.scrollWidth > box.clientWidth + 1 && /auto|scroll/.test(look.overflowX);
+		if (isTall || isWide) return box;
+		if (box.classList.contains('sheet')) return null;
 	}
-});
-stage.addEventListener('pointermove', (event) => {
-	const before = pointers.get(event.pointerId);
-	if (!before) return;
-	const now = { x: event.clientX, y: event.clientY };
-	pointers.set(event.pointerId, now);
-	if (pointers.size === 2 && pinch) {
-		const mid = middle();
-		zoomAt((pinch.scale * mid.gap) / pinch.gap, mid.x, mid.y);
-		panBy(mid.x - pinch.x, mid.y - pinch.y);
-		pinch.x = mid.x;
-		pinch.y = mid.y;
-		return;
-	}
-	if (press && Math.hypot(now.x - press.x, now.y - press.y) > 4) press.isMoved = true;
-	if (press && !press.isMoved) return;
-	panBy(now.x - before.x, now.y - before.y);
-	samples.push({ ...now, t: event.timeStamp });
-	samples = samples.filter((sample) => event.timeStamp - sample.t < 90);
-});
+	return null;
+}
+// Scroll that box by a finger's move; a way it cannot go (it is at its end) moves the pages.
+function scrollIn(box, dx, dy) {
+	const ratio = box.getBoundingClientRect().width / box.offsetWidth || view.scale;
+	const [left, top] = [box.scrollLeft, box.scrollTop];
+	box.scrollLeft = left - dx / ratio;
+	box.scrollTop = top - dy / ratio;
+	return [box.scrollLeft === left ? dx : 0, box.scrollTop === top ? dy : 0];
+}
+stage.addEventListener(
+	'pointerdown',
+	(event) => {
+		if (event.button !== 0) return;
+		const control = event.target.closest(CONTROLS);
+		if (control && event.pointerType === 'mouse') return;
+		if (!control) stage.setPointerCapture(event.pointerId);
+		pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+		stopGlide();
+		canvas.classList.remove('is-easing');
+		if (!control) stage.classList.add('is-moving');
+		if (pointers.size === 1) {
+			Object.assign(moved, { x: 0, y: 0 });
+			samples = [{ x: 0, y: 0, t: event.timeStamp }];
+		}
+		if (pointers.size === 1)
+			press = {
+				x: event.clientX,
+				y: event.clientY,
+				isMoved: false,
+				onPage: Boolean(event.target.closest('.sheet')),
+				label: event.target.closest('.piece > .tag, .part-tag'),
+				link: event.target.closest('.sheet [data-goto]'),
+				control,
+				isLive: Boolean(event.target.closest('.live')),
+				isOwnDrag: Boolean(event.target.closest(OWN_DRAG)),
+				scroller: scrollerOf(event.target)
+			};
+		if (pointers.size === 2) {
+			const mid = middle();
+			pinch = { gap: mid.gap, scale: view.scale, x: mid.x, y: mid.y };
+			if (press) press.isMoved = true;
+			stage.classList.add('is-moving');
+			isDropping = true;
+		}
+	},
+	true
+);
+stage.addEventListener(
+	'pointermove',
+	(event) => {
+		const before = pointers.get(event.pointerId);
+		if (!before) return;
+		const now = { x: event.clientX, y: event.clientY };
+		pointers.set(event.pointerId, now);
+		if (pointers.size === 2 && pinch) {
+			const mid = middle();
+			zoomAt((pinch.scale * mid.gap) / pinch.gap, mid.x, mid.y);
+			panBy(mid.x - pinch.x, mid.y - pinch.y);
+			pinch.x = mid.x;
+			pinch.y = mid.y;
+			return;
+		}
+		if (!press) return;
+		if (!press.isMoved && Math.hypot(now.x - press.x, now.y - press.y) > (press.control ? 10 : 4)) {
+			press.isMoved = true;
+			stage.classList.add('is-moving');
+			isDropping = true;
+		}
+		if (!press.isMoved || press.isOwnDrag) return;
+		let [dx, dy] = [now.x - before.x, now.y - before.y];
+		if (press.scroller && pointers.size === 1) [dx, dy] = scrollIn(press.scroller, dx, dy);
+		if (!dx && !dy) return;
+		panBy(dx, dy);
+		moved.x += dx;
+		moved.y += dy;
+		samples.push({ ...moved, t: event.timeStamp });
+		samples = samples.filter((sample) => event.timeStamp - sample.t < 90);
+	},
+	true
+);
 function lift(event) {
 	if (!pointers.delete(event.pointerId)) return;
 	if (pointers.size < 2) pinch = null;
 	if (pointers.size) return;
 	stage.classList.remove('is-moving');
+	if (isDropping) {
+		isDropping = false;
+		dropUntil = performance.now() + 350;
+	}
 	const tap = press;
 	press = null;
 	if (event.type === 'pointerup' && tap && !tap.isMoved) {
+		if (tap.control) return;
 		if (tap.label) {
 			copyLabel(tap.label);
 			return;
@@ -1132,8 +1295,9 @@ function lift(event) {
 			goTo(tap.link);
 			return;
 		}
+		if (tap.isLive) return;
 		if (tap.onPage || isZoomed()) {
-			if (isZoomed()) fitPage(true);
+			if (isZoomed()) fitBack(event.clientX, event.clientY);
 			else zoomAt(fitScale() * 2, event.clientX, event.clientY, true);
 		}
 		return;
@@ -1143,8 +1307,8 @@ function lift(event) {
 	const dt = first && last ? last.t - first.t : 0;
 	if (dt > 10 && event.timeStamp - last.t < 60) glideOn((last.x - first.x) / dt, (last.y - first.y) / dt);
 }
-stage.addEventListener('pointerup', lift);
-stage.addEventListener('pointercancel', lift);
+stage.addEventListener('pointerup', lift, true);
+stage.addEventListener('pointercancel', lift, true);
 // A long press must not open the picture menu, and a picture must not start a drag of its own.
 stage.addEventListener('contextmenu', (event) => event.preventDefault());
 stage.addEventListener('dragstart', (event) => event.preventDefault());
@@ -1188,15 +1352,15 @@ document.addEventListener('keydown', (event) => {
 	render();
 });
 // An address with views in it (#main+b2, #a3, #main+a2v) opens them: the views, the second menu's pick, and v for
-// Vertical.
+// Vertical or g for Grid.
 function fromHash() {
-	const match = /^#([a-z+]+?)([1-9])?(v)?$/.exec(location.hash);
+	const match = /^#([a-z+]+?)([1-9])?([vg])?$/.exec(location.hash);
 	if (!match) return;
 	const views = match[1].split('+').filter((letter) => ORDER.includes(letter));
 	if (!views.length) return;
 	state.views = ORDER.filter((letter) => views.includes(letter));
 	if (match[2] && CHOICES.some(([id]) => id === match[2])) state.choice = match[2];
-	state.layout = match[3] ? 'column' : 'row';
+	state.layout = { v: 'column', g: 'grid' }[match[3]] ?? 'row';
 }
 window.addEventListener('hashchange', () => {
 	fromHash();
@@ -1204,6 +1368,7 @@ window.addEventListener('hashchange', () => {
 });
 // A new window size keeps fitted pages fitted, and moved or zoomed ones on screen.
 window.addEventListener('resize', () => {
+	if (relayout()) return;
 	if (isFitted) fitPage();
 	else {
 		clamp();

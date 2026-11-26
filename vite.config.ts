@@ -25,7 +25,10 @@ const outOfScope = [
 	'docs/**',
 	'packages/ui/static/**',
 	'pnpm-lock.yaml',
-	'prototypes/**'
+	'prototypes/**',
+	// play's prototypes and components are standalone HTML copied in as made (#342)
+	'apps/play/src/prototypes/**',
+	'apps/play/src/components/**'
 ];
 
 export default defineConfig({
