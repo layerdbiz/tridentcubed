@@ -3,8 +3,9 @@
 	// (its knob grows and shows the percent while you hold it), the fit button, the mode menu, and Download at the
 	// bottom. No + and − buttons: the slider, pinch and scroll do that. #324 (Justin, 2026-11-25): one button for how
 	// the pages lie, its icon the mode they are in, and Stack, Spread and Present (a play button: the pages one at a
-	// time) sliding out of it in a row (Justin, 2026-11-26: the prototype's Slide-out Row, in place of the menu).
-	import { Button } from '@layerd/ui';
+	// time) sliding out of it in a row (Justin, 2026-11-26: the prototype's Slide-out Row, in place of the menu), the
+	// library Menu's row (#390).
+	import { Button, Menu } from '@layerd/ui';
 	import type { LayoutType } from './presentation.svelte';
 	import { ZOOM_MAX, ZOOM_MIN, type Viewport } from './viewport.svelte';
 
@@ -43,18 +44,9 @@
 		}
 	];
 	const now = $derived(MODES.find((mode) => mode.id === layout) ?? MODES[0]);
-	let isOpen = $state(false);
-	let menu: HTMLDivElement | undefined = $state();
-
-	function pick(mode: LayoutType) {
-		isOpen = false;
-		if (mode !== layout) onmode(mode);
-	}
-
-	// Anywhere else shuts the row, and so does Escape.
-	function onpointerdown(event: PointerEvent) {
-		if (isOpen && !menu?.contains(event.target as Node)) isOpen = false;
-	}
+	// A small notch at the left of the mode button shows that the row comes out that way; it goes while the row is out.
+	const NOTCH =
+		'after:pointer-events-none after:absolute after:top-1/2 after:left-px after:-translate-y-1/2 after:border-y-4 after:border-r-4 after:border-l-0 after:border-y-transparent after:border-r-current after:transition-opacity';
 
 	let track: HTMLDivElement | undefined = $state();
 	let isHeld = $state(false);
@@ -84,11 +76,6 @@
 		event.preventDefault();
 	}
 </script>
-
-<svelte:document
-	onpointerdowncapture={onpointerdown}
-	onkeydown={(event) => isOpen && event.key === 'Escape' && (isOpen = false)}
-/>
 
 <div
 	class="flex w-12 flex-col items-center gap-1 rounded-full bg-black py-2 text-white shadow-xl shadow-black/25"
@@ -149,60 +136,28 @@
 		title="Fit to the screen"
 		onclick={onfit}
 	/>
-	<div
-		bind:this={menu}
-		class="relative"
-	>
-		<!-- The mode the pages are in. A small notch at its left shows that the row comes out that way. -->
-		<Button
-			heavy={isOpen}
-			ghost={!isOpen}
-			invert
-			sm
-			icon={now.icon}
-			class={isOpen ? '' : 'bg-current/10'}
-			aria-haspopup="menu"
-			aria-expanded={isOpen}
-			aria-label="{now.name}: choose how the pages lie"
-			title="{now.name}: choose how the pages lie"
-			onclick={() => (isOpen = !isOpen)}
-		/>
-		<span
-			class="pointer-events-none absolute top-1/2 left-px -translate-y-1/2 border-y-4 border-r-4 border-l-0 border-y-transparent border-r-current transition-opacity {isOpen
-				? 'opacity-0'
-				: 'opacity-55'}"
-			aria-hidden="true"
-		></span>
-		<!-- Slide-out Row (Justin, 2026-11-26): the three modes slide out of the button in a row to its left, the
-		     mode the pages are in lit. -->
-		<div
-			class="absolute top-1/2 right-[calc(100%+10px)] flex -translate-y-1/2 gap-0.5 rounded-full bg-black p-1 shadow-xl shadow-black/30 transition-[clip-path] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] {isOpen
-				? '[clip-path:inset(0_0_0_0_round_999px)]'
-				: 'pointer-events-none [clip-path:inset(0_0_0_100%_round_999px)]'}"
-			role="menu"
-			aria-label="How the pages lie"
-		>
-			{#each MODES as mode, index (mode.id)}
-				<Button
-					heavy={mode.id === layout}
-					ghost={mode.id !== layout}
-					invert
-					sm
-					icon={mode.icon}
-					class="transition-[translate,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] {isOpen
-						? ''
-						: 'translate-x-6 opacity-0'}"
-					style="transition-delay: {isOpen ? (MODES.length - 1 - index) * 30 : 0}ms"
-					role="menuitemradio"
-					aria-checked={mode.id === layout}
-					aria-label={mode.label}
-					title={mode.label}
-					tabindex={isOpen ? 0 : -1}
-					onclick={() => pick(mode.id)}
-				/>
-			{/each}
-		</div>
-	</div>
+	<!-- The mode the pages are in. Stack, Spread and Present slide out of it in a row to its left, the mode the pages
+	     are in lit; a tap anywhere else or Escape puts the row back. -->
+	<Menu
+		isRow
+		opens="left"
+		offset={10}
+		label="How the pages lie"
+		options={MODES}
+		value={layout}
+		onpick={(id) => id !== layout && onmode(id as LayoutType)}
+		class="bg-black"
+		button={(_, isOpen) => ({
+			appearance: isOpen ? 'heavy' : 'ghost',
+			invert: true,
+			sm: true,
+			icon: now.icon,
+			class: `${NOTCH} ${isOpen ? 'after:opacity-0' : 'bg-current/10 after:opacity-55'}`,
+			'aria-label': `${now.name}: choose how the pages lie`,
+			title: `${now.name}: choose how the pages lie`
+		})}
+		choiceButton={{ invert: true, sm: true }}
+	/>
 	<Button
 		primary
 		heavy
