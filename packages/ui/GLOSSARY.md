@@ -276,6 +276,10 @@ _Avoid_: profile picture, user icon
 A few avatars overlapping, the first in front and each of the others tucked behind the one before, then a count of the rest: a project's team, a customer's logos (#379).
 _Avoid_: avatar group, face pile
 
+**Dialog**:
+The box that opens over the page and shuts the rest until it closes: a sheet rising from the bottom on a phone, which a pull down closes, and a centred box from tablet width. Escape and a tap outside close it too, and the focus goes into it and back to what opened it. The help ?'s kind leaves the focus in the input being typed in (#375).
+_Avoid_: popup, bottom sheet (as a component of its own), drawer
+
 **Selection bar**:
 The bright blue bar that takes the menu bar's place, at its exact size, while things are selected: white icons for what can be done to all of them at once, and an X at its far right that ends the selection, as a tap anywhere else does. Selected things wear a border of the same blue (Justin, 2026-11-24).
 _Avoid_: action bar, toolbar, bulk menu

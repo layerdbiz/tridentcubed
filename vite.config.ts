@@ -30,6 +30,20 @@ const outOfScope = [
 ];
 
 export default defineConfig({
+	// Before every commit, `vp staged` formats and lints the staged files (.vite-hooks/pre-commit, #370).
+	// Every lint rule here but one is a warning, so warnings stop the commit, or nothing would: the
+	// repo has none. The last flag lets a commit of only ignored or unlintable files (a barrel, a YAML
+	// file) pass; the ignore patterns below still decide what is checked.
+	staged: {
+		'*.{js,mjs,cjs,ts,svelte,css,json,yml,yaml}':
+			'vp check --fix --deny-warnings --no-error-on-unmatched-pattern'
+	},
+	// The root's half of `pnpm dev`: the barrels watcher, run beside each app's dev server under
+	// `vp run --parallel` (packages/tools, the workspace launcher; invariant 5). The apps' tasks
+	// come from `createAppConfig`.
+	run: {
+		tasks: { 'workspace:dev': { command: 'pnpm barrels:watch', cache: false } }
+	},
 	fmt: {
 		useTabs: true,
 		singleQuote: true,

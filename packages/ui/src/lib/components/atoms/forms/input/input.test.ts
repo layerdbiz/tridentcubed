@@ -124,4 +124,65 @@ describe('Input', () => {
 		await fireEvent.blur(input);
 		expect(input.value).toBe('3');
 	});
+
+	// #393: the Link field's open-link arrow and its error line, on the library box.
+	it('puts an action at its end: a link that opens in a new tab, named for what it does', () => {
+		render(Input, {
+			props: {
+				label: 'Project Files URL',
+				value: 'example.com/folder',
+				action: {
+					icon: 'icon-[mdi--open-in-new]',
+					label: 'Open the URL',
+					title: 'Open in example.com',
+					href: 'https://example.com/folder'
+				}
+			}
+		});
+
+		const link = screen.getByRole('link', { name: 'Open the URL' }) as HTMLAnchorElement;
+		expect(link.href).toBe('https://example.com/folder');
+		expect(link.target).toBe('_blank');
+		expect(link.rel).toContain('noopener');
+		expect(link.title).toBe('Open in example.com');
+		expect(fieldsetOf(link)).toBe(fieldsetOf(screen.getByRole('textbox')));
+	});
+
+	it('makes an action with no address a button that does its work', async () => {
+		const onclick = vi.fn();
+		render(Input, {
+			props: {
+				label: 'Code',
+				value: 'GUL',
+				action: { icon: 'icon-[mdi--copy]', label: 'Copy', onclick }
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+		expect(onclick).toHaveBeenCalledOnce();
+	});
+
+	it('says what is wrong under the box, and marks the input invalid and described by it', () => {
+		render(Input, {
+			props: {
+				label: 'Project Files URL',
+				value: 'a folder',
+				error: 'That does not look like a URL.'
+			}
+		});
+
+		const input = screen.getByRole('textbox', { name: 'Project Files URL' });
+		expect(input.getAttribute('aria-invalid')).toBe('true');
+		const line = document.getElementById(input.getAttribute('aria-describedby') ?? '');
+		expect(line?.textContent).toBe('That does not look like a URL.');
+		expect(fieldsetOf(input).classList.contains('field-invalid')).toBe(true);
+	});
+
+	it('is neither invalid nor described with no error', () => {
+		render(Input, { props: { label: 'Project Files URL', value: 'example.com' } });
+
+		const input = screen.getByRole('textbox', { name: 'Project Files URL' });
+		expect(input.hasAttribute('aria-invalid')).toBe(false);
+		expect(input.hasAttribute('aria-describedby')).toBe(false);
+	});
 });

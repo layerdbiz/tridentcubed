@@ -1,5 +1,5 @@
 {
-	"name": "template",
+	"name": "tridentcubed",
 	"engines": {
 		"node": "24.x"
 	},
@@ -15,21 +15,22 @@
 		"watch": "pnpm run workspace -- watch",
 		"build": "pnpm run workspace -- build",
 		"preview": "pnpm run workspace -- preview",
-		"preview:all": "turbo preview",
-		"test": "turbo run test --filter=app --filter=site --filter=@layerd/ui",
+		"preview:all": "vp run --parallel --recursive workspace:preview",
+		"test": "vp run --filter app --filter site --filter @layerd/ui test",
 		"check": "pnpm run check:static && pnpm test",
 		"check:static": "vp check && pnpm run check:types && pnpm run check:barrels",
 		"check:types": "pnpm --filter app --filter site --filter @layerd/ui --filter @layerd/config-vite run check",
 		"check:barrels": "pnpm barrels && git status --short -- ':(glob)apps/*/src/lib/index.ts' ':(glob)packages/ui/src/lib/**/index.ts' && test -z \"$(git status --porcelain -- ':(glob)apps/*/src/lib/index.ts' ':(glob)packages/ui/src/lib/**/index.ts')\"",
 		"barrels": "pnpm --filter @layerd/tools run barrels:run --workspace",
 		"barrels:watch": "pnpm --filter @layerd/tools run barrels:run --workspace --watch",
-		"symlinks": "turbo symlinks",
-		"symlinks:clean": "turbo symlinks:clean",
-		"symlinks:check": "turbo symlinks:check",
+		"symlinks": "pnpm --filter @layerd/tools symlinks",
+		"symlinks:clean": "pnpm --filter @layerd/tools symlinks:clean",
+		"symlinks:check": "pnpm --filter @layerd/tools symlinks:check",
 		"update": "pnpm up --latest -r",
 		"reset": "git clean -fdx",
 		"clean": "git clean -fdX",
-		"clear": "git clean -fd"
+		"clear": "git clean -fd",
+		"prepare": "vp config --no-agent"
 	},
 	"devDependencies": {
 		"@csstools/postcss-light-dark-function": "^3.0.1",
@@ -39,7 +40,6 @@
 		"@iconify-json/svg-spinners": "^1.2.4",
 		"@tailwindcss/postcss": "4.3.3",
 		"postcss": "^8.5.15",
-		"turbo": "2.11.6",
 		"unplugin-icons": "^23.0.1",
 		"vite-plus": "catalog:"
 	},

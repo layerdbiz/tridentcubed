@@ -22,8 +22,8 @@
 # `@layerd/ui/ui.css` resolves without the styles build, and dev stays green on a fresh clone (#129).
 #
 # build (app) and build (site): `pnpm build` inside the app folder from a clean checkout, the way
-# Vercel builds each project, with no `turbo ^build` before it. The 2026-10-03 retro's #86 passed a
-# local `turbo build` and failed both previews because the gate's build had a different shape.
+# Vercel builds each project, with no workspace build before it. The 2026-10-03 retro's #86 passed a
+# local workspace build and failed both previews because the gate's build had a different shape.
 #
 # Node comes from `engines.node` and pnpm from `packageManager` in the root package.json, so the
 # versions live in one place.
@@ -42,6 +42,10 @@ concurrency:
 
 permissions:
   contents: read
+
+# Nothing commits here, so `pnpm install`'s `prepare` leaves the pre-commit hook out (#370).
+env:
+  VP_GIT_HOOKS: '0'
 
 jobs:
   gate:

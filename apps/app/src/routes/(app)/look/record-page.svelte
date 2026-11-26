@@ -73,8 +73,8 @@
 			<span class="block truncate font-semibold text-slate-900">{record.key}</span>
 			<span class="block truncate text-xs text-slate-500">{DATASETS[record.page].one}</span>
 		</span>
-		<!-- With Bottom Bar B the save cloud is up here, not in the bar. -->
-		{#if look.variant('bar') !== 'A'}<SaveCloud {look} />{/if}
+		<!-- The save cloud is up here, not in the bar. -->
+		<SaveCloud {look} />
 		<MoreMenu
 			{look}
 			page={record.page}
@@ -181,7 +181,7 @@
 				kind={DATASETS[record.page].one}
 				reveal={look.tabProgress}
 				isLight={isPhoto}
-				hasCloud={look.variant('bar') !== 'A'}
+				hasCloud
 				hasChevron={look.variant('header') === 'C'}
 				bind:height={top}
 			>
