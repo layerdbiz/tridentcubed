@@ -11,7 +11,6 @@
    weight. */
 :is(fieldset.field, input.field-compact) {
 	--field-size: var(--theme-field-size, 1rem);
-	--input-height: var(--theme-field-height, 2.5em);
 	--field-radius: var(--theme-field-radius, 0.5em);
 	--field-color: var(--theme-field-color, var(--color-base-900));
 	--notch-indent: var(--theme-field-pad, 0.75em);
@@ -25,10 +24,14 @@
    while in use; the label's row grows by the extra pixel at its foot so the border's outer edge stays put, and the
    insides are measured from that outer edge, so nothing moves when it thickens. */
 fieldset.field {
+	--input-height: var(--theme-field-height, 3em);
 	--legend-ratio: var(--theme-field-label, 0.78);
 	--legend-weight: var(--theme-field-weight, var(--font-weight-semibold));
 	--legend-line: calc(var(--legend-ratio) * 1.25em);
 	--field-edge: 1px;
+	--field-inner-radius: calc(var(--field-radius) - var(--field-edge));
+	/* From the fieldset's inside (under the legend) up to the border's inside edge. */
+	--label-rise: calc((1px - var(--legend-line)) / 2);
 
 	--prefix-width: 0em;
 	--suffix-width: 0em;
@@ -52,25 +55,27 @@ fieldset.field {
 	border-width: var(--field-edge);
 }
 
-fieldset.field.xxs {
+/* The base `size` prop's ladder, as a share of the theme's size; `:where()` keeps it no stronger than the box's own
+   size, so a caller's rule can beat it. */
+fieldset.field:where(.xxs) {
 	font-size: calc(var(--field-size) * 0.625);
 }
-fieldset.field.xs {
+fieldset.field:where(.xs) {
 	font-size: calc(var(--field-size) * 0.75);
 }
-fieldset.field.sm {
+fieldset.field:where(.sm) {
 	font-size: calc(var(--field-size) * 0.875);
 }
-fieldset.field.md {
+fieldset.field:where(.md) {
 	font-size: var(--field-size);
 }
-fieldset.field.lg {
+fieldset.field:where(.lg) {
 	font-size: calc(var(--field-size) * 1.125);
 }
-fieldset.field.xl {
+fieldset.field:where(.xl) {
 	font-size: calc(var(--field-size) * 1.25);
 }
-fieldset.field.xxl {
+fieldset.field:where(.xxl) {
 	font-size: calc(var(--field-size) * 1.375);
 }
 
@@ -109,7 +114,7 @@ fieldset.field > label {
 	@apply pointer-events-auto absolute inset-0 z-0 grid items-center justify-center;
 	@apply grid-cols-[calc(var(--content-start)+var(--prefix-width))_minmax(0,1fr)_calc(var(--content-end)+var(--suffix-width))];
 
-	top: calc((1px - var(--legend-line)) / 2);
+	top: var(--label-rise);
 }
 
 fieldset.field > label > .icon.start,
@@ -132,7 +137,7 @@ fieldset.field > label > :is(input, select, textarea) {
 	@apply ps-(--input-pad-start) pe-(--input-pad-end) text-[1em];
 
 	color: var(--field-color);
-	border-radius: calc(var(--field-radius) - var(--field-edge));
+	border-radius: var(--field-inner-radius);
 }
 
 fieldset.field > label > input::placeholder,
@@ -141,7 +146,10 @@ fieldset.field > label > textarea::placeholder {
 }
 
 /* EMPTY: the label rests inside, with no notch in the border, until the box is in use or its ? is open (#395). */
-fieldset.field.field-empty:not(:focus-within):not(:has(.help[aria-expanded='true'])) legend {
+fieldset.field.field-empty:not(:focus-within, .field-unlabelled):not(
+		:has(.help[aria-expanded='true'])
+	)
+	legend {
 	@apply text-base-400 opacity-60;
 
 	max-width: 0;
@@ -187,9 +195,9 @@ fieldset.field:focus-within > label > .icon {
 /* NO LABEL ON THE BORDER, such as a second row under the first row's labels: the label's row keeps its place, so
    the box is as tall as the others, with no words and no notch; a screen reader still reads it. */
 fieldset.field.field-unlabelled legend {
-	max-width: 0 !important;
-	padding-inline: 0 !important;
-	opacity: 0 !important;
+	max-width: 0;
+	padding-inline: 0;
+	opacity: 0;
 }
 
 /* HELP: the ? right after the label (help/help.svelte). It shows once the label sits on the border, while the input
@@ -304,12 +312,10 @@ fieldset.field + .field-error {
    border, corners and blue; its hint shows, since no label sits in it. The width is the consumer's, given
    with an important utility (`w-20!`), as these rules sit outside the utilities' layer. */
 input.field-compact {
-	@apply block w-full min-w-0 border border-base-200 bg-surface outline-0 transition-colors;
+	--input-height: var(--theme-field-height, 2.5em);
 
-	height: var(--input-height);
-	border-radius: var(--field-radius);
-	padding-inline: var(--notch-indent);
-	color: var(--field-color);
+	@apply block w-full min-w-0 border border-base-200 bg-surface outline-0 transition-colors;
+	@apply h-(--input-height) rounded-(--field-radius) px-(--notch-indent) text-(color:--field-color);
 }
 
 input.field-compact::placeholder {

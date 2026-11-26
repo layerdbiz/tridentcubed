@@ -251,8 +251,6 @@
 				</fieldset>
 				{#snippet actions()}
 					{#if isEditable}
-						<!-- The library Button is placed (`relative`), so it sits above the library text area over it, which
-						     reaches a little below its own box (#394), and takes every tap. -->
 						<Button
 							primary
 							lite

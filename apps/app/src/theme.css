@@ -8,8 +8,8 @@
  * look, so `<Button color="primary" appearance="heavy">` is the app's blue button and `<Button danger>` its red one.
  * The Button's sizes, the form fields' sizes, the light look's shades and the glass white are set here too
  * (`--theme-button-*`, `--theme-field-*`, `--theme-lite-*`, `--theme-glass`): without them the library keeps its own,
- * as the site does. The app's own
- * Tailwind classes read the same colours by name: bg-primary, text-danger, bg-success.
+ * as the site does. The app's own Tailwind classes read the same colours by name: bg-primary, text-danger,
+ * bg-success.
  */
 [data-theme='trident'] {
 	/* colours */

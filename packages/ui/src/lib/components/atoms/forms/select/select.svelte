@@ -602,7 +602,7 @@
 		@apply ps-(--input-pad-start) pe-(--input-pad-end);
 
 		color: var(--field-color);
-		border-radius: calc(var(--field-radius) - var(--field-edge));
+		border-radius: var(--field-inner-radius);
 	}
 
 	fieldset .select-trigger-value {

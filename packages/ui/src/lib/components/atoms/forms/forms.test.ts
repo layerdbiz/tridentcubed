@@ -20,7 +20,7 @@ describe('forms.css', () => {
 describe('forms.css sizes', () => {
 	const rules = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-	it.each(['size', 'height', 'label', 'weight', 'radius', 'color'])(
+	it.each(['size', 'height', 'radius', 'pad', 'label', 'weight', 'color'])(
 		'reads the theme’s --theme-field-%s, with a fallback',
 		(token) => {
 			expect(rules).toMatch(new RegExp(`var\\(--theme-field-${token},`));
@@ -28,10 +28,18 @@ describe('forms.css sizes', () => {
 	);
 
 	it('gives the compact box the same words, height, corners and colour', () => {
-		const compact = rules.slice(rules.indexOf('input.field-compact'));
+		expect(rules).toMatch(
+			/:is\(fieldset\.field, input\.field-compact\)\s*{[^}]*font-size:\s*var\(--field-size\)/
+		);
+		const compact = rules.match(/input\.field-compact\s*{[^}]*}/)?.[0] ?? '';
 
-		for (const size of ['--field-size', '--input-height', '--field-radius', '--field-color'])
-			expect(compact).toContain(`var(${size})`);
+		for (const size of [
+			'(--input-height)',
+			'(--field-radius)',
+			'(--notch-indent)',
+			'(color:--field-color)'
+		])
+			expect(compact).toContain(size);
 	});
 });
 
@@ -48,7 +56,7 @@ describe('forms.css box', () => {
 		const empty = rules.match(/fieldset\.field\.field-empty[^{]*legend\s*{/g) ?? [];
 
 		expect(empty.length).toBeGreaterThan(0);
-		for (const selector of empty) expect(selector).toContain(':not(:focus-within)');
+		for (const selector of empty) expect(selector).toMatch(/:not\(:focus-within[,)]/);
 	});
 
 	it('keeps the label’s row one height in every state, so the border sits at one place', () => {

@@ -228,9 +228,9 @@
 
 	/* The box is as tall as the textarea in it, which grows with its words (#394): its inside sits in the flow, from
 	   the border's middle row down, where an input's is laid over a box of fixed height. An empty one's label rests on
-	   the first line. */
+	   the first line. Each rule is a step more specific than forms.css's own, so it never hangs on which loads first. */
 	:global {
-		fieldset.textarea {
+		fieldset.field.textarea {
 			--textarea-padding-top: 0.75em;
 			--textarea-padding-bottom: 0.75em;
 			--textarea-line: 1.5em;
@@ -242,16 +242,19 @@
 			height: auto;
 		}
 
-		fieldset.textarea > label {
+		/* While in use the border is a pixel thicker each side and the legend a pixel taller: the margins take both
+		   back, so the box keeps its height and nothing under it moves. */
+		fieldset.field.textarea > label {
 			position: relative;
 			inset: auto;
-			margin-top: calc((1px - var(--legend-line)) / 2);
+			margin-top: calc(var(--label-rise) + 1px - var(--field-edge));
+			margin-bottom: calc(1px - var(--field-edge));
 		}
 
 		/* At least its rows tall, empty too: the size it is measured at has no rows of its own. */
 		fieldset.textarea textarea {
 			min-height: calc(
-				var(--textarea-rows, 4) * var(--textarea-line) + var(--textarea-padding-top) +
+				var(--textarea-rows) * var(--textarea-line) + var(--textarea-padding-top) +
 					var(--textarea-padding-bottom)
 			);
 			padding-top: var(--textarea-padding-top);
