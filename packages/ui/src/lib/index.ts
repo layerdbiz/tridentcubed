@@ -33,8 +33,10 @@ export * from "./utils/trackevent.ts";
 /* COMPONENTS */
 // atoms
 export { default as Avatar, type AvatarProps } from "./components/atoms/avatar/avatar.svelte";
+export { default as Badge, type BadgeProps } from "./components/atoms/badge/badge.svelte";
 export { default as Button, type ButtonProps } from "./components/atoms/button/button.svelte";
 export { default as Checkbox } from "./components/atoms/forms/checkbox/checkbox.svelte";
+export { default as Chip, type ChipProps } from "./components/atoms/chip/chip.svelte";
 export { default as Colorss } from "./components/atoms/Colorss.svelte";
 export { default as Compact, type CompactProps } from "./components/atoms/forms/compact/compact.svelte";
 export { default as Container, type ContainerProps } from "./components/atoms/container/container.svelte";

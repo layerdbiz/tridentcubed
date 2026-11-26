@@ -14,7 +14,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { updated } from '$app/state';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
-	import { Accordion, Button, Dialog, type AccordionProps } from '@layerd/ui';
+	import { Accordion, Button, Chip, Dialog, type AccordionProps } from '@layerd/ui';
 	import { UpdateState } from '../update/update.state.svelte';
 	import { noteReload, takeLastResort } from '../update/rescue';
 	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
@@ -193,10 +193,10 @@
 										</span>
 									</span>
 									{#if fresh > 0}
-										<span
-											class="shrink-0 rounded-full bg-emerald-500 px-2 py-0.5 text-[11px] font-bold text-white"
-											>{fresh} new</span
-										>
+										<Chip
+											label="{fresh} new"
+											class="bg-emerald-500 px-2 py-0.5 text-[11px] font-bold text-white"
+										/>
 									{/if}
 								{/snippet}
 								{#if batch.summary}

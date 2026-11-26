@@ -142,18 +142,6 @@
 	}
 </script>
 
-{#snippet chip(isOn: boolean, label: string, onclick: () => void, icon = '')}
-	<button
-		type="button"
-		class="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition {isOn
-			? 'bg-primary text-white'
-			: 'bg-slate-100 text-slate-600 hover:bg-slate-200'}"
-		aria-pressed={isOn}
-		{onclick}
-		>{#if icon}<span class="{icon} size-4"></span>{/if}{label}</button
-	>
-{/snippet}
-
 {#snippet kinds()}
 	{#each PAGES as id (id)}
 		<button
@@ -230,13 +218,6 @@
 				add();
 			}}
 		>
-			{#if !look.isAddLocked}
-				<div class="-mx-5 mb-4 flex gap-2 overflow-x-auto px-5">
-					{#each PAGES as id (id)}
-						{@render chip(kind === id, DATASETS[id].one, () => (look.adding = id), PAGE_ICONS[id])}
-					{/each}
-				</div>
-			{/if}
 			<!-- The whole form scrolls inside the sheet, so a long one never pushes the buttons off the screen. -->
 			<div class="-mx-5 max-h-[62dvh] touch-pan-y overflow-y-auto overscroll-contain px-5 pb-1">
 				<div class="mb-4 flex items-center gap-3">
