@@ -72,7 +72,7 @@
 	let mode = $state<PopupModeType>(untrack(() => firstMode));
 	// Cropping or typing works on a copy of the photo's crop and description, kept only on Save.
 	let draft = $state<{ crop?: CropType; words: string } | null>(null);
-	let more = $state<HTMLElement>();
+	let moreBox = $state<HTMLElement>();
 	let isDetailsOpen = $state(false);
 	let savedAt = $state(0);
 	let stageWidth = $state(0);
@@ -268,7 +268,7 @@
 
 	// More's menu, while it is open, has the keys: Escape shuts it (the menu does that itself) and the pop-up stays.
 	function isMoreOpen() {
-		return Boolean(more?.querySelector('[aria-expanded="true"]'));
+		return Boolean(moreBox?.querySelector('[aria-expanded="true"]'));
 	}
 
 	// Escape leaves without saving; the arrow keys move between photos. A question on top (the delete) and More's
@@ -325,8 +325,8 @@
 	const MORE: MenuOptionType[] = [
 		{ id: 'delete', label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
 	];
-	// Its list hangs from More's right edge on a phone and its left edge on a wider screen, as it always has.
-	const isWide = new MediaQuery('min-width: 48rem');
+	// Its list opens over More, from More's right edge on a phone and its left edge on a wider screen, as it always has.
+	const wide = new MediaQuery('min-width: 48rem');
 
 	const toolClass =
 		'flex w-[76px] flex-col items-center gap-[3px] rounded-[14px] pt-[7px] pb-1.5 text-[11px] font-semibold text-slate-300 transition disabled:opacity-30 md:h-11 md:w-auto md:flex-row md:gap-2 md:rounded-full md:px-[18px] md:py-0 md:text-sm md:enabled:hover:text-white';
@@ -616,12 +616,13 @@
 						></span><span>{photo.kind === 'video' ? 'Play' : 'Open'}</span></a
 					>
 				{/if}
-				<div bind:this={more}>
+				<div bind:this={moreBox}>
 					<Menu
 						label="More"
 						value=""
 						options={MORE}
-						align={isWide.current ? 'left' : 'right'}
+						align={wide.current ? 'left' : 'right'}
+						opens="up"
 						onpick={(choice) => choice === 'delete' && askDelete()}
 					>
 						{#snippet trigger(_, isOpen)}

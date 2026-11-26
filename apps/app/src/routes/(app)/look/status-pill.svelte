@@ -26,6 +26,7 @@
 >
 	{#snippet trigger()}
 		<span
+			title="Change Status"
 			class="inline-flex items-center gap-1 rounded-full py-1 pr-2 pl-3 text-xs font-semibold text-white {STATUS[
 				project.status
 			].bar}">{project.status}<span class="icon-[mdi--chevron-down] size-4"></span></span
