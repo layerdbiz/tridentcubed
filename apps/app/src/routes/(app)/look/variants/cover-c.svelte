@@ -46,23 +46,14 @@
 					<span class="faces">
 						{#each line.names.slice(0, FACES) as name, index (name)}
 							{@const photo = personOf(name).photo}
-							{#if photo.startsWith('data:image/svg+xml,')}
-								<!-- Someone with no photo yet shows a person icon on grey. -->
-								<span
-									class="face"
-									style="z-index: {FACES - index}"
-									role="img"
-									aria-label={name}><span class="icon-[mdi--account] size-[62%]"></span></span
-								>
-							{:else}
-								<img
-									class="face"
-									style="z-index: {FACES - index}"
-									src={photo}
-									crossorigin={toCrossOrigin(photo)}
-									alt={name}
-								/>
-							{/if}
+							<!-- Someone with no photo yet shows their initials on their role's colour (#355). -->
+							<img
+								class="face"
+								style="z-index: {FACES - index}"
+								src={photo}
+								crossorigin={toCrossOrigin(photo)}
+								alt={name}
+							/>
 						{/each}
 					</span>
 					{#if line.more}<span class="more">{line.more}</span>{/if}

@@ -52,6 +52,7 @@
 		createdDayOf,
 		dayOf,
 		documentIdOf,
+		CLIENTS,
 		FACILITY_ICONS,
 		groupWordOf,
 		isPdfAttachment,
@@ -1446,7 +1447,7 @@
 {/snippet}
 
 <!-- The customer's logo, no box around it (run 9 note 6), as big as Trident's in the header (run 11); a customer with
-     no logo gets its initial on a colour circle. The document ID under the name, by a barcode, and under that the
+     no logo gets its code on a sky blue circle (#355). The document ID under the name, by a barcode, and under that the
      customer's own number for the job, by an ID card, when it has one (#217, #225). -->
 {#snippet customer()}
 	<div class="flex min-w-0 items-center gap-2.5">
@@ -1592,12 +1593,14 @@
 	{@const phone = contact?.phone.trim()}
 	{@const email = contact?.email.trim()}
 	<div class="flex min-w-0 flex-col items-center rounded-xl bg-slate-50 px-1.5 py-2 text-center">
+		<!-- Anyone without the organization's badge was added on the spot: black initials on white (#355). -->
 		<Avatar
 			{name}
 			size={36}
 			ring={isLead ? 'ring-primary' : 'ring-white'}
 			hasPresence={false}
 			{badge}
+			tone={badge ? undefined : 'personnel'}
 		/>
 		<p class="mt-1.5 w-full text-[10px] leading-tight font-semibold text-balance text-slate-900">
 			{name}
@@ -1799,7 +1802,22 @@
 			<!-- Anyone else on the job, by company, in the same cards with no badge, and the phone and email typed for
 			     them on the project (#326), as a team member's card shows theirs. -->
 			<div class="pt-2">
-				{@render caption(other.company || 'Other personnel')}
+				<!-- Its company's circle by its name: a customer's logo or code, or one added on the spot in white on
+				     black (#355). -->
+				<div class="flex items-center gap-1 pb-1">
+					{#if other.company.trim()}
+						<ClientLogo
+							name={other.company}
+							size={14}
+							shape="circle"
+							isBare
+							tone={CLIENTS.includes(other.company) ? 'customer' : 'company'}
+						/>
+					{/if}
+					<p class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
+						{other.company || 'Other personnel'}
+					</p>
+				</div>
 				<div
 					class="grid gap-1.5"
 					style="grid-template-columns: repeat({teamColumns}, minmax(0, 1fr))"

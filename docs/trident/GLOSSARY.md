@@ -404,7 +404,7 @@ Any number of free tags on a record, whatever its kind, beside its type: a custo
 _Avoid_: tags, types, categories
 
 **icon**:
-The symbol the app shows for a record that has no image of its own: its page's symbol in the main menu (a face for customers, a folder for projects, three people for team), or its type's or mode's where those have one. It belongs to the app and is never a field of a record.
+The symbol the app shows for a project, transport or facility that has no image of its own: its page's symbol in the main menu (a folder for projects), or its type's or mode's where those have one. A person with no photo shows their initials instead (the first letter of the first and last name, on their role's colour: purple for an Admin, blue for a Manager, grey for a Team user; black on white for Personnel), and a customer with no logo shows its code on sky blue; a company added on the spot as Personnel shows its code in white on black (#355). It belongs to the app and is never a field of a record.
 _Avoid_: logo, avatar, placeholder
 
 **logo**:

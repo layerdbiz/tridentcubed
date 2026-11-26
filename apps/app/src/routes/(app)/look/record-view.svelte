@@ -6,6 +6,7 @@
 	// tracking service); then its projects, as the same rows the Projects page lists.
 	import ClientLogo from './client-logo.svelte';
 	import Faces from './faces.svelte';
+	import { initialsOf, toInitialsPicture } from './initials';
 	import { DATASETS, PARTICULARS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProjectRow from './project-row.svelte';
@@ -131,18 +132,13 @@
 				<div class="mb-2 divide-y divide-slate-100 overflow-hidden {CARD}">
 					{#if person.name}
 						<div class="flex items-center gap-3 px-4 py-3">
-							{#if person.photo}
-								<img
-									src={person.photo}
-									alt=""
-									class="size-10 shrink-0 rounded-full object-cover"
-								/>
-							{:else}
-								<span
-									class="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500"
-									><span class="icon-[mdi--account] size-6"></span></span
-								>
-							{/if}
+							<!-- No photo: their initials, sky blue for a customer's people (#355). -->
+							<img
+								src={person.photo ||
+									toInitialsPicture(initialsOf(person.name), customer ? 'customer' : 'team')}
+								alt=""
+								class="size-10 shrink-0 rounded-full object-cover"
+							/>
 							<span class="min-w-0">
 								<span class="block truncate text-sm font-semibold text-slate-900"
 									>{person.name}</span
