@@ -18,7 +18,9 @@
 	// #376: More is the library's Menu, with Delete as its red choice; it opens over the pop-up, as every menu does.
 	// #343: the i at the top right opens the Details under the photo: the file as it arrived beside the file the app
 	// kept (type, size, pixel size), how much smaller it got, and whether its metadata came across. They follow the
-	// photo open as the strip is swiped; a PDF or a video says what its own file is.
+	// photo open as the strip is swiped; a PDF or a video says what its own file is. Justin's ask (2026-11-26): when
+	// and where it was taken come first, and under the rest every metadata field the original had, group by group,
+	// to read through or copy out whole; the Details scroll on their own when they run long.
 	import { tick, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -29,13 +31,19 @@
 	import {
 		ATTACHMENT_NOUNS,
 		type FileFactsType,
+		isPlaceRemoved,
 		toCarriedLabel,
+		toFieldGroups,
+		toFieldText,
 		toFileId,
+		toMapLink,
+		toPlaceLabel,
 		toSizeLabel,
 		toSmallerPercent,
+		toTakenFromLabel,
 		toTypeLabel
 	} from '#lib/files/files.schema.js';
-	import { fileDetailsOf } from '#lib/files/files.state.svelte.js';
+	import { fieldListOf, fileDetailsOf } from '#lib/files/files.state.svelte.js';
 	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
 	import Dots from './dots.svelte';
 	import type { GroupType, PhotoType } from './look.data';
@@ -74,6 +82,7 @@
 	let draft = $state<{ crop?: CropType; words: string } | null>(null);
 	let moreBox = $state<HTMLElement>();
 	let isDetailsOpen = $state(false);
+	let copiedAt = $state(0);
 	let savedAt = $state(0);
 	let stageWidth = $state(0);
 	let stageHeight = $state(0);
@@ -92,6 +101,10 @@
 	const detailsAddress = $derived(photo ? (photo.kind ? (photo.source ?? '') : photo.src) : '');
 	const details = $derived(isDetailsOpen ? fileDetailsOf(detailsAddress) : undefined);
 	const smaller = $derived(details ? toSmallerPercent(details.original, details.saved) : undefined);
+	// Every field the original had, read only once the Details are open on a file that kept them.
+	const fields = $derived(details?.hasFieldList ? fieldListOf(detailsAddress) : undefined);
+	const fieldGroups = $derived(toFieldGroups(fields ?? undefined));
+	const fieldCount = $derived(fieldGroups.reduce((count, each) => count + each.fields.length, 0));
 	// The photo open, and while looking the one either side of it, waiting just off the stage.
 	const slides = $derived.by(() => {
 		const wheres = mode === 'view' ? [-1, 0, 1] : [0];
@@ -127,6 +140,22 @@
 	function factsOf(facts: FileFactsType) {
 		const size = toSizeLabel(facts.size) || 'Size not recorded';
 		return facts.width && facts.height ? `${size} · ${facts.width} × ${facts.height}` : size;
+	}
+
+	// When it was taken, in the viewer's own time.
+	function takenAtOf(at: string | undefined) {
+		return at
+			? new Date(at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' })
+			: '';
+	}
+
+	// Every field as plain text, onto the clipboard; "Copied" shows for a moment.
+	async function copyFields() {
+		await navigator.clipboard.writeText(toFieldText(fieldGroups));
+		copiedAt = Date.now();
+		setTimeout(() => {
+			if (Date.now() - copiedAt >= 1900) copiedAt = 0;
+		}, 2000);
 	}
 
 	// How much smaller it got, in words.
@@ -288,10 +317,12 @@
 	}
 
 	// It opens in the browser's top layer, as every sheet does, so it covers the floating bar; Safari 16 has no
-	// popovers and keeps it on top by its z-index. The page behind does not scroll under it.
+	// popovers and keeps it on top by its z-index. The page behind does not scroll under it; the Details scroll.
 	const lift: Attachment<HTMLElement> = (node) => {
 		node.showPopover?.();
-		const hold = (event: WheelEvent) => event.preventDefault();
+		const hold = (event: WheelEvent) => {
+			if (!(event.target as Element | null)?.closest?.('[data-scroll]')) event.preventDefault();
+		};
 		node.addEventListener('wheel', hold, { passive: false });
 		return () => node.removeEventListener('wheel', hold);
 	};
@@ -483,14 +514,17 @@
 		{#if isDetailsOpen && mode === 'view' && photo}
 			<!-- #343: what the file was and became. -->
 			<section
-				class="mx-2.5 mt-2 shrink-0 rounded-2xl bg-white/[0.07] p-3 text-[13px] text-slate-300 md:mx-auto md:w-full md:max-w-2xl md:p-4"
+				class="mx-2.5 mt-2 max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain rounded-2xl bg-white/[0.07] p-3 text-[13px] text-slate-300 md:mx-auto md:max-h-[42vh] md:w-full md:max-w-2xl md:p-4"
 				aria-label="Details"
+				data-scroll
 				transition:fade={{ duration: 150 }}
 			>
 				{#if detailsAddress.startsWith('blob:')}
 					<p>The details show once it has uploaded.</p>
 				{:else if !toFileId(detailsAddress)}
 					<p>Details are kept for files added to a project. This one came with the sample.</p>
+				{:else if details === null}
+					<p>No details were kept for this file.</p>
 				{:else if !details}
 					<p class="flex items-center gap-2">
 						<span class="icon-[svg-spinners--ring-resize] size-4 text-slate-400"></span>Reading the
@@ -500,7 +534,31 @@
 					{@const isKept =
 						details.original.type === details.saved.type &&
 						details.original.size === details.saved.size}
+					{@const place = toPlaceLabel(details.taken)}
 					<p class="mb-2 truncate font-semibold text-white">{details.name}</p>
+					<dl class="mb-2.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+						<dt class="text-slate-400">Taken</dt>
+						<dd class="font-semibold text-white tabular-nums">
+							{takenAtOf(details.taken.at) || 'Not recorded'}
+						</dd>
+						<dt class="text-slate-400">Place</dt>
+						<dd class="font-semibold text-white tabular-nums">
+							{#if place}
+								<a
+									class="underline decoration-white/40 underline-offset-2 hover:decoration-white"
+									href={toMapLink(details.taken)}
+									target="_blank"
+									rel="noopener noreferrer">{place}</a
+								>
+							{:else}
+								{isPlaceRemoved(fields) ? 'Removed by the phone before upload' : 'Not recorded'}
+							{/if}
+						</dd>
+						{#if toTakenFromLabel(details.taken.from)}
+							<dt class="text-slate-400">From</dt>
+							<dd class="text-white">{toTakenFromLabel(details.taken.from)}</dd>
+						{/if}
+					</dl>
 					<div class="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
 						<div class="min-w-0 rounded-xl bg-white/[0.06] px-3 py-2.5">
 							<p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
@@ -542,6 +600,50 @@
 							</dd>
 						{/if}
 					</dl>
+					{#if details.hasFieldList}
+						<div class="mt-3 border-t border-white/10 pt-3">
+							<div class="flex min-h-8 items-center justify-between gap-2">
+								<p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+									Every metadata field{fields ? ` · ${fieldCount}` : ''}
+								</p>
+								{#if fieldCount}
+									<Button
+										ghost
+										invert
+										xs
+										icon={copiedAt ? 'icon-[mdi--check]' : 'icon-[mdi--content-copy]'}
+										label={copiedAt ? 'Copied' : 'Copy all'}
+										onclick={copyFields}
+									/>
+								{/if}
+							</div>
+							{#if fields === undefined}
+								<p class="mt-1 flex items-center gap-2">
+									<span class="icon-[svg-spinners--ring-resize] size-4 text-slate-400"
+									></span>Reading the fields
+								</p>
+							{:else if !fieldCount}
+								<p class="mt-1">The original had none.</p>
+							{:else}
+								{#each fieldGroups as group (group.name)}
+									<h3 class="mt-3 mb-1 font-semibold text-white">
+										{group.name}
+										<span class="font-normal text-slate-400 tabular-nums"
+											>{group.fields.length}</span
+										>
+									</h3>
+									<dl
+										class="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-3 gap-y-0.5 md:grid-cols-[13rem_minmax(0,1fr)]"
+									>
+										{#each group.fields as field (field.name)}
+											<dt class="wrap-anywhere text-slate-400">{field.name}</dt>
+											<dd class="wrap-anywhere text-white">{field.value}</dd>
+										{/each}
+									</dl>
+								{/each}
+							{/if}
+						</div>
+					{/if}
 				{/if}
 			</section>
 		{/if}

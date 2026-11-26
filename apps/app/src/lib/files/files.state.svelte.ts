@@ -18,6 +18,7 @@ import {
 	type ConvertAnswerType,
 	CONVERT_PATH,
 	type ConvertRequestType,
+	type FieldListType,
 	type FileDetailsType,
 	type FileTargetType,
 	MAX_FILE_BYTES,
@@ -477,30 +478,41 @@ export function startAttachment(file: File, options: AttachmentOptionsType) {
 	return upload;
 }
 
-// #343, #349: what each stored file was and became, by its id, once the server has said; asked once per file.
-const DETAILS = new SvelteMap<string, FileDetailsType | null>();
-const ASKED = new Set<string>();
+// A file's facts the server keeps, by the file's id: nothing (undefined) until it has said, null when it has none.
+// Each file is asked for once, and again only after the server could not be reached.
+function createLookup<T>(askFirst: (id: string) => Promise<T | null>) {
+	const found = new SvelteMap<string, T | null>();
+	const asked = new Set<string>();
+	return (address: string, ask = askFirst): T | null | undefined => {
+		const id = toFileId(address);
+		if (!id) return undefined;
+		if (!asked.has(id)) {
+			asked.add(id);
+			ask(id).then(
+				(answer) => found.set(id, answer),
+				() => asked.delete(id)
+			);
+		}
+		return found.has(id) ? found.get(id) : undefined;
+	};
+}
 
 /** Asks the server for one file's details; the asks of one moment go together (a batch query). */
 export type AskDetailsType = (id: string) => Promise<FileDetailsType | null>;
 
-const askDetails: AskDetailsType = async (id) =>
-	(await import('./files.remote')).fetchFileDetails(id);
-
 /**
  * What the file at this app address was and became (#343: the photo pop-up's Details; #349: the type on its tile),
- * once the server has said; nothing until then, and nothing for a starting file or a picture still on its way. The
+ * once the server has said (null when it has none); nothing until then, nor for a starting file or a picture on its way. The
  * server is asked once for each file, and again later only when it could not be reached.
  */
-export function fileDetailsOf(address: string, ask: AskDetailsType = askDetails) {
-	const id = toFileId(address);
-	if (!id) return undefined;
-	if (!ASKED.has(id)) {
-		ASKED.add(id);
-		ask(id).then(
-			(found) => DETAILS.set(id, found),
-			() => ASKED.delete(id)
-		);
-	}
-	return DETAILS.get(id) ?? undefined;
-}
+export const fileDetailsOf = createLookup<FileDetailsType>(async (id) =>
+	(await import('./files.remote')).fetchFileDetails(id)
+);
+
+/**
+ * Every metadata field of the original the file at this app address came from (#292), for the photo pop-up's Details
+ * (#343), once the server has said; asked only when the Details open.
+ */
+export const fieldListOf = createLookup<FieldListType>(async (id) =>
+	(await import('./files.remote')).fetchFieldList(id)
+);

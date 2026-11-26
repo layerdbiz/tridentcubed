@@ -1,13 +1,16 @@
 // The Activity (#306), through the real sign-in and the one save command on the in-process database: what an Admin
 // reads, newest first, and when each person last signed in. Every email and name here is made up.
+import { and, desc, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vite-plus/test';
 import type { ActivityEventType } from '#lib/activity/activity.types.js';
 import type { RowChangeType } from '#lib/rows/rows.schema.js';
-import { readActivity } from './activity';
+import { readActivity, recordProjectActivity } from './activity';
+import { CODE_MINUTES } from './auth';
 import type { ActorType } from './db/claims';
 import { TRIDENT_CUBED } from './db/seed';
 import * as schema from './db/schema';
 import { saveBatch } from './rows';
+import { sendCode } from './signin';
 import { createTestSignIn } from './testing';
 
 type TestType = Awaited<ReturnType<typeof createTestSignIn>>;
@@ -142,13 +145,15 @@ describe('the Activity', () => {
 
 		const toms = events.filter((event) => event.who === 'Tom Diaz').map(toLine);
 		expect(toms.map(({ kind, device }) => ({ kind, device }))).toEqual([
+			{ kind: 'signOut', device: 'Windows · Edge' },
 			{ kind: 'signIn', device: 'Windows · Edge' },
+			{ kind: 'signOut', device: 'iPhone · Safari' },
 			{ kind: 'signIn', device: 'iPhone · Safari' }
 		]);
 		expect(people.find((person) => person.who === 'Tom Diaz')).toEqual({
 			userId: again.user.id,
 			who: 'Tom Diaz',
-			at: toms[0].at,
+			at: toms[1].at,
 			isFirst: false,
 			device: 'Windows · Edge',
 			deviceKind: 'computer'
@@ -228,6 +233,167 @@ describe('the Activity', () => {
 		}));
 		expect(read.signIns).toEqual([]);
 		expect(read.users.map((row) => row.id)).not.toContain(guest.user.id);
+	});
+
+	it('records each sign-out made before its session ran out, on its device, and not a session that ran out', async () => {
+		// Justin, 2026-11-26: "every possible thing that happens". Log Out, from any copy of the app.
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const tom = await test.signIn(
+			'tom.diaz@tridentcubed.com',
+			new Headers({ 'user-agent': IPHONE })
+		);
+		await test.auth.api.signOut({ headers: new Headers({ cookie: tom.cookie }) });
+		const past = new Date(Date.now() - 60_000);
+		await test.db.insert(schema.session).values({
+			token: 'ran-out',
+			userId: tom.user.id,
+			expiresAt: past,
+			createdAt: past,
+			updatedAt: past,
+			activeOrganizationId: TRIDENT_CUBED.id
+		});
+		await test.db.delete(schema.session).where(eq(schema.session.token, 'ran-out'));
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+
+		const { events } = await readAs(test, ana);
+
+		expect(
+			events
+				.filter((event) => event.who === 'Tom Diaz')
+				.map(toLine)
+				.map(({ kind, device }) => ({ kind, device }))
+		).toEqual([
+			{ kind: 'signOut', device: 'iPhone · Safari' },
+			{ kind: 'signIn', device: 'iPhone · Safari' },
+			{ kind: 'signIn', device: undefined }
+		]);
+	});
+
+	it('shows a sign-in code asked for and never used once it has run out, and not one that signed someone in', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		await test.signIn('tom.diaz@tridentcubed.com');
+		await sendCode(test.auth, 'tom.diaz@tridentcubed.com', { ip: '203.0.113.71' });
+		await sendCode(test.auth, 'kim@elsewhere.example', { ip: '203.0.113.72' });
+		await sendCode(test.auth, 'lee@elsewhere.example', { ip: '203.0.113.73' });
+		// Tom's second code and the stranger Kim's ran out long ago; Lee's could still be used.
+		async function askedAgo(email: string, minutes: number) {
+			const [newest] = await test.db
+				.select({ id: schema.activityEvent.id })
+				.from(schema.activityEvent)
+				.where(and(eq(schema.activityEvent.kind, 'code'), eq(schema.activityEvent.email, email)))
+				.orderBy(desc(schema.activityEvent.createdAt))
+				.limit(1);
+			await test.db
+				.update(schema.activityEvent)
+				.set({ createdAt: new Date(Date.now() - minutes * 60_000) })
+				.where(eq(schema.activityEvent.id, newest.id));
+		}
+		await askedAgo('tom.diaz@tridentcubed.com', 2 * CODE_MINUTES);
+		await askedAgo('kim@elsewhere.example', 3 * CODE_MINUTES);
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+
+		const { events } = await readAs(test, ana);
+
+		expect(
+			events
+				.filter((event) => event.kind === 'code')
+				.map((event) => ({ who: event.who, email: 'email' in event ? event.email : undefined }))
+		).toEqual([
+			{ who: 'Tom Diaz', email: 'tom.diaz@tridentcubed.com' },
+			{ who: 'kim@elsewhere.example', email: 'kim@elsewhere.example' }
+		]);
+	});
+
+	it('records a project opened, once while someone keeps coming back to it, and every PDF downloaded', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const project = crypto.randomUUID();
+		await save(test, ana, {
+			table: 'project',
+			id: project,
+			operation: 'put',
+			values: { title: 'Hull survey' }
+		});
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+
+		expect(
+			await recordProjectActivity(test.claims, tom, { kind: 'open', projectId: project })
+		).toBe(true);
+		expect(
+			await recordProjectActivity(test.claims, tom, { kind: 'open', projectId: project })
+		).toBe(false);
+		await recordProjectActivity(test.claims, tom, { kind: 'download', projectId: project });
+		await recordProjectActivity(test.claims, tom, { kind: 'download', projectId: project });
+		// A project that is not there, or not theirs, records nothing.
+		expect(
+			await recordProjectActivity(test.claims, tom, {
+				kind: 'open',
+				projectId: crypto.randomUUID()
+			})
+		).toBe(false);
+
+		const { events } = await readAs(test, ana);
+
+		expect(
+			events
+				.filter((event) => event.kind === 'open' || event.kind === 'download')
+				.map((event) => ({
+					kind: event.kind,
+					who: event.who,
+					project: 'project' in event ? event.project : undefined,
+					projectId: 'projectId' in event ? event.projectId : undefined
+				}))
+		).toEqual([
+			{ kind: 'download', who: 'Tom Diaz', project: 'Hull survey', projectId: project },
+			{ kind: 'download', who: 'Tom Diaz', project: 'Hull survey', projectId: project },
+			{ kind: 'open', who: 'Tom Diaz', project: 'Hull survey', projectId: project }
+		]);
+	});
+
+	it('lets an Admin read what else happened, and anyone else write and read back only their own openings and downloads', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const project = crypto.randomUUID();
+		await save(test, ana, {
+			table: 'project',
+			id: project,
+			operation: 'put',
+			values: { title: 'Hull survey' }
+		});
+		await recordProjectActivity(test.claims, ana, { kind: 'open', projectId: project });
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		await recordProjectActivity(test.claims, tom, { kind: 'download', projectId: project });
+
+		function readKinds(actor: ActorType) {
+			return test.claims.run(actor, (tx) =>
+				tx
+					.select({ userId: schema.activityEvent.userId, kind: schema.activityEvent.kind })
+					.from(schema.activityEvent)
+					.where(eq(schema.activityEvent.projectId, project))
+			);
+		}
+		function write(actor: ActorType, values: Partial<typeof schema.activityEvent.$inferInsert>) {
+			return test.claims.run(actor, (tx) =>
+				tx.insert(schema.activityEvent).values({
+					kind: 'open',
+					userId: actor.userId,
+					organizationId: actor.organizationId,
+					projectId: project,
+					...values
+				})
+			);
+		}
+
+		expect(await readKinds(tom)).toEqual([{ userId: tom.userId, kind: 'download' }]);
+		expect((await readKinds(ana)).map((row) => row.kind).sort()).toEqual(['download', 'open']);
+		// Not a sign-in code or a sign-out, which only the database writes, and never as someone else.
+		await expect(write(tom, { kind: 'code' })).rejects.toThrow();
+		await expect(write(tom, { kind: 'signOut' })).rejects.toThrow();
+		await expect(write(tom, { userId: ana.userId })).rejects.toThrow();
 	});
 
 	it('lets only an Admin’s queries read sign-ins, with the permission check skipped, and nobody a session', async () => {
@@ -328,7 +494,7 @@ describe('the Activity', () => {
 
 		expect(
 			events.flatMap((event) =>
-				event.kind === 'signIn' ? [] : [{ rowId: event.rowId, projectId: event.projectId }]
+				'rowId' in event ? [{ rowId: event.rowId, projectId: event.projectId }] : []
 			)
 		).toEqual([
 			{ rowId: customer, projectId: undefined },

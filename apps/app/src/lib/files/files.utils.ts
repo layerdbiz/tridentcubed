@@ -133,9 +133,28 @@ export async function encodeWebpInWasm(image: ImageData, quality: number) {
 	return new Blob([bytes], { type: 'image/webp' });
 }
 
-/** When and where it was taken: the file's own word first, else the device's, else nothing. */
+/**
+ * How long after it was taken a photo counts as just taken. Phones hand a browser photos with their place taken out
+ * (Chrome on Android, found 2026-11-26), so a photo just taken with no place of its own takes the device's place:
+ * the device is still where the photo was taken. An older one from the gallery never does.
+ */
+export const JUST_TAKEN_MS = 15 * 60 * 1000;
+
+/** Whether a photo taken at this time was taken just now, give or take a clock a little off. */
+export function isJustTaken(at: string | undefined, now: Date) {
+	const time = at ? Date.parse(at) : Number.NaN;
+	return Number.isFinite(time) && Math.abs(now.getTime() - time) <= JUST_TAKEN_MS;
+}
+
+/**
+ * When and where it was taken: the file's own word first, else the device's, else nothing. A photo just taken that
+ * says when but not where takes the device's place, flagged as such.
+ */
 export function toTaken(exif: ExifTakenType, device: { now?: Date; place?: PlaceType }): TakenType {
 	const hasPlace = exif.latitude !== undefined && exif.longitude !== undefined;
+	if (exif.at && !hasPlace && device.place && device.now && isJustTaken(exif.at, device.now)) {
+		return { from: 'file-device', at: exif.at, ...device.place };
+	}
 	if (exif.at || hasPlace) {
 		return {
 			from: 'file',
@@ -151,21 +170,69 @@ export function toTaken(exif: ExifTakenType, device: { now?: Date; place?: Place
 	};
 }
 
-/** The device's place, only when the User already allowed it; a picture never asks, and never waits long. */
-export async function readDevicePlace(): Promise<PlaceType | undefined> {
+// Whether this browser has already asked for the device's place once (ADR 0004: asked once, never required). A
+// browser that keeps nothing counts as asked, so it is never asked over and over.
+const ASKED_KEY = 'trident:place-asked';
+
+function hasAskedForPlace() {
 	try {
-		const permission = await navigator.permissions?.query({ name: 'geolocation' });
-		if (permission?.state !== 'granted') return undefined;
-		return await new Promise((resolve) =>
-			navigator.geolocation.getCurrentPosition(
-				({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
-				() => resolve(undefined),
-				{ timeout: 3000, maximumAge: 60_000 }
-			)
-		);
+		return localStorage.getItem(ASKED_KEY) === 'yes';
 	} catch {
-		return undefined;
+		return true;
 	}
+}
+
+function markAskedForPlace() {
+	try {
+		localStorage.setItem(ASKED_KEY, 'yes');
+	} catch {
+		// Nothing kept: hasAskedForPlace says asked.
+	}
+}
+
+async function readPlace(): Promise<PlaceType | undefined> {
+	if (!navigator.geolocation) return undefined;
+	const permission = await navigator.permissions
+		?.query({ name: 'geolocation' })
+		.catch(() => undefined);
+	const state = permission?.state ?? 'prompt';
+	if (state === 'denied') return undefined;
+	const isAsking = state !== 'granted';
+	if (isAsking) {
+		if (hasAskedForPlace()) return undefined;
+		markAskedForPlace();
+	}
+	// Asking waits for the User's answer, a while; a place already allowed is read quickly or not at all.
+	const waitMs = isAsking ? 20_000 : 3_000;
+	return new Promise((resolve) => {
+		const giveUp = setTimeout(() => resolve(undefined), waitMs);
+		navigator.geolocation.getCurrentPosition(
+			({ coords }) => {
+				clearTimeout(giveUp);
+				resolve({ latitude: coords.latitude, longitude: coords.longitude });
+			},
+			() => {
+				clearTimeout(giveUp);
+				resolve(undefined);
+			},
+			{ timeout: 3_000, maximumAge: 60_000 }
+		);
+	});
+}
+
+let placeReading: Promise<PlaceType | undefined> | undefined;
+
+/**
+ * The device's place: where the User allowed it, or the first time a photo needs it, after the browser asks once
+ * (ADR 0004). Never required and never asked again; photos added together share one reading.
+ */
+export function readDevicePlace(): Promise<PlaceType | undefined> {
+	placeReading ??= readPlace()
+		.catch(() => undefined)
+		.finally(() => {
+			placeReading = undefined;
+		});
+	return placeReading;
 }
 
 /** What goes to storage: the carried copy, the original untouched, or the copy alone with nothing carried. */
@@ -235,11 +302,14 @@ async function drawPicture(
 	return { blob, width, height, full };
 }
 
-// The time and place it was taken: the file's own, else (for a photo) the device's.
+// The time and place it was taken: the file's own, else (for a photo) the device's. The device's place is read for
+// a photo that says nothing of either, or that was just taken and came without its place.
 async function toPictureTaken(original: MetadataType, kind: PictureKindType) {
 	const exif = toExifTaken(original.tags);
-	if (kind === 'photo' && !exif.at && exif.latitude === undefined) {
-		return toTaken(exif, { now: new Date(), place: await readDevicePlace() });
+	const now = new Date();
+	const isPlaceMissing = exif.latitude === undefined || exif.longitude === undefined;
+	if (kind === 'photo' && isPlaceMissing && (!exif.at || isJustTaken(exif.at, now))) {
+		return toTaken(exif, { now, place: await readDevicePlace() });
 	}
 	return toTaken(exif, {});
 }

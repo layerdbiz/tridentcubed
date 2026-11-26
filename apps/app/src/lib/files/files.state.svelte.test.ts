@@ -12,7 +12,13 @@ import {
 	type UploadAnswerType,
 	type UploadRequestType
 } from './files.schema';
-import { fileDetailsOf, Upload, UploadBatch, type UploadStepsType } from './files.state.svelte';
+import {
+	fieldListOf,
+	fileDetailsOf,
+	Upload,
+	UploadBatch,
+	type UploadStepsType
+} from './files.state.svelte';
 import type { PreparedType } from './files.utils';
 
 const FILE_ID = '0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
@@ -519,7 +525,8 @@ describe('a stored file’s details (#343, #349)', () => {
 		saved: { type: 'image/webp', size: 600_000 },
 		carried: 'all',
 		hasFieldList: true,
-		isOriginalKept: false
+		isOriginalKept: false,
+		taken: { from: 'file', at: '2026-11-26T11:35:12.000Z' }
 	};
 
 	it('asks the server once for each file, and gives back what it found once it answers', async () => {
@@ -536,6 +543,15 @@ describe('a stored file’s details (#343, #349)', () => {
 
 		expect(fileDetailsOf(`/files/${id}`, ask)).toEqual(DETAILS);
 		expect(asked).toEqual([id]);
+	});
+
+	it('says so once the server has no details for a file', async () => {
+		const id = '6f0a1b2c-3d4e-4f5a-8b6c-7d8e9f0a1b2c';
+
+		expect(fileDetailsOf(`/files/${id}`, async () => null)).toBeUndefined();
+		await Promise.resolve();
+
+		expect(fileDetailsOf(`/files/${id}`)).toBeNull();
 	});
 
 	it('asks nothing for a starting file or a picture still on its way', () => {
@@ -566,5 +582,23 @@ describe('a stored file’s details (#343, #349)', () => {
 
 		expect(fileDetailsOf(`/files/${id}`, ask)).toEqual(DETAILS);
 		expect(tries).toBe(2);
+	});
+});
+
+describe('a stored photo’s metadata fields (#343)', () => {
+	it('are asked for once, apart from its details', async () => {
+		const id = '9c3d4e5f-6a7b-4c8d-9e0f-1a2b3c4d5e6f';
+		const fields = { exif: { Make: { description: 'Google' } } };
+		const asked: string[] = [];
+		const ask = async (each: string) => {
+			asked.push(each);
+			return fields;
+		};
+
+		expect(fieldListOf(`/files/${id}`, ask)).toBeUndefined();
+		await Promise.resolve();
+
+		expect(fieldListOf(`/files/${id}`, ask)).toEqual(fields);
+		expect(asked).toEqual([id]);
 	});
 });

@@ -4,15 +4,21 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
 	isShownType,
 	isToConvert,
+	isPlaceRemoved,
 	isTypeAllowed,
 	toAttachmentKind,
 	toCarriedLabel,
-	toFileId,
 	toEnding,
+	toFieldGroups,
+	toFieldText,
+	toFileId,
+	toMapLink,
 	toOriginalFacts,
 	toPictureType,
+	toPlaceLabel,
 	toSizeLabel,
 	toSmallerPercent,
+	toTakenFromLabel,
 	toTyped,
 	toTypeLabel
 } from './files.schema';
@@ -161,5 +167,124 @@ describe('the file at an app address (#343)', () => {
 		expect(toFileId('blob:https://next.app.tridentcubed.com/1234')).toBe('');
 		expect(toFileId('/files/not-an-id')).toBe('');
 		expect(toFileId('')).toBe('');
+	});
+});
+
+describe('every metadata field of the original, for the photo’s Details (#343)', () => {
+	const LIST = {
+		file: { 'Image Width': { value: 4032, description: '4032px' } },
+		exif: {
+			Make: { id: 271, value: ['Google'], description: 'Google' },
+			'Exif IFD Pointer': { id: 34665, value: 38, description: 38 },
+			DateTimeOriginal: { value: ['2026:11:26 05:35:12'], description: '2026:11:26 05:35:12' },
+			MakerNote: { value: { base64: 'AAEC' } },
+			UserComment: { value: { codes: [72, 105, 0] } }
+		},
+		gps: { Latitude: 29.7604, Longitude: -95.3698 },
+		xmp: { Rating: { value: '5', description: '5' }, History: { value: { characters: 90000 } } },
+		Thumbnail: { type: 'image/jpeg', image: { bytes: 6120 } }
+	};
+
+	it('leaves out XMP’s raw packet, whose fields are each listed already', () => {
+		const list = {
+			xmp: {
+				_raw: '<x:xmpmeta>…</x:xmpmeta>',
+				City: { value: 'Brownsville', description: 'Brownsville' }
+			}
+		};
+
+		expect(toFieldGroups(list)).toEqual([
+			{ name: 'XMP', fields: [{ name: 'City', value: 'Brownsville' }] }
+		]);
+	});
+
+	it('lists each group by its usual name, EXIF and GPS first, each field with what it says', () => {
+		const groups = toFieldGroups(LIST);
+
+		expect(groups.map((group) => group.name)).toEqual(['EXIF', 'GPS', 'XMP', 'File', 'Thumbnail']);
+		expect(groups[0].fields).toEqual([
+			{ name: 'Make', value: 'Google' },
+			{ name: 'Exif IFD Pointer', value: '38' },
+			{ name: 'DateTimeOriginal', value: '2026:11:26 05:35:12' },
+			{ name: 'MakerNote', value: 'Binary data, 3 bytes' },
+			{ name: 'UserComment', value: 'Hi' }
+		]);
+		expect(groups[1].fields).toEqual([
+			{ name: 'Latitude', value: '29.7604' },
+			{ name: 'Longitude', value: '-95.3698' }
+		]);
+		expect(groups[2].fields[1]).toEqual({ name: 'History', value: 'Text, 90000 characters' });
+		expect(groups[4].fields).toEqual([
+			{ name: 'type', value: 'image/jpeg' },
+			{ name: 'image', value: 'Picture, 6120 bytes' }
+		]);
+	});
+
+	it('lists nothing for no field list', () => {
+		expect(toFieldGroups(undefined)).toEqual([]);
+		expect(toFieldGroups({})).toEqual([]);
+	});
+
+	it('writes the list out as plain text to copy', () => {
+		const text = toFieldText(
+			toFieldGroups({ gps: { Latitude: 29.7604 }, exif: { Make: { description: 'Google' } } })
+		);
+
+		expect(text).toBe('EXIF\nMake: Google\n\nGPS\nLatitude: 29.7604');
+	});
+});
+
+describe('when and where a photo was taken, for its Details (#343)', () => {
+	it('says where the time and place came from', () => {
+		expect(toTakenFromLabel('file')).toBe('Read from the photo');
+		expect(toTakenFromLabel('device')).toBe('From the phone when it was added');
+		expect(toTakenFromLabel('file-device')).toBe('Time from the photo, place from the phone');
+		expect(toTakenFromLabel('')).toBe('');
+	});
+
+	it('gives the place to five decimal places, and a map of it', () => {
+		const taken = { from: 'file' as const, latitude: 29.760427, longitude: -95.369803 };
+
+		expect(toPlaceLabel(taken)).toBe('29.76043, -95.36980');
+		expect(toMapLink(taken)).toBe(
+			'https://www.google.com/maps/search/?api=1&query=29.760427,-95.369803'
+		);
+	});
+
+	it('tells a place the phone blanked from one never recorded', () => {
+		const blanked = {
+			exif: {
+				GPSLatitude: {
+					value: [
+						[0, 0],
+						[0, 0],
+						[0, 0]
+					],
+					description: null
+				}
+			}
+		};
+		const kept = {
+			exif: {
+				GPSLatitude: {
+					value: [
+						[29, 1],
+						[45, 1],
+						[3756, 100]
+					],
+					description: 29.76
+				}
+			}
+		};
+
+		expect(isPlaceRemoved(blanked)).toBe(true);
+		expect(isPlaceRemoved(kept)).toBe(false);
+		expect(isPlaceRemoved({ exif: {} })).toBe(false);
+		expect(isPlaceRemoved(undefined)).toBe(false);
+	});
+
+	it('gives no place without both halves of it', () => {
+		expect(toPlaceLabel({ from: 'file', latitude: 29.76 })).toBe('');
+		expect(toMapLink({ from: '' })).toBe('');
 	});
 });

@@ -212,8 +212,12 @@ export async function convertFile(
 
 	const path = `${actor.organizationId}/${id}-${MAX_PICTURE_SIDE[kind]}.${toEnding(converted.type, '')}`;
 	await store.write(path, converted.bytes, converted.type);
-	// The device's reading of when and where stands when it read them from the file: it knows its own time zone.
-	const isTakenKept = file.taken.from === 'file' || converted.taken.from !== 'file';
+	// The device's reading of when and where stands when it read them from the file: it knows its own time zone, and
+	// a photo just taken that came without its place has the device's place beside the file's time.
+	const isTakenKept =
+		file.taken.from === 'file' ||
+		file.taken.from === 'file-device' ||
+		converted.taken.from !== 'file';
 	const { taken, metadata, full } = converted;
 	// #343: the original as it arrived is the untouched file, its pixel size read here when the device could not.
 	const original = file.original ?? { type: file.type, size: file.size };

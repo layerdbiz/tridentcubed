@@ -206,7 +206,8 @@ export async function readFileDetails(claims: ClaimsType, actor: ActorType, ids:
 			saved: { type: file.type, size: file.size, width: file.width, height: file.height },
 			carried: file.carried,
 			hasFieldList,
-			isOriginalKept: Boolean(file.originalPath)
+			isOriginalKept: Boolean(file.originalPath),
+			taken: file.taken
 		});
 	}
 	return found;
