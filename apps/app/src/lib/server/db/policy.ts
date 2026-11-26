@@ -6,8 +6,8 @@
 // `trident_app` is the app's own role, not Supabase's `authenticated`: Supabase Auth keeps running and hands out
 // `authenticated` tokens to anyone who signs up through it, so no policy of this app is ever granted to that role.
 //
-// `CLAIMS_SQL` is what drizzle-kit cannot write: the role, the `app` schema with its helpers, and the role's table
-// privileges. It runs before `schema.sql` (the policies name the role and the helpers), on the in-process database
+// `CLAIMS_SQL` is what drizzle-kit cannot write: the role, the `app` schema with its helpers (one of them,
+// `app.is_guest_shown`, runs as its owner to read every membership), and the role's table privileges. It runs before `schema.sql` (the policies name the role and the helpers), on the in-process database
 // at boot and at the head of the one initial migration (#194). It is safe to run twice. The role it grants the
 // restricted role to is the one running it and, by name, `postgres`: the app connects through Supabase's pooler as
 // `postgres`, which must be able to switch to the role even when the migration ran as another (`supabase_admin`).
@@ -28,6 +28,15 @@ export const ORGANIZATION_ID = sql`app.organization_id()`;
  * admin flag on their own user row. For a policy that only an Admin passes (the Activity's sign-ins, #306).
  */
 export const IS_ADMIN = sql`(app.claims() ->> 'role' = 'admin' or exists (select 1 from public."user" u where u.id = app.user_id() and u.is_super_admin))`;
+
+/**
+ * Whether the acting User, an Admin (or the Super admin), may see this User as a Guest: someone who belongs to no
+ * organization yet, waiting for access, whom an Admin lets in (#306; Justin, 2026-11-26). It reads every membership,
+ * past the policies, so a member of another organization is never taken for a Guest (`app.is_guest_shown`).
+ */
+export function isGuestShown(userId: SQL) {
+	return sql`app.is_guest_shown(${userId})`;
+}
 
 /**
  * The usual policy of an organization's table: the restricted role reads and writes only the rows of the acting
@@ -86,6 +95,15 @@ CREATE OR REPLACE FUNCTION app.user_id() RETURNS uuid
 CREATE OR REPLACE FUNCTION app.organization_id() RETURNS uuid
 	LANGUAGE sql STABLE SET search_path = ''
 	AS $$ SELECT nullif(app.claims() ->> 'org', '')::uuid $$;
+CREATE OR REPLACE FUNCTION app.is_guest_shown(target uuid) RETURNS boolean
+	LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = ''
+	AS $$ BEGIN
+		RETURN (app.claims() ->> 'role' = 'admin'
+			OR EXISTS (SELECT 1 FROM public."user" u WHERE u.id = app.user_id() AND u.is_super_admin))
+			AND NOT EXISTS (SELECT 1 FROM public.member m WHERE m.user_id = target);
+	END $$;
+REVOKE ALL ON FUNCTION app.is_guest_shown(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.is_guest_shown(uuid) TO ${APP_ROLE};
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${APP_ROLE};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${APP_ROLE};
 `;

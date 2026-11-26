@@ -17,7 +17,7 @@ import {
 	timestamp,
 	uuid
 } from 'drizzle-orm/pg-core';
-import { appRole, IS_ADMIN, ORGANIZATION_ID, USER_ID } from './policy';
+import { appRole, IS_ADMIN, isGuestShown, ORGANIZATION_ID, USER_ID } from './policy';
 
 function id() {
 	return uuid('id')
@@ -57,6 +57,12 @@ export const user = pgTable(
 			for: 'select',
 			to: appRole,
 			using: sql`exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = ${ORGANIZATION_ID})`
+		}),
+		// A Guest, waiting for access, to an Admin, who lets them in: their name in the Activity (#306).
+		pgPolicy('user who is a Guest is read by an Admin', {
+			for: 'select',
+			to: appRole,
+			using: isGuestShown(sql`"user".id`)
 		})
 	]
 ).enableRLS();
@@ -85,8 +91,8 @@ export const session = pgTable(
 // Every sign-in, by any way, for the Activity (#306): who, when, the organization the session acted in (none for a
 // Guest) and the device its browser named. Never a session's token or address, which sign its User in; and Log Out
 // removes a session but not its sign-in. The database writes it for each new session, whatever copy of the app made
-// it (`triggers.ts`); the restricted role only reads it, and only as an Admin (or the Super admin), and only the sign-ins
-// of the acting organization's members that did not act in another organization.
+// it (`triggers.ts`); the restricted role only reads it, and only as an Admin (or the Super admin): the sign-ins of the
+// acting organization's members that did not act in another organization, and every Guest's.
 export const signIn = pgTable(
 	'sign_in',
 	{
@@ -104,6 +110,13 @@ export const signIn = pgTable(
 			for: 'select',
 			to: appRole,
 			using: sql`${IS_ADMIN} and exists (select 1 from public.member m where m.user_id = "sign_in".user_id and m.organization_id = ${ORGANIZATION_ID}) and ("sign_in".organization_id is null or "sign_in".organization_id = ${ORGANIZATION_ID})`
+		}),
+		// A Guest's, someone waiting for access, whom an Admin lets in (Justin, 2026-11-26: every sign-in, not only
+		// the members').
+		pgPolicy('sign_in of a Guest is read by an Admin', {
+			for: 'select',
+			to: appRole,
+			using: isGuestShown(sql`"sign_in".user_id`)
 		})
 	]
 ).enableRLS();

@@ -787,7 +787,11 @@ CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "t
 --> statement-breakpoint
 CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
 --> statement-breakpoint
+CREATE POLICY "user who is a Guest is read by an Admin" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (app.is_guest_shown("user".id));
+--> statement-breakpoint
 CREATE POLICY "sign_in is read by an Admin of the acting organization" ON "sign_in" AS PERMISSIVE FOR SELECT TO "trident_app" USING ((app.claims() ->> 'role' = 'admin' or exists (select 1 from public."user" u where u.id = app.user_id() and u.is_super_admin)) and exists (select 1 from public.member m where m.user_id = "sign_in".user_id and m.organization_id = app.organization_id()) and ("sign_in".organization_id is null or "sign_in".organization_id = app.organization_id()));
+--> statement-breakpoint
+CREATE POLICY "sign_in of a Guest is read by an Admin" ON "sign_in" AS PERMISSIVE FOR SELECT TO "trident_app" USING (app.is_guest_shown("sign_in".user_id));
 --> statement-breakpoint
 CREATE POLICY "organization is the acting one" ON "organization" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.organization_id());
 --> statement-breakpoint
