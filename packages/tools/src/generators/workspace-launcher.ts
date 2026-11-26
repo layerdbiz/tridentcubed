@@ -4,8 +4,9 @@
  * Contract (ticket #9, 2026-09-18; see ../../README.md for the full model):
  * - Reads the root package.json `apps` map (object of booleans, or array).
  *   Enabled apps are the default selection; positional app names on the
- *   command line replace that selection; anything after `--` goes to
- *   `vp run` as its own options.
+ *   command line replace that selection; anything after `--` (or any flag)
+ *   goes to each task's command, as it went to each script under Turbo:
+ *   `pnpm dev -- --port 5190` reaches `vp dev`.
  * - Validates every selected name against the `name` field of each
  *   package.json under apps/. (Do not write that path as a glob here:
  *   star-slash would close this comment and break type stripping.)
@@ -225,8 +226,8 @@ function buildRunArgs(
 		"run",
 		...(command === "build" ? [] : ["--parallel"]),
 		...filters,
-		...passthroughArgs,
 		task,
+		...passthroughArgs,
 	];
 }
 

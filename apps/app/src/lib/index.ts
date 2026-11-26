@@ -50,9 +50,6 @@ export * from "./components/photo/photo.constants.ts";
 export * from "./components/photo/photo.types.ts";
 export * from "./components/photo/photo.utils.ts";
 
-// sheet
-export { default as Sheet } from "./components/sheet/sheet.svelte";
-
 // trip
 export { default as Trip } from "./components/trip/trip.svelte";
 export * from "./components/trip/trip.constants.ts";

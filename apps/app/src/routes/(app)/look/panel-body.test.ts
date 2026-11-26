@@ -398,3 +398,48 @@ describe('the photo panels and the Time Log on the library’s inputs', () => {
 		expect(look.saved).toHaveBeenCalled();
 	});
 });
+
+// #393: the Operations panel's Project Files URL on the library's box, its open arrow and its error line inside it.
+describe('the Operations panel’s link on the library’s box', () => {
+	function showOperations(link: string) {
+		const panels = createPanels({ stops: [], team: [] } as unknown as ProjectType);
+		const found = panels.find((each) => each.key === 'operations')!;
+		const panel = toState({ ...found, isEnabled: true, link });
+		const look = Object.assign(lookOf(panel), {
+			helpOf: (key: string) => `Help for ${key}.`
+		});
+		const view = render(PanelBody, { props: { look, panel } });
+		return { ...view, look, panel };
+	}
+
+	function linkField() {
+		return screen.getByRole('textbox', { name: 'Project Files URL' }) as HTMLInputElement;
+	}
+
+	it('is the library’s field with its ?, and opens a folder’s address in a new tab', () => {
+		showOperations('1drv.ms/f/s!folder');
+
+		expect(linkField().closest('fieldset.field')).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'What goes in Project Files URL?' })).toBeTruthy();
+		const open = screen.getByRole('link', { name: 'Open the URL' }) as HTMLAnchorElement;
+		expect(open.href).toBe('https://1drv.ms/f/s!folder');
+		expect(open.target).toBe('_blank');
+		expect(open.title).toBe('Open in OneDrive');
+		expect(open.closest('fieldset')).toBe(linkField().closest('fieldset'));
+	});
+
+	it('says under the box when what is typed is not an address, and offers nothing to open', async () => {
+		const { panel, look } = showOperations('');
+
+		await fireEvent.input(linkField(), { target: { value: 'the project folder' } });
+
+		expect(panel.link).toBe('the project folder');
+		expect(look.saved).toHaveBeenCalled();
+		expect(linkField().getAttribute('aria-invalid')).toBe('true');
+		const line = document.getElementById(linkField().getAttribute('aria-describedby') ?? '');
+		expect(line?.textContent?.trim()).toBe(
+			'That does not look like a URL. Paste the folder’s full address.'
+		);
+		expect(screen.queryByRole('link', { name: 'Open the URL' })).toBeNull();
+	});
+});

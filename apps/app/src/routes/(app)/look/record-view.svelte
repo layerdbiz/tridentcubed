@@ -4,6 +4,7 @@
 	// Page's picture (record-page.svelte) and this is the sheet under it: its numbers; for a team
 	// member their phone and email, for a transport its particulars (empty until typed in on Edit, or later filled by a
 	// tracking service); then its projects, as the same rows the Projects page lists.
+	import { Avatar } from '@layerd/ui';
 	import ClientLogo from './client-logo.svelte';
 	import Faces from './faces.svelte';
 	import { initialsOf, toInitialsPicture } from './initials';
@@ -132,12 +133,11 @@
 				<div class="mb-2 divide-y divide-slate-100 overflow-hidden {CARD}">
 					{#if person.name}
 						<div class="flex items-center gap-3 px-4 py-3">
-							<!-- No photo: their initials, sky blue for a customer's people (#355). -->
-							<img
+							<!-- No photo: their initials, sky blue for a customer's people (#355), in the library's avatar (#379). -->
+							<Avatar
 								src={person.photo ||
 									toInitialsPicture(initialsOf(person.name), customer ? 'customer' : 'team')}
-								alt=""
-								class="size-10 shrink-0 rounded-full object-cover"
+								size={40}
 							/>
 							<span class="min-w-0">
 								<span class="block truncate text-sm font-semibold text-slate-900"

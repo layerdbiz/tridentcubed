@@ -9,6 +9,7 @@
 		Component,
 		type ComponentReturn,
 		createFormField,
+		type FieldActionType,
 		Help,
 		Icon,
 		type TextFieldProps,
@@ -30,6 +31,10 @@
 		min?: HTMLInputAttributes['min'];
 		max?: HTMLInputAttributes['max'];
 		step?: HTMLInputAttributes['step'];
+		/** A button at the end (#393), such as one that opens the link typed in. Not with a Generated value. */
+		action?: FieldActionType;
+		/** What is wrong with the value, on a line under the box: the input is marked invalid and described by it. */
+		error?: string;
 	};
 
 	let {
@@ -52,6 +57,8 @@
 		min = undefined,
 		max = undefined,
 		step = undefined,
+		action = undefined,
+		error = undefined,
 		minlength = undefined,
 		maxlength = undefined,
 		inputmode = undefined,
@@ -66,6 +73,9 @@
 	}: InputProps = $props();
 
 	let inputNode = $state<HTMLInputElement | null>(null);
+	// The error line's id joins whatever already describes the input.
+	const errorId = $derived(error ? `${uid}-error` : undefined);
+	const describedBy = $derived([ariaDescribedby, errorId].filter(Boolean).join(' ') || undefined);
 	// What is being typed, kept while the input has the focus: emptied, it stays empty under the caret, and the app's
 	// value comes back once the focus leaves.
 	let draft = $state<string>();
@@ -161,9 +171,43 @@ Use thse emojis for comments about the state of the input in the examples below.
 	{/if}
 {/snippet}
 
+<!-- The action at the end: a link out, or a button that keeps the input's focus. -->
+{#snippet actionEl(item: FieldActionType)}
+	{#if item.href}
+		<a
+			class="action"
+			href={item.href}
+			target="_blank"
+			rel="noopener"
+			aria-label={item.label}
+			title={item.title ?? item.label}><span class="icon-mark {item.icon}"></span></a
+		>
+	{:else}
+		<button
+			type="button"
+			class="action"
+			aria-label={item.label}
+			title={item.title ?? item.label}
+			onmousedown={(event) => event.preventDefault()}
+			onclick={() => item.onclick?.()}><span class="icon-mark {item.icon}"></span></button
+		>
+	{/if}
+{/snippet}
+
+<!-- What sits at the end of a variant with no end icon: the Generated mark, or the action. -->
+{#snippet endEl()}
+	{#if generated !== undefined}
+		{@render generatedEl()}
+	{:else if action}
+		{@render actionEl(action)}
+	{/if}
+{/snippet}
+
 {#snippet iconEndEl()}
 	{#if generated !== undefined}
 		{@render generatedEl()}
+	{:else if action}
+		{@render actionEl(action)}
 	{:else if fieldState.trailingIcon}
 		<Icon
 			icon={fieldState.trailingIcon}
@@ -181,8 +225,8 @@ Use thse emojis for comments about the state of the input in the examples below.
 		name={fieldState.field.name}
 		id={fieldState.field.id}
 		aria-labelledby="{fieldState.field.id}-label"
-		aria-describedby={ariaDescribedby}
-		aria-invalid={ariaInvalid}
+		aria-describedby={describedBy}
+		aria-invalid={error ? true : ariaInvalid}
 		aria-required={required || undefined}
 		{disabled}
 		{required}
@@ -206,13 +250,13 @@ Use thse emojis for comments about the state of the input in the examples below.
 
 {#snippet textVariant()}
 	{@render inputEl()}
-	{#if generated !== undefined}{@render generatedEl()}{/if}
+	{@render endEl()}
 {/snippet}
 
 {#snippet iconTextVariant()}
 	{@render iconStartEl()}
 	{@render inputEl()}
-	{#if generated !== undefined}{@render generatedEl()}{/if}
+	{@render endEl()}
 {/snippet}
 
 {#snippet textIconVariant()}
@@ -237,7 +281,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 		<!-- The label sits on the border in the legend, apart from the field, which is named by it. -->
 		<fieldset
 			{...props}
-			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)}`.trim()}
+			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)} ${error ? 'field-invalid' : ''}`.trim()}
 		>
 			<legend
 				><span id="{fieldState.field.id}-label">{fieldState.labelText}</span>{#if help}<Help
@@ -257,5 +301,12 @@ Use thse emojis for comments about the state of the input in the examples below.
 				{/if}
 			</label>
 		</fieldset>
+		<!-- Under the box, as its next sibling: a parent that lays its children out sees two of them. -->
+		{#if error}<p
+				id={errorId}
+				class="field-error"
+			>
+				{error}
+			</p>{/if}
 	{/snippet}
 </Component>

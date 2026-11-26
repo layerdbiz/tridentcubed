@@ -46,6 +46,24 @@ document.head.insertAdjacentHTML(
 	'<style>[popover][data-popover-open] { display: block !important; }</style>'
 );
 
+// jsdom has no showModal (#375): the stand-in opens the dialog, as a browser does, and leaves the focus to the Dialog.
+if (!('showModal' in HTMLDialogElement.prototype)) {
+	Object.defineProperties(HTMLDialogElement.prototype, {
+		showModal: {
+			configurable: true,
+			value(this: HTMLDialogElement) {
+				this.open = true;
+			}
+		},
+		close: {
+			configurable: true,
+			value(this: HTMLDialogElement) {
+				this.open = false;
+			}
+		}
+	});
+}
+
 // Svelte's transitions run on the Web Animations API, which jsdom lacks: every animation finishes at once.
 if (!('animate' in Element.prototype)) {
 	Object.defineProperty(Element.prototype, 'animate', {
