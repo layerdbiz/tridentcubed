@@ -4,8 +4,9 @@
 // function, so the screen and its query keep their shape.
 //
 // Everything comes from what the database already keeps, read through the claims helper as the Admin who asked:
-// - a sign-in is the record Better Auth's session hook leaves at every sign-in, by any way (`sign_in`): who, when and
-//   the device its browser named, never the session itself. Log Out keeps it. A User with no sign-in recorded (all
+// - a sign-in is the record the database leaves at every sign-in, by any way (`sign_in`): who, when and
+//   the device its browser named, never the session itself, for the organization's people and every Guest, waiting
+//   for access, whom an Admin lets in. Log Out keeps it. A User with no sign-in recorded (all
 //   theirs came before the record began) has their account's making, their first sign-in, stand in for their last;
 // - a project added and every other change is the change record (the History): who, when, which row and what it was
 //   before and after, of which only the names and the columns that changed are read, never the rows themselves. The
@@ -22,7 +23,8 @@ import type {
 import { toDevice } from '#lib/presence/presence.utils.js';
 import { TABLE_NAMES, type TableNameType } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
-import { change, project, signIn, team, user } from './db/schema';
+import { toNameOfEmail } from './access';
+import { change, member, project, signIn, team, user } from './db/schema';
 import { checkActivity } from './permission';
 
 // What each table's row is called in a sentence, as the app's screens say it: one ("added the customer Harbor
@@ -331,8 +333,15 @@ export async function readActivity(
 			.from(signIn)
 			.orderBy(signIn.userId, desc(signIn.createdAt), desc(signIn.id));
 		const users = await tx
-			.select({ id: user.id, name: user.name, createdAt: user.createdAt })
+			.select({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt })
 			.from(user);
+		// The Users it reads are the organization's own and every Guest, waiting for access: those with no membership.
+		const members = new Set(
+			(await tx.select({ userId: member.userId }).from(member)).map((row) => row.userId)
+		);
+		function guestOf(userId: string) {
+			return members.has(userId) ? {} : { isGuest: true };
+		}
 		// A User's Team record names them, the one outside the Trash first.
 		const records = await tx
 			.select({ userId: team.userId, name: team.name, deletedAt: team.deletedAt })
@@ -350,7 +359,9 @@ export async function readActivity(
 		const names = new Map<string, string>();
 		for (const record of records)
 			if (record.userId && !names.has(record.userId)) names.set(record.userId, record.name);
-		for (const each of users) if (!names.has(each.id)) names.set(each.id, each.name);
+		// A User who gave no name (a Guest who signed in with an email code) goes by their email's: "Sam Lee".
+		for (const each of users)
+			if (!names.has(each.id)) names.set(each.id, each.name || toNameOfEmail(each.email));
 		function whoOf(userId: string | null) {
 			return (userId ? names.get(userId) : undefined) ?? 'Someone';
 		}
@@ -362,6 +373,7 @@ export async function readActivity(
 				kind: 'signIn',
 				who: whoOf(row.userId),
 				userId: row.userId,
+				...guestOf(row.userId),
 				...toDeviceOf(row.userAgent)
 			})),
 			...folded.lines.map((row) =>
@@ -377,6 +389,8 @@ export async function readActivity(
 				who: whoOf(each.id),
 				at: (last?.at ?? each.createdAt).toISOString(),
 				isFirst: !last,
+				// A Guest's email too, which an Admin lets them in with.
+				...(members.has(each.id) ? {} : { isGuest: true, email: each.email }),
 				...toDeviceOf(last?.userAgent ?? null)
 			};
 		});

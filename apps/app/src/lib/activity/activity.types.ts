@@ -22,6 +22,8 @@ type ActivityLineType = {
 /** A sign-in, and the device it came from. */
 export type SignInEventType = ActivityLineType & {
 	kind: 'signIn';
+	/** True for a Guest's: someone who belongs to no organization yet, waiting for access. */
+	isGuest?: boolean;
 	/** The device a sign-in came from, as the Online list says it: "iPhone · Safari". */
 	device?: string;
 	deviceKind?: DeviceKindType;
@@ -60,6 +62,10 @@ export type LastSignInType = {
 	 * sign-in, when their account was made.
 	 */
 	isFirst: boolean;
+	/** True for a Guest: someone who belongs to no organization yet, waiting for access. */
+	isGuest?: boolean;
+	/** A Guest's email, which an Admin lets them in with. */
+	email?: string;
 	device?: string;
 	deviceKind?: DeviceKindType;
 };

@@ -191,6 +191,45 @@ describe('the Activity', () => {
 		});
 	});
 
+	it('shows an Admin a Guest’s sign-ins, someone waiting for access, marked as waiting', async () => {
+		// Justin, 2026-11-26: a Guest signed in and landed on Waiting for access, and the Activity did not show it. A
+		// Guest belongs to no organization yet, and an Admin is who lets them in.
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const guest = await test.signIn(
+			'sam.lee@elsewhere.example',
+			new Headers({ 'user-agent': IPHONE })
+		);
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+
+		const { events, people } = await readAs(test, ana);
+
+		expect(events.filter((event) => event.userId === guest.user.id)).toEqual([
+			expect.objectContaining({
+				kind: 'signIn',
+				who: 'Sam Lee',
+				isGuest: true,
+				device: 'iPhone · Safari'
+			})
+		]);
+		expect(people.find((person) => person.userId === guest.user.id)).toMatchObject({
+			who: 'Sam Lee',
+			isGuest: true,
+			email: 'sam.lee@elsewhere.example',
+			isFirst: false,
+			device: 'iPhone · Safari'
+		});
+		expect(people.find((person) => person.who === 'Tom Diaz')).not.toHaveProperty('isGuest');
+		// Only an Admin reads them: a Team member reads no Guest, neither their sign-in nor their account.
+		const read = await test.claims.run(tom, async (tx) => ({
+			signIns: await tx.select({ userId: schema.signIn.userId }).from(schema.signIn),
+			users: await tx.select({ id: schema.user.id }).from(schema.user)
+		}));
+		expect(read.signIns).toEqual([]);
+		expect(read.users.map((row) => row.id)).not.toContain(guest.user.id);
+	});
+
 	it('lets only an Admin’s queries read sign-ins, with the permission check skipped, and nobody a session', async () => {
 		const test = await createTestSignIn();
 		await grantAdmin(test, 'ana.reyes@tridentcubed.com');

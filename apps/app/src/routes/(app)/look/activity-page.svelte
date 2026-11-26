@@ -269,7 +269,7 @@
 {#snippet sentence(event: ActivityEventType, hasWho = true)}
 	{#if hasWho}{@render named(event.who, toPersonOpener(event.who))}{/if}
 	{#if event.kind === 'signIn'}
-		signed in
+		signed in{#if event.isGuest}, waiting for access{/if}
 	{:else if event.kind === 'add'}
 		added {event.name ? `the ${event.thing}` : `${toIndefiniteArticle(event.thing)} ${event.thing}`}
 		{#if event.name}{@render named(event.name, toRowOpener(event))}{/if}
@@ -316,6 +316,10 @@
 					>{each.isFirst ? 'First signed in' : 'Signed in'}
 					{toDuration(now - Date.parse(each.at))} ago</span
 				>
+				<!-- A Guest, with the email an Admin lets them in with. -->
+				{#if each.isGuest}<span class="block text-xs break-words text-amber-700"
+						>Waiting for access · {each.email}</span
+					>{/if}
 			</span>
 			{#if each.device}{@render device(each.deviceKind, each.device)}{/if}
 		</button>
