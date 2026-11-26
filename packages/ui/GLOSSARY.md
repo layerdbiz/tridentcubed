@@ -279,7 +279,7 @@ The library box with no label of its own, a little lower, for a long list of sma
 _Avoid_: cell (a grid position), bare input, inline field
 
 **Toast**:
-A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305).
+A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305). A short message may have an icon before it and be a tap of its own, held while the tap is in hand: the update note, "New version, tap to update" (#392).
 _Avoid_: snackbar, progress toast (as a component of its own), loading bar
 
 **Avatar**:
