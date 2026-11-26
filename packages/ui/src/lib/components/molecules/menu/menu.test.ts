@@ -244,12 +244,12 @@ describe('what each choice shows', () => {
 		expect(remove.className).toContain('text-danger');
 		expect(remove.className).toContain('font-medium');
 		expect(remove.querySelector('.icon-\\[mdi--trash-can-outline\\]')?.className).not.toContain(
-			'text-slate-500'
+			'text-base-500'
 		);
 		expect(edit.className).not.toContain('text-danger');
-		expect(edit.className).toContain('text-slate-600');
+		expect(edit.className).toContain('text-secondary-400');
 		expect(edit.querySelector('.icon-\\[mdi--pencil-outline\\]')?.className).toContain(
-			'text-slate-500'
+			'text-base-500'
 		);
 	});
 
@@ -290,7 +290,7 @@ describe('what each choice shows', () => {
 
 		expect(note.parentElement).toBe(name.parentElement);
 		expect(name.parentElement?.className).toContain('flex-col');
-		expect(note.className).toContain('text-slate-400');
+		expect(note.className).toContain('text-base-400');
 		expect(name.className).toContain('truncate');
 		expect(note.className).toContain('truncate');
 	});
@@ -434,5 +434,20 @@ describe('where the list goes', () => {
 		expect(list?.getAttribute('popover')).toBe('manual');
 		expect(list?.className).toContain('fixed');
 		expect(list?.className).toContain('z-[120]');
+	});
+
+	it('takes its look from outside on its list, the box that shows, white until it is given one', async () => {
+		const plain = show({});
+		await open();
+		expect(listOf()?.className).toContain('bg-surface');
+		plain.unmount();
+
+		show({ color: 'primary', appearance: 'lite', class: 'mine' });
+		await open();
+		const list = listOf();
+		expect(list?.className).toContain('theme-lite-primary');
+		expect(list?.className).toContain('mine');
+		expect(list?.className).not.toContain('bg-surface');
+		expect(list?.className).not.toMatch(/-(slate|gray|zinc)-|white/);
 	});
 });

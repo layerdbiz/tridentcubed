@@ -120,4 +120,35 @@ describe('Toast', () => {
 		render(Toast, { props: { text: 'Nothing left', items: [], onclose: () => undefined } });
 		expect(screen.queryByRole('status')).toBeNull();
 	});
+
+	it("takes its look from outside on its box, the theme's secondary until it is given one", () => {
+		const plain = render(Toast, { props: { text: '3 photos added' } });
+		expect(screen.getByRole('status').className).toContain('bg-secondary');
+		plain.unmount();
+
+		render(Toast, { props: { text: '3 photos added', color: 'accent', appearance: 'heavy' } });
+		const toast = screen.getByRole('status');
+		expect(toast.className).toContain('theme-heavy-accent');
+		expect(toast.className).not.toContain('bg-secondary');
+	});
+
+	it('hands its Close and Try Again any Button prop', async () => {
+		const progress = new Progress();
+		render(Toast, {
+			props: {
+				progress,
+				label: 'Download PDF',
+				closeButton: { class: 'my-close' },
+				retryButton: { label: 'Again' }
+			}
+		});
+		progress.start('Getting the pages ready', 25);
+		progress.fail('The server is busy', () => {});
+		flushSync();
+
+		const close = screen.getByRole('button', { name: 'Close' });
+		expect(close.className).toContain('my-close');
+		expect(close.className).not.toContain('text-current/70');
+		expect(screen.getByRole('button', { name: 'Again' })).not.toBeNull();
+	});
 });

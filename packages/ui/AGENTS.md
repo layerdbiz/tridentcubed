@@ -49,9 +49,9 @@ the module singletons in `observe` and `scroll`, five rune-free
 `.svelte.ts` helpers.
 
 Components that broke the look rule before the look check began are listed
-in `look.json` with what they had then (the menu list #297, the toast #293,
-the select's lists #298, the avatar's and stack's greys #379, and older
-ones). Each is fixed, not extended: it may get better, never
+in `look.json` with what they had then: the older pieces the public site, the
+overview and the charts draw, and the empty placeholders (every piece the app
+draws was fixed on 2026-11-26). Each is fixed, not extended: it may get better, never
 worse. Nothing joins that list, or this one, without Justin's yes, written
 with his name and the date; a piece that is slow on the base component is
 measured and the numbers go to him, it does not skip the base on its own.

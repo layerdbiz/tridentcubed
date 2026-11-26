@@ -12,10 +12,19 @@
 	// empty inputs that keep a percent under 100%, each opening its input). Such a toast stays until it is closed or
 	// its list is empty: it never goes by itself.
 	//
-	// It keeps the app's slate shades so the PDF download looks as it did; trading them for theme colours belongs to
-	// "UI library cleanup" (#33).
+	// Its look is set from outside (Justin, 2026-11-26): it is the base component, and `color`, `appearance`, their
+	// shorthands and `class` land on the box that shows, which is the theme's secondary with the surface's colour for
+	// its words until it is given a look. What is inside takes its greys from the box's words, so it follows any look.
+	// Its Close and Try Again are the library Button, reached through `closeButton` and `retryButton`.
 	import { fly } from 'svelte/transition';
-	import { Component, type ComponentProps, type ComponentReturn, type Progress } from '@layerd/ui';
+	import {
+		Button,
+		Component,
+		type ButtonProps,
+		type ComponentProps,
+		type ComponentReturn,
+		type Progress
+	} from '@layerd/ui';
 
 	/** One entry of a toast's list: what it says, and what a tap on it does. */
 	export type ToastItemType = { label: string; onclick: () => void };
@@ -31,9 +40,22 @@
 		items?: ToastItemType[];
 		/** Puts a Close at the top right of a toast with a list. */
 		onclose?: () => void;
+		/** Any Button prop for its Close: the × of a toast with a list, and a failure's Close. */
+		closeButton?: Partial<ButtonProps>;
+		/** Any Button prop for a failure's Try Again. */
+		retryButton?: Partial<ButtonProps>;
 	}
 
-	let { progress, text = '', label = '', items, onclose, ...props }: ToastProps = $props();
+	let {
+		progress,
+		text = '',
+		label = '',
+		items,
+		onclose,
+		closeButton = {},
+		retryButton = {},
+		...props
+	}: ToastProps = $props();
 
 	const isShown = $derived(progress ? progress.isOpen : items ? items.length > 0 : Boolean(text));
 	// Taps go through a toast to what is under it, except on a failure's Try Again and Close.
@@ -49,10 +71,11 @@
 
 <Component {...props}>
 	{#snippet component({ props: root }: { props: ComponentReturn })}
+		{@const look = root.class ?? ''}
 		{#if isShown}
 			<div
 				{...root}
-				class={`${root.class ?? ''} bg-slate-900 text-sm text-white shadow-xl ${shape}`.trim()}
+				class={`${look} ${/\btheme-/.test(look) ? '' : 'bg-secondary text-surface'} text-sm shadow-xl ${shape}`.trim()}
 				role="status"
 				aria-live="polite"
 				transition:fly|global={{ y: 16, duration: 200 }}
@@ -61,11 +84,12 @@
 					<div class="flex items-start gap-2">
 						<p class="min-w-0 flex-1 pt-1 font-medium">{text}</p>
 						{#if onclose}
-							<button
-								type="button"
-								class="flex size-8 shrink-0 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
+							<Button
+								unstyled
+								class="flex size-8 shrink-0 items-center justify-center rounded-full text-current/70 hover:bg-current/10 hover:text-current"
 								aria-label="Close"
-								onclick={onclose}><span class="icon-[mdi--close] size-5"></span></button
+								onclick={onclose}
+								{...closeButton}><span class="icon-[mdi--close] size-5"></span></Button
 							>
 						{/if}
 					</div>
@@ -74,11 +98,13 @@
 							<li>
 								<button
 									type="button"
-									class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-white/90 hover:bg-white/10 hover:text-white"
+									class="group/item flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-current/10"
 									onclick={item.onclick}
 									><span class="icon-[mdi--circle-outline] size-3.5 shrink-0 text-warning-400"
-									></span><span class="min-w-0 flex-1 truncate">{item.label}</span><span
-										class="icon-[mdi--chevron-right] size-4 shrink-0 text-white/40"
+									></span><span
+										class="min-w-0 flex-1 truncate text-current/90 group-hover/item:text-current"
+										>{item.label}</span
+									><span class="icon-[mdi--chevron-right] size-4 shrink-0 text-current/40"
 									></span></button
 								>
 							</li>
@@ -88,29 +114,33 @@
 					{text}
 				{:else if progress.problem}
 					<div class="flex items-start gap-2.5">
-						<span class="mt-0.5 icon-[mdi--alert-circle-outline] size-5 shrink-0 text-amber-400"
+						<span class="mt-0.5 icon-[mdi--alert-circle-outline] size-5 shrink-0 text-warning-400"
 						></span>
 						<p class="font-medium">{progress.problem}</p>
 					</div>
 					<div class="mt-3 flex justify-end gap-2">
-						<button
-							type="button"
-							class="rounded-full px-3.5 py-1.5 font-medium text-white/70 hover:bg-white/10 hover:text-white"
-							onclick={() => progress.close()}>Close</button
-						>
-						<button
-							type="button"
-							class="rounded-full bg-primary px-3.5 py-1.5 font-medium text-white hover:brightness-110"
-							onclick={() => progress.retry()}>Try Again</button
-						>
+						<Button
+							unstyled
+							class="rounded-full px-3.5 py-1.5 font-medium text-current/70 hover:bg-current/10 hover:text-current"
+							label="Close"
+							onclick={() => progress.close()}
+							{...closeButton}
+						/>
+						<Button
+							unstyled
+							class="rounded-full bg-primary px-3.5 py-1.5 font-medium text-surface hover:brightness-110"
+							label="Try Again"
+							onclick={() => progress.retry()}
+							{...retryButton}
+						/>
 					</div>
 				{:else}
 					<div class="flex items-baseline justify-between gap-3">
 						<p class="truncate font-medium">{progress.label}</p>
-						<p class="text-white/70 tabular-nums">{progress.percent}%</p>
+						<p class="text-current/70 tabular-nums">{progress.percent}%</p>
 					</div>
 					<div
-						class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/15"
+						class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-current/15"
 						role="progressbar"
 						aria-label={label || undefined}
 						aria-valuemin={0}
@@ -142,7 +172,12 @@
 		content: '';
 		position: absolute;
 		inset: 0;
-		background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+		background: linear-gradient(
+			90deg,
+			transparent,
+			color-mix(in oklab, var(--color-surface) 45%, transparent),
+			transparent
+		);
 		transform: translateX(-100%);
 		animation: toast-sheen 1.4s linear infinite;
 	}
