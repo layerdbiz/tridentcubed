@@ -15,8 +15,9 @@
  *   export gets both forms. Section and category order is deterministic.
  * Safety: skips the write when content is unchanged; atomic write with a
  *   direct-write fallback on Windows EPERM; per-file lock files under
- *   .turbo/barrels-locks so concurrent Turbo tasks do not race.
- * Modes: `--workspace` writes all targets (root `pnpm barrels`, `//#barrels`);
+ *   node_modules/.cache/barrels-locks so two runs at once do not race.
+ * Modes: `--workspace` writes all targets (root `pnpm barrels`, which each
+ *   app's `workspace:build` task runs first);
  *   `--watch` adds a chokidar watcher with a 50 ms debounce that ignores
  *   index.ts, .tmp and .lock; no flag writes only the UI root barrel.
  */
@@ -42,6 +43,8 @@ const logger = new Logger(TOOLS_CONFIG.logging.level);
 const BARREL_LOCK_STALE_MS = 30_000;
 const BARREL_LOCK_RETRY_MS = 50;
 const BARREL_LOCK_MAX_ATTEMPTS = 200;
+// Under node_modules, so git ignores it and `pnpm clean` clears it
+const BARREL_LOCKS_DIR = ["node_modules", ".cache", "barrels-locks"];
 
 // Prevent concurrent runs
 let isGenerating = false;
@@ -184,7 +187,7 @@ function toWorkspacePath(path: string): string {
 
 function getBarrelLockPath(filePath: string): string {
 	const lockFileName = toWorkspacePath(filePath).replace(/[/:]/g, "__");
-	return resolvePath(".turbo", "barrels-locks", `${lockFileName}.lock`);
+	return resolvePath(...BARREL_LOCKS_DIR, `${lockFileName}.lock`);
 }
 
 function isIgnoredWatchPath(watchedPath: string): boolean {
@@ -310,7 +313,7 @@ async function acquireBarrelLock(
 	filePath: string,
 ): Promise<() => Promise<void>> {
 	const lockPath = getBarrelLockPath(filePath);
-	await fs.mkdir(resolvePath(".turbo", "barrels-locks"), { recursive: true });
+	await fs.mkdir(resolvePath(...BARREL_LOCKS_DIR), { recursive: true });
 
 	for (let attempt = 0; attempt < BARREL_LOCK_MAX_ATTEMPTS; attempt += 1) {
 		try {
@@ -718,9 +721,14 @@ async function runWorkspaceGeneration(): Promise<void> {
 async function watchWorkspaceBarrels(): Promise<void> {
 	await runWorkspaceGeneration();
 
+	// Each app's lib folder by name: chokidar 4 and later take no globs, and
+	// `apps/*/src/lib` matched nothing, so app barrels never followed an edit
+	const appLibPaths = (await getWorkspaceBarrelTargets())
+		.filter((target) => target.mode === "app")
+		.map((target) => target.libPath);
 	const watchPaths = [
 		resolvePath(TOOLS_CONFIG.packages.ui.libPath),
-		resolvePath("apps/*/src/lib"),
+		...appLibPaths,
 	];
 
 	const watcher = chokidar.watch(watchPaths, {
