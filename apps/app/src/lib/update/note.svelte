@@ -4,9 +4,11 @@
 	// change is Saving or Not saved the tap is kept, the note says so, and the switch follows once everything is
 	// Saved (update.state.svelte.ts). It floats under the header, in the middle, on a phone and a desktop alike: the
 	// header's row holds a page's title and the save cloud, and the floating bar and the + are at the bottom. It is
-	// over the pages and the bar, and under the menus and the sheets.
+	// over the pages and the bar, and under the menus and the sheets. #392: it is the library Toast, its icon before
+	// the words and the whole note the tap, held (disabled) once tapped; the Toast keeps it in a status region that
+	// stays in the page, so a screen reader hears it the moment it shows.
 	import { updated } from '$app/state';
-	import { Button } from '@layerd/ui';
+	import { Toast } from '@layerd/ui';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 	import { UpdateState, type UpdateStepType } from './update.state.svelte';
 	import { downloadWorker, takeOver } from './update.utils';
@@ -35,23 +37,15 @@
 	$effect(() => update.follow());
 </script>
 
-<!-- Always there, so a screen reader hears the note when it comes. -->
 <div
 	class="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+4.75rem)] z-[56] flex justify-center px-4"
-	role="status"
 >
-	{#if step !== 'none'}
-		<Button
-			secondary
-			heavy
-			sm
-			icon={step === 'offered'
-				? 'icon-[mdi--arrow-up-circle-outline]'
-				: 'icon-[svg-spinners--ring-resize]'}
-			label={LABELS[step]}
-			class="pointer-events-auto"
-			disabled={step !== 'offered'}
-			onclick={() => update.tap()}
-		/>
-	{/if}
+	<Toast
+		text={step === 'none' ? '' : LABELS[step]}
+		icon={step === 'offered'
+			? 'icon-[mdi--arrow-up-circle-outline]'
+			: 'icon-[svg-spinners--ring-resize]'}
+		disabled={step !== 'offered'}
+		onclick={() => update.tap()}
+	/>
 </div>
