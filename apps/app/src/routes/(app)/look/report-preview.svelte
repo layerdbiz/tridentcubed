@@ -1,7 +1,7 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the live preview, built from the panels as they stand (cover, contents with page numbers,
 	// the report pages in panel order), laid on a free canvas you can drag in any direction (viewport.svelte.ts).
-	// The project report on one page (introduction, title, location, the facts, personnel, transport and cargo); the
+	// The project report (introduction, title, location, the facts, personnel, transport and cargo); the
 	// sample reports' disclaimer with the owner's signature, always last; each photo's own description over it.
 	// Customer and team come from the Project panel, the trip from the Transport panel: its stops print as a chain
 	// and each stop gets its own page with the particulars a tracking service fills in later (the sample reports'
@@ -31,7 +31,7 @@
 	// Time Log always prints this way. Project Report B, Transport Mode B and Disclaimer B do too: the report with
 	// no "Introduction", the organization's people in one row with its badge and their labels, and the trip as
 	// facility, transport, facility; a transport's page with its photo, particulars and facilities; the signature
-	// at the foot of the last page. Their A versions print as they did, on one page each.
+	// at the foot of the last page. Their one-page A versions are gone (#372).
 	import { onMount, untrack } from 'svelte';
 	import PdfPage from '#lib/components/attachment/pdf-page.svelte';
 	import { bytesOf, drawPage, pdfOf } from '#lib/pdf/pdf.utils.js';
@@ -65,12 +65,10 @@
 		MODE_ICONS,
 		PAGE_ICONS,
 		PARTICULARS,
-		personOf,
 		POINTS,
 		toReference,
 		type AttachmentType,
-		type PanelType,
-		type StopType
+		type PanelType
 	} from './look.data';
 	import { customerOf, locationOf } from './records.data';
 	import { cityStateOf, partsOf } from './location';
@@ -112,8 +110,6 @@
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
-	import CoverA from './variants/cover-a.svelte';
-	import CoverB from './variants/cover-b.svelte';
 	import CoverC, { type CoverLineType as CoverCLineType } from './variants/cover-c.svelte';
 	import PageStrip from './page-strip.svelte';
 	import PresentBar from './present-bar.svelte';
@@ -234,8 +230,6 @@
 	const team = $derived(look.panels.find((panel) => panel.kind === 'project'));
 	const timelog = $derived(look.panels.find((panel) => panel.kind === 'timelog'));
 	const company = $derived(detail('Customer') || look.project.client);
-	// Where the project is, as every view shows it: its city and state (#320).
-	const location = $derived(cityStateOf(look.project.location));
 	// The other companies on the job, each with its people who have a name.
 	const personnel = $derived(
 		(team?.personnel ?? [])
@@ -291,13 +285,6 @@
 	const signer = $derived(look.members.find((member) => member.name === team?.owner));
 	const organization = $derived(look.organization);
 	const trip = $derived(look.panels.find((panel) => panel.kind === 'transport'));
-	const stops = $derived(
-		(trip?.stops ?? []).filter((stop) => stop.name || stop.mode || stop.facility)
-	);
-	const transport = $derived(listOf([...new Set(stops.map((stop) => stop.name).filter(Boolean))]));
-	const facility = $derived(
-		listOf([...new Set(stops.map((stop) => stop.facility).filter(Boolean))])
-	);
 	// The Items panel's filled rows.
 	const cargo = $derived(
 		(look.panels.find((panel) => panel.kind === 'items')?.items ?? []).filter((item) =>
@@ -306,13 +293,6 @@
 	);
 	// The report's opening sentence (#244): the one typed in the Project panel, else the one worked out.
 	const introduction = $derived(introductionOf(look));
-
-	function iconOf(stop: StopType) {
-		return (
-			MODE_ICONS[stop.mode] ??
-			(stop.point ? POINTS[stop.point].icon : 'icon-[mdi--help-circle-outline]')
-		);
-	}
 
 	const client = $derived(customerOf(look, company));
 	// The pin in the customer's row is the customer's own place, from its record (#238); the project's is in the
@@ -323,7 +303,7 @@
 		(client.contacts ?? []).find((item) => item.id === team?.contact) ??
 			(client.contacts ?? []).find((item) => item.name)
 	);
-	// The cover's two dates (#217). Created Date is the Project Creation Date saved with the project, the day its
+	// The report's two dates (#217), said in its sentences (`dates`). Created Date is the Project Creation Date saved with the project, the day its
 	// number shows. Completed Date is when the work was done: the Time Log's dated day, or first to last for a job of
 	// several days; nothing before any.
 	const createdDate = $derived(dayOf(createdDayOf(look.project)));
@@ -345,9 +325,6 @@
 		toReference(team?.customerReference ?? look.project.customerReference)
 	);
 
-	function titleOf(name: string) {
-		return look.members.find((member) => member.name === name)?.title ?? '';
-	}
 	// What a page's QR code opens (#216): this project's Preview in the app, at that page, by the report's short
 	// link (#lib/report). The app it names is the one the report was made in, where its data is. With no project
 	// to link to, the organization's website, as a full link.
@@ -374,7 +351,6 @@
 
 	// Report Cover C (#247, #256; the Stops look is #273): the trip as the strip reads it (#lib/components/trip), each
 	// leg's Transport Mode by name and icon and each facility by name, city and its kind's icon.
-	const isCoverC = $derived(look.variant('cover') === 'C');
 	const stripLegs = $derived(
 		legs.map((leg): TripLegType => {
 			const first = leg.stops[0];
@@ -476,52 +452,47 @@
 	const ROWS = 12;
 	// The tallest a photo of the item list prints (#233): a page's room, less the heading it must stay under.
 	const PICTURE_ROOM = 540;
-	const isReportB = $derived(look.variant('report') !== 'A');
-	const isTransportB = $derived(look.variant('report-transport') !== 'A');
-	const isDisclaimerB = $derived(look.variant('disclaimer') !== 'A');
 
 	// The sections that flow, each as its blocks in order.
 	const flows = $derived.by(() => {
 		const list: FlowType[] = [];
-		if (isReportB) {
-			const blocks: BlockType[] = [
-				{ kind: 'intro' },
-				{ kind: 'strip' },
-				{ kind: 'heading', text: 'Personnel in Attendance' },
-				{ kind: 'team' },
-				...personnel.map((item): BlockType => ({ kind: 'company', id: item.id })),
-				{ kind: 'heading', text: 'Transport Mode' },
-				...(legs.length
-					? legs.map((leg): BlockType => ({ kind: 'leg', id: leg.id, isFull: false }))
-					: [{ kind: 'empty', text: 'No transport mode yet' } as BlockType]),
-				{ kind: 'heading', text: 'Cargo Description' }
+		const report: BlockType[] = [
+			{ kind: 'intro' },
+			{ kind: 'strip' },
+			{ kind: 'heading', text: 'Personnel in Attendance' },
+			{ kind: 'team' },
+			...personnel.map((item): BlockType => ({ kind: 'company', id: item.id })),
+			{ kind: 'heading', text: 'Transport Mode' },
+			...(legs.length
+				? legs.map((leg): BlockType => ({ kind: 'leg', id: leg.id, isFull: false }))
+				: [{ kind: 'empty', text: 'No transport mode yet' } as BlockType]),
+			{ kind: 'heading', text: 'Cargo Description' }
+		];
+		for (let from = 0; from < cargo.length; from += ROWS)
+			report.push({ kind: 'cargo', from, to: from + ROWS });
+		if (itemList && listFit) {
+			const parts: ('notes' | PartType)[] = [
+				...(itemList.notes.length ? ['notes' as const] : []),
+				...(itemList.hasHeads ? ['head' as const] : []),
+				...itemList.rows.keys(),
+				...(itemList.totals ? ['totals' as const] : [])
 			];
-			for (let from = 0; from < cargo.length; from += ROWS)
-				blocks.push({ kind: 'cargo', from, to: from + ROWS });
-			if (itemList && listFit) {
-				const parts: ('notes' | PartType)[] = [
-					...(itemList.notes.length ? ['notes' as const] : []),
-					...(itemList.hasHeads ? ['head' as const] : []),
-					...itemList.rows.keys(),
-					...(itemList.totals ? ['totals' as const] : [])
-				];
-				for (const [at, part] of parts.entries())
-					blocks.push({ kind: 'list', part, isFirst: at === 0 });
-			}
-			for (const file of attachments) {
-				if (file.kind === 'photo') blocks.push({ kind: 'picture', id: file.id });
-				else if (isPdfAttachment(file)) {
-					const sheets = sheetsOfFile(file);
-					for (const [part, pages] of sheets.entries())
-						blocks.push({ kind: 'sheet', id: file.id, pages, part, parts: sheets.length });
-				}
-			}
-			if (documents.length) blocks.push({ kind: 'attachments' });
-			if (!cargo.length && !attachments.length && !itemList)
-				blocks.push({ kind: 'empty', text: 'Not filled in yet' });
-			list.push({ key: 'report', title: 'Project Report', kind: 'report', blocks });
+			for (const [at, part] of parts.entries())
+				report.push({ kind: 'list', part, isFirst: at === 0 });
 		}
-		if (isTransportB && trip?.isEnabled && trip.stops.length)
+		for (const file of attachments) {
+			if (file.kind === 'photo') report.push({ kind: 'picture', id: file.id });
+			else if (isPdfAttachment(file)) {
+				const sheets = sheetsOfFile(file);
+				for (const [part, pages] of sheets.entries())
+					report.push({ kind: 'sheet', id: file.id, pages, part, parts: sheets.length });
+			}
+		}
+		if (documents.length) report.push({ kind: 'attachments' });
+		if (!cargo.length && !attachments.length && !itemList)
+			report.push({ kind: 'empty', text: 'Not filled in yet' });
+		list.push({ key: 'report', title: 'Project Report', kind: 'report', blocks: report });
+		if (trip?.isEnabled && trip.stops.length)
 			list.push({
 				key: 'transport',
 				title: trip.name,
@@ -551,25 +522,24 @@
 			}
 			list.push({ key: 'timelog', title: 'Time Log', kind: 'timelog', panel: timelog, blocks });
 		}
-		if (isDisclaimerB)
-			list.push({
-				key: 'disclaimer',
-				title: 'Disclaimer',
-				kind: 'disclaimer',
-				blocks: [
-					{ kind: 'text', text: organization.disclaimer.opening },
-					...organization.disclaimer.points.map((point): BlockType => ({
-						kind: 'point',
-						id: point.id
-					})),
-					...(organization.disclaimer.note
-						? [{ kind: 'note', text: organization.disclaimer.note } as BlockType]
-						: []),
-					...(organization.closing
-						? [{ kind: 'closing', text: organization.closing } as BlockType]
-						: [])
-				]
-			});
+		list.push({
+			key: 'disclaimer',
+			title: 'Disclaimer',
+			kind: 'disclaimer',
+			blocks: [
+				{ kind: 'text', text: organization.disclaimer.opening },
+				...organization.disclaimer.points.map((point): BlockType => ({
+					kind: 'point',
+					id: point.id
+				})),
+				...(organization.disclaimer.note
+					? [{ kind: 'note', text: organization.disclaimer.note } as BlockType]
+					: []),
+				...(organization.closing
+					? [{ kind: 'closing', text: organization.closing } as BlockType]
+					: [])
+			]
+		});
 		return list;
 	});
 
@@ -726,14 +696,10 @@
 		const list: PageType[] = [];
 		const report = flows.find((flow) => flow.key === 'report');
 		if (report) list.push(...pagesOf(report));
-		else list.push({ key: 'report', title: 'Project Report', kind: 'report' });
 		for (const panel of look.panels) {
 			if (!panel.isEnabled) continue;
 			const flow = flowOf(panel, flows);
 			if (flow) list.push(...pagesOf(flow));
-			// Transport Mode A: every stop on one page (run 19), not a page each.
-			else if (panel.kind === 'transport' && panel.stops.length)
-				list.push({ key: 'transport', title: panel.name, kind: 'transport', panel });
 			// A photo panel's title stands on every one of its pages: alone on the first, "(continued)" on each after
 			// it, with the group's own name under it (#215). A group switched off prints nothing.
 			if (panel.kind === 'photos')
@@ -750,7 +716,6 @@
 		}
 		const disclaimer = flows.find((flow) => flow.key === 'disclaimer');
 		if (disclaimer) list.push(...pagesOf(disclaimer));
-		else list.push({ key: 'disclaimer', title: 'Disclaimer', kind: 'disclaimer' });
 		return [COVER, ...contentsPagesOf(list), ...list];
 	});
 
@@ -1328,81 +1293,6 @@
 		return () => clearTimeout(timer);
 	});
 
-	// Cover A's lines (variants/cover-a.svelte). #217: the customer's own number after its name, the whole team's
-	// faces where the Lead's name was, and the project's two dates where Dates was. #225 (Justin, 2026-11-18): the
-	// customer leads, then the Project Type and the two dates, then the rest as before; the team is its faces alone.
-	const coverLines = $derived([
-		{
-			icon: PAGE_ICONS.customers,
-			label: 'Customer',
-			value: company && reference ? `${company} (${reference})` : company
-		},
-		{
-			icon: 'icon-[mdi--package-variant-closed]',
-			label: 'Project Type',
-			value: detail('Project Type') ?? ''
-		},
-		{ icon: 'icon-[mdi--calendar-blank-outline]', label: 'Created Date', value: createdDate },
-		{ icon: 'icon-[mdi--calendar-check-outline]', label: 'Completed Date', value: completedDate },
-		{ icon: PAGE_ICONS.team, label: 'Team Members', value: listOf(people), names: people },
-		{
-			icon: stops[0] ? iconOf(stops[0]) : PAGE_ICONS.transport,
-			label: 'Transport Mode',
-			value: transport
-		},
-		{ icon: PAGE_ICONS.facilities, label: 'Facility', value: facility }
-	]);
-
-	// Cover B's lines (variants/cover-b.svelte), in the Project panel's own order, each with its real picture: a
-	// logo, a face, or an icon.
-	type CoverType = { label: string; value: string; images?: string[]; icon?: string };
-	const cover = $derived<CoverType[]>([
-		{
-			label: 'Project Type',
-			value: detail('Project Type') ?? '',
-			icon: 'icon-[mdi--package-variant-closed]'
-		},
-		{
-			label: 'Organization',
-			value: organization.name,
-			images: organization.logo ? [organization.logo] : [],
-			icon: 'icon-[mdi--domain]'
-		},
-		{
-			label: 'Customer',
-			value: company && reference ? `${company} (${reference})` : company,
-			images: client.icon ? [client.icon] : [],
-			icon: PAGE_ICONS.customers
-		},
-		{
-			label: 'Contact',
-			value: [contact?.name, contact?.title].filter(Boolean).join(', '),
-			images: contact?.photo ? [contact.photo] : [],
-			icon: 'icon-[mdi--account-outline]'
-		},
-		{
-			label: 'Team Lead',
-			value: team?.owner ?? '',
-			images: team?.owner ? [personOf(team.owner).photo] : [],
-			icon: 'icon-[mdi--account-tie-outline]'
-		},
-		{
-			label: 'Team Assigned',
-			value: listOf(team?.assigned ?? []),
-			images: (team?.assigned ?? []).map((name) => personOf(name).photo),
-			icon: PAGE_ICONS.team
-		},
-		{
-			label: 'Transport Mode',
-			value: transport,
-			icon: stops[0] ? iconOf(stops[0]) : PAGE_ICONS.transport
-		},
-		{ label: 'Facility', value: facility, icon: PAGE_ICONS.facilities },
-		{ label: 'Location', value: location, icon: 'icon-[mdi--map-marker]' },
-		{ label: 'Created Date', value: createdDate, icon: 'icon-[mdi--calendar-blank-outline]' },
-		{ label: 'Completed Date', value: completedDate, icon: 'icon-[mdi--calendar-check-outline]' }
-	]);
-
 	function memberOf(name: string) {
 		return look.members.find((member) => member.name === name);
 	}
@@ -1599,7 +1489,7 @@
 	{@const phone = contact?.phone.trim()}
 	{@const email = contact?.email.trim()}
 	<div class="flex min-w-0 flex-col items-center rounded-xl bg-slate-50 px-1.5 py-2 text-center">
-		<!-- Anyone without the organization's badge was added on the spot: black initials on white (#355). -->
+		<!-- Anyone without the organization's badge is Personnel: black initials on white (#355). -->
 		<Avatar
 			{name}
 			size={36}
@@ -1808,8 +1698,8 @@
 			<!-- Anyone else on the job, by company, in the same cards with no badge, and the phone and email typed for
 			     them on the project (#326), as a team member's card shows theirs. -->
 			<div class="pt-2">
-				<!-- Its company's circle by its name: a customer's logo or code, or one added on the spot in white on
-				     black (#355). -->
+				<!-- Its company's circle by its name: a customer's logo or code, or any other company's code in white
+				     on black (#355). -->
 				<div class="flex items-center gap-1 pb-1">
 					{#if other.company.trim()}
 						<ClientLogo
@@ -2174,7 +2064,7 @@
 						: ''}"
 					data-page={item.key}
 				>
-					{#if item.kind === 'cover' && isCoverC}
+					{#if item.kind === 'cover'}
 						<!-- Report Cover C (#247; final design #256, Justin, 2026-11-21): the trip drawn as a strip under the subtitle, the login
 						     page's wave, and a list without Transport Mode and Facility. The top part stands on a fixed line
 						     above the wave and the strip has the same room whatever the trip, so the logo, title and subtitle
@@ -2221,45 +2111,6 @@
 							>
 							<CoverC lines={coverListC} />
 						</div>
-					{:else if item.kind === 'cover'}
-						<div class="flex h-full flex-col items-center text-center">
-							<div class="flex flex-1 flex-col items-center justify-center px-12 pb-36">
-								{#if organization.logo}
-									<img
-										src={organization.logo}
-										crossorigin={toCrossOrigin(organization.logo)}
-										alt=""
-										class="size-48 object-contain"
-									/>
-								{/if}
-								<p
-									class="mt-10 text-[34px] leading-tight font-bold tracking-tight text-slate-950 uppercase"
-								>
-									{detail('Title') || 'Untitled project'}
-								</p>
-								<p class="mt-3 text-lg text-slate-500">{detail('Subtitle')}</p>
-							</div>
-							<!-- The list stands on the band's floor, a fixed gap above the page's edge, and grows upward: a longer
-							     list pushes the band's top (and its wave) up, never its own foot off the page (#225). -->
-							<div
-								class="absolute inset-x-0 bottom-0 flex min-h-60 flex-col justify-end bg-slate-100 pt-6 pb-12"
-							>
-								<svg
-									class="absolute -top-[59px] h-[60px] w-full fill-slate-100"
-									viewBox="0 0 1200 120"
-									preserveAspectRatio="none"
-									><path
-										d="M0,92.7V120h1200V24.2c-67.8-23.1-144.3-15.5-214.3,3C906.7,48,823.8,89,743.8,105.8 c-82.3,17.3-168.1,16.3-250.5-0.4c-57.8-11.7-114-31.1-172-41.9C213.6,43.7,102.5,53.8,0,92.7z"
-									/></svg
-								>
-								<!-- The cover's list (look.constants.ts): A is the one column, B the two with pictures. -->
-								{#if look.variant('cover') === 'B'}
-									<CoverB lines={cover} />
-								{:else}
-									<CoverA lines={coverLines} />
-								{/if}
-							</div>
-						</div>
 					{:else}
 						<header class="px-10 pt-6">
 							<div class="flex items-center justify-between gap-4">
@@ -2303,288 +2154,6 @@
 								<ol class="mt-4">
 									{#each item.lines ?? [] as at (at)}{@render contentsLine(contentLines[at])}{/each}
 								</ol>
-							{:else if item.kind === 'report'}
-								<p class="mt-2 text-[10.5px] leading-relaxed text-slate-600">
-									<b class="text-slate-900">Introduction.</b>
-									{introduction}
-								</p>
-								<!-- The project in one strip: what it is, who it is for, where they are and when. -->
-								<div class="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
-									<div class="flex items-baseline justify-between gap-3">
-										<p class="min-w-0 truncate text-[15px] leading-tight font-bold text-slate-950">
-											{detail('Title') || 'Untitled project'}
-										</p>
-										{#if detail('Project Type')}
-											<span
-												class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-slate-600"
-												>{detail('Project Type')}</span
-											>
-										{/if}
-									</div>
-									{#if detail('Subtitle')}
-										<p class="text-[10.5px] text-slate-500">{detail('Subtitle')}</p>
-									{/if}
-									<div
-										class="mt-2 grid grid-cols-[1.4fr_1fr_1fr] gap-3 border-t border-slate-200 pt-2 text-[10px]"
-									>
-										<div class="flex min-w-0 items-center gap-2">
-											{#if client.icon}
-												<img
-													src={client.icon}
-													crossorigin={toCrossOrigin(client.icon)}
-													alt=""
-													draggable="false"
-													class="size-6 shrink-0 rounded-full bg-white object-contain"
-												/>
-											{/if}
-											<div class="min-w-0">
-												<p class="truncate font-semibold text-slate-900">
-													{company || 'No customer yet'}
-												</p>
-												{#if contact?.name}
-													<p class="truncate text-[8.5px] text-slate-500">
-														Attn. {[contact.name, contact.title, contact.email]
-															.filter(Boolean)
-															.join(' · ')}
-													</p>
-												{/if}
-											</div>
-										</div>
-										<p class="flex min-w-0 items-center gap-1 text-slate-600">
-											<span class="icon-[mdi--map-marker] size-3.5 shrink-0 text-slate-400"
-											></span><span class="truncate">{customerLocation || 'No location yet'}</span>
-										</p>
-										<p class="flex min-w-0 items-center gap-1 text-slate-600">
-											<span
-												class="icon-[mdi--calendar-blank-outline] size-3.5 shrink-0 text-slate-400"
-											></span><span class="truncate">{dates}</span>
-										</p>
-									</div>
-								</div>
-								<h3 class="mt-4 text-[12.5px] font-bold text-slate-950">Personnel in Attendance</h3>
-								<!-- The team as cards, like the Team page's: the lead first, in a blue ring, and nobody labelled. -->
-								<div class="mt-1.5 grid grid-cols-3 gap-1.5">
-									{#each people.slice(0, 9) as name, personIndex (name)}
-										{@const member = memberOf(name)}
-										<div
-											class="flex flex-col items-center rounded-xl bg-slate-50 px-2 py-2 text-center"
-										>
-											<img
-												src={personOf(name).photo}
-												crossorigin={toCrossOrigin(personOf(name).photo)}
-												alt=""
-												draggable="false"
-												class="size-9 rounded-full object-cover ring-2 {personIndex === 0
-													? 'ring-primary'
-													: 'ring-white'}"
-											/>
-											<p class="mt-1 w-full truncate text-[10.5px] font-semibold text-slate-900">
-												{name}
-											</p>
-											{#if member?.title}
-												<p class="w-full truncate text-[8px] text-slate-500">{member.title}</p>
-											{/if}
-											{#if member}
-												<p class="mt-1 flex flex-wrap justify-center gap-0.5">
-													{#each labelsOf(member).slice(0, 2) as label (label)}
-														<span
-															class="rounded-full bg-white px-1.5 py-px text-[7px] font-medium text-slate-600"
-															>{label}</span
-														>
-													{/each}
-												</p>
-											{/if}
-										</div>
-									{:else}
-										<p class="col-span-3 text-[11px] text-slate-300 italic">No one assigned yet</p>
-									{/each}
-								</div>
-								<!-- Anyone else on the job, kept apart from the team: each company, then its people. -->
-								{#each personnel as company (company.id)}
-									<p
-										class="mt-2 border-t border-slate-100 pt-1.5 text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
-									>
-										{company.company || 'Other personnel'}
-									</p>
-									<div class="mt-1 grid grid-cols-3 gap-1.5">
-										{#each company.people as person (person.id)}
-											<div class="flex items-center gap-2 rounded-xl bg-slate-50 px-2 py-1.5">
-												<span
-													class="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600"
-													>{person.name.trim().slice(0, 1).toUpperCase()}</span
-												>
-												<div class="min-w-0">
-													<p class="truncate text-[10px] font-semibold text-slate-900">
-														{person.name}
-													</p>
-													{#if person.title}
-														<p class="truncate text-[8px] text-slate-500">{person.title}</p>
-													{/if}
-												</div>
-											</div>
-										{/each}
-									</div>
-								{/each}
-								<h3 class="mt-4 text-[12.5px] font-bold text-slate-950">Transport Mode</h3>
-								<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-									{#each stops as stop, stopIndex (stop.id)}
-										{#if stopIndex}<span class="icon-[mdi--arrow-right] size-3.5 text-slate-300"
-											></span>{/if}
-										<div class="flex items-center gap-2 rounded-xl bg-slate-50 py-1.5 pr-3 pl-2">
-											<span
-												class="flex size-7 items-center justify-center rounded-lg {stop.point
-													? POINTS[stop.point].chip
-													: 'bg-slate-100 text-slate-400'}"
-												><span class="{iconOf(stop)} size-[18px]"></span></span
-											>
-											<div>
-												<p
-													class="text-[11px] font-semibold {stop.name
-														? 'text-slate-900'
-														: 'text-slate-300 italic'}"
-												>
-													{stop.name || 'Not filled in yet'}
-												</p>
-												<p
-													class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
-												>
-													{#if stop.point}<span class={POINTS[stop.point].text}>{stop.point}</span
-														>{#if stop.mode}
-															·
-														{/if}{/if}{stop.mode}
-												</p>
-												{#if stop.facility}
-													<p class="text-[8px] text-slate-500">{stop.facility}</p>
-												{/if}
-											</div>
-										</div>
-									{:else}
-										<p class="text-[11px] text-slate-300 italic">No transport mode yet</p>
-									{/each}
-								</div>
-								<h3 class="mt-4 text-[12.5px] font-bold text-slate-950">Cargo Description</h3>
-								{#if cargo.length}
-									<table class="mt-1 w-full text-left text-[10.5px]">
-										<thead>
-											<tr
-												class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase"
-											>
-												<th class="w-14 pb-1 font-semibold">Qty</th>
-												<th class="pb-1 font-semibold">Description</th>
-											</tr>
-										</thead>
-										<tbody class="divide-y divide-slate-100">
-											{#each cargo as item (item.id)}
-												<tr>
-													<td class="py-1 font-bold text-slate-900 tabular-nums"
-														>{item.quantity || '–'}</td
-													>
-													<td class="py-1 text-slate-700">{item.description}</td>
-												</tr>
-											{/each}
-										</tbody>
-									</table>
-								{:else if !attachments.length}
-									<p class="mt-1.5 text-[11px] text-slate-300 italic">Not filled in yet</p>
-								{/if}
-								{#if attachments.length}
-									<!-- The item list as it was handed over: photos of it, and the names of any files. -->
-									<div class="mt-2 flex flex-wrap items-start gap-1.5">
-										{#each attachments as file (file.id)}
-											{#if file.kind === 'photo'}
-												{@render picture(file)}
-											{:else}
-												<span
-													class="flex items-center gap-1 rounded-lg bg-slate-50 px-2 py-1 text-[9px] text-slate-600"
-													><span class="icon-[mdi--file-table-outline] size-3.5 text-primary"
-													></span>{file.name}</span
-												>
-											{/if}
-										{/each}
-									</div>
-								{/if}
-							{:else if item.kind === 'transport' && item.panel}
-								<!-- Every stop on this one page: what moved the items, where, and its particulars. -->
-								<div class="mt-3 space-y-2">
-									{#each item.panel.stops.filter((stop) => stop.name || stop.facility || stop.mode) as stop (stop.id)}
-										{@const place = look.facilities.find((other) => other.name === stop.facility)}
-										{@const carrier = look.transports.find((other) => other.name === stop.name)}
-										<section class="rounded-xl bg-slate-50 px-3.5 py-2.5">
-											<div class="flex items-center gap-3">
-												<span
-													class="flex size-9 shrink-0 items-center justify-center rounded-xl {stop.point
-														? POINTS[stop.point].chip
-														: 'bg-slate-100 text-slate-400'}"
-													><span class="{iconOf(stop)} size-5"></span></span
-												>
-												<div class="min-w-0 flex-1">
-													<p
-														class="truncate text-[13px] leading-tight font-bold {stop.name
-															? 'text-slate-950'
-															: 'text-slate-300 italic'}"
-													>
-														{stop.name || 'Not filled in yet'}
-													</p>
-													<p
-														class="text-[7.5px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
-													>
-														{#if stop.point}<span class={POINTS[stop.point].text}>{stop.point}</span
-															>{/if}
-														{[stop.type, stop.mode].filter(Boolean).join(' · ')}
-													</p>
-												</div>
-												<div class="max-w-[46%] min-w-0 text-right text-[9px] leading-snug">
-													<p
-														class="truncate text-[10.5px] font-semibold {stop.facility
-															? 'text-slate-900'
-															: 'text-slate-300 italic'}"
-													>
-														{stop.facility || 'No facility yet'}
-													</p>
-													<p class="truncate text-slate-500">
-														{[place?.kind, cityStateOf(place?.city ?? '')]
-															.filter(Boolean)
-															.join(' · ')}
-													</p>
-													{#if place && partsOf(place.city).street}<p
-															class="truncate text-slate-500"
-														>
-															{place.city}
-														</p>{/if}
-													{#if place?.contact || place?.phone}
-														<p class="truncate text-slate-500">
-															{[place?.contact, place?.phone].filter(Boolean).join(' · ')}
-														</p>
-													{/if}
-												</div>
-											</div>
-											{#if PARTICULARS[stop.mode]}
-												<dl
-													class="mt-2 grid grid-cols-5 gap-x-3 gap-y-1 border-t border-slate-200 pt-1.5"
-												>
-													{#each PARTICULARS[stop.mode] as label (label)}
-														<div class="min-w-0">
-															<dt
-																class="truncate text-[6.5px] font-semibold tracking-[0.1em] text-slate-400 uppercase"
-															>
-																{label}
-															</dt>
-															<dd
-																class="truncate text-[9.5px] {carrier?.details?.[label]
-																	? 'text-slate-900'
-																	: 'text-slate-300'}"
-															>
-																{carrier?.details?.[label] || '–'}
-															</dd>
-														</div>
-													{/each}
-												</dl>
-											{/if}
-										</section>
-									{:else}
-										<p class="text-[11px] text-slate-300 italic">No stops yet</p>
-									{/each}
-								</div>
 							{:else if item.kind === 'photos' && item.panel}
 								{@const group = item.panel.groups[item.group ?? 0]}
 								<!-- #327: a PDF's pages each take a spot, so they fill the layout as photos do. -->
@@ -2712,28 +2281,6 @@
 										<p class="text-[11px] text-slate-300 italic">No photos yet</p>
 									{/each}
 								</div>
-							{:else if item.kind === 'disclaimer'}
-								<p class="mt-3 text-[9.5px] leading-[1.5] text-slate-700">
-									{organization.disclaimer.opening}
-								</p>
-								<ul
-									class="mt-2 list-disc space-y-1 pl-4 text-[9.5px] leading-[1.45] text-slate-700"
-								>
-									{#each organization.disclaimer.points as point (point.id)}
-										<li><b class="text-slate-900">{point.title}:</b> {point.text}</li>
-									{/each}
-								</ul>
-								{#if organization.disclaimer.note}
-									<p class="mt-2 text-[9.5px] leading-[1.5] text-slate-700">
-										{organization.disclaimer.note}
-									</p>
-								{/if}
-								<!-- Like the HTML email signatures (packages/ui email): Best Regards with room above and below,
-								     a round photo, the name, the title in blue capitals, then phone, email and the group email. -->
-								{#if organization.closing}
-									<p class="mt-6 text-[10.5px] text-slate-700 italic">{organization.closing}</p>
-								{/if}
-								<div class="mt-6">{@render signature()}</div>
 							{/if}
 						</div>
 						{#if item.hasSignature}
@@ -2776,16 +2323,14 @@
 		<div data-signature>{@render signature()}</div>
 		<!-- The Disclaimer's points, each read at the width of its column for each size tried (#275); set apart so
 		     trying sizes never resizes the measurer. -->
-		{#if isDisclaimerB}
-			<div
-				data-points
-				class="absolute top-0 left-0"
-			>
-				{#each organization.disclaimer.points as point (point.id)}
-					<div>{@render flowBlock({ kind: 'point', id: point.id })}</div>
-				{/each}
-			</div>
-		{/if}
+		<div
+			data-points
+			class="absolute top-0 left-0"
+		>
+			{#each organization.disclaimer.points as point (point.id)}
+				<div>{@render flowBlock({ kind: 'point', id: point.id })}</div>
+			{/each}
+		</div>
 		<!-- The thank-you on one line at 100 px, to read the size that sets it across the text's width (#275). -->
 		{#if organization.closing}
 			<span

@@ -5,7 +5,7 @@
 	// centre, like the preview's zoom bar, with the save cloud at its start (note 1). Swipe between the two; on Preview
 	// the pages take every drag, so a hidden strip on the left edge swipes back. Run 9: the bar is words only, with no
 	// line after the cloud (note 19); on Panels the left edge swipes the whole project away, back to the dashboard
-	// (note 21). Run 11 (2026-10-26 19:22): Panels and Preview moved into the one floating bar (nav-bar.svelte), which
+	// (note 21). Run 11 (2026-10-26 19:22): Panels and Preview moved into the one floating bar (nav-bar.svelte then, variants/bar-c.svelte now), which
 	// sets look.tab; the panes follow it, and their scroll drives the bar's highlight through look.tabProgress. Run 13
 	// (2026-11-07 22:21): a Page pane comes first (project-page.svelte), with its own picture and buttons, so the
 	// header shows from Edit on; the left edge of the Page swipes the project away. Run 24 (Justin, 2026-11-11): Header
@@ -133,7 +133,7 @@
 			status={look.project.status}
 			reveal={look.tabProgress}
 			isLight={isPhoto}
-			hasCloud={look.variant('bar') !== 'A'}
+			hasCloud
 			hasChevron={look.variant('header') === 'C'}
 			onprogress={() => look.showEmpty()}
 			bind:height={top}
@@ -149,10 +149,7 @@
 			bind:clientHeight={top}
 		>
 			<div class="py-2 pr-1.5 pl-1.5">
-				<ProjectBar
-					{look}
-					isCloud={look.variant('bar') !== 'A'}
-				/>
+				<ProjectBar {look} />
 			</div>
 		</header>
 	{/if}

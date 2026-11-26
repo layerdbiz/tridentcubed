@@ -6,10 +6,10 @@
 	// icon takes the colour of the project's state, or of the record's first label, as in the lists (2026-11-10).
 	// Run 16: the list is no longer written here. It is the eight things changed last, from their own stamps. The
 	// menu's Pinned list (#346) draws its rows here too, given as `items`.
-	import { PAGE_ICONS, STATUS, type RecentType } from './look.data';
+	import { PAGE_ICONS, type RecentType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
-	import { recentOf, recordOf } from './records.data';
+	import { openItem, recentOf, toneOfItem } from './records.data';
 
 	let {
 		look,
@@ -31,18 +31,7 @@
 
 	function open(item: RecentType) {
 		onpick?.();
-		if (item.page === 'projects') {
-			if (look.projects.some((project) => project.id === item.id)) look.open(item.id!);
-		} else if (look.has(item.page, item.name)) look.openRecord(item.page, item.name);
-		else look.say(`${item.name} is no longer there`);
-	}
-
-	function toneOf(item: RecentType) {
-		if (item.page === 'projects') {
-			const project = look.projects.find((one) => one.id === item.id);
-			return project ? STATUS[project.status].tone : 'text-slate-400';
-		}
-		return recordOf(look, item.page, item.name)?.tone.text ?? 'text-slate-400';
+		openItem(look, item);
 	}
 </script>
 
@@ -58,7 +47,8 @@
 				style="width: {width}px"
 			>
 				<span
-					class="relative flex items-center justify-center overflow-hidden rounded-full {toneOf(
+					class="relative flex items-center justify-center overflow-hidden rounded-full {toneOfItem(
+						look,
 						item
 					)}"
 					style="width: {size}px; height: {size}px"

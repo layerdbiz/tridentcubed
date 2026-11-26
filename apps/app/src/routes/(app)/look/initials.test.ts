@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { codeOf, initialsOf, isInitialsPicture, toInitialsPicture } from './initials';
+import { initialsOf, isInitialsPicture, toCode, toInitialsPicture } from './initials';
+
+function svgOf(src: string) {
+	return decodeURIComponent(src.replace('data:image/svg+xml,', ''));
+}
 
 describe('initialsOf', () => {
 	it('takes the first letter of the first name and of the last name', () => {
@@ -21,20 +25,18 @@ describe('initialsOf', () => {
 	});
 });
 
-describe('codeOf', () => {
+describe('toCode', () => {
 	it('shows the code typed for a company', () => {
-		expect(codeOf('Saudi Global Logistics', ' SGL ')).toBe('SGL');
+		expect(toCode('Saudi Global Logistics', ' SGL ')).toBe('SGL');
 	});
 
 	it('makes one up from the name when none is typed', () => {
-		expect(codeOf('NMT Projects')).toBe('NMT');
-		expect(codeOf('Blue Water Shipping', '')).toBe('BLU');
+		expect(toCode('NMT Projects')).toBe('NMT');
+		expect(toCode('Blue Water Shipping', '')).toBe('BLU');
 	});
 });
 
 describe('toInitialsPicture', () => {
-	const svgOf = (src: string) => decodeURIComponent(src.replace('data:image/svg+xml,', ''));
-
 	it('draws the letters on a diagonal gradient from top left to bottom right', () => {
 		const svg = svgOf(toInitialsPicture('JO', 'admin'));
 		expect(svg).toContain('>JO</text>');
@@ -51,7 +53,7 @@ describe('toInitialsPicture', () => {
 		expect(svgOf(toInitialsPicture('SGL', 'customer'))).toContain('#0ea5e9');
 	});
 
-	it('draws someone added on the spot in black on plain white, a company added there in white on black', () => {
+	it('draws Personnel in black on plain white, and a company of theirs in white on black', () => {
 		const person = svgOf(toInitialsPicture('AL', 'personnel'));
 		expect(person).not.toContain('linearGradient');
 		expect(person).toContain('fill="#ffffff"');

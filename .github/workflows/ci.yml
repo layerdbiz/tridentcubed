@@ -43,6 +43,10 @@ concurrency:
 permissions:
   contents: read
 
+# Nothing commits here, so `pnpm install`'s `prepare` leaves the pre-commit hook out (#370).
+env:
+  VP_GIT_HOOKS: '0'
+
 jobs:
   gate:
     name: gate

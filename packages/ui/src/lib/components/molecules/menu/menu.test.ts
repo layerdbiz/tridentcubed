@@ -408,6 +408,24 @@ describe('where the list goes', () => {
 		expect(style).not.toContain('top:');
 	});
 
+	it('opens over its button when asked to and it fits there, as at the foot of a box (#376)', async () => {
+		placeButton({ top: 500, left: 600, width: 40, height: 40 });
+		show({ opens: 'up' });
+		await open();
+
+		const style = listOf()?.getAttribute('style') ?? '';
+		expect(style).toContain(`bottom: ${innerHeight - 500 + 8}px`);
+		expect(style).not.toContain('top:');
+	});
+
+	it('still hangs under its button when asked to open over it but there is no room above', async () => {
+		placeButton({ top: 60, left: 600, width: 40, height: 40 });
+		show({ opens: 'up' });
+		await open();
+
+		expect(listOf()?.getAttribute('style')).toContain('top: 108px');
+	});
+
 	it('floats above the page in a popover, so no scrolling box cuts it off', async () => {
 		show({});
 		await open();
