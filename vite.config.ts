@@ -38,6 +38,12 @@ export default defineConfig({
 		'*.{js,mjs,cjs,ts,svelte,css,json,yml,yaml}':
 			'vp check --fix --deny-warnings --no-error-on-unmatched-pattern'
 	},
+	// The root's half of `pnpm dev`: the barrels watcher, run beside each app's dev server under
+	// `vp run --parallel` (packages/tools, the workspace launcher; invariant 5). The apps' tasks
+	// come from `createAppConfig`.
+	run: {
+		tasks: { 'workspace:dev': { command: 'pnpm barrels:watch', cache: false } }
+	},
 	fmt: {
 		useTabs: true,
 		singleQuote: true,
