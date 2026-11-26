@@ -4,9 +4,9 @@ import { fireEvent, render, screen } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import Switch from './switch.svelte';
 
-function show(props: Record<string, unknown> = {}) {
+function show(props: Record<string, unknown> = {}, target?: HTMLElement) {
 	const onchange = vi.fn();
-	render(Switch, { props: { label: 'Overview in the report', onchange, ...props } });
+	render(Switch, { target, props: { label: 'Overview in the report', onchange, ...props } });
 	return { onchange, button: screen.getByRole('switch', { name: 'Overview in the report' }) };
 }
 
@@ -59,9 +59,7 @@ describe('Switch', () => {
 	it('stays as it is in a disabled fieldset, as a frozen project’s fields do', async () => {
 		const fieldset = document.body.appendChild(document.createElement('fieldset'));
 		fieldset.disabled = true;
-		const onchange = vi.fn();
-		render(Switch, { target: fieldset, props: { label: 'Overview in the report', onchange } });
-		const button = screen.getByRole('switch', { name: 'Overview in the report' });
+		const { button, onchange } = show({}, fieldset);
 
 		await fireEvent.click(button);
 		expect(button.getAttribute('aria-checked')).toBe('false');
