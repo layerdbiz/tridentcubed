@@ -24,18 +24,21 @@ describe('Avatar', () => {
 		expect(container.querySelector('.icon-\\[mdi--folder\\]')).not.toBeNull();
 	});
 
-	it('wears a presence dot in its colour at the top right', () => {
-		render(Avatar, { props: { src: '/files/ana.webp', alt: 'Ana Lopez', presence: 'idle' } });
+	// The dot and the badge are drawn by the avatar's own box, so the tests read what it is told to draw.
+	it('wears the presence dot it is given, sized to the avatar', () => {
+		const { container } = render(Avatar, {
+			props: { src: '/files/ana.webp', alt: 'Ana Lopez', presence: 'idle', size: 40 }
+		});
 
-		const dot = screen.getByTitle('idle');
-		expect(dot.className).toContain('bg-warning');
-		expect(dot.className).toContain('top-0');
+		const box = container.firstElementChild as HTMLElement;
+		expect(box.dataset.presence).toBe('idle');
+		expect(box.style.getPropertyValue('--dot')).toBe('11px');
 	});
 
 	it('shows no dot unless it is given one', () => {
 		const { container } = render(Avatar, { props: { src: '/files/ana.webp', alt: 'Ana Lopez' } });
 
-		expect(container.querySelector('[title]')).toBeNull();
+		expect((container.firstElementChild as HTMLElement).dataset.presence).toBeUndefined();
 	});
 
 	it('wears a badge in place of the dot', () => {
@@ -43,8 +46,10 @@ describe('Avatar', () => {
 			props: { src: '/files/ana.webp', alt: 'Ana Lopez', presence: 'online', badge: '/icon.png' }
 		});
 
-		expect(screen.queryByTitle('online')).toBeNull();
-		expect(container.querySelector('img[src="/icon.png"]')).not.toBeNull();
+		const box = container.firstElementChild as HTMLElement;
+		expect(box.dataset.presence).toBeUndefined();
+		expect(box.dataset.badge).toBe('');
+		expect(box.style.getPropertyValue('--badge')).toBe('url("/icon.png")');
 	});
 
 	it('is as big as it is asked to be', () => {

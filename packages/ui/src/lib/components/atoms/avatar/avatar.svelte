@@ -1,3 +1,16 @@
+<script
+	lang="ts"
+	module
+>
+	// The box's size, the dot's and the badge's, as one style made once for each avatar (#379, measured).
+	function toBoxStyle(size: number, badge: string | undefined, badgeScale: number) {
+		const box = `width: ${size}px; height: ${size}px; --dot: ${Math.max(8, Math.round(size * 0.28))}px`;
+		return badge
+			? `${box}; --badge: url("${badge}"); --mark: ${Math.round(size * badgeScale)}px`
+			: box;
+	}
+</script>
+
 <script lang="ts">
 	/**
 	 * @tags ui, avatar
@@ -5,8 +18,9 @@
 	// One round picture, a face or a logo (#379, moved from the app's look/avatar.svelte and client-logo.svelte): the
 	// picture, or an icon on grey when there is none, with a presence dot at the top right or a badge at the bottom
 	// right in its place. It repeats in every dashboard row, so it is one element and a picture, with no base
-	// component (#365 item 7, like the menu list's rows on #297). The app draws its initials and company codes as
-	// pictures and hands them over as `src` (#355).
+	// component (#365 item 7, like the menu list's rows on #297), and the dot and the badge are drawn by the element
+	// itself rather than elements of their own. The app draws its initials and company codes as pictures and hands
+	// them over as `src` (#355).
 
 	export type PresenceType = 'online' | 'idle' | 'offline';
 
@@ -53,56 +67,59 @@
 		title,
 		class: className = ''
 	}: AvatarProps = $props();
-
-	const TONES: Record<PresenceType, string> = {
-		online: 'bg-success',
-		idle: 'bg-warning',
-		offline: 'bg-slate-400'
-	};
-
-	const round = $derived(shape === 'circle' ? 'rounded-full' : 'rounded-[24%]');
-	const dot = $derived(Math.max(8, Math.round(size * 0.28)));
-	const mark = $derived(Math.round(size * badgeScale));
 </script>
 
+<!-- No whitespace between the parts: every space is one more node in every row (#379, measured). -->
 <span
-	class="relative inline-block shrink-0 {className}"
-	style="width: {size}px; height: {size}px"
+	class="avatar relative inline-block shrink-0 {className}"
+	style={toBoxStyle(size, badge, badgeScale)}
+	data-presence={badge ? undefined : presence}
+	data-badge={badge ? '' : undefined}
 	{title}
->
-	{#if src}
-		<img
+	>{#if src}<img
 			{src}
 			{alt}
 			{crossorigin}
 			draggable="false"
-			class="size-full {round} {fit === 'contain'
+			class="size-full {shape === 'circle' ? 'rounded-full' : 'rounded-[24%]'} {fit === 'contain'
 				? 'bg-white object-contain'
 				: 'bg-slate-200 object-cover'} {ring} {isMuted ? 'grayscale' : ''}"
-		/>
-	{:else}
-		<span
-			class="flex size-full items-center justify-center bg-slate-200 text-slate-400 {round} {ring}"
+		/>{:else}<span
+			class="flex size-full items-center justify-center bg-slate-200 text-slate-400 {shape ===
+			'circle'
+				? 'rounded-full'
+				: 'rounded-[24%]'} {ring}"
 			role="img"
 			aria-label={alt}><span class="{fallback} size-[58%]"></span></span
-		>
-	{/if}
-	{#if badge}
-		<span
-			class="absolute -right-1 -bottom-1 overflow-hidden rounded-full bg-black ring-[1.5px] ring-white"
-			style="width: {mark}px; height: {mark}px"
-			><img
-				src={badge}
-				alt=""
-				draggable="false"
-				class="size-full object-cover"
-			/></span
-		>
-	{:else if presence}
-		<span
-			class="absolute top-0 right-0 rounded-full ring-2 ring-white {TONES[presence]}"
-			style="width: {dot}px; height: {dot}px"
-			title={presence}
-		></span>
-	{/if}
-</span>
+		>{/if}</span
+>
+
+<style lang="postcss">
+	@reference "#ui.css";
+
+	/* The presence dot: green online, orange idle, grey offline. */
+	.avatar[data-presence]::after {
+		content: '';
+		width: var(--dot);
+		height: var(--dot);
+		@apply absolute top-0 right-0 rounded-full ring-2 ring-white;
+	}
+	.avatar[data-presence='online']::after {
+		@apply bg-success;
+	}
+	.avatar[data-presence='idle']::after {
+		@apply bg-warning;
+	}
+	.avatar[data-presence='offline']::after {
+		@apply bg-slate-400;
+	}
+
+	/* The badge: a small round picture on black at the bottom right. */
+	.avatar[data-badge]::after {
+		content: '';
+		width: var(--mark);
+		height: var(--mark);
+		background: black var(--badge) center / cover no-repeat;
+		@apply absolute -right-1 -bottom-1 rounded-full ring-[1.5px] ring-white;
+	}
+</style>

@@ -45,5 +45,7 @@ slate and amber shades (kept from the app's PDF download toast on #293),
 the select's slate shades and its `inputClass` (its `variant="soft"` look
 with its own box, and the typed list and choice marks the notched field
 shares with it: kept from the app's picker and place field on #298, the
-app's panel look until #57): all listed on "UI library cleanup" (#33),
+app's panel look until #57), the avatar's and stack's plain spans and slate
+shades with no base component (kept from the app's faces on #379: they
+repeat in every dashboard row): all listed on "UI library cleanup" (#33),
 changed there, not mid-feature.

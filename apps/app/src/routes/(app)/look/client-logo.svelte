@@ -32,7 +32,11 @@
 </script>
 
 <Avatar
-	{...logo}
+	src={logo.src}
+	alt={logo.alt}
+	crossorigin={logo.crossorigin}
+	fit={logo.fit}
+	fallback={logo.fallback}
 	{size}
 	shape={logo.shape ?? shape}
 	ring={isBare ? '' : 'shadow-sm ring-1 ring-slate-900/[0.06]'}

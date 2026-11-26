@@ -5,8 +5,8 @@
 	// open, grey when they are all done, 9+ above nine, none at all with no projects. A team member's photo has a ring
 	// in their role's colour, so admins and managers stand out at a glance (note 8): purple for an admin, blue for a
 	// manager, grey for a Team user (#355, Justin, 2026-11-26; before that blue, violet and none).
-	import Avatar from './avatar.svelte';
-	import ClientLogo from './client-logo.svelte';
+	import { Avatar } from '@layerd/ui';
+	import { faceOf, logoOf } from './marks';
 	import { badgeOf, type RecordType } from './records.data';
 
 	let {
@@ -28,17 +28,28 @@
 	class="relative inline-block shrink-0"
 	style="width: {size}px; height: {size}px"
 >
+	<!-- The library's avatar straight, with no app wrapper between: it is in every row (#379). -->
 	{#if record.page === 'customers'}
-		<ClientLogo
-			name={record.key}
+		{@const logo = logoOf(record.key)}
+		<Avatar
+			src={logo.src}
+			alt={logo.alt}
+			crossorigin={logo.crossorigin}
+			fit={logo.fit}
+			fallback={logo.fallback}
 			{size}
-			shape="circle"
+			ring="shadow-sm ring-1 ring-slate-900/[0.06]"
+			title={record.key}
 		/>
 	{:else if record.page === 'team'}
+		{@const face = faceOf(record.key)}
 		<Avatar
-			name={record.key}
+			src={face.src}
+			alt={face.alt}
+			crossorigin={face.crossorigin}
+			presence={face.presence}
 			{size}
-			ring={RING[record.member?.role ?? 'team']}
+			ring="ring-2 {RING[record.member?.role ?? 'team']}"
 		/>
 	{:else}
 		<span

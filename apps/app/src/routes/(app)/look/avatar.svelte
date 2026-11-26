@@ -36,10 +36,15 @@
 		// (black on white, #355).
 		tone?: InitialsToneType;
 	} = $props();
+
+	const face = $derived(faceOf(name, { tone, presence, hasPresence }));
 </script>
 
 <Avatar
-	{...faceOf(name, { tone, presence, hasPresence })}
+	src={face.src}
+	alt={face.alt}
+	crossorigin={face.crossorigin}
+	presence={face.presence}
 	{size}
 	ring="ring-2 {ring}"
 	{isMuted}
