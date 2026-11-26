@@ -92,7 +92,9 @@
 							>
 								{#each columns as column}
 									<td
-										class="py-2 {getAlignClass(column.align)} {compact ? 'text-sm' : ''}"
+										class="px-[0.5714286em] py-2 first:ps-0 last:pe-0 {getAlignClass(
+											column.align
+										)} {compact ? 'text-sm' : ''}"
 										style={column.width ? `width: ${column.width}` : ''}
 									>
 										{getCellValue(row, column.key)}

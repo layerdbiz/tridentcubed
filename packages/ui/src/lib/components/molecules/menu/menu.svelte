@@ -49,6 +49,9 @@
 		// The second argument says the choice is the one picked.
 		mark?: Snippet<[MenuOptionType, boolean]>;
 		align?: 'left' | 'right';
+		// Which way it opens when it fits either way: under its button, or over it (#376: a toolbar at the foot of a
+		// box, the photo pop-up's More, whose list would otherwise fall below the box on a tall screen).
+		opens?: 'down' | 'up';
 		isWide?: boolean;
 		// Given, the menu picks several: every id in it is ticked, and a pick does not close the list (run 19).
 		values?: string[];
@@ -66,6 +69,7 @@
 		trigger,
 		mark,
 		align = 'right',
+		opens = 'down',
 		isWide = false,
 		values,
 		isSearchable = false,
@@ -104,7 +108,8 @@
 		const tall = rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
 		const below = viewTop + viewHeight - box.bottom - 24;
 		const above = box.top - viewTop - 24;
-		const isUp = below < Math.min(tall, 220) && above > below;
+		const need = Math.min(tall, 220);
+		const isUp = opens === 'up' ? above >= need || above > below : below < need && above > below;
 		const x = align === 'right' ? `right: ${innerWidth - box.right}px` : `left: ${box.left}px`;
 		const y = isUp ? `bottom: ${innerHeight - box.top + 8}px` : `top: ${box.bottom + 8}px`;
 		// Run 14 (note 5): never taller than the room on its side, or 360px; longer lists scroll inside it.

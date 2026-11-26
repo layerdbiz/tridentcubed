@@ -368,6 +368,15 @@ _Avoid_: entity, item, resource
 One record's screen, shared by all four kinds, with two tabs: Page, how it reads with its projects, first, and Edit.
 _Avoid_: detail page, profile (that is the User's own)
 
+**Pinned**:
+The menu's list, at its top above Recents, of the projects and records a User pinned from their ⋮ menu (Pin, Unpin); each User's own, newest first (#346).
+_Avoid_: favourites, starred, bookmarks
+_Not_: the map's pin, the marker where a record sits on the map
+
+**Search**:
+The menu's pop-up that finds projects and records as they are typed, names first (#345); Ctrl K or ⌘ K on a desktop.
+_Avoid_: finder, command palette
+
 **Label**:
 What a list page sorts by: a project's status, a customer's type, a Team record's labels, a transport's transport type and a facility's type. A page's labels are its board columns, its filter options and its chart's slices, in the same colours and order; a record with none sits under Other.
 _Avoid_: tag, category, group

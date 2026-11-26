@@ -160,7 +160,9 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   zero-diff check, tests). CI runs the same steps in jobs side by side:
   `check:static` in one, the tests in others. It runs on a fresh clone with no build step, and
   its barrels check reads red on a tree with regenerated barrels not yet
-  committed. `vp check --fix` formats and applies safe lint fixes.
+  committed. `vp check --fix` formats and applies safe lint fixes. Every commit runs it first on the staged
+  files (`vp staged` in `.vite-hooks/pre-commit`, which `pnpm install` sets up), so a lint
+  error stops the commit (#370).
 - **One config file per app.** SvelteKit 3 reads only `vite.config.ts`; no
   `svelte.config.js` exists in this repository, and none is added. The four
   apps get theirs from `createAppConfig({ root, prerender?, paths?, test? })` in

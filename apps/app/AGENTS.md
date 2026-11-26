@@ -113,7 +113,9 @@ the why is in ADR 0002, 0003 and 0005.
   permission check runs before it; Row Level Security is the net behind.
   Get it with `const { claims } = await getServer()` and run work as
   `claims.run(locals.actor, (tx) => ...)`; a new table's policy is
-  `organizationPolicy('<table>')` from `db/policy.ts`.
+  `organizationPolicy('<table>')` from `db/policy.ts`, or `userPolicy('<table>')`
+  for a table each User keeps for themselves (the menu's pins, `pinned`), whose
+  `user_id` the save command sets.
 - **One save command: `saveRows`** (`src/lib/rows/rows.remote.ts`). Every
   change to a row (records, projects, panels, stops, entries, photos, status,
   Trash, roles) goes to the server through it as a batch of row changes,

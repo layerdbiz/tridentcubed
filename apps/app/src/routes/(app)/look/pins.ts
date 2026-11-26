@@ -1,7 +1,8 @@
 // Pins (#346; Justin, 2026-11-25): a project or a record pinned from its ⋮ menu shows in the menu's Pinned list, at
 // the top above Recents. Each person has their own pins, newest on top, and the same ⋮ menu unpins it. The screens
 // name a record by its name, but a pin keeps its id, so a renamed record stays pinned; a pin whose project or record
-// went to the Trash is left out of the list (and comes back with it).
+// went to the Trash is left out of the list (and comes back with it). Pinned on two devices before either heard of the
+// other, a thing has two pins: the list shows it once, and Unpin takes both away.
 import { agoOf, type DatasetType, type RecentType } from './look.data';
 import type { LookState } from './look.state.svelte';
 
@@ -21,36 +22,35 @@ function liveOf(look: LookState, page: DatasetType): NamedType[] {
 }
 
 // The id of what `key` names on its page: a project's own id, or a record's name.
-function toRecordId(look: LookState, page: DatasetType, key: string) {
+function recordIdOf(look: LookState, page: DatasetType, key: string) {
 	if (page === 'projects') return key;
 	return liveOf(look, page).find((record) => record.name === key)?.id;
 }
 
-function pinOf(look: LookState, page: DatasetType, key: string) {
-	const recordId = toRecordId(look, page, key);
-	return recordId
-		? look.pins.find((pin) => pin.page === page && pin.recordId === recordId)
-		: undefined;
+// Every pin of what `key` names: one, or more when two devices pinned it at once.
+function pinsOf(look: LookState, page: DatasetType, key: string) {
+	const recordId = recordIdOf(look, page, key);
+	return recordId ? look.pins.filter((pin) => pin.page === page && pin.recordId === recordId) : [];
 }
 
 /** Whether what `key` names (a project's id, or a record's name) is pinned. */
 export function isPinned(look: LookState, page: DatasetType, key: string) {
-	return Boolean(pinOf(look, page, key));
+	return pinsOf(look, page, key).length > 0;
 }
 
 /** Whether what `key` names can be pinned: it is saved, so it has an id. */
 export function isPinnable(look: LookState, page: DatasetType, key: string) {
-	return Boolean(toRecordId(look, page, key));
+	return Boolean(recordIdOf(look, page, key));
 }
 
 /** Pins what `key` names at the top of the list, or unpins it when it is pinned already. */
 export function togglePin(look: LookState, page: DatasetType, key: string, at = new Date()) {
-	const pinned = pinOf(look, page, key);
-	if (pinned) {
-		look.pins = look.pins.filter((pin) => pin !== pinned);
+	const pinned = pinsOf(look, page, key);
+	if (pinned.length > 0) {
+		look.pins = look.pins.filter((pin) => !pinned.includes(pin));
 		return;
 	}
-	const recordId = toRecordId(look, page, key);
+	const recordId = recordIdOf(look, page, key);
 	if (!recordId) return;
 	look.pins = [{ id: crypto.randomUUID(), page, recordId, at: at.toISOString() }, ...look.pins];
 }
@@ -58,12 +58,16 @@ export function togglePin(look: LookState, page: DatasetType, key: string, at = 
 /** The menu's Pinned list: newest pin first, each as the Recents list draws a row, what is in the Trash left out. */
 export function pinnedOf(look: LookState): RecentType[] {
 	const items: RecentType[] = [];
+	const shown = new Set<string>();
 	for (const pin of look.pins.toSorted((a, b) => b.at.localeCompare(a.at))) {
 		const record = liveOf(look, pin.page).find((one) => one.id === pin.recordId);
-		if (!record) continue;
+		const key = `${pin.page}/${pin.recordId}`;
+		if (!record || shown.has(key)) continue;
+		shown.add(key);
 		items.push({
 			page: pin.page,
-			name: record.name.trim() || 'Untitled project',
+			// A record's name is its key on the screens, kept as it is; only a project, found by its id, may say Untitled.
+			name: pin.page === 'projects' ? record.name.trim() || 'Untitled project' : record.name,
 			note: `Pinned · ${agoOf(pin.at)}`,
 			...(pin.page === 'projects' ? { id: pin.recordId } : {})
 		});

@@ -46,6 +46,9 @@
 	const columns = $derived(
 		columnsOf(look, dataset).filter((column) => filter === 'All' || column.label === filter)
 	);
+	// The desktop table's side room in each cell, 4/7 of the cell's text size: the library's text styles gave it to
+	// every table cell in the app until they were limited to `.prose` (#371). A cell's own pl- or pr- wins over it.
+	const CELL_PADDING = 'px-[0.5714286em]';
 </script>
 
 {#snippet logoStack(names: string[])}
@@ -185,7 +188,7 @@
 									animate:flip={{ duration: 200 }}
 									onclick={() => look.open(project.id)}
 								>
-									<td class="py-3 pl-4"
+									<td class="py-3 {CELL_PADDING} pl-4"
 										><ProjectLogo
 											{project}
 											size={38}
@@ -193,32 +196,34 @@
 										/></td
 									>
 									<td
-										class="py-3 font-medium group-hover:text-primary {isArchived
+										class="py-3 {CELL_PADDING} font-medium group-hover:text-primary {isArchived
 											? 'text-slate-500'
 											: 'text-slate-900'}">{project.title}</td
 									>
-									<td class="py-3"><Chips labels={project.type ? [project.type] : []} /></td>
-									<td class="max-w-56 py-3"
+									<td class="py-3 {CELL_PADDING}"
+										><Chips labels={project.type ? [project.type] : []} /></td
+									>
+									<td class="max-w-56 py-3 {CELL_PADDING}"
 										><ProjectRoute
 											{look}
 											{project}
 										/></td
 									>
-									<td class="py-3"
+									<td class="py-3 {CELL_PADDING}"
 										><Faces
 											names={project.team}
 											size={30}
 											isMuted={isArchived}
 										/></td
 									>
-									<td class="py-3 pr-4"
+									<td class="py-3 {CELL_PADDING} pr-4"
 										><ProjectProgress
 											{look}
 											{project}
 										/></td
 									>
 									<td
-										class="py-3 pr-3"
+										class="py-3 {CELL_PADDING} pr-3"
 										onclick={(event) => event.stopPropagation()}
 									>
 										<span class="flex items-center justify-end">
@@ -240,22 +245,23 @@
 									animate:flip={{ duration: 200 }}
 									onclick={() => look.openRecord(record.page, record.key)}
 								>
-									<td class="py-3 pl-4"
+									<td class="py-3 {CELL_PADDING} pl-4"
 										><RecordMark
 											{record}
 											size={38}
 										/></td
 									>
-									<td class="py-3 font-medium text-slate-900 group-hover:text-primary"
+									<td
+										class="py-3 {CELL_PADDING} font-medium text-slate-900 group-hover:text-primary"
 										>{record.key}</td
 									>
-									<td class="py-3"
+									<td class="py-3 {CELL_PADDING}"
 										><Chips
 											labels={record.sub ? [...record.labels, record.sub] : record.labels}
 											isWrapped
 										/></td
 									>
-									<td class="py-3"
+									<td class="py-3 {CELL_PADDING}"
 										><PlaceLine
 											place={record.location}
 											tone={record.tone.text}
@@ -264,7 +270,7 @@
 									>
 									{#if dataset === 'team'}
 										<td
-											class="py-3 text-xs leading-5"
+											class="py-3 {CELL_PADDING} text-xs leading-5"
 											onclick={(event) => event.stopPropagation()}
 										>
 											<a
@@ -278,14 +284,14 @@
 											>
 										</td>
 									{/if}
-									<td class="py-3"
+									<td class="py-3 {CELL_PADDING}"
 										>{#if record.people.length}<Faces
 												names={record.people}
 												size={28}
 											/>{:else}{@render logoStack(record.logos)}{/if}</td
 									>
 									<td
-										class="py-3 pr-3"
+										class="py-3 {CELL_PADDING} pr-3"
 										onclick={(event) => event.stopPropagation()}
 									>
 										<span class="flex items-center justify-end">

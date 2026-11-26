@@ -4,6 +4,6 @@
 		"sourceMap": true,
 		"strict": true
 	},
-	"exclude": ["node_modules/**", "dist/**", ".svelte-kit/**", "**/.turbo/**", "src/service-worker"],
+	"exclude": ["node_modules/**", "dist/**", ".svelte-kit/**", "src/service-worker"],
 	"include": ["src"]
 }

@@ -4,10 +4,10 @@
 	"private": true,
 	"type": "module",
 	"exports": {
-		".": "./vite.config.ts"
+		".": "./config.ts"
 	},
 	"files": [
-		"vite.config.ts"
+		"config.ts"
 	],
 	"scripts": {
 		"check": "tsc --noEmit"

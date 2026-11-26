@@ -196,9 +196,6 @@ importers:
       postcss:
         specifier: ^8.5.15
         version: 8.5.28
-      turbo:
-        specifier: 2.11.6
-        version: 2.11.6
       unplugin-icons:
         specifier: ^23.0.1
         version: 23.0.1(@vue/compiler-sfc@3.5.30)(svelte@5.57.1)
@@ -338,7 +335,7 @@ importers:
     devDependencies:
       '@csstools/postcss-light-dark-function':
         specifier: ^3.0.0
-        version: 3.0.1(postcss@8.5.28)
+        version: 3.0.1(postcss@8.5.33)
       '@layerd/config-vite':
         specifier: workspace:*
         version: link:../../packages/config/vite
@@ -387,7 +384,7 @@ importers:
     devDependencies:
       '@csstools/postcss-light-dark-function':
         specifier: ^3.0.0
-        version: 3.0.1(postcss@8.5.28)
+        version: 3.0.1(postcss@8.5.33)
       '@layerd/config-vite':
         specifier: workspace:*
         version: link:../../packages/config/vite
@@ -436,7 +433,7 @@ importers:
     devDependencies:
       '@csstools/postcss-light-dark-function':
         specifier: ^3.0.0
-        version: 3.0.1(postcss@8.5.28)
+        version: 3.0.1(postcss@8.5.33)
       '@layerd/config-vite':
         specifier: workspace:*
         version: link:../../packages/config/vite
@@ -2802,36 +2799,6 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@turbo/darwin-64@2.11.6':
-    resolution: {integrity: sha512-nAvJwDBgz/cKoSPhB7YOGPFmDEwCRavFjy0jUsrGqR97cLyJqXU2rZC/zTnw+9J3DkB2gfjpolX7mKsBatMcCQ==}
-    cpu: [x64]
-    os: [darwin]
-
-  '@turbo/darwin-arm64@2.11.6':
-    resolution: {integrity: sha512-odk6UHW9hympllPlezz7oJhPmO40+oU8BUh4zvNuSIqQ1QQll4zo1DN4IrD/3jUzkLefvMJ8UHEHlGq9WdR7tw==}
-    cpu: [arm64]
-    os: [darwin]
-
-  '@turbo/linux-64@2.11.6':
-    resolution: {integrity: sha512-PvXbwMqZPEWdWnJSIJ5D/tugnSOrRvLYKkH7iC8TLGVI+4J5znSLn3Tx1YkH5OUzFEFhxJQyHjtiRqBPbCoVlg==}
-    cpu: [x64]
-    os: [android, linux]
-
-  '@turbo/linux-arm64@2.11.6':
-    resolution: {integrity: sha512-8FKA3SqJk6fTv7Hqrmv2JnJfqiXslTRJYBwiI6eU3QXokVMYFLh1wUywF+w3MPtDfx1O/1otbps5AnijbzY1Kg==}
-    cpu: [arm64]
-    os: [android, linux]
-
-  '@turbo/windows-64@2.11.6':
-    resolution: {integrity: sha512-XPSgTg494cV31u0Uch8zRq/Jnpe8h4muwNpg9IRPrJqADrjjzxzFMtJCtBZTKVaSEDUU/ol8Gr4SYxtiHt2Tzg==}
-    cpu: [x64]
-    os: [win32]
-
-  '@turbo/windows-arm64@2.11.6':
-    resolution: {integrity: sha512-dZ0/ZFH2AU/l1KdqISVkWUSnm0ufWZyiYRLDYCL+rJAhkUDMFhTZkSnYEL2O/m0tOu/Jy/EKAnZfocuyMX3LMQ==}
-    cpu: [arm64]
-    os: [win32]
-
   '@turf/boolean-point-in-polygon@7.3.3':
     resolution: {integrity: sha512-hmXV4PofLAVbVZcnKk/yp//0s65huap+L3wKGKzbLWk57fWla/eRmFKx/iQ15xGu05zylHz5cA5AfriVGZHj2g==}
 
@@ -4985,10 +4952,6 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  turbo@2.11.6:
-    resolution: {integrity: sha512-UppAr5XEHLfVdVp75nd+tzPp/wVEwS7Ken9aYjMlBnHqXynKn9IcQHd6GDOXBxDViSjpS+SzJcOF86v9Hf8GfQ==}
-    hasBin: true
-
   typed-query-selector@2.12.1:
     resolution: {integrity: sha512-uzR+FzI8qrUEIu96oaeBJmd9E7CFEiQ3goA5qCVgc4s5llSubcfGHq9yUstZx/k4s9dXHVKsE35YWoFyvEqEHA==}
 
@@ -5441,14 +5404,31 @@ snapshots:
       '@csstools/utilities': 3.0.0(postcss@8.5.28)
       postcss: 8.5.28
 
+  '@csstools/postcss-light-dark-function@3.0.1(postcss@8.5.33)':
+    dependencies:
+      '@csstools/css-parser-algorithms': 4.0.0(@csstools/css-tokenizer@4.0.0)
+      '@csstools/css-tokenizer': 4.0.0
+      '@csstools/postcss-progressive-custom-properties': 5.1.0(postcss@8.5.33)
+      '@csstools/utilities': 3.0.0(postcss@8.5.33)
+      postcss: 8.5.33
+
   '@csstools/postcss-progressive-custom-properties@5.1.0(postcss@8.5.28)':
     dependencies:
       postcss: 8.5.28
       postcss-value-parser: 4.2.0
 
+  '@csstools/postcss-progressive-custom-properties@5.1.0(postcss@8.5.33)':
+    dependencies:
+      postcss: 8.5.33
+      postcss-value-parser: 4.2.0
+
   '@csstools/utilities@3.0.0(postcss@8.5.28)':
     dependencies:
       postcss: 8.5.28
+
+  '@csstools/utilities@3.0.0(postcss@8.5.33)':
+    dependencies:
+      postcss: 8.5.33
 
   '@cyberalien/svg-utils@1.1.1':
     dependencies:
@@ -6380,50 +6360,35 @@ snapshots:
       - react-native-b4a
       - supports-color
 
-  '@rolldown/binding-android-arm-eabi@1.2.12':
-    optional: true
+  '@rolldown/binding-android-arm-eabi@1.2.12': {}
 
-  '@rolldown/binding-android-arm64@1.2.12':
-    optional: true
+  '@rolldown/binding-android-arm64@1.2.12': {}
 
-  '@rolldown/binding-darwin-arm64@1.2.12':
-    optional: true
+  '@rolldown/binding-darwin-arm64@1.2.12': {}
 
-  '@rolldown/binding-darwin-x64@1.2.12':
-    optional: true
+  '@rolldown/binding-darwin-x64@1.2.12': {}
 
-  '@rolldown/binding-freebsd-x64@1.2.12':
-    optional: true
+  '@rolldown/binding-freebsd-x64@1.2.12': {}
 
-  '@rolldown/binding-linux-arm-gnueabihf@1.2.12':
-    optional: true
+  '@rolldown/binding-linux-arm-gnueabihf@1.2.12': {}
 
-  '@rolldown/binding-linux-arm64-gnu@1.2.12':
-    optional: true
+  '@rolldown/binding-linux-arm64-gnu@1.2.12': {}
 
-  '@rolldown/binding-linux-arm64-musl@1.2.12':
-    optional: true
+  '@rolldown/binding-linux-arm64-musl@1.2.12': {}
 
-  '@rolldown/binding-linux-ppc64-gnu@1.2.12':
-    optional: true
+  '@rolldown/binding-linux-ppc64-gnu@1.2.12': {}
 
-  '@rolldown/binding-linux-s390x-gnu@1.2.12':
-    optional: true
+  '@rolldown/binding-linux-s390x-gnu@1.2.12': {}
 
-  '@rolldown/binding-linux-x64-gnu@1.2.12':
-    optional: true
+  '@rolldown/binding-linux-x64-gnu@1.2.12': {}
 
-  '@rolldown/binding-linux-x64-musl@1.2.12':
-    optional: true
+  '@rolldown/binding-linux-x64-musl@1.2.12': {}
 
-  '@rolldown/binding-openharmony-arm64@1.2.12':
-    optional: true
+  '@rolldown/binding-openharmony-arm64@1.2.12': {}
 
-  '@rolldown/binding-win32-arm64-msvc@1.2.12':
-    optional: true
+  '@rolldown/binding-win32-arm64-msvc@1.2.12': {}
 
-  '@rolldown/binding-win32-x64-msvc@1.2.12':
-    optional: true
+  '@rolldown/binding-win32-x64-msvc@1.2.12': {}
 
   '@rolldown/pluginutils@1.0.1': {}
 
@@ -6736,24 +6701,6 @@ snapshots:
   '@tsrs/win32-x64@7.1.0-beta.tsrs4':
     optional: true
 
-  '@turbo/darwin-64@2.11.6':
-    optional: true
-
-  '@turbo/darwin-arm64@2.11.6':
-    optional: true
-
-  '@turbo/linux-64@2.11.6':
-    optional: true
-
-  '@turbo/linux-arm64@2.11.6':
-    optional: true
-
-  '@turbo/windows-64@2.11.6':
-    optional: true
-
-  '@turbo/windows-arm64@2.11.6':
-    optional: true
-
   '@turf/boolean-point-in-polygon@7.3.3':
     dependencies:
       '@turf/helpers': 7.3.3
@@ -6968,7 +6915,7 @@ snapshots:
       '@vue/shared': 3.5.30
       entities: 7.0.1
       estree-walker: 2.0.2
-      source-map-js: 1.2.1
+      source-map-js: 1.2.4
     optional: true
 
   '@vue/compiler-dom@3.5.30':
@@ -6986,8 +6933,8 @@ snapshots:
       '@vue/shared': 3.5.30
       estree-walker: 2.0.2
       magic-string: 0.30.21
-      postcss: 8.5.28
-      source-map-js: 1.2.1
+      postcss: 8.5.33
+      source-map-js: 1.2.4
     optional: true
 
   '@vue/compiler-ssr@3.5.30':
@@ -8897,15 +8844,6 @@ snapshots:
       esbuild: 0.28.2
     optionalDependencies:
       fsevents: 2.3.3
-
-  turbo@2.11.6:
-    optionalDependencies:
-      '@turbo/darwin-64': 2.11.6
-      '@turbo/darwin-arm64': 2.11.6
-      '@turbo/linux-64': 2.11.6
-      '@turbo/linux-arm64': 2.11.6
-      '@turbo/windows-64': 2.11.6
-      '@turbo/windows-arm64': 2.11.6
 
   typed-query-selector@2.12.1: {}
 

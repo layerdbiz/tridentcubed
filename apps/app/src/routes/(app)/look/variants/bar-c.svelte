@@ -4,8 +4,8 @@
 	// pages as icons with no words. The blue + is out of the bar: it floats above it, flush with the bar's right
 	// edge, the same gap over the bar as the bar has under it. Inside a project or a record the bar starts with the
 	// white icon of the page it came from and that page's name, which go back there, then the tabs. E (run 25) has
-	// larger icons (`isBig`). No arrow stands after the name any more (Justin, 2026-11-16). No save cloud here: it
-	// is in the header.
+	// larger icons and is the one the app shows; C and D went with #372. No arrow stands after the name any more
+	// (Justin, 2026-11-16). No save cloud here: it is in the header.
 	// Run 24 (Justin, 2026-11-11: "the folder icon moves and it shouldn't", "it just jumps in"): it moves the way A
 	// does. The first icon keeps a fifth of the bar, the place Projects has on the dashboard, so it never moves; the
 	// other four pages slide off to the left behind it while the name and the tabs slide in from the right, and the
@@ -21,13 +21,11 @@
 	let {
 		look,
 		isWide,
-		left,
-		isBig = false
+		left
 	}: {
 		look: LookState;
 		isWide: boolean;
 		left: string;
-		isBig?: boolean;
 	} = $props();
 
 	const TABS = { page: 'Page', edit: 'Edit', preview: 'Preview' };
@@ -45,7 +43,7 @@
 	// there: a tab is picked.
 	const isDesk = $derived(isWide && isInside);
 	const shown = $derived(look.tab);
-	const icon = $derived(isBig ? 'size-7' : 'size-6');
+	const ICON_SIZE = 'size-7';
 	// What is open decides the bar, never the list last visited (`look.place`).
 	const home = $derived(look.place);
 	// The far left: Projects on the dashboard; inside, the page of what is open.
@@ -170,7 +168,7 @@
 			onclick={() => go(lead)}
 		>
 			{#key leadIcon}<span
-					class="{leadIcon} {icon}"
+					class="{leadIcon} {ICON_SIZE}"
 					in:fade={{ duration: 200 }}
 				></span>{/key}
 		</button>
@@ -192,7 +190,7 @@
 						aria-label={DATASETS[id].label}
 						aria-current={isOn ? 'page' : undefined}
 						title={DATASETS[id].label}
-						onclick={() => go(id)}><span class="{PAGE_ICONS[id]} {icon}"></span></button
+						onclick={() => go(id)}><span class="{PAGE_ICONS[id]} {ICON_SIZE}"></span></button
 					>
 				{/each}
 			</div>

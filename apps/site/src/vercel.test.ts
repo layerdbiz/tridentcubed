@@ -57,14 +57,14 @@ describe.skipIf(!hasShell)('which pushes Vercel builds', () => {
 });
 
 // Both projects build with the app's own `pnpm build` (`vp build`), the command CI's build job runs. Left unset,
-// Vercel finds Turborepo in the repo and runs it instead, which first builds the UI package, about 7 s of each
-// build that nothing reads, since the app uses the UI source (#367, research on #364).
+// Vercel picks a command of its own: the monorepo tool's while the repo had one, which first built the UI package
+// nobody reads (#367, research on #364), and its SvelteKit preset's `vite build` now, which CI never runs.
 describe('how Vercel builds', () => {
 	const { scripts } = JSON.parse(
 		readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')
 	) as { scripts: { build: string } };
 
-	it("runs the app's own build, not Turborepo", () => {
+	it("runs the app's own build, the one CI checks", () => {
 		expect(buildCommand).toBe('pnpm build');
 		expect(scripts.build).toBe('vp build');
 	});
