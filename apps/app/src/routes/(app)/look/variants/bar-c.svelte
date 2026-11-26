@@ -17,6 +17,7 @@
 	import { fade } from 'svelte/transition';
 	import { DATASETS, PAGE_ICONS, PAGES, type DatasetType } from '../look.data';
 	import type { LookState, TabType } from '../look.state.svelte';
+	import { Tabs } from '@layerd/ui';
 
 	let {
 		look,
@@ -58,7 +59,6 @@
 	const isLeadOn = $derived(isInside || look.navSection === lead);
 	// The tabs of the last thing opened, so they do not change while they slide away.
 	let tabs = $state(PROJECT);
-	let list: HTMLDivElement | undefined = $state();
 	let mark = $state({ x: 0, width: 0 });
 	let bar: HTMLElement | undefined = $state();
 	// The pill: where it starts along the bar, how wide it is, and whether a page is on show for it to sit under.
@@ -102,7 +102,7 @@
 
 	// The blue highlight sits under its tab and follows the panes as they are swiped.
 	function place() {
-		const boxes = [...(list?.querySelectorAll<HTMLElement>('[data-tab]') ?? [])];
+		const boxes = [...(bar?.querySelectorAll<HTMLElement>('[data-tab]') ?? [])];
 		if (boxes.length < 2) return;
 		const at = isDesk
 			? Math.max(0, tabs.indexOf(shown))
@@ -120,7 +120,7 @@
 		void look.tabProgress;
 		void shown;
 		void tabs;
-		void list;
+		void bar;
 		untrack(place);
 	});
 
@@ -208,30 +208,27 @@
 				>
 					<span class="truncate text-[13px] font-semibold">{inside.name}</span>
 				</button>
-				<div
-					bind:this={list}
+				<Tabs
 					class="relative ml-auto flex shrink-0 items-center"
-					role="tablist"
-					aria-label={tabs.map((tab) => TABS[tab]).join(' or ')}
+					label={tabs.map((tab) => TABS[tab]).join(' or ')}
+					options={tabs}
+					bind:value={look.tab}
 				>
 					{#if tabs.length}<span
 							class="absolute inset-y-0 left-0 rounded-full bg-primary"
 							style="width: {mark.width}px; transform: translateX({mark.x}px)"
 							aria-hidden="true"
 						></span>{/if}
-					{#each tabs as tab (tab)}
-						{@const isOn = shown === tab}
+					{#snippet option({ value: tab, isOn, props })}
 						<button
+							{...props}
 							class="relative flex h-11 items-center justify-center rounded-full px-3 text-[13px] font-medium transition-colors {isOn
 								? 'text-white'
 								: 'text-white/60 hover:text-white'}"
-							data-tab={tab}
-							role="tab"
-							aria-selected={isOn}
-							onclick={() => (look.tab = tab)}>{TABS[tab]}</button
+							data-tab={tab}>{TABS[tab]}</button
 						>
-					{/each}
-				</div>
+					{/snippet}
+				</Tabs>
 			</div>
 		</div>
 	</nav>

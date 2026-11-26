@@ -49,4 +49,22 @@ describe('the count cards', () => {
 		await fireEvent.click(cardOf('Customers'));
 		expect(pick).toHaveBeenCalledWith('customers');
 	});
+
+	it('moves to the next card and picks it with the arrow keys (#382)', async () => {
+		const { pick } = show('projects');
+		await fireEvent.keyDown(cardOf('Projects'), { key: 'ArrowRight' });
+		expect(pick).toHaveBeenCalledWith('customers');
+		expect(document.activeElement).toBe(cardOf('Customers'));
+	});
+
+	it('picks a card with Enter or Space, but leaves the keys on its ? to the ?', async () => {
+		const { pick } = show('projects');
+		await fireEvent.keyDown(cardOf('Team'), { key: ' ' });
+		expect(pick).toHaveBeenCalledWith('team');
+
+		pick.mockClear();
+		await fireEvent.keyDown(within(cardOf('Customers')).getByRole('button'), { key: 'Enter' });
+		await fireEvent.keyDown(within(cardOf('Customers')).getByRole('button'), { key: 'ArrowRight' });
+		expect(pick).not.toHaveBeenCalled();
+	});
 });
