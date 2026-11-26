@@ -31,6 +31,7 @@
 	import {
 		ATTACHMENT_NOUNS,
 		type FileFactsType,
+		isPlaceRemoved,
 		toCarriedLabel,
 		toFieldGroups,
 		toFieldText,
@@ -550,7 +551,7 @@
 									rel="noopener noreferrer">{place}</a
 								>
 							{:else}
-								Not recorded
+								{isPlaceRemoved(fields) ? 'Removed by the phone before upload' : 'Not recorded'}
 							{/if}
 						</dd>
 						{#if toTakenFromLabel(details.taken.from)}

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
 	isShownType,
 	isToConvert,
+	isPlaceRemoved,
 	isTypeAllowed,
 	toAttachmentKind,
 	toCarriedLabel,
@@ -237,6 +238,7 @@ describe('when and where a photo was taken, for its Details (#343)', () => {
 	it('says where the time and place came from', () => {
 		expect(toTakenFromLabel('file')).toBe('Read from the photo');
 		expect(toTakenFromLabel('device')).toBe('From the phone when it was added');
+		expect(toTakenFromLabel('file-device')).toBe('Time from the photo, place from the phone');
 		expect(toTakenFromLabel('')).toBe('');
 	});
 
@@ -247,6 +249,38 @@ describe('when and where a photo was taken, for its Details (#343)', () => {
 		expect(toMapLink(taken)).toBe(
 			'https://www.google.com/maps/search/?api=1&query=29.760427,-95.369803'
 		);
+	});
+
+	it('tells a place the phone blanked from one never recorded', () => {
+		const blanked = {
+			exif: {
+				GPSLatitude: {
+					value: [
+						[0, 0],
+						[0, 0],
+						[0, 0]
+					],
+					description: null
+				}
+			}
+		};
+		const kept = {
+			exif: {
+				GPSLatitude: {
+					value: [
+						[29, 1],
+						[45, 1],
+						[3756, 100]
+					],
+					description: 29.76
+				}
+			}
+		};
+
+		expect(isPlaceRemoved(blanked)).toBe(true);
+		expect(isPlaceRemoved(kept)).toBe(false);
+		expect(isPlaceRemoved({ exif: {} })).toBe(false);
+		expect(isPlaceRemoved(undefined)).toBe(false);
 	});
 
 	it('gives no place without both halves of it', () => {

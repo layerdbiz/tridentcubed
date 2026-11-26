@@ -22,7 +22,8 @@ src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql
                                Storage or a local folder), convert.ts (a picture the device could not
                                read, converted on the server and swapped in, #294), export.ts (the PDF
                                export: who may ask, the print document, the file name), pdf-browser.ts
-                               (the export browser), activity.ts (the Activity's read, #306)
+                               (the export browser), activity.ts (the Activity's read, and what the
+                               app records itself, #306)
 scripts/seed-sql.ts            prints the one seed as SQL (`pnpm --silent --filter app db:seed-sql`)
 src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.remote.ts (`saveRows`,
                                `fetchLists`), rows.utils.ts (the difference), rows.state.svelte.ts (the sync loop)
@@ -53,9 +54,11 @@ src/routes/local-files/        the local folder store's signed addresses (no Sup
 src/routes/report/             a report's link, /report/<project>/<page>: what a report page's QR code
                                holds; sends the browser on to that project's Preview (behind sign-in)
 src/lib/report/                the report link: report.utils.ts builds it and the app address it opens
-src/lib/activity/              the Activity (#306): activity.remote.ts (`fetchActivity`, an Admin's only),
-                               activity.types.ts and activity.utils.ts (the Grouped view's runs); the
-                               screen is routes/(app)/look/activity-page.svelte
+src/lib/activity/              the Activity (#306): activity.remote.ts (`fetchActivity`, an Admin's only;
+                               `recordActivity`, a project opened or its PDF downloaded), activity.note.ts
+                               (`noteActivity`, which loads that command when first used), activity.types.ts
+                               and activity.utils.ts (the Grouped view's runs); the screen is
+                               routes/(app)/look/activity-page.svelte
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
 src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <route>.<role>.ts beside it

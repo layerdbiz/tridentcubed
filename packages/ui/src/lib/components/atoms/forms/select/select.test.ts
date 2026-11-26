@@ -65,12 +65,14 @@ describe('the field', () => {
 	});
 
 	// A second row of the same fields, which the first row's label already names: the label stays off the border, kept
-	// for a screen reader, and the empty field says it inside.
+	// for a screen reader, and the empty field says it inside. Its row stays in the box, so the box is as tall as one
+	// with a label on it.
 	it('keeps its label off the border for a second row, and says it inside while nothing is picked', async () => {
 		const { container, rerender } = show({ hasLabel: false, help: 'What the facility is.' });
 		const legend = container.querySelector('legend');
 
-		expect(legend?.classList.contains('sr-only')).toBe(true);
+		expect(legend?.closest('fieldset')?.classList.contains('field-unlabelled')).toBe(true);
+		expect(legend?.classList.contains('sr-only')).toBe(false);
 		expect(legend?.textContent?.trim()).toBe('Kind');
 		expect(screen.queryByRole('button', { name: 'What goes in Kind?' })).toBeNull();
 		expect(fieldOf().textContent?.trim()).toBe('Kind');

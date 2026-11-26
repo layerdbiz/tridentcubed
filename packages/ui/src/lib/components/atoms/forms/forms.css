@@ -4,80 +4,117 @@
    `input.field-compact` (Compact): this file loads with them, so a bare `fieldset` would restyle every other fieldset
    on the page, such as a form's wrapper. A rule for the field's label, control or icons reaches only its own
    (`> label >`), never those of the list a Select opens inside it, whose search would otherwise cover the list (#57). */
-fieldset.field {
-	font-size: 1rem;
 
-	--input-height: 3em;
+/* SIZES: the theme sets them (`--theme-field-*` in the app's theme.css), each with the library's own as its fallback,
+   so the app's boxes match its screens while the site keeps the library's. The words' size and colour; the box's
+   height, its corners and how far in its words start, in the words' size; the label's size against the words, and its
+   weight. */
+:is(fieldset.field, input.field-compact) {
+	--field-size: var(--theme-field-size, 1rem);
+	--field-radius: var(--theme-field-radius, 0.5em);
+	--field-color: var(--theme-field-color, var(--color-base-900));
+	--notch-indent: var(--theme-field-pad, 0.75em);
+
+	font-size: var(--field-size);
+}
+
+/* THE BOX: its border runs through the middle of the label's row (the legend), which is one height in every state,
+   so the visible box is `--input-height` tall with or without a value, in use or not, and with or without a label on
+   it: the fieldset is that plus the half of the label's row above the border. The border is `--field-edge` wide, 2px
+   while in use; the label's row grows by the extra pixel at its foot so the border's outer edge stays put, and the
+   insides are measured from that outer edge, so nothing moves when it thickens. */
+fieldset.field {
+	--input-height: var(--theme-field-height, 3em);
+	--legend-ratio: var(--theme-field-label, 0.78);
+	--legend-weight: var(--theme-field-weight, var(--font-weight-semibold));
+	--legend-line: calc(var(--legend-ratio) * 1.25em);
+	--field-edge: 1px;
+	--field-inner-radius: calc(var(--field-radius) - var(--field-edge));
+	/* From the fieldset's inside (under the legend) up to the border's inside edge. */
+	--label-rise: calc((1px - var(--legend-line)) / 2);
+
 	--prefix-width: 0em;
 	--suffix-width: 0em;
 	--icon-size: 1.5em;
 	--icon-gap: 0.5em;
 	--notch-padding: 0.25em;
-	--notch-indent: 0.75em;
-	--content-start: var(--notch-indent);
-	--content-end: var(--notch-indent);
+	--content-start: calc(var(--notch-indent) - var(--field-edge));
+	--content-end: calc(var(--notch-indent) - var(--field-edge));
 	--input-pad-start: calc(var(--content-start) + var(--prefix-width));
 	--input-pad-end: calc(var(--content-end) + var(--suffix-width));
-	--field-radius: 0.5em;
-
-	--legend-font-size: 0.78em;
-	--legend-float-scale: 1.25;
-	--legend-float-pad-start: 0em;
-	--legend-float-pad-end: 0em;
-	--legend-pad-start: var(--notch-padding);
-	--legend-pad-end: var(--notch-padding);
 	--legend-start: calc(var(--content-start) - var(--notch-padding));
-	--legend-initial-offset-x: calc(var(--prefix-width) + var(--legend-float-pad-start));
-	--legend-float-y: calc((var(--input-height) - 1em) / 1.1);
 
-	@apply pointer-events-none relative block w-full border-0 bg-white outline-0;
-	@apply select-none;
-	@apply h-(--input-height) rounded-(--field-radius);
-}
+	/* An empty box's label rests where its words would start, at the words' size, in the middle of the box. */
+	--legend-float-x: calc(var(--notch-padding) + var(--prefix-width));
+	--legend-float-y: calc(var(--input-height) / 2 + (var(--legend-ratio) - 1) * 0.625em - 0.5px);
 
-fieldset.field.xxs {
-	font-size: 0.625rem;
-}
-fieldset.field.xs {
-	font-size: 0.75rem;
-}
-fieldset.field.sm {
-	font-size: 0.875rem;
-}
-fieldset.field.md {
-	font-size: 1rem;
-}
-fieldset.field.lg {
-	font-size: 1.125rem;
-}
-fieldset.field.xl {
-	font-size: 1.25rem;
-}
-fieldset.field.xxl {
-	font-size: 1.375rem;
+	@apply pointer-events-none relative block w-full border-solid border-base-200 bg-surface outline-0 select-none;
+	@apply rounded-(--field-radius) transition-colors;
+
+	height: calc(var(--input-height) + (var(--legend-line) - 1px) / 2);
+	border-width: var(--field-edge);
 }
 
+/* The base `size` prop's ladder, as a share of the theme's size; `:where()` keeps it no stronger than the box's own
+   size, so a caller's rule can beat it. */
+fieldset.field:where(.xxs) {
+	font-size: calc(var(--field-size) * 0.625);
+}
+fieldset.field:where(.xs) {
+	font-size: calc(var(--field-size) * 0.75);
+}
+fieldset.field:where(.sm) {
+	font-size: calc(var(--field-size) * 0.875);
+}
+fieldset.field:where(.md) {
+	font-size: var(--field-size);
+}
+fieldset.field:where(.lg) {
+	font-size: calc(var(--field-size) * 1.125);
+}
+fieldset.field:where(.xl) {
+	font-size: calc(var(--field-size) * 1.25);
+}
+fieldset.field:where(.xxl) {
+	font-size: calc(var(--field-size) * 1.375);
+}
+
+/* A start icon's words begin a notch further in than its own gap. */
 fieldset.field:has(.start) {
-	--prefix-width: calc(var(--icon-size) + var(--icon-gap));
-	--legend-float-pad-start: var(--icon-gap);
+	--prefix-width: calc(var(--icon-size) + var(--icon-gap) + var(--notch-padding));
 }
 
 fieldset.field:has(.end) {
 	--suffix-width: calc(var(--icon-size) + var(--icon-gap));
-	--legend-float-pad-end: var(--icon-gap);
 }
 
+/* The legend keeps the box's own size, so its place lines up with the words below it; its words are the smaller
+   size inside it. */
 fieldset.field legend {
-	@apply pointer-events-none relative z-2 grid origin-top-left grid-flow-col items-center justify-start gap-[0.3em] bg-transparent leading-0 font-semibold whitespace-nowrap transition-transform;
+	@apply pointer-events-none relative z-2 grid origin-top-left grid-flow-col items-center justify-start bg-transparent leading-0 whitespace-nowrap;
 	@apply ml-(--legend-start) text-base-400/50;
-	@apply ps-(--legend-pad-start) pe-(--legend-pad-end);
+	@apply ps-(--notch-padding) pe-(--notch-padding);
 
-	font-size: var(--legend-font-size);
+	box-sizing: content-box;
+	height: var(--legend-line);
+	padding-block: 0 calc(var(--field-edge) - 1px);
+	gap: calc(var(--legend-ratio) * 0.3em);
+	font-weight: var(--legend-weight);
+	transition-property: translate, scale, color, opacity;
+	transition-duration: 150ms;
+	transition-timing-function: var(--default-transition-timing-function);
 }
 
+fieldset.field legend > * {
+	font-size: calc(var(--legend-ratio) * 1em);
+}
+
+/* Where the words are typed: the box inside its border, from the border's middle row down. */
 fieldset.field > label {
 	@apply pointer-events-auto absolute inset-0 z-0 grid items-center justify-center;
 	@apply grid-cols-[calc(var(--content-start)+var(--prefix-width))_minmax(0,1fr)_calc(var(--content-end)+var(--suffix-width))];
+
+	top: var(--label-rise);
 }
 
 fieldset.field > label > .icon.start,
@@ -95,9 +132,12 @@ fieldset.field > label > .icon.end {
 }
 
 fieldset.field > label > :is(input, select, textarea) {
-	@apply relative z-0 col-span-full row-start-1 size-full border-0 bg-transparent text-base-900 outline-0 transition-colors;
+	@apply relative z-0 col-span-full row-start-1 size-full border-0 bg-transparent outline-0 transition-colors;
 	@apply select-text;
-	@apply rounded-(--field-radius) ps-(--input-pad-start) pe-(--input-pad-end) text-[1em];
+	@apply ps-(--input-pad-start) pe-(--input-pad-end) text-[1em];
+
+	color: var(--field-color);
+	border-radius: var(--field-inner-radius);
 }
 
 fieldset.field > label > input::placeholder,
@@ -105,52 +145,43 @@ fieldset.field > label > textarea::placeholder {
 	@apply text-transparent;
 }
 
-fieldset.field:has(.start) > label > :is(input, select, textarea) {
-	padding-inline-start: calc(var(--input-pad-start) + var(--notch-padding));
-}
-
-fieldset.field.field-empty {
-	--legend-pad-start: calc(var(--notch-padding) + var(--legend-float-pad-start));
-	--legend-pad-end: calc(var(--notch-padding) + var(--legend-float-pad-end));
-
-	@apply outline-1 -outline-offset-1 outline-base-200;
-}
-
-fieldset.field.field-empty:not(:has(.help[aria-expanded='true'])) legend {
+/* EMPTY: the label rests inside, with no notch in the border, until the box is in use or its ? is open (#395). */
+fieldset.field.field-empty:not(:focus-within, .field-unlabelled):not(
+		:has(.help[aria-expanded='true'])
+	)
+	legend {
 	@apply text-base-400 opacity-60;
-	@apply translate-x-(--legend-initial-offset-x) translate-y-(--legend-float-y) scale-(--legend-float-scale);
-	font-size: var(--legend-font-size);
+
+	max-width: 0;
+	padding-inline: 0;
+	translate: var(--legend-float-x) var(--legend-float-y);
+	scale: calc(1 / var(--legend-ratio));
 }
 
-fieldset.field.field-empty:hover:not(:focus-within) {
-	@apply outline-base-300;
+@media (hover: hover) {
+	fieldset.field.field-empty:hover:not(:focus-within) {
+		@apply border-base-300;
+	}
+
+	fieldset.field.field-empty:hover:not(:focus-within) legend {
+		@apply opacity-70;
+	}
 }
 
-fieldset.field.field-empty:hover:not(:focus-within) legend {
-	@apply opacity-70;
+/* A value in it: the label on the border, in grey; blue is kept for a Generated value (#284). */
+fieldset.field.field-filled:not(:focus-within) legend {
+	@apply text-base-500;
 }
 
-fieldset.field:is(.field-filled, :focus-within) {
-	--legend-pad-start: var(--notch-padding);
-	--legend-pad-end: var(--notch-padding);
-
-	@apply border-2 border-info-500 outline-0;
+fieldset.field.field-filled:not(:focus-within) > label > .icon {
+	@apply bg-base-500 text-base-500;
 }
 
-fieldset.field:is(.field-filled, :focus-within) legend {
-	@apply translate-x-0 translate-y-0 scale-100 opacity-100;
-}
-
-fieldset.field:is(.field-filled, :focus-within) > label {
-	@apply -inset-0.5;
-}
-
-fieldset.field:is(.field-filled, :focus-within) > label > :is(input, select, textarea) {
-	@apply outline-0;
-}
-
+/* IN USE: the border thickens and turns blue, with the label on it. */
 fieldset.field:focus-within {
-	@apply border-2 border-info-500;
+	--field-edge: 2px;
+
+	@apply border-info-500;
 }
 
 fieldset.field:focus-within legend {
@@ -161,31 +192,12 @@ fieldset.field:focus-within > label > .icon {
 	@apply bg-info-500 text-info-500;
 }
 
-fieldset.field:focus-within legend {
-	@apply translate-x-0 translate-y-0 scale-100 opacity-100;
-	top: -0.5px;
-	margin-left: calc(var(--legend-start) - 1px);
-}
-
-fieldset.field.field-filled:not(:focus-within) {
-	@apply border border-base-200;
-}
-
-/* Grey, not blue: blue is kept for a Generated value (#284). */
-fieldset.field.field-filled:not(:focus-within) legend {
-	@apply text-base-500;
-}
-
-fieldset.field.field-filled:not(:focus-within) > label {
-	@apply -right-px -left-px;
-}
-
-fieldset.field.field-filled:not(:focus-within) > label > .icon {
-	@apply bg-base-500 text-base-500;
-}
-
-fieldset.field.field-filled:not(:focus-within) > label > :is(input, select, textarea) {
-	@apply outline-0;
+/* NO LABEL ON THE BORDER, such as a second row under the first row's labels: the label's row keeps its place, so
+   the box is as tall as the others, with no words and no notch; a screen reader still reads it. */
+fieldset.field.field-unlabelled legend {
+	max-width: 0;
+	padding-inline: 0;
+	opacity: 0;
 }
 
 /* HELP: the ? right after the label (help/help.svelte). It shows once the label sits on the border, while the input
@@ -254,7 +266,7 @@ fieldset.field > label > :is(input, textarea):is(:-webkit-autofill, :autofill) {
 	-webkit-text-fill-color: currentColor;
 	caret-color: currentColor;
 	transition: background-color 99999s ease-out 0s;
-	box-shadow: 0 0 0 1000px var(--field-bg, white) inset;
+	box-shadow: 0 0 0 1000px var(--color-surface) inset;
 }
 
 /* ACTION: a button or a link at the field's end that does something with its value, such as opening the link typed
@@ -296,11 +308,14 @@ fieldset.field + .field-error {
 	@apply mt-1 text-xs text-danger-500;
 }
 
-/* COMPACT: the box with no label of its own, for a long list under one heading row (#387). The notched box's border,
-   corners and blue, a little lower; its hint shows, since no label sits in it. The width is the consumer's, given
+/* COMPACT: the box with no label of its own, for a long list under one heading row (#387). The notched box's size,
+   border, corners and blue; its hint shows, since no label sits in it. The width is the consumer's, given
    with an important utility (`w-20!`), as these rules sit outside the utilities' layer. */
 input.field-compact {
-	@apply block h-[2.5em] w-full min-w-0 rounded-[0.5em] border border-base-200 bg-white px-[0.75em] text-base text-base-900 outline-0 transition-colors;
+	--input-height: var(--theme-field-height, 2.5em);
+
+	@apply block w-full min-w-0 border border-base-200 bg-surface outline-0 transition-colors;
+	@apply h-(--input-height) rounded-(--field-radius) px-(--notch-indent) text-(color:--field-color);
 }
 
 input.field-compact::placeholder {

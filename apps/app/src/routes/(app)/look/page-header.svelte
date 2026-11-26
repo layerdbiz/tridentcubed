@@ -9,6 +9,7 @@
 	// two icons are white. `hasChevron` (Header C) draws back as a chevron, not an arrow. `onprogress` makes the
 	// percent a button: a project's lists its empty inputs (#305).
 	import type { Snippet } from 'svelte';
+	import { ProgressBar } from '@layerd/ui';
 	import { DATASETS, STATUS, type DatasetType, type StatusType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import Back from './back.svelte';
@@ -107,12 +108,13 @@
 				{/if}
 			</div>
 			{#if progress !== undefined && tone}
-				<span class="mt-1.5 block h-2 overflow-hidden rounded-full bg-slate-900/[0.07]">
-					<span
-						class="block h-full rounded-full transition-[width] duration-500 {tone.bar}"
-						style="width: {progress}%"
-					></span>
-				</span>
+				<ProgressBar
+					value={progress}
+					label="Project progress"
+					track="bg-slate-900/[0.07]"
+					bar={tone.bar}
+					class="mt-1.5"
+				/>
 			{/if}
 		</div>
 		{#if page && id}
