@@ -84,8 +84,8 @@ export const session = pgTable(
 
 // Every sign-in, by any way, for the Activity (#306): who, when, the organization the session acted in (none for a
 // Guest) and the device its browser named. Never a session's token or address, which sign its User in; and Log Out
-// removes a session but not its sign-in. Written as the owner when Better Auth makes a session (`recordSignIn` in
-// `access.ts`); the restricted role only reads it, and only as an Admin (or the Super admin), and only the sign-ins
+// removes a session but not its sign-in. The database writes it for each new session, whatever copy of the app made
+// it (`triggers.ts`); the restricted role only reads it, and only as an Admin (or the Super admin), and only the sign-ins
 // of the acting organization's members that did not act in another organization.
 export const signIn = pgTable(
 	'sign_in',

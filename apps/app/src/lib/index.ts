@@ -1,6 +1,7 @@
 /* ROOT */
 export * from "./activity/activity.remote.ts";
 export * from "./activity/activity.types.ts";
+export * from "./activity/activity.utils.ts";
 export * from "./auth/auth.remote.ts";
 export { default as ChangeList } from "./releases/change-list.svelte";
 export { default as Changes } from "./update/changes.svelte";

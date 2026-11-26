@@ -254,6 +254,7 @@ function toChangeEvent(
 			? toProjectTitle(projects.get(row.rowId) ?? row.title)
 			: (row.name ?? row.title ?? row.company ?? row.label ?? undefined);
 	const inside = table !== 'project' && row.projectId ? projects.get(row.projectId) : undefined;
+	const projectId = table === 'project' ? row.rowId : (row.projectId ?? undefined);
 	const columns =
 		kind === 'change'
 			? row.columns.filter((column) => !SERVER_COLUMNS.has(column)).map(toLabel)
@@ -266,6 +267,8 @@ function toChangeEvent(
 		userId: row.userId,
 		thing,
 		table,
+		rowId: row.rowId,
+		...(projectId ? { projectId } : {}),
 		...(name ? { name } : {}),
 		...(inside !== undefined ? { project: toProjectTitle(inside) } : {}),
 		...(parts ? { parts } : {}),

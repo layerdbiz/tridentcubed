@@ -11,7 +11,8 @@ Layout confirmed against SvelteKit docs on #42
 src/env.ts                     the settings the app reads (Kit 3 defineEnvVars), all optional
 src/hooks.server.ts            session and actor into event.locals, Better Auth's /api/auth/*, the guard
 src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql, clients, claims.ts the
-                               claims helper, policy.ts its SQL, seed.ts the one seed and its SQL),
+                               claims helper, policy.ts its SQL, triggers.ts what the database does by
+                               itself, seed.ts the one seed and its SQL),
                                auth.ts, server.ts (the one claims helper + auth, and `requireStaff` /
                                `requireSignedIn`, the check every remote function starts with),
                                access.ts (the sign-in rule), permission.ts (the one permission check),
@@ -52,8 +53,9 @@ src/routes/local-files/        the local folder store's signed addresses (no Sup
 src/routes/report/             a report's link, /report/<project>/<page>: what a report page's QR code
                                holds; sends the browser on to that project's Preview (behind sign-in)
 src/lib/report/                the report link: report.utils.ts builds it and the app address it opens
-src/lib/activity/              the Activity (#306): activity.remote.ts (`fetchActivity`, an Admin's only) and
-                               activity.types.ts; the screen is routes/(app)/look/activity-page.svelte
+src/lib/activity/              the Activity (#306): activity.remote.ts (`fetchActivity`, an Admin's only),
+                               activity.types.ts and activity.utils.ts (the Grouped view's runs); the
+                               screen is routes/(app)/look/activity-page.svelte
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
 src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <route>.<role>.ts beside it
@@ -154,7 +156,9 @@ the why is in ADR 0002, 0003 and 0005.
   cannot (a TIFF), it stays beside the copy, named on the file row
   (`original_path`). Camera RAW is turned down on the device for now.
 - **Schema changes** are Drizzle schema edits tested on the in-process
-  Postgres. Vercel builds never migrate the Supabase database.
+  Postgres. Vercel builds never migrate the Supabase database. A trigger,
+  which drizzle-kit cannot write, goes in `db/triggers.ts`: the in-process
+  Postgres runs it, and each Supabase database is given the same SQL by hand.
 
 ## The installed app
 

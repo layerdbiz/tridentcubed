@@ -19,7 +19,7 @@ import type { DeviceType } from '../presence/presence.utils';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
 import type { DatabaseType } from './db/index';
 import type { RoleType } from './db/organization.schema';
-import { accessGrant, member, organizationDetails, signIn, team, user as users } from './db/schema';
+import { accessGrant, member, organizationDetails, team, user as users } from './db/schema';
 
 type GrantType = typeof accessGrant.$inferSelect;
 
@@ -182,31 +182,6 @@ export async function grantAccess(db: DatabaseType, userId: string): Promise<str
 			.limit(1);
 		return first?.organizationId ?? null;
 	});
-}
-
-/** What a sign-in's record keeps of the session Better Auth just made: never its token or address. */
-export type SignInSessionType = {
-	userId: string;
-	createdAt?: Date;
-	activeOrganizationId?: string | null;
-	userAgent?: string | null;
-};
-
-/**
- * Records a sign-in for the Activity (#306), as the owner, once Better Auth has made its session. A sign-in is never
- * refused for its record: one that cannot be written (a database not yet given the table) is logged and left out.
- */
-export async function recordSignIn(db: DatabaseType, session: SignInSessionType) {
-	try {
-		await db.insert(signIn).values({
-			userId: session.userId,
-			organizationId: session.activeOrganizationId ?? null,
-			userAgent: session.userAgent || null,
-			...(session.createdAt ? { createdAt: session.createdAt } : {})
-		});
-	} catch (error) {
-		console.error('[sign-in] the sign-in could not be recorded for the Activity', error);
-	}
 }
 
 /** Who the signed-in User is on this request. With no membership they are a Guest: no organization, no role. */
