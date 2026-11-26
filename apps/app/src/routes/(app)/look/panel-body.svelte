@@ -123,6 +123,8 @@
 	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
 	import { MARKED_LABELS, sectionsOf, valuesOf } from './tally';
 	import { focusInput, inputIn } from './focus';
+	import LogImport from './log-import.svelte';
+	import { addToLog, toTypedClock, type ImportRowType } from './log-import';
 
 	// Words people type in sentences keep the phone's own help: a capital to start, autocorrect and spelling. The
 	// library's inputs switch all three off, which suits codes and addresses but not names, titles and descriptions.
@@ -297,14 +299,21 @@
 		});
 	}
 
-	// The 24-hour clock, typed: "730" and "0730" both become 07:30, "7" becomes 07:00.
-	function clockOf(text: string) {
-		const digits = text.replace(/\D/g, '').slice(0, 4);
-		if (!digits) return '';
-		const padded = digits.length <= 2 ? `${digits.padStart(2, '0')}00` : digits.padStart(4, '0');
-		const hours = Math.min(23, Number(padded.slice(0, 2)));
-		const minutes = Math.min(59, Number(padded.slice(2)));
-		return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+	// A time log kept somewhere else, brought in (#359): its window is open while `importing`. The year a date
+	// written without one is in is the last dated day's, or this year.
+	let importing = $state(false);
+	const logYear = $derived(
+		Number(panel.days.findLast((day) => day.date)?.date.slice(0, 4)) || new Date().getFullYear()
+	);
+
+	function addImported(rows: ImportRowType[]) {
+		const count = addToLog(panel.days, rows, () => crypto.randomUUID());
+		const dates = new Set(rows.map((row) => row.date));
+		const touched = panel.days.filter((day) => dates.has(day.date)).map((day) => day.id);
+		openDays = [...new Set([...openDays, ...touched])];
+		importing = false;
+		save();
+		look.say(`${count} ${count === 1 ? 'entry' : 'entries'} added to the Time Log`);
 	}
 
 	const customerName = $derived(
@@ -1297,7 +1306,7 @@
 										placeholder="07:30"
 										value={entry.time}
 										onchange={(event) => {
-											entry.time = clockOf(event.currentTarget.value);
+											entry.time = toTypedClock(event.currentTarget.value);
 											event.currentTarget.value = entry.time;
 											sortEntries(dayIndex);
 										}}
@@ -1357,6 +1366,14 @@
 				onclick={addDay}
 			/>
 			<Button
+				secondary
+				lite
+				xs
+				icon="icon-[mdi--file-import-outline]"
+				label="Import Time Log"
+				onclick={() => (importing = true)}
+			/>
+			<Button
 				primary
 				lite
 				xs
@@ -1365,6 +1382,14 @@
 				onclick={addSampleDay}
 			/>
 		</div>
+		{#if importing}
+			<LogImport
+				days={panel.days}
+				year={logYear}
+				onadd={addImported}
+				onclose={() => (importing = false)}
+			/>
+		{/if}
 	{:else}
 		<!-- The panel's own name is the app's value (#374): a title cleared goes back to it once the field is left. -->
 		<div onfocusout={keepName}>
