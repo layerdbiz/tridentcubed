@@ -483,7 +483,7 @@ export function recentOf(look: LookState): RecentType[] {
 }
 
 /** Opens what a Recents, Pinned or search row is about (#345, #346), or says it has gone. */
-export function openItem(look: LookState, item: RecentType) {
+export function openItem(look: LookState, item: Pick<RecentType, 'page' | 'name' | 'id'>) {
 	if (item.page === 'projects') {
 		if (look.projects.some((project) => project.id === item.id)) look.open(item.id!);
 	} else if (look.has(item.page, item.name)) look.openRecord(item.page, item.name);
