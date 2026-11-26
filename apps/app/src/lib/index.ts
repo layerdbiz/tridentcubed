@@ -23,6 +23,9 @@ export * from "./pdf/pdf.utils.ts";
 export * from "./start/places.ts";
 export * from "./presence/presence.constants.ts";
 export * from "./presence/presence.utils.ts";
+export * from "./releases/releases.constants.ts";
+export * from "./releases/releases.state.svelte.ts";
+export * from "./releases/releases.utils.ts";
 export * from "./report/report.constants.ts";
 export * from "./report/report.utils.ts";
 export * from "./rows/rows.remote.ts";
@@ -35,6 +38,7 @@ export * from "./update/update.constants.ts";
 export * from "./update/update.state.svelte.ts";
 export * from "./update/update.utils.ts";
 export * from "./video/video.utils.ts";
+export { default as WhatsNew } from "./releases/whats-new.svelte";
 
 /* COMPONENTS */
 // attachment

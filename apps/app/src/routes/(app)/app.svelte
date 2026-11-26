@@ -2,10 +2,14 @@
 	// The Report Generator V1 (#180): the look prototype's screens (#161, branch prototype/161-look-claude-prototype)
 	// carried across whole as the app. This names the browser tab after what is on screen and loads the organization's
 	// lists (#183) and who is signed in (#185) before the app starts; look/look.svelte is the app. The update note
-	// (#202) is here, in the signed-in app only, so it never shows on the login page.
+	// (#202) and What's New (#363) are here, in the signed-in app only, so neither shows on the login page. What's
+	// New opens once the app is on screen, after the reload the update note makes, when a release is new to this
+	// device.
 	import { fetchSelf } from '#lib/auth/auth.remote.js';
 	import { fetchLists } from '#lib/rows/rows.remote.js';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
+	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
+	import WhatsNew from '#lib/releases/whats-new.svelte';
 	import UpdateNote from '#lib/update/note.svelte';
 	import Look from './look/look.svelte';
 
@@ -50,6 +54,7 @@
 	});
 
 	function ready(look: PageType) {
+		if (!shown) whatsNew.start();
 		shown = look;
 	}
 </script>
@@ -72,7 +77,7 @@
 		{self}
 		onready={ready}
 	/>
-	{#if shown}<UpdateNote save={shown.sync} />{/if}
+	{#if shown}<UpdateNote save={shown.sync} /><WhatsNew />{/if}
 {:catch}
 	<div class="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
 		<p class="text-slate-700">
