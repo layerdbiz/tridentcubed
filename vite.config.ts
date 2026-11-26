@@ -36,7 +36,10 @@ export default defineConfig({
 	// file) pass; the ignore patterns below still decide what is checked.
 	staged: {
 		'*.{js,mjs,cjs,ts,svelte,css,json,yml,yaml}':
-			'vp check --fix --deny-warnings --no-error-on-unmatched-pattern'
+			'vp check --fix --deny-warnings --no-error-on-unmatched-pattern',
+		// The look check (Justin, 2026-11-26): a library component off the base component, or naming palette
+		// colours, stops the commit (packages/tools/src/checks/look.ts, CODING_STANDARDS.md).
+		'packages/ui/src/lib/components/**/*.svelte': 'node packages/tools/bin/look.js'
 	},
 	// The root's half of `pnpm dev`: the barrels watcher, run beside each app's dev server under
 	// `vp run --parallel` (packages/tools, the workspace launcher; invariant 5). The apps' tasks

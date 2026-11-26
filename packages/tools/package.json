@@ -5,6 +5,7 @@
 	"type": "module",
 	"bin": {
 		"barrels": "./bin/barrels.js",
+		"look": "./bin/look.js",
 		"symlinks": "./bin/symlinks.js",
 		"workspace": "./bin/workspace.js"
 	},
@@ -19,6 +20,7 @@
 	},
 	"scripts": {
 		"barrels:run": "node ./bin/barrels.js",
+		"look": "node ./bin/look.js",
 		"symlinks": "node bin/symlinks.js",
 		"symlinks:clean": "node -e \"import('./src/generators/symlinks.ts').then(m => m.cleanSymlinks())\"",
 		"symlinks:check": "node -e \"import('./src/generators/symlinks.ts').then(m => m.checkSymlinks())\"",

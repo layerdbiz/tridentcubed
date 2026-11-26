@@ -128,6 +128,10 @@ Decided on "Codify authoring conventions" (#7). Scoped `AGENTS.md` files
 hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
 `apps/play`; read the one for the folder you are editing. Shared by all:
 
+- **Library components** are built on the base component, as the Button
+  is, with their look set from outside (Justin, 2026-11-26): what that
+  means is in `CODING_STANDARDS.md`, and the look check stops a commit that
+  breaks it.
 - **Barrels are generated.** Every `src/lib/index.ts` and the UI package's
   four sub-barrels are written by the barrels generator. Edit the source
   file; the generator rewrites the barrel. A hand edit is overwritten.

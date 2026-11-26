@@ -17,8 +17,12 @@ unfinished and stay unused.
 - One component per same-name folder under `components/<tier>/<name>/`:
   `button/button.svelte`, its `button.svelte.ts` when it has rune state.
   The barrel derives `Button` from the file name.
-- New components are built on the base component with the default renderer
-  at every tier (ADR 0001); `Root` is imported only by the base component.
+- Every component is built on the base component, as the Button is, and
+  its look is set from outside (Justin, 2026-11-26; the root
+  `CODING_STANDARDS.md` says what that means). The look check
+  (`../tools/src/checks/look.ts`) stops a commit of a component that does
+  not render `<Component` or names a palette colour. The default renderer at
+  every tier (ADR 0001); `Root` is imported only by the base component.
 - Props type `<Name>Props extends ComponentProps`; base props never change
   a component's own layout. Canonical rail names and `icon=` in new code.
 - `variant` is the component's own union of looks (button, toggle and
@@ -26,8 +30,9 @@ unfinished and stay unused.
   `size` stay base props. A base prop the component redefines is dropped
   with `Omit<ComponentProps, 'x'>` (divider, toggle, slider).
 - Styling in the markup with Tailwind; a `<style lang="postcss">` block
-  with `@reference "#ui.css"` when raw CSS is needed. Palette utilities stay
-  out; white and black are allowed.
+  with `@reference "#ui.css"` when raw CSS is needed. Palette colours stay
+  out, white and black too: colours are the theme's (base, neutral, primary,
+  secondary, accent, the status colours, surface, scrim, grab).
 - Responsive layout branches on `mq` in the consumer (ADR 0002); the base
   component system is breakpoint-blind.
 - The empty placeholders (`checkbox`, `navbar`, `about`,
@@ -38,20 +43,12 @@ unfinished and stay unused.
 
 30 shipped root overrides, `Colorss.svelte`, relative imports in `base/`,
 the module singletons in `observe` and `scroll`, five rune-free
-`.svelte.ts` helpers, the menu list's slate shades and its own outer box
-in place of the base component (kept from the app on #297: the same look,
-and a list of rows with a ⋮ each stays as fast as before), the toast's
-slate and amber shades (kept from the app's PDF download toast on #293),
-the select's slate shades (its typed list and choice marks, kept from the
-app's picker and place field on #298; its grey panel look went on #388),
-the switch's slate off track (kept from the app's stage switch on #378),
-the accordion's slate shades (kept from the app's panel groups on #389),
-the dialog's slate scrim, sheet shadow and grab handle and its own md:
-switch from a bottom sheet to a centred box (kept from the app's sheet on
-#375, used in seven places), the avatar's and stack's plain spans and
-slate shades with no base component (kept from the app's faces on #379:
-they repeat in every dashboard row), the compact field's single `<input>`
-and its own props in place of the base component (#387: lists of fifty
-rows of two boxes, measured as fast as the app's plain inputs on a slowed
-phone): all listed on "UI library cleanup" (#33),
-changed there, not mid-feature.
+`.svelte.ts` helpers.
+
+Components that broke the look rule before the look check began are listed
+in `look.json` with what they had then (the menu list #297, the toast #293,
+the select's lists #298, the avatar and stack #379, the compact field #387,
+and older ones). Each is fixed, not extended: it may get better, never
+worse. Nothing joins that list, or this one, without Justin's yes, written
+with his name and the date; a piece that is slow on the base component is
+measured and the numbers go to him, it does not skip the base on its own.
