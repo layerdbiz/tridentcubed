@@ -9,6 +9,7 @@
 // never in a row: an attachment keeps the app's address of it (`/files/<id>`, #187). Row Level Security keeps every
 // table to the acting organization.
 import { boolean, index, integer, pgTable, text, uuid } from 'drizzle-orm/pg-core';
+import { DEFAULT_LAYOUT } from '../../report/report.constants';
 import { organizationPolicy } from './policy';
 import { panel, project } from './project.schema';
 import { rowColumns } from './rows';
@@ -82,10 +83,12 @@ export const itemAttachment = pgTable(
 		name: words('name'),
 		/** The app's address of the file (`/files/<id>`). */
 		file: words('file'),
-		/** `photo` prints on the report; `file` prints its name. */
+		/** `photo` prints on the report; `file` prints its name, and a PDF its pages (#295). */
 		kind: text('kind', { enum: ['photo', 'file'] })
 			.default('photo')
-			.notNull()
+			.notNull(),
+		/** #295: how many of a PDF's pages share a report page, 1, 2, 4, 6 or 8, as a photo group's photos do. */
+		layout: integer('layout').default(DEFAULT_LAYOUT).notNull()
 	},
 	(table) => [
 		index('item_attachment_project_idx').on(table.projectId),

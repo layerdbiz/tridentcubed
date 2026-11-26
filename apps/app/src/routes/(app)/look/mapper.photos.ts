@@ -5,6 +5,7 @@
 // crop is kept on its row, and so moves with it to another group. #327: a PDF or a video is a `photo` row too, its
 // picture in `file` and the PDF or video itself in `source`.
 import type { CropType } from '#lib/components/photo/photo.types.js';
+import { toPageLayout } from '#lib/report/report.utils.js';
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import type { GroupType, PanelType, PhotoType } from './look.data';
 import { byPosition, text } from './mapper.utils';
@@ -93,7 +94,7 @@ export function takePhotos(panel: PanelType, rows: SavedRowType[]) {
 			id: group.id,
 			title: text(group.values, 'title'),
 			description: text(group.values, 'description'),
-			layout: Number(group.values.layout ?? 4),
+			layout: toPageLayout(group.values.layout),
 			isEnabled: group.values.isEnabled !== false,
 			photos: photos
 				.filter((photo) => photo.values.groupId === group.id)

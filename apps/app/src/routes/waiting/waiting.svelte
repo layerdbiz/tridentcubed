@@ -4,6 +4,7 @@
 	// The server hook sends a Guest here from every other page, and a member away from it.
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import { fetchWaiting } from './waiting.remote';
+	import { Button, Divider } from '@layerd/ui';
 
 	const waiting = $derived(await fetchWaiting());
 	let isLeaving = $state(false);
@@ -29,15 +30,11 @@
 				/>
 				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase">Trident Cubed</p>
 			</div>
-			<svg
-				class="pointer-events-none block h-[60px] w-full fill-white lg:h-[120px]"
-				viewBox="0 0 1200 120"
-				preserveAspectRatio="none"
-				aria-hidden="true"
-				><path
-					d="M1200,0v120H0C41,68.89,288.87-55.15,578.87,30.29c178.24,53.05,440.37,74.74,621.13-30.29Z"
-				/></svg
-			>
+			<Divider
+				shape="waves"
+				color="text-white"
+				bleed={false}
+			/>
 		</div>
 		<div class="relative -mt-px bg-white px-5 pt-3 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
 			<div class="mx-auto w-full max-w-sm space-y-4">
@@ -49,12 +46,15 @@
 					This address is not part of an organization yet. An Admin can let you in; then sign in
 					again.
 				</p>
-				<button
-					type="button"
-					class="w-full rounded-full bg-slate-900/[0.05] py-3 font-semibold text-base text-slate-800 transition hover:bg-slate-900/[0.08] disabled:opacity-60"
+				<Button
+					neutral
+					lite
+					md
+					width="full"
+					label="Log Out"
 					disabled={isLeaving}
-					onclick={logOut}>Log Out</button
-				>
+					onclick={logOut}
+				/>
 			</div>
 		</div>
 	</div>

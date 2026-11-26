@@ -16,10 +16,15 @@
 	// own; a frozen panel is never quiet, so its "To do" takes the colour too.
 	// Run 26 (Justin, 2026-11-11), Panel List B: a panel with nothing done yet is quiet, its icon and its "To do"
 	// grey like its empty ring; blue starts with the first thing filled in.
+	// #305: the percent and state are a button of their own beside the one that opens the panel: a tap on them lists
+	// the panel's empty inputs in a toast (LookState.showEmpty). A panel switched off counts for nothing, so its
+	// percent lists nothing.
 	import { slide } from 'svelte/transition';
+	import { Switch } from '@layerd/ui';
 	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
+	import Percent from './percent.svelte';
 	import { addPhotos, filesLabelOf, hasFiles } from './photos';
 	import { createPhotoToast } from './toasts';
 	import ProgressRing from './progress-ring.svelte';
@@ -126,16 +131,13 @@
 {/snippet}
 
 {#snippet toggle(isBadge: boolean)}
-	<button
-		type="button"
-		role="switch"
-		aria-checked={panel.isEnabled}
-		aria-label="{panel.isEnabled ? 'Turn off' : 'Turn on'} {panel.name}"
-		class="flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors {TRACKS[
-			metrics.status
-		]} {panel.isEnabled ? 'justify-end' : 'justify-start'} {isBadge ? 'ring-4 ring-white' : ''}"
-		onclick={toggleEnabled}><span class="size-5 rounded-full bg-white shadow"></span></button
-	>
+	<Switch
+		checked={panel.isEnabled}
+		label="{panel.isEnabled ? 'Turn off' : 'Turn on'} {panel.name}"
+		track={TRACKS[metrics.status]}
+		class={isBadge ? 'ring-4 ring-white' : ''}
+		onchange={toggleEnabled}
+	/>
 {/snippet}
 
 <div
@@ -219,19 +221,18 @@
 				     (Justin, 2026-11-18, #225). -->
 				<span class="block text-xs text-slate-500">{metrics.done} of {metrics.total} complete</span>
 			</span>
-			<span class="shrink-0 text-right">
-				<span
-					class="block text-lg leading-tight font-semibold tabular-nums {panel.isEnabled
-						? 'text-slate-900'
-						: 'text-slate-300'}">{metrics.percent}%</span
-				>
-				<span
-					class="block text-[10px] font-semibold tracking-[0.12em] uppercase {isQuiet
-						? 'text-slate-400'
-						: tone.text}">{metrics.status}</span
-				>
-			</span>
 		</button>
+		<Percent
+			class="ml-2"
+			percent={metrics.percent}
+			status={metrics.status}
+			whose={panel.name}
+			tone={isQuiet ? 'text-slate-400' : tone.text}
+			percentTone={panel.isEnabled ? 'text-slate-900' : 'text-slate-300'}
+			disabled={!panel.isEnabled}
+			title={panel.isEnabled ? 'Show what is not filled in yet' : undefined}
+			onclick={() => look.showEmpty(panel.id)}
+		/>
 		{#if style !== 'soft'}
 			<span class="ml-2 flex w-11 shrink-0 justify-center">{@render control(false)}</span>
 		{/if}

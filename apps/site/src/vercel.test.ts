@@ -7,9 +7,9 @@ import { describe, expect, it } from 'vite-plus/test';
 // production one, whose live branch is `main`. Vercel calls a build of a project's live branch "production" and
 // every other build "preview". Until #254 the rule named branches, so each push to `dev` also built a preview in
 // the production project that nobody opens, four builds where two were needed.
-const { ignoreCommand } = JSON.parse(
+const { ignoreCommand, buildCommand } = JSON.parse(
 	readFileSync(fileURLToPath(new URL('../vercel.json', import.meta.url)), 'utf8')
-) as { ignoreCommand: string };
+) as { ignoreCommand: string; buildCommand?: string };
 
 type PushType = { VERCEL_ENV?: string; VERCEL_GIT_COMMIT_REF: string };
 
@@ -53,5 +53,19 @@ describe.skipIf(!hasShell)('which pushes Vercel builds', () => {
 
 	it('builds when Vercel does not say which kind of build it is, so a live site never stops updating', () => {
 		expect(isBuilt({ VERCEL_GIT_COMMIT_REF: 'dev' })).toBe(true);
+	});
+});
+
+// Both projects build with the app's own `pnpm build` (`vp build`), the command CI's build job runs. Left unset,
+// Vercel picks a command of its own: the monorepo tool's while the repo had one, which first built the UI package
+// nobody reads (#367, research on #364), and its SvelteKit preset's `vite build` now, which CI never runs.
+describe('how Vercel builds', () => {
+	const { scripts } = JSON.parse(
+		readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')
+	) as { scripts: { build: string } };
+
+	it("runs the app's own build, the one CI checks", () => {
+		expect(buildCommand).toBe('pnpm build');
+		expect(scripts.build).toBe('vp build');
 	});
 });

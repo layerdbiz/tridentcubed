@@ -29,6 +29,17 @@ CREATE TABLE "session" (
 --> statement-breakpoint
 ALTER TABLE "session" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "sign_in" (
+	"id" uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"organization_id" uuid,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"user_agent" text
+);
+
+--> statement-breakpoint
+ALTER TABLE "sign_in" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 CREATE TABLE "account" (
 	"id" uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid() NOT NULL,
 	"account_id" text NOT NULL,
@@ -424,6 +435,11 @@ CREATE TABLE "file" (
 	"taken_from" text DEFAULT '' NOT NULL,
 	"metadata" jsonb,
 	"original_path" text,
+	"original_type" text,
+	"original_size" integer,
+	"original_width" integer,
+	"original_height" integer,
+	"metadata_carried" text DEFAULT '' NOT NULL,
 	"uploaded_by" uuid
 );
 
@@ -516,7 +532,8 @@ CREATE TABLE "item_attachment" (
 	"position" integer DEFAULT 0 NOT NULL,
 	"name" text DEFAULT '' NOT NULL,
 	"file" text DEFAULT '' NOT NULL,
-	"kind" text DEFAULT 'photo' NOT NULL
+	"kind" text DEFAULT 'photo' NOT NULL,
+	"layout" integer DEFAULT 4 NOT NULL
 );
 
 --> statement-breakpoint
@@ -553,7 +570,24 @@ CREATE TABLE "time_log_entry" (
 --> statement-breakpoint
 ALTER TABLE "time_log_entry" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "pinned" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"user_id" uuid NOT NULL,
+	"page" text NOT NULL,
+	"record_id" uuid NOT NULL,
+	"pinned_at" text NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "pinned" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "sign_in" ADD CONSTRAINT "sign_in_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
@@ -675,7 +709,13 @@ ALTER TABLE "time_log_entry" ADD CONSTRAINT "time_log_entry_project_id_project_i
 --> statement-breakpoint
 ALTER TABLE "time_log_entry" ADD CONSTRAINT "time_log_entry_day_id_time_log_day_id_fk" FOREIGN KEY ("day_id") REFERENCES "public"."time_log_day"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "pinned" ADD CONSTRAINT "pinned_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "pinned" ADD CONSTRAINT "pinned_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");
+--> statement-breakpoint
+CREATE INDEX "sign_in_user_idx" ON "sign_in" USING btree ("user_id","created_at");
 --> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" USING btree ("user_id");
 --> statement-breakpoint
@@ -741,9 +781,13 @@ CREATE INDEX "time_log_day_project_idx" ON "time_log_day" USING btree ("project_
 --> statement-breakpoint
 CREATE INDEX "time_log_entry_project_idx" ON "time_log_entry" USING btree ("project_id");
 --> statement-breakpoint
+CREATE INDEX "pinned_user_idx" ON "pinned" USING btree ("organization_id","user_id");
+--> statement-breakpoint
 CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.user_id());
 --> statement-breakpoint
 CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
+--> statement-breakpoint
+CREATE POLICY "sign_in is read by an Admin of the acting organization" ON "sign_in" AS PERMISSIVE FOR SELECT TO "trident_app" USING ((app.claims() ->> 'role' = 'admin' or exists (select 1 from public."user" u where u.id = app.user_id() and u.is_super_admin)) and exists (select 1 from public.member m where m.user_id = "sign_in".user_id and m.organization_id = app.organization_id()) and ("sign_in".organization_id is null or "sign_in".organization_id = app.organization_id()));
 --> statement-breakpoint
 CREATE POLICY "organization is the acting one" ON "organization" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.organization_id());
 --> statement-breakpoint
@@ -800,3 +844,5 @@ CREATE POLICY "item_attachment in the acting organization" ON "item_attachment" 
 CREATE POLICY "time_log_day in the acting organization" ON "time_log_day" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "time_log_entry in the acting organization" ON "time_log_entry" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "pinned of the acting user" ON "pinned" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id() and user_id = app.user_id()) WITH CHECK (organization_id = app.organization_id() and user_id = app.user_id());

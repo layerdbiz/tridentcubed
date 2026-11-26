@@ -62,32 +62,3 @@
 		</div>
 	{/snippet}
 </Component>
-
-<style lang="postcss">
-	@reference "#ui.css";
-
-	/* .content {
-		@apply block;
-
-		:global(pre) {
-			@apply overflow-x-auto p-4;
-		}
-
-		:global(code) {
-			@apply rounded px-1 py-0.5 text-sm;
-		}
-
-		:global(table) {
-			@apply w-full border-collapse;
-		}
-
-		:global(th),
-		:global(td) {
-			@apply border border-gray-300 px-3 py-2 dark:border-gray-600;
-		}
-
-		:global(th) {
-			@apply bg-gray-50 font-semibold dark:bg-gray-700;
-		}
-	} */
-</style>

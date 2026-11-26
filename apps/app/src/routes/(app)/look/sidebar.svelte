@@ -11,14 +11,18 @@
 	// and the cog and Admin both open Settings. Run 18 (Justin, 2026-11-10): Admin is out of the menu for now; the
 	// signed-in person's row and the cog both open Settings, where the organization is edited. #212 (Justin,
 	// 2026-11-18): Recent is "Recents", a panel that slides open and shut (menu-panel.svelte), with Online under it.
+	// #346 (Justin, 2026-11-25): Pinned sits above them, what this person pinned from a ⋮ menu (pins.ts). #345: the search icon at
+	// the far right of the logo opens the search pop-up (`onsearch`, search-popup.svelte; a section row until 2026-11-26).
+	import { Avatar, Button } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 	import AccountMenu from './account-menu.svelte';
-	import Avatar from './avatar.svelte';
 	import { FADE, fadeTop } from './fade';
 	import { DATASETS, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { faceOf } from './marks';
 	import MenuPanel from './menu-panel.svelte';
 	import OnlineList from './online-list.svelte';
+	import { pinnedOf } from './pins';
 	import RecentList from './recent-list.svelte';
 	import { ROLE_LABELS } from './team.data';
 
@@ -26,17 +30,21 @@
 		look,
 		isCollapsed = false,
 		onnavigate,
+		onsearch,
 		bell
 	}: {
 		look: LookState;
 		isCollapsed?: boolean;
 		onnavigate?: () => void;
+		// Opens the search pop-up (#345).
+		onsearch?: () => void;
 		// The phone's menu: the notification bell, at the top right beside the name (Justin, 2026-11-16).
 		bell?: Snippet;
 	} = $props();
 
 	// The signed-in person's Team record; until it has loaded, their role alone.
 	const me = $derived(look.me ?? { name: '', role: look.role });
+	const pinned = $derived(pinnedOf(look));
 	// The one column every icon centres in.
 	const COLUMN = 'flex w-14 shrink-0 justify-center';
 	// Words never wrap while the sidebar narrows; folded to icons they fade out.
@@ -47,6 +55,9 @@
 		look.openSettings();
 		onnavigate?.();
 	}
+
+	// The keys that open search on a desktop, as that keyboard says them.
+	const SHORTCUT = /Mac|iPhone|iPad/.test(globalThis.navigator?.userAgent ?? '') ? '⌘ K' : 'Ctrl K';
 
 	function go(id: string) {
 		if (id === 'admin') return settings();
@@ -75,6 +86,20 @@
 			>
 		</button>
 		{#if bell}<div class="shrink-0">{@render bell()}</div>{/if}
+		{#if onsearch}
+			<!-- Search, at the far right of the logo (Justin, 2026-11-26: out of the sections, an icon beside the name). -->
+			<span class="shrink-0 {WORDS}"
+				><Button
+					ghost
+					icon="icon-[mdi--magnify]"
+					aria-label="Search"
+					title="Search ({SHORTCUT})"
+					lg
+					class="text-slate-900"
+					onclick={onsearch}
+				/></span
+			>
+		{/if}
 	</div>
 	<nav class="w-full space-y-0.5 px-3">
 		{#each NAV.filter((item) => item.id !== 'admin') as item (item.id)}
@@ -102,6 +127,27 @@
 		class="mt-4 w-full flex-1 overflow-y-auto px-3 pb-6 {FADE}"
 		{@attach fadeTop}
 	>
+		<MenuPanel
+			title="Pinned"
+			isOpen={look.menuPanels.pinned}
+			ontoggle={() => look.toggleMenuPanel('pinned')}
+			words={WORDS}
+		>
+			{#if pinned.length}
+				<RecentList
+					{look}
+					items={pinned}
+					size={32}
+					width={56}
+					words={WORDS}
+					onpick={onnavigate}
+				/>
+			{:else}
+				<p class="px-4 pt-0.5 pb-1.5 text-xs text-slate-400 {WORDS}">
+					Pin anything from its ⋮ menu.
+				</p>
+			{/if}
+		</MenuPanel>
 		<MenuPanel
 			title="Recents"
 			isOpen={look.menuPanels.recents}
@@ -147,9 +193,9 @@
 					>
 						<span class={COLUMN}
 							><Avatar
-								name={me.name}
+								{...faceOf(me.name)}
 								size={40}
-								ring="ring-slate-200"
+								ring="ring-2 ring-slate-200"
 							/></span
 						>
 						<span class="min-w-0 flex-1 text-sm {WORDS}"

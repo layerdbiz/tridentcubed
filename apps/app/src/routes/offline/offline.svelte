@@ -6,6 +6,7 @@
 	// because the page runs none of SvelteKit's (+page.ts). Everything it loads is kept on the device: the app's
 	// styles and the logo.
 	import { LOGO } from '#lib/install/install.constants.js';
+	import { Button, Divider } from '@layerd/ui';
 </script>
 
 <svelte:head>
@@ -35,15 +36,11 @@
 				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase md:text-4xl">Trident Cubed</p>
 			</div>
 			<!-- The login page's wave: the white of what comes next rising into the dark. -->
-			<svg
-				class="pointer-events-none block h-[60px] w-full fill-white lg:h-[120px]"
-				viewBox="0 0 1200 120"
-				preserveAspectRatio="none"
-				aria-hidden="true"
-				><path
-					d="M1200,0v120H0C41,68.89,288.87-55.15,578.87,30.29c178.24,53.05,440.37,74.74,621.13-30.29Z"
-				/></svg
-			>
+			<Divider
+				shape="waves"
+				color="text-white"
+				bleed={false}
+			/>
 		</div>
 		<!-- Up one pixel over the wave, so no line of the dark shows between them. -->
 		<div
@@ -54,11 +51,14 @@
 				<p class="text-sm text-slate-600">
 					Trident needs a connection for now. Working with no signal is coming.
 				</p>
-				<button
-					type="button"
-					class="w-full rounded-full bg-primary py-3 font-semibold text-base text-white transition"
-					data-retry>Try Again</button
-				>
+				<Button
+					primary
+					heavy
+					md
+					width="full"
+					label="Try Again"
+					data-retry
+				/>
 			</div>
 		</div>
 	</div>

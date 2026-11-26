@@ -37,4 +37,29 @@ describe('Help', () => {
 		// The browser's own focus move happens on mousedown; the ? cancels it.
 		expect(await fireEvent.mouseDown(button)).toBe(false);
 	});
+
+	it('opens a pop-up by the ? for a mouse, its look set from outside through pop', async () => {
+		const media = window.matchMedia;
+		window.matchMedia = ((query: string) => ({
+			matches: true,
+			media: query
+		})) as typeof window.matchMedia;
+		try {
+			render(Help, {
+				props: {
+					label: 'Title',
+					text: "The report's name.",
+					pop: { color: 'primary', appearance: 'heavy' }
+				}
+			});
+			await fireEvent.click(screen.getByRole('button', { name: 'What goes in Title?' }));
+
+			const pop = screen.getByRole('tooltip', { hidden: true });
+			expect(pop.textContent).toContain("The report's name.");
+			expect(pop.className).toContain('theme-heavy-primary');
+			expect(pop.className).not.toContain('bg-base-900');
+		} finally {
+			window.matchMedia = media;
+		}
+	});
 });

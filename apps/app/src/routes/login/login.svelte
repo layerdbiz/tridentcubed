@@ -14,6 +14,7 @@
 	import { install } from '#lib/install/install.state.svelte.js';
 	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
 	import { readWaiting, toWaiting } from './waiting';
+	import { Button, Divider } from '@layerd/ui';
 
 	// Written here until it comes from the release on GitHub (Justin, 2026-11-17: "for now, just do v1.0.0").
 	const VERSION = 'v1.0.0';
@@ -21,11 +22,6 @@
 	const FIELD =
 		'w-full rounded-xl border-0 bg-slate-900/[0.05] px-3.5 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary/40';
 	const LABEL = 'mb-1 block text-xs font-medium text-slate-500';
-	const PRIMARY =
-		'w-full rounded-full bg-primary py-3 text-base font-semibold text-white transition disabled:opacity-60';
-	const QUIET = 'text-sm font-semibold text-primary transition hover:underline disabled:opacity-60';
-	const OTHER =
-		'flex w-full items-center justify-center gap-2.5 rounded-full bg-slate-900/[0.05] py-3 text-sm font-semibold text-slate-800 transition hover:bg-slate-900/[0.08]';
 	const OTHER_WAYS = [
 		{ id: 'google', name: 'Google', icon: 'icon-[logos--google-icon]' },
 		{ id: 'microsoft', name: 'Microsoft', icon: 'icon-[logos--microsoft-icon]' }
@@ -119,16 +115,12 @@
 				<p class="mt-5 text-2xl font-semibold tracking-wide uppercase md:text-4xl">Trident Cubed</p>
 				<p class="mt-2 font-mono text-sm text-slate-400">{VERSION}</p>
 			</div>
-			<!-- The website's wave, as its sections end: the white of what comes next rising into the dark. -->
-			<svg
-				class="pointer-events-none block h-[60px] w-full fill-white lg:h-[120px]"
-				viewBox="0 0 1200 120"
-				preserveAspectRatio="none"
-				aria-hidden="true"
-				><path
-					d="M1200,0v120H0C41,68.89,288.87-55.15,578.87,30.29c178.24,53.05,440.37,74.74,621.13-30.29Z"
-				/></svg
-			>
+			<!-- The website's wave, the library's Divider (#376): the white of what comes next rising into the dark. -->
+			<Divider
+				shape="waves"
+				color="text-white"
+				bleed={false}
+			/>
 		</div>
 		<!-- Up one pixel over the wave, so no line of the dark shows between them. -->
 		<div
@@ -188,10 +180,15 @@
 								>
 									{problem}
 								</p>{/if}
-							<button
-								class={PRIMARY}
-								disabled={submitCode.pending > 0}>Continue</button
-							>
+							<Button
+								primary
+								heavy
+								md
+								width="full"
+								type="submit"
+								label="Continue"
+								disabled={submitCode.pending > 0}
+							/>
 						</form>
 					{/if}
 
@@ -233,26 +230,39 @@
 								>
 									{problem}
 								</p>{/if}
-							<button
-								class={PRIMARY}
-								disabled={submitEmail.pending > 0}>Continue</button
-							>
+							<Button
+								primary
+								heavy
+								md
+								width="full"
+								type="submit"
+								label="Continue"
+								disabled={submitEmail.pending > 0}
+							/>
 						{:else}
 							<input {...submitEmail.fields.email.as('hidden', email)} />
 							<div class="flex items-center justify-between gap-3">
-								<button
-									class={QUIET}
-									disabled={submitEmail.pending > 0}>Send a new code</button
-								>
-								<button
-									type="button"
-									class={QUIET}
+								<Button
+									primary
+									ghost
+									sm
+									padding="none"
+									type="submit"
+									label="Send a new code"
+									disabled={submitEmail.pending > 0}
+								/>
+								<Button
+									primary
+									ghost
+									sm
+									padding="none"
+									label="Use a different email"
 									onclick={() => {
 										step = 'email';
 										problem = '';
 										forget();
-									}}>Use a different email</button
-								>
+									}}
+								/>
 							</div>
 						{/if}
 					</form>
@@ -277,12 +287,17 @@
 					>
 						<input {...submitProvider.fields.next.as('hidden', next)} />
 						{#each others as way (way.id)}
-							<button
-								class={OTHER}
+							<Button
+								neutral
+								lite
+								sm
+								width="full"
+								align="center"
+								icon={way.icon}
+								label="Continue with {way.name}"
 								disabled={submitProvider.pending > 0}
 								{...submitProvider.fields.provider.as('submit', way.id)}
-								><span class="{way.icon} size-5 shrink-0"></span>Continue with {way.name}</button
-							>
+							/>
 						{/each}
 					</form>
 				{/if}
@@ -293,12 +308,15 @@
 				     the state takes it away right after an install too. -->
 				{#if install.isShown}
 					<p class="text-center [@media(display-mode:standalone)]:hidden">
-						<button
-							type="button"
-							class="inline-flex items-center gap-1.5 py-1 text-sm font-medium text-slate-500 transition hover:text-primary"
+						<Button
+							neutral
+							ghost
+							sm
+							padding="none"
+							icon="icon-[mdi--cellphone-arrow-down]"
+							label="Install App"
 							onclick={installApp}
-							><span class="icon-[mdi--cellphone-arrow-down] size-4"></span>Install App</button
-						>
+						/>
 					</p>
 				{/if}
 			</div>

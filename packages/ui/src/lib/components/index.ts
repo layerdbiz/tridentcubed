@@ -1,8 +1,10 @@
 /* COMPONENTS */
 // atoms
+export { default as Avatar, type AvatarProps } from "./atoms/avatar/avatar.svelte";
 export { default as Button, type ButtonProps } from "./atoms/button/button.svelte";
 export { default as Checkbox } from "./atoms/forms/checkbox/checkbox.svelte";
 export { default as Colorss } from "./atoms/Colorss.svelte";
+export { default as Compact, type CompactProps } from "./atoms/forms/compact/compact.svelte";
 export { default as Container, type ContainerProps } from "./atoms/container/container.svelte";
 export * from "./atoms/content/content.svelte.ts";
 export { default as Content } from "./atoms/content/content.svelte";
@@ -10,12 +12,14 @@ export { default as Divider, type DividerProps } from "./atoms/divider/divider.s
 export { default as Example, type ExampleProps } from "./atoms/example/example.svelte";
 export { default as ExampleOld, type ExampleOldProps } from "./atoms/example-old/example-old.svelte";
 export * from "./atoms/forms/field.svelte.ts";
+export { default as Generated, type GeneratedProps } from "./atoms/forms/generated/generated.svelte";
 export { default as Help, type HelpProps } from "./atoms/forms/help/help.svelte";
 export { default as Icon, type IconProps } from "./atoms/icon/icon.svelte";
 export { default as IconTheme } from "./atoms/icon/icon-theme.svelte";
 export { default as Image, type ImageProps } from "./atoms/image/image.svelte";
 export * from "./atoms/image/image.data.ts";
 export { default as Indicator } from "./atoms/indicator/indicator.svelte";
+export * from "./atoms/avatar/initials.ts";
 export { default as Input } from "./atoms/forms/input/input.svelte";
 export { default as Link } from "./atoms/link/link.svelte";
 export * from "./atoms/link/link.data.ts";
@@ -23,13 +27,14 @@ export { default as Metadata } from "./atoms/metadata/metadata.svelte";
 export { default as Nav } from "./atoms/nav/nav.svelte";
 export { default as Number } from "./atoms/number/number.svelte";
 export * from "./atoms/number/number.data.ts";
-export { default as Radio } from "./atoms/forms/radio/radio.svelte";
+export { default as Radio, type RadioProps } from "./atoms/forms/radio/radio.svelte";
 export { default as Section } from "./atoms/section/section.svelte";
 export * from "./atoms/section/section.data.ts";
 export * from "./atoms/forms/select/select.svelte.ts";
 export { default as Select } from "./atoms/forms/select/select.svelte";
-export { default as Switch } from "./atoms/forms/switch/switch.svelte";
+export { default as Switch, type SwitchProps } from "./atoms/forms/switch/switch.svelte";
 export { default as Table, type TableColumn, type TableProps } from "./atoms/table/table.svelte";
+export { default as Tabs, type TabsProps } from "./atoms/tabs/tabs.svelte";
 export { default as Text, type TextProps } from "./atoms/text/text.svelte";
 export * from "./atoms/text/text.data.ts";
 export { default as Textarea } from "./atoms/forms/textarea/textarea.svelte";
@@ -39,14 +44,12 @@ export { default as ThemeToggle } from "./atoms/theme/theme-toggle.svelte";
 export { default as Title } from "./atoms/title/title.svelte";
 
 // molecules
-export * from "./molecules/accordion/accordion.ts";
 export { default as Accordion, type AccordionProps } from "./molecules/accordion/accordion.svelte";
-export { default as AccordionContent, type AccordionContentProps } from "./molecules/accordion/accordion-content.svelte";
-export { default as AccordionTitle, type AccordionTitleProps } from "./molecules/accordion/accordion-title.svelte";
 export { default as Card, type CardProps } from "./molecules/card/card.svelte";
 export * from "./molecules/card/card.data.ts";
 export { default as Controls } from "./molecules/chart/controls.svelte";
 export { default as Copyright, type CopyrightProps } from "./molecules/copyright/copyright.svelte";
+export { default as Dialog, type DialogProps } from "./molecules/dialog/dialog.svelte";
 export * from "./molecules/grid/grid.svelte.ts";
 export { default as Grid, type GridProps } from "./molecules/grid/grid.svelte";
 export { default as Item, type ItemProps } from "./molecules/grid/item.svelte";
@@ -57,6 +60,7 @@ export { default as Menu, type MenuOptionType, type MenuProps } from "./molecule
 export { default as Navbar } from "./molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./molecules/preview/preview.svelte";
 export { default as Slider, type SliderProps } from "./molecules/slider/slider.svelte";
+export { default as Stack, type StackItemType, type StackProps } from "./molecules/stack/stack.svelte";
 export * from "./molecules/toast/toast.svelte.ts";
 export { default as Toast, type ToastProps } from "./molecules/toast/toast.svelte";
 export { default as Toggle, type ToggleProps } from "./molecules/toggle/toggle.svelte";

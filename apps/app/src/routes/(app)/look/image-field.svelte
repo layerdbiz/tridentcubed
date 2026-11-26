@@ -8,7 +8,7 @@
 	// (`onpick`) once the file is there, and a failed upload says so on the picture with Retry. Wiring another
 	// picture is giving its field a `target`; every picture has one, so none is kept inline. #294: a picture the
 	// device cannot draw (a HEIC in Chrome) shows a picture mark and its name while the server converts it.
-	import { Help } from '@layerd/ui';
+	import { Button, Help } from '@layerd/ui';
 	import type { FileTargetType } from '#lib/files/files.schema.js';
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 
@@ -148,11 +148,13 @@
 			/>
 		</label>
 		{#if (value || upload) && canRemove}
-			<button
-				type="button"
-				class="rounded-full px-2 py-2 text-sm font-medium text-slate-400 transition hover:text-danger"
-				onclick={remove}>Remove</button
-			>
+			<Button
+				danger
+				ghost
+				sm
+				label="Remove"
+				onclick={remove}
+			/>
 		{/if}
 	</div>
 	{#if upload?.isFailed}
@@ -161,11 +163,14 @@
 			role="alert"
 		>
 			<span>Not uploaded. {upload.reason}</span>
-			<button
-				type="button"
-				class="font-semibold underline underline-offset-2"
-				onclick={() => upload?.retry()}>Retry</button
-			>
+			<Button
+				danger
+				ghost
+				xs
+				padding="none"
+				label="Retry"
+				onclick={() => upload?.retry()}
+			/>
 		</p>
 	{:else if upload?.isUploading && !upload.hasPreview}
 		<p

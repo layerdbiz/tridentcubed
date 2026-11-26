@@ -1,8 +1,15 @@
 <script lang="ts">
+	// Every step of the theme's colour ladders, light and dark, side by side: a sheet to check a theme against.
+	import { Component, type ComponentProps } from '@layerd/ui';
+
+	let props: ComponentProps = $props();
 	let classPreview = 'grid grid-cols-11 gap-4 text-center font-mono text-sm bg-neutral-50-950';
 </script>
 
-<div class="container max-h-svh overflow-y-scroll">
+<Component
+	{...props}
+	class="container max-h-svh overflow-y-scroll {props.class ?? ''}"
+>
 	<section class={classPreview}>
 		<!-- Neutral 50 -->
 		<div class="card bg-neutral-50-50 text-neutral-950-950">neutral 50/50</div>
@@ -539,4 +546,4 @@
 		<div class="card bg-accent-950-900 text-accent-50-50">accent 950/900</div>
 		<div class="card bg-accent-950-950 text-accent-50-50">accent 950/950</div>
 	</section>
-</div>
+</Component>

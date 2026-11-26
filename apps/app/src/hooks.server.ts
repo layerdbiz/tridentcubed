@@ -2,6 +2,7 @@
 // finds its session into `event.locals` (renewing it once a day of use) and who its User is (`locals.actor`: their
 // organization, role and Super admin flag, or a Guest with none), then passes the sign-in guard. A staff User's use of
 // the app stamps their Team record as seen (#185), at most once a minute, with the device the request came from (#331).
+// Every page keeps the browser on the version that served it (#401, lib/server/pin.ts).
 import { building } from '$app/env';
 import { json } from '@sveltejs/kit';
 import type { Handle } from '@sveltejs/kit/hooks';
@@ -11,7 +12,9 @@ import { DEVICE_COOKIE } from '#lib/presence/presence.constants.js';
 import { toDevice } from '#lib/presence/presence.utils.js';
 import { findActor, stampSeen } from '#lib/server/access.js';
 import { type AccessType, isClosed, toGuard } from '#lib/server/guard.js';
+import { toPinnedPage } from '#lib/server/pin.js';
 import { getServer } from '#lib/server/server.js';
+import { DEPLOYMENT_ID } from '#lib/update/update.constants.js';
 
 const handleSession: Handle = async ({ event, resolve }) => {
 	if (building) return resolve(event);
@@ -48,4 +51,9 @@ const handleGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-export const handle: Handle = sequence(handleSession, handleGuard);
+const handlePin: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+	return building ? response : toPinnedPage(response, DEPLOYMENT_ID);
+};
+
+export const handle: Handle = sequence(handlePin, handleSession, handleGuard);

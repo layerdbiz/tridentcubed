@@ -73,7 +73,7 @@ export interface ComponentProps extends ComponentItemProps {
 	children?: Snippet;
 
 	// 🎨 STYLES
-	color?: 'base' | 'neutral' | 'primary' | 'secondary' | 'accent';
+	color?: 'base' | 'neutral' | 'primary' | 'secondary' | 'accent' | 'danger';
 
 	appearance?: 'heavy' | 'lite' | 'outline' | 'ghost' | 'glass' | 'gradient';
 
@@ -86,6 +86,8 @@ export interface ComponentProps extends ComponentItemProps {
 	primary?: boolean;
 	secondary?: boolean;
 	accent?: boolean;
+	// the theme's red, for a step that deletes (#384)
+	danger?: boolean;
 
 	// VARIANTS
 	heavy?: boolean;
@@ -207,6 +209,7 @@ export function createComponent(props: Partial<ComponentProps> = {}): ComponentR
 		primary = false,
 		secondary = false,
 		accent = false,
+		danger = false,
 		// appearance
 		appearance,
 		heavy = false,
@@ -259,6 +262,7 @@ export function createComponent(props: Partial<ComponentProps> = {}): ComponentR
 		const isPrimary = color === 'primary' || primary;
 		const isSecondary = color === 'secondary' || secondary;
 		const isAccent = color === 'accent' || accent;
+		const isDanger = color === 'danger' || danger;
 		// variants
 		const isHeavy = appearance === 'heavy' || heavy;
 		const isLite = appearance === 'lite' || lite;
@@ -304,6 +308,7 @@ export function createComponent(props: Partial<ComponentProps> = {}): ComponentR
 		if (isPrimary) colorThemes('primary');
 		else if (isSecondary) colorThemes('secondary');
 		else if (isAccent) colorThemes('accent');
+		else if (isDanger) colorThemes('danger');
 		else if (isNeutral) colorThemes('neutral');
 		else if (isBase) colorThemes('base');
 		// If no color specified but we have heavy/lite/outline variants, default to "base"

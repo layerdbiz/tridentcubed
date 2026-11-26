@@ -4,10 +4,10 @@
 	// Page's picture (record-page.svelte) and this is the sheet under it: its numbers; for a team
 	// member their phone and email, for a transport its particulars (empty until typed in on Edit, or later filled by a
 	// tracking service); then its projects, as the same rows the Projects page lists.
-	import ClientLogo from './client-logo.svelte';
-	import Faces from './faces.svelte';
+	import { Avatar, Stack } from '@layerd/ui';
 	import { DATASETS, PARTICULARS } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { facesOf, logoOf } from './marks';
 	import ProjectRow from './project-row.svelte';
 	import { customerOf, type RecordType } from './records.data';
 
@@ -131,18 +131,13 @@
 				<div class="mb-2 divide-y divide-slate-100 overflow-hidden {CARD}">
 					{#if person.name}
 						<div class="flex items-center gap-3 px-4 py-3">
-							{#if person.photo}
-								<img
-									src={person.photo}
-									alt=""
-									class="size-10 shrink-0 rounded-full object-cover"
-								/>
-							{:else}
-								<span
-									class="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500"
-									><span class="icon-[mdi--account] size-6"></span></span
-								>
-							{/if}
+							<!-- No photo: their initials, sky blue for a customer's people (#355), in the library's avatar (#379). -->
+							<Avatar
+								src={person.photo}
+								name={person.name}
+								tone={customer ? 'customer' : 'team'}
+								size={40}
+							/>
 							<span class="min-w-0">
 								<span class="block truncate text-sm font-semibold text-slate-900"
 									>{person.name}</span
@@ -178,18 +173,17 @@
 			<h3 class={HEADING}>{record.page === 'customers' ? 'Team on its projects' : 'Customers'}</h3>
 			<div class="flex flex-wrap gap-3 p-4 {CARD}">
 				{#if record.people.length}
-					<Faces
-						names={record.people}
+					<Stack
+						items={facesOf(record.people)}
 						size={40}
 						max={12}
 					/>
 				{:else}
 					{#each record.logos as name (name)}
 						<span class="flex items-center gap-2 text-sm text-slate-700"
-							><ClientLogo
-								{name}
+							><Avatar
+								{...logoOf(name, { shape: 'circle' })}
 								size={32}
-								shape="circle"
 							/>{name}</span
 						>
 					{/each}

@@ -2,11 +2,18 @@
 	// The Report Generator V1 (#180): the look prototype's screens (#161, branch prototype/161-look-claude-prototype)
 	// carried across whole as the app. This names the browser tab after what is on screen and loads the organization's
 	// lists (#183) and who is signed in (#185) before the app starts; look/look.svelte is the app. The update note
-	// (#202) is here, in the signed-in app only, so it never shows on the login page.
+	// (#202) and What's New (#363) are here, in the signed-in app only, so neither shows on the login page. What's
+	// New opens once the app is on screen, after the reload the update note makes, when a release is new to this
+	// device.
 	import { fetchSelf } from '#lib/auth/auth.remote.js';
 	import { fetchLists } from '#lib/rows/rows.remote.js';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
+	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
+	import WhatsNew from '#lib/releases/whats-new.svelte';
+	import { Button } from '@layerd/ui';
+	import { HAS_POP_UP } from '#lib/releases/releases.constants.js';
 	import UpdateNote from '#lib/update/note.svelte';
+	import { FOLD_LOOK } from './look/fold';
 	import Look from './look/look.svelte';
 
 	const lists = (async () => {
@@ -42,6 +49,7 @@
 		if (!shown) return '';
 		if (shown.adding) return 'Add';
 		if (shown.screen === 'settings') return 'Organization';
+		if (shown.screen === 'activity') return 'Activity';
 		if (shown.screen === 'record' && shown.record) return shown.record.key;
 		if (shown.screen === 'dashboard') return SECTIONS[shown.navSection] ?? 'Projects';
 		if (shown.tab === 'preview' && innerWidth < 768) return 'Preview';
@@ -49,6 +57,7 @@
 	});
 
 	function ready(look: PageType) {
+		if (!shown) whatsNew.start();
 		shown = look;
 	}
 </script>
@@ -71,16 +80,25 @@
 		{self}
 		onready={ready}
 	/>
-	{#if shown}<UpdateNote save={shown.sync} />{/if}
+	<!-- Where What's New opens by itself for a new version (next, #396), it takes the update note's place. -->
+	{#if shown}
+		{#if !HAS_POP_UP}<UpdateNote save={shown.sync} />{/if}
+		<WhatsNew
+			save={shown.sync}
+			fold={FOLD_LOOK}
+		/>
+	{/if}
 {:catch}
 	<div class="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
 		<p class="text-slate-700">
 			The app could not load its data. Check the connection and try again.
 		</p>
-		<button
-			type="button"
-			class="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
-			onclick={() => location.reload()}>Try again</button
-		>
+		<Button
+			secondary
+			heavy
+			sm
+			label="Try again"
+			onclick={() => location.reload()}
+		/>
 	</div>
 {/await}

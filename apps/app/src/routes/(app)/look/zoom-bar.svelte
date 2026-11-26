@@ -4,6 +4,7 @@
 	// bottom. No + and − buttons: the slider, pinch and scroll do that. #324 (Justin, 2026-11-25): one button for how
 	// the pages lie, its icon the mode they are in, and a menu that pops out beside it with Stack, Spread and Present
 	// (a play button: the pages one at a time).
+	import { Button } from '@layerd/ui';
 	import type { LayoutType } from './presentation.svelte';
 	import { ZOOM_MAX, ZOOM_MIN, type Viewport } from './viewport.svelte';
 
@@ -85,8 +86,6 @@
 		else return;
 		event.preventDefault();
 	}
-
-	const hover = 'hover:bg-white/10';
 </script>
 
 <svelte:document
@@ -144,13 +143,15 @@
 		</span>
 	</div>
 
-	<button
-		type="button"
-		class="flex size-9 items-center justify-center rounded-full {hover}"
+	<Button
+		ghost
+		invert
+		sm
+		icon="icon-[mdi--fit-to-screen-outline]"
 		aria-label="Fit to the screen"
 		title="Fit to the screen"
-		onclick={onfit}><span class="icon-[mdi--fit-to-screen-outline] size-5"></span></button
-	>
+		onclick={onfit}
+	/>
 	<div
 		bind:this={menu}
 		class="relative"
@@ -194,11 +195,14 @@
 			{/each}
 		</div>
 	</div>
-	<button
-		type="button"
-		class="mt-1 flex size-10 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/30 hover:brightness-110"
+	<Button
+		primary
+		heavy
+		md
+		icon="icon-[mdi--tray-arrow-down]"
 		aria-label="Download PDF"
 		title="Download PDF"
-		onclick={ondownload}><span class="icon-[mdi--tray-arrow-down] size-5"></span></button
-	>
+		class="mt-1"
+		onclick={ondownload}
+	/>
 </div>

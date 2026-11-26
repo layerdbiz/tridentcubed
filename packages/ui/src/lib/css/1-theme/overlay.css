@@ -1,0 +1,24 @@
+/* Overlay: what a Dialog lays over the page, and the lists that float over it
+************************************************************************
+	The scrim that dims the page, the shadow under a sheet that rises from the bottom, and the sheet's grab handle
+	(the sheet itself is the theme's surface, colors.css). A theme sets them as it sets its colours
+	(--theme-color-scrim, --theme-color-grab, --theme-shadow-sheet); these are the defaults, kept from the app's sheet
+	(#375): slate-950 at 30%, slate-200, and a soft slate-900 shadow.
+	The shadows under a Menu's list (--theme-shadow-menu) and under the list a typed Select drops below its field
+	(--theme-shadow-list), kept from the app's lists (#297, #298).
+*/
+@theme inline {
+	--color-scrim: var(--theme-color-scrim, oklch(12.9% 0.042 264.695 / 0.3));
+	--color-grab: var(--theme-color-grab, oklch(92.9% 0.013 255.508));
+	--shadow-sheet: var(--theme-shadow-sheet, 0 -12px 40px rgb(15 23 42 / 0.18));
+	--shadow-menu: var(
+		--theme-shadow-menu,
+		0 2px 6px rgb(15 23 42 / 0.06),
+		0 20px 44px -12px rgb(15 23 42 / 0.28)
+	);
+	--shadow-list: var(
+		--theme-shadow-list,
+		0 2px 6px rgb(15 23 42 / 0.06),
+		0 12px 28px -12px rgb(15 23 42 / 0.25)
+	);
+}

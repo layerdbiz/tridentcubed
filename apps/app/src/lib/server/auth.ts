@@ -4,7 +4,8 @@
 // #182: Better Auth's organization plugin holds organizations and memberships, and every new session runs the
 // sign-in rule (`grantAccess`), which sets the organization the session acts in. The plugin's own HTTP routes are
 // closed by the guard (`/api/auth/organization/*`): memberships change only through the sign-in rule and the app's
-// one permission check, so its roles carry no permissions of their own.
+// one permission check, so its roles carry no permissions of their own. #306: each new session also leaves a record
+// of the sign-in, which the Activity reads and Log Out does not remove; the database writes it (`db/triggers.ts`).
 // `createAuth` takes everything it needs, so tests build one on the in-process database; the app builds its one
 // instance from the deployment's settings in `#lib/server/server.ts`.
 import type { RequestEvent } from '@sveltejs/kit';
@@ -137,7 +138,8 @@ export function createAuth({
 					}
 				}
 			},
-			// The sign-in rule (#182), at every sign-in by any way: memberships from the verified email.
+			// The sign-in rule (#182), at every sign-in by any way: memberships from the verified email. The database
+			// then records the sign-in for the Activity (#306, `db/triggers.ts`).
 			session: {
 				create: {
 					async before(session) {

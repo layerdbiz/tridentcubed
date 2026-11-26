@@ -8,6 +8,7 @@
 	// uses, over both tabs: a bare back arrow and ⋮ on the Page, and the bar with the name from Edit on.
 	import { cityStateOf } from './location';
 	import { pinOfRecord, pinsAt } from './chart.data';
+	import Back from './back.svelte';
 	import Chips from './chips.svelte';
 	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -59,11 +60,11 @@
 
 {#snippet header()}
 	<div class="flex items-center gap-2">
-		<button
-			class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
-			aria-label="Back to {DATASETS[record.page].label}"
-			onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
-		>
+		<Back
+			label="Back to {DATASETS[record.page].label}"
+			class="shrink-0"
+			onclick={() => look.home()}
+		/>
 		<RecordMark
 			{record}
 			size={36}
@@ -73,8 +74,8 @@
 			<span class="block truncate font-semibold text-slate-900">{record.key}</span>
 			<span class="block truncate text-xs text-slate-500">{DATASETS[record.page].one}</span>
 		</span>
-		<!-- With Bottom Bar B the save cloud is up here, not in the bar. -->
-		{#if look.variant('bar') !== 'A'}<SaveCloud {look} />{/if}
+		<!-- The save cloud is up here, not in the bar. -->
+		<SaveCloud {look} />
 		<MoreMenu
 			{look}
 			page={record.page}
@@ -181,7 +182,7 @@
 				kind={DATASETS[record.page].one}
 				reveal={look.tabProgress}
 				isLight={isPhoto}
-				hasCloud={look.variant('bar') !== 'A'}
+				hasCloud
 				hasChevron={look.variant('header') === 'C'}
 				bind:height={top}
 			>

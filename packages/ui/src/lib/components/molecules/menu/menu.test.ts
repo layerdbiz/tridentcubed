@@ -140,6 +140,23 @@ describe('opening and picking', () => {
 
 		expect(screen.queryByRole('listbox')).toBeNull();
 	});
+
+	it('hangs from the library Button, whose look is set through button', async () => {
+		show({
+			trigger: undefined,
+			button: { ghost: true, md: true, icon: 'icon-[mdi--chart-donut]' }
+		});
+		const button = screen.getByRole('button', { name: 'View' });
+
+		expect(button.classList).toContain('btn');
+		expect(button.classList).toContain('theme-ghost');
+		expect(button.querySelector('.btn-icon')).not.toBeNull();
+		expect(button.getAttribute('aria-haspopup')).toBe('listbox');
+
+		await open();
+
+		expect(button.getAttribute('aria-expanded')).toBe('true');
+	});
 });
 
 describe('closing', () => {
@@ -244,12 +261,12 @@ describe('what each choice shows', () => {
 		expect(remove.className).toContain('text-danger');
 		expect(remove.className).toContain('font-medium');
 		expect(remove.querySelector('.icon-\\[mdi--trash-can-outline\\]')?.className).not.toContain(
-			'text-slate-500'
+			'text-base-500'
 		);
 		expect(edit.className).not.toContain('text-danger');
-		expect(edit.className).toContain('text-slate-600');
+		expect(edit.className).toContain('text-secondary-400');
 		expect(edit.querySelector('.icon-\\[mdi--pencil-outline\\]')?.className).toContain(
-			'text-slate-500'
+			'text-base-500'
 		);
 	});
 
@@ -290,7 +307,7 @@ describe('what each choice shows', () => {
 
 		expect(note.parentElement).toBe(name.parentElement);
 		expect(name.parentElement?.className).toContain('flex-col');
-		expect(note.className).toContain('text-slate-400');
+		expect(note.className).toContain('text-base-400');
 		expect(name.className).toContain('truncate');
 		expect(note.className).toContain('truncate');
 	});
@@ -408,6 +425,24 @@ describe('where the list goes', () => {
 		expect(style).not.toContain('top:');
 	});
 
+	it('opens over its button when asked to and it fits there, as at the foot of a box (#376)', async () => {
+		placeButton({ top: 500, left: 600, width: 40, height: 40 });
+		show({ opens: 'up' });
+		await open();
+
+		const style = listOf()?.getAttribute('style') ?? '';
+		expect(style).toContain(`bottom: ${innerHeight - 500 + 8}px`);
+		expect(style).not.toContain('top:');
+	});
+
+	it('still hangs under its button when asked to open over it but there is no room above', async () => {
+		placeButton({ top: 60, left: 600, width: 40, height: 40 });
+		show({ opens: 'up' });
+		await open();
+
+		expect(listOf()?.getAttribute('style')).toContain('top: 108px');
+	});
+
 	it('floats above the page in a popover, so no scrolling box cuts it off', async () => {
 		show({});
 		await open();
@@ -416,5 +451,20 @@ describe('where the list goes', () => {
 		expect(list?.getAttribute('popover')).toBe('manual');
 		expect(list?.className).toContain('fixed');
 		expect(list?.className).toContain('z-[120]');
+	});
+
+	it('takes its look from outside on its list, the box that shows, white until it is given one', async () => {
+		const plain = show({});
+		await open();
+		expect(listOf()?.className).toContain('bg-surface');
+		plain.unmount();
+
+		show({ color: 'primary', appearance: 'lite', class: 'mine' });
+		await open();
+		const list = listOf();
+		expect(list?.className).toContain('theme-lite-primary');
+		expect(list?.className).toContain('mine');
+		expect(list?.className).not.toContain('bg-surface');
+		expect(list?.className).not.toMatch(/-(slate|gray|zinc)-|white/);
 	});
 });

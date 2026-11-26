@@ -4,11 +4,9 @@
 	// report's photos on top, swiping, or a map of the trip, its stops joined by a line; over them what the project's
 	// card shows (state, customer, title, percent, where the trip runs, the team); and in the sheet below, the rest to
 	// read: its numbers, its details, the team, the trip stop by stop and each panel's progress. A panel opens on Edit.
+	import { Avatar, Stack } from '@layerd/ui';
 	import { cityStateOf } from './location';
-	import Avatar from './avatar.svelte';
 	import { pinOfRecord, pinsAt } from './chart.data';
-	import ClientLogo from './client-logo.svelte';
-	import Faces from './faces.svelte';
 	import {
 		agoOf,
 		dayOf,
@@ -21,11 +19,13 @@
 		type ProjectType
 	} from './look.data';
 	import { metricsOf, themeOf, toneOf, type LookState } from './look.state.svelte';
+	import { faceOf, facesOf, logoOf } from './marks';
 	import MoreMenu from './more-menu.svelte';
 	import PageView from './page-view.svelte';
 	import ProjectLogo from './project-logo.svelte';
 	import ProjectRoute from './project-route.svelte';
 	import { projectPhotosOf, recordOf } from './records.data';
+	import StatusPill from './status-pill.svelte';
 
 	let {
 		look,
@@ -115,12 +115,12 @@
 		/>
 	{/snippet}
 	{#snippet overlay(isLight)}
-		<button
-			class="pointer-events-auto mb-3 inline-flex items-center gap-1 rounded-full py-1 pr-2 pl-3 text-xs font-semibold text-white {status.bar}"
-			title="Change Status"
-			onclick={() => (look.statusFor = project.id)}
-			>{project.status}<span class="icon-[mdi--chevron-down] size-4"></span></button
-		>
+		<div class="pointer-events-auto mb-3 w-fit">
+			<StatusPill
+				{look}
+				{project}
+			/>
+		</div>
 		<div class="flex items-center gap-3">
 			<ProjectLogo
 				{project}
@@ -145,8 +145,8 @@
 						{project}
 						{isLight}
 					/>
-					<Faces
-						names={project.team}
+					<Stack
+						items={facesOf(project.team)}
 						size={24}
 						max={4}
 					/>
@@ -180,10 +180,9 @@
 				<div class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
 					<dt class="text-slate-500">Customer</dt>
 					<dd class="flex items-center gap-2 font-medium text-slate-900">
-						<ClientLogo
-							name={project.client}
+						<Avatar
+							{...logoOf(project.client, { shape: 'circle' })}
 							size={22}
-							shape="circle"
 						/>{project.client}
 					</dd>
 				</div>
@@ -206,9 +205,9 @@
 							onclick={() => look.openRecord('team', name)}
 						>
 							<Avatar
-								{name}
+								{...faceOf(name)}
 								size={36}
-								ring="ring-slate-200"
+								ring="ring-2 ring-slate-200"
 							/>
 							<span class="min-w-0 flex-1">
 								<span class="block truncate text-sm font-medium text-slate-900"

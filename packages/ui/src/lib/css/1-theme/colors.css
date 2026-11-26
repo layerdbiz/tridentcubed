@@ -7,7 +7,9 @@
 	- success (todo)
 	- warning (todo)
 	- error (todo)
-	- surface (todo)
+	- surface: the colour of what is raised over the page (a sheet, a switch's thumb, the ring round an avatar)
+	- shade: the dark laid over a picture so what sits on it reads (an image's fade, a label on a photo, a
+	  placeholder's cells), and on-shade, the words and marks drawn on it; black and white unless a theme says
 */
 
 @theme inline {
@@ -26,6 +28,12 @@
 	--color-warning: var(--theme-color-warning, var(--color-amber-500));
 	--color-success: var(--theme-color-success, var(--color-emerald-500));
 	--color-danger: var(--theme-color-danger, var(--color-rose-500));
+
+	/* surface */
+	--color-surface: var(--theme-color-surface, oklch(100% 0 0));
+	/* shade */
+	--color-shade: var(--theme-color-shade, #000);
+	--color-on-shade: var(--theme-color-on-shade, #fff);
 }
 
 @theme {

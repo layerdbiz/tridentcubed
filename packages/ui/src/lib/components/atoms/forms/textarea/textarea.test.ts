@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vite-plus/test';
 import Textarea from './textarea.svelte';
 
 describe('Textarea', () => {
+	it('is named by its label, which sits apart from it on the border', () => {
+		render(Textarea, { props: { label: 'Description', value: '' } });
+
+		expect(screen.getByRole('textbox', { name: 'Description' })).toBeTruthy();
+	});
+
 	it("shows the app's sentence and its ?, and a reset once reworded", async () => {
 		render(Textarea, {
 			props: {

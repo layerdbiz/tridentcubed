@@ -1,8 +1,10 @@
 /* BASE */
 export * from "./base/component.svelte.ts";
 export { default as Component } from "./base/component.svelte";
+export * from "./base/light.ts";
 export * from "./base/root.svelte.ts";
 export { default as Root } from "./base/root.svelte";
+export { default as Rooted } from "./base/rooted.svelte";
 export * from "./base/helpers/address.ts";
 export * from "./base/helpers/classes.svelte.ts";
 export * from "./base/helpers/debug/debug.svelte.ts";
@@ -25,13 +27,16 @@ export * from "./base/helpers/text.ts";
 export * from "./base/helpers/total.svelte.ts";
 
 /* UTILS */
+export * from "./utils/pick.ts";
 export * from "./utils/trackevent.ts";
 
 /* COMPONENTS */
 // atoms
+export { default as Avatar, type AvatarProps } from "./components/atoms/avatar/avatar.svelte";
 export { default as Button, type ButtonProps } from "./components/atoms/button/button.svelte";
 export { default as Checkbox } from "./components/atoms/forms/checkbox/checkbox.svelte";
 export { default as Colorss } from "./components/atoms/Colorss.svelte";
+export { default as Compact, type CompactProps } from "./components/atoms/forms/compact/compact.svelte";
 export { default as Container, type ContainerProps } from "./components/atoms/container/container.svelte";
 export * from "./components/atoms/content/content.svelte.ts";
 export { default as Content } from "./components/atoms/content/content.svelte";
@@ -39,12 +44,14 @@ export { default as Divider, type DividerProps } from "./components/atoms/divide
 export { default as Example, type ExampleProps } from "./components/atoms/example/example.svelte";
 export { default as ExampleOld, type ExampleOldProps } from "./components/atoms/example-old/example-old.svelte";
 export * from "./components/atoms/forms/field.svelte.ts";
+export { default as Generated, type GeneratedProps } from "./components/atoms/forms/generated/generated.svelte";
 export { default as Help, type HelpProps } from "./components/atoms/forms/help/help.svelte";
 export { default as Icon, type IconProps } from "./components/atoms/icon/icon.svelte";
 export { default as IconTheme } from "./components/atoms/icon/icon-theme.svelte";
 export { default as Image, type ImageProps } from "./components/atoms/image/image.svelte";
 export * from "./components/atoms/image/image.data.ts";
 export { default as Indicator } from "./components/atoms/indicator/indicator.svelte";
+export * from "./components/atoms/avatar/initials.ts";
 export { default as Input } from "./components/atoms/forms/input/input.svelte";
 export { default as Link } from "./components/atoms/link/link.svelte";
 export * from "./components/atoms/link/link.data.ts";
@@ -52,13 +59,14 @@ export { default as Metadata } from "./components/atoms/metadata/metadata.svelte
 export { default as Nav } from "./components/atoms/nav/nav.svelte";
 export { default as Number } from "./components/atoms/number/number.svelte";
 export * from "./components/atoms/number/number.data.ts";
-export { default as Radio } from "./components/atoms/forms/radio/radio.svelte";
+export { default as Radio, type RadioProps } from "./components/atoms/forms/radio/radio.svelte";
 export { default as Section } from "./components/atoms/section/section.svelte";
 export * from "./components/atoms/section/section.data.ts";
 export * from "./components/atoms/forms/select/select.svelte.ts";
 export { default as Select } from "./components/atoms/forms/select/select.svelte";
-export { default as Switch } from "./components/atoms/forms/switch/switch.svelte";
+export { default as Switch, type SwitchProps } from "./components/atoms/forms/switch/switch.svelte";
 export { default as Table, type TableColumn, type TableProps } from "./components/atoms/table/table.svelte";
+export { default as Tabs, type TabsProps } from "./components/atoms/tabs/tabs.svelte";
 export { default as Text, type TextProps } from "./components/atoms/text/text.svelte";
 export * from "./components/atoms/text/text.data.ts";
 export { default as Textarea } from "./components/atoms/forms/textarea/textarea.svelte";
@@ -68,14 +76,12 @@ export { default as ThemeToggle } from "./components/atoms/theme/theme-toggle.sv
 export { default as Title } from "./components/atoms/title/title.svelte";
 
 // molecules
-export * from "./components/molecules/accordion/accordion.ts";
 export { default as Accordion, type AccordionProps } from "./components/molecules/accordion/accordion.svelte";
-export { default as AccordionContent, type AccordionContentProps } from "./components/molecules/accordion/accordion-content.svelte";
-export { default as AccordionTitle, type AccordionTitleProps } from "./components/molecules/accordion/accordion-title.svelte";
 export { default as Card, type CardProps } from "./components/molecules/card/card.svelte";
 export * from "./components/molecules/card/card.data.ts";
 export { default as Controls } from "./components/molecules/chart/controls.svelte";
 export { default as Copyright, type CopyrightProps } from "./components/molecules/copyright/copyright.svelte";
+export { default as Dialog, type DialogProps } from "./components/molecules/dialog/dialog.svelte";
 export * from "./components/molecules/grid/grid.svelte.ts";
 export { default as Grid, type GridProps } from "./components/molecules/grid/grid.svelte";
 export { default as Item, type ItemProps } from "./components/molecules/grid/item.svelte";
@@ -86,6 +92,7 @@ export { default as Menu, type MenuOptionType, type MenuProps } from "./componen
 export { default as Navbar } from "./components/molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./components/molecules/preview/preview.svelte";
 export { default as Slider, type SliderProps } from "./components/molecules/slider/slider.svelte";
+export { default as Stack, type StackItemType, type StackProps } from "./components/molecules/stack/stack.svelte";
 export * from "./components/molecules/toast/toast.svelte.ts";
 export { default as Toast, type ToastProps } from "./components/molecules/toast/toast.svelte";
 export { default as Toggle, type ToggleProps } from "./components/molecules/toggle/toggle.svelte";

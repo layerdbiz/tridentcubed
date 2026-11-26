@@ -3,10 +3,10 @@
 	// customer's logo, a team member's photo, or a transport's or facility's icon. Its projects show as a number badge
 	// at the bottom right (Justin's run 12 notes 9 and 10, in place of "1 project · 1 open"): blue while one is still
 	// open, grey when they are all done, 9+ above nine, none at all with no projects. A team member's photo has a ring
-	// in their role's colour, so admins and managers stand out at a glance (note 8): blue for an admin, violet for a
-	// manager, none for a member.
-	import Avatar from './avatar.svelte';
-	import ClientLogo from './client-logo.svelte';
+	// in their role's colour, so admins and managers stand out at a glance (note 8): purple for an admin, blue for a
+	// manager, grey for a Team user (#355, Justin, 2026-11-26; before that blue, violet and none).
+	import { Avatar } from '@layerd/ui';
+	import { faceOf, logoOf } from './marks';
 	import { badgeOf, type RecordType } from './records.data';
 
 	let {
@@ -17,9 +17,9 @@
 
 	// No gap between the face and its ring, so a face is exactly as big as every other mark in a list (run 18).
 	const RING = {
-		admin: 'ring-primary',
-		manager: 'ring-violet-500',
-		team: 'ring-slate-200'
+		admin: 'ring-violet-600',
+		manager: 'ring-blue-600',
+		team: 'ring-slate-400'
 	};
 	const badge = $derived(Math.max(16, Math.round(size * 0.4)));
 </script>
@@ -28,23 +28,37 @@
 	class="relative inline-block shrink-0"
 	style="width: {size}px; height: {size}px"
 >
+	<!-- The library's avatar straight, with no app wrapper between: it is in every row (#379). -->
 	{#if record.page === 'customers'}
-		<ClientLogo
-			name={record.key}
+		{@const logo = logoOf(record.key, { shape: 'circle' })}
+		<Avatar
+			src={logo.src}
+			alt={logo.alt}
+			crossorigin={logo.crossorigin}
+			fit={logo.fit}
+			fallback={logo.fallback}
 			{size}
-			shape="circle"
+			shape={logo.shape}
+			ring={logo.ring}
+			title={logo.title}
 		/>
 	{:else if record.page === 'team'}
+		{@const face = faceOf(record.key)}
 		<Avatar
-			name={record.key}
+			src={face.src}
+			alt={face.alt}
+			crossorigin={face.crossorigin}
+			presence={face.presence}
 			{size}
-			ring={RING[record.member?.role ?? 'team']}
+			ring="ring-2 {RING[record.member?.role ?? 'team']}"
 		/>
 	{:else}
-		<span
-			class="flex items-center justify-center rounded-full text-white {record.tone.bg}"
-			style="width: {size}px; height: {size}px"><span class="{record.icon} size-1/2"></span></span
-		>
+		<Avatar
+			alt={record.key}
+			{size}
+			fallback={record.icon}
+			tint="{record.tone.bg} text-white"
+		/>
 	{/if}
 	{#if hasBadge && record.count}
 		<span

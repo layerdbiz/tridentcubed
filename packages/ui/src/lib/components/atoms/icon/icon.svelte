@@ -4,7 +4,10 @@
 	 * @type multi
 	 * @layout horizontal
 	 */
-	export interface IconProps {
+	import type { SVGAttributes } from 'svelte/elements';
+	import { Component, type ComponentProps } from '@layerd/ui';
+
+	export interface IconProps extends ComponentProps {
 		/**
 		 * Icon identifier - supports multiple formats:
 		 * - String: "person" or "icon-[mdi--person]" or "mdi--person"
@@ -46,7 +49,6 @@
 		remote?: boolean;
 		/** Array of icon names to display when all=true or remote=true */
 		icons?: string[];
-		class?: string;
 		role?: string;
 		'aria-hidden'?: boolean | 'true' | 'false';
 		'aria-label'?: string;
@@ -180,79 +182,95 @@
 	// For 'all' mode: use provided icons or fallback
 	// For 'remote' mode: only use provided icons (no fallback to prevent FOUC)
 	const iconsToDisplay = $derived(remote ? icons : icons.length > 0 ? icons : fallbackIcons);
+
+	// The look lands on what shows: the icon (or the spinner, or the sheet of every icon).
+	const rootClass = $derived(
+		all
+			? `flex flex-wrap items-start gap-4 ${className}`
+			: finalName === 'spinner'
+				? `${finalClass} ${className}`
+				: `${
+						useRawClass
+							? `${finalClass} ${extraClasses}`.trim()
+							: `icon ${finalName ? `icon-${finalName}` : ''} ${finalClass}`
+					} ${className}`
+	);
 </script>
 
-{#if all}
-	<div class="flex flex-wrap items-start gap-4">
-		{#each iconsToDisplay as iconName}
-			<i
-				class="icon icon-{iconName}"
-				data-icon-theme={theme}
-				role="img"
-				aria-hidden="true"
-				title={iconName}
-			></i>
-		{/each}
-	</div>
-{:else if finalName === 'spinner'}
-	<!-- Custom spinner SVG -->
-	<svg
-		xmlns="http://www.w3.org/2000/svg"
-		width="1em"
-		height="1em"
-		viewBox="0 0 24 24"
-		class="{finalClass} {className}"
-		{role}
-		aria-hidden={ariaHidden}
-		aria-label={ariaLabel}
-		{...props}
-	>
-		<g stroke="currentColor">
-			<circle
-				cx="12"
-				cy="12"
-				r="9.5"
-				fill="none"
-				stroke-linecap="round"
-				stroke-width="3"
+<Component
+	{...props}
+	class={rootClass}
+>
+	{#snippet component({ props: root })}
+		{#if all}
+			<div {...root}>
+				{#each iconsToDisplay as iconName}
+					<i
+						class="icon icon-{iconName}"
+						data-icon-theme={theme}
+						role="img"
+						aria-hidden="true"
+						title={iconName}
+					></i>
+				{/each}
+			</div>
+		{:else if finalName === 'spinner'}
+			<!-- Custom spinner SVG -->
+			<svg
+				xmlns="http://www.w3.org/2000/svg"
+				width="1em"
+				height="1em"
+				viewBox="0 0 24 24"
+				{role}
+				aria-hidden={ariaHidden}
+				aria-label={ariaLabel}
+				{...root as unknown as SVGAttributes<SVGSVGElement>}
 			>
-				<animate
-					attributeName="stroke-dasharray"
-					calcMode="spline"
-					dur="1.5s"
-					keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1"
-					keyTimes="0;0.475;0.95;1"
-					repeatCount="indefinite"
-					values="0 150;42 150;42 150;42 150"
-				/>
-				<animate
-					attributeName="stroke-dashoffset"
-					calcMode="spline"
-					dur="1.5s"
-					keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1"
-					keyTimes="0;0.475;0.95;1"
-					repeatCount="indefinite"
-					values="0;-16;-59;-59"
-				/>
-			</circle>
-			<animateTransform
-				attributeName="transform"
-				dur="2s"
-				repeatCount="indefinite"
-				type="rotate"
-				values="0 12 12;360 12 12"
-			/>
-		</g>
-	</svg>
-{:else}
-	<i
-		class="{useRawClass
-			? `${finalClass} ${extraClasses}`.trim()
-			: `icon ${finalName ? `icon-${finalName}` : ''} ${finalClass}`} {className}"
-		data-icon-theme={useRawClass ? undefined : finalTheme}
-		{role}
-		aria-hidden={ariaHidden}
-		aria-label={ariaLabel}
-		{...props}
-	></i>
-{/if}
+				<g stroke="currentColor">
+					<circle
+						cx="12"
+						cy="12"
+						r="9.5"
+						fill="none"
+						stroke-linecap="round"
+						stroke-width="3"
+					>
+						<animate
+							attributeName="stroke-dasharray"
+							calcMode="spline"
+							dur="1.5s"
+							keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1"
+							keyTimes="0;0.475;0.95;1"
+							repeatCount="indefinite"
+							values="0 150;42 150;42 150;42 150"
+						/>
+						<animate
+							attributeName="stroke-dashoffset"
+							calcMode="spline"
+							dur="1.5s"
+							keySplines="0.42,0,0.58,1;0.42,0,0.58,1;0.42,0,0.58,1"
+							keyTimes="0;0.475;0.95;1"
+							repeatCount="indefinite"
+							values="0;-16;-59;-59"
+						/>
+					</circle>
+					<animateTransform
+						attributeName="transform"
+						dur="2s"
+						repeatCount="indefinite"
+						type="rotate"
+						values="0 12 12;360 12 12"
+					/>
+				</g>
+			</svg>
+		{:else}
+			<i
+				data-icon-theme={useRawClass ? undefined : finalTheme}
+				{role}
+				aria-hidden={ariaHidden}
+				aria-label={ariaLabel}
+				{...root}
+			></i>
+		{/if}
+	{/snippet}
+</Component>

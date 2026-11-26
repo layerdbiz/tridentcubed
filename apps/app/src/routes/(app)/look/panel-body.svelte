@@ -1,7 +1,7 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the inputs inside one panel, by kind: project, transport, items, time log or photo groups.
 	// Everything is live: typing moves the panel's count, its bar, the project's bar and the preview. The Project panel is
-	// its fields with the Team after Customer; its drop-downs offer "Add new", a quick sheet (note 26). The Transport panel
+	// its fields with the Team after Customer; its drop-downs offer "Add new" (note 26), the + sheet. The Transport panel
 	// (Justin, 2026-10-25) is the trip, one stop per place in trip order: its point (Start, Stop, End, each with its
 	// colour), Transport type, Transport mode, the transport from the organization's list, and the facility, whose list
 	// puts the kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with
@@ -30,57 +30,79 @@
 	// name and a title.
 	// #217 (Justin, 2026-11-18): the Project section ends with the two parts of the project number a User may type,
 	// side by side: Project Creation Date (today on a new project) and Job Sequence Number (the server's next for
-	// that customer and day, until one is typed); the number they make is not shown here (#225). The Customer section takes
-	// the customer's own number for the job, the Customer Reference Number, labelled Reference Number (#225).
+	// that customer and day, until one is typed). The Customer section takes the customer's own number for the job,
+	// the Customer Reference Number, labelled Reference Number (#225).
+	// #57 (Justin, 2026-11-24): the Project panel is the first moved onto the library's inputs (Input, Textarea,
+	// Select), in the look picked on the inputs prototype (#284): the label on the border, its ? once the label sits
+	// there, the app's values (the Description's sentence, the next Job Number) a Generated value in bright blue with a
+	// reset once typed over, a Select's pick as its picture. Under the Job Number, the whole project number the two
+	// make, as a Generated value line (#300; hidden from 2026-11-18, #225). What it saves, and when, is unchanged.
 	// #215 (Justin, 2026-11-18): a photo panel opens on its own title, filled in and editable, so Operations or an
 	// added panel can be called what the job calls it; the report and its contents print that title. Its groups
 	// (the Operations panel's stages) each have a switch that leaves them out of the report.
 	// #229 (Justin, 2026-11-18): what a section counts is not written here beside its inputs any more. Every
 	// section's line reads tally.ts (`counted`), the same list its panel's line and percent come from. An input
 	// added to a section is added to that list.
+	// #305: an entry of the list of what keeps a percent under 100% opens its input: its panel opens
+	// (LookState.openInput), then its section here, and the focus goes to the input (focus.ts finds it by its section,
+	// label and place among the inputs with that label, as tally.ts lists them).
+	import { untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
-	import { Help, Menu, Select } from '@layerd/ui';
+	import {
+		Avatar,
+		Button,
+		Compact,
+		Generated,
+		Help,
+		initialsOf,
+		Input,
+		Menu,
+		Radio,
+		Select,
+		Textarea,
+		toInitialsPicture
+	} from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
-	import BottomSheet from '#lib/components/sheet/sheet.svelte';
-	import Avatar from './avatar.svelte';
-	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
+	import { faceOf, logoOf } from './marks';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import {
 		ATTACHMENT_ICONS,
 		ATTACHMENT_NAMES,
 		ATTACHMENT_NOUNS,
-		toPictureType
+		toPictureType,
+		toTypeLabel
 	} from '#lib/files/files.schema.js';
-	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
+	import { fileDetailsOf, startUpload, type Upload } from '#lib/files/files.state.svelte.js';
+	import { DEFAULT_LAYOUT, LAYOUTS, type PageLayoutType } from '#lib/report/report.constants.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
+	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
 	import ImageField from './image-field.svelte';
 	import { generatedOf, INTRODUCTION_LABEL } from './introduction';
 	import ItemBox from './item-box.svelte';
 	import ItemTable from './item-table.svelte';
 	import {
+		attach,
 		createdDayOf,
 		createId,
-		FACILITY_ICONS,
+		dropUntyped,
 		groupWordOf,
+		isPdfAttachment,
 		itemOf,
-		LAYOUTS,
 		newPerson,
 		newPersonnel,
 		nextJobOf,
 		PAGE_ICONS,
 		panelNameOf,
 		PROJECT_TYPES,
+		projectNumberOf,
 		todayIso,
 		type AttachmentType,
-		type FacilityKindType,
-		type FieldType,
 		type PanelType,
 		type PhotoType
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
-	import PlaceField from './place-field.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import {
 		addGroup as addPhotoGroup,
@@ -99,7 +121,12 @@
 	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
 	import { sortable } from './sortable';
 	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
-	import { sectionsOf, valuesOf } from './tally';
+	import { MARKED_LABELS, sectionsOf, valuesOf } from './tally';
+	import { focusInput, inputIn } from './focus';
+
+	// Words people type in sentences keep the phone's own help: a capital to start, autocorrect and spelling. The
+	// library's inputs switch all three off, which suits codes and addresses but not names, titles and descriptions.
+	const TYPING = { autocapitalize: 'sentences', autocorrect: 'on', spellcheck: true } as const;
 
 	let {
 		look,
@@ -129,13 +156,6 @@
 		look.members.map((member) => ({ value: member.name, label: member.name }))
 	);
 
-	// The key of a Project panel field's Help text (#299): `project.title` for Title, `project.type` for Project Type.
-	function keyOf(field: FieldType) {
-		if (field.label === 'Project Type') return 'project.type';
-		const [first = '', ...rest] = field.label.split(' ');
-		return `project.${first.toLowerCase()}${rest.join('')}`;
-	}
-
 	function fieldOf(label: string) {
 		return panel.fields.find((field) => field.label === label);
 	}
@@ -147,9 +167,9 @@
 	}
 
 	// The report's opening sentence (#244). The field shows the sentence worked out from the project's records
-	// (introduction.ts) until someone rewords it. Only a rewording is kept: the worked-out sentence left as it is,
-	// or the field cleared, keeps nothing, so the sentence goes on following the records. A project not made yet
-	// has only this panel to read.
+	// (introduction.ts), a Generated value, until someone rewords it. Only a rewording is kept: the worked-out sentence
+	// left as it is, or the field cleared, keeps nothing, so the sentence goes on following the records. A project
+	// not made yet has only this panel to read.
 	const generated = $derived(
 		isDraft
 			? generatedOf({
@@ -159,25 +179,15 @@
 				})
 			: generatedOf(look)
 	);
-	// What is in the field while it is being typed in, so a cleared field stays clear until it is left.
-	let introductionDraft = $state<string>();
 	// The Operations panel's stages wear their number in place of an icon (Justin, 2026-11-19), by the order they
 	// are in, so dragging one to another place renumbers them. Any other photo panel's groups keep the icon.
 	const stageNumbers = $derived(panel.key === 'operations' ? stageNumbersOf(panel.groups) : []);
 
-	// Whether the sentence is someone's own words: it then stays as typed whatever the panels come to hold.
-	const isEdited = $derived(Boolean(panel.introduction?.trim()));
-
-	function setIntroduction(event: Event & { currentTarget: HTMLTextAreaElement }) {
-		introductionDraft = event.currentTarget.value;
-		const typed = introductionDraft.trim();
-		panel.introduction = typed === generated ? '' : typed && introductionDraft;
-	}
-
-	function resetIntroduction() {
-		introductionDraft = undefined;
-		panel.introduction = '';
-		save();
+	// Someone's own words stay as typed whatever the panels come to hold. The field keeps what is typed while it is
+	// in use, so a cleared one stays clear until it is left, and its reset empties it (library Textarea).
+	function setIntroduction(text: string) {
+		const typed = text.trim();
+		panel.introduction = typed === generated ? '' : typed && text;
 	}
 
 	// A different customer has different contacts, so the one picked before no longer applies.
@@ -224,8 +234,7 @@
 		if (toSaved(kept.grid).length > GRID_LIMIT) return false;
 		panel.grid = kept.grid;
 		skipped = kept.skipped.rows || kept.skipped.columns ? kept.skipped : undefined;
-		const filled = panel.items.filter((item) => item.quantity.trim() || item.description.trim());
-		panel.items.splice(0, panel.items.length, ...filled);
+		dropUntyped(panel.items);
 		save();
 		const count = toTable(kept.grid).rows.length;
 		look.say(`${count} ${count === 1 ? 'item' : 'items'} added as a table`);
@@ -298,17 +307,6 @@
 		return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 	}
 
-	// The Project panel's lists are the live ones: the organization itself, and the Customers page.
-	function optionsOf(field: FieldType) {
-		const options =
-			field.label === 'Organization'
-				? [look.organization.name]
-				: field.label === 'Customer'
-					? look.customers
-					: (field.options ?? []);
-		return field.value && !options.includes(field.value) ? [field.value, ...options] : options;
-	}
-
 	const customerName = $derived(
 		panel.fields.find((field) => field.label === 'Customer')?.value ?? ''
 	);
@@ -321,27 +319,25 @@
 	}
 
 	// The two inputs of the project number (#217). A project not made yet has no J count of its own, so the one it
-	// will get is worked out here the way the server will: the next of that customer and day. The number itself is
-	// not shown in the panel (Justin, 2026-11-18, #225); it prints in the report's footer.
+	// will get is worked out here the way the server will: the next of that customer and day. It is the Job Number's
+	// Generated value, and the number they make shows under them (#300), as the report's footer prints it.
 	const day = $derived(panel.day || (isDraft ? todayIso() : createdDayOf(look.project)));
 	const nextJob = $derived(
 		nextJobOf(look.projects, customerName, day, isDraft ? undefined : look.projectId)
 	);
+	const projectNumber = $derived(projectNumberOf(customerName, day, panel.job ?? nextJob));
 
-	// A date field that is cleared keeps the date it had: a project always has a Project Creation Date.
-	function setDay(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		if (input.value) panel.day = input.value;
-		else input.value = day;
+	// A date field that is cleared keeps the date it had: a project always has a Project Creation Date. The field
+	// shows it again at once (library Input).
+	function setDay(text: string) {
+		if (text) panel.day = text;
 		save();
 	}
 
-	// Digits only, 1 to 999. Cleared, the server gives the next one of that customer and day.
-	function setJob(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		const count = Number(input.value.replace(/\D/g, '').slice(0, 3));
+	// Digits only, 1 to 999, shown at once. Cleared, or reset, the server gives the next one of that customer and day.
+	function setJob(text: string) {
+		const count = Number(text.replace(/\D/g, '').slice(0, 3));
 		panel.job = count > 0 ? count : undefined;
-		input.value = panel.job ? String(panel.job) : '';
 		save();
 	}
 
@@ -351,6 +347,36 @@
 	function toggle(list: string[], id: string) {
 		return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 	}
+
+	// The section an entry of the empty-inputs list opens (#305). The Transport panel's legs open themselves
+	// (transport-legs.svelte); the Items panel has no sections.
+	function openSection(id: string) {
+		if (panel.kind === 'project') {
+			if (!openSections.includes(id)) openSections = [...openSections, id];
+		} else if (panel.kind === 'timelog') {
+			if (!openDays.includes(id)) openDays = [...openDays, id];
+		} else if (panel.kind !== 'transport' && panel.kind !== 'items') {
+			if (!openGroups.includes(id)) openGroups = [...openGroups, id];
+		}
+	}
+
+	// The focus goes to the input once the panel and its section have slid open. A panel is drawn twice, for the
+	// phone and the desk, and only the one on screen takes it.
+	const SETTLE = 260;
+	let root = $state<HTMLFieldSetElement>();
+	$effect(() => {
+		const wanted = look.reaching;
+		const shown = root;
+		if (!wanted || wanted.panelId !== panel.id || !shown) return;
+		untrack(() => openSection(wanted.section));
+		const timer = setTimeout(() => {
+			if (!shown.getClientRects().length || look.reaching !== wanted) return;
+			look.reaching = undefined;
+			// An input the panel does not draw (none should be missing) leaves the panel itself brought into view.
+			focusInput(inputIn(shown, wanted) ?? shown);
+		}, SETTLE);
+		return () => clearTimeout(timer);
+	});
 
 	// The item list attached as photos or as the file it came as, of any kind (#188, #233): each file goes to private
 	// storage through the upload helper, showing in place while it goes, and joins the panel's attachments once it is
@@ -365,7 +391,9 @@
 			kind: kind === 'photo' ? 'photo' : 'document',
 			ondone: (src) => {
 				sending = sending.filter((other) => other.id !== id);
-				panel.attachments = [...(panel.attachments ?? []), { id, name: file.name, src, kind }];
+				// #295: a PDF prints its pages four to a report page until another layout is picked, as a new photo
+				// group's photos do.
+				attach(panel, { id, name: file.name, src, kind, layout: DEFAULT_LAYOUT });
 				save();
 			}
 		});
@@ -383,42 +411,6 @@
 				save();
 			}
 		});
-	}
-
-	// "Add new" in a drop-down: the quick sheet adds the name to its list and picks it. A new facility also asks its
-	// kind; a new transport takes the stop's type and mode.
-	type AskType = { label: string; kinds?: FacilityKindType[]; onadd: (name: string) => void };
-	let asking = $state<AskType>();
-	let draft = $state('');
-	let draftKind = $state<FacilityKindType>('Port');
-
-	function ask(asked: AskType) {
-		draft = '';
-		draftKind = asked.kinds?.[0] ?? 'Port';
-		asking = asked;
-	}
-
-	// A dropdown field of plain words (a Project Type). "Add new" asks for the word in the quick sheet.
-	function pickField(field: FieldType, value: string) {
-		field.value = value;
-		save();
-	}
-
-	function askField(field: FieldType) {
-		ask({
-			label: field.label,
-			onadd: (name) => {
-				field.options = [...(field.options ?? []), name];
-				field.value = name;
-			}
-		});
-	}
-
-	function add() {
-		if (!asking || !draft.trim()) return;
-		asking.onadd(draft.trim());
-		asking = undefined;
-		save();
 	}
 
 	function addDay() {
@@ -498,7 +490,8 @@
 	// "stage" in the Operations panel, "group" in any other photo panel.
 	const word = $derived(groupWordOf(panel));
 
-	// A title cleared and left empty goes back to the panel's own name: a report section is never untitled.
+	// A title cleared and left empty goes back to the panel's own name: a report section is never untitled. While it
+	// is typed in, the emptied field shows that name as the app's value (#374).
 	function keepName() {
 		if (panel.name.trim()) return;
 		panel.name = panelNameOf(panel);
@@ -538,15 +531,30 @@
 		save();
 	}
 
-	// Run 3: borderless. Inputs are soft filled shapes that light up when you type, nothing boxed in.
-	const inputClass =
-		'w-full rounded-xl border-0 bg-slate-900/[0.04] px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary/40 disabled:bg-transparent disabled:px-0 disabled:text-slate-500';
 	const labelClass = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
-	const ghostButton =
-		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 </script>
 
 <!-- A row's handle (#188): hold it, then drag, to move the row. Only a list of two or more has one. -->
+<!-- The heading row over a list of compact fields (#387): each column's words name the boxes under them, with the
+     row's number, and its ? opens their Help text. The first column is as wide as its box, after the grip. -->
+{#snippet columns(
+	id: string,
+	first: [label: string, key: string],
+	second: [label: string, key: string]
+)}
+	<div class="has-help flex items-center gap-2 text-xs font-medium text-slate-500">
+		<span class="w-6 shrink-0"></span>
+		{#each [first, second] as [label, key], index (key)}
+			<span class="flex items-center gap-1 {index ? '' : 'w-20 shrink-0 pl-1'}"
+				><span id="{id}-{index}">{label}</span>{#if look.helpOf(key)}<Help
+						{label}
+						text={look.helpOf(key)}
+					/>{/if}</span
+			>
+		{/each}
+	</div>
+{/snippet}
+
 {#snippet handle(key: string, count: number)}
 	<span
 		class="mt-2 flex size-6 shrink-0 cursor-grab items-center justify-center text-slate-300 select-none [-webkit-touch-callout:none] hover:text-slate-500 {count >
@@ -562,76 +570,42 @@
 <!-- A person in a Select is the app's own face, a customer its logo (Select's `mark`). -->
 {#snippet face(name: string, size: number)}
 	<Avatar
-		{name}
+		{...faceOf(name)}
 		{size}
+		ring="ring-2 ring-white"
 	/>
 {/snippet}
 
 {#snippet logo(name: string, size: number)}
-	<ClientLogo
-		{name}
+	<Avatar
+		{...logoOf(name, { shape: 'circle' })}
 		{size}
-		shape="circle"
 	/>
 {/snippet}
 
-{#snippet fieldBlock(field: FieldType)}
-	{#if field.label === 'Location'}
-		<!-- Where the project is: the shared location field, which suggests places and saves the one picked. -->
-		<PlaceField
-			{look}
-			class="sm:col-span-2"
-			label={field.label}
-			help={look.helpOf(keyOf(field))}
-			isRequired
-			value={field.value}
-			oninput={(text) => {
-				field.value = text;
-				save();
-			}}
-		/>
-	{:else if field.type === 'select'}
-		<Select
-			variant="soft"
-			label={field.label}
-			options={optionsOf(field).map((option) => ({ value: option, label: option }))}
-			value={field.value}
-			icon="icon-[mdi--format-list-bulleted]"
+<!-- A Personnel company: a customer's logo or code, or any other company's code in white on black, as the report
+     shows it (#355). -->
+{#snippet companyLogo(name: string, size: number)}
+	<Avatar
+		{...logoOf(name, {
+			shape: 'circle',
+			tone: look.customers.includes(name) ? 'customer' : 'company'
+		})}
+		{size}
+	/>
+{/snippet}
+
+<!-- Title or Subtitle: the field the panel holds under that label, typed into as it is. -->
+{#snippet textField(label: 'Title' | 'Subtitle', key: string)}
+	{@const field = fieldOf(label)}
+	{#if field}
+		<Input
+			{label}
+			{...TYPING}
+			bind:value={field.value}
 			disabled={field.isReadonly}
-			required
-			help={look.helpOf(keyOf(field))}
-			onpick={(option) => pickField(field, option)}
-			onadd={field.isAddable ? () => askField(field) : undefined}
+			help={look.helpOf(key)}
 		/>
-	{:else}
-		<div
-			class="has-help block {field.type === 'textarea' ? 'sm:col-span-2' : ''}"
-			data-empty={field.value ? undefined : ''}
-		>
-			{@render labelOf(
-				field.label,
-				`${uid}-${field.id}`,
-				keyOf(field),
-				!field.value && !field.isReadonly
-			)}
-			{#if field.type === 'textarea'}
-				<textarea
-					id="{uid}-{field.id}"
-					class="{inputClass} min-h-20 resize-y"
-					bind:value={field.value}
-					disabled={field.isReadonly}
-					placeholder="Type here"></textarea>
-			{:else}
-				<input
-					id="{uid}-{field.id}"
-					class={inputClass}
-					type={field.type}
-					bind:value={field.value}
-					disabled={field.isReadonly}
-					placeholder="Type here"
-				/>
-			{/if}
-		</div>
 	{/if}
 {/snippet}
 
@@ -640,20 +614,22 @@
 {#snippet teamBlock()}
 	<Group
 		title="Organization"
+		section="team"
 		values={counted('team')}
 		icon={PAGE_ICONS.team}
 		isOpen={openSections.includes('team')}
 		ontoggle={() => (openSections = toggle(openSections, 'team'))}
 	>
 		<Select
-			variant="soft"
 			label="Organization"
 			icon="icon-[mdi--domain]"
 			options={[
 				{
 					value: look.organization.name,
 					label: look.organization.name,
-					image: look.organization.logo
+					image: look.organization.logo,
+					// The organization's own artwork, kept whole on white like a customer's logo.
+					fit: 'contain'
 				}
 			]}
 			value={fieldOf('Organization')?.value ?? ''}
@@ -662,7 +638,6 @@
 			onpick={(id) => setField('Organization', id)}
 		/>
 		<Select
-			variant="soft"
 			label="Team Lead"
 			mark={face}
 			icon="icon-[mdi--account-tie]"
@@ -673,7 +648,6 @@
 			onpick={setLead}
 		/>
 		<Select
-			variant="soft"
 			label="Team Assigned"
 			mark={face}
 			icon={PAGE_ICONS.team}
@@ -689,6 +663,7 @@
 	{#each personnel as company, companyIndex (company.id)}
 		<Group
 			title={company.company || `Personnel ${companyIndex + 1}`}
+			section={company.id}
 			values={counted(company.id)}
 			icon="icon-[mdi--account-multiple-outline]"
 			tone="bg-slate-900/[0.06] text-slate-600"
@@ -700,10 +675,10 @@
 			<!-- Typed freely, with the customers offered as it is typed: a typed Select. Typing saves through the
 			     fieldset's input like every field here; a pick is no keystroke, so it saves itself. -->
 			<Select
-				variant="soft"
 				isTyped
 				label="Company"
 				icon={PAGE_ICONS.customers}
+				mark={companyLogo}
 				options={look.customers.map((name) => ({ value: name, label: name }))}
 				bind:value={company.company}
 				required
@@ -714,76 +689,50 @@
 			{#each company.people as person, personIndex (person.id)}
 				{@const id = `${uid}-${person.id}`}
 				<!-- A person: a name and a title, which count toward the percent, and a phone and an email to reach them
-				     (#326), which are optional, so they show no "not filled in" dot and count for nothing. Each input
-				     carries its label and its ? like every other input (#299). A line keeps one person from the next. -->
+				     (#326), which are optional and count for nothing. Each input carries its label and its ? like every
+				     other input (#299). A line keeps one person from the next. -->
 				<div
 					class="flex items-start gap-2 {personIndex
 						? 'border-t border-slate-900/[0.06] pt-3'
 						: ''}"
 				>
-					<div class="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
-						<div
-							class="has-help block"
-							data-empty={person.name ? undefined : ''}
-						>
-							{@render labelOf('Name', `${id}-name`, 'personnel.name', !person.name)}
-							<input
-								id="{id}-name"
-								class={inputClass}
-								bind:value={person.name}
-								placeholder="First and last name"
-							/>
-						</div>
-						<div
-							class="has-help block"
-							data-empty={person.title ? undefined : ''}
-						>
-							{@render labelOf('Title', `${id}-title`, 'personnel.title', !person.title)}
-							<input
-								id="{id}-title"
-								class={inputClass}
-								bind:value={person.title}
-								placeholder="e.g. Foreman"
-							/>
-						</div>
-						<div
-							class="has-help block"
-							data-empty={person.phone ? undefined : ''}
-						>
-							{@render labelOf('Phone', `${id}-phone`, 'personnel.phone')}
-							<input
-								id="{id}-phone"
-								class={inputClass}
-								type="tel"
-								inputmode="tel"
-								autocomplete="off"
-								bind:value={person.phone}
-								maxlength="40"
-								placeholder="Optional"
-							/>
-						</div>
-						<div
-							class="has-help block"
-							data-empty={person.email ? undefined : ''}
-						>
-							{@render labelOf('Email', `${id}-email`, 'personnel.email')}
-							<input
-								id="{id}-email"
-								class={inputClass}
-								type="email"
-								inputmode="email"
-								autocomplete="off"
-								autocapitalize="off"
-								spellcheck="false"
-								bind:value={person.email}
-								maxlength="200"
-								placeholder="Optional"
-							/>
-						</div>
+					<div class="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
+						<Input
+							label="Name"
+							{...TYPING}
+							bind:value={person.name}
+							help={look.helpOf('personnel.name')}
+						/>
+						<Input
+							label="Title"
+							{...TYPING}
+							bind:value={person.title}
+							help={look.helpOf('personnel.title')}
+						/>
+						<Input
+							label="Phone"
+							type="tel"
+							inputmode="tel"
+							autocomplete="off"
+							bind:value={person.phone}
+							maxlength={40}
+							help={look.helpOf('personnel.phone')}
+						/>
+						<Input
+							label="Email"
+							type="email"
+							inputmode="email"
+							autocomplete="off"
+							autocapitalize="off"
+							spellcheck={false}
+							bind:value={person.email}
+							maxlength={200}
+							help={look.helpOf('personnel.email')}
+						/>
 					</div>
 					<button
 						type="button"
-						class="mt-6 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
+						class="mt-3 flex size-7 shrink-0 items-center justify-center rounded-full text-slate-300 hover:bg-slate-100 hover:text-danger"
 						aria-label="Delete person {personIndex + 1}"
 						onclick={() =>
 							remove(company.people, person, 'Delete person?', 'They leave the report.')}
@@ -792,201 +741,199 @@
 				</div>
 			{/each}
 			{#snippet actions()}
-				<button
-					type="button"
-					class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+				<Button
+					primary
+					lite
+					xs
+					icon="icon-[mdi--plus]"
+					label="Add person"
 					onclick={() => {
 						company.people.push(newPerson());
 						save();
-					}}><span class="icon-[mdi--plus] size-4"></span>Add person</button
-				>
+					}}
+				/>
 			{/snippet}
 		</Group>
 	{/each}
-	<button
-		type="button"
-		class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+	<Button
+		secondary
+		heavy
+		xs
+		icon="icon-[mdi--account-multiple-plus-outline]"
+		label="Add Personnel"
 		onclick={addPersonnel}
-		><span class="icon-[mdi--account-multiple-plus-outline] size-4"></span>Add Personnel</button
-	>
+	/>
 {/snippet}
 
-<!-- An input's label and its ? (#299), which opens the input's Help text: outside the <label>, so a tap on the ?
-     never reaches the input and the input keeps the label's words for its name. The block holding the label and the
-     input is `has-help`, with `data-empty` while the input has nothing in it (look.css). -->
-{#snippet labelOf(label: string, id: string, key: string, isUnfilled = false)}
-	<span class={labelClass}>
-		<label for={id}>{label}</label>
-		{#if look.helpOf(key)}<Help
-				{label}
-				text={look.helpOf(key)}
-			/>{/if}
-		{#if isUnfilled}<span
-				class="size-1.5 rounded-full bg-warning"
-				title="Not filled in yet"
-			></span>{/if}
-	</span>
-{/snippet}
-
-{#snippet unpicked(isShown: boolean)}
-	{#if isShown}<span
-			class="size-1.5 rounded-full bg-warning"
-			title="Not picked yet"
-		></span>{/if}
+<!-- How many share a report page, 1, 2, 4, 6 or 8 (run 9 note 17: each button draws its own layout): a photo group's
+     photos, and the pages of a PDF attached to the Items panel (#295). -->
+{#snippet perPage(
+	label: string,
+	id: string,
+	key: string,
+	value: PageLayoutType,
+	onpick: (layout: PageLayoutType) => void
+)}
+	<div class="has-help">
+		<p class={labelClass}>
+			<span {id}>{label}</span>
+			{#if look.helpOf(key)}<Help
+					{label}
+					text={look.helpOf(key)}
+				/>{/if}
+		</p>
+		<!-- #382: the library's pick-one group, so a screen reader hears which is picked and the arrow keys move. -->
+		<Radio
+			class="flex gap-1.5"
+			aria-labelledby={id}
+			options={LAYOUTS}
+			{value}
+			{onpick}
+		>
+			{#snippet option({ value: layout, isOn, props })}
+				<button
+					{...props}
+					type="button"
+					class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {isOn
+						? 'bg-primary text-white shadow-md shadow-primary/25'
+						: 'bg-white text-slate-500 hover:text-primary'}"
+				>
+					<!-- The page in miniature: one column for one or two, two columns from four up. -->
+					<span
+						class="grid h-4 w-3 gap-px {layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}"
+						style="grid-template-rows: repeat({layout <= 2 ? layout : layout / 2}, 1fr)"
+						aria-hidden="true"
+					>
+						{#each Array.from({ length: layout }, (_, at) => at) as cell (cell)}
+							<span class="rounded-[1px] bg-current"></span>
+						{/each}
+					</span>{layout}
+				</button>
+			{/snippet}
+		</Radio>
+	</div>
 {/snippet}
 
 <fieldset
+	bind:this={root}
 	disabled={!panel.isEnabled || (!isDraft && look.isFrozen)}
 	class="min-w-0 space-y-3"
 	oninput={() => save()}
 >
 	{#if panel.kind === 'project'}
-		{@const title = fieldOf('Title')}
-		{@const subtitle = fieldOf('Subtitle')}
 		{@const contact = contacts.find((item) => item.id === panel.contact) ?? contacts[0]}
-		<div class="space-y-3">
-			<Group
-				title="Project"
-				values={counted('project')}
-				icon={PAGE_ICONS.projects}
-				isOpen={openSections.includes('project')}
-				ontoggle={() => (openSections = toggle(openSections, 'project'))}
-			>
-				{#if title}{@render fieldBlock(title)}{/if}
-				{#if subtitle}{@render fieldBlock(subtitle)}{/if}
-				<!-- The report's opening sentence (#244), called Description here (Justin, 2026-11-19): the one worked out
-				     from the project's panels until someone rewords it. What is typed prints in its place and stops
-				     following the panels, so the line under the box always says which of the two it is, and an edited
-				     one shows a reset at its top right that brings the worked-out sentence back (clearing it does too). -->
-				<div class="has-help">
-					{@render labelOf(INTRODUCTION_LABEL, `${uid}-description`, 'project.description')}
-					<div class="relative">
-						<textarea
-							id="{uid}-description"
-							class="{inputClass} field-sizing-content min-h-28 resize-y {isEdited ? 'pr-10' : ''}"
-							maxlength={INTRODUCTION_LIMIT}
-							value={introductionDraft ?? (panel.introduction?.trim() || generated)}
-							oninput={setIntroduction}
-							onblur={() => (introductionDraft = undefined)}></textarea>
-						{#if isEdited}
-							<button
-								type="button"
-								class="absolute top-1.5 right-1.5 flex size-8 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
-								aria-label="Reset to the auto-generated description"
-								title="Reset"
-								onclick={resetIntroduction}
-								><span class="icon-[mdi--refresh] size-[18px]"></span></button
-							>
-						{/if}
-					</div>
-					<p class="mt-1 flex items-center gap-1 text-xs text-slate-400">
-						{#if isEdited}
-							<span class="icon-[mdi--pencil-outline] size-3.5 shrink-0"></span>
-							Edited. It no longer updates from the panels.
-						{:else}
-							<span class="icon-[mdi--auto-fix] size-3.5 shrink-0"></span>
-							Auto-generated from this project's panels.
-						{/if}
-					</p>
-				</div>
-				<Select
-					variant="soft"
-					label="Project Type"
-					icon="icon-[mdi--package-variant-closed]"
-					options={PROJECT_TYPES.map((type) => ({ value: type, label: type }))}
-					value={fieldOf('Project Type')?.value ?? ''}
-					required
-					help={look.helpOf('project.type')}
-					onpick={(id) => setField('Project Type', id)}
-				/>
-				<!-- The two parts of the project number a User may type (#217), and the number they make. -->
+		<Group
+			title="Project"
+			section="project"
+			values={counted('project')}
+			icon={PAGE_ICONS.projects}
+			isOpen={openSections.includes('project')}
+			ontoggle={() => (openSections = toggle(openSections, 'project'))}
+		>
+			{@render textField('Title', 'project.title')}
+			{@render textField('Subtitle', 'project.subtitle')}
+			<!-- The report's opening sentence (#244), called Description here (Justin, 2026-11-19): the one worked out
+			     from the project's panels, a Generated value, until someone rewords it. What is typed prints in its
+			     place and stops following the panels, and its reset brings the worked-out sentence back (clearing it
+			     does too). -->
+			<Textarea
+				label={INTRODUCTION_LABEL}
+				autocapitalize={TYPING.autocapitalize}
+				spellcheck={TYPING.spellcheck}
+				bind:value={() => panel.introduction ?? '', setIntroduction}
+				{generated}
+				onreset={save}
+				maxlength={INTRODUCTION_LIMIT}
+				rows={3}
+				help={look.helpOf('project.description')}
+			/>
+			<Select
+				label="Project Type"
+				icon="icon-[mdi--package-variant-closed]"
+				options={PROJECT_TYPES.map((type) => ({ value: type, label: type }))}
+				value={fieldOf('Project Type')?.value ?? ''}
+				required
+				help={look.helpOf('project.type')}
+				onpick={(id) => setField('Project Type', id)}
+			/>
+			<!-- The two parts of the project number a User may type (#217), and under them the number they make
+			     (#300). -->
+			<div class="space-y-2">
 				<div class="grid grid-cols-2 gap-3">
-					<div
-						class="has-help block min-w-0"
-						data-empty={day ? undefined : ''}
-					>
-						{@render labelOf('Created Date', `${uid}-day`, 'project.createdDate')}
-						<input
-							id="{uid}-day"
-							class="{inputClass} min-w-0"
-							type="date"
-							value={day}
-							onchange={setDay}
-						/>
-					</div>
-					<div class="has-help block min-w-0">
-						{@render labelOf('Job Number', `${uid}-job`, 'project.jobNumber')}
-						<input
-							id="{uid}-job"
-							class="{inputClass} tabular-nums"
-							inputmode="numeric"
-							maxlength="3"
-							value={panel.job ?? ''}
-							placeholder={String(nextJob)}
-							oninput={setJob}
-						/>
-					</div>
-				</div>
-			</Group>
-			<Group
-				title="Customer"
-				values={counted('customer')}
-				icon={PAGE_ICONS.customers}
-				isOpen={openSections.includes('customer')}
-				ontoggle={() => (openSections = toggle(openSections, 'customer'))}
-			>
-				<Select
-					variant="soft"
-					label="Customer"
-					mark={logo}
-					icon={PAGE_ICONS.customers}
-					options={look.customers.map((name) => ({ value: name, label: name }))}
-					value={customerName}
-					required
-					help={look.helpOf('project.customer')}
-					onpick={setCustomer}
-					onadd={() => look.addFor('customers', {}, setCustomer)}
-					onedit={(name) => look.editRecord('customers', name)}
-				/>
-				<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
-				<Select
-					variant="soft"
-					label="Contact"
-					icon="icon-[mdi--account]"
-					options={contacts.map((item) => ({
-						value: item.id,
-						label: item.name,
-						note: item.title,
-						image: item.photo
-					}))}
-					value={contact?.id ?? ''}
-					placeholder={customerName
-						? 'No contacts on this customer yet'
-						: 'Choose a customer first'}
-					disabled={!contacts.length}
-					help={look.helpOf('project.contact')}
-					onpick={(id) => {
-						panel.contact = id;
-						save();
-					}}
-				/>
-				<!-- The customer's own number for the job (#217): optional, so it shows no "not filled in" dot. -->
-				<div
-					class="has-help block"
-					data-empty={panel.customerReference ? undefined : ''}
-				>
-					{@render labelOf('Reference Number', `${uid}-reference`, 'project.referenceNumber')}
-					<input
-						id="{uid}-reference"
-						class={inputClass}
-						bind:value={panel.customerReference}
-						maxlength="100"
-						placeholder="Optional, e.g. SO025484"
+					<Input
+						class="min-w-0"
+						label="Created Date"
+						type="date"
+						bind:value={() => day, setDay}
+						help={look.helpOf('project.createdDate')}
+					/>
+					<Input
+						class="min-w-0 tabular-nums"
+						label="Job Number"
+						inputmode="numeric"
+						maxlength={3}
+						bind:value={() => (panel.job ? String(panel.job) : ''), setJob}
+						generated={String(nextJob)}
+						onreset={save}
+						help={look.helpOf('project.jobNumber')}
 					/>
 				</div>
-			</Group>
-			{@render teamBlock()}
-		</div>
+				<Generated
+					label="Project Number"
+					value={projectNumber}
+					help={look.helpOf('project.number')}
+				/>
+			</div>
+		</Group>
+		<Group
+			title="Customer"
+			section="customer"
+			values={counted('customer')}
+			icon={PAGE_ICONS.customers}
+			isOpen={openSections.includes('customer')}
+			ontoggle={() => (openSections = toggle(openSections, 'customer'))}
+		>
+			<Select
+				label="Customer"
+				mark={logo}
+				icon={PAGE_ICONS.customers}
+				options={look.customers.map((name) => ({ value: name, label: name }))}
+				value={customerName}
+				required
+				help={look.helpOf('project.customer')}
+				onpick={setCustomer}
+				onadd={() => look.addFor('customers', {}, setCustomer)}
+				onedit={(name) => look.editRecord('customers', name)}
+			/>
+			<!-- Which of the customer's contacts the report is for; a customer with none has nothing to pick. -->
+			<Select
+				label="Contact"
+				icon="icon-[mdi--account]"
+				options={contacts.map((item) => ({
+					value: item.id,
+					label: item.name,
+					note: item.title,
+					// No photo: their initials on the customer's sky blue (#355).
+					image: item.photo || toInitialsPicture(initialsOf(item.name), 'customer')
+				}))}
+				value={contact?.id ?? ''}
+				placeholder={customerName ? 'No contacts on this customer yet' : 'Choose a customer first'}
+				disabled={!contacts.length}
+				help={look.helpOf('project.contact')}
+				onpick={(id) => {
+					panel.contact = id;
+					save();
+				}}
+			/>
+			<!-- The customer's own number for the job (#217): optional. -->
+			<Input
+				label="Reference Number"
+				bind:value={panel.customerReference}
+				maxlength={100}
+				help={look.helpOf('project.referenceNumber')}
+			/>
+		</Group>
+		{@render teamBlock()}
 	{:else if panel.kind === 'transport'}
 		<TransportLegs
 			{look}
@@ -1080,6 +1027,59 @@
 									)}><span class="icon-[mdi--close] size-4"></span></button
 							>
 						</span>
+					{:else if isPdfAttachment(file)}
+						<!-- #295: a PDF prints its pages, as many to a report page as picked here, laid out like a photo
+						     group's photos. One whose pages cannot be read prints its name. -->
+						{@const count = pageCountOf(file.src)}
+						<div
+							class="w-full overflow-hidden rounded-2xl bg-slate-900/[0.02] ring-1 ring-slate-200"
+						>
+							<div class="flex items-center gap-2 py-2.5 pr-1.5 pl-3">
+								<span class="{ATTACHMENT_ICONS.pdf} size-5 shrink-0 text-primary"></span>
+								<div class="min-w-0 flex-1">
+									<a
+										href={file.src || undefined}
+										target="_blank"
+										rel="noopener"
+										class="block truncate text-[13px] font-bold text-slate-900 hover:underline"
+										>{file.name}</a
+									>
+									<p class="truncate text-xs text-slate-500">
+										{count === undefined
+											? ATTACHMENT_NAMES.pdf
+											: count === 0
+												? 'Its pages could not be read, so it prints its name'
+												: `${count} ${count === 1 ? 'page' : 'pages'}`}
+									</p>
+								</div>
+								<button
+									type="button"
+									class="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-danger"
+									aria-label="Remove {file.name}"
+									onclick={() =>
+										remove(
+											panel.attachments ?? [],
+											file,
+											`Remove ${file.name}?`,
+											'It leaves the cargo description.'
+										)}><span class="icon-[mdi--close] size-4"></span></button
+								>
+							</div>
+							{#if count !== 0}
+								<div class="border-t border-slate-200 px-3 pt-2 pb-3">
+									{@render perPage(
+										'Pages per Page',
+										`${uid}-${file.id}-layout`,
+										'itemAttachment.layout',
+										file.layout,
+										(layout) => {
+											file.layout = layout;
+											save();
+										}
+									)}
+								</div>
+							{/if}
+						</div>
 					{:else}
 						<span
 							class="relative flex items-center gap-2 overflow-hidden rounded-xl bg-slate-900/[0.04] py-2 pr-8 pl-3 text-xs text-slate-700"
@@ -1163,11 +1163,11 @@
 			{@attach sortable(`items-${panel.id}`, (from, to) => move(panel.items, from, to))}
 		>
 			{#if panel.items.length}
-				<p class="flex gap-2 text-xs font-medium text-slate-500">
-					<span class="w-6 shrink-0"></span><span class="w-20 shrink-0 pl-1">Quantity</span><span
-						>Description</span
-					>
-				</p>
+				{@render columns(
+					`items-${panel.id}`,
+					['Quantity', 'item.quantity'],
+					['Description', 'item.description']
+				)}
 			{/if}
 			{#each panel.items as item, itemIndex (item.id)}
 				<div
@@ -1177,18 +1177,23 @@
 					animate:flip={{ duration: 200 }}
 				>
 					{@render handle(`items-${panel.id}`, panel.items.length)}
-					<input
-						class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+					<span
+						id="{item.id}-row"
+						hidden>of item {itemIndex + 1}</span
+					>
+					<Compact
+						class="w-20! shrink-0 text-center tabular-nums"
 						inputmode="numeric"
 						bind:value={item.quantity}
 						placeholder="Qty"
-						aria-label="Quantity of item {itemIndex + 1}"
+						labelledby="items-{panel.id}-0 {item.id}-row"
+						data-input={MARKED_LABELS.quantity}
 					/>
-					<input
-						class={inputClass}
+					<Compact
 						bind:value={item.description}
 						placeholder="What it is, e.g. Accessory crates"
-						aria-label="Description of item {itemIndex + 1}"
+						labelledby="items-{panel.id}-1 {item.id}-row"
+						data-input={MARKED_LABELS.description}
 					/>
 					<button
 						type="button"
@@ -1207,21 +1212,27 @@
 				</div>
 			{/each}
 			<div class="flex flex-wrap gap-2">
-				<button
-					type="button"
-					class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+				<Button
+					secondary
+					heavy
+					xs
+					icon="icon-[mdi--plus]"
+					label="Add item"
+					data-input={MARKED_LABELS.item}
 					onclick={() => {
 						panel.items.push(itemOf());
 						save();
-					}}><span class="icon-[mdi--plus] size-4"></span>Add item</button
-				>
+					}}
+				/>
 				{#if !panel.grid}
-					<button
-						type="button"
-						class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+					<Button
+						primary
+						lite
+						xs
+						icon="icon-[mdi--auto-fix]"
+						label="Add Sample Data"
 						onclick={addSampleList}
-						><span class="icon-[mdi--auto-fix] size-4"></span>Add Sample Data</button
-					>
+					/>
 				{/if}
 			</div>
 		</div>
@@ -1236,6 +1247,7 @@
 						sortKey={panel.days.length > 1 ? `days-${panel.id}` : ''}
 						index={dayIndex}
 						title="Day {dayIndex + 1}"
+						section={day.id}
 						values={counted(day.id)}
 						meta={day.date || 'No date'}
 						icon="icon-[mdi--calendar-blank-outline]"
@@ -1249,22 +1261,23 @@
 								`Its ${day.entries.length} time log entries go with it.`
 							)}
 					>
-						<div
-							class="has-help block"
-							data-empty={day.date ? undefined : ''}
-						>
-							{@render labelOf('Date', `${uid}-${day.id}`, 'timeLog.date')}
-							<input
-								id="{uid}-{day.id}"
-								class={inputClass}
-								type="date"
-								bind:value={day.date}
-							/>
-						</div>
+						<Input
+							label="Date"
+							type="date"
+							bind:value={day.date}
+							help={look.helpOf('timeLog.date')}
+						/>
 						<div
 							class="space-y-3"
 							{@attach sortable(`entries-${day.id}`, (from, to) => move(day.entries, from, to))}
 						>
+							{#if day.entries.length}
+								{@render columns(
+									`entries-${day.id}`,
+									['Time', 'timeLog.time'],
+									['Activity', 'timeLog.activity']
+								)}
+							{/if}
 							{#each day.entries as entry, entryIndex (entry.id)}
 								<div
 									class="flex items-start gap-2"
@@ -1273,10 +1286,14 @@
 									animate:flip={{ duration: 200 }}
 								>
 									{@render handle(`entries-${day.id}`, day.entries.length)}
-									<input
-										class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+									<span
+										id="{entry.id}-row"
+										hidden>of entry {entryIndex + 1}</span
+									>
+									<Compact
+										class="w-20! shrink-0 text-center tabular-nums"
 										inputmode="numeric"
-										maxlength="5"
+										maxlength={5}
 										placeholder="07:30"
 										value={entry.time}
 										onchange={(event) => {
@@ -1284,13 +1301,14 @@
 											event.currentTarget.value = entry.time;
 											sortEntries(dayIndex);
 										}}
-										aria-label="Time, on the 24-hour clock"
+										labelledby="entries-{day.id}-0 {entry.id}-row"
+										data-input={MARKED_LABELS.time}
 									/>
-									<input
-										class={inputClass}
+									<Compact
 										bind:value={entry.activity}
 										placeholder="What happened"
-										aria-label="Activity"
+										labelledby="entries-{day.id}-1 {entry.id}-row"
+										data-input={MARKED_LABELS.activity}
 									/>
 									<button
 										type="button"
@@ -1310,14 +1328,17 @@
 							{/each}
 						</div>
 						{#snippet actions()}
-							<button
-								type="button"
-								class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+							<Button
+								primary
+								lite
+								xs
+								icon="icon-[mdi--plus]"
+								label="Add entry"
 								onclick={() => {
 									day.entries.push({ id: crypto.randomUUID(), time: '', activity: '' });
 									save();
-								}}><span class="icon-[mdi--plus] size-4"></span>Add entry</button
-							>
+								}}
+							/>
 						{/snippet}
 					</Group>
 				</div>
@@ -1326,32 +1347,35 @@
 			{/each}
 		</div>
 		<div class="flex flex-wrap gap-2">
-			<button
-				type="button"
-				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
-			>
-			<button
-				type="button"
-				class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+			<Button
+				secondary
+				heavy
+				xs
+				icon="icon-[mdi--calendar-plus]"
+				label="Add day"
+				data-input={MARKED_LABELS.day}
+				onclick={addDay}
+			/>
+			<Button
+				primary
+				lite
+				xs
+				icon="icon-[mdi--auto-fix]"
+				label="Add a sample day"
 				onclick={addSampleDay}
-				><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample day</button
-			>
+			/>
 		</div>
 	{:else}
-		<div
-			class="has-help block"
-			data-empty={panel.name ? undefined : ''}
-		>
-			{@render labelOf('Title', `${uid}-title`, 'panel.title')}
-			<input
-				id="{uid}-title"
-				class={inputClass}
+		<!-- The panel's own name is the app's value (#374): a title cleared goes back to it once the field is left. -->
+		<div onfocusout={keepName}>
+			<Input
+				label="Title"
+				{...TYPING}
 				bind:value={panel.name}
-				placeholder={panelNameOf(panel)}
-				maxlength="80"
-				aria-label="Panel title"
-				onblur={keepName}
+				generated={panelNameOf(panel)}
+				onreset={keepName}
+				maxlength={80}
+				help={look.helpOf('panel.title')}
 			/>
 		</div>
 		{#if panel.key === 'operations'}
@@ -1360,42 +1384,26 @@
 			     is kept. The field runs the panel's full width, and once what it holds is an address a browser can
 			     open, an arrow shows inside it at the far right that opens it, to check it goes to the right place
 			     (Justin, 2026-11-18). -->
-			<div
-				class="has-help"
-				data-empty={panel.link ? undefined : ''}
-			>
-				{@render labelOf(LINK_LABEL, `${uid}-link`, 'panel.link')}
-				<div class="relative">
-					<input
-						id="{uid}-link"
-						class="{inputClass} {link ? 'pr-11' : ''}"
-						type="url"
-						inputmode="url"
-						bind:value={panel.link}
-						maxlength="2048"
-						placeholder="Optional, paste the OneDrive folder URL"
-						autocapitalize="off"
-						autocomplete="off"
-						spellcheck="false"
-					/>
-					{#if link}
-						<a
-							href={link}
-							target="_blank"
-							rel="noopener"
-							class="absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
-							aria-label="Open the URL"
-							title="Open in {linkNameOf(link)}"
-							><span class="icon-[mdi--open-in-new] size-4"></span></a
-						>
-					{/if}
-				</div>
-				{#if panel.link?.trim() && !link}
-					<p class="mt-1 text-xs text-danger">
-						That does not look like a URL. Paste the folder’s full address.
-					</p>
-				{/if}
-			</div>
+			<Input
+				label={LINK_LABEL}
+				type="url"
+				inputmode="url"
+				autocomplete="off"
+				bind:value={panel.link}
+				maxlength={2048}
+				action={link
+					? {
+							icon: 'icon-[mdi--open-in-new]',
+							label: 'Open the URL',
+							title: `Open in ${linkNameOf(link)}`,
+							href: link
+						}
+					: undefined}
+				error={panel.link?.trim() && !link
+					? 'That does not look like a URL. Paste the folder’s full address.'
+					: undefined}
+				help={look.helpOf('panel.link')}
+			/>
 		{/if}
 		<div
 			class="space-y-3"
@@ -1418,6 +1426,7 @@
 				>
 					<Group
 						title={group.title || `Untitled ${word}`}
+						section={group.id}
 						values={counted(group.id)}
 						meta={countLabelOf(group.photos)}
 						isEnabled={group.isEnabled}
@@ -1436,74 +1445,30 @@
 						sortKey="groups-{panel.id}"
 						index={groupIndex}
 					>
-						<div
-							class="has-help block"
-							data-empty={group.title ? undefined : ''}
-						>
-							{@render labelOf('Title', `${uid}-${group.id}-title`, 'group.title')}
-							<input
-								id="{uid}-{group.id}-title"
-								class={inputClass}
-								bind:value={group.title}
-								placeholder={word === 'stage'
-									? 'e.g. Discharge Operations'
-									: 'e.g. Hatch 2 before discharge'}
-							/>
-						</div>
-						<div
-							class="has-help block"
-							data-empty={group.description ? undefined : ''}
-						>
-							{@render labelOf(
-								'Description',
-								`${uid}-${group.id}-description`,
-								'group.description'
-							)}
-							<textarea
-								id="{uid}-{group.id}-description"
-								class="{inputClass} min-h-16"
-								bind:value={group.description}
-								placeholder="Optional"></textarea>
-						</div>
-						<div
-							class="has-help"
-							role="group"
-							aria-labelledby="{uid}-{group.id}-layout"
-						>
-							<p class={labelClass}>
-								<span id="{uid}-{group.id}-layout">Photos per page</span>
-								{#if look.helpOf('group.layout')}<Help
-										label="Photos per page"
-										text={look.helpOf('group.layout')}
-									/>{/if}
-							</p>
-							<div class="flex gap-1.5">
-								{#each LAYOUTS as layout (layout)}
-									<button
-										type="button"
-										class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {group.layout ===
-										layout
-											? 'bg-primary text-white shadow-md shadow-primary/25'
-											: 'bg-white text-slate-500 hover:text-primary'}"
-										onclick={() => {
-											group.layout = layout;
-											save();
-										}}
-									>
-										<!-- The page in miniature: one column for one or two, two columns from four up. -->
-										<span
-											class="grid h-4 w-3 gap-px {layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}"
-											style="grid-template-rows: repeat({layout <= 2 ? layout : layout / 2}, 1fr)"
-											aria-hidden="true"
-										>
-											{#each Array.from({ length: layout }, (_, at) => at) as cell (cell)}
-												<span class="rounded-[1px] bg-current"></span>
-											{/each}
-										</span>{layout}
-									</button>
-								{/each}
-							</div>
-						</div>
+						<Input
+							label="Title"
+							{...TYPING}
+							bind:value={group.title}
+							help={look.helpOf('group.title')}
+						/>
+						<Textarea
+							label="Description"
+							autocapitalize={TYPING.autocapitalize}
+							spellcheck={TYPING.spellcheck}
+							bind:value={group.description}
+							rows={2}
+							help={look.helpOf('group.description')}
+						/>
+						{@render perPage(
+							'Photos per Page',
+							`${uid}-${group.id}-layout`,
+							'group.layout',
+							group.layout,
+							(layout) => {
+								group.layout = layout;
+								save();
+							}
+						)}
 						<div
 							class="grid grid-cols-3 gap-2"
 							{@attach sortable(`photos-${group.id}`, (from, to) => move(group.photos, from, to), {
@@ -1569,21 +1534,34 @@
 											></span>
 										{/if}
 										<!-- #327: what kind of attachment it is, on every tile (Justin, 2026-11-25): a photo by its icon, a PDF
-										     with its pages, a video with its length. -->
+										     with its pages, a video with its length. #349: a photo by the type it arrived as (HEIC, JPEG,
+										     PNG), read from its name while it is on its way. -->
 										{#if photo.src}
 											{@const kind = photo.kind ?? 'photo'}
+											{@const arrived =
+												kind === 'photo'
+													? toTypeLabel(
+															fileDetailsOf(photo.src)?.original.type ??
+																(upload ? toPictureType({ name: upload.name, type: '' }) : '')
+														)
+													: ''}
+											{@const label = arrived ? `${arrived} photo` : ATTACHMENT_NAMES[kind]}
 											<span
 												class="pointer-events-none absolute right-1 bottom-1 flex items-center gap-0.5 rounded-md bg-black/65 py-0.5 text-[10px] leading-none font-semibold text-white tabular-nums {kind ===
-												'photo'
+													'photo' && !arrived
 													? 'px-0.5'
 													: 'pr-1.5 pl-1'}"
-												title={ATTACHMENT_NAMES[kind]}
-												aria-label={ATTACHMENT_NAMES[kind]}
-												><span class="{ATTACHMENT_ICONS[kind]} size-3.5"></span>{kind === 'pdf'
+												title={label}
+												aria-label={label}
+												><span
+													class="{ATTACHMENT_ICONS[kind]} size-3.5 {kind === 'pdf'
+														? 'text-red-400'
+														: ''}"
+												></span>{kind === 'pdf'
 													? `${photo.pageCount ?? 1} ${photo.pageCount === 1 ? 'page' : 'pages'}`
 													: kind === 'video'
 														? toLengthLabel(photo.duration) || 'Video'
-														: ''}</span
+														: arrived}</span
 											>
 										{/if}
 									</button>
@@ -1668,8 +1646,9 @@
 									</div>
 								</div>
 							{/each}
+							<!-- Lit while its file input has the focus: where an entry of the empty-inputs list for Photos lands. -->
 							<label
-								class="relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
+								class="relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition focus-within:ring-2 focus-within:ring-primary/40 hover:bg-primary/10 hover:text-primary"
 							>
 								<span class="icon-[mdi--image-plus-outline] size-6"></span>
 								<span class="text-[11px] font-medium">Upload</span>
@@ -1677,6 +1656,7 @@
 									type="file"
 									accept={ATTACHMENT_ACCEPT}
 									multiple
+									data-input={MARKED_LABELS.photos}
 									class="sr-only"
 									onchange={(event) => pickPhotos(event, group)}
 								/>
@@ -1696,12 +1676,14 @@
 							</label>
 						</div>
 						{#snippet actions()}
-							<button
-								type="button"
-								class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+							<Button
+								primary
+								lite
+								xs
+								icon="icon-[mdi--auto-fix]"
+								label="Add sample photos"
 								onclick={() => addSamplePhotos(group)}
-								><span class="icon-[mdi--auto-fix] size-4"></span>Add sample photos</button
-							>
+							/>
 						{/snippet}
 					</Group>
 				</div>
@@ -1714,64 +1696,17 @@
 				</div>
 			{/each}
 		</div>
-		<button
-			type="button"
-			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
-			onclick={addGroup}><span class="icon-[mdi--plus] size-4"></span>Add {word}</button
-		>
+		<Button
+			secondary
+			heavy
+			xs
+			icon="icon-[mdi--plus]"
+			label="Add {word}"
+			data-input={MARKED_LABELS.photos}
+			onclick={addGroup}
+		/>
 	{/if}
 </fieldset>
-
-{#if asking}
-	{@const noun = asking.label}
-	<BottomSheet
-		label="Add a new {noun}"
-		onclose={() => (asking = undefined)}
-	>
-		<form
-			onsubmit={(event) => {
-				event.preventDefault();
-				add();
-			}}
-		>
-			<b class="block text-lg text-slate-900">New {noun}</b>
-			<p class="text-sm text-slate-500">
-				Added here and to the {asking.kinds ? 'Facilities' : noun} list, without leaving the project.
-			</p>
-			<label class="mt-4 block">
-				<span class={labelClass}>Name</span>
-				<!-- svelte-ignore a11y_autofocus -->
-				<input
-					class={inputClass}
-					bind:value={draft}
-					placeholder="{asking.label} name"
-					autofocus
-				/>
-			</label>
-			{#if asking.kinds}
-				<p class="{labelClass} mt-3">Facility Kind</p>
-				<div class="grid grid-cols-2 gap-1.5">
-					{#each asking.kinds as kind (kind)}
-						<button
-							type="button"
-							class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition {draftKind ===
-							kind
-								? 'bg-primary text-white shadow-md shadow-primary/25'
-								: 'bg-slate-900/[0.04] text-slate-600 hover:bg-primary/10'}"
-							aria-pressed={draftKind === kind}
-							onclick={() => (draftKind = kind)}
-							><span class="{FACILITY_ICONS[kind]} size-[18px]"></span>{kind}</button
-						>
-					{/each}
-				</div>
-			{/if}
-			<button
-				class="mt-5 w-full rounded-full bg-primary py-3 text-sm font-semibold text-white disabled:opacity-40"
-				disabled={!draft.trim()}>Add {noun}</button
-			>
-		</form>
-	</BottomSheet>
-{/if}
 
 {#if opened}
 	<PhotoPopup

@@ -47,6 +47,19 @@ export interface TextFieldProps<
 	onreset?: () => void;
 }
 
+/**
+ * A button at a field's end that does something with what the field holds (#393): opens it, copies it. With `href`
+ * it is a link that opens in a new tab; otherwise `onclick` runs. `label` names it for screen readers and `title`
+ * says more under a mouse.
+ */
+export type FieldActionType = {
+	icon: string;
+	label: string;
+	title?: string;
+	href?: string;
+	onclick?: () => void;
+};
+
 export interface FormFieldStateOptions<TValue = unknown> {
 	uid?: string;
 	type?: string;

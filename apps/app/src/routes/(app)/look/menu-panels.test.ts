@@ -1,4 +1,4 @@
-// The menu's panels are remembered on the device (#212): a reload shows Recents and Online as they were left.
+// The menu's panels are remembered on the device (#212): a reload shows Pinned, Recents and Online as they were left.
 import { describe, expect, it } from 'vite-plus/test';
 import { readMenuPanels, writeMenuPanels } from './menu-panels';
 
@@ -21,35 +21,37 @@ const BROKEN = {
 };
 
 describe('the menu panels a device remembers', () => {
-	it('opens both on a device that has kept nothing', () => {
-		expect(readMenuPanels(createStore())).toEqual({ recents: true, online: true });
+	it('opens them all on a device that has kept nothing', () => {
+		expect(readMenuPanels(createStore())).toEqual({ pinned: true, recents: true, online: true });
 	});
 
 	it('reads back what was last written', () => {
 		const store = createStore();
-		writeMenuPanels({ recents: false, online: true }, store);
-		expect(readMenuPanels(store)).toEqual({ recents: false, online: true });
+		writeMenuPanels({ pinned: false, recents: false, online: true }, store);
+		expect(readMenuPanels(store)).toEqual({ pinned: false, recents: false, online: true });
 	});
 
 	it('opens a panel the kept value says nothing about', () => {
 		const store = createStore();
-		writeMenuPanels({ recents: false, online: true }, store);
+		writeMenuPanels({ pinned: true, recents: false, online: true }, store);
 		const [key] = [...store.kept.keys()];
 		store.kept.set(key, JSON.stringify({ recents: false }));
-		expect(readMenuPanels(store)).toEqual({ recents: false, online: true });
+		expect(readMenuPanels(store)).toEqual({ pinned: true, recents: false, online: true });
 	});
 
-	it('opens both when what was kept cannot be read', () => {
+	it('opens them all when what was kept cannot be read', () => {
 		const store = createStore();
-		writeMenuPanels({ recents: false, online: false }, store);
+		writeMenuPanels({ pinned: false, recents: false, online: false }, store);
 		const [key] = [...store.kept.keys()];
 		store.kept.set(key, 'not json');
-		expect(readMenuPanels(store)).toEqual({ recents: true, online: true });
+		expect(readMenuPanels(store)).toEqual({ pinned: true, recents: true, online: true });
 	});
 
-	it('carries on with both open where the browser gives no storage', () => {
-		expect(readMenuPanels(BROKEN)).toEqual({ recents: true, online: true });
-		expect(() => writeMenuPanels({ recents: false, online: false }, BROKEN)).not.toThrow();
-		expect(readMenuPanels(undefined)).toEqual({ recents: true, online: true });
+	it('carries on with them all open where the browser gives no storage', () => {
+		expect(readMenuPanels(BROKEN)).toEqual({ pinned: true, recents: true, online: true });
+		expect(() =>
+			writeMenuPanels({ pinned: false, recents: false, online: false }, BROKEN)
+		).not.toThrow();
+		expect(readMenuPanels(undefined)).toEqual({ pinned: true, recents: true, online: true });
 	});
 });

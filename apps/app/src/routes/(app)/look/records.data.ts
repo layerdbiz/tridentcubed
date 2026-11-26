@@ -13,6 +13,7 @@ import {
 	FACILITY_ICONS,
 	MODE_ICONS,
 	PAGE_ICONS,
+	STATUS,
 	transportsOf,
 	type ClientType,
 	type DatasetType,
@@ -479,6 +480,23 @@ export function recentOf(look: LookState): RecentType[] {
 			...item,
 			note: `${created === updated ? 'Added' : 'Edited'} · ${agoOf(updated)}`
 		}));
+}
+
+/** Opens what a Recents, Pinned or search row is about (#345, #346), or says it has gone. */
+export function openItem(look: LookState, item: Pick<RecentType, 'page' | 'name' | 'id'>) {
+	if (item.page === 'projects') {
+		if (look.projects.some((project) => project.id === item.id)) look.open(item.id!);
+	} else if (look.has(item.page, item.name)) look.openRecord(item.page, item.name);
+	else look.say(`${item.name} is no longer there`);
+}
+
+/** The colour of a row's icon: its project's state, or its record's first label, as in the lists (2026-11-10). */
+export function toneOfItem(look: LookState, item: RecentType) {
+	if (item.page === 'projects') {
+		const project = look.projects.find((one) => one.id === item.id);
+		return project ? STATUS[project.status].tone : 'text-slate-400';
+	}
+	return recordOf(look, item.page, item.name)?.tone.text ?? 'text-slate-400';
 }
 
 // A count badge never needs more than two characters.

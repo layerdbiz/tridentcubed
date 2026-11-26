@@ -197,7 +197,7 @@
 									class="rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'system'
 										? 'text-primary-foreground bg-primary'
-										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
+										: 'hover:bg-neutral-100-800'}"
 								>
 									System
 								</button>
@@ -206,7 +206,7 @@
 									class="rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'light'
 										? 'text-primary-foreground bg-primary'
-										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
+										: 'hover:bg-neutral-100-800'}"
 								>
 									Light
 								</button>
@@ -215,7 +215,7 @@
 									class="rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'dark'
 										? 'text-primary-foreground bg-primary'
-										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
+										: 'hover:bg-neutral-100-800'}"
 								>
 									Dark
 								</button>
@@ -233,7 +233,7 @@
 										class="rounded border px-3 py-2 capitalize transition-colors {currentTheme ===
 										themeOption
 											? 'text-primary-foreground bg-primary'
-											: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
+											: 'hover:bg-neutral-100-800'}"
 									>
 										{themeOption}
 									</button>
@@ -249,7 +249,7 @@
 						<h3 class="text-lg font-semibold">Theme Settings</h3>
 						<button
 							onclick={toggleMode}
-							class="rounded border p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+							class="rounded border p-2 transition-colors hover:bg-neutral-100-800"
 							title="Quick toggle"
 						>
 							{#if currentMode === 'dark'}
@@ -272,7 +272,7 @@
 									class="flex-1 rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'system'
 										? 'text-primary-foreground bg-primary'
-										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
+										: 'hover:bg-neutral-100-800'}"
 								>
 									🖥️ System
 								</button>
@@ -281,7 +281,7 @@
 									class="flex-1 rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'light'
 										? 'text-primary-foreground bg-primary'
-										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
+										: 'hover:bg-neutral-100-800'}"
 								>
 									☀️ Light
 								</button>
@@ -290,7 +290,7 @@
 									class="flex-1 rounded border px-3 py-2 transition-colors {currentUserPreference ===
 									'dark'
 										? 'text-primary-foreground bg-primary'
-										: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
+										: 'hover:bg-neutral-100-800'}"
 								>
 									🌙 Dark
 								</button>
@@ -313,7 +313,7 @@
 										class="rounded border px-3 py-2 capitalize transition-colors {currentTheme ===
 										themeOption
 											? 'text-primary-foreground bg-primary'
-											: 'hover:bg-gray-100 dark:hover:bg-gray-800'}"
+											: 'hover:bg-neutral-100-800'}"
 									>
 										{themeOption}
 									</button>

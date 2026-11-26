@@ -3,11 +3,14 @@
 	// for the two places a profile picture opens it (Justin, 2026-11-16): the bottom of the sidebar and the top right
 	// of the phone's dashboard. Whoever uses it draws the picture (`picture`, told whether the menu is open). Install
 	// App (#203) is there only while the app is not installed; a tap installs where the browser offered that, and
-	// otherwise opens the how-to.
+	// otherwise opens the how-to. Activity (#306) is there for an Admin only, the one who may open it. What's New
+	// (#363) shows every release, with the app's version under it.
 	import type { Snippet } from 'svelte';
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import HowTo from '#lib/install/how-to.svelte';
 	import { install } from '#lib/install/install.state.svelte.js';
+	import { VERSION_LABEL } from '#lib/releases/releases.constants.js';
+	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
 	import type { LookState } from './look.state.svelte';
 	import { Menu } from '@layerd/ui';
 
@@ -22,18 +25,23 @@
 		picture: Snippet<[boolean]>;
 		align?: 'left' | 'right';
 		isWide?: boolean;
-		// After Profile or Organization opens, so a drawer can shut.
+		// After Profile, Organization or Activity opens, so a drawer can shut.
 		onnavigate?: () => void;
 	} = $props();
 
 	const ACCOUNT = [
 		{ id: 'profile', label: 'Profile', icon: 'icon-[mdi--account-circle-outline]' },
 		{ id: 'organization', label: 'Organization', icon: 'icon-[mdi--domain]' },
+		{ id: 'activity', label: 'Activity', icon: 'icon-[mdi--timeline-clock-outline]' },
 		{ id: 'install', label: 'Install App', icon: 'icon-[mdi--cellphone-arrow-down]' },
+		{ id: 'whats-new', label: "What's New", note: VERSION_LABEL, icon: 'icon-[mdi--gift-outline]' },
 		{ id: 'logout', label: 'Log Out', icon: 'icon-[mdi--logout]', isDanger: true }
 	];
 	const options = $derived(
-		install.isShown ? ACCOUNT : ACCOUNT.filter((option) => option.id !== 'install')
+		ACCOUNT.filter(
+			(option) =>
+				(option.id !== 'install' || install.isShown) && (option.id !== 'activity' || look.isAdmin)
+		)
 	);
 
 	// Each menu opens its own how-to: the sidebar's and the phone dashboard's can both be on the page.
@@ -53,7 +61,9 @@
 	function pick(id: string) {
 		if (id === 'logout') return void logOut();
 		if (id === 'install') return void installApp();
+		if (id === 'whats-new') return whatsNew.openAll();
 		if (id === 'organization') look.openSettings();
+		else if (id === 'activity') look.openActivity();
 		else if (look.me) look.openRecord('team', look.me.name, 'page');
 		onnavigate?.();
 	}

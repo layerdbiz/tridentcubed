@@ -4,12 +4,12 @@
 	 */
 	// The menu list (#297): the list the app's dropdown opens (its picker), and its account menu, ⋮ menus, list menus
 	// and cards' menus. Moved here from the app unchanged (Justin, 2026-11-24): it sits beside the toggle rather than
-	// on the toggle's own menu, which opens in place and would be cut off inside scrolling boxes. It keeps the app's
-	// slate shades so nothing looks different; trading them for theme colours belongs to "UI library cleanup" (#33).
+	// on the toggle's own menu, which opens in place and would be cut off inside scrolling boxes.
 	//
-	// It draws its own outer box, not the base component: the app shows one per row's ⋮, and built on the base
-	// component a swipe between the dashboard's lists took about twice the script time on a slowed phone (measured on
-	// #297). Its props are its own for the same reason; none of the base props would do anything here.
+	// Its look is set from outside (Justin, 2026-11-26): it is the base component, and `color`, `appearance`, their
+	// shorthands and `class` land on its list, the box that shows, which is the theme's surface until it is given a
+	// look; its greys are the theme's. The app shows one per row's ⋮, so it takes the base component's light path. It
+	// hangs from a button that shows the place's `trigger`, or from the library Button given through `button` (#386).
 	//
 	// Closes on a pick, a tap outside or Escape. `isWide` fills its row, and its list is as wide as the row. The list
 	// opens in the browser's top layer (a popover), placed under its button, or over it when there is no room below, so
@@ -22,6 +22,14 @@
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { scale } from 'svelte/transition';
+	import {
+		Avatar,
+		Button,
+		Component,
+		type ButtonProps,
+		type ComponentProps,
+		type ComponentReturn
+	} from '@layerd/ui';
 
 	export interface MenuOptionType {
 		id: string;
@@ -29,26 +37,33 @@
 		// A second, quieter line under the label: a facility's city, a contact's title.
 		note?: string;
 		icon?: string;
-		// A round picture in place of an icon: a face or a logo.
+		// A round picture in place of an icon: a face or a logo, and how it fills its circle (a logo `contain`).
 		image?: string;
+		fit?: 'cover' | 'contain';
 		dot?: string;
 		count?: number;
 		// A delete in a ⋮ menu reads red.
 		isDanger?: boolean;
 	}
 
-	export interface MenuProps {
+	export interface MenuProps extends Omit<ComponentProps, 'label' | 'value' | 'children'> {
 		options: MenuOptionType[];
 		value: string;
 		// The list's name, read out for its button, its list and its search field.
 		label: string;
 		onpick: (id: string) => void;
 		// What the button shows, told the picked choice and whether the list is open.
-		trigger: Snippet<[MenuOptionType | undefined, boolean]>;
+		trigger?: Snippet<[MenuOptionType | undefined, boolean]>;
+		// In place of `trigger`, the menu hangs from the library Button: its look, or any other Button prop, set from
+		// outside (#386, the list menus' round icons).
+		button?: Partial<ButtonProps>;
 		// Draws what stands at the left of a choice, in place of its icon or image (a picker's faces and logos).
 		// The second argument says the choice is the one picked.
 		mark?: Snippet<[MenuOptionType, boolean]>;
 		align?: 'left' | 'right';
+		// Which way it opens when it fits either way: under its button, or over it (#376: a toolbar at the foot of a
+		// box, the photo pop-up's More, whose list would otherwise fall below the box on a tall screen).
+		opens?: 'down' | 'up';
 		isWide?: boolean;
 		// Given, the menu picks several: every id in it is ticked, and a pick does not close the list (run 19).
 		values?: string[];
@@ -64,14 +79,17 @@
 		label,
 		onpick,
 		trigger,
+		button,
 		mark,
 		align = 'right',
+		opens = 'down',
 		isWide = false,
 		values,
 		isSearchable = false,
 		onadd,
 		addLabel = '',
-		onedit
+		onedit,
+		...props
 	}: MenuProps = $props();
 
 	let isOpen = $state(false);
@@ -104,7 +122,8 @@
 		const tall = rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
 		const below = viewTop + viewHeight - box.bottom - 24;
 		const above = box.top - viewTop - 24;
-		const isUp = below < Math.min(tall, 220) && above > below;
+		const need = Math.min(tall, 220);
+		const isUp = opens === 'up' ? above >= need || above > below : below < need && above > below;
 		const x = align === 'right' ? `right: ${innerWidth - box.right}px` : `left: ${box.left}px`;
 		const y = isUp ? `bottom: ${innerHeight - box.top + 8}px` : `top: ${box.bottom + 8}px`;
 		// Run 14 (note 5): never taller than the room on its side, or 360px; longer lists scroll inside it.
@@ -176,33 +195,57 @@
 	onresize={follow}
 />
 
-<div
-	class="relative {isWide ? 'w-full' : ''}"
-	bind:this={root}
->
-	<button
-		type="button"
-		class="flex items-center {isWide ? 'w-full' : ''}"
-		aria-haspopup="listbox"
-		aria-expanded={isOpen}
-		aria-label={label}
-		onclick={toggle}>{@render trigger(current, isOpen)}</button
-	>
+<Component {...props}>
+	{#snippet component({ props: own }: { props: ComponentReturn })}
+		{@const { class: look = '', ...rest } = own}
+		<div
+			{...rest}
+			class="relative {isWide ? 'w-full' : ''}"
+			bind:this={root}
+		>
+			{@render inside(look)}
+		</div>
+	{/snippet}
+</Component>
+
+{#snippet inside(look: string)}
+	{#if button}
+		<Button
+			{...button}
+			aria-haspopup="listbox"
+			aria-expanded={isOpen}
+			aria-label={label}
+			onclick={toggle}
+		/>
+	{:else}
+		<button
+			type="button"
+			class="flex items-center {isWide ? 'w-full' : ''}"
+			aria-haspopup="listbox"
+			aria-expanded={isOpen}
+			aria-label={label}
+			onclick={toggle}>{@render trigger?.(current, isOpen)}</button
+		>
+	{/if}
 	{#if isOpen}
 		<div
 			popover="manual"
-			class="fixed z-[120] m-0 flex flex-col overflow-hidden rounded-2xl border-0 bg-white text-left shadow-[0_2px_6px_rgb(15_23_42/0.06),0_20px_44px_-12px_rgb(15_23_42/0.28)]"
+			class="fixed z-[120] m-0 flex flex-col overflow-hidden rounded-2xl border-0 {/\btheme-/.test(
+				look
+			)
+				? ''
+				: 'bg-surface'} text-left shadow-menu {look}"
 			style="inset: auto; {place}"
 			transition:scale={{ start: 0.95, duration: 140 }}
 			{@attach lift}
 		>
 			{#if isSearchable}
 				<label
-					class="flex shrink-0 items-center gap-2 border-b border-slate-900/[0.06] px-3.5 py-2.5 text-slate-400"
+					class="flex shrink-0 items-center gap-2 border-b border-secondary/[0.06] px-3.5 py-2.5 text-base-400"
 				>
 					<span class="icon-[mdi--magnify] size-[18px] shrink-0"></span>
 					<input
-						class="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:ring-0"
+						class="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-secondary outline-none placeholder:text-base-400 focus:ring-0"
 						type="search"
 						placeholder="Search"
 						aria-label="Search {label}"
@@ -250,20 +293,20 @@
 							class="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition {option.isDanger
 								? 'font-medium text-danger hover:bg-danger/10'
 								: isOn
-									? 'bg-primary/[0.08] font-medium text-slate-900'
-									: 'text-slate-600 hover:bg-slate-900/[0.04]'}"
+									? 'bg-primary/[0.08] font-medium text-secondary'
+									: 'text-secondary-400 hover:bg-secondary/[0.04]'}"
 							onclick={() => pick(option.id)}
 						>
 							{#if mark}{@render mark(option, isOn)}{:else}
-								{#if option.image}<img
+								{#if option.image}<Avatar
 										src={option.image}
-										alt=""
-										class="size-7 shrink-0 rounded-full bg-slate-200 object-cover"
+										size={28}
+										fit={option.fit}
 									/>{/if}
 								{#if option.icon}<span
 										class="{option.icon} size-[18px] shrink-0 {option.isDanger
 											? ''
-											: 'text-slate-500'}"
+											: 'text-base-500'}"
 									></span>{/if}
 								{#if option.dot}<span class="size-2.5 shrink-0 rounded-full {option.dot}"
 									></span>{/if}
@@ -273,12 +316,12 @@
 							{#if option.note}
 								<span class="flex min-w-0 flex-1 flex-col">
 									<span class="truncate">{option.label}</span>
-									<span class="truncate text-xs font-normal text-slate-400">{option.note}</span>
+									<span class="truncate text-xs font-normal text-base-400">{option.note}</span>
 								</span>
 							{:else}
 								<span class="min-w-0 flex-1 truncate">{option.label}</span>
 							{/if}
-							{#if option.count !== undefined}<span class="text-xs text-slate-400 tabular-nums"
+							{#if option.count !== undefined}<span class="text-xs text-base-400 tabular-nums"
 									>{option.count}</span
 								>{/if}
 							{#if isOn}<span class="icon-[mdi--check] size-4 shrink-0 text-primary"></span>{/if}
@@ -286,7 +329,7 @@
 						{#if onedit}
 							<button
 								type="button"
-								class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-900/[0.05] hover:text-primary"
+								class="flex size-9 shrink-0 items-center justify-center rounded-full text-base-400 transition hover:bg-secondary/[0.05] hover:text-primary"
 								aria-label="Edit {option.label}"
 								title="Edit"
 								onclick={() => {
@@ -297,9 +340,9 @@
 						{/if}
 					</div>
 				{:else}
-					<p class="px-3 py-2 text-sm text-slate-400">Nothing matches</p>
+					<p class="px-3 py-2 text-sm text-base-400">Nothing matches</p>
 				{/each}
 			</div>
 		</div>
 	{/if}
-</div>
+{/snippet}

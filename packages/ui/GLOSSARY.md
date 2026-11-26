@@ -9,11 +9,11 @@ The library adopts Tailwind's names wherever it can, so many words here are Tail
 ### The base component system
 
 **Base component system**:
-The shared foundation every reusable component is built on. Made of the base component, Root, and the base props.
+The shared foundation every reusable component is built on. Made of the base component, Root, and the base props. Every component in the library starts from the base component and takes its look from outside (Justin, 2026-11-26).
 _Avoid_: runtime, base runtime, runtime architecture
 
 **Base component**:
-The public component new components start from. It turns styling props into theme classes, multiplies itself by total, attaches the base props, and hands layout to Root.
+The public component every component starts from. It turns styling props into theme classes, multiplies itself by total, attaches the base props, and hands layout to Root.
 _Avoid_: Component runtime
 
 **Root**:
@@ -22,6 +22,9 @@ _Avoid_: root runtime, public Root
 
 **Default renderer**:
 The base component's built-in rendering: the requested tag with content or layout snippets inside.
+
+**Light path**:
+How the base component draws a component that asks for no layout and none of the base props: straight from the base component, without Root, the same element with the same attributes and content Root would give it. It keeps a component that repeats in every list row, such as the Avatar, as quick as a plain element. Anything else takes the full path through Root.
 
 **Root override**:
 A component taking over the base component's rendering with its own markup while Root still does layout beneath it. Spoken forms: root snippet, root component.
@@ -92,6 +95,13 @@ A friendly color name a theme defines: base, neutral, primary, secondary, accent
 
 **Status color**:
 The theme colors that signal state: info, warning, success, danger. Meant to be wearable as a Color like the others; not wired yet.
+
+**Surface**:
+The theme's color for what is raised over the page when no look is given: a dialog's sheet, a switch's thumb, the ring round an avatar. White unless a theme sets it. With it, the overlay colors a theme sets the same way: the scrim that dims the page, the grab handle, the sheet's shadow.
+
+**Look set from outside**:
+A component's look comes only from what its caller gives it (Color, Appearance, Size, their shorthands, class) and from the theme, never from colors fixed inside it, so one component serves every screen. Every library component is built this way (Justin, 2026-11-26); `CODING_STANDARDS.md` says how, and the look check enforces it.
+_Avoid_: built-in look, fixed look
 
 **Color scale**:
 The eleven steps, 50 through 950, generated from one theme color: lighter below 500, the color itself at 500, darker above.
@@ -264,9 +274,33 @@ _Avoid_: dropdown, picker, variant (for these switches; a variant is a named loo
 What finds the choices for what someone types, such as places from an outside service. Every lookup answers in the same shape, so any component takes any lookup through one prop and never knows where the choices come from (Justin, 2026-11-24).
 _Avoid_: source (in the business glossary that is where a value comes from), API (for the piece), a prop name per service
 
+**Compact field**:
+The library box with no label of its own, a little lower, for a long list of small boxes under one heading row: the app's Items and Time Log rows. The heading row's words name each box for screen readers, with its row's number, and carry the ?. A single input, so a list of fifty rows types and scrolls as fast as plain inputs (#387).
+_Avoid_: cell (a grid position), bare input, inline field
+
 **Toast**:
-A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24).
+A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305).
 _Avoid_: snackbar, progress toast (as a component of its own), loading bar
+
+**Avatar**:
+One round picture standing for someone or something: a face or a logo. With no picture it draws the name's initials (or a company's code) on the colours of its role or kind (#355), and with no letters either an icon on grey, or on a colour it is given (a transport's mode). It can wear a presence dot (green online, orange idle, grey offline) at the top right, or a badge in its place at the bottom right. The only round picture in the app: every face, logo and record mark is one (Justin, 2026-11-26). Plain and light, since it repeats in every list row (#379).
+_Avoid_: profile picture, user icon
+
+**Stack**:
+A few avatars overlapping, the first in front and each of the others tucked behind the one before, then a count of the rest: a project's team, a customer's logos (#379).
+_Avoid_: avatar group, face pile
+
+**Dialog**:
+The box that opens over the page and shuts the rest until it closes: a sheet rising from the bottom on a phone, which a pull down closes, and a centred box from tablet width. Escape and a tap outside close it too, and the focus goes into it and back to what opened it. The help ?'s kind leaves the focus in the input being typed in (#375).
+_Avoid_: popup, bottom sheet (as a component of its own), drawer
+
+**Tabs**:
+A row of choices where the picked one decides what shows beside or under it, such as Photo or Map, or a dashboard's count cards. One is always picked; the arrow keys move along the row (#382).
+_Avoid_: segmented control, switcher, toggle (a toggle opens and closes)
+
+**Pick-one group**:
+A row of choices where exactly one is a field's value, such as how many photos share a report page. The library's Radio draws it as one row, not as round dots (#382).
+_Avoid_: radio buttons (for the look), button group, segmented control
 
 **Selection bar**:
 The bright blue bar that takes the menu bar's place, at its exact size, while things are selected: white icons for what can be done to all of them at once, and an X at its far right that ends the selection, as a tap anywhere else does. Selected things wear a border of the same blue (Justin, 2026-11-24).
@@ -292,4 +326,4 @@ A template filled with real content: the level a user actually sees. Atomic desi
 **App component**:
 A component owned by one app and specific to what that app is about, such as a vessel selector, composed from reusable UI and never published in the library. Rare by intent; the reusable UI names are generic on purpose.
 
-Any level may be built on the base component; the level says what a component is made of, not how it is built. A component's level is what it is to its author; built-in niceties, such as a section's dividers, do not make it a molecule.
+Every level is built on the base component; the level says what a component is made of, not how it is built. A component's level is what it is to its author; built-in niceties, such as a section's dividers, do not make it a molecule.

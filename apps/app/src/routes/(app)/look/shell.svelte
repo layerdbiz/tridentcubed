@@ -8,7 +8,7 @@
 	// 2026-10-26 16:34: the list sits in a sheet whose top drags down to grow the chart (like Airbnb's map and list);
 	// the phone menu pulls out from the left edge and pushes back the same way; the desktop sidebar's right edge drags
 	// it narrower, down to the icons alone, or wider, up to a limit. Run 11 (2026-10-26 19:22): one floating bar at the
-	// bottom for the pages, the + and, in a project, Panels and Preview (nav-bar.svelte); a finger swipes the list
+	// bottom for the pages, the + and, in a project, Panels and Preview (nav-bar.svelte then, variants/bar-c.svelte now); a finger swipes the list
 	// sideways to the next page; the sheet has rounder corners and a deep shadow that falls under the cards. Run 12
 	// (2026-11-07): the list's four menus stay put over the sheet while a swipe slides the title and the list, and the
 	// coming page fades in as it slides (notes 2 and 3); a customer, team member, transport or facility opens its own
@@ -17,11 +17,12 @@
 	// screen edge to edge, down behind the sheet; a swipe slides the pages without fading them; the bell's list sits
 	// over the list's menus. Run 15 (2026-11-10): Settings is a screen of its own (settings-page.svelte), opened from
 	// the menu's cog or Admin, and slides in like a record.
+	import { Avatar, Button } from '@layerd/ui';
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
 	import AccountMenu from './account-menu.svelte';
-	import Avatar from './avatar.svelte';
+	import ActivityPage from './activity-page.svelte';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
 	import AddSheet from './add-sheet.svelte';
@@ -29,15 +30,15 @@
 	import ListMenus from './list-menus.svelte';
 	import { PAGES } from './look.data';
 	import { PIN_SIZES, type ClosenessType } from './map.utils';
+	import { faceOf } from './marks';
 	import type { LookState } from './look.state.svelte';
-	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ProjectPage from './project-page.svelte';
 	import RecentList from './recent-list.svelte';
 	import RecordPage from './record-page.svelte';
+	import SearchPopup from './search-popup.svelte';
 	import SettingsPage from './settings-page.svelte';
-	import BarB from './variants/bar-b.svelte';
 	import BarC from './variants/bar-c.svelte';
 	import { recordOf } from './records.data';
 	import ReportPreview from './report-preview.svelte';
@@ -57,6 +58,8 @@
 	// Counts each time the sheet is let go, wherever it comes to rest: the map fits its markers again each time.
 	let sheetMoves = $state(0);
 	let isBellOpen = $state(false);
+	// The search pop-up (#345): from Search in the menu, or Ctrl K / ⌘ K.
+	let isSearchOpen = $state(false);
 	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
 	let headHeight = $state(0);
@@ -94,15 +97,14 @@
 	const COLUMN = 'mx-auto w-full max-w-[1600px]';
 	const FLOAT =
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
-	const ROUND =
-		'flex size-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-900/[0.05]';
+	// The menu and the bell at the top: the library Button in the types picked on #386, black icons on no shape
+	// (Header A, and the bell on the menu's white).
+	const ROUND = { secondary: true, ghost: true, md: true };
 	// Dashboard Header B (Justin, 2026-11-11): the menu and the bell are black circles with white icons, and the
 	// number with what changed sits between them, in the centre (hero-chart.svelte draws it there).
-	const ROUND_B =
-		'flex size-10 items-center justify-center rounded-full bg-black text-white transition hover:bg-slate-800';
+	const ROUND_B = { secondary: true, heavy: true, md: true };
 	// Dashboard Header C (run 33): back to black icons, each on a white circle that blurs what is behind it.
-	const ROUND_C =
-		'flex size-10 items-center justify-center rounded-full bg-white/70 text-slate-900 shadow-sm backdrop-blur-md transition hover:bg-white';
+	const ROUND_C = { glass: true, md: true };
 	const topLook = $derived(look.variant('dash-header'));
 	const isTopB = $derived(topLook !== 'A');
 	const round = $derived(topLook === 'C' ? ROUND_C : topLook === 'B' ? ROUND_B : ROUND);
@@ -330,6 +332,11 @@
 	ongotpointercapture={holdText}
 	onlostpointercapture={freeText}
 	onkeydown={(event) => {
+		if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+			event.preventDefault();
+			isSearchOpen = !isSearchOpen;
+			return;
+		}
 		if (event.key !== 'Escape') return;
 		isBellOpen = false;
 		drawer = 0;
@@ -343,24 +350,24 @@
 		class="relative"
 		bind:this={bell}
 	>
-		<button
-			class="{isPlain ? ROUND : round} relative"
+		<Button
+			{...isPlain ? ROUND : round}
+			icon="icon-[mdi--bell-outline]"
 			aria-label="Notifications"
+			title="Notifications"
 			aria-expanded={isBellOpen}
 			onclick={ring}
-		>
-			<span class="icon-[mdi--bell-outline] size-6"></span>
-			{#if !seen}
-				<span
-					class="absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isPlain ||
-					topLook === 'C'
-						? 'ring-white'
-						: topLook === 'B'
-							? 'ring-black'
-							: 'ring-slate-100'}"
-				></span>
-			{/if}
-		</button>
+		/>
+		{#if !seen}
+			<span
+				class="pointer-events-none absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isPlain ||
+				topLook === 'C'
+					? 'ring-white'
+					: topLook === 'B'
+						? 'ring-black'
+						: 'ring-slate-100'}"
+			></span>
+		{/if}
 		{#if isBellOpen}
 			<div
 				class="absolute top-full right-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-3xl bg-white p-2 shadow-[0_2px_6px_rgb(15_23_42/0.06),0_24px_50px_-12px_rgb(15_23_42/0.3)] md:w-80"
@@ -417,6 +424,7 @@
 			<Sidebar
 				{look}
 				isCollapsed={side < 150}
+				onsearch={() => (isSearchOpen = true)}
 			/>
 			<!-- The sidebar's edge: a grey line that turns blue under the pointer and drags left and right, the way the
 			     line over the list drags up and down (split.svelte). -->
@@ -466,6 +474,10 @@
 			<Sidebar
 				{look}
 				onnavigate={() => (drawer = 0)}
+				onsearch={() => {
+					drawer = 0;
+					isSearchOpen = true;
+				}}
 				bell={isWide ? undefined : drawerBell}
 			/>
 		</aside>
@@ -506,16 +518,20 @@
 							: 'px-2 pt-[max(0.25rem,env(safe-area-inset-top))]'} md:justify-end md:px-6 md:pt-5"
 						bind:clientHeight={headHeight}
 					>
-						<button
-							class="{round} md:hidden"
-							aria-label="Open menu"
-							onclick={() => (drawer = 1)}><span class="icon-[mdi--menu] size-6"></span></button
-						>
-						<!-- A phone: your own picture, which opens the menu the sidebar's picture opens (Justin, 2026-11-16);
-						     the bell is in the menu. A desktop keeps the bell here, its picture being in the sidebar. -->
-						{#if isWide}
-							{@render bellButton()}
-						{:else}
+						<span class="contents md:hidden">
+							<Button
+								{...round}
+								icon="icon-[mdi--menu]"
+								aria-label="Open menu"
+								title="Open menu"
+								onclick={() => (drawer = 1)}
+							/>
+						</span>
+						<!-- Your own picture, which opens the menu the sidebar's picture opens (Justin, 2026-11-16). A phone
+						     has the bell in its menu. A desktop has the bell here too, just left of the picture (#348, Justin,
+						     2026-11-25: "for the desktop only"); the sidebar keeps its picture as well. -->
+						<div class="flex items-center gap-2">
+							{#if isWide}{@render bellButton()}{/if}
 							<AccountMenu
 								{look}
 								align="right"
@@ -524,13 +540,14 @@
 									<span
 										class="flex rounded-full transition {isOpen ? 'ring-2 ring-primary/50' : ''}"
 										><Avatar
-											name={look.me?.name ?? ''}
+											{...faceOf(look.me?.name ?? '')}
 											size={40}
+											ring="ring-2 ring-white"
 										/></span
 									>
 								{/snippet}
 							</AccountMenu>
-						{/if}
+						</div>
 					</header>
 					<div class="min-h-0 flex-1 pt-1 md:pt-0">
 						<HeroChart
@@ -623,6 +640,17 @@
 		</div>
 	{/if}
 
+	{#if look.screen === 'activity'}
+		<!-- The Activity (#306): an Admin's, opened from the menu on their profile picture, sliding in like the
+		     Organization. -->
+		<div
+			class="fixed inset-0 z-50"
+			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
+		>
+			<ActivityPage {look} />
+		</div>
+	{/if}
+
 	{#if look.screen === 'workspace'}
 		<div
 			class="fixed inset-0 z-50"
@@ -668,10 +696,7 @@
 						class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
 					>
 						<div class="pt-4 pr-3 pb-4 pl-4">
-							<ProjectBar
-								{look}
-								isCloud
-							/>
+							<ProjectBar {look} />
 						</div>
 						<div class="flex-1 overflow-y-auto px-4 pb-4">
 							<PanelList
@@ -685,45 +710,33 @@
 		</div>
 	{/if}
 
-	<!-- The Organization has Page and Edit on the bar too, in the bars that know it (C, D, E). -->
-	{#if look.screen !== 'settings' || !['A', 'B'].includes(look.variant('bar'))}
-		{#if look.variant('bar') === 'B'}
-			<BarB
-				{look}
-				{isWide}
-				left={barLeft()}
-			/>
-		{:else if look.variant('bar') !== 'A'}
-			<BarC
-				{look}
-				{isWide}
-				left={barLeft()}
-				isBig={look.variant('bar') === 'E'}
-			/>
-		{:else}
-			<NavBar
-				{look}
-				{isWide}
-				left={barLeft()}
-			/>
-		{/if}
-	{/if}
+	<!-- The Organization has Page and Edit on the bar too. -->
+	<BarC
+		{look}
+		{isWide}
+		left={barLeft()}
+	/>
 	<!-- Run 14 (note 11): a desktop dashboard has no floating bar (the sidebar has the pages), so its + floats on its
 	     own at the bottom right. -->
 	{#if isWide && look.screen === 'dashboard'}
-		<button
-			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex h-14 items-center justify-center rounded-full bg-primary text-white transition hover:brightness-110 {look.variant(
-				'bar'
-			) !== 'A'
-				? 'gap-1.5 pr-6 pl-4 font-semibold text-base'
-				: 'w-14 shadow-lg shadow-primary/40'}"
-			aria-label="Add"
-			title="Add a Project, Customer, Team, Transport Mode or Facility"
-			onclick={() => (look.adding = look.dataset)}
+		<div
+			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55]"
 			transition:scale={{ start: 0.8, duration: 160 }}
-			><span class="icon-[mdi--plus] size-8"
-			></span>{#if look.variant('bar') !== 'A'}Add{/if}</button
 		>
+			<Button
+				primary
+				heavy
+				lg
+				icon="icon-[mdi--plus]"
+				label="Add"
+				title="Add a Project, Customer, Team, Transport Mode or Facility"
+				onclick={() => (look.adding = look.dataset)}
+			/>
+		</div>
 	{/if}
 	<AddSheet {look} />
+	{#if isSearchOpen}<SearchPopup
+			{look}
+			onclose={() => (isSearchOpen = false)}
+		/>{/if}
 </div>

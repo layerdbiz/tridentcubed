@@ -18,6 +18,7 @@
 // The order of `TABLES` is the order a batch's puts are applied in: a parent comes before its children.
 // The rules of who may change what are not here: they live in the one permission check (`#lib/server/permission.ts`).
 import * as v from 'valibot';
+import { LAYOUTS } from '#lib/report/report.constants.js';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
 /** The most an item list read from a spreadsheet may take in its panel's row, as JSON (#242): about 2,000 rows. */
@@ -68,6 +69,9 @@ export const TRANSPORT_MODES = [
 ] as const;
 
 export const FACILITY_KINDS = ['Port', 'Airport', 'Rail yard', 'Depot'] as const;
+
+/** The pages a pin can point into (#346): the dashboard's own, by the screens' names for them. */
+export const PIN_PAGES = ['projects', 'customers', 'team', 'transport', 'facilities'] as const;
 
 export type TableSpecType = {
 	columns: Record<string, v.GenericSchema>;
@@ -292,7 +296,7 @@ export const TABLES = {
 			position: POSITION,
 			title: TEXT,
 			description: TEXT,
-			layout: v.picklist([1, 2, 4, 6, 8]),
+			layout: v.picklist(LAYOUTS),
 			isEnabled: v.boolean()
 		}
 	},
@@ -355,7 +359,9 @@ export const TABLES = {
 			position: POSITION,
 			name: v.pipe(v.string(), v.maxLength(300)),
 			file: PICTURE,
-			kind: v.picklist(['photo', 'file'])
+			kind: v.picklist(['photo', 'file']),
+			// #295: how many of a PDF's pages share a report page, as a photo group's `layout`.
+			layout: v.picklist(LAYOUTS)
 		}
 	},
 	time_log_day: {
@@ -377,6 +383,19 @@ export const TABLES = {
 			position: POSITION,
 			time: v.pipe(v.string(), v.regex(/^(\d{2}:\d{2})?$/, 'A time is HH:MM.')),
 			activity: TEXT
+		}
+	},
+	// Pins (#346): what a person pinned to the top of their menu, a project or a record, by its page and id. Each
+	// person's own: the server sets whose it is (`userId`), and Row Level Security shows each person only theirs.
+	// Unpinning puts it in the Trash, which never loads.
+	pinned: {
+		scope: 'organization',
+		reads: ['userId'],
+		columns: {
+			page: v.picklist(PIN_PAGES),
+			recordId: ID,
+			// When it was pinned, the device's ISO time: the list's order, newest on top.
+			pinnedAt: v.pipe(v.string(), v.isoTimestamp())
 		}
 	}
 } as const satisfies Record<string, TableSpecType>;

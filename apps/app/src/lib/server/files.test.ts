@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import type { UploadRequestType } from '#lib/files/files.schema.js';
 import type { ActorType } from './db/claims';
 import * as schema from './db/schema';
-import { createUpload, findFileLink, readFieldList, readFile } from './files';
+import { createUpload, findFileLink, readFieldList, readFile, readFileDetails } from './files';
 import { saveBatch } from './rows';
 import { createLocalStore, type LocalStoreType } from './store';
 import { createTestSignIn } from './testing';
@@ -134,6 +134,60 @@ describe('a file row', () => {
 			icc: { 'codes:0,0,0,0': { value: { codes: [97, 0, 98] } } },
 			exif: { Huge: {} }
 		});
+	});
+
+	it('keeps the original’s type, size and pixel size beside the saved copy, and whether its metadata came across (#343)', async () => {
+		const original = { type: 'image/jpeg', size: 3_000_000, width: 4032, height: 3024 };
+		const photo = await upload(team, {
+			...logoOf(),
+			for: { table: 'customer', column: 'picture' },
+			name: 'IMG_0001.JPG',
+			original,
+			carried: 'all',
+			metadata: { exif: { Make: { value: 'Phone' } } }
+		});
+
+		const details = await readFileDetails(test.claims, team, [photo.id]);
+		expect(details.get(photo.id)).toEqual({
+			name: 'IMG_0001.JPG',
+			original,
+			saved: { type: 'image/webp', size: 12, width: 640, height: 320 },
+			carried: 'all',
+			hasFieldList: true,
+			isOriginalKept: false
+		});
+	});
+
+	it('takes the file as it was sent for its original when the device names no other (#343)', async () => {
+		const logo = await upload(team, logoOf());
+
+		const details = (await readFileDetails(test.claims, team, [logo.id])).get(logo.id);
+		expect(details?.original).toEqual({ type: 'image/webp', size: 12, width: 640, height: 320 });
+		expect(details?.carried).toBe('');
+		expect(details?.hasFieldList).toBe(false);
+	});
+
+	it('reads the original’s type from its name for a file kept before #343', async () => {
+		const photo = await upload(team, { ...logoOf(), name: 'IMG_0001.HEIC' });
+		await test.db.update(schema.file).set({
+			originalType: null,
+			originalSize: null,
+			originalWidth: null,
+			originalHeight: null
+		});
+
+		const details = (await readFileDetails(test.claims, team, [photo.id])).get(photo.id);
+		expect(details?.original).toEqual({ type: 'image/heic' });
+	});
+
+	it('gives the details of its own organization’s files only, and nothing for a guessed id', async () => {
+		const logo = await upload(team, logoOf());
+		const guessed = crypto.randomUUID();
+
+		expect([
+			...(await readFileDetails(test.claims, team, [logo.id, guessed, 'nope'])).keys()
+		]).toEqual([logo.id]);
+		expect((await readFileDetails(test.claims, await addOrganization(), [logo.id])).size).toBe(0);
 	});
 
 	it('is what a record row keeps: the address, saved through the save command', async () => {

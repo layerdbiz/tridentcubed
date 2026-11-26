@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { draftOf, draftPanel, itemOf, STAGES, type ClientType } from './look.data';
 import {
+	emptyInputsOf,
 	isMovedOn,
 	LookState,
 	metricsOf,
@@ -180,6 +181,98 @@ describe('a panel’s count (#229)', () => {
 		});
 		panel.fields.find((field) => field.label === 'Customer')!.value = 'NMT Projects';
 		expect(metricsOf(panel, look).total).toBe(before + 1);
+	});
+});
+
+describe('what keeps a percent under 100% (#305)', () => {
+	function project(owner = 'Capt. Ana Reyes') {
+		const look = fresh();
+		look.create(draftPanel(look.organization.name, owner));
+		return look;
+	}
+
+	it('names the five empty inputs that keep a new project’s Project panel at 6 of 11, as "input, panel"', () => {
+		const look = project();
+		const panel = look.panels.find((item) => item.kind === 'project')!;
+		expect(emptyInputsOf([panel], look).map((input) => input.text)).toEqual([
+			'Title, Project panel',
+			'Subtitle, Project panel',
+			'Project Type, Project panel',
+			'Customer, Project panel',
+			'Reference Number, Project panel'
+		]);
+	});
+
+	it('names the Team Lead and the Team Assigned of a project with nobody on its team', () => {
+		const look = project('');
+		const panel = look.panels.find((item) => item.kind === 'project')!;
+		expect(emptyInputsOf([panel], look).map((input) => input.text)).toContain(
+			'Team Assigned, Project panel'
+		);
+		expect(emptyInputsOf([panel], look).map((input) => input.text)).toContain(
+			'Team Lead, Project panel'
+		);
+	});
+
+	it('names, for the project, every input its percent is short of, and none of a panel switched off', () => {
+		const look = project();
+		const empty = emptyInputsOf(look.panels, look);
+		let short = 0;
+		for (const panel of look.panels.filter((item) => item.isEnabled)) {
+			const { done, total } = metricsOf(panel, look);
+			short += total - done;
+		}
+		expect(empty.length).toBe(short);
+		const off = look.panels.find((item) => !item.isEnabled)!;
+		expect(empty.some((input) => input.panelId === off.id)).toBe(false);
+		// Panel by panel, in the order the Edit tab shows them: the Project panel's first, then the trip's.
+		expect(empty[0].text).toBe('Title, Project panel');
+		expect(empty[5].text).toBe('Transport Mode, Transport Mode panel');
+	});
+
+	it('lists a panel’s when its percent is tapped, and only while its project is the one open', () => {
+		const look = project();
+		const panel = look.panels.find((item) => item.kind === 'project')!;
+		expect(look.empties).toEqual([]);
+		look.showEmpty(panel.id);
+		expect(look.empties.map((input) => input.label)).toEqual([
+			'Title',
+			'Subtitle',
+			'Project Type',
+			'Customer',
+			'Reference Number'
+		]);
+		look.home();
+		expect(look.empties).toEqual([]);
+	});
+
+	it('lists the whole project’s when the project’s percent is tapped, and goes once it is closed', () => {
+		const look = project();
+		look.showEmpty();
+		expect(look.empties).toEqual(emptyInputsOf(look.panels, look));
+		look.closeEmpty();
+		expect(look.empties).toEqual([]);
+	});
+
+	it('says everything is filled in when a panel has nothing empty, and lists nothing', () => {
+		const look = project();
+		const panel = look.panels.find((item) => item.kind === 'items')!;
+		panel.items = [itemOf()];
+		Object.assign(panel.items[0], { quantity: '2', description: 'Transformers' });
+		look.showEmpty(panel.id);
+		expect(look.empties).toEqual([]);
+		expect(look.toast).toBe('Everything in Items is filled in');
+	});
+
+	it('opens an input: the Edit tab, its panel, and the input to put the focus on', () => {
+		const look = project();
+		look.tab = 'preview';
+		look.showEmpty();
+		const [first] = look.empties;
+		look.openInput(first);
+		expect(look.tab).toBe('edit');
+		expect(look.panelId).toBe(first.panelId);
+		expect(look.reaching).toEqual(first);
 	});
 });
 

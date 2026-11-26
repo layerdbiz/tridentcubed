@@ -16,6 +16,7 @@ import {
 	toFieldList
 } from '#lib/metadata/metadata.utils.js';
 import {
+	type CarriedType,
 	type FieldListType,
 	isConvertibleType,
 	isFieldListKept,
@@ -29,8 +30,12 @@ import {
 	type TakenType,
 	toPictureType,
 	toTyped,
-	UNREADABLE
+	UNREADABLE,
+	type UploadRequestType
 } from './files.schema';
+
+/** #343: the file the User picked, as it arrived: its type and size, and its pixel size once it is read. */
+export type PickedType = NonNullable<UploadRequestType['original']>;
 
 export type PlaceType = { latitude: number; longitude: number };
 
@@ -47,6 +52,10 @@ export type PreparedType = {
 	isUnreadable?: boolean;
 	/** It went untouched and the server makes the copy the app keeps (#294). */
 	shouldConvert?: boolean;
+	/** #343: the file the User picked, its pixel size unknown when the device could not read it. */
+	original?: PickedType;
+	/** #343: whether what goes holds every metadata field of the original; the server says when it converts. */
+	carried?: CarriedType;
 };
 
 /** The size a picture is drawn at: its own, or smaller so its long side is at most `max`, never larger. */
@@ -184,6 +193,15 @@ export function toSent(choice: {
 }
 
 /**
+ * Whether what goes holds every metadata field of the original (#343): a carried copy or the original kept as it
+ * came does, a plain copy holds none, and the server says for an original it converts.
+ */
+export function toCarried(sent: SentType, shouldConvert: boolean): CarriedType {
+	if (sent === 'plain') return 'none';
+	return sent === 'original' && shouldConvert ? '' : 'all';
+}
+
+/**
  * A picture the device could not read, as it goes untouched for the server to convert, typed by its name when the
  * browser gave it no type (a HEIC dropped on Windows); turned down, with the reason the User reads, when the server
  * cannot convert it either (camera RAW, a broken file).
@@ -233,6 +251,7 @@ async function toPictureTaken(original: MetadataType, kind: PictureKindType) {
  */
 export async function preparePicture(file: File, kind: PictureKindType): Promise<PreparedType> {
 	const original = await readMetadata(new Uint8Array(await file.arrayBuffer()));
+	const picked: PickedType = { type: toPictureType(file) || file.type, size: file.size };
 	const taken = await toPictureTaken(original, kind);
 	const fields = toFieldList(original.tags);
 	const isListKept = !fields || isFieldListKept(fields);
@@ -246,20 +265,33 @@ export async function preparePicture(file: File, kind: PictureKindType): Promise
 		// memory): an upload to retry, not a picture to convert.
 		if (isShownType(toPictureType(file))) throw error;
 		const blob = toUntouched(file);
-		return { blob, taken, metadata, isUnreadable: true, shouldConvert: true };
+		return {
+			blob,
+			taken,
+			metadata,
+			isUnreadable: true,
+			shouldConvert: true,
+			original: picked,
+			carried: ''
+		};
 	}
+	const facts = { ...picked, ...drawn.full };
 	const copy = await carryMetadata(original, new Uint8Array(await drawn.blob.arrayBuffer()));
 	const typed = toTyped(file, toPictureType(file) || file.type);
 	const sent = toSent({ kind, file: typed, isCarried: Boolean(copy), isListKept });
 	if (sent === 'original') {
 		const shouldConvert = isToConvert({ type: typed.type, ...drawn.full }, kind);
-		return { blob: typed, ...drawn.full, taken, metadata, shouldConvert };
+		const carried = toCarried(sent, shouldConvert);
+		return { blob: typed, ...drawn.full, taken, metadata, shouldConvert, original: facts, carried };
 	}
+	const carried = toCarried(sent, false);
 	if (sent === 'copy' && copy) {
 		const blob = new Blob([copy], { type: drawn.blob.type });
-		return { blob, width: drawn.width, height: drawn.height, taken, metadata };
+		const { width, height } = drawn;
+		return { blob, width, height, taken, metadata, original: facts, carried };
 	}
 	// Nothing carried, so no profile goes with the colours: draw them again in sRGB if they were kept as they were.
 	const plain = hasProfile ? await drawPicture(file, kind, 'default') : drawn;
-	return { blob: plain.blob, width: plain.width, height: plain.height, taken, metadata };
+	const { blob, width, height } = plain;
+	return { blob, width, height, taken, metadata, original: facts, carried };
 }

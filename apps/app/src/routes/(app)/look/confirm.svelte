@@ -1,7 +1,7 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the one "Are you sure?" before anything is deleted (Justin, 2026-10-25): a project, a panel, a
 	// transport stop, a photo group or photo, a time log day or entry. Cancel keeps it.
-	import BottomSheet from '#lib/components/sheet/sheet.svelte';
+	import { Button, Dialog } from '@layerd/ui';
 	import type { LookState } from './look.state.svelte';
 
 	let { look }: { look: LookState } = $props();
@@ -15,7 +15,7 @@
 
 {#if look.asking}
 	{@const ask = look.asking}
-	<BottomSheet
+	<Dialog
 		label={ask.title}
 		onclose={() => (look.asking = undefined)}
 	>
@@ -30,16 +30,22 @@
 			</p>
 		</div>
 		<div class="mt-6 grid grid-cols-2 gap-2">
-			<button
-				type="button"
-				class="rounded-full bg-slate-100 py-3 text-sm font-semibold text-slate-700"
-				onclick={() => (look.asking = undefined)}>Cancel</button
-			>
-			<button
-				type="button"
-				class="rounded-full bg-danger py-3 text-sm font-semibold text-white"
-				onclick={yes}>Delete</button
-			>
+			<Button
+				neutral
+				lite
+				sm
+				width="full"
+				label="Cancel"
+				onclick={() => (look.asking = undefined)}
+			/>
+			<Button
+				danger
+				heavy
+				sm
+				width="full"
+				label="Delete"
+				onclick={yes}
+			/>
 		</div>
-	</BottomSheet>
+	</Dialog>
 {/if}

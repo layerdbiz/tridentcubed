@@ -5,6 +5,7 @@
 	// says so in the state's colour, with Unsend on a Sent one, and Add panel goes. Its panels, shut or open, are all
 	// in that colour too (themeOf, #335).
 	import { flip } from 'svelte/animate';
+	import { Button } from '@layerd/ui';
 	import { STATUS } from './look.data';
 	import { themeOf, type LookState } from './look.state.svelte';
 	import PanelItem from './panel-item.svelte';
@@ -27,12 +28,15 @@
 				: '.'}</span
 		>
 		{#if status === 'Sent'}
-			<button
-				type="button"
-				class="flex shrink-0 items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm"
+			<Button
+				neutral
+				lite
+				xs
+				icon="icon-[mdi--undo-variant]"
+				label="Unsend"
+				class="shrink-0"
 				onclick={() => look.unsend(look.project)}
-				><span class="icon-[mdi--undo-variant] size-4"></span>Unsend</button
-			>
+			/>
 		{/if}
 	</div>
 {/if}
@@ -56,11 +60,15 @@
 	{/each}
 </div>
 {#if !look.isFrozen}
-	<button
-		type="button"
-		class="mt-4 flex w-full items-center justify-center gap-2 rounded-3xl bg-primary/[0.06] py-3.5 text-sm font-semibold text-primary transition hover:bg-primary/10"
+	<Button
+		primary
+		lite
+		sm
+		width="full"
+		align="center"
+		icon="icon-[mdi--plus-box-multiple-outline]"
+		label="Add panel"
+		class="mt-4"
 		onclick={() => look.addPanel()}
-	>
-		<span class="icon-[mdi--plus-box-multiple-outline] size-5"></span> Add panel
-	</button>
+	/>
 {/if}

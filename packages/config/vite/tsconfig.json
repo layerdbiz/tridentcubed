@@ -5,5 +5,5 @@
 		"types": ["node"],
 		"customConditions": ["source"]
 	},
-	"include": ["vite.config.ts"]
+	"include": ["config.ts"]
 }

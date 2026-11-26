@@ -7,6 +7,7 @@ const generated = [
 	'packages/tools/**',
 	'packages/config/ts/**',
 	'apps/*/src/lib/index.ts',
+	'apps/app/src/lib/releases/releases.json',
 	'packages/ui/src/lib/index.ts',
 	'packages/ui/src/lib/base/index.ts',
 	'packages/ui/src/lib/base/helpers/index.ts',
@@ -32,6 +33,23 @@ const outOfScope = [
 ];
 
 export default defineConfig({
+	// Before every commit, `vp staged` formats and lints the staged files (.vite-hooks/pre-commit, #370).
+	// Every lint rule here but one is a warning, so warnings stop the commit, or nothing would: the
+	// repo has none. The last flag lets a commit of only ignored or unlintable files (a barrel, a YAML
+	// file) pass; the ignore patterns below still decide what is checked.
+	staged: {
+		'*.{js,mjs,cjs,ts,svelte,css,json,yml,yaml}':
+			'vp check --fix --deny-warnings --no-error-on-unmatched-pattern',
+		// The look check (Justin, 2026-11-26): a library component off the base component, or naming palette
+		// colours, stops the commit (packages/tools/src/checks/look.ts, CODING_STANDARDS.md).
+		'packages/ui/src/lib/components/**/*.svelte': 'node packages/tools/bin/look.js'
+	},
+	// The root's half of `pnpm dev`: the barrels watcher, run beside each app's dev server under
+	// `vp run --parallel` (packages/tools, the workspace launcher; invariant 5). The apps' tasks
+	// come from `createAppConfig`.
+	run: {
+		tasks: { 'workspace:dev': { command: 'pnpm barrels:watch', cache: false } }
+	},
 	fmt: {
 		useTabs: true,
 		singleQuote: true,

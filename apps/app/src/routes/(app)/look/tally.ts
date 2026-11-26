@@ -8,10 +8,12 @@
 // pick, a list with something in it, or a plain yes). A switch, the photos-per-page buttons and a facility's
 // Start, Stop or End are settings, not inputs, and do not count; nor does an input that is greyed out because
 // there is nothing to pick (the Contact of a customer with no contacts). An input added to a panel is added here.
+// #305: tapping a panel's or the project's percent lists the inputs that keep it under 100% (`emptyOf`), read from
+// this same list, so every input a count is short of is named, and each one opens its input.
 import { INTRODUCTION_LABEL } from './introduction';
 import { legsOf } from './legs';
 import { LINK_LABEL, toLink } from './link';
-import type { OrganizationType, PanelType } from './look.data';
+import { isPdfAttachment, type OrganizationType, type PanelType } from './look.data';
 import { isStored } from './mapper.photos';
 
 export type TallyType = { done: number; total: number };
@@ -19,6 +21,22 @@ export type TallyType = { done: number; total: number };
 export type InputType = { label: string; value: unknown; isOptional?: boolean };
 /** A section that opens and closes, by its id: a fixed name, or the id of the day, group, leg or company. */
 export type SectionType = { id: string; inputs: InputType[] };
+
+/**
+ * The labels of the inputs a panel marks with `data-input` for the empty-inputs list to find (focus.ts, #305): an
+ * input with no label drawn of its own (an Add button, a file picker) or one read out in more words ("Quantity of
+ * item 2"). The panels mark them with these, so the list and the mark cannot name an input differently.
+ */
+export const MARKED_LABELS = {
+	quantity: 'Quantity',
+	description: 'Description',
+	item: 'Item',
+	day: 'Day',
+	time: 'Time',
+	activity: 'Activity',
+	photos: 'Photos',
+	transportMode: 'Transport Mode'
+} as const;
 
 function isDone(value: unknown) {
 	if (typeof value === 'string') return value.trim().length > 0;
@@ -51,11 +69,47 @@ export function valuesOf(sections: SectionType[], id: string) {
 	return sections.find((section) => section.id === id)?.inputs.map((input) => input.value) ?? [];
 }
 
+/**
+ * An input that holds nothing yet (#305): its section, its label, and which of that section's inputs with this label
+ * it is, from 0 (the second row's Quantity is 1), so the screen can find it among the inputs it draws.
+ */
+export type EmptyType = { section: string; label: string; nth: number };
+
+/**
+ * The inputs these sections hold that are not done, in the order the panel draws them: what keeps the count under
+ * its total and the percent under 100. An optional input counts toward the percent, so it is named too.
+ */
+export function emptyOf(sections: SectionType[]): EmptyType[] {
+	const empty: EmptyType[] = [];
+	for (const section of sections) {
+		const seen = new Map<string, number>();
+		for (const input of section.inputs) {
+			const nth = seen.get(input.label) ?? 0;
+			seen.set(input.label, nth + 1);
+			if (!isDone(input.value)) empty.push({ section: section.id, label: input.label, nth });
+		}
+	}
+	return empty;
+}
+
+/** What the list of them is headed: "3 empty inputs in the Project panel", or "in this project". */
+export function toEmptyNote(count: number, panelName?: string) {
+	const where = panelName ? `the ${panelName} panel` : 'this project';
+	return `${count} empty ${count === 1 ? 'input' : 'inputs'} in ${where}`;
+}
+
 /** Whether nothing a status waits for is missing: every input but the optional ones holds something. */
 export function hasRequired(sections: SectionType[]) {
 	return sections.every((section) =>
 		section.inputs.every((input) => input.isOptional || isDone(input.value))
 	);
+}
+
+// A panel with no rows yet (no transport mode, no item, no day) still has one thing to do, or it would read
+// complete with nothing in it; that one thing is named for what is added first (#305: the list of what keeps a
+// panel under 100% names it, so it says the same as the count).
+function nothingYet(label: string): InputType {
+	return { label, value: false };
 }
 
 function projectSections(panel: PanelType, contacts: { id: string }[]): SectionType[] {
@@ -116,12 +170,14 @@ function projectSections(panel: PanelType, contacts: { id: string }[]): SectionT
 // A trip section is one transport mode: the mode, the transport itself once a mode is picked (its field is
 // named for the mode: "Vessel"), then one field for each facility it calls at.
 function transportSections(panel: PanelType): SectionType[] {
+	if (!panel.stops.length)
+		return [{ id: 'transport', inputs: [nothingYet(MARKED_LABELS.transportMode)] }];
 	return legsOf(panel.stops).map((leg) => {
 		const first = leg.stops[0];
 		return {
 			id: leg.id,
 			inputs: [
-				{ label: 'Transport Mode', value: first.mode },
+				{ label: MARKED_LABELS.transportMode, value: first.mode },
 				...(first.mode ? [{ label: first.mode, value: first.name }] : []),
 				...leg.stops.map((stop) => ({ label: 'Facility', value: stop.facility }))
 			]
@@ -145,7 +201,7 @@ function photoSections(panel: PanelType): SectionType[] {
 				...(panel.key === 'operations'
 					? [{ label: LINK_LABEL, value: toLink(panel.link), isOptional: true }]
 					: []),
-				...(groups.length ? [] : [{ label: 'Photos', value: false }])
+				...(groups.length ? [] : [{ label: MARKED_LABELS.photos, value: false }])
 			]
 		},
 		...groups.map((group) => ({
@@ -153,10 +209,15 @@ function photoSections(panel: PanelType): SectionType[] {
 			inputs: [
 				{ label: 'Title', value: group.title },
 				{ label: 'Description', value: group.description, isOptional: true },
-				{ label: 'Photos', value: group.photos.some(isStored) }
+				{ label: MARKED_LABELS.photos, value: group.photos.some(isStored) }
 			]
 		}))
 	];
+}
+
+/** Whether the Items panel holds its item list as a whole: read from a spreadsheet, or an attached PDF. */
+function hasItemList(panel: PanelType) {
+	return Boolean(panel.grid) || (panel.attachments ?? []).some(isPdfAttachment);
 }
 
 /**
@@ -172,25 +233,29 @@ export function sectionsOf(panel: PanelType, contacts: { id: string }[] = []): S
 				id: 'items',
 				inputs: [
 					...panel.items.flatMap((item) => [
-						{ label: 'Quantity', value: item.quantity },
-						{ label: 'Description', value: item.description }
+						{ label: MARKED_LABELS.quantity, value: item.quantity },
+						{ label: MARKED_LABELS.description, value: item.description }
 					]),
-					// #242: the item list read from a spreadsheet is one input, there or not.
-					...(panel.grid ? [{ label: 'Item List', value: true }] : [])
+					// #242: the item list read from a spreadsheet is one input, there or not. #290 (Justin, 2026-11-25):
+					// an attached PDF is the item list too, so a panel holding only a PDF is complete.
+					...(hasItemList(panel) ? [{ label: 'Item List', value: true }] : []),
+					...(panel.items.length || hasItemList(panel) ? [] : [nothingYet(MARKED_LABELS.item)])
 				]
 			}
 		];
-	if (panel.kind === 'timelog')
+	if (panel.kind === 'timelog') {
+		if (!panel.days.length) return [{ id: 'timelog', inputs: [nothingYet(MARKED_LABELS.day)] }];
 		return panel.days.map((day) => ({
 			id: day.id,
 			inputs: [
 				{ label: 'Date', value: day.date },
 				...day.entries.flatMap((entry) => [
-					{ label: 'Time', value: entry.time },
-					{ label: 'Activity', value: entry.activity }
+					{ label: MARKED_LABELS.time, value: entry.time },
+					{ label: MARKED_LABELS.activity, value: entry.activity }
 				])
 			]
 		}));
+	}
 	return photoSections(panel);
 }
 

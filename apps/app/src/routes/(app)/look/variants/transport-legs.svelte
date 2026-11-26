@@ -2,7 +2,7 @@
 	// PROTOTYPE (#161) run 26: the Transport Mode panel as legs (Justin, 2026-11-11: "without having to repeat
 	// ourselves"). The trip is one leg after another (legs.ts), each a card. A leg's transport is picked once.
 	// Run 28, from Justin's notes on the artifact (2026-11-12). Every pick is the library's Select (once
-	// picker.svelte, #298).
+	// picker.svelte, #298), on the notched field every other panel uses (#388).
 	// A leg starts with one facility, and each facility is a Start, a Stop or an End, because the job does not
 	// always begin at the Start. Add Stop is at the card's bottom left and Delete at its bottom right, as in every
 	// other card. No line is drawn down the facilities: the report's page will show the trip that way.
@@ -41,17 +41,14 @@
 	} from '../look.data';
 	import { cityStateOf } from '../location';
 	import type { LookState } from '../look.state.svelte';
-	import { Menu, Select } from '@layerd/ui';
+	import { Button, Menu, Select } from '@layerd/ui';
 	import { sortable } from '../sortable';
-	import { sectionsOf, valuesOf } from '../tally';
+	import { MARKED_LABELS, sectionsOf, valuesOf } from '../tally';
 
 	let { look, panel, onsave }: { look: LookState; panel: PanelType; onsave: () => void } = $props();
 
 	const POINT_NAMES = Object.keys(POINTS) as PointType[];
 	const REMOVE = '__remove';
-	// The panels' own small buttons (panel-body.svelte): tinted inside a card, black under the cards.
-	const BUTTON =
-		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 
 	const legs = $derived(legsOf(panel.stops));
 	// What each leg's line counts: the inputs tally.ts says it holds (#229).
@@ -62,6 +59,15 @@
 	function toggle(id: string) {
 		open = open.includes(id) ? open.filter((item) => item !== id) : [...open, id];
 	}
+
+	// An entry of the empty-inputs list opens its leg (#305); the panel body then puts the focus on the input.
+	$effect(() => {
+		const wanted = look.reaching;
+		if (!wanted || wanted.panelId !== panel.id) return;
+		untrack(() => {
+			if (!open.includes(wanted.section)) open = [...open, wanted.section];
+		});
+	});
 
 	function headOf(leg: LegType) {
 		return leg.stops[0];
@@ -193,6 +199,7 @@
 		{@const legId = leg.id}
 		<Group
 			title={first.name || `Transport Mode ${index + 1}`}
+			section={leg.id}
 			values={valuesOf(sections, leg.id)}
 			icon={MODE_ICONS[first.mode] ?? 'icon-[mdi--transit-connection-variant]'}
 			image={photoOf(leg)}
@@ -200,9 +207,9 @@
 			ontoggle={() => toggle(leg.id)}
 			ondelete={() => drop(leg)}
 		>
-			<div class="grid gap-2 sm:grid-cols-2">
+			<!-- One above the other: side by side, a notched field is too narrow for a vessel's name (#388). -->
+			<div class="grid gap-2">
 				<Select
-					variant="soft"
 					label="Transport Mode"
 					options={MODES.map((mode) => ({ value: mode, label: mode, icon: MODE_ICONS[mode] }))}
 					value={first.mode}
@@ -213,7 +220,6 @@
 				/>
 				{#if first.mode}
 					<Select
-						variant="soft"
 						label={first.mode}
 						options={transportsOf(leg)}
 						value={first.name}
@@ -242,7 +248,6 @@
 					>
 						<div class="min-w-0 flex-1">
 							<Select
-								variant="soft"
 								label="Facility"
 								options={facilitiesOf(leg)}
 								value={stop.facility}
@@ -264,7 +269,7 @@
 									>
 										{#snippet trigger()}
 											<span
-												class="flex h-8 items-center gap-1.5 rounded-full pr-3 pl-2 text-xs font-semibold whitespace-nowrap {stop.point
+												class="flex h-full items-center gap-1.5 rounded-full pr-3 pl-2 text-xs font-semibold whitespace-nowrap {stop.point
 													? POINTS[stop.point].chip
 													: 'bg-slate-900/[0.06] text-slate-500'}"
 												><span class="{iconOf(stop)} size-4 shrink-0"></span>{stop.point ||
@@ -279,18 +284,25 @@
 				{/each}
 			</div>
 			{#snippet actions()}
-				<button
-					type="button"
-					class="{BUTTON} bg-primary/10 text-primary hover:bg-primary/15"
-					onclick={() => addStop(leg)}><span class="icon-[mdi--plus] size-4"></span>Add Stop</button
-				>
+				<Button
+					primary
+					lite
+					xs
+					icon="icon-[mdi--plus]"
+					label="Add Stop"
+					onclick={() => addStop(leg)}
+				/>
 			{/snippet}
 		</Group>
 	{/each}
 </div>
 
-<button
-	type="button"
-	class="{BUTTON} bg-slate-900 text-white hover:bg-slate-700"
-	onclick={add}><span class="icon-[mdi--plus] size-4"></span>Add Transport Mode</button
->
+<Button
+	secondary
+	heavy
+	xs
+	icon="icon-[mdi--plus]"
+	label="Add Transport Mode"
+	data-input={MARKED_LABELS.transportMode}
+	onclick={add}
+/>

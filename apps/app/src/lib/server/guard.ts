@@ -12,6 +12,7 @@ import {
 	OFFLINE_PATH,
 	WORKER_PATH
 } from '#lib/install/install.constants.js';
+import { HISTORY_PATH } from '#lib/releases/releases.constants.js';
 
 export type AccessType = 'signed-out' | 'guest' | 'staff';
 
@@ -29,6 +30,9 @@ const OPEN = ['/login', '/api/auth/', '/_app/', '/local-files/'];
 // serves before this guard is asked; naming them here keeps them open wherever the app runs, and a missing one
 // answers "not found", never the login page.
 const INSTALL = [MANIFEST_PATH, OFFLINE_PATH, WORKER_PATH, ...KEPT_STATIC];
+// What's New's history (#399), a file written at build time from the public repository's commits: an open app asks
+// for it without its cookies, to reach the newest version.
+const PUBLIC = [HISTORY_PATH];
 const SERVED = ['/api/', '/files/'];
 const CLOSED = '/api/auth/organization/';
 const WAITING = '/waiting';
@@ -50,7 +54,7 @@ export function toGuard(url: URL, access: AccessType): GuardType | undefined {
 	if (isClosed(url)) return { kind: 'refuse', status: 404, message: 'Not found.' };
 	if (isUnder(path, OLD_PROTOTYPE)) return { kind: 'redirect', location: '/' };
 	if (OPEN.some((open) => isUnder(path, open))) return undefined;
-	if (INSTALL.includes(path)) return undefined;
+	if (INSTALL.includes(path) || PUBLIC.includes(path)) return undefined;
 
 	if (access === 'staff') {
 		return isUnder(path, WAITING) ? { kind: 'redirect', location: '/' } : undefined;

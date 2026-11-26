@@ -5,8 +5,10 @@
 	// Delete. Every delete asks first. `isOpenable` adds Open first, for the lists; `tone` 'photo' is white dots in a
 	// dark glass circle, readable on any photo; 'bare' just the dots, in the colour around them (a Page's top bar).
 	// Run 18: a project also offers Mark Complete and Change Status, which opens every status (status-sheet.svelte).
+	// #346: anything saved offers Pin, which puts it in the menu's Pinned list (pins.ts), and Unpin once it is there.
 	import { DATASETS, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { isPinnable, isPinned, togglePin } from './pins';
 	import { Menu, type MenuOptionType } from '@layerd/ui';
 
 	let {
@@ -33,10 +35,18 @@
 	const name = $derived(project?.title ?? id);
 	// Its page's own word, both words capitalised: "Edit Transport Mode" (run 16).
 	const one = $derived(DATASETS[page].one);
+	const isPinnedNow = $derived(isPinned(look, page, id));
 
 	const options = $derived<MenuOptionType[]>([
 		...(isOpenable
 			? [{ id: 'open', label: `Open ${one}`, icon: 'icon-[mdi--arrow-top-right]' }]
+			: []),
+		...(isPinnable(look, page, id)
+			? [
+					isPinnedNow
+						? { id: 'pin', label: 'Unpin', icon: 'icon-[mdi--pin-off-outline]' }
+						: { id: 'pin', label: 'Pin', icon: 'icon-[mdi--pin-outline]' }
+				]
 			: []),
 		...(project
 			? [
@@ -60,6 +70,11 @@
 	]);
 
 	function act(choice: string) {
+		// Pin keeps a drawer open, so the pin can be seen arriving in the Pinned list.
+		if (choice === 'pin') {
+			look.say(isPinnedNow ? `Unpinned ${name}` : `Pinned ${name} to the menu`);
+			return togglePin(look, page, id);
+		}
 		if (choice !== 'delete') onact?.();
 		if (page !== 'projects') {
 			if (choice === 'open') look.openRecord(page, id, 'page');

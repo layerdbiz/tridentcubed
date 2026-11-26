@@ -2,6 +2,7 @@
 	// Presentation's bar (#324; Justin's comment, 2026-11-25): where the zoom bar stands, which a presentation hides.
 	// Leave (Esc too), full screen where the browser has it, and play or pause, with a ring filling up to the next
 	// page while it plays. It fades when nothing moves and comes back with any move, tap or key.
+	import { Button } from '@layerd/ui';
 	import { EVERY, type Presentation } from './presentation.svelte';
 
 	let {
@@ -17,8 +18,6 @@
 		onexit: () => void;
 		onfull: () => void;
 	} = $props();
-
-	const hover = 'hover:bg-white/10';
 </script>
 
 <div
@@ -31,23 +30,25 @@
 	onpointerenter={() => presentation.keep(true)}
 	onpointerleave={() => presentation.keep(false)}
 >
-	<button
-		type="button"
-		class="flex size-9 items-center justify-center rounded-full {hover}"
+	<Button
+		ghost
+		invert
+		sm
+		icon="icon-[mdi--close]"
 		aria-label="Leave the presentation (Esc)"
 		title="Leave the presentation (Esc)"
-		onclick={onexit}><span class="icon-[mdi--close] size-5"></span></button
-	>
+		onclick={onexit}
+	/>
 	{#if canFull}
-		<button
-			type="button"
-			class="flex size-9 items-center justify-center rounded-full {hover}"
+		<Button
+			ghost
+			invert
+			sm
+			icon={isFull ? 'icon-[mdi--fullscreen-exit]' : 'icon-[mdi--fullscreen]'}
 			aria-label={isFull ? 'Leave full screen' : 'Full screen'}
 			title={isFull ? 'Leave full screen' : 'Full screen'}
 			onclick={onfull}
-			><span class="{isFull ? 'icon-[mdi--fullscreen-exit]' : 'icon-[mdi--fullscreen]'} size-5"
-			></span></button
-		>
+		/>
 	{/if}
 	<div class="relative flex size-11 items-center justify-center">
 		<svg
@@ -71,15 +72,15 @@
 				/>
 			{/key}
 		</svg>
-		<button
-			type="button"
-			class="flex size-10 items-center justify-center rounded-full bg-primary text-white shadow-md shadow-primary/30 hover:brightness-110"
+		<Button
+			primary
+			heavy
+			md
+			icon={presentation.isPlaying ? 'icon-[mdi--pause]' : 'icon-[mdi--play]'}
 			aria-label={presentation.isPlaying ? 'Pause' : 'Play'}
 			title={presentation.isPlaying ? 'Pause (K)' : 'Play (K)'}
 			onclick={() => presentation.toggle()}
-			><span class="{presentation.isPlaying ? 'icon-[mdi--pause]' : 'icon-[mdi--play]'} size-5"
-			></span></button
-		>
+		/>
 	</div>
 </div>
 

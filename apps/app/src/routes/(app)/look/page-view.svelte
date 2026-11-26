@@ -10,6 +10,8 @@
 	// map, white on a dark fade, with no card behind it. `isDarkMap` is Map B, the dark map. The sheet below holds
 	// only up-and-down scrolling, so a sideways swipe on it reaches the tabs.
 	import type { Snippet } from 'svelte';
+	import { Tabs } from '@layerd/ui';
+	import Back from './back.svelte';
 	import type { PinType } from './chart.data';
 	import Dots from './dots.svelte';
 	import { FADE, fadeTop } from './fade';
@@ -63,6 +65,10 @@
 	// Map or Photo, as picked; until someone picks, the map when there is a place to show on it (Justin,
 	// 2026-11-16: "instead of defaulting to the photo view, I want to default to the map view").
 	let picked = $state<boolean>();
+	const VIEWS = [
+		{ isMap: false, label: 'Photo', icon: 'icon-[mdi--image]' },
+		{ isMap: true, label: 'Map', icon: 'icon-[mdi--map]' }
+	];
 	const isMap = $derived(picked ?? (pins.length > 0 || route.length > 0));
 	// Which photo is in view, the dots for it, and which photos have their picture yet (slides.svelte.ts).
 	const slides = new Slides();
@@ -164,39 +170,34 @@
 			{#if buttons === 'none'}
 				<span class="size-10 shrink-0"></span>
 			{:else}
-				<button
-					class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full {buttons ===
-					'glass'
-						? GLASS
-						: GHOST}"
-					aria-label={backLabel}
+				<Back
+					label={backLabel}
+					over={buttons === 'glass' ? 'glass' : isDark ? 'dark' : 'white'}
+					{hasChevron}
+					class="pointer-events-auto shrink-0"
 					onclick={onback}
-					><span
-						class={hasChevron ? 'icon-[mdi--chevron-left] size-7' : 'icon-[mdi--arrow-left] size-6'}
-					></span></button
-				>
+				/>
 			{/if}
 			<span class="flex-1"></span>
 			{#if photos.length || isAlike}
-				<span
+				<Tabs
 					class="pointer-events-auto flex rounded-full p-1 {GLASS}"
-					role="tablist"
-					aria-label="Picture or map"
+					label="Picture or map"
+					options={VIEWS}
+					value={VIEWS[Number(isMap)]}
+					onpick={(view) => (picked = view.isMap)}
 				>
-					{#each [[false, 'Photo', 'icon-[mdi--image]'], [true, 'Map', 'icon-[mdi--map]']] as const as [value, label, icon] (label)}
+					{#snippet option({ value: view, isOn, props })}
 						<button
-							class="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-semibold transition {isMap ===
-							value
+							{...props}
+							class="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-semibold transition {isOn
 								? isDark
 									? 'bg-white text-slate-900'
 									: 'bg-slate-900 text-white'
-								: ''}"
-							role="tab"
-							aria-selected={isMap === value}
-							onclick={() => (picked = value)}><span class="{icon} size-4"></span>{label}</button
+								: ''}"><span class="{view.icon} size-4"></span>{view.label}</button
 						>
-					{/each}
-				</span>
+					{/snippet}
+				</Tabs>
 			{/if}
 			{#if buttons !== 'glass'}<span class="flex-1"></span>{/if}
 			{#if buttons === 'none'}

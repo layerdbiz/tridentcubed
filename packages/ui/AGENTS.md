@@ -17,8 +17,15 @@ unfinished and stay unused.
 - One component per same-name folder under `components/<tier>/<name>/`:
   `button/button.svelte`, its `button.svelte.ts` when it has rune state.
   The barrel derives `Button` from the file name.
-- New components are built on the base component with the default renderer
-  at every tier (ADR 0001); `Root` is imported only by the base component.
+- Every component is built on the base component, as the Button is, and
+  its look is set from outside (Justin, 2026-11-26; the root
+  `CODING_STANDARDS.md` says what that means). The look check
+  (`../tools/src/checks/look.ts`) stops a commit of a component that does
+  not render `<Component` or names a palette colour. The default renderer at
+  every tier (ADR 0001); `Root` is imported only by the base component. A
+  piece that repeats in every list row stays on it too: the base
+  component's light path (`base/light.ts`) draws a component that asks for
+  no layout without Root, as quick as a plain element (measured 2026-11-26).
 - Props type `<Name>Props extends ComponentProps`; base props never change
   a component's own layout. Canonical rail names and `icon=` in new code.
 - `variant` is the component's own union of looks (button, toggle and
@@ -26,11 +33,13 @@ unfinished and stay unused.
   `size` stay base props. A base prop the component redefines is dropped
   with `Omit<ComponentProps, 'x'>` (divider, toggle, slider).
 - Styling in the markup with Tailwind; a `<style lang="postcss">` block
-  with `@reference "#ui.css"` when raw CSS is needed. Palette utilities stay
-  out; white and black are allowed.
+  with `@reference "#ui.css"` when raw CSS is needed. Palette colours stay
+  out, white and black too: colours are the theme's (base, neutral, primary,
+  secondary, accent, the status colours, surface, scrim, grab, shade,
+  on-shade).
 - Responsive layout branches on `mq` in the consumer (ADR 0002); the base
   component system is breakpoint-blind.
-- The empty placeholders (`checkbox`, `radio`, `switch`, `navbar`, `about`,
+- The empty placeholders (`checkbox`, `navbar`, `about`,
   `contact`, `home`) and the `*.data.ts` sample files stay until the
   database work decides them.
 
@@ -38,12 +47,15 @@ unfinished and stay unused.
 
 30 shipped root overrides, `Colorss.svelte`, relative imports in `base/`,
 the module singletons in `observe` and `scroll`, five rune-free
-`.svelte.ts` helpers, the menu list's slate shades and its own outer box
-in place of the base component (kept from the app on #297: the same look,
-and a list of rows with a ⋮ each stays as fast as before), the toast's
-slate and amber shades (kept from the app's PDF download toast on #293),
-the select's slate shades and its `inputClass` (its `variant="soft"` look
-with its own box, and the typed list and choice marks the notched field
-shares with it: kept from the app's picker and place field on #298, the
-app's panel look until #57): all listed on "UI library cleanup" (#33),
-changed there, not mid-feature.
+`.svelte.ts` helpers.
+
+Components that broke the look rule before the look check began are listed
+in `look.json` with what they had then. Since 2026-11-26 every other piece is on
+the base component with theme colours, the app's, the public site's and the
+overview's alike, and two are left: `metadata`, which draws nothing (a script
+in the page head that sets the theme before the page paints; the site has it
+switched off), and the Globe's two pin blues, which Justin chose to keep over
+the theme's primary (2026-11-26, written in `look.json`). Each is fixed, not extended: it may get
+better, never worse. Nothing joins that list, or this one, without Justin's yes, written
+with his name and the date; a piece that is slow on the base component is
+measured and the numbers go to him, it does not skip the base on its own.

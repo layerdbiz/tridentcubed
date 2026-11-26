@@ -3,7 +3,7 @@
 	 * @tags ui
 	 * @layout horizontal
 	 */
-	import { Text, type TextProps } from '@layerd/ui';
+	import { Component, Text, type TextProps } from '@layerd/ui';
 	import { SvelteDate } from 'svelte/reactivity';
 
 	type BusinessType =
@@ -32,6 +32,14 @@
 		separator = undefined,
 		description = undefined,
 		children = undefined,
+		// The Text's own props go to the Text inside; the base component would take the sizes for itself.
+		prose = undefined,
+		noprose = undefined,
+		xs = undefined,
+		sm = undefined,
+		md = undefined,
+		lg = undefined,
+		xl = undefined,
 		...props
 	}: CopyrightProps = $props();
 
@@ -62,16 +70,29 @@
 
 <!-- Template 
 ::::::::::::::::::::::::::::::::::::::::::::: -->
-<Text
+<Component
 	{...props}
-	class="copyright flex items-center justify-center py-4 text-center {props.class || ''}"
+	class="copyright flex items-center justify-center py-4 text-center {props.class ?? ''}"
 >
-	{#if children}
-		© {yearRange} {@render children()}
-	{:else}
-		© {yearRange}
-		{companyName}
-		{#if separator && description}
-			{separator} {description}{/if}
-	{/if}
-</Text>
+	{#snippet component({ props: root })}
+		<Text
+			{...root as unknown as TextProps}
+			{prose}
+			{noprose}
+			{xs}
+			{sm}
+			{md}
+			{lg}
+			{xl}
+		>
+			{#if children}
+				© {yearRange} {@render children()}
+			{:else}
+				© {yearRange}
+				{companyName}
+				{#if separator && description}
+					{separator} {description}{/if}
+			{/if}
+		</Text>
+	{/snippet}
+</Component>

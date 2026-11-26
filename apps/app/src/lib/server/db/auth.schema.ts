@@ -3,7 +3,8 @@
 // with no policy, so Supabase's publishable key reads none of them. Only the server, as the database owner, reaches
 // these rows; Better Auth and the sign-in rule (`access.ts`) are their only writers. #182 added the organization
 // plugin's active organization to the session, the Super admin flag to the user, and one policy: the app's
-// restricted role reads the acting User's own user row. The review fixes added the rate limit's table.
+// restricted role reads the acting User's own user row. The review fixes added the rate limit's table. #306 added the
+// record of every sign-in, for the Activity; the sessions themselves stay unread by the restricted role.
 import { relations, sql } from 'drizzle-orm';
 import {
 	bigint,
@@ -16,7 +17,7 @@ import {
 	timestamp,
 	uuid
 } from 'drizzle-orm/pg-core';
-import { appRole, ORGANIZATION_ID, USER_ID } from './policy';
+import { appRole, IS_ADMIN, ORGANIZATION_ID, USER_ID } from './policy';
 
 function id() {
 	return uuid('id')
@@ -79,6 +80,32 @@ export const session = pgTable(
 			.references(() => user.id, { onDelete: 'cascade' })
 	},
 	(table) => [index('session_userId_idx').on(table.userId)]
+).enableRLS();
+
+// Every sign-in, by any way, for the Activity (#306): who, when, the organization the session acted in (none for a
+// Guest) and the device its browser named. Never a session's token or address, which sign its User in; and Log Out
+// removes a session but not its sign-in. The database writes it for each new session, whatever copy of the app made
+// it (`triggers.ts`); the restricted role only reads it, and only as an Admin (or the Super admin), and only the sign-ins
+// of the acting organization's members that did not act in another organization.
+export const signIn = pgTable(
+	'sign_in',
+	{
+		id: id(),
+		userId: uuid('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		organizationId: uuid('organization_id'),
+		createdAt: time('created_at').defaultNow().notNull(),
+		userAgent: text('user_agent')
+	},
+	(table) => [
+		index('sign_in_user_idx').on(table.userId, table.createdAt),
+		pgPolicy('sign_in is read by an Admin of the acting organization', {
+			for: 'select',
+			to: appRole,
+			using: sql`${IS_ADMIN} and exists (select 1 from public.member m where m.user_id = "sign_in".user_id and m.organization_id = ${ORGANIZATION_ID}) and ("sign_in".organization_id is null or "sign_in".organization_id = ${ORGANIZATION_ID})`
+		})
+	]
 ).enableRLS();
 
 export const account = pgTable(

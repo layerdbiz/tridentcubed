@@ -6,11 +6,14 @@
 	// runs from 0 to 1 and shows the rest: at 0 (the Page) nothing else, so the picture runs to the top; at 1 (Edit,
 	// Preview) the white blurred bar with the name, the save cloud and, for a project, its percent, state and
 	// progress. In between they fade, so it follows a swipe. `isLight` says the Page is showing a photo, where the
-	// two icons are white. `hasChevron` (Header C) draws back as a chevron, not an arrow.
+	// two icons are white. `hasChevron` (Header C) draws back as a chevron, not an arrow. `onprogress` makes the
+	// percent a button: a project's lists its empty inputs (#305).
 	import type { Snippet } from 'svelte';
 	import { DATASETS, STATUS, type DatasetType, type StatusType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import Back from './back.svelte';
 	import MoreMenu from './more-menu.svelte';
+	import Percent from './percent.svelte';
 	import SaveCloud from './save-cloud.svelte';
 
 	let {
@@ -26,7 +29,8 @@
 		hasCloud = false,
 		hasChevron = false,
 		height = $bindable(0),
-		mark
+		mark,
+		onprogress
 	}: {
 		look: LookState;
 		// What the ⋮ acts on: its page, and a project's id or a record's name. Left out (the Organization), there is
@@ -46,6 +50,8 @@
 		height?: number;
 		// A logo or a face before the name.
 		mark?: Snippet;
+		// What a tap on the percent does; left out, it is not a button.
+		onprogress?: () => void;
 	} = $props();
 
 	const shown = $derived(Math.min(1, Math.max(0, reveal)));
@@ -70,14 +76,13 @@
 		aria-hidden="true"
 	></span>
 	<div class="relative flex items-start gap-1 px-1.5 py-2">
-		<button
-			class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full transition-colors {ghost}"
-			aria-label={page ? `Back to ${DATASETS[page].label}` : 'Back'}
+		<Back
+			label={page ? `Back to ${DATASETS[page].label}` : 'Back'}
+			over={isLight && !isBar ? 'dark' : 'white'}
+			{hasChevron}
+			class="pointer-events-auto shrink-0"
 			onclick={() => look.home()}
-			><span
-				class={hasChevron ? 'icon-[mdi--chevron-left] size-7' : 'icon-[mdi--arrow-left] size-6'}
-			></span></button
-		>
+		/>
 		<div
 			class="min-w-0 flex-1"
 			style:opacity={shown}
@@ -91,17 +96,14 @@
 				</span>
 				{#if hasCloud}<SaveCloud {look} />{/if}
 				{#if progress !== undefined && tone}
-					<span
-						class="shrink-0 text-right"
+					<Percent
+						percent={progress}
+						status={status ?? ''}
+						whose="this project"
+						tone={tone.tone}
 						title="{progress}% of this project is done"
-					>
-						<span class="block text-lg leading-tight font-semibold text-slate-900 tabular-nums"
-							>{progress}%</span
-						>
-						<span class="block text-[10px] font-semibold tracking-[0.12em] uppercase {tone.tone}"
-							>{status}</span
-						>
-					</span>
+						onclick={onprogress}
+					/>
 				{/if}
 			</div>
 			{#if progress !== undefined && tone}

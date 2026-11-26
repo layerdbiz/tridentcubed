@@ -15,20 +15,22 @@
 	// and makes the field typed too, adding the lookup's choices once typing pauses. `oninput` hears the words, `onpick`
 	// a choice.
 	//
-	// Two looks. The notched field is the library's own (#284: the label sits on the border). `variant="soft"` is the
-	// app's panel field (label above, filled and borderless, lit while open), kept so nothing in the app looks different
-	// until its panels move onto the notched field one at a time (#57). Like the Menu it draws its own box rather than
-	// the base component, since a panel holds many of them; and its Help ? hides while it is empty by the app's rule
-	// on `has-help` and `data-empty` (look.css).
+	// The field is the library's notched one (#284: the label sits on the border): the same box as every input, the
+	// pick's picture at its start (a choice's own, or what `mark` draws, or the field's `icon` while nothing is picked)
+	// and a chevron at its end; one that cannot be picked from says why, its label on the border. Its `variant` leaves
+	// out the start (`text icon`) or the end (`icon text`). `start` puts a control of its own where the picture was, such
+	// as a facility's Start, Stop or End chip with its own menu, and `hasLabel` keeps the label off the border of a
+	// second row of the same fields (#388). The app's grey panel look went with that, its last panel moved (#57).
 	import type { Snippet } from 'svelte';
+	import type { Attachment } from 'svelte/attachments';
 	import type { HTMLSelectAttributes } from 'svelte/elements';
 	import '../forms.css';
 	import {
+		Avatar,
 		Component,
 		type ComponentReturn,
 		createFormField,
 		type FieldProps,
-		type FormFieldVariant,
 		Help,
 		Icon,
 		LookupState,
@@ -40,9 +42,7 @@
 
 	const uid = $props.id();
 
-	export type SelectProps = Omit<FieldProps<string | string[]>, 'variant'> & {
-		/** The notched field's icon arrangement, or `soft`, the app's panel field. */
-		variant?: FormFieldVariant | 'soft';
+	export type SelectProps = FieldProps<string | string[]> & {
 		options?: SelectOptionType[];
 		placeholder?: string;
 		required?: HTMLSelectAttributes['required'];
@@ -69,19 +69,15 @@
 		lookup?: LookupType;
 		/** Hears the words typed into a typed field. */
 		oninput?: (text: string) => void;
-		/**
-		 * The classes of a soft field typed into, in place of the panel's: the app's record forms draw a white box with
-		 * an edge (until #57 moves them onto the notched field).
-		 */
-		inputClass?: string;
-		/** A control of its own at the start of a soft field, in place of the picture: a facility's Start, Stop or End. */
+		/** A control of its own at the start of the field, in place of the pick's picture: a facility's Start, Stop or End. */
 		start?: Snippet;
-		/** False for a second row of the same fields, which the first row's labels already name (soft). */
+		/** False for a second row of the same fields, which the first row's label already names: the label stays off the
+		 * border, and says what the field is inside it while nothing is picked. */
 		hasLabel?: boolean;
 	};
 
 	let {
-		variant = 'text icon',
+		variant = 'icon text icon',
 		label = 'Select',
 		help = undefined,
 		icon = undefined,
@@ -89,7 +85,7 @@
 		name = undefined,
 		id = undefined,
 		options = [],
-		placeholder = 'Choose',
+		placeholder = undefined,
 		disabled = false,
 		required = false,
 		multiple = false,
@@ -105,7 +101,6 @@
 		isTyped = false,
 		lookup = undefined,
 		oninput = undefined,
-		inputClass = undefined,
 		start = undefined,
 		hasLabel = true,
 		class: className = undefined,
@@ -115,15 +110,10 @@
 		...props
 	}: SelectProps = $props();
 
-	// The soft field's look, as the app drew it: filled, borderless, lit while open.
-	const FIELD =
-		'w-full rounded-xl border-0 bg-slate-900/[0.04] px-2 py-1.5 text-sm text-slate-900 transition';
-	const TYPED =
-		'w-full rounded-xl border-0 bg-slate-900/[0.04] px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary/40 disabled:bg-transparent disabled:px-0 disabled:text-slate-500';
-	const LABEL = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
+	// A choice's mark: lit for the field's own pick and the one picked in the list, the rest grey until pointed at.
 	const LIT = 'bg-primary/10 text-primary';
 	const QUIET =
-		'bg-slate-100 text-slate-400 group-hover/option:bg-primary/10 group-hover/option:text-primary';
+		'bg-neutral-200 text-base-400 group-hover/option:bg-primary/10 group-hover/option:text-primary';
 	// How many known choices a typed field's list shows.
 	const KNOWN = 5;
 
@@ -133,8 +123,9 @@
 	let blurTimer: ReturnType<typeof setTimeout> | undefined;
 	// How wide the start control is, so the field's words start after it.
 	let startWidth = $state(0);
+	// How tall the pick's picture is drawn: the field's --pick-size, which follows its font, measured once it shows.
+	let pickSize = $state(0);
 
-	const isSoft = $derived(variant === 'soft');
 	const isTyping = $derived(isTyped || Boolean(lookup));
 	const selected = $derived.by(() => {
 		if (Array.isArray(value)) return value.map(String);
@@ -147,6 +138,7 @@
 			note: option.note,
 			icon: option.icon,
 			image: option.image,
+			fit: option.fit,
 			dot: option.dot
 		}))
 	);
@@ -155,7 +147,22 @@
 		if (many && selected.length > 1) return `${selected.length} ${many}`;
 		return selected.map(labelOf).join(', ');
 	});
-	const softIcon = $derived(icon ?? 'icon-[mdi--chevron-right]');
+	// The mark of a choice with no picture of its own.
+	const choiceIcon = $derived(icon ?? 'icon-[mdi--chevron-right]');
+	// The field's start and end.
+	const hasStart = $derived(variant === 'icon text' || variant === 'icon text icon');
+	const hasEnd = $derived(variant === 'text icon' || variant === 'icon text icon');
+	// A field with nothing to pick says why, with its label on the border.
+	const isHinted = $derived(disabled && !selected.length && Boolean(placeholder));
+
+	// A press on the field leaves the focus where it is, and the click opens the list. Focus floats the label to
+	// the border and shows its ?, which would slide under a pointer still pressed on an empty field and take the click
+	// (#57); the list's search takes the focus once it is open.
+	const holdFocus: Attachment<HTMLElement> = (node) => {
+		const hold = (event: MouseEvent) => event.preventDefault();
+		node.addEventListener('mousedown', hold);
+		return () => node.removeEventListener('mousedown', hold);
+	};
 
 	// A typed field's words, and what shows for them: the known choices holding them, then what a lookup found.
 	const text = $derived(typeof value === 'string' ? value.trim().toLowerCase() : '');
@@ -190,6 +197,12 @@
 
 	function labelOf(choice: string) {
 		return optionOf(choice)?.label ?? choice;
+	}
+
+	// Whether the field has a picture for a pick: one it is given to draw, the choice's own, or its icon.
+	function hasPicture(choice: string) {
+		const option = optionOf(choice);
+		return Boolean(ownMark || icon || option?.image || option?.dot || option?.icon);
 	}
 
 	function pick(choice: string) {
@@ -233,12 +246,11 @@
 	{#if ownMark}
 		{@render ownMark(choice, size)}
 	{:else if option?.image}
-		<img
+		<Avatar
 			src={option.image}
-			alt=""
-			draggable="false"
-			class="shrink-0 rounded-full bg-white object-cover ring-1 ring-slate-900/10"
-			style="width: {size}px; height: {size}px"
+			{size}
+			fit={option.fit}
+			ring="ring-1 ring-secondary/10"
 		/>
 	{:else if option?.dot}
 		<span
@@ -252,7 +264,7 @@
 				? LIT
 				: QUIET}"
 			style="width: {size}px; height: {size}px"
-			><span class="{option?.icon || softIcon} size-[60%]"></span></span
+			><span class="{option?.icon || choiceIcon} size-[60%]"></span></span
 		>
 	{/if}
 {/snippet}
@@ -263,7 +275,7 @@
 	{#if hasList}
 		<ul
 			id="{uid}-choices"
-			class="mt-1.5 overflow-hidden rounded-2xl bg-white p-1 text-left shadow-[0_2px_6px_rgb(15_23_42/0.06),0_12px_28px_-12px_rgb(15_23_42/0.25)] ring-1 ring-slate-900/[0.06]"
+			class="mt-1.5 overflow-hidden rounded-2xl bg-surface p-1 text-left shadow-list ring-1 ring-secondary/[0.06]"
 			role="listbox"
 			aria-label={label}
 		>
@@ -271,15 +283,15 @@
 				<li>
 					<button
 						type="button"
-						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-900/[0.04]"
+						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-base-600 hover:bg-secondary/[0.04]"
 						role="option"
 						aria-selected={option.value === value}
 						onpointerdown={(event) => event.preventDefault()}
 						onclick={() => choose(option)}
 					>
-						<span class="{option.icon || softIcon} size-[18px] shrink-0 text-primary"></span>
+						<span class="{option.icon || choiceIcon} size-[18px] shrink-0 text-primary"></span>
 						<span class="min-w-0 flex-1 truncate">{option.label}</span>
-						{#if option.note}<span class="shrink-0 text-[11px] text-slate-400">{option.note}</span
+						{#if option.note}<span class="shrink-0 text-[11px] text-base-400">{option.note}</span
 							>{/if}
 					</button>
 				</li>
@@ -288,27 +300,27 @@
 				<li>
 					<button
 						type="button"
-						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-900/[0.04]"
+						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-base-600 hover:bg-secondary/[0.04]"
 						role="option"
 						aria-selected="false"
 						onpointerdown={(event) => event.preventDefault()}
 						onclick={() => choose(option)}
 					>
-						<span class="{option.icon || softIcon} size-[18px] shrink-0 text-slate-400"></span>
+						<span class="{option.icon || choiceIcon} size-[18px] shrink-0 text-base-400"></span>
 						<span class="min-w-0 flex-1">
 							<span class="block truncate">{option.label}</span>
 							{#if option.note && option.note !== option.label}
-								<span class="block truncate text-[11px] text-slate-400">{option.note}</span>
+								<span class="block truncate text-[11px] text-base-400">{option.note}</span>
 							{/if}
 						</span>
 					</button>
 				</li>
 			{/each}
 			{#if asking.isAsking && !found.length}
-				<li class="px-3 py-2 text-xs text-slate-400">Looking it up…</li>
+				<li class="px-3 py-2 text-xs text-base-400">Looking it up…</li>
 			{/if}
 			{#if found.length && lookup?.credit}
-				<li class="px-3 pt-1 pb-1.5 text-right text-[10px] text-slate-400">
+				<li class="px-3 pt-1 pb-1.5 text-right text-[10px] text-base-400">
 					Powered by <a
 						class="underline"
 						href={lookup.credit.href}
@@ -321,20 +333,18 @@
 	{/if}
 {/snippet}
 
-<!-- The field that is typed into. A soft one shows it is required by its amber dot alone and never stops a form being
-     sent, as the app's fields never have. -->
-{#snippet typedField(classes: string)}
+<!-- The field that is typed into. -->
+{#snippet typedField()}
 	<input
 		id="{uid}-input"
-		class={classes}
 		value={typeof value === 'string' ? value : ''}
-		placeholder={isSoft ? placeholder : ' '}
+		placeholder=" "
 		{disabled}
-		required={isSoft ? undefined : required}
-		name={isSoft ? name : fieldState.field.name}
+		{required}
+		name={fieldState.field.name}
 		autocomplete="off"
 		role="combobox"
-		aria-label={isSoft ? undefined : label}
+		aria-label={label}
 		aria-expanded={hasList && (known.length > 0 || found.length > 0)}
 		aria-controls="{uid}-choices"
 		aria-autocomplete="list"
@@ -347,42 +357,7 @@
 	/>
 {/snippet}
 
-<!-- SOFT: the app's panel field. -->
-{#snippet softField(isOpen: boolean)}
-	<span
-		class="{FIELD} flex min-h-[44px] items-center gap-2.5 text-left {isOpen
-			? 'bg-white ring-2 ring-primary/40'
-			: ''} {disabled ? 'opacity-60' : ''}"
-		style:padding-left={start ? `${startWidth + 14}px` : undefined}
-	>
-		{#if start}
-			<!-- The start control sits over this space, as a button of its own. -->
-		{:else if selected.length}
-			<span class="flex shrink-0 items-center pl-0.5">
-				{#each selected.slice(0, 5) as choice, index (choice)}
-					<span
-						class="relative flex"
-						style="margin-left: {index ? -8 : 0}px; z-index: {10 - index}"
-						>{@render face(choice, 28, true)}</span
-					>
-				{/each}
-			</span>
-		{:else}
-			<span
-				class="ml-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-400"
-				><span class="{softIcon} size-4"></span></span
-			>
-		{/if}
-		{#if selected.length}
-			<span class="min-w-0 flex-1 truncate">{shown}</span>
-		{:else}
-			<span class="min-w-0 flex-1 truncate text-slate-400">{placeholder}</span>
-		{/if}
-		<span class="mr-1 icon-[mdi--chevron-down] size-4 shrink-0 text-slate-400"></span>
-	</span>
-{/snippet}
-
-<!-- The list a tap opens, the same for both looks. -->
+<!-- The list a tap opens. -->
 {#snippet menu(trigger: Snippet<[MenuOptionType | undefined, boolean]>)}
 	<Menu
 		{label}
@@ -402,213 +377,192 @@
 	</Menu>
 {/snippet}
 
-{#snippet softTrigger(_: MenuOptionType | undefined, isOpen: boolean)}
-	{@render softField(isOpen)}
+{#snippet iconStartEl()}
+	{#if icon}
+		<Icon
+			{icon}
+			class="icon start"
+		/>
+	{/if}
 {/snippet}
 
-{#if isSoft}
-	<div
-		class={[help && hasLabel && 'has-help', className]}
-		data-empty={selected.length ? undefined : ''}
-	>
-		{#if hasLabel}
-			{#if isTyping}
-				<span class={LABEL}>
-					<label for="{uid}-input">{label}</label>
-					{#if help}<Help
-							{label}
-							text={help}
-						/>{/if}
-					{#if required && !selected.length}<span
-							class="size-1.5 rounded-full bg-warning"
-							title="Not filled in yet"
-						></span>{/if}
-				</span>
-			{:else}
-				<p class={LABEL}>
-					{label}
-					{#if help}<Help
-							{label}
-							text={help}
-						/>{/if}
-					{#if required && !selected.length}<span
-							class="size-1.5 rounded-full bg-warning"
-							title="Not picked yet"
-						></span>{/if}
-				</p>
-			{/if}
-		{/if}
-		{#if isTyping}
-			<div class="relative">
-				{@render typedField(inputClass ?? TYPED)}
-				{@render choices()}
-			</div>
-		{:else if disabled}
-			{@render softField(false)}
-		{:else}
-			<div class="relative">
-				{@render menu(softTrigger)}
-				{#if start}
-					<div
-						class="absolute top-1/2 left-1.5 -translate-y-1/2"
-						bind:clientWidth={startWidth}
-					>
-						{@render start()}
-					</div>
-				{/if}
-			</div>
-		{/if}
-	</div>
-{:else}
-	<!-- NOTCHED: the library's own field. -->
-	{#snippet iconStartEl()}
-		{#if icon}
-			<Icon
-				{icon}
-				class="icon start"
-			/>
-		{/if}
-	{/snippet}
+{#snippet iconEndEl()}
+	<Icon
+		icon={iconEnd ?? 'icon-[mdi--chevron-down]'}
+		class="icon end"
+	/>
+{/snippet}
 
-	{#snippet iconEndEl()}
-		{#if fieldState.trailingIcon}
-			<Icon
-				icon={fieldState.trailingIcon}
-				class="icon end"
-			/>
-		{/if}
-	{/snippet}
-
-	{#snippet optionItems()}
-		{#if placeholder && !multiple}
-			<option
-				value=""
-				disabled={required}
-				hidden={required}
-			></option>
-		{/if}
-		{#each options as option (option.value)}
-			<option value={option.value}>{option.label}</option>
-		{/each}
-		{#if children}
-			{@render children()}
-		{/if}
-	{/snippet}
-
-	{#snippet notchedTrigger()}
-		<span class="select-trigger {selected.length ? '' : 'is-placeholder'}">
-			<span class="select-trigger-value">{shown}</span>
+<!-- The pick's picture at the start: one for each of several picks, or the field's icon, quiet, while nothing is
+     picked. -->
+{#snippet pickEl()}
+	{#if selected.length && selected.some(hasPicture)}
+		<span
+			class="select-pick"
+			bind:clientHeight={pickSize}
+		>
+			{#each selected.slice(0, 5) as choice, index (choice)}
+				<span
+					class="relative flex"
+					style="margin-left: {index ? -Math.round((pickSize || 32) / 4) : 0}px; z-index: {10 -
+						index}">{@render face(choice, pickSize || 32, true)}</span
+				>
+			{/each}
 		</span>
-	{/snippet}
+	{:else if !selected.length && icon}
+		<span class="select-pick"
+			><span
+				class="flex aspect-square h-full shrink-0 items-center justify-center rounded-full bg-base-900/5 text-base-400"
+				><span class="{icon} size-1/2"></span></span
+			></span
+		>
+	{/if}
+{/snippet}
 
-	{#snippet selectEl()}
-		{#if isTyping}
-			{@render typedField('')}
-		{:else if children}
-			<!-- The browser's own dropdown, for choices written as <option>s. -->
-			{#if multiple}
-				<select
-					bind:value
-					name={fieldState.field.name}
-					id={fieldState.field.id}
-					aria-describedby={ariaDescribedby}
-					aria-invalid={ariaInvalid}
-					aria-required={required || undefined}
-					{autocomplete}
-					{disabled}
-					{required}
-					multiple
-				>
-					{@render optionItems()}
-				</select>
-			{:else}
-				<select
-					bind:value
-					name={fieldState.field.name}
-					id={fieldState.field.id}
-					aria-describedby={ariaDescribedby}
-					aria-invalid={ariaInvalid}
-					aria-required={required || undefined}
-					{autocomplete}
-					{disabled}
-					{required}
-				>
-					{@render optionItems()}
-				</select>
-			{/if}
-		{:else}
-			<!-- Hidden, so a form still sends what is picked under its name. -->
-			{#if multiple}
-				<select
-					class="select-native"
-					bind:value
-					name={fieldState.field.name}
-					id={fieldState.field.id}
-					aria-required={required || undefined}
-					{autocomplete}
-					{disabled}
-					{required}
-					multiple
-					tabindex="-1"
-					aria-hidden="true"
-				>
-					{@render optionItems()}
-				</select>
-			{:else}
-				<select
-					class="select-native"
-					bind:value
-					name={fieldState.field.name}
-					id={fieldState.field.id}
-					aria-required={required || undefined}
-					{autocomplete}
-					{disabled}
-					{required}
-					tabindex="-1"
-					aria-hidden="true"
-				>
-					{@render optionItems()}
-				</select>
-			{/if}
-			{#if disabled}
-				<div class="select-menu">{@render notchedTrigger()}</div>
-			{:else}
-				<div class="select-menu">{@render menu(notchedTrigger)}</div>
-			{/if}
-		{/if}
-	{/snippet}
+{#snippet optionItems()}
+	{#if !multiple}
+		<option
+			value=""
+			disabled={required}
+			hidden={required}
+		></option>
+	{/if}
+	{#each options as option (option.value)}
+		<option value={option.value}>{option.label}</option>
+	{/each}
+	{#if children}
+		{@render children()}
+	{/if}
+{/snippet}
 
-	<Component
-		{...props}
-		class={className}
+<!-- What the field shows: the pick's picture, unless a control of its own sits there, and the pick; a second row's
+     empty field says its label, which stays off the border. -->
+{#snippet picked()}
+	<span
+		class="select-trigger {selected.length ? '' : 'is-placeholder'}"
+		{@attach holdFocus}
 	>
-		{#snippet component({ props }: { props: ComponentReturn })}
-			<div class="select-root">
-				<fieldset
-					{...props}
-					class={`field ${props.class} ${fieldState.className}`.trim()}
+		{#if hasStart && !start}{@render pickEl()}{/if}
+		<span class="select-trigger-value"
+			>{isHinted ? placeholder : shown || (hasLabel ? '' : label)}</span
+		>
+	</span>
+{/snippet}
+
+{#snippet selectEl()}
+	{#if isTyping}
+		{@render typedField()}
+	{:else if children}
+		<!-- The browser's own dropdown, for choices written as <option>s. -->
+		{#if multiple}
+			<select
+				bind:value
+				name={fieldState.field.name}
+				id={fieldState.field.id}
+				aria-describedby={ariaDescribedby}
+				aria-invalid={ariaInvalid}
+				aria-required={required || undefined}
+				{autocomplete}
+				{disabled}
+				{required}
+				multiple
+			>
+				{@render optionItems()}
+			</select>
+		{:else}
+			<select
+				bind:value
+				name={fieldState.field.name}
+				id={fieldState.field.id}
+				aria-describedby={ariaDescribedby}
+				aria-invalid={ariaInvalid}
+				aria-required={required || undefined}
+				{autocomplete}
+				{disabled}
+				{required}
+			>
+				{@render optionItems()}
+			</select>
+		{/if}
+	{:else}
+		<!-- Hidden, so a form still sends what is picked under its name. -->
+		{#if multiple}
+			<select
+				class="select-native"
+				bind:value
+				name={fieldState.field.name}
+				id={fieldState.field.id}
+				aria-required={required || undefined}
+				{autocomplete}
+				{disabled}
+				{required}
+				multiple
+				tabindex="-1"
+				aria-hidden="true"
+			>
+				{@render optionItems()}
+			</select>
+		{:else}
+			<select
+				class="select-native"
+				bind:value
+				name={fieldState.field.name}
+				id={fieldState.field.id}
+				aria-required={required || undefined}
+				{autocomplete}
+				{disabled}
+				{required}
+				tabindex="-1"
+				aria-hidden="true"
+			>
+				{@render optionItems()}
+			</select>
+		{/if}
+		{#if disabled}
+			<div class="select-menu">{@render picked()}</div>
+		{:else}
+			<div class="select-menu">{@render menu(picked)}</div>
+		{/if}
+	{/if}
+{/snippet}
+
+<Component
+	{...props}
+	class={className}
+>
+	{#snippet component({ props }: { props: ComponentReturn })}
+		<div class="select-root">
+			<fieldset
+				{...props}
+				class={`field ${props.class} ${isHinted ? 'field-filled' : fieldState.className}`.trim()}
+				style:--start-width={start ? `${startWidth}px` : undefined}
+			>
+				<legend class={hasLabel ? undefined : 'sr-only'}
+					><span>{fieldState.labelText}</span>{#if help && hasLabel}<Help
+							label={fieldState.labelText}
+							text={help}
+						/>{/if}</legend
 				>
-					<legend
-						><span>{fieldState.labelText}</span>{#if help}<Help
-								label={fieldState.labelText}
-								text={help}
-							/>{/if}</legend
-					>
-					<label for={isTyping ? `${uid}-input` : fieldState.field.id}>
-						{#if variant === 'icon text' || variant === 'icon text icon'}
-							{@render iconStartEl()}
-						{/if}
-						{@render selectEl()}
-						{#if variant === 'text icon' || variant === 'icon text icon'}
-							{@render iconEndEl()}
-						{/if}
-					</label>
-				</fieldset>
-				{@render choices()}
-			</div>
-		{/snippet}
-	</Component>
-{/if}
+				<label for={isTyping ? `${uid}-input` : fieldState.field.id}>
+					{#if start}
+						<!-- Over the field's button, as a control of its own. -->
+						<span
+							class="select-start"
+							bind:clientWidth={startWidth}>{@render start()}</span
+						>
+					{:else if hasStart && (isTyping || children)}
+						{@render iconStartEl()}
+					{/if}
+					{@render selectEl()}
+					{#if hasEnd}
+						{@render iconEndEl()}
+					{/if}
+				</label>
+			</fieldset>
+			{@render choices()}
+		</div>
+	{/snippet}
+</Component>
 
 <style lang="postcss">
 	@reference "#ui.css";
@@ -654,6 +608,61 @@
 
 	fieldset .select-trigger-value {
 		@apply block w-full truncate;
+	}
+
+	/* The pick's picture and a start control are one size, which follows the field's font, the same small way in from
+	   the box's edge as from its top and bottom (#388): a fixed size outgrew a smaller box. */
+	fieldset {
+		--pick-size: 2em;
+		--pick-inset: 0.5em;
+	}
+
+	/* The pick's picture sits in the field's own button, so a tap on it opens the list too, and an empty field's label
+	   rests after it. */
+	fieldset:has(.select-pick) {
+		--prefix-width: calc(
+			var(--pick-size) + var(--pick-inset) + var(--icon-gap) - var(--content-start)
+		);
+		--legend-float-pad-start: var(--icon-gap);
+	}
+
+	fieldset .select-trigger:has(.select-pick) {
+		gap: var(--icon-gap);
+		padding-inline-start: var(--pick-inset);
+	}
+
+	fieldset .select-pick {
+		@apply flex h-(--pick-size) shrink-0 items-center;
+	}
+
+	/* A control of its own at the start, such as a facility's Start chip (#388): over the field's button, as tall as the
+	   pick's picture and as far in, and the words and an empty field's label rest after it. Its own button fills it. */
+	fieldset:has(.select-start) {
+		--prefix-width: calc(
+			var(--start-width, 0px) + var(--pick-inset) + var(--icon-gap) - var(--content-start)
+		);
+		--legend-float-pad-start: var(--icon-gap);
+	}
+
+	fieldset .select-start {
+		@apply z-2 col-start-1 row-start-1 flex h-(--pick-size) self-center justify-self-start;
+		margin-inline-start: var(--pick-inset);
+	}
+
+	fieldset .select-start > :global(*),
+	fieldset .select-start > :global(* > button) {
+		@apply h-full;
+	}
+
+	/* A second row's label stays off the border, kept for a screen reader: forms.css's legend rules outrank the plain
+	   utility, which would leave a gap in the border. */
+	fieldset legend.sr-only {
+		@apply sr-only;
+	}
+
+	/* The chevron lets a tap through to the button under it. */
+	fieldset :global(.icon.end) {
+		@apply pointer-events-none;
 	}
 
 	fieldset .select-trigger.is-placeholder .select-trigger-value {

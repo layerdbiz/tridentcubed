@@ -4,17 +4,25 @@
  * Contract (ticket #9, 2026-09-18; see ../../README.md for the full model):
  * - Reads the root package.json `apps` map (object of booleans, or array).
  *   Enabled apps are the default selection; positional app names on the
- *   command line replace that selection; anything after `--` goes to Turbo.
+ *   command line replace that selection; anything after `--` (or any flag)
+ *   goes to each task's command, as it went to each script under Turbo:
+ *   `pnpm dev -- --port 5190` reaches `vp dev`.
  * - Validates every selected name against the `name` field of each
  *   package.json under apps/. (Do not write that path as a glob here:
  *   star-slash would close this comment and break type stripping.)
- * - Spawns Turbo resolved from node_modules (`turbo/bin/turbo`) with the
- *   current Node binary. Replacing Turbo means rewriting buildTurboArgs and
- *   getTurboSpawnConfig.
- * - dev = turbo watch //#barrels:watch <app>#dev
+ * - Spawns Vite+'s task runner (the `vp` bin of `vite-plus`, found through
+ *   its package.json) with the current Node binary, so no shell is needed
+ *   on Windows (#369). The tasks are `workspace:dev|build|preview`: each
+ *   app's come from `createAppConfig` (packages/config/vite), the root's
+ *   barrels watcher from the root `vite.config.ts`.
+ * - dev = vp run --parallel --filter <root> --filter <app> workspace:dev,
+ *   the barrels watcher and each app's dev server at once. `--parallel`
+ *   because a dev task that waited on the never-ending watcher would never
+ *   start.
  *   watch = dev (kept as an alias; it added the stories generator until
  *   that generator was archived on #100)
- *   build/preview = turbo run <app>#build|preview
+ *   build = vp run --filter <app> workspace:build (barrels first, cached)
+ *   preview = vp run --parallel --filter <app> workspace:preview
  * - The map is a developer convenience. It never limits which barrels or
  *   symlinks the generators produce, and Vercel does not use it:
  *   Vercel runs `pnpm build` inside apps/site and apps/app directly.
@@ -23,6 +31,7 @@
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
 import { createRequire } from "module";
+import { dirname, join } from "path";
 import { resolvePath } from "../utils.ts";
 
 type WorkspaceCommand = "build" | "dev" | "preview" | "watch";
@@ -31,6 +40,7 @@ type RootAppsConfig =
 	| Record<string, boolean | "true" | "false">;
 
 interface RootPackageJson {
+	name?: string;
 	apps?: RootAppsConfig;
 }
 
@@ -43,15 +53,19 @@ const WORKSPACE_COMMANDS = new Set<WorkspaceCommand>([
 
 const require = createRequire(import.meta.url);
 
-function getTurboSpawnConfig(args: string[]): {
+async function getVitePlusSpawnConfig(args: string[]): Promise<{
 	command: string;
 	args: string[];
-} {
-	const turboBinPath = require.resolve("turbo/bin/turbo");
+}> {
+	// vite-plus exports its package.json but not its bin file
+	const packagePath = require.resolve("vite-plus/package.json");
+	const packageJson = JSON.parse(await fs.readFile(packagePath, "utf8")) as {
+		bin: { vp: string };
+	};
 
 	return {
 		command: process.execPath,
-		args: [turboBinPath, ...args],
+		args: [join(dirname(packagePath), packageJson.bin.vp), ...args],
 	};
 }
 
@@ -195,37 +209,33 @@ function parseWorkspaceArgs(
 	};
 }
 
-function buildTurboArgs(
+function buildRunArgs(
 	command: WorkspaceCommand,
 	apps: string[],
+	rootName: string,
 	passthroughArgs: string[] = [],
 ): string[] {
-	const turboArgs = (() => {
-		if (command === "dev" || command === "watch") {
-			return [
-				"watch",
-				"//#barrels:watch",
-				...apps.map((appName) => `${appName}#dev`),
-			];
-		}
+	const isDev = command === "dev" || command === "watch";
+	const filters = (isDev ? [rootName, ...apps] : apps).flatMap((name) => [
+		"--filter",
+		name,
+	]);
+	const task = `workspace:${isDev ? "dev" : command}`;
 
-		return [
-			"run",
-			...apps.map((appName) => `${appName}#${command}`),
-		];
-	})();
-
-	if (passthroughArgs.length > 0) {
-		turboArgs.push("--", ...passthroughArgs);
-	}
-
-	return turboArgs;
+	return [
+		"run",
+		...(command === "build" ? [] : ["--parallel"]),
+		...filters,
+		task,
+		...passthroughArgs,
+	];
 }
 
-function runTurbo(args: string[]): Promise<void> {
+async function runVitePlus(args: string[]): Promise<void> {
+	const vitePlusSpawn = await getVitePlusSpawnConfig(args);
+
 	return new Promise((resolve, reject) => {
-		const turboSpawn = getTurboSpawnConfig(args);
-		const child = spawn(turboSpawn.command, turboSpawn.args, {
+		const child = spawn(vitePlusSpawn.command, vitePlusSpawn.args, {
 			cwd: resolvePath(),
 			stdio: "inherit",
 		});
@@ -269,5 +279,13 @@ export async function run(
 		? explicitApps
 		: await getConfiguredApps();
 	await validateConfiguredApps(apps);
-	await runTurbo(buildTurboArgs(command, apps, passthroughArgs));
+	const { name: rootName } = await readRootPackageJson();
+
+	if (!rootName) {
+		throw new Error(
+			"Root package.json needs a name: the dev command runs its barrels watcher by it.",
+		);
+	}
+
+	await runVitePlus(buildRunArgs(command, apps, rootName, passthroughArgs));
 }

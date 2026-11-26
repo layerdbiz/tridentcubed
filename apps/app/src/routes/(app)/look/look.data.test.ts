@@ -3,15 +3,21 @@
 // The project number's typed parts and the customer's own number for the job (#217).
 import { describe, expect, it } from 'vite-plus/test';
 import {
+	attach,
 	createdDayOf,
 	nextJobOf,
 	numberOf,
 	onlineOf,
+	personOf,
+	projectNumberOf,
 	presenceOf,
 	resetPeople,
 	toJobCode,
 	toPresenceText,
 	toReference,
+	createPanels,
+	itemOf,
+	type PanelType,
 	type ProjectType
 } from './look.data';
 import type { TeamMemberType } from './team.data';
@@ -159,6 +165,14 @@ describe('the project number', () => {
 		expect(createdDayOf(project('new'))).toBe('2026-11-18');
 	});
 
+	// #300: the Project panel shows the whole number under Job Number, from what its inputs hold, the same number the
+	// report's footer prints.
+	it('is made of the customer’s code, the date and the job, as the panel’s inputs hold them', () => {
+		expect(projectNumberOf('KOGA', '2026-10-27', 3)).toBe('KOG-2026-10-27-J03');
+		const susana = project('susana', { day: '2026-10-27', job: 1 });
+		expect(projectNumberOf('KOGA', '2026-10-27', 1)).toBe(numberOf(susana, [susana]));
+	});
+
 	it('prints the Job Sequence Number as J and two digits', () => {
 		expect([toJobCode(1), toJobCode(12), toJobCode(120)]).toEqual(['J01', 'J12', 'J120']);
 	});
@@ -184,5 +198,71 @@ describe('the Customer Reference Number', () => {
 		expect(toReference('')).toBe('');
 		expect(toReference(undefined)).toBe('');
 		expect(toReference(' # ')).toBe('');
+	});
+});
+
+describe('a file attached to the Items panel', () => {
+	function itemsPanel() {
+		const project = {
+			title: '',
+			subtitle: '',
+			type: '',
+			team: [],
+			stops: []
+		} as unknown as ProjectType;
+		return createPanels(project).find((panel) => panel.kind === 'items') as PanelType;
+	}
+
+	it('takes away the row never typed in when a PDF is the item list (#290)', () => {
+		const panel = itemsPanel();
+		expect(panel.items).toHaveLength(1);
+		attach(panel, {
+			id: 'a',
+			name: 'Packing List.pdf',
+			src: 'files/a.pdf',
+			kind: 'file',
+			layout: 4
+		});
+		expect(panel.attachments?.map((file) => file.name)).toEqual(['Packing List.pdf']);
+		expect(panel.items).toEqual([]);
+	});
+
+	it('keeps a row someone typed in', () => {
+		const panel = itemsPanel();
+		panel.items.push(itemOf('2', 'Pump skid'));
+		attach(panel, { id: 'a', name: 'list.pdf', src: 'files/a.pdf', kind: 'file', layout: 4 });
+		expect(panel.items.map((item) => item.description)).toEqual(['Pump skid']);
+	});
+
+	it('leaves the rows alone for a photo of the list', () => {
+		const panel = itemsPanel();
+		attach(panel, { id: 'a', name: 'list.jpg', src: 'files/a.webp', kind: 'photo', layout: 4 });
+		expect(panel.items).toHaveLength(1);
+	});
+});
+
+// #355: a face with no photo shows the person's initials on their role's colour; a photo, once there, wins.
+describe('a face with no photo', () => {
+	it("shows a Team record's initials in their role's colour", () => {
+		resetPeople([
+			{ ...member('Ana Lopez'), role: 'admin' },
+			{ ...member('Ben Ruiz'), role: 'manager' },
+			member('Dee Shaw')
+		]);
+		expect(decodeURIComponent(personOf('Ana Lopez').photo)).toContain('>AL</text>');
+		expect(decodeURIComponent(personOf('Ana Lopez').photo)).toContain('#7c3aed');
+		expect(decodeURIComponent(personOf('Ben Ruiz').photo)).toContain('#2563eb');
+		expect(decodeURIComponent(personOf('Dee Shaw').photo)).toContain('#64748b');
+	});
+
+	it('shows their photo once they have one', () => {
+		resetPeople([{ ...member('Ana Lopez'), photo: '/files/ana' }]);
+		expect(personOf('Ana Lopez').photo).toBe('/files/ana');
+	});
+
+	it('changes colour with the role', () => {
+		resetPeople([member('Ana Lopez')]);
+		resetPeople([{ ...member('Ana Lopez'), role: 'admin' }]);
+		expect(decodeURIComponent(personOf('Ana Lopez').photo)).toContain('#7c3aed');
 	});
 });

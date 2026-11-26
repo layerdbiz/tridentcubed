@@ -1,7 +1,8 @@
 // The Select (#298): the one dropdown, with search, a picture beside each choice, picking several, Add new and a pencil
-// to open a choice each switched on by a prop of its own, and a lookup that finds choices for what is typed. The soft
-// variant is the app's dropdown merged in, so its tests are the ones that pinned what that dropdown did before
-// (`apps/app/.../look/picker.test.ts`, removed with it); the lookup's are the location field's.
+// to open a choice each switched on by a prop of its own, and a lookup that finds choices for what is typed. The app's
+// dropdown merged in, so the tests of the field and its list are the ones that pinned what that dropdown did before
+// (`apps/app/.../look/picker.test.ts`, removed with it), moved onto the notched field with its grey look (#388); the
+// lookup's are the location field's.
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { createRawSnippet } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -22,7 +23,7 @@ const face = createRawSnippet((name: () => string) => ({
 function show(props: Record<string, unknown>) {
 	const onpick = vi.fn();
 	const view = render(Select, {
-		props: { variant: 'soft', label: 'Kind', options: KINDS, onpick, ...props }
+		props: { label: 'Kind', options: KINDS, onpick, ...props }
 	});
 	return { ...view, onpick };
 }
@@ -44,21 +45,18 @@ function namesOf(list: HTMLElement) {
 }
 
 describe('the field', () => {
-	it('shows its label above, and the name of what is picked', () => {
+	it('shows its label on the border, and the name of what is picked', () => {
 		const { container } = show({ value: 'Yard' });
 
-		expect(container.querySelector('p')?.textContent?.trim()).toBe('Kind');
+		expect(container.querySelector('legend')?.textContent?.trim()).toBe('Kind');
 		expect(fieldOf().textContent?.trim()).toBe('Yard');
 	});
 
-	it('says Choose while nothing is picked', () => {
-		show({});
-		expect(fieldOf().textContent?.trim()).toBe('Choose');
-	});
+	it('holds its label inside while nothing is picked', () => {
+		const { container } = show({});
 
-	it('says what it is told to while nothing is picked', () => {
-		show({ placeholder: 'Choose a customer first' });
-		expect(fieldOf().textContent?.trim()).toBe('Choose a customer first');
+		expect(container.querySelector('fieldset')?.classList.contains('field-empty')).toBe(true);
+		expect(fieldOf().textContent?.trim()).toBe('');
 	});
 
 	it('shows a picked value that is not among the choices as it is', () => {
@@ -66,39 +64,23 @@ describe('the field', () => {
 		expect(fieldOf().textContent?.trim()).toBe('Berth 12');
 	});
 
-	it('wears an amber dot while nothing is picked, and loses it once something is', async () => {
-		const { rerender } = show({ required: true });
-		expect(screen.getByTitle('Not picked yet')).toBeTruthy();
+	// A second row of the same fields, which the first row's label already names: the label stays off the border, kept
+	// for a screen reader, and the empty field says it inside.
+	it('keeps its label off the border for a second row, and says it inside while nothing is picked', async () => {
+		const { container, rerender } = show({ hasLabel: false, help: 'What the facility is.' });
+		const legend = container.querySelector('legend');
+
+		expect(legend?.classList.contains('sr-only')).toBe(true);
+		expect(legend?.textContent?.trim()).toBe('Kind');
+		expect(screen.queryByRole('button', { name: 'What goes in Kind?' })).toBeNull();
+		expect(fieldOf().textContent?.trim()).toBe('Kind');
 
 		await rerender({ value: 'Port' });
-		expect(screen.queryByTitle('Not picked yet')).toBeNull();
-	});
-
-	it('wears no amber dot when picking is not required', () => {
-		show({});
-		expect(screen.queryByTitle('Not picked yet')).toBeNull();
-	});
-
-	it('leaves its label out for a second row of the same fields', () => {
-		const { container } = show({ hasLabel: false, required: true });
-		expect(container.querySelector('p')).toBeNull();
-		expect(screen.queryByTitle('Not picked yet')).toBeNull();
-	});
-
-	it('puts its Help ? after the label, marked empty until something is picked', async () => {
-		const { container, rerender } = show({ help: 'What the facility is.' });
-		const block = container.querySelector('.has-help');
-
-		expect(screen.getByRole('button', { name: 'What goes in Kind?' })).toBeTruthy();
-		expect(block?.hasAttribute('data-empty')).toBe(true);
-
-		await rerender({ value: 'Port' });
-		expect(block?.hasAttribute('data-empty')).toBe(false);
+		expect(fieldOf().textContent?.trim()).toBe('Port');
 	});
 
 	it('has no Help ? without Help text', () => {
-		const { container } = show({});
-		expect(container.querySelector('.has-help')).toBeNull();
+		show({});
 		expect(screen.queryByRole('button', { name: /What goes in/ })).toBeNull();
 	});
 
@@ -152,7 +134,8 @@ describe('the field', () => {
 		expect(container.textContent).toContain('Port');
 	});
 
-	it('puts a control of its own at the start of the field, whose tap is its own', async () => {
+	// A facility's Start, Stop or End chip, which opens a menu of its own (#388).
+	it("puts a control of its own at the start of the field in place of the pick's picture, whose tap is its own", async () => {
 		const ontap = vi.fn();
 		const start = createRawSnippet(() => ({
 			render: () => '<button type="button">Start</button>',
@@ -160,7 +143,12 @@ describe('the field', () => {
 				node.addEventListener('click', ontap);
 			}
 		}));
-		show({ value: 'Port', start });
+		const { container } = show({ value: 'Port', start });
+
+		expect(fieldOf().querySelector('.icon-\\[mdi--anchor\\]')).toBeNull();
+		expect(
+			container.querySelector('fieldset')?.contains(screen.getByRole('button', { name: 'Start' }))
+		).toBe(true);
 
 		await fireEvent.click(screen.getByRole('button', { name: 'Start' }));
 
@@ -323,6 +311,75 @@ describe('the notched field', () => {
 			'Port, Yard'
 		);
 	});
+
+	// The look settled on the inputs prototype (#284): the same box as every input, the pick's picture at its start and
+	// a chevron at its end (#57 moves the app's panels onto it).
+	it('shows what is picked as its picture at the start, and a chevron at the end', () => {
+		notched({ value: 'Dock' });
+		const field = screen.getByRole('button', { name: 'Project Type' });
+
+		expect(field.querySelector('img')?.getAttribute('src')).toBe('/dock.webp');
+		expect(
+			field.closest('fieldset')?.querySelector('.icon-\\[mdi--chevron-down\\]')
+		).not.toBeNull();
+	});
+
+	it("shows the field's own icon while nothing is picked, and none for choices with no picture", async () => {
+		const { rerender } = notched({ icon: 'icon-[mdi--domain]' });
+		const field = screen.getByRole('button', { name: 'Project Type' });
+		expect(field.querySelector('.icon-\\[mdi--domain\\]')).not.toBeNull();
+
+		await rerender({
+			icon: undefined,
+			options: [{ value: 'Cargo', label: 'Cargo' }],
+			value: 'Cargo'
+		});
+		expect(field.querySelector('img, [class*="icon-"]')).toBeNull();
+	});
+
+	it('draws the picture it is given, one for each of several picks', () => {
+		notched({
+			label: 'Team Assigned',
+			mark: face,
+			options: [],
+			multiple: true,
+			value: ['Ana Ruiz', 'Ben Cho'],
+			many: 'people'
+		});
+		const field = screen.getByRole('button', { name: 'Team Assigned' });
+
+		expect(field.textContent?.trim()).toBe('2 people');
+		expect(
+			within(field)
+				.getAllByRole('img')
+				.map((mark) => mark.getAttribute('aria-label'))
+		).toEqual(['Ana Ruiz', 'Ben Cho']);
+	});
+
+	// Focus floats the label to the border and shows its ?, which would slide under a pointer still pressed on an empty
+	// field and take the click, so the list would not open.
+	it('opens on a click without taking the focus as it is pressed', async () => {
+		notched({ help: 'The kind of survey.' });
+		const field = screen.getByRole('button', { name: 'Project Type' });
+
+		expect(await fireEvent.mouseDown(field.firstElementChild!)).toBe(false);
+		await fireEvent.click(field);
+
+		expect(screen.getByRole('listbox', { name: 'Project Type' })).toBeTruthy();
+	});
+
+	it('says why nothing can be picked, with its label on the border', () => {
+		const { container } = notched({
+			label: 'Contact',
+			options: [],
+			disabled: true,
+			placeholder: 'No contacts on this customer yet'
+		});
+
+		expect(container.textContent).toContain('No contacts on this customer yet');
+		expect(container.querySelector('fieldset')?.classList.contains('field-filled')).toBe(true);
+		expect(screen.queryByRole('button', { name: 'Contact' })).toBeNull();
+	});
 });
 
 describe('a lookup', () => {
@@ -371,7 +428,6 @@ describe('a lookup', () => {
 		const onpick = vi.fn();
 		const view = render(Select, {
 			props: {
-				variant: 'soft',
 				label: 'City',
 				options: SAVED,
 				lookup,
@@ -395,10 +451,10 @@ describe('a lookup', () => {
 			.map((option) => option.textContent?.replace(/\s+/g, ' ').trim());
 	}
 
-	it('is typed into, under its label', () => {
+	it('is typed into, its label on the border', () => {
 		const { container } = typeIn({ value: 'Pier 9' });
 
-		expect(container.querySelector('label')?.textContent).toBe('City');
+		expect(container.querySelector('legend')?.textContent?.trim()).toBe('City');
 		expect((screen.getByRole('combobox', { name: 'City' }) as HTMLInputElement).value).toBe(
 			'Pier 9'
 		);
@@ -570,21 +626,6 @@ describe('a lookup', () => {
 				.getAttribute('aria-selected')
 		).toBe('true');
 	});
-
-	it("takes its form's own input look when given one", () => {
-		const { input } = typeIn({ inputClass: 'boxed' });
-		expect(input.classList.contains('boxed')).toBe(true);
-		expect(input.classList.contains('bg-slate-900/[0.04]')).toBe(false);
-	});
-
-	it('wears an amber dot while it is empty and required, and never stops a form being sent', async () => {
-		const { rerender, input } = typeIn({ required: true });
-		expect(screen.getByTitle('Not filled in yet')).toBeTruthy();
-		expect((input as HTMLInputElement).required).toBe(false);
-
-		await rerender({ value: 'Pier 9' });
-		expect(screen.queryByTitle('Not filled in yet')).toBeNull();
-	});
 });
 
 describe('a typed field', () => {
@@ -598,7 +639,6 @@ describe('a typed field', () => {
 		const onpick = vi.fn();
 		const view = render(Select, {
 			props: {
-				variant: 'soft',
 				label: 'Company',
 				options: CUSTOMERS,
 				isTyped: true,

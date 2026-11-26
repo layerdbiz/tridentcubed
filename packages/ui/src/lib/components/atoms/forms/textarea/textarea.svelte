@@ -169,6 +169,7 @@
 		{placeholder}
 		name={fieldState.field.name}
 		id={fieldState.field.id}
+		aria-labelledby="{fieldState.field.id}-label"
 		aria-describedby={ariaDescribedby}
 		aria-invalid={ariaInvalid}
 		aria-required={required || undefined}
@@ -217,13 +218,14 @@
 	persistSetValue={setPersistedValue}
 >
 	{#snippet component({ props }: { props: ComponentReturn })}
+		<!-- The label sits on the border in the legend, apart from the field, which is named by it. -->
 		<fieldset
 			bind:this={fieldsetNode}
 			{...props}
 			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)} textarea`.trim()}
 		>
 			<legend
-				><span>{fieldState.labelText}</span>{#if help}<Help
+				><span id="{fieldState.field.id}-label">{fieldState.labelText}</span>{#if help}<Help
 						label={fieldState.labelText}
 						text={help}
 					/>{/if}</legend

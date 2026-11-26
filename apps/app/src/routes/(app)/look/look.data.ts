@@ -3,7 +3,9 @@
 // since #185), and the helpers every screen reads. Carried over from the look prototype (#161); since V1 (#180) no
 // sample projects, transports or facilities ship (Justin's rule of 2026-11-10: every value on screen is real).
 import type { CropType } from '#lib/components/photo/photo.types.js';
+import { toAttachmentType } from '#lib/files/files.schema.js';
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
+import { DEFAULT_LAYOUT, type PageLayoutType } from '#lib/report/report.constants.js';
 import { toDuration } from '#lib/presence/presence.utils.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
 import { cityStateOf } from './location';
@@ -13,7 +15,8 @@ import type { GridType } from './spreadsheet';
 // is made up by code any more. A project and every record carry when they were made and last changed (`created`,
 // `updated`), which the charts, Recent and "Updated" read; a project's number comes from its customer's code and its
 // day; a customer has several contacts; the online dot comes from when someone was last in the app.
-import { initialsOf, photoOfMember, type PresenceType, type TeamMemberType } from './team.data';
+import { initialsOf, toCode, toInitialsPicture } from '@layerd/ui';
+import { photoOfMember, type PresenceType, type TeamMemberType } from './team.data';
 
 export type StatusType =
 	| 'Draft'
@@ -25,6 +28,7 @@ export type StatusType =
 	| 'Complete'
 	| 'Archived';
 
+// `photo` is their own, or their initials on their role's colour when they have none (#355).
 export type PersonType = { name: string; photo: string; seen?: string };
 
 export type ProjectType = {
@@ -99,15 +103,29 @@ export type PersonnelType = {
 	people: { id: string; name: string; title: string; phone: string; email: string }[];
 };
 // Something attached to the Items panel in place of typed rows, or beside them: a photo of the item list, or the
-// list itself as a file of any kind (#233). A photo prints on the report, whole; a file prints its name.
-export type AttachmentType = { id: string; name: string; src: string; kind: 'photo' | 'file' };
+// list itself as a file of any kind (#233). A photo prints on the report, whole; a file prints its name. #295: a PDF
+// prints its pages, `layout` of them to a report page (1, 2, 4, 6 or 8), as a photo group's photos do.
+export type AttachmentType = {
+	id: string;
+	name: string;
+	src: string;
+	kind: 'photo' | 'file';
+	layout: PageLayoutType;
+};
+
+/** Whether an Items attachment is a PDF, which prints its pages (#295): known by its name, as it was picked. */
+export function isPdfAttachment(file: Pick<AttachmentType, 'kind' | 'name'>) {
+	return (
+		file.kind === 'file' && toAttachmentType({ name: file.name, type: '' }) === 'application/pdf'
+	);
+}
 // A photo panel's group; in the Operations panel a group is a stage (#215). Switched off, it keeps what it holds
 // and leaves the report: its pages, its line in the contents and its count toward the percent.
 export type GroupType = {
 	id: string;
 	title: string;
 	description: string;
-	layout: number;
+	layout: PageLayoutType;
 	isEnabled: boolean;
 	photos: PhotoType[];
 };
@@ -242,7 +260,12 @@ export const PEOPLE: PersonType[] = [];
 
 export function personOf(name: string): PersonType {
 	seen();
-	return PEOPLE.find((person) => person.name === name) ?? { name, photo: initialsOf(name) };
+	return (
+		PEOPLE.find((person) => person.name === name) ?? {
+			name,
+			photo: toInitialsPicture(initialsOf(name), 'team')
+		}
+	);
 }
 
 // The dot on a face: green within five minutes of being in the app, amber within the hour, grey after. The server
@@ -306,7 +329,7 @@ export function toPresenceText(member: TeamMemberType, now = Date.now()) {
 // A team member renamed or added in the prototype keeps their photo under the new name; a photo uploaded on their
 // page (run 15) takes over from the one they came with.
 export function registerPerson(member: TeamMemberType) {
-	const photo = member.photo || photoOfMember(member);
+	const photo = photoOfMember(member);
 	const person = PEOPLE.find((item) => item.name === member.name);
 	if (person) Object.assign(person, { photo, seen: member.seen });
 	else PEOPLE.push({ name: member.name, photo, seen: member.seen });
@@ -411,12 +434,7 @@ export function resetCustomers(live: ClientType[], trashed: ClientType[]) {
 
 export function clientOf(name: string): ClientType {
 	seen();
-	const code =
-		name
-			.replace(/[^a-z]/gi, '')
-			.slice(0, 3)
-			.toUpperCase() || 'TC';
-	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', logo: '', city: '', code };
+	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', logo: '', city: '', code: toCode(name) };
 }
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -487,7 +505,12 @@ export function numberOf(project: ProjectType, projects: ProjectType[], client =
 		(other) => other.client === project.client && createdDayOf(other) === date
 	);
 	const count = project.job ?? Math.max(1, sameDay.length - sameDay.indexOf(project));
-	return `${clientOf(client).code}-${date}-${toJobCode(count)}`;
+	return projectNumberOf(client, date, count);
+}
+
+/** The project number made of its three parts: the customer (by name), the Created Date and the Job Number (#300). */
+export function projectNumberOf(client: string, day: string, job: number) {
+	return `${clientOf(client).code}-${day}-${toJobCode(job)}`;
 }
 
 // The customer's own number for the job as the report prints it (#217): "#SO025484", whether or not it was typed
@@ -659,8 +682,6 @@ export const DATASETS: Record<DatasetType, { label: string; one: string; icon: s
 	facilities: { label: 'Facilities', one: 'Facility', icon: PAGE_ICONS.facilities }
 };
 
-export const LAYOUTS = [1, 2, 4, 6, 8];
-
 let nextId = 0;
 // The page load's own mark, so an id made now never repeats one kept from an earlier visit (LookState keeps the
 // projects in the browser).
@@ -674,9 +695,31 @@ export function itemOf(quantity = '', description = ''): ItemType {
 	return { id: crypto.randomUUID(), quantity, description };
 }
 
+/**
+ * Once the Items panel holds its item list whole (a spreadsheet's rows, #242, or a PDF, #290), a row to type into
+ * that was never typed in goes, so the panel does not count an empty input beside a full list.
+ */
+export function dropUntyped(items: ItemType[]) {
+	const typed = items.filter((item) => item.quantity.trim() || item.description.trim());
+	items.splice(0, items.length, ...typed);
+}
+
+/** A file joins the Items panel's attachments; a PDF is the item list itself (#290). */
+export function attach(panel: PanelType, file: AttachmentType) {
+	panel.attachments = [...(panel.attachments ?? []), file];
+	if (isPdfAttachment(file)) dropUntyped(panel.items);
+}
+
 /** A new, empty photo group, four photos to a page. */
 export function groupOf(title = '', isEnabled = true): GroupType {
-	return { id: crypto.randomUUID(), title, description: '', layout: 4, isEnabled, photos: [] };
+	return {
+		id: crypto.randomUUID(),
+		title,
+		description: '',
+		layout: DEFAULT_LAYOUT,
+		isEnabled,
+		photos: []
+	};
 }
 
 // The stages an Operations panel starts with (Justin, 2026-11-18). Each is a photo group like any other: it can be

@@ -38,17 +38,18 @@ import {
 import { knowPlaces } from './location';
 import type { PlaceType } from './map.data';
 import { readMenuPanels, writeMenuPanels, type MenuPanelsType } from './menu-panels';
+import type { PinType } from './pins';
 import type { RowType } from '#lib/rows/rows.schema.js';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
 import { contactsOf, type PageType } from './records.data';
-import { hasRequired, sectionsOf, tallyOf, toPercent } from './tally';
+import { emptyOf, hasRequired, sectionsOf, tallyOf, toPercent, type EmptyType } from './tally';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import type { TeamMemberType } from './team.data';
 
-export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings';
+export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings' | 'activity';
 export type ViewType = 'table' | 'cards' | 'board';
 // A project has Edit (its panels, once called Panels) and Preview; a record has Page (how it reads) and Edit.
 export type TabType = 'page' | 'edit' | 'preview';
@@ -90,6 +91,23 @@ export function percentOf(panels: PanelType[], look: LookState) {
 	const done = enabled.reduce((sum, item) => sum + item.done, 0);
 	const total = enabled.reduce((sum, item) => sum + item.total, 0);
 	return toPercent(done, total);
+}
+
+/** An empty input of a project's panel (#305): where it is, and what the list says, "Team Assigned, Project panel". */
+export type EmptyInputType = EmptyType & { panelId: string; text: string };
+
+// What keeps a percent under 100% (#305): the empty inputs of the switched-on panels, panel by panel, read from the
+// same list as their counts (tally.ts), so there is one named here for each input a count is short of.
+export function emptyInputsOf(panels: PanelType[], look: LookState): EmptyInputType[] {
+	return panels
+		.filter((panel) => panel.isEnabled)
+		.flatMap((panel) =>
+			emptyOf(sectionsIn(panel, look)).map((input) => ({
+				...input,
+				panelId: panel.id,
+				text: `${input.label}, ${panel.name} panel`
+			}))
+		);
 }
 
 /** How far a project's work has got: its Project panel complete, and every input filled in (its 100%). */
@@ -195,6 +213,8 @@ export class LookState {
 	// The menu's panels (#212): which are open, the same in the sidebar and the phone's drawer, and remembered on
 	// the device (menu-panels.ts).
 	menuPanels = $state(readMenuPanels());
+	// The signed-in person's own pins (#346, pins.ts), newest first: the menu's Pinned list.
+	pins = $state<PinType[]>([]);
 	// Which way the dashboard's next page slides in: 1 from the right, -1 from the left.
 	slide = $state(0);
 	// The record on show: which page it belongs to and its name.
@@ -203,6 +223,10 @@ export class LookState {
 	tabProgress = $state(0);
 	isSaving = $state(false);
 	toast = $state('');
+	// Whose empty inputs the toast lists (#305): a panel's, once its percent is tapped, or the whole project's.
+	emptyFor = $state<{ projectId: string; panelId?: string }>();
+	// The input an entry of that list opens, until the panel showing it has put the focus on it (panel-body.svelte).
+	reaching = $state<EmptyInputType>();
 	workspaces = $state<Record<string, PanelType[]>>({});
 	transports = $state<TransportType[]>([]);
 	facilities = $state<FacilityType[]>([]);
@@ -416,6 +440,15 @@ export class LookState {
 		this.screen = 'settings';
 	}
 
+	// The Activity (#306): an Admin's own screen, opened from the menu on their profile picture.
+	openActivity() {
+		if (!this.isAdmin) return;
+		if (this.screen === 'workspace') this.#keepProject();
+		this.tab = 'page';
+		this.tabProgress = 0;
+		this.screen = 'activity';
+	}
+
 	// The organization's new name follows it into every project's Organization drop-down.
 	nameOrganization(name: string) {
 		const before = this.organization.name;
@@ -619,6 +652,40 @@ export class LookState {
 		this.toast = message;
 		clearTimeout(this.#toastTimer);
 		this.#toastTimer = setTimeout(() => (this.toast = ''), 2600);
+	}
+
+	// What keeps a percent under 100% (#305): a tap on a panel's percent lists that panel's empty inputs, a tap on the
+	// project's percent the whole project's. The list stays until it is closed or nothing is left in it: it is read
+	// anew as inputs are filled in, and only while that project is the one open.
+	// One panel by its id, or every panel when none is named: whose empty inputs a percent lists.
+	#panelsOf(panelId?: string) {
+		return panelId ? this.panels.filter((panel) => panel.id === panelId) : this.panels;
+	}
+
+	showEmpty(panelId?: string) {
+		const panels = this.#panelsOf(panelId);
+		if (!emptyInputsOf(panels, this).length) {
+			this.emptyFor = undefined;
+			return this.say(`Everything${panelId ? ` in ${panels[0]?.name}` : ''} is filled in`);
+		}
+		this.emptyFor = { projectId: this.projectId, panelId };
+	}
+
+	closeEmpty() {
+		this.emptyFor = undefined;
+	}
+
+	get empties(): EmptyInputType[] {
+		const asked = this.emptyFor;
+		if (!asked || this.screen !== 'workspace' || asked.projectId !== this.projectId) return [];
+		return emptyInputsOf(this.#panelsOf(asked.panelId), this);
+	}
+
+	// An entry of that list opens its input: the Edit tab, the input's panel, and the input to put the focus on.
+	openInput(input: EmptyInputType) {
+		this.tab = 'edit';
+		this.panelId = input.panelId;
+		this.reaching = input;
 	}
 
 	// Is that name taken on its page? Records are known by their name.

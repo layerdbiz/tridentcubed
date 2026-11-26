@@ -1,7 +1,11 @@
 <script lang="ts">
 	// Presentation's strip (#324; Justin, 2026-11-25): the report's pages small, in a row under the page shown, centred
 	// when they all fit, their ends fading out; the page shown is lit and kept in the middle, and a tap goes to a page.
-	// Each small page is a copy of the page drawn on the canvas, taken again whenever the pages change.
+	// Each small page is a copy of the page drawn on the canvas, taken again whenever the pages change. The pages are
+	// the library's Tabs (#382), one stop for Tab; the presentation's own keys turn the page (report-preview takes them
+	// first), and a page tab that has focus hands it on to the page shown.
+	import { Tabs } from '@layerd/ui';
+
 	let {
 		canvas,
 		pages,
@@ -22,7 +26,6 @@
 	const W = 595;
 	const H = 842;
 	const tall = $derived(isWide ? 74 : 54);
-	let list: HTMLDivElement | undefined = $state();
 	const slots: HTMLDivElement[] = $state([]);
 
 	function copyOf(page: Element, scale: number) {
@@ -49,10 +52,13 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
-	// The page shown kept in the middle of the strip.
+	// The page shown kept in the middle of the strip, the row of tabs its button sits in.
 	$effect(() => {
 		const lit = slots[at]?.parentElement;
+		const list = lit?.parentElement;
 		if (!list || !lit) return;
+		if (list.contains(document.activeElement) && document.activeElement !== lit)
+			lit.focus({ preventScroll: true });
 		list.scrollTo({
 			left: lit.offsetLeft - (list.clientWidth - lit.offsetWidth) / 2,
 			behavior: 'smooth'
@@ -68,27 +74,25 @@
 	data-no-pan
 	bind:clientHeight={height}
 >
-	<div
-		bind:this={list}
+	<Tabs
 		class="flex h-full touch-pan-x [scrollbar-width:none] items-center gap-2 overflow-x-auto overscroll-x-contain py-0 pr-[76px] pl-4 md:px-4 {FADE} [&::-webkit-scrollbar]:hidden"
-		role="tablist"
-		aria-label="Pages"
+		label="Pages"
+		options={pages.map((_, index) => index)}
+		value={at}
+		onpick={ongo}
 	>
-		{#each pages as _, index (index)}
+		{#snippet option({ value: index, isOn, props })}
 			<button
+				{...props}
 				type="button"
-				class="relative shrink-0 overflow-hidden rounded-[3px] bg-white shadow-[0_1px_3px_rgb(15_23_42/0.15)] outline-2 outline-offset-2 transition-[outline-color] duration-150 first:ml-auto last:mr-auto {index ===
-				at
+				class="relative shrink-0 overflow-hidden rounded-[3px] bg-white shadow-[0_1px_3px_rgb(15_23_42/0.15)] outline-2 outline-offset-2 transition-[outline-color] duration-150 first:ml-auto last:mr-auto {isOn
 					? 'outline-primary'
 					: 'outline-transparent'}"
 				style="height: {tall}px; width: {(tall * W) / H}px"
-				role="tab"
-				aria-selected={index === at}
 				aria-label="Page {index + 1}"
-				onclick={() => ongo(index)}
 			>
 				<div bind:this={slots[index]}></div>
 			</button>
-		{/each}
-	</div>
+		{/snippet}
+	</Tabs>
 </div>

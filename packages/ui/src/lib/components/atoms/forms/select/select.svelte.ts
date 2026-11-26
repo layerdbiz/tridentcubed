@@ -9,6 +9,8 @@ export interface SelectOptionType {
 	/** The picture beside it: its own icon, a round picture, or a dot of colour. */
 	icon?: string;
 	image?: string;
+	/** How the round picture fills its circle: `cover` a photo (the default), `contain` a logo kept whole on white. */
+	fit?: 'cover' | 'contain';
 	dot?: string;
 }
 

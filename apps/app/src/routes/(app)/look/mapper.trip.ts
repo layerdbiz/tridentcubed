@@ -5,6 +5,7 @@
 //
 // Stops load with the lists (registry scope `organization`), so the lists can show a project's route and the
 // Transport Mode and Facility pages the projects that call on them before the project opens.
+import { toPageLayout } from '#lib/report/report.utils.js';
 import type { RowType } from '#lib/rows/rows.schema.js';
 import {
 	type AttachmentType,
@@ -55,7 +56,15 @@ export function toPanelRows(look: LookState, projectId: string, panel: PanelType
 			...(panel.attachments ?? []).map((file, position) => ({
 				table: 'item_attachment' as const,
 				id: file.id,
-				values: { projectId, panelId, position, name: file.name, file: file.src, kind: file.kind }
+				values: {
+					projectId,
+					panelId,
+					position,
+					name: file.name,
+					file: file.src,
+					kind: file.kind,
+					layout: file.layout
+				}
 			}))
 		];
 	if (panel.kind === 'timelog')
@@ -115,7 +124,8 @@ export function takePanelRows(look: LookState, panel: PanelType, rows: RowType[]
 				id: row.id,
 				name: text(row.values, 'name'),
 				src: text(row.values, 'file'),
-				kind: text(row.values, 'kind') === 'file' ? 'file' : 'photo'
+				kind: text(row.values, 'kind') === 'file' ? 'file' : 'photo',
+				layout: toPageLayout(row.values.layout)
 			})
 		);
 	}

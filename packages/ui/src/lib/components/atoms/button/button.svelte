@@ -32,10 +32,10 @@
 			| Snippet;
 		label?: string;
 		type?: 'button' | 'submit' | 'reset' | 'radio' | 'checkbox';
-		/** For radio/checkbox types: the name attribute for grouping */
+		/** The name attribute: a radio or checkbox's group, or a submit button's field */
 		name?: string;
-		/** For radio/checkbox types: the value attribute */
-		value?: string;
+		/** The value attribute: a radio or checkbox's, or what a submit button sends */
+		value?: string | number;
 		/** For radio/checkbox types: whether initially checked */
 		checked?: boolean;
 		/** Whether to reverse the icon and text order (icon on right instead of left) */
@@ -117,7 +117,7 @@
 		variant = undefined,
 		width = 'auto',
 		padding = 'default',
-		align = 'center',
+		align = undefined,
 		iconEnd = undefined,
 		iconEndHover = undefined,
 		iconEndToggle = undefined,
@@ -232,7 +232,8 @@
 
 			if (padding === 'none') classes.push('btn-padding-none');
 
-			if (width === 'full' && align !== 'center') {
+			// A full-width button keeps its variant's alignment (an icon and words at the start) unless align is given.
+			if (width === 'full' && align) {
 				classes.push(`btn-align-${align}`);
 			}
 		}
@@ -418,6 +419,8 @@
 		{:else}
 			<button
 				type={type === 'radio' || type === 'checkbox' ? 'button' : type}
+				{name}
+				{value}
 				{...props}
 				onmouseenter={() => (isHovered = true)}
 				onmouseleave={() => (isHovered = false)}
@@ -437,15 +440,23 @@
 <style lang="postcss">
 	@reference "#ui.css";
 
+	/* Each value takes the theme's when it sets one (`--theme-button-*`, and `--theme-button-*-<size>` for a size;
+	 * the app's are in apps/app/src/theme.css) and the library's own otherwise, so a theme that sets none keeps this
+	 * look: the gap, the padding of words (px, py), of an icon alone (p) and of an icon with words (ps-icon on the
+	 * icon's side, pe-icon on the words', py-icon), the icon's size and the words' weight. */
 	.btn {
-		--btn-gap: 0.625em;
-		--btn-p: 0.75em;
-		--btn-px: 1em;
-		--btn-py: var(--btn-p);
-		--btn-icon: 2cap;
+		--btn-gap: var(--theme-button-gap, 0.625em);
+		--btn-p: var(--theme-button-p, 0.75em);
+		--btn-px: var(--theme-button-px, 1em);
+		--btn-py: var(--theme-button-py, var(--btn-p));
+		--btn-ps-icon: var(--theme-button-ps-icon, var(--btn-px));
+		--btn-pe-icon: var(--theme-button-pe-icon, calc(var(--spacing) * 4));
+		--btn-py-icon: var(--theme-button-py-icon, var(--btn-py));
+		--btn-icon: var(--theme-button-icon, 2cap);
 
-		@apply relative isolate inline-flex w-auto cursor-pointer items-center justify-center overflow-hidden rounded-button text-center leading-none font-medium whitespace-nowrap transition-colors ease-in-out;
+		@apply relative isolate inline-flex w-auto cursor-pointer items-center justify-center overflow-hidden rounded-button text-center leading-none whitespace-nowrap transition-colors ease-in-out;
 		@apply gap-(--btn-gap) px-(--btn-px) py-(--btn-py);
+		font-weight: var(--theme-button-weight, var(--font-weight-medium));
 
 		@variant before {
 			@apply absolute inset-0 -z-1 bg-dark-light opacity-0 transition content-[''];
@@ -477,8 +488,8 @@
 		}
 
 		&:where(.btn-variant-icon-text) {
-			/* Leading icon followed by text */
-			@apply items-center justify-start pr-4 text-left;
+			/* Leading icon followed by text, with padding of its own */
+			@apply items-center justify-start py-(--btn-py-icon) ps-(--btn-ps-icon) pe-(--btn-pe-icon) text-left;
 		}
 
 		&:where(.btn-variant-text-icon) {
@@ -499,6 +510,10 @@
 		}
 
 		/* Alignment control for full-width buttons */
+		&:where(.btn-align-center) {
+			@apply justify-center text-center;
+		}
+
 		&:where(.btn-align-start) {
 			@apply justify-start;
 		}
@@ -515,30 +530,133 @@
 			@apply justify-around;
 		}
 
-		/* sizes (md stays text-md) */
+		/* sizes: the words' size, and each value above as the theme sets it for the size (md's words only when the
+		 * theme gives them a size) */
 		&:where(.xxs) {
 			@apply text-[10px];
+			--btn-gap: var(--theme-button-gap-xxs, var(--theme-button-gap, 0.625em));
+			--btn-p: var(--theme-button-p-xxs, var(--theme-button-p, 0.75em));
+			--btn-px: var(--theme-button-px-xxs, var(--theme-button-px, 1em));
+			--btn-py: var(--theme-button-py-xxs, var(--theme-button-py, var(--btn-p)));
+			--btn-ps-icon: var(--theme-button-ps-icon-xxs, var(--theme-button-ps-icon, var(--btn-px)));
+			--btn-pe-icon: var(
+				--theme-button-pe-icon-xxs,
+				var(--theme-button-pe-icon, calc(var(--spacing) * 4))
+			);
+			--btn-py-icon: var(--theme-button-py-icon-xxs, var(--theme-button-py-icon, var(--btn-py)));
+			--btn-icon: var(--theme-button-icon-xxs, var(--theme-button-icon, 2cap));
+			font-weight: var(
+				--theme-button-weight-xxs,
+				var(--theme-button-weight, var(--font-weight-medium))
+			);
 		}
 		&:where(.xs) {
 			@apply text-xs;
+			--btn-gap: var(--theme-button-gap-xs, var(--theme-button-gap, 0.625em));
+			--btn-p: var(--theme-button-p-xs, var(--theme-button-p, 0.75em));
+			--btn-px: var(--theme-button-px-xs, var(--theme-button-px, 1em));
+			--btn-py: var(--theme-button-py-xs, var(--theme-button-py, var(--btn-p)));
+			--btn-ps-icon: var(--theme-button-ps-icon-xs, var(--theme-button-ps-icon, var(--btn-px)));
+			--btn-pe-icon: var(
+				--theme-button-pe-icon-xs,
+				var(--theme-button-pe-icon, calc(var(--spacing) * 4))
+			);
+			--btn-py-icon: var(--theme-button-py-icon-xs, var(--theme-button-py-icon, var(--btn-py)));
+			--btn-icon: var(--theme-button-icon-xs, var(--theme-button-icon, 2cap));
+			font-weight: var(
+				--theme-button-weight-xs,
+				var(--theme-button-weight, var(--font-weight-medium))
+			);
 		}
 		&:where(.sm) {
 			@apply text-sm;
+			--btn-gap: var(--theme-button-gap-sm, var(--theme-button-gap, 0.625em));
+			--btn-p: var(--theme-button-p-sm, var(--theme-button-p, 0.75em));
+			--btn-px: var(--theme-button-px-sm, var(--theme-button-px, 1em));
+			--btn-py: var(--theme-button-py-sm, var(--theme-button-py, var(--btn-p)));
+			--btn-ps-icon: var(--theme-button-ps-icon-sm, var(--theme-button-ps-icon, var(--btn-px)));
+			--btn-pe-icon: var(
+				--theme-button-pe-icon-sm,
+				var(--theme-button-pe-icon, calc(var(--spacing) * 4))
+			);
+			--btn-py-icon: var(--theme-button-py-icon-sm, var(--theme-button-py-icon, var(--btn-py)));
+			--btn-icon: var(--theme-button-icon-sm, var(--theme-button-icon, 2cap));
+			font-weight: var(
+				--theme-button-weight-sm,
+				var(--theme-button-weight, var(--font-weight-medium))
+			);
 		}
 		&:where(.md) {
-			@apply text-md;
+			font-size: var(--theme-button-text-md, inherit);
+			--btn-gap: var(--theme-button-gap-md, var(--theme-button-gap, 0.625em));
+			--btn-p: var(--theme-button-p-md, var(--theme-button-p, 0.75em));
+			--btn-px: var(--theme-button-px-md, var(--theme-button-px, 1em));
+			--btn-py: var(--theme-button-py-md, var(--theme-button-py, var(--btn-p)));
+			--btn-ps-icon: var(--theme-button-ps-icon-md, var(--theme-button-ps-icon, var(--btn-px)));
+			--btn-pe-icon: var(
+				--theme-button-pe-icon-md,
+				var(--theme-button-pe-icon, calc(var(--spacing) * 4))
+			);
+			--btn-py-icon: var(--theme-button-py-icon-md, var(--theme-button-py-icon, var(--btn-py)));
+			--btn-icon: var(--theme-button-icon-md, var(--theme-button-icon, 2cap));
+			font-weight: var(
+				--theme-button-weight-md,
+				var(--theme-button-weight, var(--font-weight-medium))
+			);
 		}
 		&:where(.lg) {
 			@apply text-lg;
+			--btn-gap: var(--theme-button-gap-lg, var(--theme-button-gap, 0.625em));
+			--btn-p: var(--theme-button-p-lg, var(--theme-button-p, 0.75em));
+			--btn-px: var(--theme-button-px-lg, var(--theme-button-px, 1em));
+			--btn-py: var(--theme-button-py-lg, var(--theme-button-py, var(--btn-p)));
+			--btn-ps-icon: var(--theme-button-ps-icon-lg, var(--theme-button-ps-icon, var(--btn-px)));
+			--btn-pe-icon: var(
+				--theme-button-pe-icon-lg,
+				var(--theme-button-pe-icon, calc(var(--spacing) * 4))
+			);
+			--btn-py-icon: var(--theme-button-py-icon-lg, var(--theme-button-py-icon, var(--btn-py)));
+			--btn-icon: var(--theme-button-icon-lg, var(--theme-button-icon, 2cap));
+			font-weight: var(
+				--theme-button-weight-lg,
+				var(--theme-button-weight, var(--font-weight-medium))
+			);
 		}
 		&:where(.xl) {
 			@apply text-2xl;
-		}
-		&:where(.xl) {
-			@apply text-2xl;
+			--btn-gap: var(--theme-button-gap-xl, var(--theme-button-gap, 0.625em));
+			--btn-p: var(--theme-button-p-xl, var(--theme-button-p, 0.75em));
+			--btn-px: var(--theme-button-px-xl, var(--theme-button-px, 1em));
+			--btn-py: var(--theme-button-py-xl, var(--theme-button-py, var(--btn-p)));
+			--btn-ps-icon: var(--theme-button-ps-icon-xl, var(--theme-button-ps-icon, var(--btn-px)));
+			--btn-pe-icon: var(
+				--theme-button-pe-icon-xl,
+				var(--theme-button-pe-icon, calc(var(--spacing) * 4))
+			);
+			--btn-py-icon: var(--theme-button-py-icon-xl, var(--theme-button-py-icon, var(--btn-py)));
+			--btn-icon: var(--theme-button-icon-xl, var(--theme-button-icon, 2cap));
+			font-weight: var(
+				--theme-button-weight-xl,
+				var(--theme-button-weight, var(--font-weight-medium))
+			);
 		}
 		&:where(.xxl) {
 			@apply text-3xl;
+			--btn-gap: var(--theme-button-gap-xxl, var(--theme-button-gap, 0.625em));
+			--btn-p: var(--theme-button-p-xxl, var(--theme-button-p, 0.75em));
+			--btn-px: var(--theme-button-px-xxl, var(--theme-button-px, 1em));
+			--btn-py: var(--theme-button-py-xxl, var(--theme-button-py, var(--btn-p)));
+			--btn-ps-icon: var(--theme-button-ps-icon-xxl, var(--theme-button-ps-icon, var(--btn-px)));
+			--btn-pe-icon: var(
+				--theme-button-pe-icon-xxl,
+				var(--theme-button-pe-icon, calc(var(--spacing) * 4))
+			);
+			--btn-py-icon: var(--theme-button-py-icon-xxl, var(--theme-button-py-icon, var(--btn-py)));
+			--btn-icon: var(--theme-button-icon-xxl, var(--theme-button-icon, 2cap));
+			font-weight: var(
+				--theme-button-weight-xxl,
+				var(--theme-button-weight, var(--font-weight-medium))
+			);
 		}
 	}
 
@@ -550,6 +668,11 @@
 	/* keep text-trim inline */
 	.btn-label {
 		@apply w-full;
+	}
+
+	/* centred, the words hug their text so an icon sits beside them */
+	.btn:where(.btn-align-center) .btn-label {
+		@apply w-auto;
 	}
 
 	/* bigger icon, still cap-aligned so centering stays true */

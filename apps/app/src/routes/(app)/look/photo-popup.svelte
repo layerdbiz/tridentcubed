@@ -15,17 +15,32 @@
 	// the photo component's crop (lib/components/photo) in a frame of the photo's own shape, with a zoom slider in place of the dots;
 	// Text edits the description over the photo's bottom left; Reset brings back the whole photo, as a change that
 	// waits for Save; More holds Delete, which asks first and moves on to the next photo (the last one closes).
+	// #376: More is the library's Menu, with Delete as its red choice; it opens over the pop-up, as every menu does.
+	// #343: the i at the top right opens the Details under the photo: the file as it arrived beside the file the app
+	// kept (type, size, pixel size), how much smaller it got, and whether its metadata came across. They follow the
+	// photo open as the strip is swiped; a PDF or a video says what its own file is.
 	import { tick, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
+	import { MediaQuery } from 'svelte/reactivity';
 	import { fade } from 'svelte/transition';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import type { CropType, SizeType } from '#lib/components/photo/photo.types.js';
 	import { isWhole, toCrop } from '#lib/components/photo/photo.utils.js';
-	import { ATTACHMENT_NOUNS } from '#lib/files/files.schema.js';
-	import { toVideoLink } from '#lib/video/video.utils.js';
+	import {
+		ATTACHMENT_NOUNS,
+		type FileFactsType,
+		toCarriedLabel,
+		toFileId,
+		toSizeLabel,
+		toSmallerPercent,
+		toTypeLabel
+	} from '#lib/files/files.schema.js';
+	import { fileDetailsOf } from '#lib/files/files.state.svelte.js';
+	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
 	import Dots from './dots.svelte';
 	import type { GroupType, PhotoType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { Button, Menu, type MenuOptionType } from '@layerd/ui';
 
 	let {
 		look,
@@ -57,7 +72,8 @@
 	let mode = $state<PopupModeType>(untrack(() => firstMode));
 	// Cropping or typing works on a copy of the photo's crop and description, kept only on Save.
 	let draft = $state<{ crop?: CropType; words: string } | null>(null);
-	let isMenuOpen = $state(false);
+	let moreBox = $state<HTMLElement>();
+	let isDetailsOpen = $state(false);
 	let savedAt = $state(0);
 	let stageWidth = $state(0);
 	let stageHeight = $state(0);
@@ -72,6 +88,10 @@
 	const photo = $derived<PhotoType | undefined>(photos[index]);
 	const crop = $derived(draft ? draft.crop : photo?.crop);
 	const percent = $derived(Math.round((crop?.zoom ?? 1) * 100));
+	// #343: the file the Details are about: a photo's own, or a PDF's or a video's (not the picture made of it).
+	const detailsAddress = $derived(photo ? (photo.kind ? (photo.source ?? '') : photo.src) : '');
+	const details = $derived(isDetailsOpen ? fileDetailsOf(detailsAddress) : undefined);
+	const smaller = $derived(details ? toSmallerPercent(details.original, details.saved) : undefined);
 	// The photo open, and while looking the one either side of it, waiting just off the stage.
 	const slides = $derived.by(() => {
 		const wheres = mode === 'view' ? [-1, 0, 1] : [0];
@@ -103,6 +123,19 @@
 		return { width: shape.width * scale, height: shape.height * scale };
 	}
 
+	// A file's facts on one line: its size and pixel size, or what was not recorded.
+	function factsOf(facts: FileFactsType) {
+		const size = toSizeLabel(facts.size) || 'Size not recorded';
+		return facts.width && facts.height ? `${size} · ${facts.width} × ${facts.height}` : size;
+	}
+
+	// How much smaller it got, in words.
+	function smallerOf(percent: number | undefined) {
+		if (percent === undefined) return 'Not recorded';
+		if (percent === 0) return 'Same size';
+		return percent > 0 ? `${percent}% smaller` : `${-percent}% bigger`;
+	}
+
 	function startDraft() {
 		if (draft || !photo) return;
 		draft = { crop: photo.crop ? { ...photo.crop } : undefined, words: photo.description };
@@ -110,7 +143,7 @@
 
 	// Crop and Text are two tabs of one edit: moving between them keeps what was done in the other.
 	function choose(next: 'crop' | 'text') {
-		isMenuOpen = false;
+		isDetailsOpen = false;
 		startDraft();
 		mode = next;
 	}
@@ -121,14 +154,12 @@
 		photo.description = draft.words;
 		draft = null;
 		mode = 'view';
-		isMenuOpen = false;
 		savedAt = Date.now();
 		onsave();
 	}
 
 	// Reset brings back the whole photo, as a change that waits for Save; from looking, it starts cropping.
 	async function reset() {
-		isMenuOpen = false;
 		if (mode !== 'crop') {
 			startDraft();
 			mode = 'crop';
@@ -149,14 +180,12 @@
 			isGliding = false;
 			if (!next) return;
 			isStepping = false;
-			isMenuOpen = false;
 			openId = next.id;
 			offset = 0;
 		}, SLIDE_MS);
 	}
 
 	function askDelete() {
-		isMenuOpen = false;
 		const gone = photo;
 		if (!gone) return;
 		look.confirm({
@@ -190,7 +219,7 @@
 	} | null = null;
 
 	function onpointerdown(event: PointerEvent) {
-		if (mode !== 'view' || isStepping || isMenuOpen || swipe) return;
+		if (mode !== 'view' || isStepping || isMoreOpen() || swipe) return;
 		if (event.pointerType === 'mouse' && event.button !== 0) return;
 		if ((event.target as HTMLElement).closest('button, input, textarea')) return;
 		try {
@@ -237,14 +266,18 @@
 		stepTo(by);
 	}
 
-	// Escape shuts the menu, else leaves without saving; the arrow keys move between photos. A question on top (the
-	// delete) keeps its own keys.
+	// More's menu, while it is open, has the keys: Escape shuts it (the menu does that itself) and the pop-up stays.
+	function isMoreOpen() {
+		return Boolean(moreBox?.querySelector('[aria-expanded="true"]'));
+	}
+
+	// Escape leaves without saving; the arrow keys move between photos. A question on top (the delete) and More's
+	// open menu keep their own keys.
 	function onkeydown(event: KeyboardEvent) {
-		if (look.asking) return;
+		if (look.asking || isMoreOpen()) return;
 		if (event.key === 'Escape') {
 			event.preventDefault();
-			if (isMenuOpen) isMenuOpen = false;
-			else onclose();
+			onclose();
 			return;
 		}
 		const isTyping = (event.target as HTMLElement | null)?.closest?.('input, textarea');
@@ -289,17 +322,17 @@
 		else choose(tool);
 	}
 
+	const MORE: MenuOptionType[] = [
+		{ id: 'delete', label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
+	];
+	// Its list opens over More, from More's right edge on a phone and its left edge on a wider screen, as it always has.
+	const wide = new MediaQuery('min-width: 48rem');
+
 	const toolClass =
 		'flex w-[76px] flex-col items-center gap-[3px] rounded-[14px] pt-[7px] pb-1.5 text-[11px] font-semibold text-slate-300 transition disabled:opacity-30 md:h-11 md:w-auto md:flex-row md:gap-2 md:rounded-full md:px-[18px] md:py-0 md:text-sm md:enabled:hover:text-white';
 </script>
 
-<svelte:window
-	{onkeydown}
-	onpointerdown={(event) => {
-		if (isMenuOpen && !(event.target as HTMLElement | null)?.closest?.('[data-menu]'))
-			isMenuOpen = false;
-	}}
-/>
+<svelte:window {onkeydown} />
 
 <div
 	popover="manual"
@@ -325,25 +358,47 @@
 		<div
 			class="box-content flex h-14 shrink-0 items-center justify-between px-2 pt-[env(safe-area-inset-top)] md:h-16 md:px-2.5 md:pt-0"
 		>
-			<button
-				type="button"
-				class="grid size-11 place-items-center rounded-full transition hover:bg-white/10"
+			<Button
+				ghost
+				invert
+				lg
+				icon="icon-[mdi--close]"
 				aria-label="Close without saving"
-				onclick={onclose}><span class="icon-[mdi--close] size-[26px]"></span></button
-			>
+				title="Close without saving"
+				onclick={onclose}
+			/>
 			{#if draft}
-				<button
-					type="button"
-					class="flex h-10 items-center gap-1.5 rounded-full bg-primary pr-[18px] pl-3.5 text-[15px] font-semibold text-white shadow-[0_6px_16px_-6px_rgb(37_99_235/0.8)] transition hover:brightness-110"
-					onclick={save}><span class="icon-[mdi--check] size-5"></span>Save</button
-				>
-			{:else if savedAt}
-				{#key savedAt}
-					<span
-						class="saved flex h-10 items-center gap-1.5 px-2.5 text-[15px] font-semibold text-emerald-400"
-						role="status"><span class="icon-[mdi--check] size-5"></span>Saved</span
-					>
-				{/key}
+				<Button
+					primary
+					heavy
+					sm
+					icon="icon-[mdi--check]"
+					label="Save"
+					onclick={save}
+				/>
+			{:else}
+				<div class="flex items-center">
+					{#if savedAt}
+						{#key savedAt}
+							<span
+								class="saved flex h-10 items-center gap-1.5 px-2.5 text-[15px] font-semibold text-emerald-400"
+								role="status"><span class="icon-[mdi--check] size-5"></span>Saved</span
+							>
+						{/key}
+					{/if}
+					<Button
+						ghost
+						invert
+						md
+						icon="icon-[mdi--information-outline]"
+						iconToggle="icon-[mdi--information]"
+						toggled={isDetailsOpen}
+						aria-label="Details"
+						title="Details"
+						aria-pressed={isDetailsOpen}
+						onclick={() => (isDetailsOpen = !isDetailsOpen)}
+					/>
+				</div>
 			{/if}
 		</div>
 
@@ -425,6 +480,72 @@
 			</div>
 		</div>
 
+		{#if isDetailsOpen && mode === 'view' && photo}
+			<!-- #343: what the file was and became. -->
+			<section
+				class="mx-2.5 mt-2 shrink-0 rounded-2xl bg-white/[0.07] p-3 text-[13px] text-slate-300 md:mx-auto md:w-full md:max-w-2xl md:p-4"
+				aria-label="Details"
+				transition:fade={{ duration: 150 }}
+			>
+				{#if detailsAddress.startsWith('blob:')}
+					<p>The details show once it has uploaded.</p>
+				{:else if !toFileId(detailsAddress)}
+					<p>Details are kept for files added to a project. This one came with the sample.</p>
+				{:else if !details}
+					<p class="flex items-center gap-2">
+						<span class="icon-[svg-spinners--ring-resize] size-4 text-slate-400"></span>Reading the
+						details
+					</p>
+				{:else}
+					{@const isKept =
+						details.original.type === details.saved.type &&
+						details.original.size === details.saved.size}
+					<p class="mb-2 truncate font-semibold text-white">{details.name}</p>
+					<div class="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
+						<div class="min-w-0 rounded-xl bg-white/[0.06] px-3 py-2.5">
+							<p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+								As it arrived
+							</p>
+							<p class="mt-0.5 font-bold text-base text-white">
+								{toTypeLabel(details.original.type) || 'Unknown'}
+							</p>
+							<p class="tabular-nums">{factsOf(details.original)}</p>
+						</div>
+						<span class="icon-[mdi--arrow-right] size-5 self-center text-slate-500"></span>
+						<div class="min-w-0 rounded-xl bg-white/[0.06] px-3 py-2.5">
+							<p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+								As it was saved
+							</p>
+							<p class="mt-0.5 font-bold text-base text-white">{toTypeLabel(details.saved.type)}</p>
+							<p class="tabular-nums">{factsOf(details.saved)}</p>
+						</div>
+					</div>
+					<dl class="mt-2.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+						<dt class="text-slate-400">Size</dt>
+						<dd class="font-semibold text-white">
+							{isKept ? 'Kept as it came' : smallerOf(smaller)}
+						</dd>
+						{#if photo.kind === 'pdf'}
+							<dt class="text-slate-400">Pages</dt>
+							<dd class="font-semibold text-white">{photo.pageCount ?? 1}</dd>
+						{:else if photo.kind === 'video'}
+							<dt class="text-slate-400">Length</dt>
+							<dd class="font-semibold text-white">
+								{toLengthLabel(photo.duration) || 'Not read'}
+							</dd>
+						{:else}
+							<dt class="text-slate-400">Metadata</dt>
+							<dd class="font-semibold text-white">
+								{toCarriedLabel(details.carried, details.hasFieldList)}{details.isOriginalKept
+									? ', and the original is kept too'
+									: ''}
+							</dd>
+						{/if}
+					</dl>
+				{/if}
+			</section>
+		{/if}
+
 		<div
 			class="relative shrink-0 px-2.5 pt-1 pb-[max(16px,env(safe-area-inset-bottom))] md:px-5 md:pb-5"
 		>
@@ -448,26 +569,34 @@
 					</label>
 				{:else if mode === 'view' && photos.length > 1}
 					<div class="flex items-center justify-center gap-4">
-						<button
-							type="button"
-							class="hidden size-8 place-items-center rounded-full bg-white/12 transition enabled:hover:bg-white/24 disabled:opacity-25 md:grid"
-							aria-label="Previous photo"
-							disabled={index === 0}
-							onclick={() => stepTo(-1)}
-							><span class="icon-[mdi--chevron-left] size-[22px]"></span></button
-						>
+						<span class="hidden md:contents">
+							<Button
+								ghost
+								invert
+								md
+								icon="icon-[mdi--chevron-left]"
+								aria-label="Previous photo"
+								title="Previous photo"
+								disabled={index === 0}
+								onclick={() => stepTo(-1)}
+							/>
+						</span>
 						<Dots
 							at={index}
 							count={photos.length}
 						/>
-						<button
-							type="button"
-							class="hidden size-8 place-items-center rounded-full bg-white/12 transition enabled:hover:bg-white/24 disabled:opacity-25 md:grid"
-							aria-label="Next photo"
-							disabled={index === photos.length - 1}
-							onclick={() => stepTo(1)}
-							><span class="icon-[mdi--chevron-right] size-[22px]"></span></button
-						>
+						<span class="hidden md:contents">
+							<Button
+								ghost
+								invert
+								md
+								icon="icon-[mdi--chevron-right]"
+								aria-label="Next photo"
+								title="Next photo"
+								disabled={index === photos.length - 1}
+								onclick={() => stepTo(1)}
+							/>
+						</span>
 					</div>
 				{/if}
 			</div>
@@ -498,30 +627,22 @@
 						></span><span>{photo.kind === 'video' ? 'Play' : 'Open'}</span></a
 					>
 				{/if}
-				<div
-					class="relative"
-					data-menu
-				>
-					<button
-						type="button"
-						class="{toolClass} {isMenuOpen ? 'bg-white/14 text-white' : ''}"
-						aria-expanded={isMenuOpen}
-						onclick={() => (isMenuOpen = !isMenuOpen)}
-						><span class="icon-[mdi--dots-vertical] size-6 md:size-5"></span><span>More</span
-						></button
+				<div bind:this={moreBox}>
+					<Menu
+						label="More"
+						value=""
+						options={MORE}
+						align={wide.current ? 'left' : 'right'}
+						opens="up"
+						onpick={(choice) => choice === 'delete' && askDelete()}
 					>
-					{#if isMenuOpen}
-						<div
-							class="absolute right-0 bottom-full z-10 mb-2 min-w-[170px] rounded-[14px] bg-white p-1.5 text-slate-900 shadow-[0_16px_36px_-10px_rgb(0_0_0/0.6)] md:right-auto md:left-0"
-						>
-							<button
-								type="button"
-								class="flex h-[42px] w-full items-center gap-2.5 rounded-[9px] px-2.5 font-semibold text-danger transition hover:bg-danger/10"
-								onclick={askDelete}
-								><span class="icon-[mdi--trash-can-outline] size-5"></span>Delete</button
+						{#snippet trigger(_, isOpen)}
+							<span class="{toolClass} md:hover:text-white {isOpen ? 'bg-white/14 text-white' : ''}"
+								><span class="icon-[mdi--dots-vertical] size-6 md:size-5"></span><span>More</span
+								></span
 							>
-						</div>
-					{/if}
+						{/snippet}
+					</Menu>
 				</div>
 			</div>
 		</div>

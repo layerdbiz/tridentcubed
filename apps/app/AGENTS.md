@@ -11,7 +11,8 @@ Layout confirmed against SvelteKit docs on #42
 src/env.ts                     the settings the app reads (Kit 3 defineEnvVars), all optional
 src/hooks.server.ts            session and actor into event.locals, Better Auth's /api/auth/*, the guard
 src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql, clients, claims.ts the
-                               claims helper, policy.ts its SQL, seed.ts the one seed and its SQL),
+                               claims helper, policy.ts its SQL, triggers.ts what the database does by
+                               itself, seed.ts the one seed and its SQL),
                                auth.ts, server.ts (the one claims helper + auth, and `requireStaff` /
                                `requireSignedIn`, the check every remote function starts with),
                                access.ts (the sign-in rule), permission.ts (the one permission check),
@@ -21,7 +22,7 @@ src/lib/server/                server-only code: db/ (Drizzle schema, schema.sql
                                Storage or a local folder), convert.ts (a picture the device could not
                                read, converted on the server and swapped in, #294), export.ts (the PDF
                                export: who may ask, the print document, the file name), pdf-browser.ts
-                               (the export browser)
+                               (the export browser), activity.ts (the Activity's read, #306)
 scripts/seed-sql.ts            prints the one seed as SQL (`pnpm --silent --filter app db:seed-sql`)
 src/lib/rows/                  saving: rows.schema.ts (the row registry), rows.remote.ts (`saveRows`,
                                `fetchLists`), rows.utils.ts (the difference), rows.state.svelte.ts (the sync loop)
@@ -32,7 +33,8 @@ src/lib/files/                 files: files.schema.ts (the upload and convert re
                                `AttachmentUpload` for a PDF or video and the picture made of it, #327)
 src/lib/pdf/                   PDFs in photo groups (#327): pdf.utils.ts (PDF.js on the device: a PDF's pages
                                counted and drawn, once), pdf.constants.ts (the decoders, fonts and character
-                               maps PDF.js reads for some PDFs, served with the app)
+                               maps PDF.js reads for some PDFs, served with the app), pdf.state.svelte.ts (a
+                               stored PDF's page count read from the PDF itself, for an Items PDF, #295)
 src/lib/video/                 videos in photo groups (#327): video.utils.ts (the length and the Thumbnail
                                made on the device, the app address that plays one)
 src/lib/components/attachment/ pdf-page.svelte: one page of a stored PDF in its spot on the Preview
@@ -51,6 +53,9 @@ src/routes/local-files/        the local folder store's signed addresses (no Sup
 src/routes/report/             a report's link, /report/<project>/<page>: what a report page's QR code
                                holds; sends the browser on to that project's Preview (behind sign-in)
 src/lib/report/                the report link: report.utils.ts builds it and the app address it opens
+src/lib/activity/              the Activity (#306): activity.remote.ts (`fetchActivity`, an Admin's only),
+                               activity.types.ts and activity.utils.ts (the Grouped view's runs); the
+                               screen is routes/(app)/look/activity-page.svelte
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
 src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <route>.<role>.ts beside it
@@ -110,7 +115,9 @@ the why is in ADR 0002, 0003 and 0005.
   permission check runs before it; Row Level Security is the net behind.
   Get it with `const { claims } = await getServer()` and run work as
   `claims.run(locals.actor, (tx) => ...)`; a new table's policy is
-  `organizationPolicy('<table>')` from `db/policy.ts`.
+  `organizationPolicy('<table>')` from `db/policy.ts`, or `userPolicy('<table>')`
+  for a table each User keeps for themselves (the menu's pins, `pinned`), whose
+  `user_id` the save command sets.
 - **One save command: `saveRows`** (`src/lib/rows/rows.remote.ts`). Every
   change to a row (records, projects, panels, stops, entries, photos, status,
   Trash, roles) goes to the server through it as a batch of row changes,
@@ -149,7 +156,9 @@ the why is in ADR 0002, 0003 and 0005.
   cannot (a TIFF), it stays beside the copy, named on the file row
   (`original_path`). Camera RAW is turned down on the device for now.
 - **Schema changes** are Drizzle schema edits tested on the in-process
-  Postgres. Vercel builds never migrate the Supabase database.
+  Postgres. Vercel builds never migrate the Supabase database. A trigger,
+  which drizzle-kit cannot write, goes in `db/triggers.ts`: the in-process
+  Postgres runs it, and each Supabase database is given the same SQL by hand.
 
 ## The installed app
 
@@ -169,8 +178,6 @@ src/routes/offline/                the Needs Internet screen the service worker 
 src/lib/install/                   Install App: install.constants.ts, install.state.svelte.ts (it starts
                                    hearing the browser in src/hooks.client.ts) and how-to.svelte; used by
                                    routes/(app)/look/account-menu.svelte and routes/login/login.svelte
-src/lib/components/sheet/          the one sheet (slides up on a phone, a pop-up from tablet width up),
-                                   here because the login page's how-to opens in it too
 src/lib/update/                    the update note: its rule, its test and the note, wired into the
                                    signed-in app only; in lib because the service worker reads its
                                    one message (update.constants.ts) too
@@ -213,17 +220,25 @@ src/lib/update/                    the update note: its rule, its test and the n
   fetch the new service worker, since an open app loads no page and the
   browser looks for one only then. When to switch is the update rule
   (`src/lib/update/update.state.svelte.ts`); change it there, test first.
-- **A page load is the browser's own request.** The service worker turns
-  on navigation preload when it takes over and answers a page load with
-  that request, never with one it sends itself: a request sent from a
-  service worker reaches the server as a plain read (`Sec-Fetch-Dest:
-  empty`), not as a page load. Vercel's Skew Protection keeps a visitor on
-  the deployment they started with by a cookie and moves them to the newest
-  one on a page load only, so a page load sent from the service worker left
-  an open app on the old deployment, and the update note came back after
-  every tap. With preload on, the browser asks for every page load itself,
-  so one the service worker leaves alone would be asked twice: an address
-  that is not a page gets the browser's request handed back as it came.
+- **Each request names its version (#401).** Vercel's Skew Protection
+  keeps a browser on the deployment it started with by a cookie
+  (`__vdpl`), and a request sent from a service worker is no page load to
+  Vercel, so the cookie holds it on that deployment. So the service worker
+  names the deployment itself: its install asks for its own files with
+  `x-deployment-id` set to the deployment it was built in
+  (`__DEPLOYMENT_ID__`, written in by `vite.config.ts`), and a page load
+  is asked of the newest one (`x-deployment-id` empty, `cache:
+  'no-store'`). The server sets the cookie to the deployment that served
+  each page and marks the page `no-store` (`src/lib/server/pin.ts`), so
+  the page's files come from the same one. Navigation preload stays off:
+  the page is asked for here, and preload would ask a second time. Before
+  #401 an install asked for the new files under the old cookie, got 404s
+  and never finished, so Reload had nothing to switch to.
+- **Nobody stays on an old version (Justin, 2026-11-26).** With a newer
+  version out, What's New's X, a tap outside and Escape do what its button
+  does. A reload made for the newest version that still brings an older
+  page clears the service worker and its caches and reloads once per
+  version and tab (`src/lib/update/rescue.ts`).
 - **Ask the browser what it can do.** Install App knows three things, each
   asked of the browser: whether the app runs installed, whether a one-tap
   install was offered, whether an install just happened. Nothing reads the

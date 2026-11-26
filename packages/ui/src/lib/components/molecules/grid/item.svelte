@@ -2,10 +2,9 @@
 <!-- svelte-ignore state_referenced_locally -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { getGridCtx, parseRange } from '@layerd/ui';
+	import { Component, getGridCtx, parseRange, type ComponentProps } from '@layerd/ui';
 
-	export interface ItemProps {
-		class?: string;
+	export interface ItemProps extends ComponentProps {
 		range?: string; // "A1" | "A1:C3" | "1x2" | "1:3x1:3"
 		row?: string;
 		col?: string;
@@ -23,7 +22,8 @@
 		items,
 		content,
 		self,
-		children
+		children,
+		...props
 	}: ItemProps = $props();
 
 	const ctx = (() => {
@@ -148,9 +148,16 @@
 	const sizeClass = $derived(self ? '' : 'h-full w-full');
 </script>
 
-<div
-	class={`min-h-0 min-w-0 ${sizeClass} ${userClass}`}
-	{style}
+<Component
+	{...props}
+	class="min-h-0 min-w-0 {sizeClass} {userClass}"
 >
-	{@render children?.()}
-</div>
+	{#snippet component({ props: root })}
+		<div
+			{...root}
+			style={[root.style, style].filter(Boolean).join('; ')}
+		>
+			{@render children?.()}
+		</div>
+	{/snippet}
+</Component>
