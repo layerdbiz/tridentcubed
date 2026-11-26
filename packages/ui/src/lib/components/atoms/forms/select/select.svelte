@@ -113,7 +113,7 @@
 	// A choice's mark: lit for the field's own pick and the one picked in the list, the rest grey until pointed at.
 	const LIT = 'bg-primary/10 text-primary';
 	const QUIET =
-		'bg-slate-100 text-slate-400 group-hover/option:bg-primary/10 group-hover/option:text-primary';
+		'bg-neutral-200 text-base-400 group-hover/option:bg-primary/10 group-hover/option:text-primary';
 	// How many known choices a typed field's list shows.
 	const KNOWN = 5;
 
@@ -248,7 +248,7 @@
 			src={option.image}
 			{size}
 			fit={option.fit}
-			ring="ring-1 ring-slate-900/10"
+			ring="ring-1 ring-secondary/10"
 		/>
 	{:else if option?.dot}
 		<span
@@ -273,7 +273,7 @@
 	{#if hasList}
 		<ul
 			id="{uid}-choices"
-			class="mt-1.5 overflow-hidden rounded-2xl bg-white p-1 text-left shadow-[0_2px_6px_rgb(15_23_42/0.06),0_12px_28px_-12px_rgb(15_23_42/0.25)] ring-1 ring-slate-900/[0.06]"
+			class="mt-1.5 overflow-hidden rounded-2xl bg-surface p-1 text-left shadow-list ring-1 ring-secondary/[0.06]"
 			role="listbox"
 			aria-label={label}
 		>
@@ -281,7 +281,7 @@
 				<li>
 					<button
 						type="button"
-						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-900/[0.04]"
+						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-base-600 hover:bg-secondary/[0.04]"
 						role="option"
 						aria-selected={option.value === value}
 						onpointerdown={(event) => event.preventDefault()}
@@ -289,7 +289,7 @@
 					>
 						<span class="{option.icon || choiceIcon} size-[18px] shrink-0 text-primary"></span>
 						<span class="min-w-0 flex-1 truncate">{option.label}</span>
-						{#if option.note}<span class="shrink-0 text-[11px] text-slate-400">{option.note}</span
+						{#if option.note}<span class="shrink-0 text-[11px] text-base-400">{option.note}</span
 							>{/if}
 					</button>
 				</li>
@@ -298,27 +298,27 @@
 				<li>
 					<button
 						type="button"
-						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-900/[0.04]"
+						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm text-base-600 hover:bg-secondary/[0.04]"
 						role="option"
 						aria-selected="false"
 						onpointerdown={(event) => event.preventDefault()}
 						onclick={() => choose(option)}
 					>
-						<span class="{option.icon || choiceIcon} size-[18px] shrink-0 text-slate-400"></span>
+						<span class="{option.icon || choiceIcon} size-[18px] shrink-0 text-base-400"></span>
 						<span class="min-w-0 flex-1">
 							<span class="block truncate">{option.label}</span>
 							{#if option.note && option.note !== option.label}
-								<span class="block truncate text-[11px] text-slate-400">{option.note}</span>
+								<span class="block truncate text-[11px] text-base-400">{option.note}</span>
 							{/if}
 						</span>
 					</button>
 				</li>
 			{/each}
 			{#if asking.isAsking && !found.length}
-				<li class="px-3 py-2 text-xs text-slate-400">Looking it up…</li>
+				<li class="px-3 py-2 text-xs text-base-400">Looking it up…</li>
 			{/if}
 			{#if found.length && lookup?.credit}
-				<li class="px-3 pt-1 pb-1.5 text-right text-[10px] text-slate-400">
+				<li class="px-3 pt-1 pb-1.5 text-right text-[10px] text-base-400">
 					Powered by <a
 						class="underline"
 						href={lookup.credit.href}

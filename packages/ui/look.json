@@ -5,10 +5,6 @@
 			"base": false,
 			"colours": 0
 		},
-		"components/atoms/avatar/avatar.svelte": {
-			"base": true,
-			"colours": 5
-		},
 		"components/atoms/content/content.svelte": {
 			"base": true,
 			"colours": 4
@@ -16,14 +12,6 @@
 		"components/atoms/forms/checkbox/checkbox.svelte": {
 			"base": false,
 			"colours": 0
-		},
-		"components/atoms/forms/help/help.svelte": {
-			"base": true,
-			"colours": 2
-		},
-		"components/atoms/forms/select/select.svelte": {
-			"base": true,
-			"colours": 14
 		},
 		"components/atoms/icon/icon.svelte": {
 			"base": false,
@@ -81,10 +69,6 @@
 			"base": false,
 			"colours": 2
 		},
-		"components/molecules/menu/menu.svelte": {
-			"base": false,
-			"colours": 14
-		},
 		"components/molecules/navbar/navbar.svelte": {
 			"base": false,
 			"colours": 0
@@ -92,14 +76,6 @@
 		"components/molecules/preview/preview.svelte": {
 			"base": true,
 			"colours": 3
-		},
-		"components/molecules/stack/stack.svelte": {
-			"base": true,
-			"colours": 2
-		},
-		"components/molecules/toast/toast.svelte": {
-			"base": true,
-			"colours": 16
 		},
 		"components/organisms/globe/globe.svelte": {
 			"base": false,

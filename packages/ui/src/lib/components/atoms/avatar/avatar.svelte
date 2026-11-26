@@ -32,8 +32,8 @@
 	// It is the base component (Justin, 2026-11-26), so `color`, `appearance`, their shorthands and `class` land on its
 	// box. It repeats in every dashboard row, so it takes the base component's light path: one element and a picture,
 	// one {#if}, no whitespace between the parts (measured on #379 and again on 2026-11-26). Its frame (`ring`) and
-	// its icon's colours (`tint`) are set from outside; the grey under a photo and the default tint are still slate,
-	// listed in packages/ui/look.json until the theme has a colour for them.
+	// its icon's colours (`tint`) are set from outside. Its greys are the theme's: the grey under a photo and the
+	// default tint are the theme's neutral and base, and the offline dot its base.
 
 	export type PresenceType = 'online' | 'idle' | 'offline';
 
@@ -55,7 +55,7 @@
 		shape?: 'circle' | 'rounded';
 		// `cover` fills the circle (a photo), `contain` keeps the whole artwork on the theme's surface, white (a logo).
 		fit?: 'cover' | 'contain';
-		// The frame around the picture, as classes (`ring-2 ring-white`).
+		// The frame around the picture, as classes (`ring-2 ring-surface`).
 		ring?: string;
 		isMuted?: boolean;
 		// The dot at the top right: green online, orange idle, grey offline. None shows no dot.
@@ -88,7 +88,7 @@
 		badge,
 		badgeScale = 0.42,
 		fallback = 'icon-[mdi--account]',
-		tint = 'bg-slate-200 text-slate-400',
+		tint = 'bg-neutral-300 text-base-400',
 		crossorigin,
 		title,
 		class: className = '',
@@ -117,7 +117,7 @@
 					class="size-full {shape === 'circle' ? 'rounded-full' : 'rounded-[24%]'} {fit ===
 					'contain'
 						? 'bg-surface object-contain'
-						: 'bg-slate-200 object-cover'} {ring} {isMuted ? 'grayscale' : ''}"
+						: 'bg-neutral-300 object-cover'} {ring} {isMuted ? 'grayscale' : ''}"
 				/>{:else}<span
 					class="flex size-full items-center justify-center {tint} {shape === 'circle'
 						? 'rounded-full'
@@ -145,15 +145,15 @@
 		@apply bg-warning;
 	}
 	.avatar[data-presence='offline']::after {
-		@apply bg-slate-400;
+		@apply bg-base-400;
 	}
 
-	/* The badge: a small round picture on black at the bottom right. */
+	/* The badge: a small round picture on the theme's darkest at the bottom right. */
 	.avatar[data-badge]::after {
 		content: '';
 		width: var(--mark);
 		height: var(--mark);
-		background: black var(--badge) center / cover no-repeat;
+		background: var(--color-secondary-950) var(--badge) center / cover no-repeat;
 		@apply absolute -right-1 -bottom-1 rounded-full ring-[1.5px] ring-surface;
 	}
 </style>

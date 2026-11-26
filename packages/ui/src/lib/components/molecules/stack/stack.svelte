@@ -5,7 +5,7 @@
 	// A few avatars overlapping, the first in front and each of the others tucked behind the one before, then a count
 	// of the rest (#379, moved from the app's face stack and logo stacks). It is the base component (Justin,
 	// 2026-11-26), so `color`, `appearance` and `class` land on its box; like the avatar, it repeats in every dashboard
-	// row, so it takes the base component's light path. The count's grey is still slate, listed in look.json.
+	// row, so it takes the base component's light path. The count's greys are the theme's neutral and base.
 	import {
 		Avatar,
 		Component,
@@ -86,6 +86,6 @@
 		width: var(--size);
 		height: var(--size);
 		margin-left: var(--tuck);
-		@apply relative flex shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-500 ring-2 ring-surface;
+		@apply relative flex shrink-0 items-center justify-center rounded-full bg-neutral-200 text-[10px] font-semibold text-base-500 ring-2 ring-surface;
 	}
 </style>
