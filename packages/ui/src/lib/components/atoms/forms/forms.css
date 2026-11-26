@@ -1,9 +1,9 @@
 @reference "#ui.css";
 
-/* Every rule starts at `fieldset.field`, the library's own fields (Input, Textarea, Select): this file loads with
-   them, so a bare `fieldset` would restyle every other fieldset on the page, such as a form's wrapper. A rule for the
-   field's label, control or icons reaches only its own (`> label >`), never those of the list a Select opens inside
-   it, whose search would otherwise cover the list (#57). */
+/* Every rule starts at `fieldset.field`, the library's own fields (Input, Textarea, Select), or at
+   `input.field-compact` (Compact): this file loads with them, so a bare `fieldset` would restyle every other fieldset
+   on the page, such as a form's wrapper. A rule for the field's label, control or icons reaches only its own
+   (`> label >`), never those of the list a Select opens inside it, whose search would otherwise cover the list (#57). */
 fieldset.field {
 	font-size: 1rem;
 
@@ -294,4 +294,34 @@ fieldset.field.field-invalid legend {
 
 fieldset.field + .field-error {
 	@apply mt-1 text-xs text-danger-500;
+}
+
+/* COMPACT: the box with no label of its own, for a long list under one heading row (#387). The notched box's border,
+   corners and blue, a little lower; its hint shows, since no label sits in it. The width is the consumer's, given
+   with an important utility (`w-20!`), as these rules sit outside the utilities' layer. */
+input.field-compact {
+	@apply block h-[2.5em] w-full min-w-0 rounded-[0.5em] border border-base-200 bg-white px-[0.75em] text-base text-base-900 outline-0 transition-colors;
+}
+
+input.field-compact::placeholder {
+	@apply text-base-400;
+}
+
+@media (hover: hover) {
+	input.field-compact:hover:not(:focus, :disabled) {
+		@apply border-base-300;
+	}
+}
+
+input.field-compact:focus {
+	@apply border-info-500 ring-1 ring-info-500;
+}
+
+input.field-compact[aria-invalid='true'] {
+	@apply border-danger-500 ring-danger-500;
+}
+
+/* Turned off, such as for someone who may only read the report: the words alone, where the box was. */
+input.field-compact:disabled {
+	@apply border-transparent bg-transparent px-0 text-base-500;
 }

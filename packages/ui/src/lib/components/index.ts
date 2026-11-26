@@ -4,6 +4,7 @@ export { default as Avatar, type AvatarProps } from "./atoms/avatar/avatar.svelt
 export { default as Button, type ButtonProps } from "./atoms/button/button.svelte";
 export { default as Checkbox } from "./atoms/forms/checkbox/checkbox.svelte";
 export { default as Colorss } from "./atoms/Colorss.svelte";
+export { default as Compact, type CompactProps } from "./atoms/forms/compact/compact.svelte";
 export { default as Container, type ContainerProps } from "./atoms/container/container.svelte";
 export * from "./atoms/content/content.svelte.ts";
 export { default as Content } from "./atoms/content/content.svelte";
@@ -42,10 +43,7 @@ export { default as ThemeToggle } from "./atoms/theme/theme-toggle.svelte";
 export { default as Title } from "./atoms/title/title.svelte";
 
 // molecules
-export * from "./molecules/accordion/accordion.ts";
 export { default as Accordion, type AccordionProps } from "./molecules/accordion/accordion.svelte";
-export { default as AccordionContent, type AccordionContentProps } from "./molecules/accordion/accordion-content.svelte";
-export { default as AccordionTitle, type AccordionTitleProps } from "./molecules/accordion/accordion-title.svelte";
 export { default as Card, type CardProps } from "./molecules/card/card.svelte";
 export * from "./molecules/card/card.data.ts";
 export { default as Controls } from "./molecules/chart/controls.svelte";
