@@ -48,6 +48,7 @@ export { default as Card, type CardProps } from "./molecules/card/card.svelte";
 export * from "./molecules/card/card.data.ts";
 export { default as Controls } from "./molecules/chart/controls.svelte";
 export { default as Copyright, type CopyrightProps } from "./molecules/copyright/copyright.svelte";
+export { default as Dialog, type DialogProps } from "./molecules/dialog/dialog.svelte";
 export * from "./molecules/grid/grid.svelte.ts";
 export { default as Grid, type GridProps } from "./molecules/grid/grid.svelte";
 export { default as Item, type ItemProps } from "./molecules/grid/item.svelte";

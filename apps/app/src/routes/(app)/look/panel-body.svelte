@@ -48,9 +48,8 @@
 	// label and place among the inputs with that label, as tally.ts lists them).
 	import { untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
-	import { Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
+	import { Dialog, Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
-	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
@@ -1716,7 +1715,7 @@
 
 {#if asking}
 	{@const noun = asking.label}
-	<BottomSheet
+	<Dialog
 		label="Add a new {noun}"
 		onclose={() => (asking = undefined)}
 	>
@@ -1762,7 +1761,7 @@
 				disabled={!draft.trim()}>Add {noun}</button
 			>
 		</form>
-	</BottomSheet>
+	</Dialog>
 {/if}
 
 {#if opened}

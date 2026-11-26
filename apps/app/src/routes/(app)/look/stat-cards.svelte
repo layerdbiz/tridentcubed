@@ -9,7 +9,7 @@
 	// chart ends on and the list shows (records.data.ts). Run 13 (Justin, 2026-11-07 22:21): back to how they were, the
 	// ? right after the label and what changed up on the chart again; no hover effect and no shadow or glow at all.
 	import { scale } from 'svelte/transition';
-	import BottomSheet from '#lib/components/sheet/sheet.svelte';
+	import { Dialog } from '@layerd/ui';
 	import { DATASETS, PAGES, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { countOf } from './records.data';
@@ -155,7 +155,7 @@
 
 {#if sheet}
 	{@const info = DATASETS[sheet]}
-	<BottomSheet
+	<Dialog
 		label="About {info.label}"
 		onclose={() => (sheet = undefined)}
 	>
@@ -167,5 +167,5 @@
 			</p>
 		</div>
 		<p class="mt-4 text-[15px] leading-relaxed text-slate-600">{HELP[sheet]}</p>
-	</BottomSheet>
+	</Dialog>
 {/if}

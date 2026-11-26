@@ -7,7 +7,7 @@
 	// opens on Edit and anything else on its Page. Run 28: "Add new" in a dropdown opens this same sheet on that one
 	// page (look.addFor), with no page chips; what is added is picked in the dropdown and nothing else opens.
 	import { scale } from 'svelte/transition';
-	import BottomSheet from '#lib/components/sheet/sheet.svelte';
+	import { Dialog } from '@layerd/ui';
 	import { DATASETS, draftOf, draftPanel, PAGE_ICONS, PAGES, type DatasetType } from './look.data';
 	import type { LookState, RecordDraftType } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
@@ -203,7 +203,7 @@
 		{@render kinds()}
 	</div>
 {:else if look.adding && isMenu}
-	<BottomSheet
+	<Dialog
 		label="Add"
 		onclose={close}
 	>
@@ -215,9 +215,9 @@
 		>
 			{@render kinds()}
 		</div>
-	</BottomSheet>
+	</Dialog>
 {:else if look.adding}
-	<BottomSheet
+	<Dialog
 		label="Add"
 		onclose={close}
 	>
@@ -278,5 +278,5 @@
 				>
 			</div>
 		</form>
-	</BottomSheet>
+	</Dialog>
 {/if}

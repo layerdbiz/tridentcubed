@@ -6,10 +6,11 @@
 	// The ? that opens an input's Help text (glossary), settled on "Prototype inputs with help and generated values"
 	// (#284). A mouse gets a pop-up by the ? on hover, kept on a click; a finger gets a sheet from the bottom, above the
 	// keyboard when one is up. Neither the ? nor what it opens ever takes the focus, so the input being typed in keeps
-	// its caret and the phone keeps its keyboard, and nothing on the screen moves.
+	// its caret and the phone keeps its keyboard, and nothing on the screen moves. The sheet is the library's Dialog
+	// in its help kind (#375), which keeps the focus where it is and rises above the keyboard by itself.
 	import type { Attachment } from 'svelte/attachments';
-	import { fade, fly, scale } from 'svelte/transition';
-	import { Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
+	import { scale } from 'svelte/transition';
+	import { Component, Dialog, type ComponentProps, type ComponentReturn } from '@layerd/ui';
 
 	export interface HelpProps extends ComponentProps {
 		/** The input's label: the ? is named for it and the help opens under it. */
@@ -27,7 +28,6 @@
 	let mode = $state<'pop' | 'sheet'>();
 	let isPinned = $state(false);
 	let at = $state({ x: 0, y: 0, isAbove: false });
-	let lift = $state(0);
 	// The input being typed in when the ? was pressed, given its focus back should a browser move it anyway.
 	let typingIn: HTMLElement | null = null;
 
@@ -44,15 +44,8 @@
 		at = { x, y: isAbove ? box.top - 10 : box.bottom + 10, isAbove };
 	}
 
-	// What a phone's keyboard covers of the window's foot: the sheet rises by that much.
-	function placeSheet(): void {
-		const seen = window.visualViewport;
-		lift = seen ? Math.max(0, Math.round(window.innerHeight - seen.offsetTop - seen.height)) : 0;
-	}
-
 	function open(next: 'pop' | 'sheet', isKept: boolean): void {
 		if (next === 'pop') placePop();
-		else placeSheet();
 		mode = next;
 		isPinned = isKept;
 	}
@@ -95,17 +88,6 @@
 	const toTop: Attachment<HTMLElement> = (node) => {
 		node.showPopover?.();
 	};
-
-	$effect(() => {
-		if (mode !== 'sheet') return;
-		const seen = window.visualViewport;
-		seen?.addEventListener('resize', placeSheet);
-		seen?.addEventListener('scroll', placeSheet);
-		return () => {
-			seen?.removeEventListener('resize', placeSheet);
-			seen?.removeEventListener('scroll', placeSheet);
-		};
-	});
 </script>
 
 <svelte:window
@@ -146,33 +128,15 @@
 		<b>{label}</b>{text}
 	</div>
 {:else if mode === 'sheet'}
-	<div
-		popover="manual"
+	<Dialog
+		{label}
+		isModal={false}
 		class="help-layer"
-		role="presentation"
-		onmousedown={(event) => event.preventDefault()}
-		{@attach toTop}
+		onclose={close}
 	>
-		<button
-			type="button"
-			class="help-scrim"
-			aria-label="Close"
-			tabindex="-1"
-			onclick={close}
-			transition:fade={{ duration: 180 }}
-		></button>
-		<div
-			class="help-sheet"
-			role="dialog"
-			aria-label={label}
-			style="bottom: {lift}px"
-			transition:fly={{ y: 320, duration: 260 }}
-		>
-			<span class="help-grab"></span>
-			<b>{label}</b>
-			<p>{text}</p>
-		</div>
-	</div>
+		<b class="mb-1.5 block text-lg font-semibold text-slate-900">{label}</b>
+		<p class="m-0 text-[15px] leading-relaxed text-slate-600">{text}</p>
+	</Dialog>
 {/if}
 
 <style lang="postcss">
@@ -200,9 +164,10 @@
 		@apply block size-full;
 	}
 
-	/* What it opens is drawn outside the label, so none of the label's type carries over. */
+	/* What it opens is drawn outside the label, so none of the label's type carries over. The sheet's layer is drawn
+	   by the Dialog, outside this file's scope. */
 	.help-pop,
-	.help-layer {
+	:global(.help-layer) {
 		@apply pointer-events-auto m-0 border-0 p-0 text-left font-normal tracking-normal whitespace-normal select-text;
 		font-size: 1rem;
 		line-height: 1.5;
@@ -221,32 +186,5 @@
 
 	.help-pop b {
 		@apply mb-0.5 block text-sm font-semibold text-white;
-	}
-
-	.help-layer {
-		@apply fixed inset-0 z-[120] size-full max-h-none max-w-none overflow-visible bg-transparent;
-	}
-
-	.help-scrim {
-		@apply absolute inset-0 cursor-default border-0 bg-base-950/30 p-0;
-		-webkit-tap-highlight-color: transparent;
-	}
-
-	.help-sheet {
-		@apply absolute inset-x-0 rounded-t-[28px] bg-white px-5 pt-3 shadow-[0_-12px_40px_rgb(15_23_42/0.18)];
-		@apply transition-[bottom] duration-200;
-		padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-	}
-
-	.help-grab {
-		@apply mx-auto mb-4 block h-1.5 w-10 rounded-full bg-base-200;
-	}
-
-	.help-sheet b {
-		@apply mb-1.5 block text-lg font-semibold text-base-900;
-	}
-
-	.help-sheet p {
-		@apply m-0 text-[15px] leading-relaxed text-base-600;
 	}
 </style>
