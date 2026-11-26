@@ -169,9 +169,9 @@ the why is in ADR 0002, 0003 and 0005.
   push to dev runs `.github/workflows/release.yml`: it works the version
   out from the commit titles since the newest `v*` tag
   (`src/lib/releases/releases.utils.ts`, breaking = major, feat = minor,
-  fix or perf = patch, else no release), tags the pushed commit and
+  fix or perf = patch, else no release), tags dev's newest commit and
   publishes the GitHub release with notes shaped like What's New
-  (`scripts/release.ts`, `--dry-run` previews). Nothing is committed for a
+  (`scripts/release.ts`, `--dry-run` previews, `--first` previews v1.0.0). Nothing is committed for a
   release, so dev stays a fast-forward of next. Never tag or publish by
   hand.
 - **The version comes from the tags.** A build reads them from git
@@ -184,12 +184,13 @@ the why is in ADR 0002, 0003 and 0005.
 - **The first release waits for Justin's word.** `IS_RELEASING` in
   `releases.utils.ts` is false: no tag is made and every build says "Not
   released yet". Turning it on, in the push that brings next into dev,
-  makes v1.0.0 from that push, its notes listing everything the push
-  brought.
+  makes v1.0.0, its notes listing everything up to it, the same as What's
+  New.
 - **What's New (#399, #400)** folds every app and library change into
   batches of work; a release ends a batch, and a released batch names its
-  version and links its GitHub notes. Friendly titles and words for a
-  batch go in `src/lib/releases/notes.ts`. The repository and its releases
+  version and links its GitHub notes. The batches, their titles and days,
+  and the notes written from them live in `src/lib/releases/history.utils.ts`;
+  friendly titles and words for a batch go in `src/lib/releases/notes.ts`. The repository and its releases
   are public: no client names, data or screenshots in either.
 
 ## The installed app

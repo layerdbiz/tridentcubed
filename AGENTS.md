@@ -101,8 +101,9 @@ See docs/agents/domain.md.
 ### Branch status and landing
 `/oneezy-status` renders the read-only status report for the branch, its PR
 and its builds. `/oneezy-merge` commits, pushes and opens the PR;
-`/oneezy-merge into dev` also squash-merges on green builds and cleans up,
-and runs only on Justin's word (Where work lands); both end with that report, which briefs the next agent when a wayfinder map
+`/oneezy-merge into dev` also merges on green builds and cleans up,
+and runs only on Justin's word; dev takes next by fast-forward, never the
+skill's squash (Where work lands); both end with that report, which briefs the next agent when a wayfinder map
 is in play. Skills prefixed `oneezy-` are Justin's; the rest are
 third-party skills declared in the library and are never edited here.
 
