@@ -7,7 +7,8 @@
 		},
 		"components/organisms/globe/globe.svelte": {
 			"base": true,
-			"colours": 3
+			"colours": 3,
+			"yes": "Justin, 2026-11-26: keep the location pins' own blues (blue-600 pin, blue-400 glow) instead of the theme's primary, so the public site's Globe looks exactly as it does now."
 		}
 	}
 }

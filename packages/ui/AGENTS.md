@@ -54,8 +54,8 @@ in `look.json` with what they had then. Since 2026-11-26 every other piece is on
 the base component with theme colours, the app's, the public site's and the
 overview's alike, and two are left: `metadata`, which draws nothing (a script
 in the page head that sets the theme before the page paints; the site has it
-switched off), and the Globe's two pin blues, which wait on Justin's pick
-between them and the theme's primary. Each is fixed, not extended: it may get
+switched off), and the Globe's two pin blues, which Justin chose to keep over
+the theme's primary (2026-11-26, written in `look.json`). Each is fixed, not extended: it may get
 better, never worse. Nothing joins that list, or this one, without Justin's yes, written
 with his name and the date; a piece that is slow on the base component is
 measured and the numbers go to him, it does not skip the base on its own.
