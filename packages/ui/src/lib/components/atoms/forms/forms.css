@@ -256,3 +256,42 @@ fieldset.field > label > :is(input, textarea):is(:-webkit-autofill, :autofill) {
 	transition: background-color 99999s ease-out 0s;
 	box-shadow: 0 0 0 1000px var(--field-bg, white) inset;
 }
+
+/* ACTION: a button or a link at the field's end that does something with its value, such as opening the link typed
+   in (#393). The same spot and size as the Generated mark, in the field's blue. */
+fieldset.field > label > .action {
+	@apply pointer-events-auto z-2 col-start-3 row-start-1 mr-(--content-end) grid size-(--icon-size) shrink-0 cursor-pointer place-items-center self-center justify-self-end rounded-[0.4em] border-0 bg-transparent p-0 text-info-500;
+	-webkit-tap-highlight-color: transparent;
+	touch-action: manipulation;
+}
+
+fieldset.field > label > .action .icon-mark {
+	@apply block size-[0.85em] bg-info-500 text-info-500;
+}
+
+fieldset.field > label > .action:focus:not(:focus-visible) {
+	@apply outline-0;
+}
+
+@media (hover: hover) {
+	fieldset.field > label > .action:hover {
+		@apply bg-info-50;
+	}
+}
+
+fieldset.field:has(> label > .action) {
+	--suffix-width: calc(var(--icon-size) + var(--icon-gap));
+}
+
+/* ERROR: a value that is wrong turns the box red, and a line under it says why (#393). */
+fieldset.field.field-invalid {
+	@apply border-danger-500!;
+}
+
+fieldset.field.field-invalid legend {
+	@apply text-danger-500!;
+}
+
+fieldset.field + .field-error {
+	@apply mt-1 text-xs text-danger-500;
+}

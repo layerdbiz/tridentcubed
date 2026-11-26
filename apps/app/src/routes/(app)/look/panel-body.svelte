@@ -719,23 +719,6 @@
 	>
 {/snippet}
 
-<!-- An input's label and its ? (#299), which opens the input's Help text: outside the <label>, so a tap on the ?
-     never reaches the input and the input keeps the label's words for its name. The block holding the label and the
-     input is `has-help`, with `data-empty` while the input has nothing in it (look.css). -->
-{#snippet labelOf(label: string, id: string, key: string, isUnfilled = false)}
-	<span class={labelClass}>
-		<label for={id}>{label}</label>
-		{#if look.helpOf(key)}<Help
-				{label}
-				text={look.helpOf(key)}
-			/>{/if}
-		{#if isUnfilled}<span
-				class="size-1.5 rounded-full bg-warning"
-				title="Not filled in yet"
-			></span>{/if}
-	</span>
-{/snippet}
-
 <!-- How many share a report page, 1, 2, 4, 6 or 8 (run 9 note 17: each button draws its own layout): a photo group's
      photos, and the pages of a PDF attached to the Items panel (#295). -->
 {#snippet perPage(
@@ -1326,42 +1309,26 @@
 			     is kept. The field runs the panel's full width, and once what it holds is an address a browser can
 			     open, an arrow shows inside it at the far right that opens it, to check it goes to the right place
 			     (Justin, 2026-11-18). -->
-			<div
-				class="has-help"
-				data-empty={panel.link ? undefined : ''}
-			>
-				{@render labelOf(LINK_LABEL, `${uid}-link`, 'panel.link')}
-				<div class="relative">
-					<input
-						id="{uid}-link"
-						class="{inputClass} {link ? 'pr-11' : ''}"
-						type="url"
-						inputmode="url"
-						bind:value={panel.link}
-						maxlength="2048"
-						placeholder="Optional, paste the OneDrive folder URL"
-						autocapitalize="off"
-						autocomplete="off"
-						spellcheck="false"
-					/>
-					{#if link}
-						<a
-							href={link}
-							target="_blank"
-							rel="noopener"
-							class="absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
-							aria-label="Open the URL"
-							title="Open in {linkNameOf(link)}"
-							><span class="icon-[mdi--open-in-new] size-4"></span></a
-						>
-					{/if}
-				</div>
-				{#if panel.link?.trim() && !link}
-					<p class="mt-1 text-xs text-danger">
-						That does not look like a URL. Paste the folder’s full address.
-					</p>
-				{/if}
-			</div>
+			<Input
+				label={LINK_LABEL}
+				type="url"
+				inputmode="url"
+				autocomplete="off"
+				bind:value={panel.link}
+				maxlength={2048}
+				action={link
+					? {
+							icon: 'icon-[mdi--open-in-new]',
+							label: 'Open the URL',
+							title: `Open in ${linkNameOf(link)}`,
+							href: link
+						}
+					: undefined}
+				error={panel.link?.trim() && !link
+					? 'That does not look like a URL. Paste the folder’s full address.'
+					: undefined}
+				help={look.helpOf('panel.link')}
+			/>
 		{/if}
 		<div
 			class="space-y-3"
