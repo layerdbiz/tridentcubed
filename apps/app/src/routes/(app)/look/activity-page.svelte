@@ -8,7 +8,7 @@
 	// By Time lists every entry. The names in bold open what they name: a person's Team page, a project, a record. Its newest entries are read each time it opens (`fetchActivity`),
 	// and Show Older reads the next ones before the oldest shown through the same query; how it stays up to date while
 	// open is the live updates research's to decide (#282), and plugs in behind that one query.
-	import { Accordion, AccordionContent, AccordionTitle, Tabs } from '@layerd/ui';
+	import { Accordion, AccordionContent, AccordionTitle, Avatar, Tabs } from '@layerd/ui';
 	import { fetchActivity } from '#lib/activity/activity.remote.js';
 	import type {
 		ActivityEventType,
@@ -20,8 +20,8 @@
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import type { DeviceKindType } from '#lib/presence/presence.utils.js';
 	import { toDeviceIcons, toDuration } from '#lib/presence/presence.utils.js';
-	import Avatar from './avatar.svelte';
 	import type { LookState } from './look.state.svelte';
+	import { faceOf } from './marks';
 	import PageHeader from './page-header.svelte';
 	import type { PageType } from './records.data';
 
@@ -190,17 +190,15 @@
 		return said.join(' and ');
 	}
 
-	// "12 added · 85 changed · 3 moved to the Trash".
+	// "12 added · 85 changed · 3 moved to the Trash", when a run's changes are of more than one kind.
 	function toRunKinds(run: ActivityRunType) {
 		const summary = toRunSummary(run);
-		return [
+		const kinds = [
 			[summary.added, 'added'],
 			[summary.changed, 'changed'],
 			[summary.trashed, 'moved to the Trash']
-		]
-			.filter(([count]) => count)
-			.map(([count, words]) => `${count} ${words}`)
-			.join(' · ');
+		].filter(([count]) => count);
+		return kinds.length < 2 ? '' : kinds.map(([count, words]) => `${count} ${words}`).join(' · ');
 	}
 
 	function isSameMinute(a: string, b: string) {
@@ -208,7 +206,7 @@
 	}
 
 	// A press on a name inside a run's line opens it, and leaves the line as it was.
-	function press(event: MouseEvent, open: () => void) {
+	function press(event: Event, open: () => void) {
 		event.preventDefault();
 		event.stopPropagation();
 		open();
@@ -232,10 +230,15 @@
 
 <!-- A name in bold, which opens what it names when that has a page (Justin, 2026-11-26). -->
 {#snippet named(text: string, open: (() => void) | undefined)}
-	{#if open}<button
-			type="button"
-			class="inline cursor-pointer text-left font-semibold text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-900"
-			onclick={(event) => press(event, open)}>{text}</button
+	<!-- A span, not a button, so a long name wraps with the words round it as a bold word does. -->
+	{#if open}<span
+			role="button"
+			tabindex="0"
+			class="cursor-pointer font-semibold text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-900"
+			onclick={(event) => press(event, open)}
+			onkeydown={(event) => {
+				if (event.key === 'Enter' || event.key === ' ') press(event, open);
+			}}>{text}</span
 		>{:else}<b class="font-semibold text-slate-900">{text}</b>{/if}
 {/snippet}
 
@@ -285,9 +288,9 @@
 			onclick={() => openPerson(each.who)}
 		>
 			<Avatar
-				name={each.who}
+				{...faceOf(each.who)}
 				size={36}
-				ring="ring-slate-200"
+				ring="ring-2 ring-slate-200"
 			/>
 			<span class="min-w-0 flex-1">
 				<span class="block truncate text-sm font-medium text-slate-900">{each.who}</span>
@@ -310,10 +313,9 @@
 			aria-label="{event.who}, {kind.label}"
 		>
 			<Avatar
-				name={event.who}
+				{...faceOf(event.who, { hasPresence: false })}
 				size={36}
-				ring="ring-slate-200"
-				hasPresence={false}
+				ring="ring-2 ring-slate-200"
 			/>
 			<span
 				class="absolute -right-1 -bottom-1 flex size-[18px] items-center justify-center rounded-full text-white ring-2 ring-slate-50 {kind.tone}"
@@ -374,10 +376,9 @@
 				>
 					<span class="mt-0.5 shrink-0">
 						<Avatar
-							name={each.who}
+							{...faceOf(each.who, { hasPresence: false })}
 							size={36}
-							ring="ring-slate-200"
-							hasPresence={false}
+							ring="ring-2 ring-slate-200"
 						/>
 					</span>
 					<span class="min-w-0 flex-1">
@@ -393,8 +394,7 @@
 											: ', '}{/if}{@render named(
 										project.title,
 										toProjectOpener(project.id)
-									)}{/each}{#if summary.projects.length > 2}
-									and {summary.projects.length - 2} more{/if}</span
+									)}{/each}{#if summary.projects.length > 2}{` and ${summary.projects.length - 2} more`}{/if}</span
 							>
 						{/if}
 						{#if kinds}<span class="mt-0.5 block text-xs text-slate-400">{kinds}</span>{/if}
