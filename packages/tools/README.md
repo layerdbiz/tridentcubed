@@ -23,7 +23,7 @@ What runs today works; change is welcome only when proven by running
 set to `true`, validates them against `apps/*/package.json` names, and spawns
 Vite+'s task runner (`vp run`, the `vp` bin of `vite-plus`). Positional app names
 on the command line override the map; anything after `--` passes through to
-`vp run` as its options. The map is a developer
+each task's command (`pnpm dev -- --port 5190` reaches `vp dev`). The map is a developer
 convenience for "which apps start when I type `pnpm dev`". It never limits what
 the generators touch.
 
