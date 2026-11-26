@@ -27,4 +27,14 @@ describe('Textarea', () => {
 		expect(area.value).toBe('The worked-out sentence.');
 		expect(area.closest('fieldset')?.classList.contains('field-generated')).toBe(true);
 	});
+
+	// The box is as tall as the textarea in it, which grows with its words: a height copied onto the box by script
+	// lagged behind and let the words run out of it (#394).
+	it('leaves its box to grow with the textarea, with no height set by script', () => {
+		render(Textarea, { props: { label: 'Description', value: 'One line.\nTwo lines.' } });
+
+		const box = screen.getByRole('textbox').closest('fieldset') as HTMLFieldSetElement;
+		expect(box.style.getPropertyValue('--input-height')).toBe('');
+		expect(box.style.height).toBe('');
+	});
 });

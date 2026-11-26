@@ -104,9 +104,10 @@
 				isOpen={open.includes('details')}
 				ontoggle={() => toggle('details')}
 			>
-				<!-- Every field below changes the organization as it is typed; the badge says it is saving. -->
+				<!-- Every field below changes the organization as it is typed; the badge says it is saving. The fields stand
+				     apart as a panel's do: a box with no room round it would let the boxes touch. -->
 				<fieldset
-					class="contents"
+					class="min-w-0 space-y-3"
 					disabled={!isEditable}
 					oninput={() => look.flash()}
 				>
@@ -188,7 +189,7 @@
 				ontoggle={() => toggle('disclaimer')}
 			>
 				<fieldset
-					class="contents"
+					class="min-w-0 space-y-3"
 					disabled={!isEditable}
 					oninput={() => look.flash()}
 				>
@@ -250,8 +251,6 @@
 				</fieldset>
 				{#snippet actions()}
 					{#if isEditable}
-						<!-- The library Button is placed (`relative`), so it sits above the library text area over it, which
-						     reaches a little below its own box (#394), and takes every tap. -->
 						<Button
 							primary
 							lite
@@ -273,7 +272,7 @@
 				ontoggle={() => toggle('signoff')}
 			>
 				<fieldset
-					class="contents"
+					class="min-w-0 space-y-3"
 					disabled={!isEditable}
 					oninput={() => look.flash()}
 				>
