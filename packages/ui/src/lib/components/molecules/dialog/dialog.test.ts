@@ -122,15 +122,15 @@ describe('Dialog', () => {
 
 		expect(sheet.className).toContain('theme-lite-neutral');
 		expect(sheet.className).toContain('gap-2');
-		expect(sheet.className).not.toContain('bg-sheet');
+		expect(sheet.className).not.toContain('bg-surface');
 		expect(dialog.className).not.toMatch(/theme-|gap-2/);
 	});
 
-	it("is the theme's sheet colour until it is given a look, with no colour of its own", () => {
+	it("is the theme's surface until it is given a look, with no colour of its own", () => {
 		const { dialog } = show();
 		const sheet = dialog.querySelector('.dialog-sheet')!;
 
-		expect(sheet.className).toContain('bg-sheet');
+		expect(sheet.className).toContain('bg-surface');
 		expect(sheet.className).not.toMatch(/\btheme-|-(slate|gray|zinc)-|bg-white/);
 		expect(dialog.innerHTML).not.toMatch(/-(slate|gray|zinc)-|bg-white/);
 	});

@@ -1,12 +1,11 @@
 /* Overlay: what a Dialog lays over the page
 ************************************************************************
-	The scrim that dims the page, the sheet's own colour until it is given a look, the shadow under a sheet that rises
-	from the bottom, and the sheet's grab handle. A theme sets them as it sets its colours (--theme-color-scrim,
-	--theme-color-sheet, --theme-color-grab, --theme-shadow-sheet); these are the defaults, kept from the app's sheet
-	(#375): slate-950 at 30%, white, slate-200, and a soft slate-900 shadow.
+	The scrim that dims the page, the shadow under a sheet that rises from the bottom, and the sheet's grab handle
+	(the sheet itself is the theme's surface, colors.css). A theme sets them as it sets its colours
+	(--theme-color-scrim, --theme-color-grab, --theme-shadow-sheet); these are the defaults, kept from the app's sheet
+	(#375): slate-950 at 30%, slate-200, and a soft slate-900 shadow.
 */
 @theme inline {
-	--color-sheet: var(--theme-color-sheet, oklch(100% 0 0));
 	--color-scrim: var(--theme-color-scrim, oklch(12.9% 0.042 264.695 / 0.3));
 	--color-grab: var(--theme-color-grab, oklch(92.9% 0.013 255.508));
 	--shadow-sheet: var(--theme-shadow-sheet, 0 -12px 40px rgb(15 23 42 / 0.18));

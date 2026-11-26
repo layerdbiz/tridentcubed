@@ -77,7 +77,7 @@
 				root.class
 			]}
 			onclick={press}
-			><span class="size-[calc(var(--switch-h)_-_0.25rem)] rounded-full bg-white shadow"
+			><span class="size-[calc(var(--switch-h)_-_0.25rem)] rounded-full bg-surface shadow"
 			></span></button
 		>
 	{/snippet}
