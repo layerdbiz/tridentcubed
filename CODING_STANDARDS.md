@@ -27,9 +27,11 @@ what it cannot see:
    invisible layer over the page).
 3. **The look comes only from props and the theme.** Colours are the
    theme's: base, neutral, primary, secondary, accent, the status colours
-   (info, success, warning, danger), surface, scrim and grab. A default look
-   is a prop default (`color = 'primary'`), so a caller can change it. With
-   none given, a component may be bare (the Accordion).
+   (info, success, warning, danger), surface, scrim, grab, and shade and
+   on-shade (the dark over a picture and what is drawn on it, black and
+   white unless a theme says). A default look is a prop default
+   (`color = 'primary'`), so a caller can change it. With none given, a
+   component may be bare (the Accordion).
 4. **Pieces inside are library pieces, set from outside too.** A Delete
    inside is the library Button, and the caller reaches it through a prop
    (`deleteButton`, the Toggle's `button`); an icon is the library Icon.

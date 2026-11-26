@@ -74,13 +74,6 @@
 			image="card-service-image--img-color contrast-125 brightness-125 group-hover:scale-110 transition duration-300 will-change-transform"
 			overlay="bg-linear-170 to-primary from-transparent from-60%"
 		/>
-
-		<!-- 
-		<Text
-			noprose
-			p={label}
-			class="card-label absolute bottom-2 right-2 rounded bg-black/80 px-2 py-0.5 text-sm text-white"
-		/> -->
 	</div>
 
 	<!-- Content section -->
@@ -119,7 +112,7 @@
 			/>
 
 			<div
-				class="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-60% to-black to-100%"
+				class="pointer-events-none absolute inset-0 bg-linear-to-b from-transparent from-60% to-shade to-100%"
 				style={maskStyle}
 			></div>
 			<div

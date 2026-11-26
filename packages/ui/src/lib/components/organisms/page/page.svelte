@@ -17,9 +17,9 @@
 						h-full
 						w-full
 						origin-top-left
-						overflow-hidden bg-white
+						overflow-hidden bg-surface
 						outline-2
-						outline-black
+						outline-shade
 						{props.class ?? ''}"
 		>
 			{@render children?.()}

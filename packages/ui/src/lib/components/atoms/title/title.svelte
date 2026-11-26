@@ -1,5 +1,17 @@
 <script lang="ts">
-	import { Component, type ComponentProps, Icon } from '@layerd/ui';
+	import { Component, type ComponentProps } from '@layerd/ui';
+
+	interface TitleProps extends ComponentProps {
+		nostyle?: boolean;
+		title?: string | null;
+		subtitle?: string | null;
+		/** The water swoosh under the title. */
+		icon?: boolean;
+		subheader?: string | null;
+		subheading?: string | null;
+		tagline?: string | null;
+	}
+
 	/* Default Props
 	 *************************/
 	let {
@@ -10,29 +22,20 @@
 		subheader = null,
 		subheading = null,
 		tagline = null,
-		children = null,
+		children = undefined,
 		id = undefined,
 		...props
-	} = $props();
-
-	/* Private Variables
-	 *************************/
-	let classes = `w-full not-prose`;
+	}: TitleProps = $props();
 </script>
 
-<div
+<Component
 	{...props}
 	{id}
-	class="title flex flex-col items-center {classes} {!subheader || !subheading
-		? ''
-		: ''} {props.class}"
+	class="title not-prose flex w-full flex-col items-center {props.class ?? ''}"
 >
 	{#if title || subtitle || subheader || subheading || tagline}
 		<!-- Title -->
 		{#if title}
-			<!-- <h1
-				class="text-center text-6xl font-black tracking-tight md:text-[14vw] lg:text-[12vw] xl:text-[8vw]"
-			> -->
 			<h1
 				class="text-center text-4xl font-black tracking-tight uppercase md:text-6xl lg:text-7xl xl:text-8xl"
 			>
@@ -83,37 +86,4 @@
 			{/if}
 		</h2>
 	{/if}
-</div>
-
-<style lang="postcss">
-	@reference "#ui.css";
-	/* 
-	h1 {
-		background: linear-gradient(
-			to right,
-			var(--color-primary) 27%,
-			var(--color-primary-200) 40%,
-			var(--color-primary) 78%
-		);
-		-webkit-background-clip: text;
-		-webkit-text-fill-color: transparent;
-		color: #fff;
-		position: relative;
-		text-transform: uppercase;
-		margin: 0;
-	}
-
-	h1::after {
-		background: none;
-		content: attr(data-heading) / '';
-		left: 0;
-		top: 0;
-		z-index: -1;
-		position: absolute;
-		text-shadow:
-			-1px 0 1px var(--color-primary-200),
-			0 1px 1px var(--color-primary-200),
-			5px 5px 10px rgba(0, 0, 0, 0.4),
-			-5px -5px 10px rgba(0, 0, 0, 0.4);
-	} */
-</style>
+</Component>

@@ -193,7 +193,7 @@
 			<div class="preview">
 				<div
 					class="preview-content relative {currentView === 'preview'
-						? 'bg-white'
+						? 'bg-surface'
 						: 'bg-neutral-900'}"
 				>
 					<div class="absolute top-2 right-2 flex gap-1">
@@ -254,7 +254,7 @@
 	@reference "#ui.css";
 
 	.preview {
-		@apply rounded-lg border border-neutral-200-600 bg-white p-8;
+		@apply rounded-lg border border-neutral-200-600 bg-surface p-8;
 
 		background-image: repeating-linear-gradient(
 			45deg,
@@ -280,7 +280,7 @@
 
 		/* Iframe styling */
 		.preview-iframe {
-			@apply w-full border-0 bg-white;
+			@apply w-full border-0 bg-surface;
 		}
 
 		/* Code display styling */

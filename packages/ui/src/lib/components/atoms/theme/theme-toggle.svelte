@@ -64,7 +64,7 @@
 <Component
 	{...props}
 	base
-	class="{props.class} inline-flex items-center gap-2 rounded border px-3 py-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+	class="{props.class} inline-flex items-center gap-2 rounded border px-3 py-2 transition-colors hover:bg-neutral-100-800"
 >
 	{#snippet component({ props, content })}
 		<button
