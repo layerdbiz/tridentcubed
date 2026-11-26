@@ -2,13 +2,13 @@
 // untouched and hands back its address; the library pages are read from the route files' names alone.
 import { toEntries, toLibrary, type EntryType, type KindType } from './catalog';
 
-const prototypeFiles = import.meta.glob('/src/prototypes/*/*.html', {
+const prototypeFiles = import.meta.glob('/src/prototypes/**/*.html', {
 	query: '?url',
 	import: 'default',
 	eager: true
 }) as Record<string, string>;
 
-const componentFiles = import.meta.glob('/src/components/*/*.html', {
+const componentFiles = import.meta.glob('/src/components/**/*.html', {
 	query: '?url',
 	import: 'default',
 	eager: true

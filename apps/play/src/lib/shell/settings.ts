@@ -1,18 +1,17 @@
-// The controls of a shell page (#342): which options are shown, on which screens, in which themes, and how the
-// frames lie. One plain object, kept in this browser per page and written into the address, so a link opens on the
-// same view and Copy settings can say it in words.
+// The controls of a shell page (#342): which options are shown, on which devices, in which themes. One plain object,
+// kept in this browser per page and written into the address, so a link opens on the same view and Copy settings
+// can say it in words. Every device is on until the viewer turns one off.
 import type { OptionType } from './catalog';
+import type { DeviceKindType } from './devices';
 
-export type ScreenType = 'fill' | 'phone' | 'tablet' | 'laptop' | 'desktop' | 'custom';
+export type ScreenType = 'desktop' | 'laptop' | 'tablet' | 'phone' | 'custom' | 'fill';
 export type ThemeType = 'light' | 'dark';
-export type LayoutType = 'row' | 'column';
 
 export type SettingsType = {
 	/** Option slugs, in the order they were picked. */
 	views: string[];
 	screens: ScreenType[];
 	themes: ThemeType[];
-	layout: LayoutType;
 	/** The Custom screen's size, in CSS pixels. */
 	width: number;
 	height: number;
@@ -23,32 +22,46 @@ export type SettingsType = {
 
 export type FrameType = {
 	key: string;
-	/** The option slug: frames of one view lie together. */
+	/** The option slug. */
 	view: string;
+	/** The view and theme, when more than one is shown; empty otherwise. */
 	name: string;
 	url: string;
 	screen: ScreenType;
 	theme: ThemeType;
-	/** Null when the frame fills its share of the page. */
+	/** The device drawn around the screen; null when the prototype fills the page. */
+	kind: DeviceKindType | null;
+	model: string;
+	/** The screen's real size in CSS pixels; null when it fills the page. */
 	width: number | null;
 	height: number | null;
 };
 
-/** The screens a frame can take: the phone and tablet are an iPhone 15 and an iPad Air held upright. */
+/**
+ * The devices, largest first, each at the screen size a web page sees on it: a 1080p monitor, a 13-inch MacBook Air
+ * at its standard setting, an 11-inch iPad Air held upright and an iPhone 16.
+ */
 export const SCREENS: Record<
 	ScreenType,
-	{ label: string; width: number | null; height: number | null }
+	{
+		label: string;
+		model: string;
+		kind: DeviceKindType | null;
+		width: number | null;
+		height: number | null;
+	}
 > = {
-	fill: { label: 'Fill', width: null, height: null },
-	phone: { label: 'Phone', width: 390, height: 844 },
-	tablet: { label: 'Tablet', width: 820, height: 1180 },
-	laptop: { label: 'Laptop', width: 1280, height: 800 },
-	desktop: { label: 'Desktop', width: 1440, height: 900 },
-	custom: { label: 'Custom', width: null, height: null }
+	desktop: { label: 'Desktop', model: 'Monitor', kind: 'desktop', width: 1920, height: 1080 },
+	laptop: { label: 'Laptop', model: 'MacBook Air 13″', kind: 'laptop', width: 1470, height: 956 },
+	tablet: { label: 'Tablet', model: 'iPad Air 11″', kind: 'tablet', width: 820, height: 1180 },
+	phone: { label: 'Phone', model: 'iPhone 16', kind: 'phone', width: 393, height: 852 },
+	custom: { label: 'Custom', model: 'Window', kind: 'window', width: null, height: null },
+	fill: { label: 'Fill', model: '', kind: null, width: null, height: null }
 };
 
+export const DEVICE_SCREENS: ScreenType[] = ['desktop', 'laptop', 'tablet', 'phone'];
+
 export const THEMES: Record<ThemeType, string> = { light: 'Light', dark: 'Dark' };
-export const LAYOUTS: Record<LayoutType, string> = { row: 'Side by side', column: 'Stacked' };
 
 export const SIZE_LIMITS = { least: 240, most: 2560 };
 export const CONTAINER_LIMITS = { least: 120, most: 1600 };
@@ -59,9 +72,8 @@ const THEME_KEYS = Object.keys(THEMES) as ThemeType[];
 export function createSettings(options: OptionType[], theme: ThemeType): SettingsType {
 	return {
 		views: options.length ? [options[0].slug] : [],
-		screens: ['fill'],
+		screens: [...DEVICE_SCREENS],
 		themes: [theme],
-		layout: 'row',
 		width: 600,
 		height: 800,
 		isContainerOn: false,
@@ -75,13 +87,14 @@ export function toggle<T>(list: T[], item: T): T[] {
 	return list.length > 1 ? list.filter((each) => each !== item) : list;
 }
 
-/** Fill shares the page out between frames, so it never mixes with a sized screen. */
+/** Fill gives the whole page to the prototype, so it never mixes with a device. Devices keep their own order. */
 export function pickScreen(screens: ScreenType[], screen: ScreenType): ScreenType[] {
 	if (screen === 'fill') return ['fill'];
-	return toggle(
+	const picked: ScreenType[] = toggle(
 		screens.filter((each) => each !== 'fill'),
 		screen
 	);
+	return SCREEN_KEYS.filter((each) => picked.includes(each));
 }
 
 export function toHash(settings: SettingsType): string {
@@ -89,7 +102,6 @@ export function toHash(settings: SettingsType): string {
 		`v=${settings.views.join('.')}`,
 		`s=${settings.screens.join('.')}`,
 		`t=${settings.themes.join('.')}`,
-		`l=${settings.layout}`,
 		`w=${settings.width}x${settings.height}`,
 		`c=${settings.isContainerOn ? settings.container : 0}`
 	].join('&');
@@ -107,13 +119,14 @@ export function fromHash(hash: string, base: SettingsType, options: OptionType[]
 	if (views.length) settings.views = views;
 
 	const screens = pickKnown(params.get('s'), SCREEN_KEYS);
-	if (screens.length) settings.screens = screens.includes('fill') ? ['fill'] : screens;
+	if (screens.length) {
+		settings.screens = screens.includes('fill')
+			? ['fill']
+			: SCREEN_KEYS.filter((each) => screens.includes(each));
+	}
 
 	const themes = pickKnown(params.get('t'), THEME_KEYS);
 	if (themes.length) settings.themes = themes;
-
-	const layout = params.get('l');
-	if (layout === 'row' || layout === 'column') settings.layout = layout;
 
 	const size = /^(\d+)x(\d+)$/.exec(params.get('w') ?? '');
 	if (size) {
@@ -130,7 +143,7 @@ export function fromHash(hash: string, base: SettingsType, options: OptionType[]
 	return settings;
 }
 
-/** One frame per view, screen and theme. A frame's name says only what differs between the frames. */
+/** One frame per view, theme and screen, grouped by view and then theme, the largest screen first. */
 export function toFrames(settings: SettingsType, options: OptionType[]): FrameType[] {
 	const frames: FrameType[] = [];
 	const views = settings.views
@@ -138,22 +151,25 @@ export function toFrames(settings: SettingsType, options: OptionType[]): FrameTy
 		.filter((option) => option !== undefined);
 
 	for (const view of views) {
-		for (const screen of settings.screens) {
-			for (const theme of settings.themes) {
+		for (const theme of settings.themes) {
+			for (const screen of settings.screens) {
+				const device = SCREENS[screen];
 				const isCustom = screen === 'custom';
-				const words = [view.label];
-				if (settings.screens.length > 1 || screen !== 'fill') words.push(SCREENS[screen].label);
+				const words: string[] = [];
+				if (views.length > 1) words.push(view.label);
 				if (settings.themes.length > 1) words.push(THEMES[theme]);
 
 				frames.push({
-					key: `${view.slug}-${screen}-${theme}`,
+					key: `${view.slug}-${theme}-${screen}`,
 					view: view.slug,
 					name: words.join(' · '),
 					url: view.url,
 					screen,
 					theme,
-					width: isCustom ? settings.width : SCREENS[screen].width,
-					height: isCustom ? settings.height : SCREENS[screen].height
+					kind: device.kind,
+					model: device.model,
+					width: isCustom ? settings.width : device.width,
+					height: isCustom ? settings.height : device.height
 				});
 			}
 		}
@@ -178,7 +194,6 @@ export function toSettingsText(
 		`Views: ${views.join(', ')}`,
 		`Screens: ${screens.join(', ')}`,
 		`Themes: ${settings.themes.map((theme) => THEMES[theme]).join(', ')}`,
-		`Layout: ${LAYOUTS[settings.layout]}`,
 		`Container: ${settings.isContainerOn ? `${settings.container} px` : 'Off'}`
 	];
 	return `${words.join(' · ')}\n${link}#${toHash(settings)}`;

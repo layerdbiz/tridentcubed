@@ -1,6 +1,6 @@
-<!-- The canvas the frames lie on (#342), like the app's Preview: fitted whole at first; drag glides on; scroll pans;
-     Ctrl+wheel and pinch zoom; a tap on the background zooms 2x and again fits. Pinches that start on a frame come
-     in through the frame (pinch.ts) and land here the same way. -->
+<!-- The canvas the devices lie on (#342), like the app's Preview: fitted whole at first; drag glides on; scroll
+     pans; Ctrl+wheel and pinch zoom; a tap on the background zooms 2x and again fits. Pinches that start on a
+     prototype come in through its frame (pinch.ts) and land here the same way. -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Canvas } from './canvas.svelte';
@@ -11,7 +11,6 @@
 	let { canvas, children }: StageProps = $props();
 
 	let stage: HTMLDivElement | undefined = $state();
-	let world: HTMLDivElement | undefined = $state();
 	let isDragging = $state(false);
 
 	const pointers = new Map<number, { x: number; y: number }>();
@@ -28,19 +27,12 @@
 	};
 
 	$effect(() => {
-		if (!stage || !world) return;
+		if (!stage) return;
 		const target = stage;
-		const content = world;
 
-		// The labels keep their size on screen, so the frames' room changes with the zoom: a fitted view fits again
-		// (it settles in a step or two), a view the viewer zoomed is left where it is. New frames fit from the board.
-		const observer = new ResizeObserver(() => {
-			canvas.measure(target);
-			canvas.content = { width: content.offsetWidth, height: content.offsetHeight };
-			if (canvas.isFitted) canvas.fit();
-		});
+		// The board lays the devices out again for the new room and fits them; here the stage only reports its size.
+		const observer = new ResizeObserver(() => canvas.measure(target));
 		observer.observe(target);
-		observer.observe(content);
 
 		// Wheel and Safari's pinch must be able to stop the page's own scroll and zoom, so they are not passive.
 		function onWheel(event: WheelEvent) {
@@ -95,8 +87,8 @@
 	}
 
 	function onpointerdown(event: PointerEvent) {
-		// Links, buttons and the frames' labels keep their own clicks (a label's text can be selected).
-		if (!stage || (event.target as Element).closest('a, button, figcaption')) return;
+		// Links and buttons (a device's name, its Open link) keep their own presses.
+		if (!stage || (event.target as Element).closest('a, button')) return;
 		if (event.pointerType === 'mouse' && event.button !== 0) return;
 		stage.setPointerCapture(event.pointerId);
 		canvas.measure(stage);
@@ -185,9 +177,7 @@
 >
 	<div
 		class="world"
-		bind:this={world}
 		style:transform="translate({canvas.x}px, {canvas.y}px) scale({canvas.scale})"
-		style:--scale={canvas.scale}
 	>
 		{@render children()}
 	</div>
@@ -215,7 +205,6 @@
 		position: absolute;
 		top: 0;
 		left: 0;
-		width: max-content;
 		transform-origin: 0 0;
 		will-change: transform;
 	}

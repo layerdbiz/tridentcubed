@@ -1,6 +1,7 @@
-<!-- The controls (#342), the starter's dark panel. On a desktop it floats top right over the canvas and the bar's
-     Controls button hides it (kept); on a phone it slides in from the right over a dimmed page, which shuts it. -->
+<!-- The controls (#342). On a desktop they float top right over the canvas, and the devices are laid out in the room
+     beside them; on a phone they rise from the bottom in the library's Dialog. Library pieces only. -->
 <script lang="ts">
+	import { Button, Component, Dialog } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 	import { isWide } from './side.svelte';
 
@@ -10,53 +11,37 @@
 </script>
 
 {#if isOpen}
-	{#if !isWide()}
-		<button
-			type="button"
-			class="scrim"
-			aria-label="Close the controls"
-			onclick={() => (isOpen = false)}
-		></button>
+	{#if isWide()}
+		<Component
+			tag="aside"
+			aria-label="Controls"
+			class="theme-base absolute top-3 right-3 z-30 flex max-h-[calc(100%-1.5rem)] w-[300px] flex-col overflow-hidden rounded-box border border-base-200-800 shadow-xl"
+		>
+			<div class="flex shrink-0 items-center gap-2 border-b border-base-200-800 py-1 ps-4 pe-1">
+				<b class="flex-1 text-sm">Controls</b>
+				<Button
+					ghost
+					sm
+					variant="icon"
+					icon="icon-[mdi--close]"
+					label="Close the controls"
+					aria-label="Close the controls"
+					onclick={() => (isOpen = false)}
+				/>
+			</div>
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain">{@render children()}</div>
+		</Component>
+	{:else}
+		<Dialog
+			label="Controls"
+			variant="tall"
+			class="theme-base"
+			onclose={() => (isOpen = false)}
+		>
+			{#snippet header()}
+				<b class="block px-4 pt-1 pb-2">Controls</b>
+			{/snippet}
+			{@render children()}
+		</Dialog>
 	{/if}
-	<aside
-		class="dock"
-		class:is-wide={isWide()}
-		aria-label="Controls"
-	>
-		{@render children()}
-	</aside>
 {/if}
-
-<style>
-	.dock {
-		position: absolute;
-		z-index: 30;
-		top: 0;
-		right: 0;
-		bottom: 0;
-		width: min(320px, 86vw);
-		padding: 12px 14px;
-		padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
-		overflow-y: auto;
-		overscroll-behavior: contain;
-		background: var(--bar-bg);
-		color: var(--bar-fg);
-		box-shadow: 0 0 40px rgb(2 6 23 / 0.45);
-	}
-	.dock.is-wide {
-		top: 10px;
-		right: 10px;
-		bottom: auto;
-		width: 300px;
-		max-height: calc(100% - 20px);
-		border-radius: 16px;
-		box-shadow: 0 14px 40px -12px rgb(2 6 23 / 0.6);
-	}
-	.scrim {
-		position: absolute;
-		z-index: 29;
-		inset: 0;
-		border: 0;
-		background: rgb(2 6 23 / 0.4);
-	}
-</style>

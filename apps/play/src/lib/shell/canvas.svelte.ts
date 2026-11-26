@@ -9,8 +9,8 @@ import {
 	type ViewType
 } from './viewport';
 
-/** Pixels kept clear around the frames when they are fitted. */
-const EDGE = 24;
+/** Pixels kept clear round the devices when they are fitted. */
+export const EDGE = 16;
 
 export class Canvas {
 	scale = $state(1);
@@ -18,10 +18,12 @@ export class Canvas {
 	y = $state(0);
 	/** True while the view is the fitted one, so a resize can fit again without undoing the viewer's zoom. */
 	isFitted = $state(true);
-	stage: SizeType = { width: 1, height: 1 };
+	/** The stage's size on screen, so the board can lay the devices out to fill it. */
+	stage: SizeType = $state({ width: 1, height: 1 });
+	/** What is laid on the canvas, in canvas pixels (the board sets it). */
 	content: SizeType = { width: 1, height: 1 };
 	/** Pixels on the right that the open controls panel covers, left out when fitting. */
-	inset = 0;
+	inset = $state(0);
 	#origin = { left: 0, top: 0 };
 	#pinch: PinchStartType | null = null;
 	#glide = 0;
@@ -34,7 +36,13 @@ export class Canvas {
 	measure(stage: HTMLElement) {
 		const rect = stage.getBoundingClientRect();
 		this.#origin = { left: rect.left, top: rect.top };
-		this.stage = { width: rect.width, height: rect.height };
+		if (rect.width !== this.stage.width || rect.height !== this.stage.height)
+			this.stage = { width: rect.width, height: rect.height };
+	}
+
+	/** The room the devices are fitted into: the stage, less the open panel. */
+	get room(): SizeType {
+		return { width: Math.max(1, this.stage.width - this.inset), height: this.stage.height };
 	}
 
 	set(view: ViewType, isFitted = false) {
@@ -46,8 +54,14 @@ export class Canvas {
 
 	fit() {
 		this.stopGlide();
-		const room = { width: Math.max(1, this.stage.width - this.inset), height: this.stage.height };
-		this.set(toFit(room, this.content, EDGE), true);
+		this.set(toFit(this.room, this.content, EDGE), true);
+	}
+
+	/** Zooms to one box on the canvas (one device), as large as the room allows, and never above real size. */
+	show(box: { x: number; y: number; width: number; height: number }) {
+		this.stopGlide();
+		const view = toFit(this.room, box, EDGE);
+		this.set({ scale: view.scale, x: view.x - box.x * view.scale, y: view.y - box.y * view.scale });
 	}
 
 	/** Zoom to `next` around a point on the screen (clientX, clientY). */

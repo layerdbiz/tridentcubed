@@ -40,14 +40,38 @@ describe('toEntries', () => {
 		});
 	});
 
-	test('skips files outside a topic folder', () => {
-		expect(toEntries({ '/src/prototypes/loose.html': '/x.html' }, 'prototype')).toEqual([]);
+	test('a file on its own is a topic with one option, and topics may sit in folders', () => {
+		const entries = toEntries(
+			{
+				'/src/prototypes/loose.html': '/x.html',
+				'/src/prototypes/report/cover/main.html': '/y.html',
+				'/src/prototypes/report/cover/wide.html': '/z.html'
+			},
+			'prototype'
+		);
+
+		expect(entries).toMatchObject([
+			{
+				slug: 'loose',
+				path: ['loose'],
+				href: '/prototype/loose',
+				options: [{ slug: 'main', url: '/x.html' }]
+			},
+			{
+				slug: 'report/cover',
+				label: 'Report: Cover',
+				path: ['report', 'cover'],
+				href: '/prototype/report/cover',
+				options: [{ slug: 'main' }, { slug: 'wide' }]
+			}
+		]);
 	});
 
 	test('skips names an address cannot carry: only lowercase words joined by hyphens', () => {
 		const found = {
 			'/src/prototypes/menus/v1.2.html': '/x.html',
-			'/src/prototypes/menus/Big Menu.html': '/y.html'
+			'/src/prototypes/menus/Big Menu.html': '/y.html',
+			'/src/prototypes/Old Stuff/main.html': '/z.html'
 		};
 		expect(toEntries(found, 'prototype')).toEqual([]);
 	});
@@ -67,10 +91,11 @@ describe('toLibrary', () => {
 		expect(entries[0]).toMatchObject({
 			kind: 'library',
 			label: 'Demo: Rails Debug',
+			path: ['demo', 'rails-debug'],
 			href: '/library/demo/rails-debug',
 			options: [{ slug: 'main', label: 'Main', url: '/demo/rails-debug' }]
 		});
-		expect(entries[2].label).toBe('MQ SSR');
+		expect(entries[2]).toMatchObject({ label: 'MQ SSR', path: ['mq', 'ssr'] });
 	});
 });
 

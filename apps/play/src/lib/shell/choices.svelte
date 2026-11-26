@@ -1,8 +1,10 @@
-<!-- A row of choices, the starter's segmented buttons: one or several picked, each a pressed button. -->
+<!-- A row of choices (#342): the library's Button, one or several picked, the picked ones in the theme's primary. -->
 <script
 	lang="ts"
 	generics="T extends string"
 >
+	import { Button } from '@layerd/ui';
+
 	type ChoicesProps = {
 		label: string;
 		options: { value: T; label: string }[];
@@ -14,45 +16,19 @@
 </script>
 
 <div
-	class="choices"
+	class="flex flex-wrap gap-1"
 	role="group"
 	aria-label={label}
 >
 	{#each options as option (option.value)}
-		<button
-			type="button"
-			aria-pressed={picked.includes(option.value)}
-			onclick={() => onpick(option.value)}>{option.label}</button
-		>
+		{@const isPicked = picked.includes(option.value)}
+		<Button
+			sm
+			label={option.label}
+			primary={isPicked}
+			lite={!isPicked}
+			aria-pressed={isPicked}
+			onclick={() => onpick(option.value)}
+		/>
 	{/each}
 </div>
-
-<style>
-	.choices {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 4px;
-	}
-	button {
-		min-height: 30px;
-		padding: 0 11px;
-		border: 0;
-		border-radius: 9px;
-		background: var(--bar-soft);
-		color: var(--bar-fg);
-		font-size: 12.5px;
-		font-weight: 600;
-		cursor: pointer;
-	}
-	button:hover {
-		background: color-mix(in srgb, var(--bar-soft), white 8%);
-	}
-	button[aria-pressed='true'] {
-		background: var(--accent);
-		color: #fff;
-	}
-	button:focus-visible {
-		outline: 2px solid var(--accent);
-		outline-offset: 2px;
-	}
-</style>

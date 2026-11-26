@@ -1,7 +1,9 @@
 // What play.tridentcubed.com shows (#342). Three kinds, each found from the files alone, so adding one is adding a
-// file: a PROTOTYPE is a big app section with several options, `src/prototypes/<topic>/<option>.html`; a COMPONENT
-// is one piece with its variants, `src/components/<name>/<variant>.html`; the LIBRARY is the play app's own Svelte
-// pages from before the shell (`src/routes/(play)` and `(mq)`). Each opens in the same shell, in frames.
+// file and the menu follows the folders: a PROTOTYPE is a big app section with several options,
+// `src/prototypes/<topic>/<option>.html`; a COMPONENT is one piece with its variants,
+// `src/components/<name>/<variant>.html`; the LIBRARY is the play app's own Svelte pages from before the shell
+// (`src/routes/(play)` and `(mq)`). Topics may sit in folders of their own (`src/prototypes/report/cover/main.html`),
+// and a file on its own (`src/prototypes/menus.html`) is a topic with one option. Each opens in the same shell.
 
 export type KindType = 'prototype' | 'component' | 'library';
 
@@ -10,8 +12,11 @@ export type OptionType = { slug: string; label: string; url: string };
 
 export type EntryType = {
 	kind: KindType;
+	/** Its folders from the section's root, joined by slashes: `kit`, `report/cover`. */
 	slug: string;
 	label: string;
+	/** Where the menu lists it: its folders, outermost first. */
+	path: string[];
 	/** The shell page that shows it. */
 	href: string;
 	options: OptionType[];
@@ -20,8 +25,8 @@ export type EntryType = {
 // Folder and file names are lowercase words joined by hyphens (the repo's naming rule), which is also what lets an
 // address carry them; any other name is not listed.
 const FOLDER: Record<'prototype' | 'component', RegExp> = {
-	prototype: /^\/src\/prototypes\/([a-z0-9-]+)\/([a-z0-9-]+)\.html$/,
-	component: /^\/src\/components\/([a-z0-9-]+)\/([a-z0-9-]+)\.html$/
+	prototype: /^\/src\/prototypes\/((?:[a-z0-9-]+\/)*)([a-z0-9-]+)\.html$/,
+	component: /^\/src\/components\/((?:[a-z0-9-]+\/)*)([a-z0-9-]+)\.html$/
 };
 
 const LIBRARY_PAGE = /^\/src\/routes\/\((play|mq)\)\/(.+)\/\+page\.svelte$/;
@@ -40,11 +45,16 @@ export function toEntries(
 		const match = FOLDER[kind].exec(path);
 		if (!match) continue;
 
-		const [, slug, option] = match;
+		// A file in a folder is one of that folder's options; a file on its own is a topic with one option, Main.
+		const [, folders, file] = match;
+		const slug = folders ? folders.slice(0, -1) : file;
+		const option = folders ? file : 'main';
+		const parts = slug.split('/');
 		const entry = byTopic.get(slug) ?? {
 			kind,
 			slug,
-			label: toLabel(slug),
+			label: parts.map(toLabel).join(': '),
+			path: parts,
 			href: `/${kind}/${slug}`,
 			options: []
 		};
@@ -72,6 +82,7 @@ export function toLibrary(routeFiles: string[]): EntryType[] {
 			kind: 'library',
 			slug,
 			label,
+			path: group === 'mq' ? ['mq', ...slug.split('/')] : slug.split('/'),
 			href: `/library/${slug}`,
 			options: [{ slug: 'main', label: 'Main', url: `/${slug}` }]
 		});
