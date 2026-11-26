@@ -48,5 +48,8 @@ shares with it: kept from the app's picker and place field on #298, the
 app's panel look until #57), the switch's slate off track (kept from the
 app's stage switch on #378), the dialog's slate scrim, sheet shadow and grab
 handle and its own md: switch from a bottom sheet to a centred box (kept
-from the app's sheet on #375, used in seven places): all listed on "UI library cleanup" (#33),
+from the app's sheet on #375, used in seven places), the compact field's
+single `<input>` and its own props in place of the base component (#387:
+lists of fifty rows of two boxes, measured as fast as the app's plain
+inputs on a slowed phone): all listed on "UI library cleanup" (#33),
 changed there, not mid-feature.

@@ -32,6 +32,7 @@ export * from "./utils/trackevent.ts";
 export { default as Button, type ButtonProps } from "./components/atoms/button/button.svelte";
 export { default as Checkbox } from "./components/atoms/forms/checkbox/checkbox.svelte";
 export { default as Colorss } from "./components/atoms/Colorss.svelte";
+export { default as Compact, type CompactProps } from "./components/atoms/forms/compact/compact.svelte";
 export { default as Container, type ContainerProps } from "./components/atoms/container/container.svelte";
 export * from "./components/atoms/content/content.svelte.ts";
 export { default as Content } from "./components/atoms/content/content.svelte";
