@@ -310,6 +310,10 @@ _Avoid_: avatar group, face pile
 The box that opens over the page and shuts the rest until it closes: a sheet rising from the bottom on a phone, which a pull down closes, and a centred box from tablet width. Escape and a tap outside close it too, and the focus goes into it and back to what opened it. The help ?'s kind leaves the focus in the input being typed in (#375).
 _Avoid_: popup, bottom sheet (as a component of its own), drawer
 
+**Popover**:
+A box of anything that hangs from a button and leaves the page live, such as the bell's Notifications: a tap of its button opens it, and a second tap, Escape or a tap outside closes it. It opens under its button, or over it when there is more room there, lined up with the button's left or right edge, and moves back from the edge of the screen so it is never cut off (#405). A Menu is the same kind of box holding a list of choices.
+_Avoid_: dropdown (a Menu), flyout, Toggle (the site's older open-and-close piece)
+
 **Tabs**:
 A row of choices where the picked one decides what shows beside or under it, such as Photo or Map, or a dashboard's count cards. One is always picked; the arrow keys move along the row (#382).
 _Avoid_: segmented control, switcher, toggle (a toggle opens and closes)

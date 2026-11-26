@@ -95,6 +95,7 @@ export { default as Logo, type LogoProps } from "./components/molecules/logo/log
 export * from "./components/molecules/logo/logo.data.ts";
 export { default as Menu, type MenuOptionType, type MenuProps } from "./components/molecules/menu/menu.svelte";
 export { default as Navbar } from "./components/molecules/navbar/navbar.svelte";
+export { default as Popover, type PopoverProps } from "./components/molecules/popover/popover.svelte";
 export { default as Preview, type PreviewProps } from "./components/molecules/preview/preview.svelte";
 export { default as SelectionBar, type SelectionActionType, type SelectionBarProps } from "./components/molecules/selection-bar/selection-bar.svelte";
 export { default as Slider, type SliderProps } from "./components/molecules/slider/slider.svelte";

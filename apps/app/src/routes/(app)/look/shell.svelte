@@ -17,7 +17,7 @@
 	// screen edge to edge, down behind the sheet; a swipe slides the pages without fading them; the bell's list sits
 	// over the list's menus. Run 15 (2026-11-10): Settings is a screen of its own (settings-page.svelte), opened from
 	// the menu's cog or Admin, and slides in like a record.
-	import { Avatar, Button } from '@layerd/ui';
+	import { Avatar, Button, Popover } from '@layerd/ui';
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
@@ -62,7 +62,6 @@
 	let isBellOpen = $state(false);
 	// The search pop-up (#345): from Search in the menu, or Ctrl K / ⌘ K.
 	let isSearchOpen = $state(false);
-	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
 	let headHeight = $state(0);
 	let cardsHeight = $state(0);
@@ -117,15 +116,6 @@
 		surface: CANVAS
 	} as const;
 
-	function onpointerdown(event: PointerEvent) {
-		if (isBellOpen && bell && !bell.contains(event.target as Node)) isBellOpen = false;
-	}
-
-	function ring() {
-		isBellOpen = !isBellOpen;
-		seen = true;
-	}
-
 	function clamp(value: number, min: number, max: number) {
 		return Math.min(max, Math.max(min, value));
 	}
@@ -159,6 +149,8 @@
 			if (dx > -8 || Math.abs(dx) < Math.abs(event.clientY - pull.y)) return;
 			pull.isOn = true;
 			isPulling = true;
+			// The bell's Notifications float over the page, not in the menu, so they close as it is pushed shut.
+			isBellOpen = false;
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		}
 		pull.isDragged = Math.abs(dx) > 4;
@@ -319,7 +311,6 @@
 <svelte:window
 	bind:innerWidth
 	bind:innerHeight
-	{onpointerdown}
 	ongotpointercapture={holdText}
 	onlostpointercapture={freeText}
 	onkeydown={(event) => {
@@ -329,26 +320,34 @@
 			return;
 		}
 		if (event.key !== 'Escape') return;
-		isBellOpen = false;
 		drawer = 0;
 	}}
 />
 
 <!-- The bell: top right of a desktop's dashboard, and in the phone's menu beside the name (`isPlain`: on the menu's
-     white it needs no circle of its own). -->
+     white it needs no circle of its own). Its Notifications are the library Popover (#405): on a desktop the bell sits
+     at the top right, so the box opens toward the left; in the phone's menu it sits in the middle, so the box opens
+     toward the right, and either way it stays on the screen (Justin, 2026-11-26: it ran off the left of his phone). -->
 {#snippet bellButton(isPlain = false)}
-	<div
-		class="relative"
-		bind:this={bell}
-	>
-		<Button
-			{...isPlain ? ROUND : round}
-			icon="icon-[mdi--bell-outline]"
-			aria-label="Notifications"
-			title="Notifications"
-			aria-expanded={isBellOpen}
-			onclick={ring}
-		/>
+	<div class="relative">
+		<Popover
+			label="Notifications"
+			align={isPlain ? 'left' : 'right'}
+			class="w-72 md:w-80"
+			button={{
+				...(isPlain ? ROUND : round),
+				icon: 'icon-[mdi--bell-outline]',
+				title: 'Notifications',
+				onclick: () => (seen = true)
+			}}
+			bind:isOpen={isBellOpen}
+		>
+			<p class="px-3 pt-2 pb-1 text-sm font-semibold text-slate-900">Notifications</p>
+			<RecentList
+				{look}
+				onpick={() => (isBellOpen = false)}
+			/>
+		</Popover>
 		{#if !seen}
 			<span
 				class="pointer-events-none absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isPlain ||
@@ -358,18 +357,6 @@
 						? 'ring-black'
 						: 'ring-slate-100'}"
 			></span>
-		{/if}
-		{#if isBellOpen}
-			<div
-				class="absolute top-full right-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-3xl bg-white p-2 shadow-[0_2px_6px_rgb(15_23_42/0.06),0_24px_50px_-12px_rgb(15_23_42/0.3)] md:w-80"
-				transition:scale={{ start: 0.95, duration: 140 }}
-			>
-				<p class="px-3 pt-2 pb-1 text-sm font-semibold text-slate-900">Notifications</p>
-				<RecentList
-					{look}
-					onpick={() => (isBellOpen = false)}
-				/>
-			</div>
 		{/if}
 	</div>
 {/snippet}
