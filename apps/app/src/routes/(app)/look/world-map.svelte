@@ -22,8 +22,10 @@
 		Map as MapType,
 		Marker as MarkerType
 	} from 'maplibre-gl';
-	import { onMount, untrack } from 'svelte';
+	import { Avatar } from '@layerd/ui';
+	import { mount, onMount, unmount, untrack } from 'svelte';
 	import type { PinItemType, PinType } from './chart.data';
+	import { PAGE_ICONS } from './look.data';
 	import {
 		extentOf,
 		gapOf,
@@ -92,6 +94,8 @@
 	let Marker: typeof MarkerType | undefined;
 	// The markers on the map now, and the single things they stand for, by key.
 	const markers = new Map<string, MarkerType>();
+	// Each marker's avatar, by the marker's element, let go of when the marker goes.
+	const avatars = new WeakMap<HTMLElement, ReturnType<typeof mount>>();
 	let singles = new Map<string, PinItemType>();
 	// Spread: each marker with its place, its seat in the scatter round it, and how many share the place.
 	type SpotType = { marker: MarkerType; centre: [number, number]; seat: SeatType; count: number };
@@ -219,31 +223,15 @@
 		] as unknown as ExpressionSpecification;
 	}
 
-	// One thing on the map: its picture or icon in a white-ringed circle of its own colour.
+	// One thing on the map: the library's avatar, like every other round picture in the app (#379; Justin,
+	// 2026-11-26): its logo, face or letters, or its icon on its own colour, in a white ring.
 	function elementOf(item: PinItemType) {
 		const button = document.createElement('button');
 		button.type = 'button';
 		button.title = item.name;
 		button.setAttribute('aria-label', item.name);
-		button.className = `flex size-10 [scale:var(--pin,1)] cursor-pointer items-center justify-center overflow-hidden rounded-full text-white shadow-[0_2px_8px_rgb(15_23_42/0.35)] ring-[2.5px] ring-white transition-[scale] duration-500 ease-out ${item.image ? 'bg-white' : (item.tone ?? 'bg-primary')}`;
-		if (item.image) {
-			const image = document.createElement('img');
-			image.src = item.image;
-			image.alt = '';
-			image.draggable = false;
-			image.className =
-				item.page === 'team' ? 'size-full object-cover' : 'size-full object-contain';
-			button.append(image);
-		} else if (item.icon) {
-			const icon = document.createElement('span');
-			icon.className = `${item.icon} size-5`;
-			button.append(icon);
-		} else {
-			const letter = document.createElement('span');
-			letter.className = 'text-sm font-semibold';
-			letter.textContent = item.name.slice(0, 1).toUpperCase();
-			button.append(letter);
-		}
+		button.className =
+			'flex [scale:var(--pin,1)] cursor-pointer rounded-full shadow-[0_2px_8px_rgb(15_23_42/0.35)] transition-[scale] duration-500 ease-out';
 		button.addEventListener('click', (event) => {
 			event.stopPropagation();
 			onpick?.(item);
@@ -251,7 +239,29 @@
 		// The map moves the box; the button inside grows and shrinks with where the sheet rests (--pin).
 		const box = document.createElement('div');
 		box.append(button);
+		avatars.set(
+			box,
+			mount(Avatar, {
+				target: button,
+				props: {
+					src: item.image ?? '',
+					alt: '',
+					size: 40,
+					fit: item.page === 'team' ? 'cover' : 'contain',
+					fallback: item.icon ?? PAGE_ICONS.projects,
+					tint: `${item.tone ?? 'bg-primary'} text-white`,
+					ring: 'ring-[2.5px] ring-white'
+				}
+			})
+		);
 		return box;
+	}
+
+	// Takes a marker off the map, and lets its avatar go.
+	function removeMarker(marker: MarkerType) {
+		const avatar = avatars.get(marker.getElement());
+		if (avatar) void unmount(avatar);
+		marker.remove();
 	}
 
 	// Markers follow the map: a single thing that stands alone at this zoom has one; one swallowed by a number does
@@ -276,13 +286,13 @@
 		}
 		for (const [key, marker] of markers)
 			if (!shown.has(key)) {
-				marker.remove();
+				removeMarker(marker);
 				markers.delete(key);
 			}
 	}
 
 	function clearMarkers() {
-		for (const marker of markers.values()) marker.remove();
+		for (const marker of markers.values()) removeMarker(marker);
 		markers.clear();
 		spots = [];
 	}

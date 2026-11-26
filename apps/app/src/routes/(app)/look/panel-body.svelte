@@ -583,6 +583,18 @@
 	/>
 {/snippet}
 
+<!-- A Personnel company: a customer's logo or code, or any other company's code in white on black, as the report
+     shows it (#355). -->
+{#snippet companyLogo(name: string, size: number)}
+	<Avatar
+		{...logoOf(name, {
+			shape: 'circle',
+			tone: look.customers.includes(name) ? 'customer' : 'company'
+		})}
+		{size}
+	/>
+{/snippet}
+
 <!-- Title or Subtitle: the field the panel holds under that label, typed into as it is. -->
 {#snippet textField(label: 'Title' | 'Subtitle', key: string)}
 	{@const field = fieldOf(label)}
@@ -666,6 +678,7 @@
 				isTyped
 				label="Company"
 				icon={PAGE_ICONS.customers}
+				mark={companyLogo}
 				options={look.customers.map((name) => ({ value: name, label: name }))}
 				bind:value={company.company}
 				required
