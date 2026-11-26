@@ -2,8 +2,8 @@
 	// PROTOTYPE (#161): the top of an open project, on the phone and the desktop alike. Back, the title with the
 	// project's percent and state at its right (the state in its colour, the way each panel shows them), the bar under
 	// both, from where the title starts (run 9 notes 10 and 12), and a ⋮ at the far right with what can be done to the
-	// whole project (note 11), the same MoreMenu the dashboard's lists use. `isCloud` adds the save cloud after the
-	// title (the phone has it on the floating bar). A Sent, Complete or Archived project's bar is all in its status
+	// whole project (note 11), the same MoreMenu the dashboard's lists use. The save cloud stands after the title
+	// (#372: the bars that held it instead are gone). A Sent, Complete or Archived project's bar is all in its status
 	// colour, the cloud too (themeOf, #335). #305: a tap on the percent lists the project's empty inputs in a toast.
 	import { STATUS } from './look.data';
 	import { themeOf, type LookState } from './look.state.svelte';
@@ -11,7 +11,7 @@
 	import Percent from './percent.svelte';
 	import SaveCloud from './save-cloud.svelte';
 
-	let { look, isCloud = false }: { look: LookState; isCloud?: boolean } = $props();
+	let { look }: { look: LookState } = $props();
 
 	const status = $derived(STATUS[look.project.status]);
 </script>
@@ -28,7 +28,7 @@
 	>
 		<div class="flex min-h-10 items-center gap-2">
 			<span class="min-w-0 flex-1 truncate font-semibold text-slate-900">{look.project.title}</span>
-			{#if isCloud}<SaveCloud {look} />{/if}
+			<SaveCloud {look} />
 			<Percent
 				percent={look.overall}
 				status={look.project.status}
