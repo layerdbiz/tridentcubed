@@ -1,13 +1,13 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 11: what the floating bar's blue + opens (Justin, 2026-10-26 19:22): one sheet from the
-	// bottom to add a project, customer, team, transport mode or facility. It opens on the page being looked at; the
-	// chips at its top switch what is added. Run 16 (Justin, 2026-11-10): the sheet asks for everything Edit does,
+	// bottom to add a project, customer, team, transport mode or facility. It opens on a short list of what can be
+	// added, a list row each (#383), and the one picked opens its sheet. Run 16 (Justin, 2026-11-10): the sheet asks for everything Edit does,
 	// through the same components. A new project is the Project panel itself (panel-body.svelte, over a draft); the
 	// others are record-fields.svelte over an empty record. Nothing exists until Create or Add; then a project
 	// opens on Edit and anything else on its Page. Run 28: "Add new" in a dropdown opens this same sheet on that one
-	// page (look.addFor), with no page chips; what is added is picked in the dropdown and nothing else opens.
+	// page (look.addFor), with no list; what is added is picked in the dropdown and nothing else opens.
 	import { scale } from 'svelte/transition';
-	import { Button, Dialog } from '@layerd/ui';
+	import { Button, Dialog, ListRow } from '@layerd/ui';
 	import { DATASETS, draftOf, draftPanel, PAGE_ICONS, PAGES, type DatasetType } from './look.data';
 	import type { LookState, RecordDraftType } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
@@ -68,7 +68,7 @@
 	const isWide = $derived(innerWidth >= 768);
 	const isMenu = $derived(look.variant('add') === 'C' && !look.isAddLocked);
 
-	function start(id: DatasetType) {
+	function startAdding(id: DatasetType) {
 		// A new project's Team Lead is whoever makes it (#185).
 		if (id === 'projects')
 			return look.create(draftPanel(look.organization.name, look.me?.name ?? ''));
@@ -144,32 +144,36 @@
 
 {#snippet kinds()}
 	{#each PAGES as id (id)}
-		<button
+		<ListRow
+			tag="button"
 			type="button"
 			role="menuitem"
-			class="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-900/[0.04]"
-			onclick={() => start(id)}
+			class="gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-900/[0.04]"
+			onclick={() => startAdding(id)}
+			label={DATASETS[id].one}
 		>
-			<span
-				class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-				><span class="{PAGE_ICONS[id]} size-5"></span></span
-			>{DATASETS[id].one}
-		</button>
+			{#snippet start()}<span
+					class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+					><span class="{PAGE_ICONS[id]} size-5"></span></span
+				>{/snippet}
+		</ListRow>
 	{/each}
 	<!-- One sample project for every state, until they are there with their states (Justin, 2026-11-16). -->
 	{#if !hasSamples(look) || unfinishedSamples(look).length}
-		<button
+		<ListRow
+			tag="button"
 			type="button"
 			role="menuitem"
-			class="mt-1 flex w-full items-center gap-3 rounded-2xl border-t border-slate-900/[0.06] px-3 py-2.5 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-900/[0.04]"
+			class="mt-1 gap-3 rounded-2xl border-t border-slate-900/[0.06] px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-900/[0.04]"
 			disabled={isSampling}
 			onclick={addSamples}
+			label="Sample projects"
 		>
-			<span
-				class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-500"
-				><span class="icon-[mdi--auto-fix] size-5"></span></span
-			>Sample projects
-		</button>
+			{#snippet start()}<span
+					class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-500"
+					><span class="icon-[mdi--auto-fix] size-5"></span></span
+				>{/snippet}
+		</ListRow>
 	{/if}
 {/snippet}
 

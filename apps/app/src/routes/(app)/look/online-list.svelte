@@ -8,7 +8,7 @@
 	// is made up. The list keeps time while it is open. A tap opens their Team record.
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toDeviceIcons } from '#lib/presence/presence.utils.js';
-	import { Avatar } from '@layerd/ui';
+	import { Avatar, ListRow } from '@layerd/ui';
 	import { onlineOf, presenceOf, toPresenceText } from './look.data';
 	import { faceOf } from './marks';
 	import type { LookState } from './look.state.svelte';
@@ -52,23 +52,27 @@
 	{@const presence = presenceOf(member.name, now)}
 	{@const text = toPresenceText(member, now)}
 	{@const icons = toDeviceIcons(member.device, member.deviceName ?? '')}
-	<button
+	<!-- #383: the library ListRow, its first line the name with the device beside it. -->
+	<ListRow
+		tag="button"
 		type="button"
-		class="flex w-full min-w-0 items-center gap-2 rounded-2xl py-1.5 text-left hover:bg-slate-900/[0.04]"
+		class="gap-2 rounded-2xl py-1.5 hover:bg-slate-900/[0.04]"
 		title={[member.name, text, member.deviceName].filter(Boolean).join(' · ')}
 		onclick={() => open(member)}
+		note={text}
+		textClass={words}
+		noteClass="text-xs {TEXT_TONES[presence]}"
 	>
-		<span
-			class="flex shrink-0 justify-center"
-			style="width: {width}px"
-		>
-			<Avatar
-				{...faceOf(member.name, { presence })}
-				{size}
-				ring="ring-2 ring-slate-200"
-			/>
-		</span>
-		<span class="min-w-0 flex-1 {words}">
+		{#snippet start()}<span
+				class="flex shrink-0 justify-center"
+				style="width: {width}px"
+				><Avatar
+					{...faceOf(member.name, { presence })}
+					{size}
+					ring="ring-2 ring-slate-200"
+				/></span
+			>{/snippet}
+		{#snippet label()}
 			<span class="flex min-w-0 items-center gap-1.5">
 				<span class="truncate text-sm text-slate-800">{member.name}</span>
 				{#if member.deviceName}
@@ -87,7 +91,6 @@
 					</span>
 				{/if}
 			</span>
-			<span class="block truncate text-xs {TEXT_TONES[presence]}">{text}</span>
-		</span>
-	</button>
+		{/snippet}
+	</ListRow>
 {/each}

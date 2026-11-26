@@ -27,6 +27,8 @@
 />
 
 <style lang="postcss">
+	@reference "#ui.css";
+
 	/* Its box, padding and type on the base size ladder, in the components layer, where a place's own class beats them. */
 	@layer components {
 		:global(.chip) {

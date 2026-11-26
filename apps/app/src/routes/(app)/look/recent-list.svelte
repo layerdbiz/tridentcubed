@@ -6,6 +6,8 @@
 	// icon takes the colour of the project's state, or of the record's first label, as in the lists (2026-11-10).
 	// Run 16: the list is no longer written here. It is the eight things changed last, from their own stamps. The
 	// menu's Pinned list (#346) draws its rows here too, given as `items`.
+	// #383: each row is the library ListRow; its ⋮ stands beside it, since a button cannot hold another.
+	import { ListRow } from '@layerd/ui';
 	import { PAGE_ICONS, type RecentType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
@@ -37,31 +39,32 @@
 
 {#each items ?? recentOf(look) as item (`${item.page}-${item.id ?? item.name}`)}
 	<div class="flex w-full items-center rounded-2xl hover:bg-slate-900/[0.04]">
-		<button
-			class="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left"
+		<ListRow
+			tag="button"
+			class="flex-1 gap-2 py-1.5"
 			title={item.name}
 			onclick={() => open(item)}
+			label={item.name}
+			note={item.note}
+			textClass={words}
+			labelClass="text-sm text-slate-800"
+			noteClass="text-xs text-slate-400"
 		>
-			<span
-				class="flex shrink-0 justify-center"
-				style="width: {width}px"
-			>
-				<span
-					class="relative flex items-center justify-center overflow-hidden rounded-full {toneOfItem(
-						look,
-						item
-					)}"
-					style="width: {size}px; height: {size}px"
-					><!-- The circle is the icon's own colour, let through at a tenth (run 18). --><span
-						class="absolute inset-0 bg-current opacity-[0.12]"
-					></span><span class="{PAGE_ICONS[item.page]} relative size-[55%]"></span></span
-				>
-			</span>
-			<span class="min-w-0 flex-1 {words}">
-				<span class="block truncate text-sm text-slate-800">{item.name}</span>
-				<span class="block truncate text-xs text-slate-400">{item.note}</span>
-			</span>
-		</button>
+			{#snippet start()}<span
+					class="flex shrink-0 justify-center"
+					style="width: {width}px"
+					><span
+						class="relative flex items-center justify-center overflow-hidden rounded-full {toneOfItem(
+							look,
+							item
+						)}"
+						style="width: {size}px; height: {size}px"
+						><!-- The circle is the icon's own colour, let through at a tenth (run 18). --><span
+							class="absolute inset-0 bg-current opacity-[0.12]"
+						></span><span class="{PAGE_ICONS[item.page]} relative size-[55%]"></span></span
+					></span
+				>{/snippet}
+		</ListRow>
 		<span class="shrink-0 {words}">
 			<MoreMenu
 				{look}

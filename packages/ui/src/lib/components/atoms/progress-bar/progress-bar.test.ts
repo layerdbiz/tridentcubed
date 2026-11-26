@@ -69,7 +69,7 @@ describe('ProgressBar', () => {
 	});
 
 	it("takes a class in place of its colour: a project's state colour", () => {
-		render(ProgressBar, { props: { value: 50, label: 'Done', bar: 'bg-state-ready' } });
+		render(ProgressBar, { props: { value: 50, label: 'Done', fill: 'bg-state-ready' } });
 
 		const fill = fillOf(screen.getByRole('progressbar'));
 		expect(fill.className).toContain('bg-state-ready');

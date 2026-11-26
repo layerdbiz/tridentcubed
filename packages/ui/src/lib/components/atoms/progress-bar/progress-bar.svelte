@@ -2,11 +2,6 @@
 	lang="ts"
 	module
 >
-	// The props that colour the filled part, which pass to it rather than to the track: the colours and appearances
-	// as shorthands, and `invert`.
-	const COLORS = ['base', 'neutral', 'primary', 'secondary', 'accent', 'danger'] as const;
-	const APPEARANCES = ['heavy', 'lite', 'outline', 'ghost', 'glass', 'gradient'] as const;
-
 	// How much of the bar is filled, as a share of its width: never below nothing, never past all of it.
 	function toShare(value: number, max: number): number {
 		if (!(max > 0) || !Number.isFinite(value)) return 0;
@@ -24,11 +19,11 @@
 	// Its look is set from outside (Justin, 2026-11-26): it is the base component, and its track, the box that shows,
 	// takes `class` and `size` (or `sm`, `lg`...), which sets its height on the base ladder. `color` and `appearance`
 	// (primary and heavy unless told), with their shorthands, colour the filled part, which is a base component too.
-	// `track` and `bar` colour the two in place of the theme's, the way a project's bar takes its state's colour,
+	// `track` and `fill` colour the two in place of the theme's, the way a project's bar takes its state's colour,
 	// until the state colours can be worn as a `color` (#33). It repeats in every dashboard row, so both parts take
 	// the base component's light path. The fill moves in half a second; `[--progress-speed:300ms]` in `class` changes
 	// that. `isMoving` runs a band of light along the filled part while the work is under way (the Toast's upload).
-	import { Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
+	import { Component, toLook, type ComponentProps, type ComponentReturn } from '@layerd/ui';
 
 	export interface ProgressBarProps extends Omit<ComponentProps, 'value' | 'label' | 'children'> {
 		/** How much is done, out of `max`. */
@@ -40,7 +35,7 @@
 		/** A class that colours the track, in place of the theme's neutral. */
 		track?: string;
 		/** A class that colours the filled part, in place of its `color` and `appearance`. */
-		bar?: string;
+		fill?: string;
 		/** Runs a band of light along the filled part while the work is under way. */
 		isMoving?: boolean;
 	}
@@ -50,7 +45,7 @@
 		max = 100,
 		label,
 		track = 'bg-neutral-200',
-		bar = undefined,
+		fill = undefined,
 		isMoving = false,
 		color = 'primary',
 		appearance = 'heavy',
@@ -59,18 +54,9 @@
 
 	const share = $derived(toShare(value, max));
 
-	// The track takes everything but the colour props; the filled part takes those, or nothing with a `bar` class. A
+	// The track takes everything but the look; the filled part takes the look, or nothing with a `fill` class. A
 	// colour or appearance given as a shorthand (`accent`, `lite`) wins over the defaults, as on any base component.
-	const parts = $derived.by(() => {
-		const rest: Record<string, unknown> = { ...props };
-		const look = {
-			color: COLORS.find((each) => rest[each] === true) ?? color,
-			appearance: APPEARANCES.find((each) => rest[each] === true) ?? appearance,
-			invert: rest.invert
-		};
-		for (const each of [...COLORS, ...APPEARANCES, 'invert']) delete rest[each];
-		return { rest: rest as ComponentProps, look: bar ? {} : (look as ComponentProps) };
-	});
+	const parts = $derived(toLook(props, { color, appearance }));
 </script>
 
 <Component
@@ -85,9 +71,9 @@
 			aria-valuemax={max}
 			aria-valuenow={Math.floor((share * max) / 100)}
 			><Component
-				{...parts.look}
+				{...fill ? {} : parts.look}
 				tag="span"
-				class="progress-fill relative block h-full overflow-hidden rounded-full transition-[width,background-color] duration-(--progress-speed,500ms) ease-out {bar ??
+				class="progress-fill relative block h-full overflow-hidden rounded-full transition-[width,background-color] duration-(--progress-speed,500ms) ease-out {fill ??
 					''}"
 				style="width: {share}%"
 				data-moving={isMoving ? '' : undefined}
@@ -98,53 +84,57 @@
 <style lang="postcss">
 	@reference "#ui.css";
 
-	/* The track's height on the base size ladder. */
-	:global(.progress-bar) {
-		--progress-h: 0.5rem;
-	}
-	:global(.progress-bar:where(.xxs)) {
-		--progress-h: 0.125rem;
-	}
-	:global(.progress-bar:where(.xs)) {
-		--progress-h: 0.25rem;
-	}
-	:global(.progress-bar:where(.sm)) {
-		--progress-h: 0.375rem;
-	}
-	:global(.progress-bar:where(.lg)) {
-		--progress-h: 0.75rem;
-	}
-	:global(.progress-bar:where(.xl)) {
-		--progress-h: 1rem;
-	}
-	:global(.progress-bar:where(.xxl)) {
-		--progress-h: 1.25rem;
-	}
+	/* Its height on the base size ladder and the band of light, in the components layer, where a place's own class
+	   beats them. */
+	@layer components {
+		/* The track's height on the base size ladder. */
+		:global(.progress-bar) {
+			--progress-h: 0.5rem;
+		}
+		:global(.progress-bar:where(.xxs)) {
+			--progress-h: 0.125rem;
+		}
+		:global(.progress-bar:where(.xs)) {
+			--progress-h: 0.25rem;
+		}
+		:global(.progress-bar:where(.sm)) {
+			--progress-h: 0.375rem;
+		}
+		:global(.progress-bar:where(.lg)) {
+			--progress-h: 0.75rem;
+		}
+		:global(.progress-bar:where(.xl)) {
+			--progress-h: 1rem;
+		}
+		:global(.progress-bar:where(.xxl)) {
+			--progress-h: 1.25rem;
+		}
 
-	/* A band of light that runs along the filled part while the work is under way. */
-	:global(.progress-fill[data-moving])::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(
-			90deg,
-			transparent,
-			color-mix(in oklab, var(--color-surface) 45%, transparent),
-			transparent
-		);
-		transform: translateX(-100%);
-		animation: progress-sheen 1.4s linear infinite;
+		/* A band of light that runs along the filled part while the work is under way. */
+		:global(.progress-fill[data-moving])::after {
+			content: '';
+			position: absolute;
+			inset: 0;
+			background: linear-gradient(
+				90deg,
+				transparent,
+				color-mix(in oklab, var(--color-surface) 45%, transparent),
+				transparent
+			);
+			transform: translateX(-100%);
+			animation: progress-sheen 1.4s linear infinite;
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			:global(.progress-fill[data-moving])::after {
+				animation: none;
+			}
+		}
 	}
 
 	@keyframes -global-progress-sheen {
 		to {
 			transform: translateX(100%);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		:global(.progress-fill[data-moving])::after {
-			animation: none;
 		}
 	}
 </style>

@@ -112,7 +112,7 @@
 					value={progress}
 					label="Project progress"
 					track="bg-slate-900/[0.07]"
-					bar={tone.bar}
+					fill={tone.bar}
 					class="mt-1.5"
 				/>
 			{/if}

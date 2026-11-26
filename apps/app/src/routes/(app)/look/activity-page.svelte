@@ -8,7 +8,7 @@
 	// By Time lists every entry. The names in bold open what they name: a person's Team page, a project, a record. Its newest entries are read each time it opens (`fetchActivity`),
 	// and Show Older reads the next ones before the oldest shown through the same query; how it stays up to date while
 	// open is the live updates research's to decide (#282), and plugs in behind that one query.
-	import { Accordion, Avatar, Button, Tabs } from '@layerd/ui';
+	import { Accordion, Avatar, Button, ListRow, Tabs } from '@layerd/ui';
 	import { fetchActivity } from '#lib/activity/activity.remote.js';
 	import type {
 		ActivityEventType,
@@ -347,26 +347,27 @@
 
 {#snippet person(each: LastSignInType)}
 	<li>
-		<button
+		<!-- #383: the library ListRow. -->
+		<ListRow
+			tag="button"
 			type="button"
-			class="flex w-full min-w-0 items-center gap-3 px-4 py-2.5 text-left transition hover:bg-slate-900/[0.03]"
+			class="gap-3 px-4 py-2.5 transition hover:bg-slate-900/[0.03]"
 			title="{each.isFirst ? 'First signed in' : 'Last signed in'} {toWhen(each.at)}"
 			onclick={toPersonOpener(each.who)}
+			label={each.who}
+			labelClass="text-sm font-medium text-slate-900"
+			note="{each.isFirst ? 'First signed in' : 'Signed in'} {toDuration(
+				now - Date.parse(each.at)
+			)} ago"
+			noteClass="text-xs text-slate-500"
 		>
-			{@render face(each.who)}
-			<span class="min-w-0 flex-1">
-				<span class="block truncate text-sm font-medium text-slate-900">{each.who}</span>
-				<span class="block truncate text-xs text-slate-500"
-					>{each.isFirst ? 'First signed in' : 'Signed in'}
-					{toDuration(now - Date.parse(each.at))} ago</span
-				>
-				<!-- A Guest, with the email an Admin lets them in with. -->
-				{#if each.isGuest}<span class="block text-xs break-words text-amber-700"
-						>Waiting for access · {each.email}</span
-					>{/if}
-			</span>
-			{#if each.device}{@render device(each.deviceKind, each.device)}{/if}
-		</button>
+			{#snippet start()}{@render face(each.who)}{/snippet}
+			<!-- A Guest, with the email an Admin lets them in with. -->
+			{#if each.isGuest}<span class="block text-xs break-words text-amber-700"
+					>Waiting for access · {each.email}</span
+				>{/if}
+			{#snippet end()}{#if each.device}{@render device(each.deviceKind, each.device)}{/if}{/snippet}
+		</ListRow>
 	</li>
 {/snippet}
 

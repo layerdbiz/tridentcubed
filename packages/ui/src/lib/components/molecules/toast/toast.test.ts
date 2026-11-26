@@ -52,6 +52,26 @@ describe('Toast', () => {
 		expect(bar.getAttribute('aria-valuenow')).toBe('20');
 	});
 
+	it('hands its bar any ProgressBar prop', () => {
+		const progress = new Progress();
+		render(Toast, {
+			props: {
+				progress,
+				label: 'Upload',
+				progressBar: { track: 'bg-shade/20', accent: true, class: 'mt-1' }
+			}
+		});
+		progress.start('Sending 3 photos', 25);
+		progress.reach(40, 25, 'Sending 2 of 3');
+		flushSync();
+
+		const bar = screen.getByRole('progressbar', { name: 'Upload' });
+		expect(bar.className).toContain('bg-shade/20');
+		expect(bar.className).not.toContain('bg-current/15');
+		expect(bar.className).toContain('mt-1');
+		expect(bar.firstElementChild?.className).toContain('theme-heavy-accent');
+	});
+
 	it('stays open on a failure with the reason, Try Again and Close', async () => {
 		const progress = new Progress();
 		const again = vi.fn();

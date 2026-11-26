@@ -292,11 +292,15 @@ _Avoid_: tag (a label's value), pill (for the component), label chip
 
 **Badge**:
 A count in a small round mark: a board column's number of cards, a record's number of projects. Above its most it shows that and a plus ("9+"). It wears the theme's primary unless told (#381).
-_Avoid_: counter, count pill, dot (a presence or status dot has no number)
+_Avoid_: counter, count pill, dot (a presence or status dot has no number). Not the Avatar's badge, the small picture it can wear at its bottom right
 
 **Progress bar**:
 A thin rounded bar that fills as something gets done: a project, a panel, an upload in a Toast. A screen reader hears it as a progress bar with its value. Its filled part wears a colour (primary unless told), or a state's colour from outside (#380).
 _Avoid_: meter (a reading, not work being done), loading bar, Progress (the Toast's job, which a progress bar shows)
+
+**List row**:
+One line of a list: a picture, icon or dot at its start, a line or two of words, and a mark at its end (a chevron, a tick, a device). The same in every list: Recents, Online, the Activity's sign-ins, a project's team, Change Status and Add (#383). A tap of its own when it is a button. Plain and light, since a list draws it many times.
+_Avoid_: Row (a grid's row), list item, menu item (a Menu's own row)
 
 **Stack**:
 A few avatars overlapping, the first in front and each of the others tucked behind the one before, then a count of the rest: a project's team, a customer's logos (#379).
