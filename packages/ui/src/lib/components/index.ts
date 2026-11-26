@@ -4,6 +4,7 @@ export { default as Avatar, type AvatarProps } from "./atoms/avatar/avatar.svelt
 export { default as Button, type ButtonProps } from "./atoms/button/button.svelte";
 export { default as Checkbox } from "./atoms/forms/checkbox/checkbox.svelte";
 export { default as Colorss } from "./atoms/Colorss.svelte";
+export { default as Compact, type CompactProps } from "./atoms/forms/compact/compact.svelte";
 export { default as Container, type ContainerProps } from "./atoms/container/container.svelte";
 export * from "./atoms/content/content.svelte.ts";
 export { default as Content } from "./atoms/content/content.svelte";

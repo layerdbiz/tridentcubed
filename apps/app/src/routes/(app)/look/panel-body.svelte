@@ -48,7 +48,7 @@
 	// label and place among the inputs with that label, as tally.ts lists them).
 	import { untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
-	import { Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
+	import { Compact, Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
@@ -520,15 +520,32 @@
 		save();
 	}
 
-	// Run 3: borderless. Inputs are soft filled shapes that light up when you type, nothing boxed in.
-	const inputClass =
-		'w-full rounded-xl border-0 bg-slate-900/[0.04] px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary/40 disabled:bg-transparent disabled:px-0 disabled:text-slate-500';
 	const labelClass = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
 	const ghostButton =
 		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 </script>
 
 <!-- A row's handle (#188): hold it, then drag, to move the row. Only a list of two or more has one. -->
+<!-- The heading row over a list of compact fields (#387): each column's words name the boxes under them, with the
+     row's number, and its ? opens their Help text. The first column is as wide as its box, after the grip. -->
+{#snippet columns(
+	id: string,
+	first: [label: string, key: string],
+	second: [label: string, key: string]
+)}
+	<div class="has-help flex items-center gap-2 text-xs font-medium text-slate-500">
+		<span class="w-6 shrink-0"></span>
+		{#each [first, second] as [label, key], index (key)}
+			<span class="flex items-center gap-1 {index ? '' : 'w-20 shrink-0 pl-1'}"
+				><span id="{id}-{index}">{label}</span>{#if look.helpOf(key)}<Help
+						{label}
+						text={look.helpOf(key)}
+					/>{/if}</span
+			>
+		{/each}
+	</div>
+{/snippet}
+
 {#snippet handle(key: string, count: number)}
 	<span
 		class="mt-2 flex size-6 shrink-0 cursor-grab items-center justify-center text-slate-300 select-none [-webkit-touch-callout:none] hover:text-slate-500 {count >
@@ -1115,11 +1132,11 @@
 			{@attach sortable(`items-${panel.id}`, (from, to) => move(panel.items, from, to))}
 		>
 			{#if panel.items.length}
-				<p class="flex gap-2 text-xs font-medium text-slate-500">
-					<span class="w-6 shrink-0"></span><span class="w-20 shrink-0 pl-1">Quantity</span><span
-						>Description</span
-					>
-				</p>
+				{@render columns(
+					`items-${panel.id}`,
+					['Quantity', 'item.quantity'],
+					['Description', 'item.description']
+				)}
 			{/if}
 			{#each panel.items as item, itemIndex (item.id)}
 				<div
@@ -1129,19 +1146,22 @@
 					animate:flip={{ duration: 200 }}
 				>
 					{@render handle(`items-${panel.id}`, panel.items.length)}
-					<input
-						class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+					<span
+						id="{item.id}-row"
+						hidden>of item {itemIndex + 1}</span
+					>
+					<Compact
+						class="w-20! shrink-0 text-center tabular-nums"
 						inputmode="numeric"
 						bind:value={item.quantity}
 						placeholder="Qty"
-						aria-label="Quantity of item {itemIndex + 1}"
+						labelledby="items-{panel.id}-0 {item.id}-row"
 						data-input={MARKED_LABELS.quantity}
 					/>
-					<input
-						class={inputClass}
+					<Compact
 						bind:value={item.description}
 						placeholder="What it is, e.g. Accessory crates"
-						aria-label="Description of item {itemIndex + 1}"
+						labelledby="items-{panel.id}-1 {item.id}-row"
 						data-input={MARKED_LABELS.description}
 					/>
 					<button
@@ -1215,6 +1235,13 @@
 							class="space-y-3"
 							{@attach sortable(`entries-${day.id}`, (from, to) => move(day.entries, from, to))}
 						>
+							{#if day.entries.length}
+								{@render columns(
+									`entries-${day.id}`,
+									['Time', 'timeLog.time'],
+									['Activity', 'timeLog.activity']
+								)}
+							{/if}
 							{#each day.entries as entry, entryIndex (entry.id)}
 								<div
 									class="flex items-start gap-2"
@@ -1223,10 +1250,14 @@
 									animate:flip={{ duration: 200 }}
 								>
 									{@render handle(`entries-${day.id}`, day.entries.length)}
-									<input
-										class="{inputClass} w-20! shrink-0 text-center tabular-nums"
+									<span
+										id="{entry.id}-row"
+										hidden>of entry {entryIndex + 1}</span
+									>
+									<Compact
+										class="w-20! shrink-0 text-center tabular-nums"
 										inputmode="numeric"
-										maxlength="5"
+										maxlength={5}
 										placeholder="07:30"
 										value={entry.time}
 										onchange={(event) => {
@@ -1234,14 +1265,14 @@
 											event.currentTarget.value = entry.time;
 											sortEntries(dayIndex);
 										}}
-										aria-label="Time, on the 24-hour clock"
+										labelledby="entries-{day.id}-0 {entry.id}-row"
 										data-input={MARKED_LABELS.time}
 									/>
-									<input
-										class={inputClass}
+									<Compact
 										bind:value={entry.activity}
 										placeholder="What happened"
-										aria-label="Activity"
+										labelledby="entries-{day.id}-1 {entry.id}-row"
+										data-input={MARKED_LABELS.activity}
 									/>
 									<button
 										type="button"
