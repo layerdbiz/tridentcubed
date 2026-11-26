@@ -55,9 +55,16 @@ export function toRuns(events: ActivityEventType[]): ActivityRunType[] {
 	return runs;
 }
 
-/** What a run did: how many sign-ins, and rows added, changed and moved to the Trash, and the projects it touched. */
+/** What a run did: how many sign-ins and sign-outs, sign-in codes never used, projects opened, PDFs downloaded,
+ * and rows added, changed and moved to the Trash, and the projects it touched. */
 export type ActivityRunSummaryType = {
 	signIns: number;
+	signOuts: number;
+	codes: number;
+	/** Each project opened, once however often. */
+	opened: number;
+	/** Every PDF downloaded. */
+	downloads: number;
 	added: number;
 	changed: number;
 	trashed: number;
@@ -69,25 +76,38 @@ export type ActivityRunSummaryType = {
 export function toRunSummary(run: ActivityRunType): ActivityRunSummaryType {
 	const summary: ActivityRunSummaryType = {
 		signIns: 0,
+		signOuts: 0,
+		codes: 0,
+		opened: 0,
+		downloads: 0,
 		added: 0,
 		changed: 0,
 		trashed: 0,
 		projects: []
 	};
 	const seen = new Set<string>();
-	for (const event of run.events) {
-		if (event.kind === 'signIn') {
-			summary.signIns += 1;
-			continue;
-		}
-		if (event.kind === 'add') summary.added += 1;
-		else if (event.kind === 'trash') summary.trashed += 1;
-		else summary.changed += 1;
-		const title = event.table === 'project' ? event.name : event.project;
-		const key = event.projectId ?? title;
-		if (!title || !key || seen.has(key)) continue;
+	const opened = new Set<string>();
+	function touch(id: string | undefined, title: string | undefined) {
+		const key = id ?? title;
+		if (!title || !key || seen.has(key)) return;
 		seen.add(key);
-		summary.projects.push({ ...(event.projectId ? { id: event.projectId } : {}), title });
+		summary.projects.push({ ...(id ? { id } : {}), title });
 	}
+	for (const event of run.events) {
+		if (event.kind === 'signIn') summary.signIns += 1;
+		else if (event.kind === 'signOut') summary.signOuts += 1;
+		else if (event.kind === 'code') summary.codes += 1;
+		else if (event.kind === 'open' || event.kind === 'download') {
+			if (event.kind === 'download') summary.downloads += 1;
+			else opened.add(event.projectId);
+			touch(event.projectId, event.project);
+		} else {
+			if (event.kind === 'add') summary.added += 1;
+			else if (event.kind === 'trash') summary.trashed += 1;
+			else summary.changed += 1;
+			touch(event.projectId, event.table === 'project' ? event.name : event.project);
+		}
+	}
+	summary.opened = opened.size;
 	return summary;
 }

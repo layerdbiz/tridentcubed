@@ -4,7 +4,7 @@
 	// report's photos on top, swiping, or a map of the trip, its stops joined by a line; over them what the project's
 	// card shows (state, customer, title, percent, where the trip runs, the team); and in the sheet below, the rest to
 	// read: its numbers, its details, the team, the trip stop by stop and each panel's progress. A panel opens on Edit.
-	import { Avatar, Stack } from '@layerd/ui';
+	import { Avatar, ProgressBar, Stack } from '@layerd/ui';
 	import { cityStateOf } from './location';
 	import { pinOfRecord, pinsAt } from './chart.data';
 	import {
@@ -153,15 +153,14 @@
 				</span>
 			</div>
 		</div>
-		<span
-			class="mt-3 block h-1.5 overflow-hidden rounded-full {isLight
-				? 'bg-white/20'
-				: 'bg-slate-900/10'}"
-			><span
-				class="block h-full rounded-full {status.bar}"
-				style="width: {progress}%"
-			></span></span
-		>
+		<ProgressBar
+			value={progress}
+			label="Project progress"
+			track={isLight ? 'bg-white/20' : 'bg-slate-900/10'}
+			bar={status.bar}
+			class="mt-3"
+			sm
+		/>
 	{/snippet}
 
 	<div class="space-y-5">
@@ -268,12 +267,14 @@
 					>
 						<span class="{panel.icon} size-5 shrink-0 {tone.text}"></span>
 						<span class="min-w-0 flex-1 truncate font-medium text-slate-900">{panel.name}</span>
-						<span class="w-16 overflow-hidden rounded-full bg-slate-900/[0.07]"
-							><span
-								class="block h-1.5 rounded-full {tone.bar}"
-								style="width: {metrics.percent}%"
-							></span></span
-						>
+						<ProgressBar
+							value={metrics.percent}
+							label="{panel.name} progress"
+							track="bg-slate-900/[0.07]"
+							bar={tone.bar}
+							class="w-16"
+							sm
+						/>
 						<span class="w-9 text-right text-xs font-semibold text-slate-500 tabular-nums"
 							>{metrics.percent}%</span
 						>

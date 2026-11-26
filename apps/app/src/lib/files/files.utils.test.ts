@@ -2,12 +2,14 @@
 // came from; a photo at most 2048 px on its long side as WebP, or JPEG where WebP cannot be written; a logo keeping
 // its clear background.
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { readMetadata, toExifTaken } from '#lib/metadata/metadata.utils.js';
 import { MAX_PICTURE_SIDE, PictureError, UNREADABLE } from './files.schema';
 import {
 	type BlobMakerType,
 	encodePicture,
+	isJustTaken,
+	readDevicePlace,
 	toFittedSize,
 	toCarried,
 	toSent,
@@ -99,11 +101,89 @@ describe('when and where it was taken', () => {
 		).toEqual({ from: 'device', at: '2026-11-12T10:00:00.000Z', latitude: 29.7, longitude: -95.3 });
 	});
 
+	it('gives a photo just taken that came without its place the device’s place, flagged as both', () => {
+		const exif = { at: '2026-11-26T12:03:00.000Z' };
+		const place = { latitude: 41.88, longitude: -87.63 };
+
+		expect(toTaken(exif, { now: new Date('2026-11-26T12:03:02Z'), place })).toEqual({
+			from: 'file-device',
+			at: '2026-11-26T12:03:00.000Z',
+			...place
+		});
+	});
+
+	it('never gives an older photo from the gallery the device’s place of today', () => {
+		const exif = { at: '2026-11-20T09:30:00.000Z' };
+		const place = { latitude: 41.88, longitude: -87.63 };
+
+		expect(toTaken(exif, { now: new Date('2026-11-26T12:03:00Z'), place })).toEqual({
+			from: 'file',
+			at: '2026-11-20T09:30:00.000Z'
+		});
+	});
+
+	it('counts a photo as just taken for 15 minutes, either way of a clock a little off', () => {
+		const now = new Date('2026-11-26T12:00:00Z');
+
+		expect(isJustTaken('2026-11-26T11:45:00.000Z', now)).toBe(true);
+		expect(isJustTaken('2026-11-26T12:05:00.000Z', now)).toBe(true);
+		expect(isJustTaken('2026-11-26T11:44:59.000Z', now)).toBe(false);
+		expect(isJustTaken(undefined, now)).toBe(false);
+	});
+
 	it('says nothing came from anywhere when neither knows, and the picture still goes', async () => {
 		expect(toTaken({}, {})).toEqual({ from: '' });
 		expect(
 			toExifTaken((await readMetadata(new TextEncoder().encode('not a picture'))).tags)
 		).toEqual({});
+	});
+});
+
+describe('the device’s place (ADR 0004: asked once, never required)', () => {
+	type StateType = 'granted' | 'prompt' | 'denied';
+
+	// A browser whose location permission is in this state, that knows where it is, and keeps what it is told.
+	function useBrowser(state: StateType) {
+		const kept = new Map<string, string>();
+		const getCurrentPosition = vi.fn((done: (position: { coords: object }) => void) =>
+			done({ coords: { latitude: 41.88, longitude: -87.63 } })
+		);
+		vi.stubGlobal('navigator', {
+			permissions: { query: async () => ({ state }) },
+			geolocation: { getCurrentPosition }
+		});
+		vi.stubGlobal('localStorage', {
+			getItem: (key: string) => kept.get(key) ?? null,
+			setItem: (key: string, value: string) => kept.set(key, value)
+		});
+		return getCurrentPosition;
+	}
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('is read where the User already allowed it', async () => {
+		useBrowser('granted');
+
+		expect(await readDevicePlace()).toEqual({ latitude: 41.88, longitude: -87.63 });
+	});
+
+	it('is asked for once, the first time a photo needs it, and photos added together share the one ask', async () => {
+		const asked = useBrowser('prompt');
+
+		const [first, second] = await Promise.all([readDevicePlace(), readDevicePlace()]);
+		expect(first).toEqual({ latitude: 41.88, longitude: -87.63 });
+		expect(second).toEqual(first);
+		expect(await readDevicePlace()).toBeUndefined();
+		expect(asked).toHaveBeenCalledTimes(1);
+	});
+
+	it('is never asked for once the User said no', async () => {
+		const asked = useBrowser('denied');
+
+		expect(await readDevicePlace()).toBeUndefined();
+		expect(asked).not.toHaveBeenCalled();
 	});
 });
 

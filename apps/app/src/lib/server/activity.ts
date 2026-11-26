@@ -12,19 +12,21 @@
 //   before and after, of which only the names and the columns that changed are read, never the rows themselves. The
 //   rows a new project starts with (its panels, their photo groups, its first stop), added in the same save, are
 //   counted on the project's own line ("7 panels") rather than given a line each.
-import { and, desc, isNotNull, ne, type SQL, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, isNotNull, ne, type SQL, sql } from 'drizzle-orm';
 import type {
 	ActivityEventType,
 	ActivityResultType,
 	ChangeEventType,
 	LastSignInType,
+	ProjectActivityType,
 	SignInEventType
 } from '#lib/activity/activity.types.js';
 import { toDevice } from '#lib/presence/presence.utils.js';
 import { TABLE_NAMES, type TableNameType } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
 import { toNameOfEmail } from './access';
-import { change, member, project, signIn, team, user } from './db/schema';
+import { CODE_MINUTES } from './auth';
+import { activityEvent, change, member, project, signIn, team, user } from './db/schema';
 import { checkActivity } from './permission';
 
 // What each table's row is called in a sentence, as the app's screens say it: one ("added the customer Harbor
@@ -123,6 +125,36 @@ function toMillisecond(at: SQL) {
 
 const CHANGE_AT = toMillisecond(sql`${change.at}`);
 const SIGN_IN_AT = toMillisecond(sql`${signIn.createdAt}`);
+const EVENT_AT = toMillisecond(sql`${activityEvent.createdAt}`);
+
+/** How long someone may come back to a project and it still counts as the one opening: 30 minutes. */
+export const OPEN_GAP_MINUTES = 30;
+
+// A sign-in code still running may yet sign someone in, and one that did shows as their sign-in: of the codes, only
+// those that ran out unused are read.
+const CODE_TIME = sql.raw(`interval '${CODE_MINUTES} minutes'`);
+const UNLESS_USED_CODE = sql`(${activityEvent.kind} <> 'code' or (${activityEvent.createdAt} < now() - ${CODE_TIME}
+	and not exists (select 1 from public.sign_in s join public."user" u on u.id = s.user_id
+		where lower(u.email) = ${activityEvent.email} and s.created_at >= ${activityEvent.createdAt}
+		and s.created_at <= ${activityEvent.createdAt} + ${CODE_TIME})))`;
+
+// The newest sign-outs, unused sign-in codes, projects opened and PDFs downloaded that match `where`.
+function readEvents(tx: TransactionType, where: SQL, limit?: number) {
+	const query = tx
+		.select({
+			id: activityEvent.id,
+			kind: activityEvent.kind,
+			userId: activityEvent.userId,
+			email: activityEvent.email,
+			projectId: activityEvent.projectId,
+			userAgent: activityEvent.userAgent,
+			at: activityEvent.createdAt
+		})
+		.from(activityEvent)
+		.where(and(where, UNLESS_USED_CODE))
+		.orderBy(desc(activityEvent.createdAt), desc(activityEvent.id));
+	return limit === undefined ? query : query.limit(limit);
+}
 
 // The newest changes that match `where`, each with the names its row goes by and the columns it changed, never the
 // row itself.
@@ -278,10 +310,10 @@ function toChangeEvent(
 	};
 }
 
-// Where a line stands among those of the same moment: a sign-in first, then parents before their rows (a project
-// before its panels), in the registry's order.
+// Where a line stands among those of the same moment: a sign-in, sign-out, code, opening or download first, then
+// parents before their rows (a project before its panels), in the registry's order.
 function toRank(event: ActivityEventType) {
-	return event.kind === 'signIn' ? -1 : TABLE_NAMES.indexOf(event.table);
+	return 'table' in event ? TABLE_NAMES.indexOf(event.table) : -1;
 }
 
 // Newest first; what one save did at once lists parents first.
@@ -319,6 +351,12 @@ export async function readActivity(
 		const signInPage = await readPage(
 			(where, most) => readSignIns(tx, where, most),
 			SIGN_IN_AT,
+			before,
+			limit
+		);
+		const eventPage = await readPage(
+			(where, most) => readEvents(tx, where, most),
+			EVENT_AT,
 			before,
 			limit
 		);
@@ -376,6 +414,33 @@ export async function readActivity(
 				...guestOf(row.userId),
 				...toDeviceOf(row.userAgent)
 			})),
+			...eventPage.rows.map((row): ActivityEventType => {
+				const line = { id: row.id, at: row.at.toISOString(), userId: row.userId };
+				const guest = row.userId ? guestOf(row.userId) : {};
+				if (row.kind === 'signOut')
+					return {
+						...line,
+						kind: 'signOut',
+						who: whoOf(row.userId),
+						...guest,
+						...toDeviceOf(row.userAgent)
+					};
+				if (row.kind === 'code') {
+					const email = row.email ?? '';
+					// Someone who has signed in goes by their name; an address nobody has, by itself.
+					const who = (row.userId ? names.get(row.userId) : undefined) ?? email;
+					return { ...line, kind: 'code', who, email, ...guest };
+				}
+				const projectId = row.projectId ?? '';
+				const title = projects.get(projectId);
+				return {
+					...line,
+					kind: row.kind === 'download' ? 'download' : 'open',
+					who: whoOf(row.userId),
+					projectId,
+					...(projects.has(projectId) ? { project: toProjectTitle(title) } : {})
+				};
+			}),
 			...folded.lines.map((row) =>
 				toChangeEvent(row, whoOf(row.userId), projects, folded.startedWith(row))
 			)
@@ -398,7 +463,7 @@ export async function readActivity(
 		// Where this page ends: both sources hold every row from there on, and it keeps about `limit` lines. What is
 		// older waits for the next page, which reads before it.
 		events.sort(byNewest);
-		const ends = [changePage.cut, signInPage.cut];
+		const ends = [changePage.cut, signInPage.cut, eventPage.cut];
 		if (events.length > limit) ends.push(Date.parse(events[limit - 1].at));
 		const end = Math.max(...ends.filter((each) => each !== undefined));
 
@@ -410,5 +475,46 @@ export async function readActivity(
 			),
 			...(Number.isFinite(end) ? { olderBefore: new Date(end).toISOString() } : {})
 		};
+	});
+}
+
+/**
+ * Records that `actor` opened a project or downloaded its PDF, for the Activity (#306). An opening is recorded once
+ * while they keep coming back to it: not again within `OPEN_GAP_MINUTES` of their last. Every download is. A project
+ * that is not there, or not in their organization, records nothing. True when it recorded something.
+ */
+export async function recordProjectActivity(
+	claims: ClaimsType,
+	actor: ActorType,
+	{ kind, projectId }: ProjectActivityType
+): Promise<boolean> {
+	const { userId, organizationId } = actor;
+	if (!userId || !organizationId) return false;
+	return claims.run(actor, async (tx) => {
+		const [found] = await tx
+			.select({ id: project.id })
+			.from(project)
+			.where(eq(project.id, projectId));
+		if (!found) return false;
+		if (kind === 'open') {
+			const [recent] = await tx
+				.select({ id: activityEvent.id })
+				.from(activityEvent)
+				.where(
+					and(
+						eq(activityEvent.userId, userId),
+						eq(activityEvent.kind, 'open'),
+						eq(activityEvent.projectId, projectId),
+						gt(
+							activityEvent.createdAt,
+							sql`now() - ${sql.raw(`interval '${OPEN_GAP_MINUTES} minutes'`)}`
+						)
+					)
+				)
+				.limit(1);
+			if (recent) return false;
+		}
+		await tx.insert(activityEvent).values({ kind, userId, organizationId, projectId });
+		return true;
 	});
 }

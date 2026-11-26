@@ -15,7 +15,8 @@
 	// Its look is set from outside (Justin, 2026-11-26): it is the base component, and `color`, `appearance`, their
 	// shorthands and `class` land on the box that shows, which is the theme's secondary with the surface's colour for
 	// its words until it is given a look. What is inside takes its greys from the box's words, so it follows any look.
-	// Its Close and Try Again are the library Button, reached through `closeButton` and `retryButton`.
+	// Its Close and Try Again are the library Button, reached through `closeButton` and `retryButton`; its bar is the
+	// library ProgressBar (#380), on a track in the box's words' colour.
 	//
 	// A short message may have an `icon` before it (the library Icon), and be a tap (`onclick`, #392: the update
 	// note's "New version, tap to update"): then the whole toast is a button, which takes taps, and `disabled` holds
@@ -27,6 +28,7 @@
 		Button,
 		Component,
 		Icon,
+		ProgressBar,
 		type ButtonProps,
 		type ComponentProps,
 		type ComponentReturn,
@@ -173,57 +175,15 @@
 					<p class="truncate font-medium">{progress.label}</p>
 					<p class="text-current/70 tabular-nums">{progress.percent}%</p>
 				</div>
-				<div
-					class="mt-2.5 h-1.5 overflow-hidden rounded-full bg-current/15"
-					role="progressbar"
-					aria-label={label || undefined}
-					aria-valuemin={0}
-					aria-valuemax={100}
-					aria-valuenow={progress.percent}
-				>
-					<div
-						class="toast-bar h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
-						class:is-moving={progress.isBusy}
-						style="width: {progress.value}%"
-					></div>
-				</div>
+				<ProgressBar
+					value={progress.value}
+					label={label || progress.label}
+					isMoving={progress.isBusy}
+					track="bg-current/15"
+					class="mt-2.5 [--progress-speed:300ms]"
+					sm
+				/>
 			{/if}
 		</svelte:element>
 	{/if}
 {/snippet}
-
-<style lang="postcss">
-	@reference "#ui.css";
-
-	.toast-bar {
-		position: relative;
-		overflow: hidden;
-	}
-
-	/* A band of light that runs along the filled part while the work is under way. */
-	.toast-bar.is-moving::after {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(
-			90deg,
-			transparent,
-			color-mix(in oklab, var(--color-surface) 45%, transparent),
-			transparent
-		);
-		transform: translateX(-100%);
-		animation: toast-sheen 1.4s linear infinite;
-	}
-
-	@keyframes toast-sheen {
-		to {
-			transform: translateX(100%);
-		}
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.toast-bar.is-moving::after {
-			animation: none;
-		}
-	}
-</style>

@@ -2,11 +2,9 @@
 	// PROTOTYPE (#161): the preview's controls, standing up in one black bar (Justin's note 28): a zoom slider in blue
 	// (its knob grows and shows the percent while you hold it), the fit button, the mode menu, and Download at the
 	// bottom. No + and − buttons: the slider, pinch and scroll do that. #324 (Justin, 2026-11-25): one button for how
-	// the pages lie, its icon the mode they are in, and a menu that pops out beside it with Stack, Spread and Present
-	// (a play button: the pages one at a time). #390: that menu is the library Menu, opening beside its button in
-	// the dark look (the theme's base, heavy), a hint line under each mode; its button is the library Button.
-	import { MediaQuery } from 'svelte/reactivity';
-	import { Button, Menu } from '@layerd/ui';
+	// the pages lie, its icon the mode they are in, and Stack, Spread and Present (a play button: the pages one at a
+	// time) sliding out of it in a row (Justin, 2026-11-26: the prototype's Slide-out Row, in place of the menu).
+	import { Button } from '@layerd/ui';
 	import type { LayoutType } from './presentation.svelte';
 	import { ZOOM_MAX, ZOOM_MIN, type Viewport } from './viewport.svelte';
 
@@ -24,37 +22,38 @@
 		ondownload: () => void;
 	} = $props();
 
-	const MODES: { id: LayoutType; label: string; note: string; icon: string }[] = [
+	const MODES: { id: LayoutType; name: string; label: string; icon: string }[] = [
 		{
 			id: 'column',
-			label: 'Stack',
-			note: 'One under another',
+			name: 'Stack',
+			label: 'Stack the pages',
 			icon: 'icon-[mdi--view-sequential-outline]'
 		},
 		{
 			id: 'spread',
-			label: 'Spread',
-			note: 'Every page at once',
+			name: 'Spread',
+			label: 'Spread the pages out',
 			icon: 'icon-[mdi--view-grid-outline]'
 		},
 		{
 			id: 'present',
-			label: 'Present',
-			note: 'One page at a time',
+			name: 'Present',
+			label: 'Present the pages',
 			icon: 'icon-[mdi--play-circle-outline]'
 		}
 	];
 	const now = $derived(MODES.find((mode) => mode.id === layout) ?? MODES[0]);
-	// The bar stands at the right, in the middle on a desktop, where the menu centres on its button; low on a phone,
-	// where the menu's foot lines up with its button's so it stays over the bar at the bottom.
-	const wide = new MediaQuery('min-width: 48rem');
-	// The mode button: a faint round on the bar, white while its menu is open, with the notch at its left (drawn
-	// after it: the library Button keeps its own before for its hover).
-	const MODE_BUTTON =
-		'relative bg-white/10 filter-none hover:bg-white/15 aria-expanded:bg-white aria-expanded:text-black after:absolute after:top-1/2 after:left-px after:-translate-y-1/2 after:border-y-4 after:border-r-4 after:border-l-0 after:border-y-transparent after:border-r-white/55 after:transition-opacity aria-expanded:after:opacity-0';
+	let isOpen = $state(false);
+	let menu: HTMLDivElement | undefined = $state();
 
-	function pick(mode: string) {
-		if (mode !== layout) onmode(mode as LayoutType);
+	function pick(mode: LayoutType) {
+		isOpen = false;
+		if (mode !== layout) onmode(mode);
+	}
+
+	// Anywhere else shuts the row, and so does Escape.
+	function onpointerdown(event: PointerEvent) {
+		if (isOpen && !menu?.contains(event.target as Node)) isOpen = false;
 	}
 
 	let track: HTMLDivElement | undefined = $state();
@@ -85,6 +84,11 @@
 		event.preventDefault();
 	}
 </script>
+
+<svelte:document
+	onpointerdowncapture={onpointerdown}
+	onkeydown={(event) => isOpen && event.key === 'Escape' && (isOpen = false)}
+/>
 
 <div
 	class="flex w-12 flex-col items-center gap-1 rounded-full bg-black py-2 text-white shadow-xl shadow-black/25"
@@ -145,27 +149,60 @@
 		title="Fit to the screen"
 		onclick={onfit}
 	/>
-	<!-- A small notch at its button's left shows that the menu comes out that way. -->
-	<Menu
-		label="How the pages lie"
-		value={layout}
-		options={MODES}
-		onpick={pick}
-		opens="left"
-		align={wide.current ? 'center' : 'bottom'}
-		offset={16}
-		color="base"
-		appearance="heavy"
-		button={{
-			ghost: true,
-			invert: true,
-			sm: true,
-			icon: now.icon,
-			'aria-label': `${now.label}: choose how the pages lie`,
-			title: `${now.label}: choose how the pages lie`,
-			class: MODE_BUTTON
-		}}
-	/>
+	<div
+		bind:this={menu}
+		class="relative"
+	>
+		<!-- The mode the pages are in. A small notch at its left shows that the row comes out that way. -->
+		<Button
+			heavy={isOpen}
+			ghost={!isOpen}
+			invert
+			sm
+			icon={now.icon}
+			class={isOpen ? '' : 'bg-current/10'}
+			aria-haspopup="menu"
+			aria-expanded={isOpen}
+			aria-label="{now.name}: choose how the pages lie"
+			title="{now.name}: choose how the pages lie"
+			onclick={() => (isOpen = !isOpen)}
+		/>
+		<span
+			class="pointer-events-none absolute top-1/2 left-px -translate-y-1/2 border-y-4 border-r-4 border-l-0 border-y-transparent border-r-current transition-opacity {isOpen
+				? 'opacity-0'
+				: 'opacity-55'}"
+			aria-hidden="true"
+		></span>
+		<!-- Slide-out Row (Justin, 2026-11-26): the three modes slide out of the button in a row to its left, the
+		     mode the pages are in lit. -->
+		<div
+			class="absolute top-1/2 right-[calc(100%+10px)] flex -translate-y-1/2 gap-0.5 rounded-full bg-black p-1 shadow-xl shadow-black/30 transition-[clip-path] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] {isOpen
+				? '[clip-path:inset(0_0_0_0_round_999px)]'
+				: 'pointer-events-none [clip-path:inset(0_0_0_100%_round_999px)]'}"
+			role="menu"
+			aria-label="How the pages lie"
+		>
+			{#each MODES as mode, index (mode.id)}
+				<Button
+					heavy={mode.id === layout}
+					ghost={mode.id !== layout}
+					invert
+					sm
+					icon={mode.icon}
+					class="transition-[translate,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] {isOpen
+						? ''
+						: 'translate-x-6 opacity-0'}"
+					style="transition-delay: {isOpen ? (MODES.length - 1 - index) * 30 : 0}ms"
+					role="menuitemradio"
+					aria-checked={mode.id === layout}
+					aria-label={mode.label}
+					title={mode.label}
+					tabindex={isOpen ? 0 : -1}
+					onclick={() => pick(mode.id)}
+				/>
+			{/each}
+		</div>
+	</div>
 	<Button
 		primary
 		heavy

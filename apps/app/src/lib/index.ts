@@ -1,4 +1,5 @@
 /* ROOT */
+export * from "./activity/activity.note.ts";
 export * from "./activity/activity.remote.ts";
 export * from "./activity/activity.types.ts";
 export * from "./activity/activity.utils.ts";

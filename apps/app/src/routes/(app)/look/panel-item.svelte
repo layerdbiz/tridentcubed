@@ -20,7 +20,7 @@
 	// the panel's empty inputs in a toast (LookState.showEmpty). A panel switched off counts for nothing, so its
 	// percent lists nothing.
 	import { slide } from 'svelte/transition';
-	import { Switch } from '@layerd/ui';
+	import { ProgressBar, Switch } from '@layerd/ui';
 	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
@@ -238,12 +238,13 @@
 		{/if}
 	</div>
 	{#if style !== 'ring'}
-		<div class="mx-4 mb-4 h-2 overflow-hidden rounded-full bg-slate-900/[0.05]">
-			<div
-				class="h-full rounded-full transition-[width,background-color] duration-500 ease-out {tone.bar}"
-				style="width: {panel.isEnabled ? metrics.percent : 0}%"
-			></div>
-		</div>
+		<ProgressBar
+			value={panel.isEnabled ? metrics.percent : 0}
+			label="{panel.name} progress"
+			track="bg-slate-900/[0.05]"
+			bar={tone.bar}
+			class="mx-4 mb-4"
+		/>
 	{/if}
 	{#if isOpen}
 		<div

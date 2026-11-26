@@ -1,16 +1,27 @@
 // The Activity (#306; the glossary's Activity): the organization's running list of what happens in the app, newest
 // first, and when each person last signed in. The server reads it (`readActivity`, `#lib/server/activity.ts`) from
-// what the database already keeps: the record of every sign-in and the change record (the History). Only an Admin
-// sees it.
+// what the database already keeps: the record of every sign-in, the change record (the History) and the record of
+// everything else (`activity_event`: sign-outs, sign-in codes, projects opened, PDFs downloaded). Only an Admin sees it.
 import type { DeviceKindType } from '#lib/presence/presence.utils.js';
 import type { TableNameType } from '#lib/rows/rows.schema.js';
 
-/** A sign-in, a row added (a project among them), a row changed, or a row moved to the Trash. */
-export type ActivityKindType = 'signIn' | 'add' | 'change' | 'trash';
+/**
+ * A sign-in or a sign-out, a sign-in code asked for and never used, a project opened or its PDF downloaded, a row added
+ * (a project among them), a row changed, or a row moved to the Trash.
+ */
+export type ActivityKindType =
+	| 'signIn'
+	| 'signOut'
+	| 'code'
+	| 'open'
+	| 'download'
+	| 'add'
+	| 'change'
+	| 'trash';
 
 /** What every line of the Activity says: when, and who. */
 type ActivityLineType = {
-	/** The sign-in's id for a sign-in, the change id for the rest. */
+	/** The sign-in's id for a sign-in, the change id for a change, the record's id for the rest. */
 	id: string;
 	/** When it happened, as an ISO time. */
 	at: string;
@@ -29,9 +40,45 @@ export type SignInEventType = ActivityLineType & {
 	deviceKind?: DeviceKindType;
 };
 
+/** A sign-out: Log Out, or a session taken away before it ran out, and the device it was on. */
+export type SignOutEventType = ActivityLineType & {
+	kind: 'signOut';
+	/** True for a Guest's: someone who belongs to no organization yet, waiting for access. */
+	isGuest?: boolean;
+	device?: string;
+	deviceKind?: DeviceKindType;
+};
+
+/**
+ * A sign-in code asked for that ran out unused. `who` is the address itself when nobody has signed in with it; one
+ * that signed someone in shows only as their sign-in.
+ */
+export type CodeEventType = ActivityLineType & {
+	kind: 'code';
+	/** The address the code was sent to. */
+	email: string;
+	/** True for a Guest's: someone who belongs to no organization yet, waiting for access. */
+	isGuest?: boolean;
+};
+
+/** What a project opened or its PDF downloaded says beside when and who. */
+type ProjectLineType = ActivityLineType & {
+	projectId: string;
+	/** The project's title now, when it is still there to name. */
+	project?: string;
+};
+
+/** A project opened (once while someone keeps coming back to it), or its report's PDF downloaded. */
+export type ProjectEventType =
+	| (ProjectLineType & { kind: 'open' })
+	| (ProjectLineType & { kind: 'download' });
+
+/** What the app records itself: a project opened, or its report's PDF downloaded. */
+export type ProjectActivityType = { kind: 'open' | 'download'; projectId: string };
+
 /** A row added, changed or moved to the Trash. */
 export type ChangeEventType = ActivityLineType & {
-	kind: Exclude<ActivityKindType, 'signIn'>;
+	kind: 'add' | 'change' | 'trash';
 	/** What kind of row it was, as the app says it in a sentence: "project", "customer", "photo". */
 	thing: string;
 	table: TableNameType;
@@ -50,7 +97,12 @@ export type ChangeEventType = ActivityLineType & {
 };
 
 /** One line of the Activity: a sign-in, or a change to a row. */
-export type ActivityEventType = SignInEventType | ChangeEventType;
+export type ActivityEventType =
+	| SignInEventType
+	| SignOutEventType
+	| CodeEventType
+	| ProjectEventType
+	| ChangeEventType;
 
 /** When one person last signed in, and on what. */
 export type LastSignInType = {
