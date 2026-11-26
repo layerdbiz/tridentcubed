@@ -22,7 +22,7 @@
 			'Every project in the workspace, whatever its state. The green number on the chart is how many more there are than at the start of the time range.',
 		customers:
 			'Companies Trident Cubed works for. A customer counts once, however many projects they have; the badge on its logo counts its projects.',
-		team: 'Everyone on the Trident Cubed team who can sign in. A blue ring marks an admin and a violet ring a manager.',
+		team: 'Everyone on the Trident Cubed team who can sign in. A purple ring marks an admin, a blue ring a manager and a grey ring a Team user.',
 		transport:
 			"The ships, barges, planes, trains and trucks in the organization's list. Each is typed in once and picked in any project; later a tracking service adds ships and planes to the same list.",
 		facilities:

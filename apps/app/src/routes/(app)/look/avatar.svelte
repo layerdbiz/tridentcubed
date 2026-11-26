@@ -3,6 +3,12 @@
 	// online, orange idle, grey offline, from when the server last saw them (`presenceOf`). A list that keeps its own
 	// time (the menu's Online panel, #331) gives the dot it read, so the dot and its words never disagree.
 	import { toCrossOrigin } from '#lib/files/files.schema.js';
+	import {
+		initialsOf,
+		isInitialsPicture,
+		toInitialsPicture,
+		type InitialsToneType
+	} from './initials';
 	import { personOf, presenceOf } from './look.data';
 	import { PRESENCE_TONES, type PresenceType } from './team.data';
 
@@ -14,7 +20,8 @@
 		hasPresence = true,
 		badge,
 		badgeScale = 0.42,
-		presence: given
+		presence: given,
+		tone
 	}: {
 		name: string;
 		size?: number;
@@ -29,12 +36,17 @@
 		badgeScale?: number;
 		// The dot to show, when the screen has read it already.
 		presence?: PresenceType;
+		// Whose initials these are when there is no photo, in place of the Team record's role: a customer's contact,
+		// or Personnel added on the spot on a project (black on white, #355).
+		tone?: InitialsToneType;
 	} = $props();
 
 	const presence = $derived(given ?? presenceOf(name));
-	// Someone with no photo yet shows a person icon on grey, the way a customer with no logo shows its page's icon.
-	const photo = $derived(personOf(name).photo);
-	const hasPhoto = $derived(!photo.startsWith('data:image/svg+xml,'));
+	// Someone with no photo yet shows their initials on their role's colour (#355), never a person icon.
+	const own = $derived(personOf(name).photo);
+	const photo = $derived(
+		tone && isInitialsPicture(own) ? toInitialsPicture(initialsOf(name), tone) : own
+	);
 	const dot = $derived(Math.max(8, Math.round(size * 0.28)));
 </script>
 
@@ -42,22 +54,15 @@
 	class="relative inline-block shrink-0"
 	style="width: {size}px; height: {size}px"
 >
-	{#if hasPhoto}
-		<img
-			src={photo}
-			crossorigin={toCrossOrigin(photo)}
-			alt={name}
-			class="size-full rounded-full bg-slate-200 object-cover ring-2 {ring} {isMuted
-				? 'grayscale'
-				: ''}"
-		/>
-	{:else}
-		<span
-			class="flex size-full items-center justify-center rounded-full bg-slate-200 text-slate-400 ring-2 {ring}"
-			role="img"
-			aria-label={name}><span class="icon-[mdi--account] size-[62%]"></span></span
-		>
-	{/if}
+	<img
+		src={photo}
+		crossorigin={toCrossOrigin(photo)}
+		alt={name}
+		draggable="false"
+		class="size-full rounded-full bg-slate-200 object-cover ring-2 {ring} {isMuted
+			? 'grayscale'
+			: ''}"
+	/>
 	{#if badge}
 		<span
 			class="absolute -right-1 -bottom-1 overflow-hidden rounded-full bg-black ring-[1.5px] ring-white"

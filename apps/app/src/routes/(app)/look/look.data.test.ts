@@ -8,6 +8,7 @@ import {
 	nextJobOf,
 	numberOf,
 	onlineOf,
+	personOf,
 	projectNumberOf,
 	presenceOf,
 	resetPeople,
@@ -237,5 +238,33 @@ describe('a file attached to the Items panel', () => {
 		const panel = itemsPanel();
 		attach(panel, { id: 'a', name: 'list.jpg', src: 'files/a.webp', kind: 'photo', layout: 4 });
 		expect(panel.items).toHaveLength(1);
+	});
+});
+
+// #355: a face with no photo shows the person's initials on their role's colour; a photo, once there, wins.
+describe('a face with no photo', () => {
+	const svgOf = (src: string) => decodeURIComponent(src);
+
+	it("shows a Team record's initials in their role's colour", () => {
+		resetPeople([
+			{ ...member('Ana Lopez'), role: 'admin' },
+			{ ...member('Ben Ruiz'), role: 'manager' },
+			member('Dee Shaw')
+		]);
+		expect(svgOf(personOf('Ana Lopez').photo)).toContain('>AL</text>');
+		expect(svgOf(personOf('Ana Lopez').photo)).toContain('#7c3aed');
+		expect(svgOf(personOf('Ben Ruiz').photo)).toContain('#2563eb');
+		expect(svgOf(personOf('Dee Shaw').photo)).toContain('#64748b');
+	});
+
+	it('shows their photo once they have one', () => {
+		resetPeople([{ ...member('Ana Lopez'), photo: '/files/ana' }]);
+		expect(personOf('Ana Lopez').photo).toBe('/files/ana');
+	});
+
+	it('changes colour with the role', () => {
+		resetPeople([member('Ana Lopez')]);
+		resetPeople([{ ...member('Ana Lopez'), role: 'admin' }]);
+		expect(svgOf(personOf('Ana Lopez').photo)).toContain('#7c3aed');
 	});
 });
