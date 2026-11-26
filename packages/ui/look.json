@@ -1,109 +1,14 @@
 {
 	"about": "Library components that broke the look rule (Justin, 2026-11-26: built on the base component, look set from outside, no palette colours) when the look check began. Each may get better, never worse: `pnpm --filter @layerd/tools run look -- --lower` takes a fixed one off. Nothing is added here without Justin's yes, written in the entry's `yes` with his name and the date. See CODING_STANDARDS.md.",
 	"files": {
-		"components/atoms/Colorss.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/atoms/content/content.svelte": {
-			"base": true,
-			"colours": 4
-		},
-		"components/atoms/forms/checkbox/checkbox.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/atoms/icon/icon.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/atoms/image/image.svelte": {
-			"base": true,
-			"colours": 3
-		},
 		"components/atoms/metadata/metadata.svelte": {
 			"base": false,
 			"colours": 0
 		},
-		"components/atoms/theme/theme-toggle.svelte": {
-			"base": true,
-			"colours": 2
-		},
-		"components/atoms/theme/theme.svelte": {
-			"base": true,
-			"colours": 18
-		},
-		"components/atoms/title/title.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/molecules/card/card.svelte": {
-			"base": true,
-			"colours": 3
-		},
-		"components/molecules/chart/controls.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/molecules/chart/line/line.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/molecules/chart/tree/tree.svelte": {
-			"base": false,
-			"colours": 1
-		},
-		"components/molecules/copyright/copyright.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/molecules/grid/grid.svelte": {
-			"base": false,
-			"colours": 2
-		},
-		"components/molecules/grid/item.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/molecules/logo/logo.svelte": {
-			"base": false,
-			"colours": 2
-		},
-		"components/molecules/navbar/navbar.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/molecules/preview/preview.svelte": {
-			"base": true,
-			"colours": 3
-		},
 		"components/organisms/globe/globe.svelte": {
-			"base": false,
-			"colours": 10
-		},
-		"components/organisms/header/header.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/organisms/page/page.svelte": {
 			"base": true,
-			"colours": 2
-		},
-		"components/pages/about/about.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/pages/contact/contact.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/pages/home/home.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/templates/template.svelte": {
-			"base": true,
-			"colours": 9
+			"colours": 3,
+			"yes": "Justin, 2026-11-26: keep the location pins' own blues (blue-600 pin, blue-400 glow) instead of the theme's primary, so the public site's Globe looks exactly as it does now."
 		}
 	}
 }

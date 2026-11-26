@@ -3,7 +3,7 @@
 	@tags header, navigation, layout, scroll, glass, ghost
 -->
 <script lang="ts">
-	import { Container, type ComponentProps } from '@layerd/ui';
+	import { Component, Container, type ComponentProps, type ContainerProps } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 
 	interface HeaderProps extends ComponentProps {
@@ -34,13 +34,16 @@
 	);
 </script>
 
-<header class="header {positionClasses} px-4 py-6">
-	<Container
-		{...props}
-		class={props.class}
-	>
-		{#if children}
-			{@render children()}
-		{/if}
-	</Container>
-</header>
+<!-- The bar across the top; the caller's look lands on the box inside it, the one that shows. -->
+<Component {...props}>
+	{#snippet component({ props: root })}
+		<header class="header {positionClasses} px-4 py-6">
+			<!-- The root's props are an element's attributes; the look in them is already classes. -->
+			<Container {...root as unknown as ContainerProps}>
+				{#if children}
+					{@render children()}
+				{/if}
+			</Container>
+		</header>
+	{/snippet}
+</Component>

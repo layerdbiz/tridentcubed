@@ -71,10 +71,10 @@
 
 		// Handle preset overlay types
 		if (overlay === true || overlay === '' || overlay === 'linear') {
-			return 'bg-linear-to-b from-transparent from-50% via-black via-85% to-black to-100%';
+			return 'bg-linear-to-b from-transparent from-50% via-shade via-85% to-shade to-100%';
 		}
 		if (overlay === 'radial') {
-			return 'bg-radial -from-black to-black to-70% opacity-80';
+			return 'bg-radial to-shade to-70% opacity-80';
 		}
 
 		// Custom classes

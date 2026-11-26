@@ -7,7 +7,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Image, mq, navigationState } from '@layerd/ui';
+	import { Component, Image, mq, navigationState } from '@layerd/ui';
 	import { untrack } from 'svelte';
 	import * as THREE from 'three';
 	import {
@@ -1172,7 +1172,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 			// Show fallback UI
 			if (globeContainer) {
 				globeContainer.innerHTML = `
-					<div class="flex items-center justify-center h-full text-white text-center p-4">
+					<div class="flex items-center justify-center h-full text-on-shade text-center p-4">
 						<div>
 							<h3 class="text-lg font-semibold mb-2">Unable to load 3D Globe</h3>
 							<p class="text-sm opacity-75">Your browser or device may not support WebGL, or GPU resources are unavailable.</p>
@@ -1471,7 +1471,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 								
 									 <svg xmlns="http://www.w3.org/2000/svg" class="${isActiveLocation ? 'active' : ''} svg svg-marker" fill="none" viewBox="0 0 87 122">
 										<path class="stroke" stroke-width="4" d="m43.0833 115.667-1.4842 1.34 1.4842 1.643 1.4842-1.643-1.4842-1.34Zm0 0c1.4842 1.34 1.4846 1.34 1.4851 1.339l.0018-.002.0062-.007.023-.025.0875-.098c.0764-.085.1886-.211.3343-.376.2914-.33.7167-.816 1.2567-1.442 1.0799-1.254 2.6193-3.074 4.4651-5.348 3.6898-4.546 8.6129-10.9197 13.5399-18.2222 4.9232-7.2969 9.8751-15.5579 13.6022-23.8774 3.7154-8.2933 6.2816-16.7923 6.2816-24.5251A41.0836 41.0836 0 0 0 14.033 14.033 41.0835 41.0835 0 0 0 2 43.0833c0 7.7328 2.5662 16.2318 6.2816 24.5251 3.7271 8.3195 8.679 16.5805 13.6021 23.8774 4.9271 7.3025 9.8501 13.6762 13.5399 18.2222 1.8458 2.274 3.3852 4.094 4.4652 5.348.54.626.9652 1.112 1.2566 1.442.1457.165.258.291.3344.376l.0874.098.023.025.0063.007.0017.002c.0006.001.0009.001 1.4851-1.339Z"/>
-										<path class="bg fill-white" d="M60 44c0 9.3888-7.6112 17-17 17s-17-7.6112-17-17 7.6112-17 17-17 17 7.6112 17 17Z"/>
+										<path class="bg fill-on-shade" d="M60 44c0 9.3888-7.6112 17-17 17s-17-7.6112-17-17 7.6112-17 17-17 17 7.6112 17 17Z"/>
 										<path class="fg fill-blue-600" d="M43.0833 57.0417a13.9584 13.9584 0 1 1 .0001-27.9168 13.9584 13.9584 0 0 1-.0001 27.9168Zm0-53.0417a39.0837 39.0837 0 0 0-27.6361 11.4472A39.0837 39.0837 0 0 0 4 43.0833c0 29.3125 39.0833 72.5837 39.0833 72.5837s39.0834-43.2712 39.0834-72.5837A39.0834 39.0834 0 0 0 43.0833 4Z"/>
 									</svg>
 							</i>
@@ -1596,7 +1596,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 					// Display user-friendly error message
 					if (globeContainer) {
 						globeContainer.innerHTML = `
-						<div class="flex items-center justify-center h-full text-white text-center p-4">
+						<div class="flex items-center justify-center h-full text-on-shade text-center p-4">
 							<div>
 								<h3 class="text-lg font-semibold mb-2">Unable to load 3D Globe</h3>
 								<p class="text-sm opacity-75">WebGL is not available or has been blocked by your browser.</p>
@@ -1751,23 +1751,28 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 	class="bleed"
 	style="display: contents;"
 >
-	<div
-		class="globe-wrapper absolute inset-0 h-svh w-svw overflow-clip {className}"
-		class:fade-in={isGlobeReady}
-		class:opacity-0={!isGlobeReady}
-	>
-		<Image
-			bg
-			class="globe-atmosphere pointer-events-none -z-1 h-svh w-svw overflow-clip"
-			overlay="bg-radial from-primary to-transparent from-30% to-60% translate-y-1/2 scale-x-250 scale-y-95 md:scale-y-100 md:scale-x-125 absolute bottom-0 origin-bottom opacity-60 block"
-		/>
-		<div
-			class="globe-container absolute inset-0 h-full w-full"
-			class:pointer-events-auto={isGlobeReady}
-			class:pointer-events-none={!isGlobeReady}
-			{@attach attachGlobeContainer}
-		></div>
-	</div>
+	<!-- The globe's box is the base component: the caller's class lands on it. -->
+	<Component class="globe-wrapper absolute inset-0 h-svh w-svw overflow-clip {className}">
+		{#snippet component({ props: root })}
+			<div
+				{...root}
+				class:fade-in={isGlobeReady}
+				class:opacity-0={!isGlobeReady}
+			>
+				<Image
+					bg
+					class="globe-atmosphere pointer-events-none -z-1 h-svh w-svw overflow-clip"
+					overlay="bg-radial from-primary to-transparent from-30% to-60% translate-y-1/2 scale-x-250 scale-y-95 md:scale-y-100 md:scale-x-125 absolute bottom-0 origin-bottom opacity-60 block"
+				/>
+				<div
+					class="globe-container absolute inset-0 h-full w-full"
+					class:pointer-events-auto={isGlobeReady}
+					class:pointer-events-none={!isGlobeReady}
+					{@attach attachGlobeContainer}
+				></div>
+			</div>
+		{/snippet}
+	</Component>
 </div>
 
 <style lang="postcss">
@@ -1815,10 +1820,10 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 			animation: float 4s ease-in-out infinite;
 		}
 		.svg-marker.active .stroke {
-			@apply stroke-white;
+			@apply stroke-on-shade;
 		}
 		.svg-marker.active .bg {
-			@apply fill-white;
+			@apply fill-on-shade;
 		}
 		.svg-marker.active .fg {
 			@apply fill-blue-600;
@@ -1829,7 +1834,7 @@ Interactive 3D globe visualization component with support for locations, arcs, r
 
 		/* location label */
 		.location-label {
-			@apply pointer-events-none absolute top-full flex items-center justify-center gap-2 rounded bg-black/60 p-2 text-xs font-semibold whitespace-nowrap text-white uppercase md:text-sm;
+			@apply pointer-events-none absolute top-full flex items-center justify-center gap-2 rounded bg-shade/60 p-2 text-xs font-semibold whitespace-nowrap text-on-shade uppercase md:text-sm;
 		}
 	}
 	/* ---------------------------------------- */

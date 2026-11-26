@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ComponentProps } from 'svelte';
+	import { Component, type ComponentProps } from '@layerd/ui';
 	import { cubicOut } from 'svelte/easing';
 	import {
 		hierarchy as d3Hierarchy,
@@ -29,7 +29,12 @@
 		return classes.filter((c) => typeof c === 'string' && c.length > 0).join(' ');
 	}
 
-	let { data, controls = false } = $props<{ data: any; controls?: boolean }>();
+	interface TreeProps extends ComponentProps {
+		data: any;
+		controls?: boolean;
+	}
+
+	let { data, controls = false, ...props }: TreeProps = $props();
 
 	let config = $state<TreeConfig>({
 		orientation: 'vertical',
@@ -124,7 +129,10 @@
 	);
 </script>
 
-<div class="pointer-events-auto relative h-full">
+<Component
+	{...props}
+	class="pointer-events-auto relative h-full {props.class ?? ''}"
+>
 	{#if controls}
 		<Controls bind:config />
 	{/if}
@@ -267,7 +275,7 @@
 												<img
 													src={node.data.src}
 													alt={node.data.name}
-													class="size-12 rounded-full bg-white object-cover"
+													class="size-12 rounded-full bg-surface object-cover"
 												/>
 												<div
 													class="w-full overflow-hidden text-center text-[10px] leading-tight text-ellipsis text-primary"
@@ -311,4 +319,4 @@
 			</Tree>
 		{/snippet}
 	</Chart>
-</div>
+</Component>

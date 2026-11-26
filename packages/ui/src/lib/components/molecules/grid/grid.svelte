@@ -1,10 +1,16 @@
 <script lang="ts">
-	import { Item, setGridCtx, parseDims, numToCol } from '@layerd/ui';
+	import {
+		Component,
+		Item,
+		setGridCtx,
+		parseDims,
+		numToCol,
+		type ComponentProps
+	} from '@layerd/ui';
 	import { tick, untrack } from 'svelte';
 	import type { Snippet } from 'svelte';
 
-	export interface GridProps {
-		class?: string;
+	export interface GridProps extends ComponentProps {
 		items?: string; // "10x10" | "A1:J10" | undefined => auto
 		rows?: string;
 		cols?: string;
@@ -22,7 +28,8 @@
 		gap = '1rem',
 		pad = '0',
 		debug = false,
-		children
+		children,
+		...props
 	}: GridProps = $props();
 
 	// FOUC prevention: hide grid until children have registered their tracks
@@ -199,21 +206,28 @@
 	);
 </script>
 
-<div
-	class={'' + userClass}
-	class:invisible={!ready}
-	style={gridStyle}
+<Component
+	{...props}
+	class={userClass}
 >
-	{#if debug}
-		{#each fauxRanges as r (r)}
-			<Item
-				range={r}
-				class="bg-black/10 font-black text-black/50"
-			>
-				{r}
-			</Item>
-		{/each}
-	{/if}
+	{#snippet component({ props: root })}
+		<div
+			{...root}
+			class:invisible={!ready}
+			style={[root.style, gridStyle].filter(Boolean).join('; ')}
+		>
+			{#if debug}
+				{#each fauxRanges as r (r)}
+					<Item
+						range={r}
+						class="bg-shade/10 font-black text-shade/50"
+					>
+						{r}
+					</Item>
+				{/each}
+			{/if}
 
-	{@render children?.()}
-</div>
+			{@render children?.()}
+		</div>
+	{/snippet}
+</Component>

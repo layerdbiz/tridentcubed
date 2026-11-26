@@ -30,9 +30,9 @@
 ::::::::::::::::::::::::::::::::::::::::::::: -->
 <Component
 	{...props}
-	class="template grid h-svh {props.class}"
+	class="template grid h-svh {props.class ?? ''}"
 >
-	{#snippet component(props)}
+	{#snippet component({ props })}
 		<main
 			{...props}
 			style:grid-template-rows={rows}
@@ -41,18 +41,18 @@
 			{#if children}
 				{@render children()}
 			{:else}
-				<section class="flex h-full items-center justify-center overflow-y-auto bg-white py-8">
+				<section class="flex h-full items-center justify-center overflow-y-auto bg-surface py-8">
 					<div
 						class="grid w-full max-w-md grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-8"
 					>
-						<div class="bg-black/30 p-4">1</div>
-						<div class="bg-black/30 p-4">2</div>
-						<div class="bg-black/30 p-4">3</div>
-						<div class="bg-black/30 p-4">4</div>
-						<div class="bg-black/30 p-4">5</div>
-						<div class="bg-black/30 p-4">6</div>
-						<div class="bg-black/30 p-4">7</div>
-						<div class="bg-black/30 p-4">8</div>
+						<div class="bg-shade/30 p-4">1</div>
+						<div class="bg-shade/30 p-4">2</div>
+						<div class="bg-shade/30 p-4">3</div>
+						<div class="bg-shade/30 p-4">4</div>
+						<div class="bg-shade/30 p-4">5</div>
+						<div class="bg-shade/30 p-4">6</div>
+						<div class="bg-shade/30 p-4">7</div>
+						<div class="bg-shade/30 p-4">8</div>
 					</div>
 				</section>
 			{/if}
