@@ -34,6 +34,7 @@
 	// at the foot of the last page. Their one-page A versions are gone (#372).
 	import { onMount, untrack } from 'svelte';
 	import { Avatar } from '@layerd/ui';
+	import { noteActivity } from '#lib/activity/activity.note.js';
 	import PdfPage from '#lib/components/attachment/pdf-page.svelte';
 	import { bytesOf, drawPage, pdfOf } from '#lib/pdf/pdf.utils.js';
 	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
@@ -1215,6 +1216,7 @@
 	async function download() {
 		const progress = downloadToast();
 		if (progress.isBusy || !canvas) return;
+		const projectId = look.project?.id;
 		const nodes = [...canvas.querySelectorAll<HTMLElement>('article[data-page]')];
 		const count = nodes.length;
 		const filename = `${documentNumber}.pdf`;
@@ -1278,6 +1280,8 @@
 			link.remove();
 			setTimeout(() => URL.revokeObjectURL(url), 60000);
 			progress.finish('PDF downloaded');
+			// Each download shows in an Admin's Activity (#306).
+			if (projectId) noteActivity({ kind: 'download', projectId });
 		} catch (error) {
 			if (!(error instanceof DownloadError)) console.error('The PDF download failed.', error);
 			progress.fail(

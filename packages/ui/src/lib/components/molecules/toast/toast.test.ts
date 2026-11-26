@@ -151,4 +151,53 @@ describe('Toast', () => {
 		expect(close.className).not.toContain('text-current/70');
 		expect(screen.getByRole('button', { name: 'Again' })).not.toBeNull();
 	});
+
+	it('shows an icon before its message, the library Icon', () => {
+		render(Toast, {
+			props: { text: 'New version, tap to update', icon: 'icon-[mdi--arrow-up-circle-outline]' }
+		});
+		const toast = screen.getByRole('status');
+		const icon = toast.querySelector('.icon-\\[mdi--arrow-up-circle-outline\\]');
+
+		expect(icon).not.toBeNull();
+		expect(icon?.getAttribute('aria-hidden')).toBe('true');
+		expect(toast.textContent?.trim()).toBe('New version, tap to update');
+		expect(toast.className).toContain('items-center');
+	});
+
+	it('is a tap when given one: the whole toast is a button that runs it, and takes taps', async () => {
+		const onclick = vi.fn();
+		render(Toast, { props: { text: 'New version, tap to update', onclick } });
+		const button = screen.getByRole('button', { name: 'New version, tap to update' });
+
+		expect(button.className).toContain('pointer-events-auto');
+		expect(button.className).toContain('bg-secondary');
+		await fireEvent.click(button);
+		expect(onclick).toHaveBeenCalledOnce();
+	});
+
+	it('does nothing on a tap while it is disabled, and lets taps through to the page', async () => {
+		const onclick = vi.fn();
+		render(Toast, { props: { text: 'Will update once saved', onclick, disabled: true } });
+		const button = screen.getByRole('button', { name: 'Will update once saved' });
+
+		expect(button.hasAttribute('disabled')).toBe(true);
+		expect(button.className).not.toContain('pointer-events-auto');
+		await fireEvent.click(button);
+		expect(onclick).not.toHaveBeenCalled();
+	});
+
+	it('keeps a tap toast in a status region that stays while it is hidden, so it is heard as it shows', async () => {
+		const shown = render(Toast, { props: { text: '', onclick: () => undefined } });
+		const region = screen.getByRole('status');
+
+		expect(region.getAttribute('aria-live')).toBe('polite');
+		expect(region.childElementCount).toBe(0);
+		expect(screen.queryByRole('button')).toBeNull();
+
+		await shown.rerender({ text: 'New version, tap to update', onclick: () => undefined });
+
+		expect(screen.getByRole('status')).toBe(region);
+		expect(region.querySelector('button')?.textContent?.trim()).toBe('New version, tap to update');
+	});
 });

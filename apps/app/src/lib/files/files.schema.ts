@@ -225,8 +225,11 @@ export function toEnding(type: string, name: string) {
 	return /^[a-z0-9]{1,12}$/.test(ending) ? ending : 'bin';
 }
 
-/** Where the time and place came from: the photo's own metadata, the device at that moment, or nowhere. */
-export const TAKEN_FROM = ['file', 'device', ''] as const;
+/**
+ * Where the time and place came from: the photo's own metadata, the device at that moment, the photo's time with the
+ * device's place (a photo just taken that came without its place), or nowhere.
+ */
+export const TAKEN_FROM = ['file', 'device', 'file-device', ''] as const;
 
 export type TakenFromType = (typeof TAKEN_FROM)[number];
 
@@ -491,7 +494,22 @@ export function toFieldText(groups: FieldGroupType[]) {
 export function toTakenFromLabel(from: TakenFromType) {
 	if (from === 'file') return 'Read from the photo';
 	if (from === 'device') return 'From the phone when it was added';
+	if (from === 'file-device') return 'Time from the photo, place from the phone';
 	return '';
+}
+
+/**
+ * Whether the phone blanked the photo's place before handing it over: its GPS fields are still there, every number
+ * in them 0/0. Android does this to a photo it gives a browser (Justin's Pixel in Chrome, 2026-11-26).
+ */
+export function isPlaceRemoved(list: FieldListType | null | undefined) {
+	const exif = list?.exif as Record<string, { value?: unknown } | undefined> | undefined;
+	const latitude = exif?.GPSLatitude?.value;
+	return (
+		Array.isArray(latitude) &&
+		latitude.length > 0 &&
+		latitude.every((part) => Array.isArray(part) && part[1] === 0)
+	);
 }
 
 /** Where it was taken, as latitude and longitude to five places (about a metre); nothing without both. */

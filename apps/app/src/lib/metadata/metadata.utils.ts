@@ -464,10 +464,12 @@ export function toExifTime(dateTime?: string, offset?: string) {
 export function toExifTaken(tags?: ExpandedTags): ExifTakenType {
 	if (!tags) return {};
 	const description = (tag?: { description?: string }) => tag?.description;
-	const at = toExifTime(
-		description(tags.exif?.DateTimeOriginal) ?? description(tags.exif?.DateTime),
-		description(tags.exif?.OffsetTimeOriginal)
-	);
+	// The moment the shutter fired, with its own offset; else the file's last change, with its own (a Pixel photo
+	// handed to Chrome on Android keeps only that pair).
+	const original = description(tags.exif?.DateTimeOriginal);
+	const at = original
+		? toExifTime(original, description(tags.exif?.OffsetTimeOriginal))
+		: toExifTime(description(tags.exif?.DateTime), description(tags.exif?.OffsetTime));
 	const { Latitude: latitude, Longitude: longitude } = tags.gps ?? {};
 	const hasPlace = Number.isFinite(latitude) && Number.isFinite(longitude);
 	return { at, ...(hasPlace ? { latitude, longitude } : {}) };

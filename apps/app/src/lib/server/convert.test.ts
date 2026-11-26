@@ -257,6 +257,25 @@ describe('converting a file in storage', () => {
 		expect(await readFieldList(test.claims, team, id)).toHaveProperty('exif');
 	});
 
+	it('keeps the place the device gave a photo just taken, beside the file’s time', async () => {
+		const id = await sendUntouched('IMG_0001.HEIC', 'image/heic', fixture('phone.heic'));
+		await test.db.update(schema.file).set({
+			takenFrom: 'file-device',
+			takenAt: new Date('2026-05-12T09:30:00.000Z'),
+			latitude: 41.88,
+			longitude: -87.63
+		});
+
+		await convert(id);
+
+		expect((await readFile(test.claims, team, id))?.taken).toEqual({
+			from: 'file-device',
+			at: '2026-05-12T09:30:00.000Z',
+			latitude: 41.88,
+			longitude: -87.63
+		});
+	});
+
 	it('keeps the time, place and field list the device read from the file', async () => {
 		const id = await sendUntouched('IMG_0001.HEIC', 'image/heic', fixture('phone.heic'), {
 			fields: { exif: { Make: { value: 'Phone' } } }

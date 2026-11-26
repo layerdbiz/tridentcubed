@@ -2,8 +2,8 @@
 	// PROTOTYPE (#161): the preview's controls, standing up in one black bar (Justin's note 28): a zoom slider in blue
 	// (its knob grows and shows the percent while you hold it), the fit button, the mode menu, and Download at the
 	// bottom. No + and − buttons: the slider, pinch and scroll do that. #324 (Justin, 2026-11-25): one button for how
-	// the pages lie, its icon the mode they are in, and a menu that pops out beside it with Stack, Spread and Present
-	// (a play button: the pages one at a time).
+	// the pages lie, its icon the mode they are in, and Stack, Spread and Present (a play button: the pages one at a
+	// time) sliding out of it in a row (Justin, 2026-11-26: the prototype's Slide-out Row, in place of the menu).
 	import { Button } from '@layerd/ui';
 	import type { LayoutType } from './presentation.svelte';
 	import { ZOOM_MAX, ZOOM_MIN, type Viewport } from './viewport.svelte';
@@ -22,25 +22,22 @@
 		ondownload: () => void;
 	} = $props();
 
-	const MODES: { id: LayoutType; name: string; hint: string; label: string; icon: string }[] = [
+	const MODES: { id: LayoutType; name: string; label: string; icon: string }[] = [
 		{
 			id: 'column',
 			name: 'Stack',
-			hint: 'One under another',
 			label: 'Stack the pages',
 			icon: 'icon-[mdi--view-sequential-outline]'
 		},
 		{
 			id: 'spread',
 			name: 'Spread',
-			hint: 'Every page at once',
 			label: 'Spread the pages out',
 			icon: 'icon-[mdi--view-grid-outline]'
 		},
 		{
 			id: 'present',
 			name: 'Present',
-			hint: 'One page at a time',
 			label: 'Present the pages',
 			icon: 'icon-[mdi--play-circle-outline]'
 		}
@@ -54,7 +51,7 @@
 		if (mode !== layout) onmode(mode);
 	}
 
-	// Anywhere else shuts the menu, and so does Escape.
+	// Anywhere else shuts the row, and so does Escape.
 	function onpointerdown(event: PointerEvent) {
 		if (isOpen && !menu?.contains(event.target as Node)) isOpen = false;
 	}
@@ -156,42 +153,53 @@
 		bind:this={menu}
 		class="relative"
 	>
-		<!-- A small notch at its left shows that the menu comes out that way. -->
-		<button
-			type="button"
-			class="relative flex size-9 items-center justify-center rounded-full before:absolute before:top-1/2 before:left-px before:-translate-y-1/2 before:border-y-4 before:border-r-4 before:border-l-0 before:border-y-transparent before:border-r-white/55 before:transition-opacity {isOpen
-				? 'bg-white text-black before:opacity-0'
-				: 'bg-white/10 hover:bg-white/15'}"
+		<!-- The mode the pages are in. A small notch at its left shows that the row comes out that way. -->
+		<Button
+			heavy={isOpen}
+			ghost={!isOpen}
+			invert
+			sm
+			icon={now.icon}
+			class={isOpen ? '' : 'bg-current/10'}
 			aria-haspopup="menu"
 			aria-expanded={isOpen}
 			aria-label="{now.name}: choose how the pages lie"
 			title="{now.name}: choose how the pages lie"
-			onclick={() => (isOpen = !isOpen)}><span class="{now.icon} size-5"></span></button
-		>
+			onclick={() => (isOpen = !isOpen)}
+		/>
+		<span
+			class="pointer-events-none absolute top-1/2 left-px -translate-y-1/2 border-y-4 border-r-4 border-l-0 border-y-transparent border-r-current transition-opacity {isOpen
+				? 'opacity-0'
+				: 'opacity-55'}"
+			aria-hidden="true"
+		></span>
+		<!-- Slide-out Row (Justin, 2026-11-26): the three modes slide out of the button in a row to its left, the
+		     mode the pages are in lit. -->
 		<div
-			class="absolute right-[calc(100%+16px)] -bottom-2 grid origin-bottom-right gap-0.5 rounded-[18px] bg-black p-1.5 shadow-xl shadow-black/30 transition-[opacity,translate,scale] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] md:top-1/2 md:bottom-auto md:origin-right md:-translate-y-1/2 {isOpen
-				? ''
-				: 'pointer-events-none translate-x-2 scale-[0.92] opacity-0'}"
+			class="absolute top-1/2 right-[calc(100%+10px)] flex -translate-y-1/2 gap-0.5 rounded-full bg-black p-1 shadow-xl shadow-black/30 transition-[clip-path] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] {isOpen
+				? '[clip-path:inset(0_0_0_0_round_999px)]'
+				: 'pointer-events-none [clip-path:inset(0_0_0_100%_round_999px)]'}"
 			role="menu"
 			aria-label="How the pages lie"
 		>
-			{#each MODES as mode (mode.id)}
-				<button
-					type="button"
-					class="grid grid-cols-[20px_auto] items-center justify-items-start gap-x-3 rounded-xl py-2 pr-4 pl-3 text-left {mode.id ===
-					layout
-						? 'bg-white text-black'
-						: 'text-white hover:bg-white/10'}"
+			{#each MODES as mode, index (mode.id)}
+				<Button
+					heavy={mode.id === layout}
+					ghost={mode.id !== layout}
+					invert
+					sm
+					icon={mode.icon}
+					class="transition-[translate,opacity] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] {isOpen
+						? ''
+						: 'translate-x-6 opacity-0'}"
+					style="transition-delay: {isOpen ? (MODES.length - 1 - index) * 30 : 0}ms"
 					role="menuitemradio"
 					aria-checked={mode.id === layout}
-					tabindex={isOpen ? 0 : -1}
+					aria-label={mode.label}
 					title={mode.label}
+					tabindex={isOpen ? 0 : -1}
 					onclick={() => pick(mode.id)}
-				>
-					<span class="{mode.icon} row-span-2 size-5"></span>
-					<span class="text-[13px] font-semibold whitespace-nowrap">{mode.name}</span>
-					<span class="text-[11px] font-medium whitespace-nowrap opacity-60">{mode.hint}</span>
-				</button>
+				/>
 			{/each}
 		</div>
 	</div>

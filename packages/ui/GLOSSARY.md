@@ -279,12 +279,16 @@ The library box with no label of its own, a little lower, for a long list of sma
 _Avoid_: cell (a grid position), bare input, inline field
 
 **Toast**:
-A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305).
+A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305). A short message may have an icon before it and be a tap of its own, held while the tap is in hand: the update note, "New version, tap to update" (#392).
 _Avoid_: snackbar, progress toast (as a component of its own), loading bar
 
 **Avatar**:
 One round picture standing for someone or something: a face or a logo. With no picture it draws the name's initials (or a company's code) on the colours of its role or kind (#355), and with no letters either an icon on grey, or on a colour it is given (a transport's mode). It can wear a presence dot (green online, orange idle, grey offline) at the top right, or a badge in its place at the bottom right. The only round picture in the app: every face, logo and record mark is one (Justin, 2026-11-26). Plain and light, since it repeats in every list row (#379).
 _Avoid_: profile picture, user icon
+
+**Progress bar**:
+A thin rounded bar that fills as something gets done: a project, a panel, an upload in a Toast. A screen reader hears it as a progress bar with its value. Its filled part wears a colour (primary unless told), or a state's colour from outside (#380).
+_Avoid_: meter (a reading, not work being done), loading bar, Progress (the Toast's job, which a progress bar shows)
 
 **Stack**:
 A few avatars overlapping, the first in front and each of the others tucked behind the one before, then a count of the rest: a project's team, a customer's logos (#379).
