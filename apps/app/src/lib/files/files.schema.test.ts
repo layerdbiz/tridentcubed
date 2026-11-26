@@ -6,9 +6,15 @@ import {
 	isToConvert,
 	isTypeAllowed,
 	toAttachmentKind,
+	toCarriedLabel,
+	toFileId,
 	toEnding,
+	toOriginalFacts,
 	toPictureType,
-	toTyped
+	toSizeLabel,
+	toSmallerPercent,
+	toTyped,
+	toTypeLabel
 } from './files.schema';
 
 describe('pictures the server converts', () => {
@@ -85,5 +91,75 @@ describe('PDFs and videos in a photo group (#327)', () => {
 		expect(isTypeAllowed('image/webp', 'photo', 'source')).toBe(false);
 		expect(isTypeAllowed('text/html', 'photo', 'source')).toBe(false);
 		expect(isTypeAllowed('image/webp', 'photo', 'file')).toBe(true);
+	});
+});
+
+describe('an attachment’s details (#343) and the type on its tile (#349)', () => {
+	it('says a type the way people say it', () => {
+		expect(toTypeLabel('image/heic')).toBe('HEIC');
+		expect(toTypeLabel('image/heif')).toBe('HEIF');
+		expect(toTypeLabel('image/jpeg')).toBe('JPEG');
+		expect(toTypeLabel('image/png')).toBe('PNG');
+		expect(toTypeLabel('image/webp')).toBe('WebP');
+		expect(toTypeLabel('image/svg+xml')).toBe('SVG');
+		expect(toTypeLabel('image/tiff')).toBe('TIFF');
+		expect(toTypeLabel('image/avif')).toBe('AVIF');
+		expect(toTypeLabel('image/gif')).toBe('GIF');
+		expect(toTypeLabel('application/pdf')).toBe('PDF');
+		expect(toTypeLabel('video/mp4')).toBe('MP4');
+		expect(toTypeLabel('video/quicktime')).toBe('MOV');
+		expect(toTypeLabel('video/webm')).toBe('WebM');
+		expect(toTypeLabel('text/csv')).toBe('CSV');
+		expect(toTypeLabel('application/octet-stream')).toBe('File');
+		expect(toTypeLabel('')).toBe('');
+	});
+
+	it('says a size in bytes, KB or MB', () => {
+		expect(toSizeLabel(980)).toBe('980 B');
+		expect(toSizeLabel(1536)).toBe('1.5 KB');
+		expect(toSizeLabel(626_688)).toBe('612 KB');
+		expect(toSizeLabel(3_355_443)).toBe('3.2 MB');
+		expect(toSizeLabel(undefined)).toBe('');
+	});
+
+	it('says how much smaller the saved file is than the original, as a whole percent', () => {
+		expect(toSmallerPercent({ size: 3_355_443 }, { size: 626_688 })).toBe(81);
+		expect(toSmallerPercent({ size: 1000 }, { size: 1000 })).toBe(0);
+		expect(toSmallerPercent({ size: 1000 }, { size: 1500 })).toBe(-50);
+		expect(toSmallerPercent({}, { size: 1000 })).toBeUndefined();
+		expect(toSmallerPercent({ size: 0 }, { size: 0 })).toBeUndefined();
+	});
+
+	it('says whether the metadata came across', () => {
+		expect(toCarriedLabel('all', true)).toBe('Every field came across');
+		expect(toCarriedLabel('all', false)).toBe('The original had none');
+		expect(toCarriedLabel('some', true)).toBe('Some fields came across');
+		expect(toCarriedLabel('none', true)).toBe('None came across');
+		expect(toCarriedLabel('', true)).toBe('Not recorded');
+	});
+
+	it('takes the original as recorded, else its type from its name for a file kept before #343', () => {
+		const recorded = { type: 'image/heic', size: 3_000_000, width: 4032, height: 3024 };
+		expect(
+			toOriginalFacts({ name: 'IMG_0001.HEIC', type: 'image/webp', original: recorded })
+		).toEqual(recorded);
+		expect(toOriginalFacts({ name: 'IMG_0001.HEIC', type: 'image/webp' })).toEqual({
+			type: 'image/heic'
+		});
+		expect(toOriginalFacts({ name: 'plan.pdf', type: 'application/pdf' })).toEqual({
+			type: 'application/pdf'
+		});
+		expect(toOriginalFacts({ name: 'photo', type: 'image/webp' })).toEqual({ type: 'image/webp' });
+	});
+});
+
+describe('the file at an app address (#343)', () => {
+	it('is its id for a file in storage, nothing for a starting file, a preview or a guess', () => {
+		const id = '9b2e6c1a-3f4d-4e5a-8b6c-7d8e9f0a1b2c';
+		expect(toFileId(`/files/${id}`)).toBe(id);
+		expect(toFileId('/start/photos/dock.webp')).toBe('');
+		expect(toFileId('blob:https://next.app.tridentcubed.com/1234')).toBe('');
+		expect(toFileId('/files/not-an-id')).toBe('');
+		expect(toFileId('')).toBe('');
 	});
 });

@@ -435,6 +435,11 @@ CREATE TABLE "file" (
 	"taken_from" text DEFAULT '' NOT NULL,
 	"metadata" jsonb,
 	"original_path" text,
+	"original_type" text,
+	"original_size" integer,
+	"original_width" integer,
+	"original_height" integer,
+	"metadata_carried" text DEFAULT '' NOT NULL,
 	"uploaded_by" uuid
 );
 

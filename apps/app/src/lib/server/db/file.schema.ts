@@ -1,7 +1,8 @@
 // Files (glossary "File", "Attachment"; ADR 0004; spec #179 "Files" and "Tables"; #187): one row per file kept in
 // the private bucket. It says what the file is for (a table, a column and, once it exists, the row), where it lies
 // in the bucket, its type, size and pixel size, the time and place a photo was taken with where those came from,
-// the original's full field list (#292), the untouched file a device sent while it is kept (#294), and who sent it. Rows of records keep only the app's address of the file
+// the original's full field list (#292), the untouched file a device sent while it is kept (#294), the original as it
+// arrived and whether its metadata came across (#343), and who sent it. Rows of records keep only the app's address of the file
 // (`/files/<id>`), never the file.
 import {
 	doublePrecision,
@@ -49,6 +50,17 @@ export const file = pgTable(
 		 * checked out and the untouched file was deleted, kept when the copy could not carry every field.
 		 */
 		originalPath: text('original_path'),
+		/**
+		 * The file the User picked, as it arrived (#343): its type, size and pixel size, beside the type, size and pixel
+		 * size of the file kept above (a WebP after a conversion), so the photo's Details say how much smaller it got.
+		 * Empty for a file kept before #343; the pixel size stays empty until something could read it.
+		 */
+		originalType: text('original_type'),
+		originalSize: integer('original_size'),
+		originalWidth: integer('original_width'),
+		originalHeight: integer('original_height'),
+		/** #343: whether every metadata field of the original came across (`CARRIED`); '' when not known. */
+		metadataCarried: text('metadata_carried').default('').notNull(),
 		uploadedBy: uuid('uploaded_by').references(() => user.id, { onDelete: 'set null' })
 	},
 	() => [organizationPolicy('file')]

@@ -39,7 +39,13 @@
 	import Photo from '#lib/components/photo/photo.svelte';
 	import Trip from '#lib/components/trip/trip.svelte';
 	import type { TripLegType } from '#lib/components/trip/trip.types.js';
-	import { ATTACHMENT_ICONS, ATTACHMENT_NAMES, toCrossOrigin } from '#lib/files/files.schema.js';
+	import {
+		ATTACHMENT_ICONS,
+		ATTACHMENT_NAMES,
+		toCrossOrigin,
+		toTypeLabel
+	} from '#lib/files/files.schema.js';
+	import { fileDetailsOf } from '#lib/files/files.state.svelte.js';
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toReportLink } from '#lib/report/report.utils.js';
 	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
@@ -2030,7 +2036,7 @@
 								class="pointer-events-none absolute top-1 left-1 z-[1] flex items-center gap-0.5 rounded bg-black/65 p-0.5 pr-1 text-[8px] leading-none font-semibold text-white tabular-nums"
 								title={ATTACHMENT_NAMES.pdf}
 								data-screen-only
-								><span class="{ATTACHMENT_ICONS.pdf} size-3"></span>{count > 1
+								><span class="{ATTACHMENT_ICONS.pdf} size-3 text-red-400"></span>{count > 1
 									? `PDF · ${page} of ${count}`
 									: 'PDF'}</span
 							>
@@ -2595,6 +2601,10 @@
 										     link that opens the video in the app (the PDF cannot play it). -->
 										{@const hasDescription = Boolean(photo.description) && page === 1}
 										{@const kind = photo.kind ?? 'photo'}
+										{@const arrived =
+											kind === 'photo'
+												? toTypeLabel(fileDetailsOf(photo.src)?.original.type ?? '')
+												: ''}
 										<figure class="relative overflow-hidden rounded">
 											<!-- A PDF still on its way has no stored file yet: its first page shows its picture, whole, and
 											     its other pages wait as quiet placeholders. -->
@@ -2648,21 +2658,26 @@
 												/>
 											{/if}
 											<!-- #327: what kind of attachment each spot holds, at a glance (Justin, 2026-11-25): a mark on
-											     the Preview only, left out of the download (sheetOf), so the report the client reads stays clean. -->
+											     the Preview only, left out of the download (sheetOf), so the report the client reads stays clean.
+											     #349: a photo by the type it arrived as. -->
 											<span
 												class="pointer-events-none absolute top-1 left-1 z-[1] flex items-center gap-0.5 rounded bg-black/65 p-0.5 text-[8px] leading-none font-semibold text-white tabular-nums {kind ===
-												'photo'
+													'photo' && !arrived
 													? ''
 													: 'pr-1'}"
-												title={ATTACHMENT_NAMES[kind]}
+												title={arrived ? `${arrived} photo` : ATTACHMENT_NAMES[kind]}
 												data-screen-only
-												><span class="{ATTACHMENT_ICONS[kind]} size-3"></span>{kind === 'pdf'
+												><span
+													class="{ATTACHMENT_ICONS[kind]} size-3 {kind === 'pdf'
+														? 'text-red-400'
+														: ''}"
+												></span>{kind === 'pdf'
 													? (photo.pageCount ?? 1) > 1
 														? `PDF · ${page} of ${photo.pageCount}`
 														: 'PDF'
 													: kind === 'video'
 														? 'Video'
-														: ''}</span
+														: arrived}</span
 											>
 											{#if hasDescription}
 												<figcaption
