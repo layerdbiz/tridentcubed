@@ -443,6 +443,78 @@ describe('where the list goes', () => {
 		expect(listOf()?.getAttribute('style')).toContain('top: 108px');
 	});
 
+	it('opens beside its button when asked, centred on it and clear of it (#390, the zoom bar)', async () => {
+		placeButton({ top: 400, left: 900, width: 36, height: 36 });
+		show({ opens: 'left', options: FACILITIES });
+		await open();
+
+		const style = listOf()?.getAttribute('style') ?? '';
+		expect(style).toContain(`right: ${innerWidth - 900 + 8}px`);
+		// Three choices with a note, 52px each, and the list's own room: centred on the button's middle, 418px.
+		expect(style).toContain(`top: ${418 - (3 * 52 + 16) / 2}px`);
+		expect(style).not.toContain('bottom:');
+	});
+
+	it('opens on the right of its button when asked', async () => {
+		placeButton({ top: 400, left: 24, width: 36, height: 36 });
+		show({ opens: 'right' });
+		await open();
+
+		expect(listOf()?.getAttribute('style')).toContain('left: 68px');
+	});
+
+	it('stands as far from its button as asked', async () => {
+		placeButton({ top: 400, left: 900, width: 36, height: 36 });
+		show({ opens: 'left', offset: 16 });
+		await open();
+		expect(listOf()?.getAttribute('style')).toContain(`right: ${innerWidth - 900 + 16}px`);
+
+		vi.restoreAllMocks();
+		document.body.innerHTML = '';
+		placeButton({ top: 100, left: 600, width: 40, height: 40 });
+		show({ offset: 16 });
+		await open();
+		expect(listOf()?.getAttribute('style')).toContain('top: 156px');
+	});
+
+	it('lines its bottom or top edge up with its button’s when opened beside it and aligned so', async () => {
+		placeButton({ top: 400, left: 900, width: 36, height: 36 });
+		show({ opens: 'left', align: 'bottom' });
+		await open();
+		expect(listOf()?.getAttribute('style')).toContain(`bottom: ${innerHeight - 436}px`);
+
+		vi.restoreAllMocks();
+		document.body.innerHTML = '';
+		placeButton({ top: 400, left: 900, width: 36, height: 36 });
+		show({ opens: 'left', align: 'top' });
+		await open();
+		expect(listOf()?.getAttribute('style')).toContain('top: 400px');
+	});
+
+	it('keeps a list opened beside its button on the screen', async () => {
+		placeButton({ top: 4, left: 900, width: 36, height: 36 });
+		show({ opens: 'left', options: FACILITIES });
+		await open();
+		expect(listOf()?.getAttribute('style')).toContain('top: 8px');
+
+		vi.restoreAllMocks();
+		document.body.innerHTML = '';
+		placeButton({ top: innerHeight - 40, left: 900, width: 36, height: 36 });
+		show({ opens: 'left', options: FACILITIES });
+		await open();
+		expect(listOf()?.getAttribute('style')).toContain(`top: ${innerHeight - 8 - (3 * 52 + 16)}px`);
+	});
+
+	it('is never wider than the room beside its button', async () => {
+		placeButton({ top: 400, left: 120, width: 36, height: 36 });
+		show({ opens: 'left' });
+		await open();
+
+		const style = listOf()?.getAttribute('style') ?? '';
+		expect(style).toContain('min-width: 104px');
+		expect(style).toContain('max-width: 104px');
+	});
+
 	it('floats above the page in a popover, so no scrolling box cuts it off', async () => {
 		show({});
 		await open();
@@ -466,5 +538,96 @@ describe('where the list goes', () => {
 		expect(list?.className).toContain('mine');
 		expect(list?.className).not.toContain('bg-surface');
 		expect(list?.className).not.toMatch(/-(slate|gray|zinc)-|white/);
+	});
+});
+
+describe('a look given from outside (#390, the zoom bar’s dark menu)', () => {
+	// jsdom paints nothing: the open list answers with these words and fill, as a browser would for its look.
+	function paint(color: string, backgroundColor: string) {
+		const real = window.getComputedStyle.bind(window);
+		vi.spyOn(window, 'getComputedStyle').mockImplementation((node, pseudo) => {
+			const style = real(node, pseudo);
+			if (!(node as HTMLElement).hasAttribute?.('popover')) return style;
+			return new Proxy(style, {
+				get: (target, key) =>
+					key === 'color'
+						? color
+						: key === 'backgroundColor'
+							? backgroundColor
+							: Reflect.get(target, key)
+			});
+		});
+	}
+
+	it('draws its choices in the words of its look, the picked one with the look’s colours swapped', async () => {
+		show({
+			color: 'base',
+			appearance: 'heavy',
+			value: 'spread',
+			options: FACILITIES.map((facility, index) => ({
+				...facility,
+				id: ['column', 'spread', 'present'][index],
+				icon: 'icon-[mdi--play-circle-outline]'
+			}))
+		});
+		const list = await open();
+		const [first, picked] = within(list).getAllByRole('option');
+
+		expect(listOf()?.className).toContain('theme-heavy-base');
+		expect(first.className).toContain('text-current');
+		expect(first.className).toContain('hover:bg-current/10');
+		expect(first.className).not.toMatch(/secondary|base-|primary/);
+		expect(picked.className).toContain('bg-(--menu-ink)');
+		expect(picked.className).toContain('text-(--menu-paper)');
+		expect(picked.className).not.toContain('bg-primary');
+		// The hint under each name follows the words too, and so does its icon.
+		expect(within(first).getByText('Houston').className).toContain('text-current/60');
+		expect(first.querySelector('.icon-\\[mdi--play-circle-outline\\]')?.className).not.toContain(
+			'text-base-500'
+		);
+		expect(picked.querySelector('.icon-\\[mdi--check\\]')?.className).not.toContain('text-primary');
+	});
+
+	it('hands the picked choice its look’s two colours, read off the list', async () => {
+		paint('rgb(250, 250, 251)', 'rgb(1, 1, 2)');
+		show({ color: 'base', appearance: 'heavy', value: 'cards' });
+		await open();
+
+		const style = listOf()?.getAttribute('style') ?? '';
+		expect(style).toContain('--menu-ink: rgb(250, 250, 251)');
+		expect(style).toContain('--menu-paper: rgb(1, 1, 2)');
+	});
+
+	it('marks the picked choice with a tint of its words when its look has no fill of its own', async () => {
+		paint('rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)');
+		show({ ghost: true, value: 'cards' });
+		const list = await open();
+		const picked = within(list).getByRole('option', { name: 'Cards' });
+
+		expect(picked.className).toContain('bg-current/15');
+		expect(picked.className).not.toContain('--menu-ink');
+	});
+
+	it('keeps its own look when given none: the theme’s surface, a blue tint on the picked choice', async () => {
+		show({ value: 'cards' });
+		const list = await open();
+		const picked = within(list).getByRole('option', { name: 'Cards' });
+
+		expect(picked.className).toContain('bg-primary/[0.08]');
+		expect(listOf()?.getAttribute('style')).not.toContain('--menu-ink');
+	});
+
+	it('names its button with the button’s own label when it has one, and the list with its label', async () => {
+		show({
+			trigger: undefined,
+			label: 'How the pages lie',
+			button: {
+				icon: 'icon-[mdi--view-grid-outline]',
+				'aria-label': 'Spread: choose how the pages lie'
+			}
+		});
+		await fireEvent.click(screen.getByRole('button', { name: 'Spread: choose how the pages lie' }));
+
+		expect(screen.getByRole('listbox', { name: 'How the pages lie' })).not.toBeNull();
 	});
 });
