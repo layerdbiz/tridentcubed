@@ -68,6 +68,7 @@ const REASONS = {
 	organizationCreate: 'An organization cannot be made from the app.',
 	member: 'Only an Admin can change who is in the organization.',
 	help: 'Only an Admin can change the help text.',
+	pin: 'A pin is only its owner’s.',
 	activity: 'Only an Admin can see the Activity.',
 	role: 'Only an Admin can change a Team role.',
 	teamEmail:
@@ -131,6 +132,10 @@ const TABLE_RULES: Partial<Record<CheckedTableType, RuleType[]>> = {
 	disclaimer_point: [managersAndAdminsOnly(REASONS.organization)],
 	// The Help text of every input (#299).
 	help_text: [adminsOnly(REASONS.help)],
+	// The menu's pins (#346): each person's own, whatever their role. The server sets whose a new one is.
+	pinned: [
+		(actor, change) => (change.row && change.row.userId !== actor.userId ? REASONS.pin : undefined)
+	],
 	member: [adminsOnly(REASONS.member), keepAdmins],
 	// Team records (#185): staff edit them, but only an Admin changes a role, and an Admin stays one. Staff may add a
 	// record with the Team role. A record nobody has signed in as yet hands its role to whoever signs in with its
