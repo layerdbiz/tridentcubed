@@ -44,7 +44,7 @@ function names(look: LookState) {
 }
 
 function pinRows(look: LookState) {
-	return toRows(look).filter((row) => row.table === 'pin');
+	return toRows(look).filter((row) => row.table === 'pinned');
 }
 
 function minutesAgo(minutes: number) {
@@ -102,7 +102,7 @@ describe('the menu’s pins', () => {
 		const { result, changes } = await save(mine, tom);
 
 		expect(result).toEqual({ isSaved: true });
-		expect(changes).toMatchObject([{ table: 'pin', operation: 'delete' }]);
+		expect(changes).toMatchObject([{ table: 'pinned', operation: 'delete' }]);
 		expect((await open(tom)).look.pins).toEqual([]);
 	});
 
@@ -115,7 +115,7 @@ describe('the menu’s pins', () => {
 		const theirs = await open(mia);
 
 		expect(theirs.look.pins).toEqual([]);
-		const [row] = await test.db.select().from(schema.pin);
+		const [row] = await test.db.select().from(schema.pinned);
 		expect(row.userId).toBe(tom.userId);
 	});
 
@@ -154,6 +154,6 @@ describe('the menu’s pins', () => {
 		const admin = (await test.signIn('ada@tridentcubed.com')).actor;
 		const activity = await readActivity(test.claims, admin);
 
-		expect(JSON.stringify(activity)).not.toContain('"pin"');
+		expect(JSON.stringify(activity)).not.toContain('"pinned"');
 	});
 });

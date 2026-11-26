@@ -565,7 +565,7 @@ CREATE TABLE "time_log_entry" (
 --> statement-breakpoint
 ALTER TABLE "time_log_entry" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
-CREATE TABLE "pin" (
+CREATE TABLE "pinned" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"organization_id" uuid NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -578,7 +578,7 @@ CREATE TABLE "pin" (
 );
 
 --> statement-breakpoint
-ALTER TABLE "pin" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "pinned" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
@@ -704,9 +704,9 @@ ALTER TABLE "time_log_entry" ADD CONSTRAINT "time_log_entry_project_id_project_i
 --> statement-breakpoint
 ALTER TABLE "time_log_entry" ADD CONSTRAINT "time_log_entry_day_id_time_log_day_id_fk" FOREIGN KEY ("day_id") REFERENCES "public"."time_log_day"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
-ALTER TABLE "pin" ADD CONSTRAINT "pin_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "pinned" ADD CONSTRAINT "pinned_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
-ALTER TABLE "pin" ADD CONSTRAINT "pin_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "pinned" ADD CONSTRAINT "pinned_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");
 --> statement-breakpoint
@@ -776,7 +776,7 @@ CREATE INDEX "time_log_day_project_idx" ON "time_log_day" USING btree ("project_
 --> statement-breakpoint
 CREATE INDEX "time_log_entry_project_idx" ON "time_log_entry" USING btree ("project_id");
 --> statement-breakpoint
-CREATE INDEX "pin_user_idx" ON "pin" USING btree ("organization_id","user_id");
+CREATE INDEX "pinned_user_idx" ON "pinned" USING btree ("organization_id","user_id");
 --> statement-breakpoint
 CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.user_id());
 --> statement-breakpoint
@@ -840,4 +840,4 @@ CREATE POLICY "time_log_day in the acting organization" ON "time_log_day" AS PER
 --> statement-breakpoint
 CREATE POLICY "time_log_entry in the acting organization" ON "time_log_entry" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
-CREATE POLICY "pin of the acting user" ON "pin" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id() and user_id = app.user_id()) WITH CHECK (organization_id = app.organization_id() and user_id = app.user_id());
+CREATE POLICY "pinned of the acting user" ON "pinned" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id() and user_id = app.user_id()) WITH CHECK (organization_id = app.organization_id() and user_id = app.user_id());

@@ -42,7 +42,7 @@ import {
 	panel,
 	personnelCompany,
 	personnelPerson,
-	pin,
+	pinned,
 	place,
 	project,
 	projectTeam,
@@ -92,7 +92,7 @@ export const DRIZZLE_TABLES: Record<TableNameType, PgTable> = {
 	time_log_day: timeLogDay,
 	time_log_entry: timeLogEntry,
 	// #346
-	pin
+	pinned
 };
 
 // What one batch learns as it goes: each project's status before the batch began, the projects it changed and
@@ -381,7 +381,7 @@ async function applyChange(
 	const server =
 		table === 'project' && operation === 'put'
 			? await toProjectValues(tx, actor, id, row, values)
-			: table === 'pin' && operation === 'put' && !row
+			: table === 'pinned' && operation === 'put' && !row
 				? { userId: actor.userId }
 				: {};
 

@@ -7,8 +7,8 @@ import { user } from './auth.schema';
 import { appRole, ORGANIZATION_ID, USER_ID } from './policy';
 import { rowColumns } from './rows';
 
-export const pin = pgTable(
-	'pin',
+export const pinned = pgTable(
+	'pinned',
 	{
 		...rowColumns(),
 		/** Whose pin it is. Set by the server only, from the acting User. */
@@ -26,8 +26,8 @@ export const pin = pgTable(
 		pinnedAt: text('pinned_at').notNull()
 	},
 	(table) => [
-		index('pin_user_idx').on(table.organizationId, table.userId),
-		pgPolicy('pin of the acting user', {
+		index('pinned_user_idx').on(table.organizationId, table.userId),
+		pgPolicy('pinned of the acting user', {
 			for: 'all',
 			to: appRole,
 			using: sql`organization_id = ${ORGANIZATION_ID} and user_id = ${USER_ID}`,

@@ -111,7 +111,7 @@ export function toListRows(look: LookState): RowType[] {
 	rows.push(...toOrganizationRows(look.organization));
 	for (const pin of look.pins)
 		rows.push({
-			table: 'pin',
+			table: 'pinned',
 			id: pin.id,
 			values: { page: pin.page, recordId: pin.recordId, pinnedAt: pin.at }
 		});
@@ -121,7 +121,7 @@ export function toListRows(look: LookState): RowType[] {
 // The signed-in person's pins (#346), newest first; Row Level Security sends nobody else's.
 function toPins(rows: SavedRowType[]): PinType[] {
 	return rows
-		.filter((row) => row.table === 'pin' && !row.deletedAt)
+		.filter((row) => row.table === 'pinned' && !row.deletedAt)
 		.map((row) => ({
 			id: row.id,
 			page: text(row.values, 'page') as DatasetType,

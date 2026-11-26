@@ -388,7 +388,7 @@ export const TABLES = {
 	// Pins (#346): what a person pinned to the top of their menu, a project or a record, by its page and id. Each
 	// person's own: the server sets whose it is (`userId`), and Row Level Security shows each person only theirs.
 	// Unpinning puts it in the Trash, which never loads.
-	pin: {
+	pinned: {
 		scope: 'organization',
 		reads: ['userId'],
 		columns: {

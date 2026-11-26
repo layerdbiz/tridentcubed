@@ -146,7 +146,7 @@ function readChanges(tx: TransactionType, where: SQL, limit?: number) {
 		})
 		.from(change)
 		// A pin (#346) is one person's own way into their menu, not a change to the organization's work.
-		.where(and(where, ne(change.tableName, 'pin')))
+		.where(and(where, ne(change.tableName, 'pinned')))
 		.orderBy(desc(change.at), desc(change.id));
 	return limit === undefined ? query : query.limit(limit);
 }
