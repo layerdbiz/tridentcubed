@@ -104,6 +104,39 @@
 		...props
 	}: MenuProps = $props();
 
+	// What is inside the list is drawn in: the theme's greys and blue with no look given (`plain`), the look's own
+	// words when it is given one (`worn`), whose picked choice wears the look's two colours swapped once they are
+	// read (`SWAPPED`), or a tint of its words when they cannot be.
+	const TONES = {
+		plain: {
+			box: 'bg-surface',
+			search: 'border-secondary/[0.06] text-base-400',
+			field: 'text-secondary placeholder:text-base-400',
+			add: 'text-primary hover:bg-primary/[0.08]',
+			addMark: 'bg-primary/10',
+			choice: 'text-secondary-400 hover:bg-secondary/[0.04]',
+			picked: 'bg-primary/[0.08] font-medium text-secondary',
+			icon: 'text-base-500',
+			quiet: 'text-base-400',
+			tick: 'text-primary',
+			pencil: 'text-base-400 hover:bg-secondary/[0.05] hover:text-primary'
+		},
+		worn: {
+			box: '',
+			search: 'border-current/10 text-current/60',
+			field: 'text-current placeholder:text-current/50',
+			add: 'text-current hover:bg-current/10',
+			addMark: 'bg-current/10',
+			choice: 'text-current hover:bg-current/10',
+			picked: 'bg-current/15 font-medium text-current',
+			icon: '',
+			quiet: 'text-current/60',
+			tick: '',
+			pencil: 'text-current/60 hover:bg-current/10 hover:text-current'
+		}
+	};
+	const SWAPPED = 'bg-(--menu-ink) font-medium text-(--menu-paper)';
+
 	let isOpen = $state(false);
 	let root: HTMLDivElement | undefined = $state();
 	let place = $state('');
@@ -113,6 +146,7 @@
 	// How tall the open list is, once it shows; 0 until then, when its height is reckoned from its choices.
 	let height = 0;
 	const current = $derived(options.find((option) => option.id === value));
+	const isBeside = $derived(opens === 'left' || opens === 'right');
 	const shown = $derived.by(() => {
 		const words = query.trim().toLowerCase();
 		if (!words) return options;
@@ -135,8 +169,10 @@
 		const [viewTop, viewHeight] = [view?.offsetTop ?? 0, view?.height ?? innerHeight];
 		if (box.bottom < viewTop || box.top > viewTop + viewHeight) return '';
 		const rows = options.reduce((sum, option) => sum + (option.note ? 52 : 44), 0);
-		const tall = height || rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
-		if (opens === 'left' || opens === 'right') return besideOf(box, viewTop, viewHeight, tall);
+		// A list beside its button is measured once it shows; one under or over it keeps the reckoning, so which way
+		// it opens never changes on a scroll.
+		const tall = (isBeside && height) || rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
+		if (isBeside) return besideOf(box, viewTop, viewHeight, tall);
 		const below = viewTop + viewHeight - box.bottom - 24;
 		const above = box.top - viewTop - 24;
 		const need = Math.min(tall, 220);
@@ -169,15 +205,19 @@
 			opens === 'left'
 				? `right: ${innerWidth - box.left + offset}px`
 				: `left: ${box.right + offset}px`;
+		const bottom = Math.min(box.bottom, last);
+		const wanted =
+			align === 'top'
+				? box.top
+				: align === 'bottom'
+					? bottom - shown
+					: box.top + (box.height - shown) / 2;
+		const top = Math.max(first, Math.min(wanted, last - shown));
+		// Lined up at the bottom, its foot is set exactly while it fits; otherwise its top keeps it on the screen.
 		const y =
-			align === 'bottom'
-				? `bottom: ${innerHeight - Math.min(box.bottom, last)}px`
-				: `top: ${Math.round(
-						Math.max(
-							first,
-							Math.min(align === 'top' ? box.top : box.top + (box.height - shown) / 2, last - shown)
-						)
-					)}px`;
+			align === 'bottom' && top === wanted
+				? `bottom: ${innerHeight - bottom}px`
+				: `top: ${Math.round(top)}px`;
 		const room = Math.min(
 			innerWidth - 16,
 			opens === 'left' ? box.left - offset - 8 : innerWidth - box.right - offset - 8
@@ -220,7 +260,7 @@
 		// followed: what it reads here never runs this again.
 		untrack(() => {
 			height = node.offsetHeight;
-			if (height && (opens === 'left' || opens === 'right')) place = placeOf() || place;
+			if (height && isBeside) place = placeOf() || place;
 			swap = /\btheme-/.test(node.className) ? swapOf(node) : '';
 		});
 		const onscroll = (event: Event) => {
@@ -247,8 +287,8 @@
 	// of its own (ghost, or a see-through one) gives nothing, and the picked choice is tinted with the words instead.
 	function swapOf(node: HTMLElement) {
 		const { color, backgroundColor } = getComputedStyle(node);
-		if (!color || !backgroundColor || /^transparent$|,\s*0\)$|\/\s*0\)$/.test(backgroundColor))
-			return '';
+		const isClear = /^transparent$|^rgba\((?:[^,]*,){3}\s*0\)$|\/\s*0%?\)$/.test(backgroundColor);
+		if (!color || !backgroundColor || isClear) return '';
 		return `--menu-ink: ${color}; --menu-paper: ${backgroundColor};`;
 	}
 </script>
@@ -273,8 +313,7 @@
 </Component>
 
 {#snippet inside(look: string)}
-	<!-- Given a look, what is inside is drawn in its words; with none, in the theme's greys and blue. -->
-	{@const hasLook = /\btheme-/.test(look)}
+	{@const tone = /\btheme-/.test(look) ? TONES.worn : TONES.plain}
 	{#if button}
 		<Button
 			{...button}
@@ -296,24 +335,16 @@
 	{#if isOpen}
 		<div
 			popover="manual"
-			class="fixed z-[120] m-0 flex flex-col overflow-hidden rounded-2xl border-0 {hasLook
-				? ''
-				: 'bg-surface'} text-left shadow-menu {look}"
+			class="fixed z-[120] m-0 flex flex-col overflow-hidden rounded-2xl border-0 {tone.box} text-left shadow-menu {look}"
 			style="inset: auto; {place}; {swap}"
 			transition:scale={{ start: 0.95, duration: 140 }}
 			{@attach lift}
 		>
 			{#if isSearchable}
-				<label
-					class="flex shrink-0 items-center gap-2 border-b px-3.5 py-2.5 {hasLook
-						? 'border-current/10 text-current/60'
-						: 'border-secondary/[0.06] text-base-400'}"
-				>
+				<label class="flex shrink-0 items-center gap-2 border-b px-3.5 py-2.5 {tone.search}">
 					<span class="icon-[mdi--magnify] size-[18px] shrink-0"></span>
 					<input
-						class="w-full min-w-0 border-0 bg-transparent p-0 text-sm outline-none focus:ring-0 {hasLook
-							? 'text-current placeholder:text-current/50'
-							: 'text-secondary placeholder:text-base-400'}"
+						class="w-full min-w-0 border-0 bg-transparent p-0 text-sm outline-none focus:ring-0 {tone.field}"
 						type="search"
 						placeholder="Search"
 						aria-label="Search {label}"
@@ -338,18 +369,15 @@
 				{#if onadd}
 					<button
 						type="button"
-						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition {hasLook
-							? 'text-current hover:bg-current/10'
-							: 'text-primary hover:bg-primary/[0.08]'}"
+						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition {tone.add}"
 						onclick={() => {
 							isOpen = false;
 							onadd();
 						}}
 					>
 						<span
-							class="flex size-7 shrink-0 items-center justify-center rounded-full {hasLook
-								? 'bg-current/10'
-								: 'bg-primary/10'}"><span class="icon-[mdi--plus] size-[18px]"></span></span
+							class="flex size-7 shrink-0 items-center justify-center rounded-full {tone.addMark}"
+							><span class="icon-[mdi--plus] size-[18px]"></span></span
 						>
 						<span class="flex-1">Add new {addLabel || label}</span>
 					</button>
@@ -363,15 +391,11 @@
 							aria-selected={isOn}
 							class="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition {option.isDanger
 								? 'font-medium text-danger hover:bg-danger/10'
-								: hasLook
-									? isOn
-										? swap
-											? 'bg-(--menu-ink) font-medium text-(--menu-paper)'
-											: 'bg-current/15 font-medium text-current'
-										: 'text-current hover:bg-current/10'
-									: isOn
-										? 'bg-primary/[0.08] font-medium text-secondary'
-										: 'text-secondary-400 hover:bg-secondary/[0.04]'}"
+								: !isOn
+									? tone.choice
+									: tone === TONES.worn && swap
+										? SWAPPED
+										: tone.picked}"
 							onclick={() => pick(option.id)}
 						>
 							{#if mark}{@render mark(option, isOn)}{:else}
@@ -381,9 +405,7 @@
 										fit={option.fit}
 									/>{/if}
 								{#if option.icon}<span
-										class="{option.icon} size-[18px] shrink-0 {option.isDanger || hasLook
-											? ''
-											: 'text-base-500'}"
+										class="{option.icon} size-[18px] shrink-0 {option.isDanger ? '' : tone.icon}"
 									></span>{/if}
 								{#if option.dot}<span class="size-2.5 shrink-0 rounded-full {option.dot}"
 									></span>{/if}
@@ -393,29 +415,20 @@
 							{#if option.note}
 								<span class="flex min-w-0 flex-1 flex-col">
 									<span class="truncate">{option.label}</span>
-									<span
-										class="truncate text-xs font-normal {hasLook
-											? 'text-current/60'
-											: 'text-base-400'}">{option.note}</span
-									>
+									<span class="truncate text-xs font-normal {tone.quiet}">{option.note}</span>
 								</span>
 							{:else}
 								<span class="min-w-0 flex-1 truncate">{option.label}</span>
 							{/if}
-							{#if option.count !== undefined}<span
-									class="text-xs tabular-nums {hasLook ? 'text-current/60' : 'text-base-400'}"
+							{#if option.count !== undefined}<span class="text-xs tabular-nums {tone.quiet}"
 									>{option.count}</span
 								>{/if}
-							{#if isOn}<span
-									class="icon-[mdi--check] size-4 shrink-0 {hasLook ? '' : 'text-primary'}"
-								></span>{/if}
+							{#if isOn}<span class="icon-[mdi--check] size-4 shrink-0 {tone.tick}"></span>{/if}
 						</button>
 						{#if onedit}
 							<button
 								type="button"
-								class="flex size-9 shrink-0 items-center justify-center rounded-full transition {hasLook
-									? 'text-current/60 hover:bg-current/10 hover:text-current'
-									: 'text-base-400 hover:bg-secondary/[0.05] hover:text-primary'}"
+								class="flex size-9 shrink-0 items-center justify-center rounded-full transition {tone.pencil}"
 								aria-label="Edit {option.label}"
 								title="Edit"
 								onclick={() => {
@@ -426,9 +439,7 @@
 						{/if}
 					</div>
 				{:else}
-					<p class="px-3 py-2 text-sm {hasLook ? 'text-current/60' : 'text-base-400'}">
-						Nothing matches
-					</p>
+					<p class="px-3 py-2 text-sm {tone.quiet}">Nothing matches</p>
 				{/each}
 			</div>
 		</div>

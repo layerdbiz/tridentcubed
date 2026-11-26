@@ -24,33 +24,27 @@
 		ondownload: () => void;
 	} = $props();
 
-	const MODES: { id: LayoutType; name: string; hint: string; icon: string }[] = [
+	const MODES: { id: LayoutType; label: string; note: string; icon: string }[] = [
 		{
 			id: 'column',
-			name: 'Stack',
-			hint: 'One under another',
+			label: 'Stack',
+			note: 'One under another',
 			icon: 'icon-[mdi--view-sequential-outline]'
 		},
 		{
 			id: 'spread',
-			name: 'Spread',
-			hint: 'Every page at once',
+			label: 'Spread',
+			note: 'Every page at once',
 			icon: 'icon-[mdi--view-grid-outline]'
 		},
 		{
 			id: 'present',
-			name: 'Present',
-			hint: 'One page at a time',
+			label: 'Present',
+			note: 'One page at a time',
 			icon: 'icon-[mdi--play-circle-outline]'
 		}
 	];
 	const now = $derived(MODES.find((mode) => mode.id === layout) ?? MODES[0]);
-	const OPTIONS = MODES.map((mode) => ({
-		id: mode.id,
-		label: mode.name,
-		note: mode.hint,
-		icon: mode.icon
-	}));
 	// The bar stands at the right, in the middle on a desktop, where the menu centres on its button; low on a phone,
 	// where the menu's foot lines up with its button's so it stays over the bar at the bottom.
 	const wide = new MediaQuery('min-width: 48rem');
@@ -155,7 +149,7 @@
 	<Menu
 		label="How the pages lie"
 		value={layout}
-		options={OPTIONS}
+		options={MODES}
 		onpick={pick}
 		opens="left"
 		align={wide.current ? 'center' : 'bottom'}
@@ -167,8 +161,8 @@
 			invert: true,
 			sm: true,
 			icon: now.icon,
-			'aria-label': `${now.name}: choose how the pages lie`,
-			title: `${now.name}: choose how the pages lie`,
+			'aria-label': `${now.label}: choose how the pages lie`,
+			title: `${now.label}: choose how the pages lie`,
 			class: MODE_BUTTON
 		}}
 	/>

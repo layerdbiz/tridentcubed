@@ -491,6 +491,16 @@ describe('where the list goes', () => {
 		expect(listOf()?.getAttribute('style')).toContain('top: 400px');
 	});
 
+	it('keeps a list lined up at the bottom on the screen when it is taller than the room above', async () => {
+		placeButton({ top: 64, left: 900, width: 36, height: 36 });
+		show({ opens: 'left', align: 'bottom', options: FACILITIES });
+		await open();
+
+		const style = listOf()?.getAttribute('style') ?? '';
+		expect(style).toContain('top: 8px');
+		expect(style).not.toContain('bottom:');
+	});
+
 	it('keeps a list opened beside its button on the screen', async () => {
 		placeButton({ top: 4, left: 900, width: 36, height: 36 });
 		show({ opens: 'left', options: FACILITIES });
@@ -596,6 +606,17 @@ describe('a look given from outside (#390, the zoom bar’s dark menu)', () => {
 		const style = listOf()?.getAttribute('style') ?? '';
 		expect(style).toContain('--menu-ink: rgb(250, 250, 251)');
 		expect(style).toContain('--menu-paper: rgb(1, 1, 2)');
+	});
+
+	it('swaps a black fill too: only a see-through fill counts as none', async () => {
+		paint('rgb(255, 255, 255)', 'rgb(0, 0, 0)');
+		show({ color: 'base', appearance: 'heavy', value: 'cards' });
+		const list = await open();
+
+		expect(listOf()?.getAttribute('style')).toContain('--menu-paper: rgb(0, 0, 0)');
+		expect(within(list).getByRole('option', { name: 'Cards' }).className).toContain(
+			'bg-(--menu-ink)'
+		);
 	});
 
 	it('marks the picked choice with a tint of its words when its look has no fill of its own', async () => {

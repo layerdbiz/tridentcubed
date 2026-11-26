@@ -77,7 +77,7 @@
 		items
 			? 'pointer-events-auto w-full max-w-sm rounded-2xl py-3 pr-2 pl-4'
 			: !progress
-				? `rounded-full px-4 py-2.5 ${icon ? 'flex items-center gap-2' : ''} ${onclick && !props.disabled ? 'pointer-events-auto cursor-pointer' : ''}`
+				? `rounded-full px-4 py-2.5 ${icon ? 'flex items-center gap-2' : ''} ${onclick && !props.disabled ? 'pointer-events-auto cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary' : ''}`
 				: `w-full max-w-sm rounded-2xl px-4 py-3 ${progress.problem ? 'pointer-events-auto' : ''}`
 	);
 </script>
