@@ -1,8 +1,10 @@
 /* BASE */
 export * from "./base/component.svelte.ts";
 export { default as Component } from "./base/component.svelte";
+export * from "./base/light.ts";
 export * from "./base/root.svelte.ts";
 export { default as Root } from "./base/root.svelte";
+export { default as Rooted } from "./base/rooted.svelte";
 export * from "./base/helpers/address.ts";
 export * from "./base/helpers/classes.svelte.ts";
 export * from "./base/helpers/debug/debug.svelte.ts";

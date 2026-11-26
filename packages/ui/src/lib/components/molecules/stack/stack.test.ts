@@ -55,4 +55,14 @@ describe('Stack', () => {
 		expect(screen.getByTitle('Ana (team lead)')).toBeTruthy();
 		expect(screen.getByRole('img', { name: 'Ben' }).tagName).toBe('SPAN');
 	});
+
+	// Built on the base component (Justin, 2026-11-26), its look is set from outside.
+	it('wears the look it is given on its box', () => {
+		const { container } = render(Stack, { props: { items: PEOPLE, lite: true, class: 'gap-1' } });
+
+		const box = container.firstElementChild as HTMLElement;
+		expect(box.className).toContain('stack');
+		expect(box.className).toContain('theme-lite-base');
+		expect(box.className).toContain('gap-1');
+	});
 });

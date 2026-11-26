@@ -84,4 +84,17 @@ describe('Compact', () => {
 		expect(onpaste).toHaveBeenCalledOnce();
 		expect(onchange).toHaveBeenCalledOnce();
 	});
+
+	// Built on the base component (Justin, 2026-11-26), its look is set from outside, and it is still one input.
+	it('wears the notched box look, and the look it is given from outside, on its one input', () => {
+		const { container } = render(Compact, {
+			props: { label: 'Qty', value: '', lite: true, neutral: true, class: 'w-20!' }
+		});
+
+		const input = screen.getByRole('textbox', { name: 'Qty' });
+		expect(container.children).toHaveLength(1);
+		expect(input.className).toContain('field-compact');
+		expect(input.className).toContain('theme-lite-neutral');
+		expect(input.className).toContain('w-20!');
+	});
 });

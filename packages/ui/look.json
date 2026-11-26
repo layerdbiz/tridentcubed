@@ -6,18 +6,14 @@
 			"colours": 0
 		},
 		"components/atoms/avatar/avatar.svelte": {
-			"base": false,
-			"colours": 8
+			"base": true,
+			"colours": 5
 		},
 		"components/atoms/content/content.svelte": {
 			"base": true,
 			"colours": 4
 		},
 		"components/atoms/forms/checkbox/checkbox.svelte": {
-			"base": false,
-			"colours": 0
-		},
-		"components/atoms/forms/compact/compact.svelte": {
 			"base": false,
 			"colours": 0
 		},
@@ -98,8 +94,8 @@
 			"colours": 3
 		},
 		"components/molecules/stack/stack.svelte": {
-			"base": false,
-			"colours": 3
+			"base": true,
+			"colours": 2
 		},
 		"components/molecules/toast/toast.svelte": {
 			"base": true,
