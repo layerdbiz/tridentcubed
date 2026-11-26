@@ -3,8 +3,9 @@
 	// and on the board (Justin's run 12 notes 6, 10 and 19). Never more than three lines: the name, its labels, and
 	// where it is; its projects are the badge on its icon. The ⋮ sits top right and the › under it, as on a project's
 	// row; a tap opens its own page.
-	import ClientLogo from './client-logo.svelte';
+	import { Stack } from '@layerd/ui';
 	import Faces from './faces.svelte';
+	import { logoOf } from './marks';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import PlaceLine from './place-line.svelte';
@@ -38,19 +39,16 @@
 						max={3}
 					/>
 				{:else if record.logos.length}
-					<span class="flex shrink-0 items-center">
-						{#each record.logos.slice(0, 3) as name, index (name)}
-							<span
-								class="relative rounded-full ring-2 ring-white"
-								style="z-index: {10 - index}; margin-left: {index ? -8 : 0}px"
-								><ClientLogo
-									{name}
-									size={22}
-									shape="circle"
-								/></span
-							>
-						{/each}
-					</span>
+					<Stack
+						class="shrink-0"
+						items={record.logos.slice(0, 3).map((name) => ({
+							...logoOf(name),
+							shape: 'circle',
+							id: name,
+							ring: 'ring-2 ring-white'
+						}))}
+						size={22}
+					/>
 				{/if}
 			</span>
 			<!-- The label line and the place line keep their height when empty, so every row is as tall as the next. -->

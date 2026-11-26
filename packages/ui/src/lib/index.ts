@@ -30,6 +30,7 @@ export * from "./utils/trackevent.ts";
 
 /* COMPONENTS */
 // atoms
+export { default as Avatar, type AvatarProps } from "./components/atoms/avatar/avatar.svelte";
 export { default as Button, type ButtonProps } from "./components/atoms/button/button.svelte";
 export { default as Checkbox } from "./components/atoms/forms/checkbox/checkbox.svelte";
 export { default as Colorss } from "./components/atoms/Colorss.svelte";
@@ -59,7 +60,7 @@ export { default as Section } from "./components/atoms/section/section.svelte";
 export * from "./components/atoms/section/section.data.ts";
 export * from "./components/atoms/forms/select/select.svelte.ts";
 export { default as Select } from "./components/atoms/forms/select/select.svelte";
-export { default as Switch } from "./components/atoms/forms/switch/switch.svelte";
+export { default as Switch, type SwitchProps } from "./components/atoms/forms/switch/switch.svelte";
 export { default as Table, type TableColumn, type TableProps } from "./components/atoms/table/table.svelte";
 export { default as Tabs, type TabsProps } from "./components/atoms/tabs/tabs.svelte";
 export { default as Text, type TextProps } from "./components/atoms/text/text.svelte";
@@ -79,6 +80,7 @@ export { default as Card, type CardProps } from "./components/molecules/card/car
 export * from "./components/molecules/card/card.data.ts";
 export { default as Controls } from "./components/molecules/chart/controls.svelte";
 export { default as Copyright, type CopyrightProps } from "./components/molecules/copyright/copyright.svelte";
+export { default as Dialog, type DialogProps } from "./components/molecules/dialog/dialog.svelte";
 export * from "./components/molecules/grid/grid.svelte.ts";
 export { default as Grid, type GridProps } from "./components/molecules/grid/grid.svelte";
 export { default as Item, type ItemProps } from "./components/molecules/grid/item.svelte";
@@ -89,6 +91,7 @@ export { default as Menu, type MenuOptionType, type MenuProps } from "./componen
 export { default as Navbar } from "./components/molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./components/molecules/preview/preview.svelte";
 export { default as Slider, type SliderProps } from "./components/molecules/slider/slider.svelte";
+export { default as Stack, type StackItemType, type StackProps } from "./components/molecules/stack/stack.svelte";
 export * from "./components/molecules/toast/toast.svelte.ts";
 export { default as Toast, type ToastProps } from "./components/molecules/toast/toast.svelte";
 export { default as Toggle, type ToggleProps } from "./components/molecules/toggle/toggle.svelte";

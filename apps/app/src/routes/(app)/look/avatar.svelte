@@ -1,16 +1,12 @@
 <script lang="ts">
-	// PROTOTYPE (#161): one person's photo in a white border, with a presence dot top right (Justin's note 9): green
+	// PROTOTYPE (#161): one person's face by name, drawn by the library's avatar (#379): their photo, or their
+	// initials on their role's colour (#355), in a white border, with a presence dot top right (Justin's note 9): green
 	// online, orange idle, grey offline, from when the server last saw them (`presenceOf`). A list that keeps its own
 	// time (the menu's Online panel, #331) gives the dot it read, so the dot and its words never disagree.
-	import { toCrossOrigin } from '#lib/files/files.schema.js';
-	import {
-		initialsOf,
-		isInitialsPicture,
-		toInitialsPicture,
-		type InitialsToneType
-	} from './initials';
-	import { personOf, presenceOf } from './look.data';
-	import { PRESENCE_TONES, type PresenceType } from './team.data';
+	import { Avatar } from '@layerd/ui';
+	import type { InitialsToneType } from './initials';
+	import { faceOf } from './marks';
+	import type { PresenceType } from './team.data';
 
 	let {
 		name,
@@ -20,7 +16,7 @@
 		hasPresence = true,
 		badge,
 		badgeScale = 0.42,
-		presence: given,
+		presence,
 		tone
 	}: {
 		name: string;
@@ -41,53 +37,17 @@
 		tone?: InitialsToneType;
 	} = $props();
 
-	const presence = $derived(given ?? presenceOf(name));
-	// Someone with no photo yet shows their initials on their role's colour (#355), never a person icon.
-	const saved = $derived(personOf(name).photo);
-	const photo = $derived(
-		tone && isInitialsPicture(saved) ? toInitialsPicture(initialsOf(name), tone) : saved
-	);
-	const dot = $derived(Math.max(8, Math.round(size * 0.28)));
+	const face = $derived(faceOf(name, { tone, presence, hasPresence }));
 </script>
 
-<span
-	class="relative inline-block shrink-0"
-	style="width: {size}px; height: {size}px"
->
-	{#if isInitialsPicture(photo) && !initialsOf(name)}
-		<!-- No name typed yet, so no letters: the person icon on grey. -->
-		<span
-			class="flex size-full items-center justify-center rounded-full bg-slate-200 text-slate-400 ring-2 {ring}"
-			role="img"
-			aria-label={name}><span class="icon-[mdi--account] size-[62%]"></span></span
-		>
-	{:else}
-		<img
-			src={photo}
-			crossorigin={toCrossOrigin(photo)}
-			alt={name}
-			draggable="false"
-			class="size-full rounded-full bg-slate-200 object-cover ring-2 {ring} {isMuted
-				? 'grayscale'
-				: ''}"
-		/>
-	{/if}
-	{#if badge}
-		<span
-			class="absolute -right-1 -bottom-1 overflow-hidden rounded-full bg-black ring-[1.5px] ring-white"
-			style="width: {Math.round(size * badgeScale)}px; height: {Math.round(size * badgeScale)}px"
-			><img
-				src={badge}
-				alt=""
-				draggable="false"
-				class="size-full object-cover"
-			/></span
-		>
-	{:else if hasPresence}
-		<span
-			class="absolute top-0 right-0 rounded-full ring-2 ring-white {PRESENCE_TONES[presence]}"
-			style="width: {dot}px; height: {dot}px"
-			title={presence}
-		></span>
-	{/if}
-</span>
+<Avatar
+	src={face.src}
+	alt={face.alt}
+	crossorigin={face.crossorigin}
+	presence={face.presence}
+	{size}
+	ring="ring-2 {ring}"
+	{isMuted}
+	{badge}
+	{badgeScale}
+/>

@@ -174,8 +174,6 @@ src/routes/offline/                the Needs Internet screen the service worker 
 src/lib/install/                   Install App: install.constants.ts, install.state.svelte.ts (it starts
                                    hearing the browser in src/hooks.client.ts) and how-to.svelte; used by
                                    routes/(app)/look/account-menu.svelte and routes/login/login.svelte
-src/lib/components/sheet/          the one sheet (slides up on a phone, a pop-up from tablet width up),
-                                   here because the login page's how-to opens in it too
 src/lib/update/                    the update note: its rule, its test and the note, wired into the
                                    signed-in app only; in lib because the service worker reads its
                                    one message (update.constants.ts) too

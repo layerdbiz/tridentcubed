@@ -1,0 +1,52 @@
+/* The Trident theme: the app's colours, font, text scale, corners and edges.
+ *
+ * The library (@layerd/ui) reads every value here from <html data-theme="trident"> (app.html, and the PDF export's
+ * page in lib/server/export.ts). It turns each colour into eleven shades, 50 to 950, by mixing it with white or
+ * black (packages/ui/src/lib/css/1-theme/colors.css), and its looks take their colours from those shades
+ * (css/3-presets/presets.css): a component's `color` (base, neutral, primary, secondary, accent) and `appearance`
+ * (heavy, lite, outline, ghost, glass, gradient) props, or the boolean shorthands (`primary`, `lite`...), pick the
+ * look, so `<Button color="primary" appearance="heavy">` is the app's blue button. The app's own Tailwind classes
+ * read the same colours by name: bg-primary, text-danger, bg-success.
+ */
+[data-theme='trident'] {
+	/* colours */
+	--theme-color: var(--color-slate-500);
+	/* base: the library's form fields, Select and Help draw their lines and words from its shades */
+	--theme-color-base: var(--color-slate-500);
+	/* the app's blue: every blue button, link and ring (bg-primary, text-primary) */
+	--theme-color-primary: var(--color-blue-600);
+	/* the app's black (slate-900): its dark buttons, as color="secondary" appearance="heavy" */
+	--theme-color-secondary: var(--color-slate-900);
+	--theme-color-accent: var(--color-green-500);
+	/* the app's light grey: color="neutral" appearance="lite" draws shade 200 behind (slate-300 mixed 30% with
+	 * white, the app's slate-100) and shade 700 words (40% with black, as dark as the app's slate-700) */
+	--theme-color-neutral: var(--color-slate-300);
+	--theme-color-info: var(--color-blue-600);
+	--theme-color-warning: var(--color-amber-500);
+	--theme-color-success: var(--color-emerald-500);
+	--theme-color-danger: var(--color-rose-500);
+
+	/* fonts */
+	--theme-font: var(--font-asta);
+
+	/* text scale: the library's prose (.prose) reads these */
+	--theme-scale: 1.125;
+	--theme-scale-xs: 0.875; /* 14px base */
+	--theme-scale-sm: 1; /* 16px base */
+	--theme-scale-md: 1.125; /* 18px base */
+	--theme-scale-lg: 1.25; /* 20px base */
+	--theme-scale-xl: 1.5; /* 24px base */
+
+	/* radius: round buttons (rounded-button), round boxes (rounded-box) */
+	--theme-radius: 9999px;
+	--theme-radius-box: 1.5rem;
+	--theme-radius-button: 10em;
+
+	/* borders, outlines, rings, strokes */
+	--theme-edge: 1px;
+	--theme-edge-xs: 1px;
+	--theme-edge-sm: 2px;
+	--theme-edge-md: 3px;
+	--theme-edge-lg: 4px;
+	--theme-edge-xl: 5px;
+}
