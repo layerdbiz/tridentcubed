@@ -644,8 +644,14 @@
 	}
 
 	fieldset .select-start {
-		@apply z-2 col-start-1 row-start-1 flex h-(--pick-size) self-center justify-self-start;
+		@apply z-3 col-start-1 row-start-1 flex h-(--pick-size) self-center justify-self-start;
 		margin-inline-start: calc(var(--pick-inset) - var(--field-edge));
+	}
+
+	/* The label's ? reaches 12px past itself for a finger, onto a start control right under it, and the label sits over
+	   the whole box: the start control alone rises above it, so a tap on the chip always opens the chip's menu. */
+	fieldset:has(> label > .select-start) > label {
+		@apply z-auto;
 	}
 
 	fieldset .select-start > :global(*),
