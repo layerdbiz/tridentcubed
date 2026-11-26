@@ -534,10 +534,10 @@
 		<div class="select-root">
 			<fieldset
 				{...props}
-				class={`field ${props.class} ${isHinted ? 'field-filled' : fieldState.className}`.trim()}
+				class={`field ${props.class} ${isHinted ? 'field-filled' : fieldState.className} ${hasLabel ? '' : 'field-unlabelled'}`.trim()}
 				style:--start-width={start ? `${startWidth}px` : undefined}
 			>
-				<legend class={hasLabel ? undefined : 'sr-only'}
+				<legend
 					><span>{fieldState.labelText}</span>{#if help && hasLabel}<Help
 							label={fieldState.labelText}
 							text={help}
@@ -598,12 +598,11 @@
 	}
 
 	fieldset .select-trigger {
-		@apply flex size-full items-center rounded-(--field-radius) text-left text-[1em] text-base-900;
+		@apply flex size-full items-center text-left text-[1em];
 		@apply ps-(--input-pad-start) pe-(--input-pad-end);
-	}
 
-	fieldset:has(.start) .select-trigger {
-		padding-inline-start: calc(var(--input-pad-start) + var(--notch-padding));
+		color: var(--field-color);
+		border-radius: calc(var(--field-radius) - var(--field-edge));
 	}
 
 	fieldset .select-trigger-value {
@@ -611,7 +610,9 @@
 	}
 
 	/* The pick's picture and a start control are one size, which follows the field's font, the same small way in from
-	   the box's edge as from its top and bottom (#388): a fixed size outgrew a smaller box. */
+	   the box's outer edge as from its top and bottom (#388): a fixed size outgrew a smaller box. forms.css measures
+	   the insides from the border's outer edge (`--notch-indent`), and the border thickens inward while in use, so
+	   these take its width (`--field-edge`) off to stay put. */
 	fieldset {
 		--pick-size: 2em;
 		--pick-inset: 0.5em;
@@ -621,14 +622,13 @@
 	   rests after it. */
 	fieldset:has(.select-pick) {
 		--prefix-width: calc(
-			var(--pick-size) + var(--pick-inset) + var(--icon-gap) - var(--content-start)
+			var(--pick-size) + var(--pick-inset) + var(--icon-gap) - var(--notch-indent)
 		);
-		--legend-float-pad-start: var(--icon-gap);
 	}
 
 	fieldset .select-trigger:has(.select-pick) {
 		gap: var(--icon-gap);
-		padding-inline-start: var(--pick-inset);
+		padding-inline-start: calc(var(--pick-inset) - var(--field-edge));
 	}
 
 	fieldset .select-pick {
@@ -639,25 +639,18 @@
 	   pick's picture and as far in, and the words and an empty field's label rest after it. Its own button fills it. */
 	fieldset:has(.select-start) {
 		--prefix-width: calc(
-			var(--start-width, 0px) + var(--pick-inset) + var(--icon-gap) - var(--content-start)
+			var(--start-width, 0px) + var(--pick-inset) + var(--icon-gap) - var(--notch-indent)
 		);
-		--legend-float-pad-start: var(--icon-gap);
 	}
 
 	fieldset .select-start {
 		@apply z-2 col-start-1 row-start-1 flex h-(--pick-size) self-center justify-self-start;
-		margin-inline-start: var(--pick-inset);
+		margin-inline-start: calc(var(--pick-inset) - var(--field-edge));
 	}
 
 	fieldset .select-start > :global(*),
 	fieldset .select-start > :global(* > button) {
 		@apply h-full;
-	}
-
-	/* A second row's label stays off the border, kept for a screen reader: forms.css's legend rules outrank the plain
-	   utility, which would leave a gap in the border. */
-	fieldset legend.sr-only {
-		@apply sr-only;
 	}
 
 	/* The chevron lets a tap through to the button under it. */

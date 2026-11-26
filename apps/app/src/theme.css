@@ -6,8 +6,9 @@
  * (css/3-presets/presets.css): a component's `color` (base, neutral, primary, secondary, accent) and `appearance`
  * (heavy, lite, outline, ghost, glass, gradient) props, or the boolean shorthands (`primary`, `lite`...), pick the
  * look, so `<Button color="primary" appearance="heavy">` is the app's blue button and `<Button danger>` its red one.
- * The Button's sizes, the light look's shades and the glass white are set here too (`--theme-button-*`,
- * `--theme-lite-*`, `--theme-glass`): without them the library keeps its own, as the site does. The app's own
+ * The Button's sizes, the form fields' sizes, the light look's shades and the glass white are set here too
+ * (`--theme-button-*`, `--theme-field-*`, `--theme-lite-*`, `--theme-glass`): without them the library keeps its own,
+ * as the site does. The app's own
  * Tailwind classes read the same colours by name: bg-primary, text-danger, bg-success.
  */
 [data-theme='trident'] {
@@ -116,6 +117,17 @@
 	--theme-button-ps-icon-xxl: calc(var(--spacing) * 7.5);
 	--theme-button-pe-icon-xxl: calc(var(--spacing) * 9);
 	--theme-button-py-icon-xxl: calc(var(--spacing) * 5.5);
+
+	/* form fields (the library Input, Textarea, Select and Compact): the app's own boxes before the library's, 14 px
+	 * words in slate-900, 40 px tall with 12 px corners and 12 px in from the edge, the label 12 px medium. Sizes in
+	 * the words' em, so a field given another size keeps the same shape. */
+	--theme-field-size: 0.875rem;
+	--theme-field-height: calc(40em / 14);
+	--theme-field-radius: calc(12em / 14);
+	--theme-field-pad: calc(12em / 14);
+	--theme-field-label: calc(12 / 14);
+	--theme-field-weight: var(--font-weight-medium);
+	--theme-field-color: var(--color-secondary);
 
 	/* the light look: the app's light blue and light red (a 10% tint behind words in the full colour), and its grey
 	 * (slate-100 behind slate-700 words, which a grey ghost button keeps without the grey) */

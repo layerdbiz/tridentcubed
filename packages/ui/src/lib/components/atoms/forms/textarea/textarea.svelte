@@ -56,14 +56,7 @@
 		...props
 	}: TextareaProps = $props();
 
-	let fieldsetNode = $state<HTMLFieldSetElement | null>(null);
 	let textareaNode = $state<HTMLTextAreaElement | null>(null);
-
-	function syncFieldHeight() {
-		if (!fieldsetNode || !textareaNode) return;
-
-		fieldsetNode.style.setProperty('--input-height', `${textareaNode.offsetHeight}px`);
-	}
 
 	// What is being typed, kept while the textarea has the focus: emptied, it stays empty under the caret, and the
 	// app's value comes back once the focus leaves.
@@ -102,25 +95,10 @@
 		value = nextValue === null || nextValue === undefined ? '' : String(nextValue);
 	}
 
-	$effect(() => {
-		if (!textareaNode) return;
-
-		const autosize = new TextareaAutosize({
-			element: () => textareaNode || undefined,
-			input: () => shown
-		});
-
-		syncFieldHeight();
-
-		const resizeObserver = new ResizeObserver(() => {
-			syncFieldHeight();
-		});
-
-		resizeObserver.observe(textareaNode);
-
-		return () => {
-			resizeObserver.disconnect();
-		};
+	// The textarea grows with its words, and the box with it (#394): the box is as tall as what is in it.
+	new TextareaAutosize({
+		element: () => textareaNode ?? undefined,
+		input: () => shown
 	});
 </script>
 
@@ -179,6 +157,7 @@
 		{minlength}
 		{maxlength}
 		{rows}
+		style:--textarea-rows={rows}
 		{wrap}
 		{inputmode}
 		{autocomplete}
@@ -220,7 +199,6 @@
 	{#snippet component({ props }: { props: ComponentReturn })}
 		<!-- The label sits on the border in the legend, apart from the field, which is named by it. -->
 		<fieldset
-			bind:this={fieldsetNode}
 			{...props}
 			class={`field ${props.class} ${fieldState.className} ${toGeneratedClass(generatedState)} textarea`.trim()}
 		>
@@ -248,27 +226,44 @@
 <style lang="postcss">
 	@reference "#ui.css";
 
+	/* The box is as tall as the textarea in it, which grows with its words (#394): its inside sits in the flow, from
+	   the border's middle row down, where an input's is laid over a box of fixed height. An empty one's label rests on
+	   the first line. */
 	:global {
 		fieldset.textarea {
-			--input-height: 8.5em;
 			--textarea-padding-top: 0.75em;
 			--textarea-padding-bottom: 0.75em;
+			--textarea-line: 1.5em;
 			--textarea-icon-offset: 0.75em;
-			--legend-float-y: 2em;
-			height: var(--input-height);
-			min-height: var(--input-height);
+			--legend-float-y: calc(
+				var(--textarea-padding-top) + var(--textarea-line) / 2 + (var(--legend-ratio) - 1) *
+					0.625em + 0.5px
+			);
+			height: auto;
 		}
 
+		fieldset.textarea > label {
+			position: relative;
+			inset: auto;
+			margin-top: calc((1px - var(--legend-line)) / 2);
+		}
+
+		/* At least its rows tall, empty too: the size it is measured at has no rows of its own. */
 		fieldset.textarea textarea {
-			@apply min-h-(--input-height);
+			min-height: calc(
+				var(--textarea-rows, 4) * var(--textarea-line) + var(--textarea-padding-top) +
+					var(--textarea-padding-bottom)
+			);
 			padding-top: var(--textarea-padding-top);
 			padding-bottom: var(--textarea-padding-bottom);
+			line-height: var(--textarea-line);
 			resize: none;
 		}
 
-		/* One selector, not a list: a nested list flattens to :is(:global ...),
-		   which Svelte rejects. */
-		fieldset.textarea :is(.icon.start, .icon.end, .generated) {
+		/* The icons and the wand sit on the first line, not in the middle: as specific as forms.css's own rules for
+		   them, and after them. One selector, not a list: a nested list flattens to :is(:global ...), which Svelte
+		   rejects. */
+		fieldset.field.textarea > label > :is(.icon.start, .icon.end, .generated) {
 			@apply self-start;
 			margin-top: var(--textarea-icon-offset);
 		}

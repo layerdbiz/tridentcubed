@@ -104,9 +104,10 @@
 				isOpen={open.includes('details')}
 				ontoggle={() => toggle('details')}
 			>
-				<!-- Every field below changes the organization as it is typed; the badge says it is saving. -->
+				<!-- Every field below changes the organization as it is typed; the badge says it is saving. The fields stand
+				     apart as a panel's do: a box with no room round it would let the boxes touch. -->
 				<fieldset
-					class="contents"
+					class="min-w-0 space-y-3"
 					disabled={!isEditable}
 					oninput={() => look.flash()}
 				>
@@ -188,7 +189,7 @@
 				ontoggle={() => toggle('disclaimer')}
 			>
 				<fieldset
-					class="contents"
+					class="min-w-0 space-y-3"
 					disabled={!isEditable}
 					oninput={() => look.flash()}
 				>
@@ -273,7 +274,7 @@
 				ontoggle={() => toggle('signoff')}
 			>
 				<fieldset
-					class="contents"
+					class="min-w-0 space-y-3"
 					disabled={!isEditable}
 					oninput={() => look.flash()}
 				>
