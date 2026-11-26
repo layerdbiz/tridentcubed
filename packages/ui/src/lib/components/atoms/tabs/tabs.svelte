@@ -25,7 +25,7 @@
 	export interface TabsProps<T> extends Omit<ComponentProps, 'value' | 'label' | 'disabled'> {
 		/** The tabs' values, in order. */
 		options: readonly T[];
-		/** The picked tab's value (bindable). */
+		/** The picked tab's value (bindable), matched with ===: an object kept in `$state` is a copy, so keep it in `$state.raw`. */
 		value?: T;
 		/** What the row picks, read out by a screen reader. */
 		label: string;

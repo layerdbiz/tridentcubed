@@ -30,7 +30,8 @@
 		}
 	] as const;
 
-	let phone = $state<(typeof PHONES)[number]>(PHONES[0]);
+	// Raw, so the picked phone stays the very object in PHONES that the tabs compare it with.
+	let phone = $state.raw<(typeof PHONES)[number]>(PHONES[0]);
 </script>
 
 <Dialog

@@ -26,7 +26,7 @@
 	> {
 		/** The choices' values, in order. */
 		options: readonly T[];
-		/** The picked choice's value (bindable). */
+		/** The picked choice's value (bindable), matched with ===: an object kept in `$state` is a copy, so keep it in `$state.raw`. */
 		value?: T;
 		/** What the group picks, read out by a screen reader, when no label beside it names it. */
 		label?: string;
