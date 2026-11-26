@@ -70,6 +70,9 @@ export const TRANSPORT_MODES = [
 
 export const FACILITY_KINDS = ['Port', 'Airport', 'Rail yard', 'Depot'] as const;
 
+/** The pages a pin can point into (#346): the dashboard's own, by the screens' names for them. */
+export const PIN_PAGES = ['projects', 'customers', 'team', 'transport', 'facilities'] as const;
+
 export type TableSpecType = {
 	columns: Record<string, v.GenericSchema>;
 	parent?: { table: string; column: string };
@@ -380,6 +383,19 @@ export const TABLES = {
 			position: POSITION,
 			time: v.pipe(v.string(), v.regex(/^(\d{2}:\d{2})?$/, 'A time is HH:MM.')),
 			activity: TEXT
+		}
+	},
+	// Pins (#346): what a person pinned to the top of their menu, a project or a record, by its page and id. Each
+	// person's own: the server sets whose it is (`userId`), and Row Level Security shows each person only theirs.
+	// Unpinning puts it in the Trash, which never loads.
+	pin: {
+		scope: 'organization',
+		reads: ['userId'],
+		columns: {
+			page: v.picklist(PIN_PAGES),
+			recordId: ID,
+			// When it was pinned, the device's ISO time: the list's order, newest on top.
+			pinnedAt: v.pipe(v.string(), v.isoTimestamp())
 		}
 	}
 } as const satisfies Record<string, TableSpecType>;

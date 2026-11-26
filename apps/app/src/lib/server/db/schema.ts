@@ -14,3 +14,4 @@ export * from './project.schema';
 export * from './file.schema';
 export * from './photo.schema';
 export * from './trip.schema';
+export * from './pin.schema';
