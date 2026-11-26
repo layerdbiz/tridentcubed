@@ -8,7 +8,7 @@
 	// 2026-10-26 16:34: the list sits in a sheet whose top drags down to grow the chart (like Airbnb's map and list);
 	// the phone menu pulls out from the left edge and pushes back the same way; the desktop sidebar's right edge drags
 	// it narrower, down to the icons alone, or wider, up to a limit. Run 11 (2026-10-26 19:22): one floating bar at the
-	// bottom for the pages, the + and, in a project, Panels and Preview (variants/bar-c.svelte); a finger swipes the list
+	// bottom for the pages, the + and, in a project, Panels and Preview (nav-bar.svelte then, variants/bar-c.svelte now); a finger swipes the list
 	// sideways to the next page; the sheet has rounder corners and a deep shadow that falls under the cards. Run 12
 	// (2026-11-07): the list's four menus stay put over the sheet while a swipe slides the title and the list, and the
 	// coming page fades in as it slides (notes 2 and 3); a customer, team member, transport or facility opens its own
@@ -691,10 +691,7 @@
 						class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}"
 					>
 						<div class="pt-4 pr-3 pb-4 pl-4">
-							<ProjectBar
-								{look}
-								isCloud
-							/>
+							<ProjectBar {look} />
 						</div>
 						<div class="flex-1 overflow-y-auto px-4 pb-4">
 							<PanelList

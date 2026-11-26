@@ -40,7 +40,8 @@ export const LOOKS: Record<string, string> = {
 	settings: 'A'
 };
 
-// The letter a part shows; a part not listed has only the one look, A.
+// The letter a part shows; a part not listed has only the one look, A. The bar, the cover and the report pages are
+// not read here any more (#372): each draws its one look.
 export function lookOf(id: string) {
 	return LOOKS[id] ?? 'A';
 }

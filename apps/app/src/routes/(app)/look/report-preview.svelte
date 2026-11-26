@@ -1,7 +1,7 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the live preview, built from the panels as they stand (cover, contents with page numbers,
 	// the report pages in panel order), laid on a free canvas you can drag in any direction (viewport.svelte.ts).
-	// The project report on one page (introduction, title, location, the facts, personnel, transport and cargo); the
+	// The project report (introduction, title, location, the facts, personnel, transport and cargo); the
 	// sample reports' disclaimer with the owner's signature, always last; each photo's own description over it.
 	// Customer and team come from the Project panel, the trip from the Transport panel: its stops print as a chain
 	// and each stop gets its own page with the particulars a tracking service fills in later (the sample reports'
@@ -303,7 +303,7 @@
 		(client.contacts ?? []).find((item) => item.id === team?.contact) ??
 			(client.contacts ?? []).find((item) => item.name)
 	);
-	// The cover's two dates (#217). Created Date is the Project Creation Date saved with the project, the day its
+	// The report's two dates (#217), said in its sentences (`dates`). Created Date is the Project Creation Date saved with the project, the day its
 	// number shows. Completed Date is when the work was done: the Time Log's dated day, or first to last for a job of
 	// several days; nothing before any.
 	const createdDate = $derived(dayOf(createdDayOf(look.project)));
