@@ -236,13 +236,16 @@
 <!-- A name in bold, which opens what it names when that has a page (Justin, 2026-11-26): the library Button with the
      look of an underlined bold word. A name too long for the rest of its line starts the next one. -->
 {#snippet named(text: string, open: (() => void) | undefined)}
-	{#if open}<Button
-			unstyled
-			label={text}
-			class="cursor-pointer text-left font-semibold text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-900"
-			onclick={(event: MouseEvent) => press(event, open)}
-			onkeydown={keepKey}
-		/>{:else}<b class="font-semibold text-slate-900">{text}</b>{/if}
+	<!-- In a flex box, so the space the Button leaves after itself never shows: "lift, Sample", not "lift , Sample". -->
+	{#if open}<span class="inline-flex"
+			><Button
+				unstyled
+				label={text}
+				class="cursor-pointer text-left font-semibold text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-900"
+				onclick={(event: MouseEvent) => press(event, open)}
+				onkeydown={keepKey}
+			/></span
+		>{:else}<b class="font-semibold text-slate-900">{text}</b>{/if}
 {/snippet}
 
 <!-- A person's face, the library Avatar from the app's one look (#379). -->
