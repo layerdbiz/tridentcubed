@@ -40,13 +40,14 @@
 	}: BadgeProps = $props();
 
 	// A colour or appearance given as a shorthand (`neutral`, `lite`) wins over the defaults, as on any base component.
-	const parts = $derived(toLook(props, { color, appearance }));
+	const look = $derived(toLook(props, { color, appearance }));
 </script>
 
 <Component
 	tag="span"
-	{...parts.look}
-	{...parts.rest}
+	{...props}
+	color={look.color}
+	appearance={look.appearance}
 	class="badge shrink-0 rounded-full font-bold tabular-nums {className}"
 	label={toCountText(count, max)}
 />

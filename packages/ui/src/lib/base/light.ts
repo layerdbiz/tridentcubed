@@ -2,7 +2,7 @@
 // avatar in every list row too). A component that asks for no layout and none of the base props renders straight
 // from the base component, without Root and the base props' machinery, which would only hand its props and children
 // back. These say when that is, and what the root element is given on it: exactly what Root would give it.
-import { createComponentWithStyles, mergeStyles, type ComponentRenderProps } from '@layerd/ui';
+import { createComponent, mergeStyles, type ComponentRenderProps } from '@layerd/ui';
 
 /** The layout props, which Root takes for itself: the zones, cells, rows, columns, halves and layers, and the grid's. */
 export const LAYOUT_PROPS = new Set([
@@ -109,8 +109,21 @@ export function isLightRequest(props: Record<string, unknown>): boolean {
 }
 
 /**
+ * What a component was handed, as one plain object read once. Props reach a library piece through Svelte's proxies,
+ * one inside another for each piece that hands them on (a Chip's to the base component's), and every read walks all
+ * of them; the light path asks twice (is it light, what does the element get), so it reads a plain copy (#381: a
+ * list of chips and count badges spent more time walking proxies than drawing, measured).
+ */
+export function toPlainProps(props: object): Record<PropertyKey, unknown> {
+	const plain: Record<PropertyKey, unknown> = {};
+	for (const key of Reflect.ownKeys(props))
+		plain[key] = (props as Record<PropertyKey, unknown>)[key];
+	return plain;
+}
+
+/**
  * What the root element is given on the light path: the theme's classes and the props, as Root would hand them.
- * Attachments, which come as symbol keys, are handed on too.
+ * Attachments, which come as symbol keys, are handed on too. The caller's class comes last.
  */
 export function toLightRootProps(props: Record<PropertyKey, unknown>): ComponentRenderProps {
 	const rest: Record<PropertyKey, unknown> = {};
@@ -118,18 +131,16 @@ export function toLightRootProps(props: Record<PropertyKey, unknown>): Component
 		if (typeof key === 'string' && (OWN_PROPS.has(key) || LAYOUT_PROPS.has(key))) continue;
 		rest[key] = props[key];
 	}
-	const { base, classes } = createComponentWithStyles(rest, {
-		defaults: {},
-		componentClass: props.class as string | undefined,
-		getComponentClasses: () => []
-	});
+	// Read by key, symbols (attachments) too, which ComponentReturn's type leaves out.
+	const handed = createComponent(rest) as unknown as Record<PropertyKey, unknown>;
 	const element: Record<PropertyKey, unknown> = {};
-	const handed = base as Record<PropertyKey, unknown>;
 	for (const key of Reflect.ownKeys(handed)) {
-		if (typeof key === 'string' && ROOT_PROPS.has(key)) continue;
+		if (key === 'class' || (typeof key === 'string' && ROOT_PROPS.has(key))) continue;
 		element[key] = handed[key];
 	}
-	element.class = classes.trim();
-	element.style = mergeStyles(base.style as string | undefined);
+	const theme = handed.class as string;
+	const own = props.class;
+	element.class = (own ? (theme ? `${theme} ${own}` : `${own}`) : theme).trim();
+	element.style = mergeStyles(handed.style as string | undefined);
 	return element as ComponentRenderProps;
 }

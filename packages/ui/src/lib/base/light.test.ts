@@ -1,6 +1,6 @@
 // When a base component can take the light path, and what its element is given there (Justin, 2026-11-26).
 import { describe, expect, it } from 'vite-plus/test';
-import { isLightRequest, toLightRootProps } from './light.ts';
+import { isLightRequest, toLightRootProps, toPlainProps } from './light.ts';
 
 describe('isLightRequest', () => {
 	it('is light with only styling props and attributes', () => {
@@ -44,5 +44,23 @@ describe('toLightRootProps', () => {
 		expect(props.title).toBe('Hi');
 		expect('label' in props).toBe(false);
 		expect('lite' in props).toBe(false);
+	});
+});
+
+describe('toPlainProps', () => {
+	it('reads every prop once into a plain object, attachments too', () => {
+		const key = Symbol('attachment');
+		const reads: PropertyKey[] = [];
+		const props = new Proxy({ a: 1, b: 'x', [key]: 'y' } as Record<PropertyKey, unknown>, {
+			get(target, name) {
+				reads.push(name);
+				return target[name];
+			}
+		});
+
+		const plain = toPlainProps(props);
+
+		expect(plain).toEqual({ a: 1, b: 'x', [key]: 'y' });
+		expect(reads).toEqual(['a', 'b', key]);
 	});
 });
