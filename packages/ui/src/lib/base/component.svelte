@@ -9,13 +9,19 @@
 		isLightRequest,
 		normalizeComponentTag,
 		toLightRootProps,
+		toPlainProps,
 		type ComponentProps
 	} from '@layerd/ui';
+	import type { Snippet } from 'svelte';
 	import Rooted from './rooted.svelte';
 
 	let { value = $bindable(), checked = $bindable(false), ...props }: ComponentProps = $props();
 
-	const isLight = $derived(isLightRequest(props as Record<string, unknown>));
+	// What was handed, read once into a plain object: the light path asks of it twice, and reading the props proxies
+	// again cost more than drawing the element in a long list (#381, measured). The full path takes the props as
+	// they came.
+	const handed = $derived(toPlainProps(props));
+	const isLight = $derived(isLightRequest(handed));
 
 	// On the full path a drawn element's input and change go to the bound value, in place of any the caller gave;
 	// the light path keeps that, so the two behave alike.
@@ -23,34 +29,34 @@
 </script>
 
 {#snippet content(text: string = 'Component')}
-	{#if props.children}
-		{@render props.children()}
-	{:else if props.label !== undefined && props.label !== null && props.label !== ''}
-		{props.label}
+	{#if handed.children}
+		{@render (handed.children as Snippet)()}
+	{:else if handed.label !== undefined && handed.label !== null && handed.label !== ''}
+		{handed.label}
 	{:else}
 		{text}
 	{/if}
 {/snippet}
 
 {#snippet layout()}
-	{#if props.children}
-		{@render props.children()}
-	{:else if props.label}
-		{props.label}
+	{#if handed.children}
+		{@render (handed.children as Snippet)()}
+	{:else if handed.label}
+		{handed.label}
 	{/if}
 {/snippet}
 
-{#if isLight && props.component}
-	{@render props.component({
-		props: toLightRootProps(props as Record<PropertyKey, unknown>),
+{#if isLight && handed.component}
+	{@render (handed.component as NonNullable<ComponentProps['component']>)({
+		props: toLightRootProps(handed),
 		layout,
 		content,
 		observe: undefined
 	})}
 {:else if isLight}
 	<svelte:element
-		this={normalizeComponentTag(props.tag)}
-		{...toLightRootProps(props as Record<PropertyKey, unknown>)}
+		this={normalizeComponentTag(handed.tag as ComponentProps['tag'])}
+		{...toLightRootProps(handed)}
 		oninput={ignore}
 		onchange={ignore}
 	>

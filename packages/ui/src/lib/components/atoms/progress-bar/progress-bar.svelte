@@ -23,7 +23,13 @@
 	// until the state colours can be worn as a `color` (#33). It repeats in every dashboard row, so both parts take
 	// the base component's light path. The fill moves in half a second; `[--progress-speed:300ms]` in `class` changes
 	// that. `isMoving` runs a band of light along the filled part while the work is under way (the Toast's upload).
-	import { Component, toLook, type ComponentProps, type ComponentReturn } from '@layerd/ui';
+	import {
+		Component,
+		toLook,
+		withoutLook,
+		type ComponentProps,
+		type ComponentReturn
+	} from '@layerd/ui';
 
 	export interface ProgressBarProps extends Omit<ComponentProps, 'value' | 'label' | 'children'> {
 		/** How much is done, out of `max`. */
@@ -56,11 +62,12 @@
 
 	// The track takes everything but the look; the filled part takes the look, or nothing with a `fill` class. A
 	// colour or appearance given as a shorthand (`accent`, `lite`) wins over the defaults, as on any base component.
-	const parts = $derived(toLook(props, { color, appearance }));
+	const look = $derived(toLook(props, { color, appearance }));
+	const rest = $derived(withoutLook(props));
 </script>
 
 <Component
-	{...parts.rest}
+	{...rest}
 	tag="span"
 	>{#snippet component({ props: root }: { props: ComponentReturn })}<span
 			{...root}
@@ -71,7 +78,7 @@
 			aria-valuemax={max}
 			aria-valuenow={Math.floor((share * max) / 100)}
 			><Component
-				{...fill ? {} : parts.look}
+				{...fill ? {} : look}
 				tag="span"
 				class="progress-fill relative block h-full overflow-hidden rounded-full transition-[width,background-color] duration-(--progress-speed,500ms) ease-out {fill ??
 					''}"

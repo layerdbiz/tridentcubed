@@ -42,8 +42,33 @@ const CASES: Record<string, Record<string, unknown>> = {
 		label: 'Go'
 	},
 	link: { tag: 'a', href: '/x', disabled: true, label: 'Link' },
-	override: { component: own, class: 'mine', ghost: true }
+	override: { component: own, class: 'mine', ghost: true },
+	position: { position: 'center', size: 'lg', label: 'Middle' },
+	'ghost invert': { ghost: true, invert: true, accent: true, xs: true },
+	'glass gradient': { glass: true, gradient: true, class: 'x' },
+	'size shorthand': { xxl: true, xxs: true, neutral: true },
+	attributes: {
+		tag: 'span',
+		'aria-label': 'Count',
+		title: '3 projects',
+		style: 'min-width: 16px;',
+		id: 'n'
+	}
 };
+
+// Every colour in every appearance, as props and as shorthands: the light path builds its classes in one pass now
+// (#381), and must still give exactly what Root gives.
+for (const color of ['base', 'neutral', 'primary', 'secondary', 'accent', 'danger']) {
+	for (const appearance of ['heavy', 'lite', 'outline', 'ghost', 'glass', 'gradient']) {
+		CASES[`${color} ${appearance}`] = { color, appearance, label: 'x' };
+		CASES[`${color} ${appearance} shorthands`] = {
+			[color]: true,
+			[appearance]: true,
+			class: 'mine',
+			label: 'x'
+		};
+	}
+}
 
 describe('Component', () => {
 	for (const [name, props] of Object.entries(CASES)) {

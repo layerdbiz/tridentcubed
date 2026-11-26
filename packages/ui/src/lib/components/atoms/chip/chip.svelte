@@ -17,13 +17,14 @@
 		label?: string;
 	}
 
-	let { class: className = '', ...props }: ChipProps = $props();
+	// Its props go to the base component as they came, with no copy in between: a list draws many chips (#381).
+	let props: ChipProps = $props();
 </script>
 
 <Component
 	tag="span"
 	{...props}
-	class="chip shrink-0 rounded-full whitespace-nowrap {className}"
+	class="chip shrink-0 rounded-full whitespace-nowrap {props.class ?? ''}"
 />
 
 <style lang="postcss">
