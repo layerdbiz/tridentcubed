@@ -372,6 +372,13 @@ export class LookState {
 		this.screen = 'workspace';
 	}
 
+	// Translate to English (#360): the project opens, if it is not open already, and the sheet shows once its panels
+	// have loaded.
+	translate(id: string) {
+		if (this.screen !== 'workspace' || this.projectId !== id) this.open(id);
+		this.translateFor = id;
+	}
+
 	addFor(page: PageType, seed: Record<string, unknown>, done: (name: string) => void) {
 		this.addSeed = seed;
 		this.#afterAdd = done;

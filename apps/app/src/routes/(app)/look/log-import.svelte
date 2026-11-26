@@ -16,6 +16,7 @@
 	import WindowHead from '#lib/releases/window-head.svelte';
 	import type { DayType } from './look.data';
 	import { readLogFile } from './log-files';
+	import { toCountLabel } from './look.utils';
 	import {
 		notesOf,
 		readLog,
@@ -86,10 +87,6 @@
 			isReading = false;
 		}
 	}
-
-	function countOf(count: number, one: string, many = `${one}s`) {
-		return `${count} ${count === 1 ? one : many}`;
-	}
 </script>
 
 <Dialog
@@ -102,7 +99,7 @@
 			title={step === 'words' ? 'Import a Time Log' : 'Check the Entries'}
 			note={step === 'words'
 				? 'Paste it, or choose its file'
-				: `${countOf(chosen.length, 'entry', 'entries')} to add${toCheck ? `, ${toCheck} to check` : ''}${source}`}
+				: `${toCountLabel(chosen.length, 'entry', 'entries')} to add${toCheck ? `, ${toCheck} to check` : ''}${source}`}
 			{onclose}
 		/>
 	{/snippet}
@@ -214,7 +211,7 @@
 				class="mb-4 text-sm"
 				neutral
 				lite
-				label="{countOf(skipped.length, 'line')} with no time, left out"
+				label="{toCountLabel(skipped.length, 'line')} with no time, left out"
 			>
 				<ul class="space-y-1 text-neutral-600">
 					{#each skipped as line (line.line)}
@@ -259,7 +256,7 @@
 					heavy
 					sm
 					width="full"
-					label="Add {countOf(chosen.length, 'Entry', 'Entries')}"
+					label="Add {toCountLabel(chosen.length, 'Entry', 'Entries')}"
 					disabled={!chosen.length}
 					onclick={() => onadd(chosen)}
 				/>

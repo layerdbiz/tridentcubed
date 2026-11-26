@@ -13,6 +13,7 @@ import {
 	panelOf,
 	type PanelType,
 	type PersonnelType,
+	type TranslationType,
 	type ProjectType,
 	resetCustomers,
 	resetPeople,
@@ -298,18 +299,7 @@ function toProjectRows(look: LookState): RowType[] {
 			});
 		}
 		rows.push(...toPersonnelRows(project.id, own.personnel ?? []));
-		// #360: the English the report prints for texts typed in Spanish.
-		for (const [position, translation] of (own.translations ?? []).entries())
-			rows.push({
-				table: 'translation',
-				id: translation.id,
-				values: {
-					projectId: project.id,
-					position,
-					source: translation.source,
-					english: translation.english
-				}
-			});
+		rows.push(...toTranslationRows(project.id, own.translations ?? []));
 		for (const [position, panel] of panels.entries())
 			rows.push({
 				table: 'panel',
@@ -515,16 +505,10 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 	const own = panels.find((panel) => panel.kind === 'project');
 	const saved = look.fromServer[projectId];
 	if (own && saved) fillProjectPanel(look, own, saved.values, saved.team);
-	if (own) own.personnel = toPersonnel(rows);
-	if (own)
-		own.translations = rows
-			.filter((item) => item.table === 'translation')
-			.sort(byPosition)
-			.map((item) => ({
-				id: item.id,
-				source: text(item.values, 'source'),
-				english: text(item.values, 'english')
-			}));
+	if (own) {
+		own.personnel = toPersonnel(rows);
+		own.translations = toTranslations(rows);
+	}
 	// #189: a photo panel's groups and photos.
 	for (const panel of panels) if (panel.kind === 'photos') takePhotos(panel, rows);
 	// #215: a project from before stages gets its Operations panel as it opens; the sync loop then saves that. A
@@ -537,6 +521,26 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 	const inside = row ? rows : [...rows, ...(saved?.stops ?? [])];
 	for (const panel of panels) takePanelRows(look, panel, inside);
 	look.workspaces[projectId] = panels;
+}
+
+// #360: the English the report prints for texts typed in Spanish, one row per text, in order.
+function toTranslationRows(projectId: string, translations: TranslationType[]): RowType[] {
+	return translations.map((translation, position) => ({
+		table: 'translation',
+		id: translation.id,
+		values: { projectId, position, source: translation.source, english: translation.english }
+	}));
+}
+
+function toTranslations(rows: SavedRowType[]): TranslationType[] {
+	return rows
+		.filter((row) => row.table === 'translation')
+		.sort(byPosition)
+		.map((row) => ({
+			id: row.id,
+			source: text(row.values, 'source'),
+			english: text(row.values, 'english')
+		}));
 }
 
 function toPersonnel(rows: SavedRowType[]): PersonnelType[] {

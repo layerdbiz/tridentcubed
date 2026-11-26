@@ -16,7 +16,7 @@ type TranslatorApiType = {
 
 const SPANISH_TO_ENGLISH: LanguagesType = { sourceLanguage: 'es', targetLanguage: 'en' };
 
-function apiOf() {
+function translatorApi() {
 	return (globalThis as { Translator?: TranslatorApiType }).Translator;
 }
 
@@ -25,8 +25,8 @@ function apiOf() {
 const ASK_LIMIT = 3000;
 
 /** Whether this browser can put Spanish into English by itself. */
-export async function canTranslate() {
-	const api = apiOf();
+export async function hasTranslator() {
+	const api = translatorApi();
 	if (!api) return false;
 	try {
 		const answer = await Promise.race([
@@ -48,7 +48,7 @@ export async function canTranslate() {
 export async function createTranslator(
 	onprogress?: (share: number) => void
 ): Promise<TranslateType> {
-	const api = apiOf();
+	const api = translatorApi();
 	if (!api) throw new Error('This browser has no translator of its own.');
 	const translator = await api.create({
 		...SPANISH_TO_ENGLISH,

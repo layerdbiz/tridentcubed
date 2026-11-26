@@ -100,10 +100,7 @@
 		if (choice === 'unsend') look.unsend(project);
 		if (choice === 'complete') look.setStatus(project, 'Complete');
 		if (choice === 'status') look.statusFor = project.id;
-		if (choice === 'translate') {
-			if (look.screen !== 'workspace' || look.projectId !== project.id) look.open(project.id);
-			look.translateFor = project.id;
-		}
+		if (choice === 'translate') look.translate(project.id);
 		if (choice === 'delete')
 			look.confirm({
 				title: 'Delete Project?',

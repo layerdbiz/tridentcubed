@@ -200,7 +200,7 @@
 	{#if look.translateFor && look.workspaces[look.translateFor]}
 		<TranslateSheet
 			{look}
-			panels={look.workspaces[look.translateFor]}
+			projectId={look.translateFor}
 			onclose={() => (look.translateFor = undefined)}
 		/>
 	{/if}

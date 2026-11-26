@@ -60,6 +60,7 @@ describe('the typed texts of a report', () => {
 	it('lists each text that prints once, trimmed, with where it is', () => {
 		expect(textsOf(projectOf())).toEqual([
 			{ source: 'Llegada del buque al muelle', where: ['Project'] },
+			{ source: 'Operations', where: ['Operations'] },
 			{ source: 'Carga', where: ['Operations'] },
 			{ source: 'Inicio de carga en bodega 2', where: ['Operations'] },
 			{ source: 'Grúa detenida por lluvia', where: ['Operations'] },
@@ -69,7 +70,57 @@ describe('the typed texts of a report', () => {
 	});
 });
 
+describe('every typed text the report prints', () => {
+	it('takes in the title and subtitle, a photo panel’s name and the personnel’s job titles', () => {
+		const [project, operations] = projectOf();
+		project.fields = [
+			{ id: 'f1', label: 'Title', type: 'text', value: 'BBC Kimberly' },
+			{ id: 'f2', label: 'Subtitle', type: 'text', value: 'Inspección de descarga' },
+			{ id: 'f3', label: 'Customer', type: 'select', value: 'Acme' }
+		];
+		project.personnel = [
+			{
+				id: 'c1',
+				company: 'Grúas del Norte',
+				people: [{ id: 'q1', name: 'Marta Gil', title: 'Jefa de grúa', phone: '', email: '' }]
+			}
+		];
+		operations.name = 'Daños';
+
+		expect(textsOf([project, operations]).map(({ source }) => source)).toEqual([
+			'BBC Kimberly',
+			'Inspección de descarga',
+			'Llegada del buque al muelle',
+			'Jefa de grúa',
+			'Daños',
+			'Carga',
+			'Inicio de carga en bodega 2',
+			'Grúa detenida por lluvia'
+		]);
+
+		project.translations = [
+			{ id: 't1', source: 'Inspección de descarga', english: 'Discharge survey' },
+			{ id: 't2', source: 'Jefa de grúa', english: 'Crane supervisor' },
+			{ id: 't3', source: 'Daños', english: 'Damages' }
+		];
+		const [shown, photos] = toEnglish([project, operations]);
+		expect(shown.fields.map((field) => field.value)).toEqual([
+			'BBC Kimberly',
+			'Discharge survey',
+			'Acme'
+		]);
+		expect(shown.personnel?.[0].people[0].title).toBe('Crane supervisor');
+		expect(shown.personnel?.[0].company).toBe('Grúas del Norte');
+		expect(photos.name).toBe('Damages');
+	});
+});
+
 describe('whether a text reads as Spanish', () => {
+	it('knows the Spanish words that end like English ones', () => {
+		expect(isSpanish('Pared dañada')).toBe(true);
+		expect(isSpanish('Red de seguridad instalada')).toBe(true);
+	});
+
 	it('knows Spanish by its little words, its accents and the words of the job', () => {
 		expect(isSpanish('Inicio de carga en bodega 2')).toBe(true);
 		expect(isSpanish('Llegada del buque al muelle')).toBe(true);
@@ -102,7 +153,8 @@ const WORDS: Record<string, string> = {
 	revisión: 'Inspection',
 	aurora: 'Dawn',
 	altamira: 'Highview',
-	hc: 'hc'
+	hc: 'hc',
+	mar: 'sea'
 };
 async function wordByWord(text: string) {
 	return text.replace(/\p{L}+/gu, (word) => WORDS[word.toLowerCase()] ?? word);
@@ -112,7 +164,7 @@ describe('a text put into English', () => {
 	it('keeps the names it is given as they are typed', async () => {
 		expect(
 			await translateText('Llegada del MSC Aurora al muelle de Altamira', {
-				kept: ['msc aurora', 'Altamira'],
+				kept: ['MSC Aurora', 'Altamira'],
 				translate: wordByWord
 			})
 		).toEqual({ english: 'Arrival of the MSC Aurora at the berth of Altamira', isWhole: true });
@@ -122,6 +174,21 @@ describe('a text put into English', () => {
 		expect(await translateText('Revisión de HC y TT', { kept: [], translate: wordByWord })).toEqual(
 			{ english: 'Inspection of HC and TT', isWhole: true }
 		);
+	});
+
+	it('translates a line typed all in capitals, keeping only its names', async () => {
+		expect(
+			await translateText('LLEGADA DEL MSC AURORA', { kept: ['MSC Aurora'], translate: wordByWord })
+		).toEqual({ english: 'Arrival of the MSC AURORA', isWhole: true });
+	});
+
+	it('keeps a name only as it is written, not a word spelt like it', async () => {
+		expect(
+			await translateText('Llegada del Mar al muelle de mar', {
+				kept: ['Mar'],
+				translate: wordByWord
+			})
+		).toEqual({ english: 'Arrival of the Mar at the berth of sea', isWhole: true });
 	});
 
 	it('says when the translator lost a name it was asked to keep', async () => {
