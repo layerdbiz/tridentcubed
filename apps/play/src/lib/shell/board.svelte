@@ -2,9 +2,7 @@
      page or laid out on the zoomable canvas. Every control is kept in this browser for this entry and written into
      the address; an address with settings in it wins over what was kept. -->
 <script lang="ts">
-	import { replaceState } from '$app/navigation';
-	import { page } from '$app/state';
-	import { tick, untrack } from 'svelte';
+	import { onDestroy, tick, untrack } from 'svelte';
 	import Bar from './bar.svelte';
 	import { Canvas } from './canvas.svelte';
 	import type { EntryType } from './catalog';
@@ -52,11 +50,15 @@
 		: 'light';
 	const base = createSettings(options, systemTheme);
 
-	let settings = $state(fromHash(location.hash || readKept(KEY) || '', base, options));
+	// What was kept, then whatever the address names on top: a link with #v=b changes the view and nothing else.
+	let settings = $state(
+		fromHash(location.hash, fromHash(readKept(KEY) ?? '', base, options), options)
+	);
 	let isDockOpen = $state(isWide() && readKept(DOCK_KEY) !== 'shut');
 	let folds = $state(readFolds());
 	let copied = $state('');
 	let copyNote = $state('');
+	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const canvas = new Canvas();
 	const frames = $derived(toFrames(settings, options));
@@ -97,15 +99,8 @@
 	$effect(() => {
 		const hash = toHash(settings);
 		keep(KEY, hash);
-		try {
-			// Read without tracking: writing the address changes page.state, which must not run this again.
-			replaceState(
-				`#${hash}`,
-				untrack(() => page.state)
-			);
-		} catch {
-			// The router is not up yet on the very first run; the next change writes the address.
-		}
+		// Straight to the browser and in order, keeping SvelteKit's own history state: only the hash changes.
+		history.replaceState(history.state, '', `#${hash}`);
 	});
 
 	// New frames, sizes or layout: fit them all again once they are drawn.
@@ -148,8 +143,11 @@
 			copied = text;
 			copyNote = 'Select and copy';
 		}
-		setTimeout(() => (copyNote = ''), 1600);
+		clearTimeout(copyTimer);
+		copyTimer = setTimeout(() => (copyNote = ''), 1600);
 	}
+
+	onDestroy(() => clearTimeout(copyTimer));
 </script>
 
 <svelte:head>

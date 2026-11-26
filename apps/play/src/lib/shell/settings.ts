@@ -186,7 +186,10 @@ export function toSettingsText(
 
 function pickKnown<T extends string>(value: string | null, known: readonly T[]): T[] {
 	if (!value) return [];
-	return value.split('.').filter((each): each is T => (known as readonly string[]).includes(each));
+	const picked = value
+		.split('.')
+		.filter((each): each is T => (known as readonly string[]).includes(each));
+	return [...new Set(picked)];
 }
 
 function toSize(value: number, limits = SIZE_LIMITS): number {

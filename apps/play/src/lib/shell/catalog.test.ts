@@ -43,6 +43,14 @@ describe('toEntries', () => {
 	test('skips files outside a topic folder', () => {
 		expect(toEntries({ '/src/prototypes/loose.html': '/x.html' }, 'prototype')).toEqual([]);
 	});
+
+	test('skips names an address cannot carry: only lowercase words joined by hyphens', () => {
+		const found = {
+			'/src/prototypes/menus/v1.2.html': '/x.html',
+			'/src/prototypes/menus/Big Menu.html': '/y.html'
+		};
+		expect(toEntries(found, 'prototype')).toEqual([]);
+	});
 });
 
 describe('toLibrary', () => {

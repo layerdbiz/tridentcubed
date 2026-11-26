@@ -61,6 +61,25 @@ describe('the address', () => {
 		expect(fromHash(hash, createSettings(OPTIONS, 'light'), OPTIONS)).toEqual(settings);
 	});
 
+	test('reads a repeated value once', () => {
+		const base = createSettings(OPTIONS, 'light');
+		expect(fromHash('v=main.main&s=phone.phone&t=dark.dark', base, OPTIONS)).toMatchObject({
+			views: ['main'],
+			screens: ['phone'],
+			themes: ['dark']
+		});
+	});
+
+	test('changes only what the address names, over what was kept', () => {
+		const kept = fromHash('s=phone&t=dark&l=column', createSettings(OPTIONS, 'light'), OPTIONS);
+		expect(fromHash('#v=b', kept, OPTIONS)).toMatchObject({
+			views: ['b'],
+			screens: ['phone'],
+			themes: ['dark'],
+			layout: 'column'
+		});
+	});
+
 	test('drops what it does not know and keeps the rest', () => {
 		const base = createSettings(OPTIONS, 'light');
 

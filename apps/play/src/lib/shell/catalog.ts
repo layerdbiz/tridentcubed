@@ -17,9 +17,11 @@ export type EntryType = {
 	options: OptionType[];
 };
 
+// Folder and file names are lowercase words joined by hyphens (the repo's naming rule), which is also what lets an
+// address carry them; any other name is not listed.
 const FOLDER: Record<'prototype' | 'component', RegExp> = {
-	prototype: /^\/src\/prototypes\/([^/]+)\/([^/]+)\.html$/,
-	component: /^\/src\/components\/([^/]+)\/([^/]+)\.html$/
+	prototype: /^\/src\/prototypes\/([a-z0-9-]+)\/([a-z0-9-]+)\.html$/,
+	component: /^\/src\/components\/([a-z0-9-]+)\/([a-z0-9-]+)\.html$/
 };
 
 const LIBRARY_PAGE = /^\/src\/routes\/\((play|mq)\)\/(.+)\/\+page\.svelte$/;

@@ -4,6 +4,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { Canvas } from './canvas.svelte';
+	import { toPixels } from './pinch';
 
 	type StageProps = { canvas: Canvas; children: Snippet };
 
@@ -45,9 +46,12 @@
 		function onWheel(event: WheelEvent) {
 			event.preventDefault();
 			canvas.measure(target);
+			canvas.stopGlide();
+			const dx = toPixels(event, event.deltaX);
+			const dy = toPixels(event, event.deltaY);
 			if (event.ctrlKey)
-				canvas.zoomAt(canvas.scale * Math.exp(-event.deltaY * 0.01), event.clientX, event.clientY);
-			else canvas.panBy(-event.deltaX, -event.deltaY);
+				canvas.zoomAt(canvas.scale * Math.exp(-dy * 0.01), event.clientX, event.clientY);
+			else canvas.panBy(-dx, -dy);
 		}
 		let isGesture = false;
 		function onGestureStart(event: Event) {
@@ -91,7 +95,8 @@
 	}
 
 	function onpointerdown(event: PointerEvent) {
-		if (!stage || (event.target as Element).closest('a, button')) return;
+		// Links, buttons and the frames' labels keep their own clicks (a label's text can be selected).
+		if (!stage || (event.target as Element).closest('a, button, figcaption')) return;
 		if (event.pointerType === 'mouse' && event.button !== 0) return;
 		stage.setPointerCapture(event.pointerId);
 		canvas.measure(stage);

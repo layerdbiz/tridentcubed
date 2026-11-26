@@ -25,6 +25,13 @@ export function toShellPoint(
 	};
 }
 
+/** A wheel's movement in pixels: Firefox with a mouse counts lines (and some wheels pages). */
+export function toPixels(event: { deltaMode: number }, delta: number): number {
+	if (event.deltaMode === 1) return delta * 16;
+	if (event.deltaMode === 2) return delta * 800;
+	return delta;
+}
+
 /** Starts listening inside the frame; returns the function that stops. Does nothing for a page it cannot reach. */
 export function forwardGestures(frame: HTMLIFrameElement, target: PinchTargetType): () => void {
 	let win: Window | null = null;
@@ -38,6 +45,8 @@ export function forwardGestures(frame: HTMLIFrameElement, target: PinchTargetTyp
 	const inner = win;
 
 	let isTouchPinch = false;
+	/** From the second finger until the last one lifts: the prototype never sees a finger that was pinching. */
+	let isHolding = false;
 	let isGesture = false;
 
 	function toShell(point: PointType) {
@@ -63,19 +72,21 @@ export function forwardGestures(frame: HTMLIFrameElement, target: PinchTargetTyp
 		if (event.touches.length < 2) return;
 		hold(event);
 		isTouchPinch = true;
+		isHolding = true;
 		const point = middle(event.touches);
 		target.startPinch(point.x, point.y, point.distance);
 	}
 
 	function onTouchMove(event: TouchEvent) {
-		if (!isTouchPinch) return;
+		if (!isHolding) return;
 		hold(event);
-		if (event.touches.length < 2) return;
+		if (!isTouchPinch || event.touches.length < 2) return;
 		const point = middle(event.touches);
 		target.movePinch(point.x, point.y, point.distance);
 	}
 
 	function onTouchEnd(event: TouchEvent) {
+		if (event.touches.length === 0) isHolding = false;
 		if (!isTouchPinch || event.touches.length >= 2) return;
 		isTouchPinch = false;
 		target.endPinch();
@@ -84,14 +95,14 @@ export function forwardGestures(frame: HTMLIFrameElement, target: PinchTargetTyp
 	// While two fingers are down, the prototype's own pointer handlers do not see them move, so it does not
 	// pan or zoom itself at the same time.
 	function onPointerMove(event: PointerEvent) {
-		if (isTouchPinch && event.pointerType === 'touch') event.stopImmediatePropagation();
+		if (isHolding && event.pointerType === 'touch') event.stopImmediatePropagation();
 	}
 
 	function onWheel(event: WheelEvent) {
 		if (!event.ctrlKey) return;
 		hold(event);
 		const point = toShell(event);
-		target.zoomAt(target.scale * Math.exp(-event.deltaY * 0.01), point.x, point.y);
+		target.zoomAt(target.scale * Math.exp(-toPixels(event, event.deltaY) * 0.01), point.x, point.y);
 	}
 
 	// Safari's own pinch events: on a Mac trackpad they are the only sign of a pinch; on an iPhone they come with the
