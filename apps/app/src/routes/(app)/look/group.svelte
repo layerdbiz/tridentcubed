@@ -10,9 +10,10 @@
 	// #215 (Justin, 2026-11-18): a section that can be left out of the report has a switch in its header, as a panel
 	// that can be left out does (`onenable`). Switched off it keeps what it holds, greys, and says it is left out.
 	// #305: `section` is its id in tally.ts, so an entry of the empty-inputs list finds its inputs (focus.ts).
+	// #389: the folding itself is the library's Accordion (header, grip, controls, slide, foot row with Delete); this
+	// file keeps what is the app's own: the icon, the name and its tally, the meta and the in-the-report switch.
 	import type { Snippet } from 'svelte';
-	import { slide } from 'svelte/transition';
-	import { Avatar, Switch } from '@layerd/ui';
+	import { Accordion, Avatar, Switch } from '@layerd/ui';
 	import { toTally } from './tally';
 
 	let {
@@ -63,26 +64,19 @@
 	} = $props();
 </script>
 
-<div
-	class="rounded-2xl bg-slate-900/[0.03] transition"
+<Accordion
+	open={isOpen}
+	{ontoggle}
+	grip={sortKey || undefined}
+	controls={onenable ? enable : undefined}
+	{actions}
+	{ondelete}
+	{deleteLabel}
 	data-sort={sortKey || undefined}
 	data-index={index}
 	data-section={section || undefined}
 >
-	<div
-		role="button"
-		tabindex="0"
-		class="flex w-full min-w-0 cursor-pointer items-center gap-2.5 py-3 pr-3 pl-3 text-left select-none [-webkit-touch-callout:none]"
-		aria-expanded={isOpen}
-		data-grip={sortKey || undefined}
-		title={sortKey ? 'Hold and drag to reorder' : undefined}
-		onclick={ontoggle}
-		onkeydown={(event) => {
-			if (event.key !== 'Enter' && event.key !== ' ') return;
-			event.preventDefault();
-			ontoggle();
-		}}
-	>
+	{#snippet head()}
 		{#if image}
 			<Avatar
 				src={image}
@@ -115,43 +109,18 @@
 				>{/if}
 		</span>
 		{#if meta}<span class="shrink-0 text-xs text-slate-400">{meta}</span>{/if}
-		{#if onenable}
-			<!-- Its own button inside the header: a tap or a key on it switches, and does not open the section or
-			     start a drag. A Sent or Complete project's fields are off, and this goes off with them. -->
-			<Switch
-				size="sm"
-				checked={isEnabled}
-				label="{isEnabled ? 'Leave out' : 'Put back'} {title}"
-				title={isEnabled ? 'In the report' : 'Left out of the report'}
-				data-no-drag
-				onclick={(event) => event.stopPropagation()}
-				onkeydown={(event: KeyboardEvent) => event.stopPropagation()}
-				onchange={onenable}
-			/>
-		{/if}
-		<span
-			class="icon-[mdi--chevron-down] size-5 shrink-0 text-slate-400 transition {isOpen
-				? 'rotate-180'
-				: ''}"
-		></span>
-	</div>
-	{#if isOpen}
-		<div
-			class="space-y-3 px-4 pb-3"
-			transition:slide={{ duration: 180 }}
-		>
-			{@render children()}
-			<div class="-mx-1 flex flex-wrap items-center gap-2">
-				{@render actions?.()}
-				{#if ondelete}
-					<button
-						type="button"
-						class="ml-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger/10"
-						onclick={ondelete}
-						><span class="icon-[mdi--trash-can-outline] size-[18px]"></span>{deleteLabel}</button
-					>
-				{/if}
-			</div>
-		</div>
-	{/if}
-</div>
+	{/snippet}
+	{@render children()}
+</Accordion>
+
+<!-- The in-the-report switch, in the header's controls, where a tap or a key on it never opens the section or starts a
+     drag. A Sent or Complete project's fields are off, and this goes off with them. -->
+{#snippet enable()}
+	<Switch
+		size="sm"
+		checked={isEnabled}
+		label="{isEnabled ? 'Leave out' : 'Put back'} {title}"
+		title={isEnabled ? 'In the report' : 'Left out of the report'}
+		onchange={onenable}
+	/>
+{/snippet}
