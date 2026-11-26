@@ -46,6 +46,7 @@ const ROW_NAMES: Record<TableNameType, { one: string; many: string }> = {
 	project_team: { one: 'Team Assigned', many: 'Team Assigned' },
 	personnel_company: { one: 'Personnel company', many: 'Personnel companies' },
 	personnel_person: { one: 'Personnel', many: 'Personnel' },
+	translation: { one: 'English translation', many: 'English translations' },
 	panel: { one: 'panel', many: 'panels' },
 	photo_group: { one: 'photo group', many: 'photo groups' },
 	photo: { one: 'photo', many: 'photos' },

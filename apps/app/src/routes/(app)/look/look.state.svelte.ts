@@ -200,6 +200,8 @@ export class LookState {
 	pageAsked = $state(0);
 	// The project whose status is being changed in the Change Status sheet, by id.
 	statusFor = $state<string>();
+	// The project whose texts are being put into English in the Translate to English sheet (#360), by id.
+	translateFor = $state<string>();
 	// What the + is adding, or nothing while its sheet is shut.
 	adding = $state<DatasetType>();
 	// "Add new" in a dropdown opens that same sheet on one page (run 28): what it starts filled with, whether its

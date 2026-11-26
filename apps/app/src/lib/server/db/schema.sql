@@ -393,6 +393,21 @@ CREATE TABLE "personnel_person" (
 --> statement-breakpoint
 ALTER TABLE "personnel_person" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "translation" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"project_id" uuid NOT NULL,
+	"position" integer DEFAULT 0 NOT NULL,
+	"source" text DEFAULT '' NOT NULL,
+	"english" text DEFAULT '' NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "translation" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 CREATE TABLE "panel" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"organization_id" uuid NOT NULL,
@@ -669,6 +684,10 @@ ALTER TABLE "personnel_person" ADD CONSTRAINT "personnel_person_project_id_proje
 --> statement-breakpoint
 ALTER TABLE "personnel_person" ADD CONSTRAINT "personnel_person_company_id_personnel_company_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."personnel_company"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "translation" ADD CONSTRAINT "translation_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "translation" ADD CONSTRAINT "translation_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 ALTER TABLE "panel" ADD CONSTRAINT "panel_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "panel" ADD CONSTRAINT "panel_project_id_project_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."project"("id") ON DELETE cascade ON UPDATE no action;
@@ -779,6 +798,8 @@ CREATE INDEX "personnel_company_project_idx" ON "personnel_company" USING btree 
 --> statement-breakpoint
 CREATE INDEX "personnel_person_project_idx" ON "personnel_person" USING btree ("project_id");
 --> statement-breakpoint
+CREATE INDEX "translation_project_idx" ON "translation" USING btree ("project_id");
+--> statement-breakpoint
 CREATE INDEX "panel_project_idx" ON "panel" USING btree ("project_id");
 --> statement-breakpoint
 CREATE UNIQUE INDEX "panel_key_idx" ON "panel" USING btree ("project_id","key") WHERE key <> '' and deleted_at is null;
@@ -850,6 +871,8 @@ CREATE POLICY "project_team in the acting organization" ON "project_team" AS PER
 CREATE POLICY "personnel_company in the acting organization" ON "personnel_company" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "personnel_person in the acting organization" ON "personnel_person" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
+--> statement-breakpoint
+CREATE POLICY "translation in the acting organization" ON "translation" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "panel in the acting organization" ON "panel" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint

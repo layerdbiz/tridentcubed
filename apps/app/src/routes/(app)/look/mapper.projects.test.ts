@@ -212,6 +212,38 @@ describe('the Project panel', () => {
 		]);
 	});
 
+	it('saves the English of texts typed in Spanish in order, and another member sees it (#360)', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look);
+		projectPanel(mine.look).translations = [
+			{ id: crypto.randomUUID(), source: 'Llegada del buque', english: 'Vessel arrived' },
+			{
+				id: crypto.randomUUID(),
+				source: 'Grúa detenida por lluvia',
+				english: 'Crane stopped by rain'
+			}
+		];
+
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+		const shown = projectPanel(theirs.look);
+		expect(shown.translations?.map(({ source, english }) => [source, english])).toEqual([
+			['Llegada del buque', 'Vessel arrived'],
+			['Grúa detenida por lluvia', 'Crane stopped by rain']
+		]);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+
+		// One cleared in the Translate window goes; the other stays.
+		shown.translations?.shift();
+		expect((await save(theirs)).result.isSaved).toBe(true);
+		const again = await open(tom);
+		await openProject(again, id);
+		expect(projectPanel(again.look).translations?.map(({ source }) => source)).toEqual([
+			'Grúa detenida por lluvia'
+		]);
+	});
+
 	it('shows a renamed customer and Team record on the project without changing its rows', async () => {
 		const mine = await open(tom);
 		const id = create(mine.look, { Customer: 'KOGA' });

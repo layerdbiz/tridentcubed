@@ -128,6 +128,25 @@ export const personnelPerson = pgTable(
 	]
 ).enableRLS();
 
+/**
+ * #360: the English the report prints for a text typed in Spanish, one row per text of the project: the text as it
+ * is typed (`source`, trimmed) and its English. The typed text stays in its own row; this only adds the English.
+ */
+export const translation = pgTable(
+	'translation',
+	{
+		...rowColumns(),
+		projectId: projectId(),
+		position: integer('position').default(0).notNull(),
+		source: words('source'),
+		english: words('english')
+	},
+	(table) => [
+		index('translation_project_idx').on(table.projectId),
+		organizationPolicy('translation')
+	]
+).enableRLS();
+
 /** A project's panels in order. The built-in ones carry their `key`; a panel added on the project has none. */
 export const panel = pgTable(
 	'panel',

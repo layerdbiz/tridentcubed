@@ -108,6 +108,7 @@
 		type ContentLineType
 	} from './report-flow';
 	import { fromSaved, toSaved, toTable } from './spreadsheet';
+	import { toEnglish } from './translation';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -217,8 +218,11 @@
 	// svelte-ignore state_referenced_locally
 	let back: 'column' | 'spread' = start;
 
+	// The panels as the report prints them (#360): each text typed in Spanish that has its English, in English.
+	const panels = $derived(toEnglish(look.panels));
+
 	function valueOf(kind: string, label: string) {
-		return look.panels
+		return panels
 			.find((panel) => panel.kind === kind)
 			?.fields.find((field) => field.label === label)?.value;
 	}
@@ -228,8 +232,8 @@
 		return valueOf('project', label);
 	}
 
-	const team = $derived(look.panels.find((panel) => panel.kind === 'project'));
-	const timelog = $derived(look.panels.find((panel) => panel.kind === 'timelog'));
+	const team = $derived(panels.find((panel) => panel.kind === 'project'));
+	const timelog = $derived(panels.find((panel) => panel.kind === 'timelog'));
 	const company = $derived(detail('Customer') || look.project.client);
 	// The other companies on the job, each with its people who have a name.
 	const personnel = $derived(
@@ -241,7 +245,7 @@
 			.filter((company) => company.people.length)
 	);
 	const attachments = $derived(
-		look.panels.find((panel) => panel.kind === 'items' && panel.isEnabled)?.attachments ?? []
+		panels.find((panel) => panel.kind === 'items' && panel.isEnabled)?.attachments ?? []
 	);
 	// What is attached to the Items panel, by how it prints (#233): a photo of the list whole, one to a block so a
 	// tall one moves to the next page instead of being cut; a file as its name.
@@ -249,7 +253,7 @@
 	// The item list read from a spreadsheet (#242), as the table it prints as. It is followed by what it holds, not
 	// by which object holds it, so fresh rows from the server that say the same thing change nothing here.
 	const listKey = $derived(
-		toSaved(look.panels.find((panel) => panel.kind === 'items' && panel.isEnabled)?.grid)
+		toSaved(panels.find((panel) => panel.kind === 'items' && panel.isEnabled)?.grid)
 	);
 	const itemList = $derived.by(() => {
 		const grid = fromSaved(listKey);
@@ -278,22 +282,24 @@
 	// The Operations panel's link to the project's files (#233), as an address to open, and what to call where it
 	// goes. None when the panel is switched off, as with everything a panel holds, or when nothing usable is typed.
 	const filesLink = $derived(
-		toLink(look.panels.find((panel) => panel.key === 'operations' && panel.isEnabled)?.link)
+		toLink(panels.find((panel) => panel.key === 'operations' && panel.isEnabled)?.link)
 	);
 	const people = $derived(
 		[team?.owner, ...(team?.assigned ?? [])].filter((name): name is string => Boolean(name))
 	);
 	const signer = $derived(look.members.find((member) => member.name === team?.owner));
 	const organization = $derived(look.organization);
-	const trip = $derived(look.panels.find((panel) => panel.kind === 'transport'));
+	const trip = $derived(panels.find((panel) => panel.kind === 'transport'));
 	// The Items panel's filled rows.
 	const cargo = $derived(
-		(look.panels.find((panel) => panel.kind === 'items')?.items ?? []).filter((item) =>
+		(panels.find((panel) => panel.kind === 'items')?.items ?? []).filter((item) =>
 			item.description.trim()
 		)
 	);
 	// The report's opening sentence (#244): the one typed in the Project panel, else the one worked out.
-	const introduction = $derived(introductionOf(look));
+	const introduction = $derived(
+		introductionOf({ organization: look.organization, project: look.project, panels })
+	);
 
 	const client = $derived(customerOf(look, company));
 	// The pin in the customer's row is the customer's own place, from its record (#238); the project's is in the
@@ -697,7 +703,7 @@
 		const list: PageType[] = [];
 		const report = flows.find((flow) => flow.key === 'report');
 		if (report) list.push(...pagesOf(report));
-		for (const panel of look.panels) {
+		for (const panel of panels) {
 			if (!panel.isEnabled) continue;
 			const flow = flowOf(panel, flows);
 			if (flow) list.push(...pagesOf(flow));

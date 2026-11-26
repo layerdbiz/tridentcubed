@@ -298,6 +298,18 @@ function toProjectRows(look: LookState): RowType[] {
 			});
 		}
 		rows.push(...toPersonnelRows(project.id, own.personnel ?? []));
+		// #360: the English the report prints for texts typed in Spanish.
+		for (const [position, translation] of (own.translations ?? []).entries())
+			rows.push({
+				table: 'translation',
+				id: translation.id,
+				values: {
+					projectId: project.id,
+					position,
+					source: translation.source,
+					english: translation.english
+				}
+			});
 		for (const [position, panel] of panels.entries())
 			rows.push({
 				table: 'panel',
@@ -504,6 +516,15 @@ export function takeProject(look: LookState, projectId: string, rows: SavedRowTy
 	const saved = look.fromServer[projectId];
 	if (own && saved) fillProjectPanel(look, own, saved.values, saved.team);
 	if (own) own.personnel = toPersonnel(rows);
+	if (own)
+		own.translations = rows
+			.filter((item) => item.table === 'translation')
+			.sort(byPosition)
+			.map((item) => ({
+				id: item.id,
+				source: text(item.values, 'source'),
+				english: text(item.values, 'english')
+			}));
 	// #189: a photo panel's groups and photos.
 	for (const panel of panels) if (panel.kind === 'photos') takePhotos(panel, rows);
 	// #215: a project from before stages gets its Operations panel as it opens; the sync loop then saves that. A
