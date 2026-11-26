@@ -2,7 +2,7 @@
 	// The how-to behind Install App (#203), for a browser that offers no one-tap install: three short steps for an
 	// iPhone and three for an Android phone, in the sheet every other one is (it slides up on a phone and is a
 	// centred pop-up from tablet width up). The User picks their phone; nothing here guesses it. iPhone comes first.
-	import Sheet from '#lib/components/sheet/sheet.svelte';
+	import { Dialog } from '@layerd/ui';
 
 	let { onclose }: { onclose: () => void } = $props();
 	const uid = $props.id();
@@ -34,7 +34,7 @@
 	const phone = $derived(PHONES.find((item) => item.id === picked) ?? PHONES[0]);
 </script>
 
-<Sheet
+<Dialog
 	label="Install App"
 	{onclose}
 >
@@ -90,4 +90,4 @@
 			{/each}
 		</ol>
 	</div>
-</Sheet>
+</Dialog>

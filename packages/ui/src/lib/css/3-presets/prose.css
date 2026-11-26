@@ -456,9 +456,9 @@ ul > li.prose:not(:where(.not-prose, .not-prose *)) {
 	margin-bottom: 1.25em;
 }
 .prose :where(ul ul, ul ol, ol ul, ol ol):not(:where(.not-prose, .not-prose *)),
-ul ul,
-ul ol,
-ol ul,
+ul ul.prose:not(:where(.not-prose, .not-prose *)),
+ul ol.prose:not(:where(.not-prose, .not-prose *)),
+ol ul.prose:not(:where(.not-prose, .not-prose *)),
 ol ol.prose:not(:where(.not-prose, .not-prose *)) {
 	margin-top: 0.75em;
 	margin-bottom: 0.75em;
@@ -498,7 +498,7 @@ thead th:last-child.prose:not(:where(.not-prose, .not-prose *)) {
 	padding-inline-end: 0;
 }
 .prose :where(tbody td, tfoot td):not(:where(.not-prose, .not-prose *)),
-tbody td,
+tbody td.prose:not(:where(.not-prose, .not-prose *)),
 tfoot td.prose:not(:where(.not-prose, .not-prose *)) {
 	padding-top: 0.5714286em;
 	padding-inline-end: 0.5714286em;
@@ -506,12 +506,12 @@ tfoot td.prose:not(:where(.not-prose, .not-prose *)) {
 	padding-inline-start: 0.5714286em;
 }
 .prose :where(tbody td:first-child, tfoot td:first-child):not(:where(.not-prose, .not-prose *)),
-tbody td:first-child,
+tbody td:first-child.prose:not(:where(.not-prose, .not-prose *)),
 tfoot td:first-child.prose:not(:where(.not-prose, .not-prose *)) {
 	padding-inline-start: 0;
 }
 .prose :where(tbody td:last-child, tfoot td:last-child):not(:where(.not-prose, .not-prose *)),
-tbody td:last-child,
+tbody td:last-child.prose:not(:where(.not-prose, .not-prose *)),
 tfoot td:last-child.prose:not(:where(.not-prose, .not-prose *)) {
 	padding-inline-end: 0;
 }

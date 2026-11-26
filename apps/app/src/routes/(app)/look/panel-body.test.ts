@@ -317,3 +317,129 @@ describe('the inputs the empty-inputs list may name in the other panels', () => 
 		expect(new Set(found).size).toBe(found.length);
 	});
 });
+
+// #374: the photo panels and the Time Log on the library's inputs, as the Project panel is: the panel Title with the
+// panel's own name as the app's value, each group's Title and Description, and each day's Date, each with its ?.
+describe('the photo panels and the Time Log on the library’s inputs', () => {
+	function showPanel(kind: 'photos' | 'timelog', change: (panel: PanelType) => void = () => {}) {
+		const panels = createPanels({ stops: [], team: [] } as unknown as ProjectType);
+		const found = panels.find((each) => each.kind === kind && each.key !== 'operations')!;
+		const panel = toState({ ...found, isEnabled: true });
+		change(panel);
+		const look = Object.assign(lookOf(panel), {
+			helpOf: (key: string) => `Help for ${key}.`
+		});
+		const view = render(PanelBody, { props: { look, panel } });
+		return { ...view, look, panel };
+	}
+
+	const GROUP: PanelType['groups'][number] = {
+		id: 'g1',
+		title: '',
+		description: '',
+		layout: 4,
+		isEnabled: true,
+		photos: []
+	};
+	const DAY = { id: 'd1', date: '', entries: [] };
+
+	it('draws the panel Title, a group’s Title and Description, each with its ?', () => {
+		const { container } = showPanel('photos', (panel) => (panel.groups = [{ ...GROUP }]));
+
+		expect(labelsOf(container)).toEqual(['Title', 'Title', 'Description']);
+		expect(screen.getAllByRole('button', { name: 'What goes in Title?' })).toHaveLength(2);
+		expect(screen.getByRole('button', { name: 'What goes in Description?' })).toBeTruthy();
+	});
+
+	it('shows the panel’s own name as the app’s value, and a cleared title goes back to it', async () => {
+		const { container, panel, look } = showPanel('photos');
+		const own = panel.name;
+		const title = screen.getAllByRole('textbox', { name: 'Title' })[0] as HTMLInputElement;
+
+		await fireEvent.input(title, { target: { value: 'Hatch survey' } });
+		expect(panel.name).toBe('Hatch survey');
+		await fireEvent.input(title, { target: { value: '' } });
+		expect(title.value).toBe('');
+		await fireEvent.blur(title);
+		await fireEvent.focusOut(title);
+
+		expect(panel.name).toBe(own);
+		expect(title.value).toBe(own);
+		expect(container.querySelector('fieldset.field')!.classList).toContain('field-generated');
+		expect(look.saved).toHaveBeenCalled();
+	});
+
+	it('saves a group’s Title and Description as they are typed, keeping the phone’s capitals', async () => {
+		const { panel, look } = showPanel('photos', (panel) => (panel.groups = [{ ...GROUP }]));
+		const title = screen.getAllByRole('textbox', { name: 'Title' })[1] as HTMLInputElement;
+		const description = screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement;
+
+		await fireEvent.input(title, { target: { value: 'Hatch 2 before discharge' } });
+		await fireEvent.input(description, { target: { value: 'Seen from the deck.' } });
+
+		expect(panel.groups[0].title).toBe('Hatch 2 before discharge');
+		expect(panel.groups[0].description).toBe('Seen from the deck.');
+		expect(look.saved).toHaveBeenCalled();
+		expect(title.getAttribute('autocapitalize')).toBe('sentences');
+		expect(description.getAttribute('autocapitalize')).toBe('sentences');
+	});
+
+	it('draws a Time Log day’s Date as the library’s date input with its ?, and saves it', async () => {
+		const { container, panel, look } = showPanel('timelog', (panel) => (panel.days = [{ ...DAY }]));
+
+		expect(labelsOf(container)).toContain('Date');
+		expect(screen.getByRole('button', { name: 'What goes in Date?' })).toBeTruthy();
+		const date = screen.getByLabelText('Date') as HTMLInputElement;
+		expect(date.type).toBe('date');
+
+		await fireEvent.input(date, { target: { value: '2026-11-26' } });
+
+		expect(panel.days[0].date).toBe('2026-11-26');
+		expect(look.saved).toHaveBeenCalled();
+	});
+});
+
+// #393: the Operations panel's Project Files URL on the library's box, its open arrow and its error line inside it.
+describe('the Operations panel’s link on the library’s box', () => {
+	function showOperations(link: string) {
+		const panels = createPanels({ stops: [], team: [] } as unknown as ProjectType);
+		const found = panels.find((each) => each.key === 'operations')!;
+		const panel = toState({ ...found, isEnabled: true, link });
+		const look = Object.assign(lookOf(panel), {
+			helpOf: (key: string) => `Help for ${key}.`
+		});
+		const view = render(PanelBody, { props: { look, panel } });
+		return { ...view, look, panel };
+	}
+
+	function linkField() {
+		return screen.getByRole('textbox', { name: 'Project Files URL' }) as HTMLInputElement;
+	}
+
+	it('is the library’s field with its ?, and opens a folder’s address in a new tab', () => {
+		showOperations('1drv.ms/f/s!folder');
+
+		expect(linkField().closest('fieldset.field')).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'What goes in Project Files URL?' })).toBeTruthy();
+		const open = screen.getByRole('link', { name: 'Open the URL' }) as HTMLAnchorElement;
+		expect(open.href).toBe('https://1drv.ms/f/s!folder');
+		expect(open.target).toBe('_blank');
+		expect(open.title).toBe('Open in OneDrive');
+		expect(open.closest('fieldset')).toBe(linkField().closest('fieldset'));
+	});
+
+	it('says under the box when what is typed is not an address, and offers nothing to open', async () => {
+		const { panel, look } = showOperations('');
+
+		await fireEvent.input(linkField(), { target: { value: 'the project folder' } });
+
+		expect(panel.link).toBe('the project folder');
+		expect(look.saved).toHaveBeenCalled();
+		expect(linkField().getAttribute('aria-invalid')).toBe('true');
+		const line = document.getElementById(linkField().getAttribute('aria-describedby') ?? '');
+		expect(line?.textContent?.trim()).toBe(
+			'That does not look like a URL. Paste the folder’s full address.'
+		);
+		expect(screen.queryByRole('link', { name: 'Open the URL' })).toBeNull();
+	});
+});

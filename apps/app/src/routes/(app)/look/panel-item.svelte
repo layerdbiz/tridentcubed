@@ -20,6 +20,7 @@
 	// the panel's empty inputs in a toast (LookState.showEmpty). A panel switched off counts for nothing, so its
 	// percent lists nothing.
 	import { slide } from 'svelte/transition';
+	import { Switch } from '@layerd/ui';
 	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
@@ -130,16 +131,13 @@
 {/snippet}
 
 {#snippet toggle(isBadge: boolean)}
-	<button
-		type="button"
-		role="switch"
-		aria-checked={panel.isEnabled}
-		aria-label="{panel.isEnabled ? 'Turn off' : 'Turn on'} {panel.name}"
-		class="flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors {TRACKS[
-			metrics.status
-		]} {panel.isEnabled ? 'justify-end' : 'justify-start'} {isBadge ? 'ring-4 ring-white' : ''}"
-		onclick={toggleEnabled}><span class="size-5 rounded-full bg-white shadow"></span></button
-	>
+	<Switch
+		checked={panel.isEnabled}
+		label="{panel.isEnabled ? 'Turn off' : 'Turn on'} {panel.name}"
+		track={TRACKS[metrics.status]}
+		class={isBadge ? 'ring-4 ring-white' : ''}
+		onchange={toggleEnabled}
+	/>
 {/snippet}
 
 <div

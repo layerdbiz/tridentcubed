@@ -30,7 +30,7 @@ unfinished and stay unused.
   out; white and black are allowed.
 - Responsive layout branches on `mq` in the consumer (ADR 0002); the base
   component system is breakpoint-blind.
-- The empty placeholders (`checkbox`, `radio`, `switch`, `navbar`, `about`,
+- The empty placeholders (`checkbox`, `radio`, `navbar`, `about`,
   `contact`, `home`) and the `*.data.ts` sample files stay until the
   database work decides them.
 
@@ -43,5 +43,9 @@ in place of the base component (kept from the app on #297: the same look,
 and a list of rows with a ⋮ each stays as fast as before), the toast's
 slate and amber shades (kept from the app's PDF download toast on #293),
 the select's slate shades (its typed list and choice marks, kept from the
-app's picker and place field on #298; its grey panel look went on #388):
-all listed on "UI library cleanup" (#33), changed there, not mid-feature.
+app's picker and place field on #298; its grey panel look went on #388),
+the switch's slate off track (kept from the app's stage switch on #378),
+the dialog's slate scrim, sheet shadow and grab handle and its own md:
+switch from a bottom sheet to a centred box (kept from the app's sheet on
+#375, used in seven places): all listed on "UI library cleanup" (#33),
+changed there, not mid-feature.

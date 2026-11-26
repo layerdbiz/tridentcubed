@@ -479,7 +479,8 @@
 	// "stage" in the Operations panel, "group" in any other photo panel.
 	const word = $derived(groupWordOf(panel));
 
-	// A title cleared and left empty goes back to the panel's own name: a report section is never untitled.
+	// A title cleared and left empty goes back to the panel's own name: a report section is never untitled. While it
+	// is typed in, the emptied field shows that name as the app's value (#374).
 	function keepName() {
 		if (panel.name.trim()) return;
 		panel.name = panelNameOf(panel);
@@ -716,23 +717,6 @@
 		onclick={addPersonnel}
 		><span class="icon-[mdi--account-multiple-plus-outline] size-4"></span>Add Personnel</button
 	>
-{/snippet}
-
-<!-- An input's label and its ? (#299), which opens the input's Help text: outside the <label>, so a tap on the ?
-     never reaches the input and the input keeps the label's words for its name. The block holding the label and the
-     input is `has-help`, with `data-empty` while the input has nothing in it (look.css). -->
-{#snippet labelOf(label: string, id: string, key: string, isUnfilled = false)}
-	<span class={labelClass}>
-		<label for={id}>{label}</label>
-		{#if look.helpOf(key)}<Help
-				{label}
-				text={look.helpOf(key)}
-			/>{/if}
-		{#if isUnfilled}<span
-				class="size-1.5 rounded-full bg-warning"
-				title="Not filled in yet"
-			></span>{/if}
-	</span>
 {/snippet}
 
 <!-- How many share a report page, 1, 2, 4, 6 or 8 (run 9 note 17: each button draws its own layout): a photo group's
@@ -1221,18 +1205,12 @@
 								`Its ${day.entries.length} time log entries go with it.`
 							)}
 					>
-						<div
-							class="has-help block"
-							data-empty={day.date ? undefined : ''}
-						>
-							{@render labelOf('Date', `${uid}-${day.id}`, 'timeLog.date')}
-							<input
-								id="{uid}-{day.id}"
-								class={inputClass}
-								type="date"
-								bind:value={day.date}
-							/>
-						</div>
+						<Input
+							label="Date"
+							type="date"
+							bind:value={day.date}
+							help={look.helpOf('timeLog.date')}
+						/>
 						<div
 							class="space-y-3"
 							{@attach sortable(`entries-${day.id}`, (from, to) => move(day.entries, from, to))}
@@ -1313,19 +1291,16 @@
 			>
 		</div>
 	{:else}
-		<div
-			class="has-help block"
-			data-empty={panel.name ? undefined : ''}
-		>
-			{@render labelOf('Title', `${uid}-title`, 'panel.title')}
-			<input
-				id="{uid}-title"
-				class={inputClass}
+		<!-- The panel's own name is the app's value (#374): a title cleared goes back to it once the field is left. -->
+		<div onfocusout={keepName}>
+			<Input
+				label="Title"
+				{...TYPING}
 				bind:value={panel.name}
-				placeholder={panelNameOf(panel)}
-				maxlength="80"
-				aria-label="Panel title"
-				onblur={keepName}
+				generated={panelNameOf(panel)}
+				onreset={keepName}
+				maxlength={80}
+				help={look.helpOf('panel.title')}
 			/>
 		</div>
 		{#if panel.key === 'operations'}
@@ -1334,42 +1309,26 @@
 			     is kept. The field runs the panel's full width, and once what it holds is an address a browser can
 			     open, an arrow shows inside it at the far right that opens it, to check it goes to the right place
 			     (Justin, 2026-11-18). -->
-			<div
-				class="has-help"
-				data-empty={panel.link ? undefined : ''}
-			>
-				{@render labelOf(LINK_LABEL, `${uid}-link`, 'panel.link')}
-				<div class="relative">
-					<input
-						id="{uid}-link"
-						class="{inputClass} {link ? 'pr-11' : ''}"
-						type="url"
-						inputmode="url"
-						bind:value={panel.link}
-						maxlength="2048"
-						placeholder="Optional, paste the OneDrive folder URL"
-						autocapitalize="off"
-						autocomplete="off"
-						spellcheck="false"
-					/>
-					{#if link}
-						<a
-							href={link}
-							target="_blank"
-							rel="noopener"
-							class="absolute top-1/2 right-1.5 flex size-8 -translate-y-1/2 items-center justify-center rounded-lg text-primary hover:bg-primary/10"
-							aria-label="Open the URL"
-							title="Open in {linkNameOf(link)}"
-							><span class="icon-[mdi--open-in-new] size-4"></span></a
-						>
-					{/if}
-				</div>
-				{#if panel.link?.trim() && !link}
-					<p class="mt-1 text-xs text-danger">
-						That does not look like a URL. Paste the folder’s full address.
-					</p>
-				{/if}
-			</div>
+			<Input
+				label={LINK_LABEL}
+				type="url"
+				inputmode="url"
+				autocomplete="off"
+				bind:value={panel.link}
+				maxlength={2048}
+				action={link
+					? {
+							icon: 'icon-[mdi--open-in-new]',
+							label: 'Open the URL',
+							title: `Open in ${linkNameOf(link)}`,
+							href: link
+						}
+					: undefined}
+				error={panel.link?.trim() && !link
+					? 'That does not look like a URL. Paste the folder’s full address.'
+					: undefined}
+				help={look.helpOf('panel.link')}
+			/>
 		{/if}
 		<div
 			class="space-y-3"
@@ -1411,35 +1370,20 @@
 						sortKey="groups-{panel.id}"
 						index={groupIndex}
 					>
-						<div
-							class="has-help block"
-							data-empty={group.title ? undefined : ''}
-						>
-							{@render labelOf('Title', `${uid}-${group.id}-title`, 'group.title')}
-							<input
-								id="{uid}-{group.id}-title"
-								class={inputClass}
-								bind:value={group.title}
-								placeholder={word === 'stage'
-									? 'e.g. Discharge Operations'
-									: 'e.g. Hatch 2 before discharge'}
-							/>
-						</div>
-						<div
-							class="has-help block"
-							data-empty={group.description ? undefined : ''}
-						>
-							{@render labelOf(
-								'Description',
-								`${uid}-${group.id}-description`,
-								'group.description'
-							)}
-							<textarea
-								id="{uid}-{group.id}-description"
-								class="{inputClass} min-h-16"
-								bind:value={group.description}
-								placeholder="Optional"></textarea>
-						</div>
+						<Input
+							label="Title"
+							{...TYPING}
+							bind:value={group.title}
+							help={look.helpOf('group.title')}
+						/>
+						<Textarea
+							label="Description"
+							autocapitalize={TYPING.autocapitalize}
+							spellcheck={TYPING.spellcheck}
+							bind:value={group.description}
+							rows={2}
+							help={look.helpOf('group.description')}
+						/>
 						{@render perPage(
 							'Photos per Page',
 							`${uid}-${group.id}-layout`,

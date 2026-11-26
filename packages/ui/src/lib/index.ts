@@ -58,7 +58,7 @@ export { default as Section } from "./components/atoms/section/section.svelte";
 export * from "./components/atoms/section/section.data.ts";
 export * from "./components/atoms/forms/select/select.svelte.ts";
 export { default as Select } from "./components/atoms/forms/select/select.svelte";
-export { default as Switch } from "./components/atoms/forms/switch/switch.svelte";
+export { default as Switch, type SwitchProps } from "./components/atoms/forms/switch/switch.svelte";
 export { default as Table, type TableColumn, type TableProps } from "./components/atoms/table/table.svelte";
 export { default as Text, type TextProps } from "./components/atoms/text/text.svelte";
 export * from "./components/atoms/text/text.data.ts";
@@ -77,6 +77,7 @@ export { default as Card, type CardProps } from "./components/molecules/card/car
 export * from "./components/molecules/card/card.data.ts";
 export { default as Controls } from "./components/molecules/chart/controls.svelte";
 export { default as Copyright, type CopyrightProps } from "./components/molecules/copyright/copyright.svelte";
+export { default as Dialog, type DialogProps } from "./components/molecules/dialog/dialog.svelte";
 export * from "./components/molecules/grid/grid.svelte.ts";
 export { default as Grid, type GridProps } from "./components/molecules/grid/grid.svelte";
 export { default as Item, type ItemProps } from "./components/molecules/grid/item.svelte";
