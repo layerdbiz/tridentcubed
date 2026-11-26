@@ -51,6 +51,7 @@
 	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
+	import { initialsOf, toCode, toInitialsPicture } from './initials';
 	import { introductionOf, listOf } from './introduction';
 	import ItemTable, { type FitType, type PartType } from './item-table.svelte';
 	import { legsOf, type LegType } from './legs';
@@ -1371,13 +1372,20 @@
 		{
 			label: 'Customer',
 			value: company && reference ? `${company} (${reference})` : company,
-			images: client.icon ? [client.icon] : [],
+			// No logo: its code on sky blue (#355).
+			images: client.icon
+				? [client.icon]
+				: company
+					? [toInitialsPicture(toCode(company, client.code), 'customer')]
+					: [],
 			icon: PAGE_ICONS.customers
 		},
 		{
 			label: 'Contact',
 			value: [contact?.name, contact?.title].filter(Boolean).join(', '),
-			images: contact?.photo ? [contact.photo] : [],
+			images: contact
+				? [contact.photo || toInitialsPicture(initialsOf(contact.name), 'customer')]
+				: [],
 			icon: 'icon-[mdi--account-outline]'
 		},
 		{
@@ -1599,7 +1607,7 @@
 	{@const phone = contact?.phone.trim()}
 	{@const email = contact?.email.trim()}
 	<div class="flex min-w-0 flex-col items-center rounded-xl bg-slate-50 px-1.5 py-2 text-center">
-		<!-- Anyone without the organization's badge was added on the spot: black initials on white (#355). -->
+		<!-- Anyone without the organization's badge is Personnel: black initials on white (#355). -->
 		<Avatar
 			{name}
 			size={36}
@@ -1808,8 +1816,8 @@
 			<!-- Anyone else on the job, by company, in the same cards with no badge, and the phone and email typed for
 			     them on the project (#326), as a team member's card shows theirs. -->
 			<div class="pt-2">
-				<!-- Its company's circle by its name: a customer's logo or code, or one added on the spot in white on
-				     black (#355). -->
+				<!-- Its company's circle by its name: a customer's logo or code, or any other company's code in white
+				     on black (#355). -->
 				<div class="flex items-center gap-1 pb-1">
 					{#if other.company.trim()}
 						<ClientLogo
