@@ -37,6 +37,7 @@
 	import ProjectPage from './project-page.svelte';
 	import RecentList from './recent-list.svelte';
 	import RecordPage from './record-page.svelte';
+	import SearchPopup from './search-popup.svelte';
 	import SettingsPage from './settings-page.svelte';
 	import BarB from './variants/bar-b.svelte';
 	import BarC from './variants/bar-c.svelte';
@@ -58,6 +59,8 @@
 	// Counts each time the sheet is let go, wherever it comes to rest: the map fits its markers again each time.
 	let sheetMoves = $state(0);
 	let isBellOpen = $state(false);
+	// The search pop-up (#345): from Search in the menu, or Ctrl K / ⌘ K.
+	let isSearchOpen = $state(false);
 	let bell: HTMLDivElement | undefined = $state();
 	let seen = $state(false);
 	let headHeight = $state(0);
@@ -331,6 +334,11 @@
 	ongotpointercapture={holdText}
 	onlostpointercapture={freeText}
 	onkeydown={(event) => {
+		if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+			event.preventDefault();
+			isSearchOpen = !isSearchOpen;
+			return;
+		}
 		if (event.key !== 'Escape') return;
 		isBellOpen = false;
 		drawer = 0;
@@ -418,6 +426,7 @@
 			<Sidebar
 				{look}
 				isCollapsed={side < 150}
+				onsearch={() => (isSearchOpen = true)}
 			/>
 			<!-- The sidebar's edge: a grey line that turns blue under the pointer and drags left and right, the way the
 			     line over the list drags up and down (split.svelte). -->
@@ -467,6 +476,10 @@
 			<Sidebar
 				{look}
 				onnavigate={() => (drawer = 0)}
+				onsearch={() => {
+					drawer = 0;
+					isSearchOpen = true;
+				}}
 				bell={isWide ? undefined : drawerBell}
 			/>
 		</aside>
@@ -738,4 +751,8 @@
 		>
 	{/if}
 	<AddSheet {look} />
+	{#if isSearchOpen}<SearchPopup
+			{look}
+			onclose={() => (isSearchOpen = false)}
+		/>{/if}
 </div>
