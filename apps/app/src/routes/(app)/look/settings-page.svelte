@@ -8,7 +8,8 @@
 	// under the same header (page-header.svelte). Edit is the Project panel's own sections (group.svelte) with its
 	// soft fields: Details, Disclaimer, Sign-off. The signed-in person's profile is their Team page, reached from
 	// the same menu. On a desktop Edit keeps its floating column and the report it changes shows beside it.
-	import { Help } from '@layerd/ui';
+	// #377: its text fields are the library's, the label on the border and the ? beside it, as the Project panel's are.
+	import { Input, Textarea } from '@layerd/ui';
 	import Group from './group.svelte';
 	import ImageField from './image-field.svelte';
 	import type { LookState } from './look.state.svelte';
@@ -19,14 +20,12 @@
 	import { organizationSectionsOf, valuesOf } from './tally';
 
 	let { look, isWide }: { look: LookState; isWide: boolean } = $props();
-	const uid = $props.id();
 
 	const FLOAT =
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
-	// The panels' soft field (panel-body.svelte).
-	const FIELD =
-		'w-full rounded-xl border-0 bg-slate-900/[0.04] px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary/40';
-	const LABEL = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
+	// Words people type in sentences keep the phone's own help, as in the panels (panel-body.svelte): the library's
+	// inputs switch capitals, autocorrect and spelling off, which suits the phone, emails and the website only.
+	const TYPING = { autocapitalize: 'sentences', autocorrect: 'on', spellcheck: true } as const;
 	const BUTTON =
 		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
@@ -86,67 +85,6 @@
 	});
 </script>
 
-<!-- An input's label and its ? (#299), outside the <label>, so a tap on the ? never reaches the input. The block
-     is `has-help`, with `data-empty` while the input has nothing in it (look.css). -->
-{#snippet labelOf(label: string, key: string)}
-	<span class={LABEL}>
-		<label for="{uid}-{key}">{label}</label>
-		{#if look.helpOf(key)}<Help
-				{label}
-				text={look.helpOf(key)}
-			/>{/if}
-	</span>
-{/snippet}
-
-{#snippet text(
-	label: string,
-	key: string,
-	value: string,
-	oninput: (value: string) => void,
-	type = 'text'
-)}
-	<div
-		class="has-help block"
-		data-empty={value ? undefined : ''}
-	>
-		{@render labelOf(label, key)}
-		<input
-			id="{uid}-{key}"
-			class={FIELD}
-			{type}
-			{value}
-			oninput={(event) => {
-				oninput(event.currentTarget.value);
-				look.flash();
-			}}
-		/>
-	</div>
-{/snippet}
-
-{#snippet area(
-	label: string,
-	key: string,
-	value: string,
-	oninput: (value: string) => void,
-	rows = 3
-)}
-	<div
-		class="has-help block"
-		data-empty={value ? undefined : ''}
-	>
-		{@render labelOf(label, key)}
-		<textarea
-			id="{uid}-{key}"
-			class="{FIELD} resize-y leading-relaxed"
-			{rows}
-			{value}
-			oninput={(event) => {
-				oninput(event.currentTarget.value);
-				look.flash();
-			}}></textarea>
-	</div>
-{/snippet}
-
 <!-- Edit: the same sections a Project panel has, each opening and closing. For Team every field inside is disabled
 	 (a fieldset), while the sections still open and close. -->
 {#snippet form()}
@@ -168,9 +106,11 @@
 				isOpen={open.includes('details')}
 				ontoggle={() => toggle('details')}
 			>
+				<!-- Every field below changes the organization as it is typed; the badge says it is saving. -->
 				<fieldset
 					class="contents"
 					disabled={!isEditable}
+					oninput={() => look.flash()}
 				>
 					<ImageField
 						label="Logo"
@@ -188,49 +128,56 @@
 							look.flash();
 						}}
 					/>
-					{@render text('Name', 'organization.name', organization.name, (value) =>
-						look.nameOrganization(value)
-					)}
+					<!-- The new name follows into every project's Organization drop-down (`nameOrganization`). -->
+					<Input
+						label="Name"
+						{...TYPING}
+						bind:value={() => organization.name, (name) => look.nameOrganization(name ?? '')}
+						help={look.helpOf('organization.name')}
+					/>
 					<!-- Where it is (#320): the one location field every record has, typed once and picked. -->
 					<PlaceField
 						{look}
 						label="Location"
 						help={look.helpOf('organization.address')}
 						value={organization.address}
-						inputClass={FIELD}
 						oninput={(value) => {
 							organization.address = value;
 							look.flash();
 						}}
 					/>
-					{@render text(
-						'Phone',
-						'organization.phone',
-						organization.phone,
-						(value) => (organization.phone = value),
-						'tel'
-					)}
-					{@render text(
-						'Email',
-						'organization.email',
-						organization.email,
-						(value) => (organization.email = value),
-						'email'
-					)}
-					{@render text(
-						'Group Email',
-						'organization.groupEmail',
-						organization.groupEmail,
-						(value) => (organization.groupEmail = value),
-						'email'
-					)}
-					{@render text(
-						'Website',
-						'organization.website',
-						organization.website,
-						(value) => (organization.website = value),
-						'url'
-					)}
+					<Input
+						label="Phone"
+						type="tel"
+						inputmode="tel"
+						autocomplete="off"
+						bind:value={organization.phone}
+						help={look.helpOf('organization.phone')}
+					/>
+					<Input
+						label="Email"
+						type="email"
+						inputmode="email"
+						autocomplete="off"
+						bind:value={organization.email}
+						help={look.helpOf('organization.email')}
+					/>
+					<Input
+						label="Group Email"
+						type="email"
+						inputmode="email"
+						autocomplete="off"
+						bind:value={organization.groupEmail}
+						help={look.helpOf('organization.groupEmail')}
+					/>
+					<Input
+						label="Website"
+						type="url"
+						inputmode="url"
+						autocomplete="off"
+						bind:value={organization.website}
+						help={look.helpOf('organization.website')}
+					/>
 				</fieldset>
 			</Group>
 		</div>
@@ -245,60 +192,66 @@
 				<fieldset
 					class="contents"
 					disabled={!isEditable}
+					oninput={() => look.flash()}
 				>
-					{@render area(
-						'Opening',
-						'disclaimer.opening',
-						organization.disclaimer.opening,
-						(value) => (organization.disclaimer.opening = value),
-						4
-					)}
-					{#each organization.disclaimer.points as point, index (point.id)}
-						<div class="space-y-2 rounded-2xl bg-white/80 p-2.5">
-							<div class="flex items-center gap-2">
-								<input
-									class="{FIELD} font-semibold"
-									value={point.title}
-									placeholder="Title"
-									aria-label="Point {index + 1} title"
-									oninput={(event) => {
-										point.title = event.currentTarget.value;
-										look.flash();
-									}}
-								/>
-								<button
-									type="button"
-									class="flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-danger/10 hover:text-danger"
-									aria-label="Delete point {index + 1}"
-									onclick={() => removePoint(point.id)}
-									><span class="icon-[mdi--trash-can-outline] size-5"></span></button
-								>
-							</div>
-							<textarea
-								class="{FIELD} resize-y leading-relaxed"
-								rows="3"
-								value={point.text}
-								placeholder="What it says"
-								aria-label="Point {index + 1} text"
-								oninput={(event) => {
-									point.text = event.currentTarget.value;
-									look.flash();
-								}}></textarea>
+					<Textarea
+						label="Opening"
+						autocapitalize={TYPING.autocapitalize}
+						spellcheck={TYPING.spellcheck}
+						bind:value={organization.disclaimer.opening}
+						rows={4}
+						help={look.helpOf('disclaimer.opening')}
+					/>
+					<!-- A point: its Title and its Text, a line keeping one point from the next, as the panels keep one person
+					     from the next. -->
+					{#if organization.disclaimer.points.length}
+						<div class="mt-3 divide-y divide-slate-900/[0.06] border-y border-slate-900/[0.06]">
+							{#each organization.disclaimer.points as point, index (point.id)}
+								<div class="space-y-3 py-3">
+									<div class="flex items-start gap-2">
+										<Input
+											class="min-w-0 flex-1"
+											label="Title"
+											{...TYPING}
+											bind:value={point.title}
+											help={look.helpOf('disclaimer.pointTitle')}
+										/>
+										<button
+											type="button"
+											class="mt-1.5 flex size-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-danger/10 hover:text-danger"
+											aria-label="Delete point {index + 1}"
+											onclick={() => removePoint(point.id)}
+											><span class="icon-[mdi--trash-can-outline] size-5"></span></button
+										>
+									</div>
+									<Textarea
+										label="Text"
+										autocapitalize={TYPING.autocapitalize}
+										spellcheck={TYPING.spellcheck}
+										bind:value={point.text}
+										rows={3}
+										help={look.helpOf('disclaimer.pointText')}
+									/>
+								</div>
+							{/each}
 						</div>
-					{/each}
-					{@render area(
-						'Closing Note',
-						'disclaimer.note',
-						organization.disclaimer.note,
-						(value) => (organization.disclaimer.note = value),
-						2
-					)}
+					{/if}
+					<Textarea
+						label="Closing Note"
+						autocapitalize={TYPING.autocapitalize}
+						spellcheck={TYPING.spellcheck}
+						bind:value={organization.disclaimer.note}
+						rows={2}
+						help={look.helpOf('disclaimer.note')}
+					/>
 				</fieldset>
 				{#snippet actions()}
 					{#if isEditable}
+						<!-- Placed (`relative`) so it sits above the library text area over it, which reaches a little below
+						     its own box (#394), and takes every tap. -->
 						<button
 							type="button"
-							class="{BUTTON} bg-primary/10 text-primary hover:bg-primary/15"
+							class="{BUTTON} relative bg-primary/10 text-primary hover:bg-primary/15"
 							onclick={addPoint}><span class="icon-[mdi--plus] size-4"></span>Add Point</button
 						>
 					{/if}
@@ -316,20 +269,22 @@
 				<fieldset
 					class="contents"
 					disabled={!isEditable}
+					oninput={() => look.flash()}
 				>
-					{@render area(
-						'Thank-you Line',
-						'organization.closing',
-						organization.closing,
-						(value) => (organization.closing = value),
-						2
-					)}
-					{@render text(
-						'Sign-off',
-						'organization.signoff',
-						organization.signoff,
-						(value) => (organization.signoff = value)
-					)}
+					<Textarea
+						label="Thank-you Line"
+						autocapitalize={TYPING.autocapitalize}
+						spellcheck={TYPING.spellcheck}
+						bind:value={organization.closing}
+						rows={2}
+						help={look.helpOf('organization.closing')}
+					/>
+					<Input
+						label="Sign-off"
+						{...TYPING}
+						bind:value={organization.signoff}
+						help={look.helpOf('organization.signoff')}
+					/>
 				</fieldset>
 			</Group>
 		</div>
