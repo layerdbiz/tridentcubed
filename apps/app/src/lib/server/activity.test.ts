@@ -156,7 +156,7 @@ describe('the Activity', () => {
 	});
 
 	it('records a sign-in the database is given by any copy of the app, even one that does not record it itself', async () => {
-		// dev.app and next.app share one database, and dev.app's code had no sign-in record: Ian's first sign-in there
+		// dev.app and next.app share one database, and dev.app's code had no sign-in record: a new User's first sign-in there
 		// showed no device in the Last Sign-In list (Justin, 2026-11-26). The database records each new session.
 		const test = await createTestSignIn();
 		await grantAdmin(test, 'ana.reyes@tridentcubed.com');

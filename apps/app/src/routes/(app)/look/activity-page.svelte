@@ -8,7 +8,7 @@
 	// By Time lists every entry. The names in bold open what they name: a person's Team page, a project, a record. Its newest entries are read each time it opens (`fetchActivity`),
 	// and Show Older reads the next ones before the oldest shown through the same query; how it stays up to date while
 	// open is the live updates research's to decide (#282), and plugs in behind that one query.
-	import { Accordion, Avatar, Tabs } from '@layerd/ui';
+	import { Accordion, Avatar, Button, Tabs } from '@layerd/ui';
 	import { fetchActivity } from '#lib/activity/activity.remote.js';
 	import type {
 		ActivityEventType,
@@ -16,7 +16,12 @@
 		ChangeEventType,
 		LastSignInType
 	} from '#lib/activity/activity.types.js';
-	import { toRunSummary, toRuns, type ActivityRunType } from '#lib/activity/activity.utils.js';
+	import {
+		toRunSummary,
+		toRuns,
+		type ActivityRunSummaryType,
+		type ActivityRunType
+	} from '#lib/activity/activity.utils.js';
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import type { DeviceKindType } from '#lib/presence/presence.utils.js';
 	import { toDeviceIcons, toDuration } from '#lib/presence/presence.utils.js';
@@ -44,12 +49,12 @@
 	const VIEWS = [
 		{ id: 'grouped', label: 'Grouped', icon: 'icon-[mdi--format-list-group]' },
 		{ id: 'time', label: 'By Time', icon: 'icon-[mdi--clock-outline]' }
-	];
+	] as const;
 	// Raw, so the picked view stays the very object in VIEWS that the library Tabs compares it with.
-	let view = $state.raw(VIEWS[0]);
+	let view = $state.raw<(typeof VIEWS)[number]>(VIEWS[0]);
 
-	// The record pages a row's name opens, by its table.
-	const PAGES: Partial<Record<ChangeEventType['table'], PageType>> = {
+	// The record page a row's name opens, by the row's table.
+	const PAGE_OF_TABLE: Partial<Record<ChangeEventType['table'], PageType>> = {
 		customer: 'customers',
 		team: 'team',
 		transport: 'transport',
@@ -151,10 +156,6 @@
 		return /^[aeiou]/i.test(thing) ? 'an' : 'a';
 	}
 
-	function openPerson(who: string) {
-		if (look.has('team', who)) look.openRecord('team', who);
-	}
-
 	// What a tap on a name opens, or nothing when it is gone (in the Trash, renamed since) or has no page of its own.
 	function toPersonOpener(who: string) {
 		return look.has('team', who) ? () => look.openRecord('team', who) : undefined;
@@ -169,20 +170,19 @@
 	function toRowOpener(event: ChangeEventType) {
 		if (event.table === 'project') return toProjectOpener(event.projectId);
 		const project = event.projectId;
-		// A panel opens on its project's Edit tab, at that panel.
-		if (event.table === 'panel' && toProjectOpener(project))
+		// A panel opens on its project's Edit tab, at that panel, unless this entry moved it to the Trash.
+		if (event.table === 'panel' && event.kind !== 'trash' && toProjectOpener(project))
 			return () => {
 				look.open(project ?? '', 'edit');
 				look.panelId = event.rowId;
 			};
-		const page = PAGES[event.table];
+		const page = PAGE_OF_TABLE[event.table];
 		const name = event.name;
 		return page && name && look.has(page, name) ? () => look.openRecord(page, name) : undefined;
 	}
 
 	// "made 97 changes", "signed in and made 3 changes", "signed in 2 times".
-	function toRunWords(run: ActivityRunType) {
-		const summary = toRunSummary(run);
+	function toRunWords(summary: ActivityRunSummaryType) {
 		const changes = summary.added + summary.changed + summary.trashed;
 		const said: string[] = [];
 		if (summary.signIns)
@@ -192,8 +192,7 @@
 	}
 
 	// "12 added · 85 changed · 3 moved to the Trash", when a run's changes are of more than one kind.
-	function toRunKinds(run: ActivityRunType) {
-		const summary = toRunSummary(run);
+	function toRunKinds(summary: ActivityRunSummaryType) {
 		const kinds = [
 			[summary.added, 'added'],
 			[summary.changed, 'changed'],
@@ -206,11 +205,15 @@
 		return toTime(a) === toTime(b) && toDayLabel(a) === toDayLabel(b);
 	}
 
-	// A press on a name inside a run's line opens it, and leaves the line as it was.
+	// A press on a name inside a run's header opens it, and leaves the run open or shut as it was.
 	function press(event: Event, open: () => void) {
-		event.preventDefault();
 		event.stopPropagation();
 		open();
+	}
+
+	// Enter and Space on a name are its own, not the run header's round it.
+	function keepKey(event: KeyboardEvent) {
+		if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
 	}
 </script>
 
@@ -229,18 +232,32 @@
 	</span>
 {/snippet}
 
-<!-- A name in bold, which opens what it names when that has a page (Justin, 2026-11-26). -->
+<!-- A name in bold, which opens what it names when that has a page (Justin, 2026-11-26): the library Button with the
+     look of an underlined bold word. A name too long for the rest of its line starts the next one. -->
 {#snippet named(text: string, open: (() => void) | undefined)}
-	<!-- A span, not a button, so a long name wraps with the words round it as a bold word does. -->
-	{#if open}<span
-			role="button"
-			tabindex="0"
-			class="cursor-pointer font-semibold text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-900"
-			onclick={(event) => press(event, open)}
-			onkeydown={(event) => {
-				if (event.key === 'Enter' || event.key === ' ') press(event, open);
-			}}>{text}</span
-		>{:else}<b class="font-semibold text-slate-900">{text}</b>{/if}
+	{#if open}<Button
+			unstyled
+			label={text}
+			class="cursor-pointer text-left font-semibold text-slate-900 underline decoration-slate-300 underline-offset-2 transition hover:decoration-slate-900"
+			onclick={(event: MouseEvent) => press(event, open)}
+			onkeydown={keepKey}
+		/>{:else}<b class="font-semibold text-slate-900">{text}</b>{/if}
+{/snippet}
+
+<!-- A person's face, the library Avatar from the app's one look (#379). -->
+{#snippet face(who: string, hasPresence = true)}
+	<Avatar
+		{...faceOf(who, { hasPresence })}
+		size={36}
+		ring="ring-2 ring-slate-200"
+	/>
+{/snippet}
+
+<!-- A day's heading over its entries or runs. -->
+{#snippet dayHeading(label: string)}
+	<h4 class="mb-1.5 px-1 text-[11px] font-semibold tracking-[0.12em] text-slate-400 uppercase">
+		{label}
+	</h4>
 {/snippet}
 
 <!-- What happened, in words: who first (left out inside a person's run), then what they did, the names they did it
@@ -286,13 +303,9 @@
 			type="button"
 			class="flex w-full min-w-0 items-center gap-3 px-4 py-2.5 text-left transition hover:bg-slate-900/[0.03]"
 			title="{each.isFirst ? 'First signed in' : 'Last signed in'} {toWhen(each.at)}"
-			onclick={() => openPerson(each.who)}
+			onclick={toPersonOpener(each.who)}
 		>
-			<Avatar
-				{...faceOf(each.who)}
-				size={36}
-				ring="ring-2 ring-slate-200"
-			/>
+			{@render face(each.who)}
 			<span class="min-w-0 flex-1">
 				<span class="block truncate text-sm font-medium text-slate-900">{each.who}</span>
 				<span class="block truncate text-xs text-slate-500"
@@ -318,11 +331,7 @@
 			role="img"
 			aria-label="{event.who}, {kind.label}"
 		>
-			<Avatar
-				{...faceOf(event.who, { hasPresence: false })}
-				size={36}
-				ring="ring-2 ring-slate-200"
-			/>
+			{@render face(event.who, false)}
 			<span
 				class="absolute -right-1 -bottom-1 flex size-[18px] items-center justify-center rounded-full text-white ring-2 ring-slate-50 {kind.tone}"
 				><span class="{kind.icon} size-3"></span></span
@@ -375,22 +384,18 @@
 		{@render line(each.events[0], true)}
 	{:else}
 		{@const summary = toRunSummary(each)}
-		{@const kinds = toRunKinds(each)}
+		{@const kinds = toRunKinds(summary)}
 		<li>
 			<Accordion>
 				{#snippet head()}
 					<span class="flex min-w-0 flex-1 items-start gap-3">
 						<span class="mt-0.5 shrink-0">
-							<Avatar
-								{...faceOf(each.who, { hasPresence: false })}
-								size={36}
-								ring="ring-2 ring-slate-200"
-							/>
+							{@render face(each.who, false)}
 						</span>
 						<span class="min-w-0 flex-1">
 							<span class="block text-sm leading-snug break-words text-slate-600"
 								>{@render named(each.who, toPersonOpener(each.who))}
-								{toRunWords(each)}</span
+								{toRunWords(summary)}</span
 							>
 							{#if summary.projects.length}
 								<span class="mt-0.5 block text-xs leading-snug text-slate-500"
@@ -516,11 +521,7 @@
 									{#if view.id === 'grouped'}
 										{#each byDay(toRuns(events), (each) => each.to) as day (day.label)}
 											<div>
-												<h4
-													class="mb-1.5 px-1 text-[11px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
-												>
-													{day.label}
-												</h4>
+												{@render dayHeading(day.label)}
 												<ul class="space-y-2">
 													{#each day.items as each (each.id)}{@render run(each)}{/each}
 												</ul>
@@ -529,11 +530,7 @@
 									{:else}
 										{#each byDay(events, (event) => event.at) as day (day.label)}
 											<div>
-												<h4
-													class="mb-1.5 px-1 text-[11px] font-semibold tracking-[0.12em] text-slate-400 uppercase"
-												>
-													{day.label}
-												</h4>
+												{@render dayHeading(day.label)}
 												<ul class="divide-y divide-slate-900/[0.05] overflow-hidden {CARD}">
 													{#each day.items as event (event.id)}{@render line(event)}{/each}
 												</ul>

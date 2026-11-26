@@ -1,6 +1,7 @@
-// What the database does by itself, after `schema.sql` has made the tables: the in-process database runs it once
-// its tables are made (`index.ts`), and trident-dev and production were given the same SQL (the PR and the project's
-// "before promoting dev" list say when).
+// What the database does by itself, after `schema.sql` has made the tables. The in-process database runs it once its
+// tables are made (`index.ts`). drizzle-kit does not write triggers, so a shared database is given this same SQL by
+// hand: trident-dev when it reached next (2026-11-26), production with the rest of next's database changes before it
+// is promoted. Running it again changes nothing.
 //
 // A sign-in's record for the Activity (#306): every new session leaves one in `sign_in`, whatever copy of the app
 // signed its User in. dev.app and next.app share one database, and a sign-in through a copy whose code did not record
@@ -20,7 +21,6 @@ BEGIN
 END;
 $$;
 
-DROP TRIGGER IF EXISTS session_records_sign_in ON public.session;
-CREATE TRIGGER session_records_sign_in AFTER INSERT ON public.session
+CREATE OR REPLACE TRIGGER session_records_sign_in AFTER INSERT ON public.session
 	FOR EACH ROW EXECUTE FUNCTION public.record_sign_in();
 `;
