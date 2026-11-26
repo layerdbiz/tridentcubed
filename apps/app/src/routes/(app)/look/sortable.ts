@@ -65,8 +65,14 @@ export function sortable(
 		let scroller: HTMLElement | undefined;
 		let quietUntil = 0;
 
+		// What is under the finger, seen through the copy that follows it: the copy lets the pointer through, but a library
+		// field inside it takes the pointer for its own label (forms.css), and alone would be found (#388).
+		function hitAt(x: number, y: number) {
+			return document.elementsFromPoint(x, y).find((node) => !ghost?.contains(node));
+		}
+
 		function itemAt(x: number, y: number) {
-			const hit = document.elementFromPoint(x, y)?.closest<HTMLElement>(`[data-sort="${key}"]`);
+			const hit = hitAt(x, y)?.closest<HTMLElement>(`[data-sort="${key}"]`);
 			return hit && hit !== item && list.contains(hit) ? hit : undefined;
 		}
 
@@ -98,7 +104,7 @@ export function sortable(
 		function aim() {
 			if (!zones) return;
 			const selector = `[data-zone="${zones.name}"]`;
-			const hit = document.elementFromPoint(point.x, point.y)?.closest<HTMLElement>(selector);
+			const hit = hitAt(point.x, point.y)?.closest<HTMLElement>(selector);
 			const next =
 				hit && hit !== list.closest(selector) && !hit.closest('[data-frozen]') ? hit : undefined;
 			if (next === target) return;
@@ -110,7 +116,7 @@ export function sortable(
 		// Where in the zone a drop lands: before the item the finger is on, or after it once past its middle.
 		function placeIn(zone: HTMLElement) {
 			if (!zones) return undefined;
-			const over = document.elementFromPoint(point.x, point.y)?.closest<HTMLElement>('[data-sort]');
+			const over = hitAt(point.x, point.y)?.closest<HTMLElement>('[data-sort]');
 			if (!over || !zone.contains(over) || !over.dataset.sort?.startsWith(zones.items))
 				return undefined;
 			const index = Number(over.dataset.index);

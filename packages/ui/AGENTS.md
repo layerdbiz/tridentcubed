@@ -42,13 +42,12 @@ the module singletons in `observe` and `scroll`, five rune-free
 in place of the base component (kept from the app on #297: the same look,
 and a list of rows with a ⋮ each stays as fast as before), the toast's
 slate and amber shades (kept from the app's PDF download toast on #293),
-the select's slate shades (its `variant="soft"` look
-with its own box, and the typed list and choice marks the notched field
-shares with it: kept from the app's picker and place field on #298, the
-app's panel look until #57), the switch's slate off track (kept from the
-app's stage switch on #378), the dialog's slate scrim, sheet shadow and grab
-handle and its own md: switch from a bottom sheet to a centred box (kept
-from the app's sheet on #375, used in seven places), the avatar's and stack's plain spans and slate
-shades with no base component (kept from the app's faces on #379: they
-repeat in every dashboard row): all listed on "UI library cleanup" (#33),
+the select's slate shades (its typed list and choice marks, kept from the
+app's picker and place field on #298; its grey panel look went on #388),
+the switch's slate off track (kept from the app's stage switch on #378),
+the dialog's slate scrim, sheet shadow and grab handle and its own md:
+switch from a bottom sheet to a centred box (kept from the app's sheet on
+#375, used in seven places), the avatar's and stack's plain spans and
+slate shades with no base component (kept from the app's faces on #379:
+they repeat in every dashboard row): all listed on "UI library cleanup" (#33),
 changed there, not mid-feature.
