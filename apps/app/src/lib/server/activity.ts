@@ -49,7 +49,9 @@ const ROW_NAMES: Record<TableNameType, { one: string; many: string }> = {
 	item: { one: 'item', many: 'items' },
 	item_attachment: { one: 'attachment', many: 'attachments' },
 	time_log_day: { one: 'Time Log day', many: 'Time Log days' },
-	time_log_entry: { one: 'Time Log entry', many: 'Time Log entries' }
+	time_log_entry: { one: 'Time Log entry', many: 'Time Log entries' },
+	// Never shown: pins stay out of the Activity (#346).
+	pinned: { one: 'pin', many: 'pins' }
 };
 
 /** How many sign-ins and changes a page of the Activity reads: the newest, then the next ones on Show Older. */
