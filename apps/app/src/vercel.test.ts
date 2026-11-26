@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -72,5 +72,47 @@ describe('how Vercel builds', () => {
 	it("runs the app's own build, the one CI checks", () => {
 		expect(buildCommand).toBe('pnpm build');
 		expect(scripts.build).toBe('vp build');
+	});
+});
+
+// The adapter packs the server code into Vercel functions, following every import into node_modules for each one
+// (Node File Trace). Photo conversion and PDF export each keep a function of their own with five minutes to run:
+// sharp and Chromium load only there, and a print or a full-size photo never shares memory with page requests.
+// Putting every route in one function would trace once, but would end both (research on #397).
+describe('the long jobs keep their own Vercel functions', () => {
+	for (const route of ['api/convert', 'api/export/pdf']) {
+		it(`gives ${route} a function of its own with five minutes`, () => {
+			const source = readFileSync(
+				fileURLToPath(new URL(`./routes/${route}/+server.ts`, import.meta.url)),
+				'utf8'
+			);
+			expect(source).toContain('export const config = { maxDuration: 300, split: true };');
+		});
+	}
+});
+
+// Left alone, the adapter starts each function's trace from nothing and reads and parses the same packages four
+// times. The patch in `patches/` gives the four traces one cache, which took the step from about 14 s to 7 s with
+// the same files in every function (#397). pnpm stops an install when the patch no longer fits a new adapter
+// version, but says nothing when the patch setting itself goes missing; this catches that.
+describe('the Vercel adapter traces with one shared cache', () => {
+	const adapter = readFileSync(
+		realpathSync(
+			fileURLToPath(
+				new URL(
+					'../../../packages/config/vite/node_modules/@sveltejs/adapter-vercel/index.js',
+					import.meta.url
+				)
+			)
+		),
+		'utf8'
+	);
+
+	it('hands every trace the same cache', () => {
+		expect(adapter).toMatch(/nodeFileTrace\(\[entry\], \{[^}]*cache: nft_cache/);
+	});
+
+	it('forgets its own entry files, which it rewrites for every function, before each trace', () => {
+		expect(adapter).toMatch(/forget_entry_files\(.*\);\s+const traced = await nodeFileTrace/);
 	});
 });

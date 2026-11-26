@@ -140,3 +140,13 @@ Every function carries PGlite, the in-process Postgres the app uses for tests an
 - [vercel/nft readme 1.11.0](https://github.com/vercel/nft/blob/1.11.0/readme.md), [vercel/nft #613](https://github.com/vercel/nft/pull/613), [npm registry](https://registry.npmjs.org/@vercel/nft)
 - Vercel: [Fluid compute](https://vercel.com/docs/fluid-compute), [function duration](https://vercel.com/docs/functions/configuring-functions/duration), [Build Output API primitives](https://vercel.com/docs/build-output-api/v3/primitives), [build cache](https://vercel.com/docs/deployments/troubleshoot-a-build#what-is-cached)
 - Vercel build logs `dpl_HKotxoyrq6gmFSTbrQGsVX6L1gNq`, `dpl_BpJb3b9wDPsjLzdQffBPf9vzQuE3`
+
+## Built on next
+
+Justin said yes on 2026-11-26 ("Go ahead and build it up on next"). Both changes went in together:
+
+- `@vercel/nft` 1.11.0 to 1.11.12 in `pnpm-lock.yaml` (`pnpm update -r @vercel/nft`; it also moved a few in-range patch versions under it).
+- `patches/@sveltejs__adapter-vercel@7.0.0.patch`, set in `pnpm-workspace.yaml` under `patchedDependencies`.
+- `apps/app/src/vercel.test.ts` checks that the two long routes keep their own functions and that the installed adapter has the shared cache; it fails on an unpatched install.
+
+Trial on 4 cores, `next` at ed3b199, two builds each: the adapter step went from 13.4 to 13.7 s to 6.0 to 7.0 s, and the whole app build from 35 to 40 s to about 29 s. Every function has the same files, links and `.vc-config.json` as before. The site builds with the same patch.

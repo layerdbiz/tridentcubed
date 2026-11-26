@@ -9,6 +9,8 @@ allowBuilds:
 catalog:
   vite: npm:@voidzero-dev/vite-plus-core@8.3.8001
   vite-plus: 1.8.0
+patchedDependencies:
+  '@sveltejs/adapter-vercel@7.0.0': patches/@sveltejs__adapter-vercel@7.0.0.patch
 peerDependencyRules:
   allowAny:
     - vite
