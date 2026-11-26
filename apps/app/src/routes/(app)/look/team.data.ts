@@ -2,6 +2,7 @@
 // seed (`#lib/server/db/seed.ts`) loads it, with the photos as the app's own files, and the mapper (`mapper.ts`)
 // turns its rows into these. Records are named by name on screen; `id` is the row's.
 import type { DeviceKindType } from '#lib/presence/presence.utils.js';
+import { initialsOf, toInitialsPicture } from './initials';
 
 export type TeamMemberType = {
 	// Its row's id, made on the device (#185).
@@ -34,20 +35,10 @@ export type TeamMemberType = {
 // The day the sample rows were made: what a record that came with the prototype says for created and updated.
 export const SEEDED = '2026-01-05T09:00';
 
-// Initials on a soft circle for the people with no photo yet.
-export function initialsOf(name: string) {
-	const letters = name
-		.replace(/^Capt\. /, '')
-		.split(' ')
-		.map((part) => part[0])
-		.slice(0, 2)
-		.join('');
-	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="#dbe4f0"/><text x="32" y="40" font-family="system-ui,sans-serif" font-size="24" font-weight="600" fill="#475569" text-anchor="middle">${letters}</text></svg>`;
-	return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
+// Someone with no photo yet shows their initials on their role's colour (#355): purple for an Admin, blue for a
+// Manager, grey for a Team user.
 export function photoOfMember(member: TeamMemberType) {
-	return member.photo || initialsOf(member.name);
+	return member.photo || toInitialsPicture(initialsOf(member.name), member.role);
 }
 
 export const ROLE_LABELS: Record<TeamMemberType['role'], string> = {

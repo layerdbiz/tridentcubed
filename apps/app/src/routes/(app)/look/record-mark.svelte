@@ -3,8 +3,8 @@
 	// customer's logo, a team member's photo, or a transport's or facility's icon. Its projects show as a number badge
 	// at the bottom right (Justin's run 12 notes 9 and 10, in place of "1 project · 1 open"): blue while one is still
 	// open, grey when they are all done, 9+ above nine, none at all with no projects. A team member's photo has a ring
-	// in their role's colour, so admins and managers stand out at a glance (note 8): blue for an admin, violet for a
-	// manager, none for a member.
+	// in their role's colour, so admins and managers stand out at a glance (note 8): purple for an admin, blue for a
+	// manager, grey for a Team user (#355, Justin, 2026-11-26; before that blue, violet and none).
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import { badgeOf, type RecordType } from './records.data';
@@ -17,9 +17,9 @@
 
 	// No gap between the face and its ring, so a face is exactly as big as every other mark in a list (run 18).
 	const RING = {
-		admin: 'ring-primary',
-		manager: 'ring-violet-500',
-		team: 'ring-slate-200'
+		admin: 'ring-violet-600',
+		manager: 'ring-blue-600',
+		team: 'ring-slate-400'
 	};
 	const badge = $derived(Math.max(16, Math.round(size * 0.4)));
 </script>

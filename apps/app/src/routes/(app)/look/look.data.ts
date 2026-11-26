@@ -15,7 +15,8 @@ import type { GridType } from './spreadsheet';
 // is made up by code any more. A project and every record carry when they were made and last changed (`created`,
 // `updated`), which the charts, Recent and "Updated" read; a project's number comes from its customer's code and its
 // day; a customer has several contacts; the online dot comes from when someone was last in the app.
-import { initialsOf, photoOfMember, type PresenceType, type TeamMemberType } from './team.data';
+import { initialsOf, toCode, toInitialsPicture } from './initials';
+import { photoOfMember, type PresenceType, type TeamMemberType } from './team.data';
 
 export type StatusType =
 	| 'Draft'
@@ -27,7 +28,13 @@ export type StatusType =
 	| 'Complete'
 	| 'Archived';
 
-export type PersonType = { name: string; photo: string; seen?: string };
+// `photo` is their own, or their initials on their role's colour when they have none (#355).
+export type PersonType = {
+	name: string;
+	photo: string;
+	seen?: string;
+	role?: TeamMemberType['role'];
+};
 
 export type ProjectType = {
 	id: string;
@@ -258,7 +265,12 @@ export const PEOPLE: PersonType[] = [];
 
 export function personOf(name: string): PersonType {
 	seen();
-	return PEOPLE.find((person) => person.name === name) ?? { name, photo: initialsOf(name) };
+	return (
+		PEOPLE.find((person) => person.name === name) ?? {
+			name,
+			photo: toInitialsPicture(initialsOf(name), 'team')
+		}
+	);
 }
 
 // The dot on a face: green within five minutes of being in the app, amber within the hour, grey after. The server
@@ -322,10 +334,10 @@ export function toPresenceText(member: TeamMemberType, now = Date.now()) {
 // A team member renamed or added in the prototype keeps their photo under the new name; a photo uploaded on their
 // page (run 15) takes over from the one they came with.
 export function registerPerson(member: TeamMemberType) {
-	const photo = member.photo || photoOfMember(member);
+	const photo = photoOfMember(member);
 	const person = PEOPLE.find((item) => item.name === member.name);
-	if (person) Object.assign(person, { photo, seen: member.seen });
-	else PEOPLE.push({ name: member.name, photo, seen: member.seen });
+	if (person) Object.assign(person, { photo, seen: member.seen, role: member.role });
+	else PEOPLE.push({ name: member.name, photo, seen: member.seen, role: member.role });
 	touch();
 }
 
@@ -427,12 +439,7 @@ export function resetCustomers(live: ClientType[], trashed: ClientType[]) {
 
 export function clientOf(name: string): ClientType {
 	seen();
-	const code =
-		name
-			.replace(/[^a-z]/gi, '')
-			.slice(0, 3)
-			.toUpperCase() || 'TC';
-	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', logo: '', city: '', code };
+	return CLIENT_INFO[name] ?? { name, kind: '', icon: '', logo: '', city: '', code: toCode(name) };
 }
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
