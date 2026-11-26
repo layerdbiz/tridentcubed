@@ -10,7 +10,7 @@
 	import ChangeList from '#lib/releases/change-list.svelte';
 	import WindowHead from '#lib/releases/window-head.svelte';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
-	import { Dialog } from '@layerd/ui';
+	import { Button, Dialog } from '@layerd/ui';
 	import { BUILD_COMMIT, CHECK_EVERY, IDLE_AFTER } from './changes.constants';
 	import { ChangesState } from './changes.state.svelte';
 	import { fetchBetween, fetchNewest } from './changes.utils';
@@ -165,16 +165,13 @@
 
 		{#snippet footer()}
 			<div class="-mx-5 border-t border-slate-200 px-5 pt-3">
-				<button
-					type="button"
-					class="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-slate-900 text-[15px] font-semibold text-white transition hover:bg-slate-800"
+				<Button
+					secondary
+					heavy
+					width="full"
+					label={changes.isNewer ? 'Reload to update' : 'Got it'}
 					onclick={press}
-				>
-					{#if changes.isNewer}<span
-							class="icon-[mdi--refresh] size-5"
-							aria-hidden="true"
-						></span>Reload to update{:else}Got it{/if}
-				</button>
+				/>
 			</div>
 		{/snippet}
 	</Dialog>

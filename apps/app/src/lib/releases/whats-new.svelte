@@ -4,7 +4,7 @@
 	// new features and fixes. It is the library's tall Dialog (#396), the same window as the new version window: a
 	// phone's whole screen, a centred window from md up, the title and the button staying put while the list scrolls.
 	// When and what it shows is whatsNew's (releases.state.svelte.ts); this only draws it.
-	import { Dialog } from '@layerd/ui';
+	import { Button, Dialog } from '@layerd/ui';
 	import ChangeList from './change-list.svelte';
 	import { whatsNew } from './releases.state.svelte';
 	import { toAppChanges } from './releases.utils';
@@ -68,11 +68,13 @@
 
 		{#snippet footer()}
 			<div class="-mx-5 border-t border-slate-200 px-5 pt-3">
-				<button
-					type="button"
-					class="h-11 w-full rounded-full bg-slate-900 text-[15px] font-semibold text-white transition hover:bg-slate-800"
-					onclick={() => whatsNew.close()}>Got it</button
-				>
+				<Button
+					secondary
+					heavy
+					width="full"
+					label="Got it"
+					onclick={() => whatsNew.close()}
+				/>
 			</div>
 		{/snippet}
 	</Dialog>
