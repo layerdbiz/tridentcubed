@@ -8,7 +8,7 @@
 	// By Time lists every entry. The names in bold open what they name: a person's Team page, a project, a record. Its newest entries are read each time it opens (`fetchActivity`),
 	// and Show Older reads the next ones before the oldest shown through the same query; how it stays up to date while
 	// open is the live updates research's to decide (#282), and plugs in behind that one query.
-	import { Accordion, AccordionContent, AccordionTitle, Avatar, Tabs } from '@layerd/ui';
+	import { Accordion, Avatar, Tabs } from '@layerd/ui';
 	import { fetchActivity } from '#lib/activity/activity.remote.js';
 	import type {
 		ActivityEventType,
@@ -304,9 +304,14 @@
 	</li>
 {/snippet}
 
-{#snippet line(event: ActivityEventType)}
+{#snippet line(event: ActivityEventType, isBoxed = false)}
 	{@const kind = KINDS[event.kind]}
-	<li class="flex min-w-0 items-start gap-3 px-4 py-3">
+	<li
+		class={[
+			'flex min-w-0 items-start gap-3',
+			isBoxed ? 'rounded-2xl bg-slate-900/[0.03] py-3 pr-[42px] pl-3' : 'px-4 py-3'
+		]}
+	>
 		<span
 			class="relative mt-0.5 shrink-0"
 			role="img"
@@ -336,10 +341,11 @@
 	</li>
 {/snippet}
 
-<!-- One entry inside a person's run: its kind's mark where the face was, and what they did. -->
+<!-- One entry inside a person's run: its kind's mark where the face was, and what they did. Its time lines up with
+     the run's, left of the Accordion's chevron. -->
 {#snippet entry(event: ActivityEventType)}
 	{@const kind = KINDS[event.kind]}
-	<li class="flex min-w-0 items-start gap-3 py-2 pr-4 pl-4">
+	<li class="flex min-w-0 items-start gap-3 py-1.5 pr-[26px] pl-0">
 		<span class="flex w-9 shrink-0 justify-center pt-0.5">
 			<span
 				class="flex size-[22px] items-center justify-center rounded-full text-white {kind.tone}"
@@ -361,67 +367,65 @@
 	</li>
 {/snippet}
 
-<!-- A person's back-to-back entries as one line: who, how much and where, and when it began and ended. It opens like
-     an accordion to show every entry; a run of one is its entry's own line. -->
+<!-- A person's back-to-back entries as one section of the library Accordion: who, how much and where, and when it
+     began and ended; it opens to show every entry. A run of one is its entry's own line, in the same box. -->
 {#snippet run(each: ActivityRunType)}
 	{#if each.events.length === 1}
-		{@render line(each.events[0])}
+		{@render line(each.events[0], true)}
 	{:else}
 		{@const summary = toRunSummary(each)}
 		{@const kinds = toRunKinds(each)}
 		<li>
-			<Accordion class="group">
-				<AccordionTitle
-					class="flex min-w-0 cursor-pointer items-start gap-3 px-4 py-3 transition hover:bg-slate-900/[0.03]"
-				>
-					<span class="mt-0.5 shrink-0">
-						<Avatar
-							{...faceOf(each.who, { hasPresence: false })}
-							size={36}
-							ring="ring-2 ring-slate-200"
-						/>
-					</span>
-					<span class="min-w-0 flex-1">
-						<span class="block text-sm leading-snug break-words text-slate-600"
-							>{@render named(each.who, toPersonOpener(each.who))}
-							{toRunWords(each)}</span
-						>
-						{#if summary.projects.length}
-							<span class="mt-0.5 block text-xs leading-snug text-slate-500"
-								>In {#each summary.projects.slice(0, 2) as project, index (project.id ?? project.title)}{#if index}{summary
-											.projects.length === 2
-											? ' and '
-											: ', '}{/if}{@render named(
-										project.title,
-										toProjectOpener(project.id)
-									)}{/each}{#if summary.projects.length > 2}{` and ${summary.projects.length - 2} more`}{/if}</span
+			<Accordion>
+				{#snippet head()}
+					<span class="flex min-w-0 flex-1 items-start gap-3">
+						<span class="mt-0.5 shrink-0">
+							<Avatar
+								{...faceOf(each.who, { hasPresence: false })}
+								size={36}
+								ring="ring-2 ring-slate-200"
+							/>
+						</span>
+						<span class="min-w-0 flex-1">
+							<span class="block text-sm leading-snug break-words text-slate-600"
+								>{@render named(each.who, toPersonOpener(each.who))}
+								{toRunWords(each)}</span
 							>
-						{/if}
-						{#if kinds}<span class="mt-0.5 block text-xs text-slate-400">{kinds}</span>{/if}
-					</span>
-					<span class="flex shrink-0 flex-col items-end gap-0.5 pt-0.5">
-						<time
-							class="text-xs text-slate-400 tabular-nums"
-							datetime={each.to}
-							title={toWhen(each.to)}>{toTime(each.to)}</time
-						>
-						{#if !isSameMinute(each.from, each.to)}
+							{#if summary.projects.length}
+								<span class="mt-0.5 block text-xs leading-snug text-slate-500"
+									>In {#each summary.projects.slice(0, 2) as project, index (project.id ?? project.title)}{#if index}{summary
+												.projects.length === 2
+												? ' and '
+												: ', '}{/if}{@render named(
+											project.title,
+											toProjectOpener(project.id)
+										)}{/each}{#if summary.projects.length > 2}{` and ${summary.projects.length - 2} more`}{/if}</span
+								>
+							{/if}
+							{#if kinds}<span class="mt-0.5 block text-xs text-slate-400">{kinds}</span>{/if}
+						</span>
+						<span class="flex shrink-0 flex-col items-end gap-0.5 pt-0.5">
 							<time
 								class="text-xs text-slate-400 tabular-nums"
-								datetime={each.from}
-								title={toWhen(each.from)}>from {toTime(each.from)}</time
+								datetime={each.to}
+								title={toWhen(each.to)}>{toTime(each.to)}</time
 							>
-						{/if}
-						<span
-							class="mt-0.5 icon-[mdi--chevron-down] size-5 text-slate-400 transition-transform group-open:rotate-180"
-						></span>
+							{#if !isSameMinute(each.from, each.to)}
+								<time
+									class="text-xs text-slate-400 tabular-nums"
+									datetime={each.from}
+									title={toWhen(each.from)}>from {toTime(each.from)}</time
+								>
+							{/if}
+						</span>
 					</span>
-				</AccordionTitle>
-				<AccordionContent class="pb-2">
-					<ul aria-label="{each.who}, {each.events.length} entries">
-						{#each each.events as event (event.id)}{@render entry(event)}{/each}
-					</ul>
-				</AccordionContent>
+				{/snippet}
+				<ul
+					class="-ml-1"
+					aria-label="{each.who}, {each.events.length} entries"
+				>
+					{#each each.events as event (event.id)}{@render entry(event)}{/each}
+				</ul>
 			</Accordion>
 		</li>
 	{/if}
@@ -503,7 +507,7 @@
 												>
 													{day.label}
 												</h4>
-												<ul class="divide-y divide-slate-900/[0.05] overflow-hidden {CARD}">
+												<ul class="space-y-2">
 													{#each day.items as each (each.id)}{@render run(each)}{/each}
 												</ul>
 											</div>
