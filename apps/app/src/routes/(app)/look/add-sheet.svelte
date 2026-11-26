@@ -221,7 +221,10 @@
 		label="Add"
 		onclose={close}
 	>
+		<!-- The app checks what is needed itself (a name): the library's dropdowns hold a hidden <select>, and a required one
+		     left empty must not stop Add, as the old soft ones never did (#373). -->
 		<form
+			novalidate
 			onsubmit={(event) => {
 				event.preventDefault();
 				add();
