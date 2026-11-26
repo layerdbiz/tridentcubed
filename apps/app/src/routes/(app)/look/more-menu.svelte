@@ -6,8 +6,9 @@
 	// dark glass circle, readable on any photo; 'bare' just the dots, in the colour around them (a Page's top bar).
 	// Run 18: a project also offers Mark Complete and Change Status, which opens every status (status-sheet.svelte).
 	// #346: anything saved offers Pin, which puts it in the menu's Pinned list (pins.ts), and Unpin once it is there.
+	// #360: a project still being worked on offers Translate to English (translate-sheet.svelte).
 	import { DATASETS, type DatasetType } from './look.data';
-	import type { LookState } from './look.state.svelte';
+	import { FROZEN, type LookState } from './look.state.svelte';
 	import { isPinnable, isPinned, togglePin } from './pins';
 	import { Menu, type MenuOptionType } from '@layerd/ui';
 
@@ -63,7 +64,11 @@
 									icon: 'icon-[mdi--check-decagram-outline]'
 								}
 							]),
-					{ id: 'status', label: 'Change Status', icon: 'icon-[mdi--swap-horizontal]' }
+					{ id: 'status', label: 'Change Status', icon: 'icon-[mdi--swap-horizontal]' },
+					// #360: a Sent, Complete or Archived project takes no change, so it offers none.
+					...(FROZEN.includes(project.status)
+						? []
+						: [{ id: 'translate', label: 'Translate to English', icon: 'icon-[mdi--translate]' }])
 				]
 			: [{ id: 'edit', label: `Edit ${one}`, icon: 'icon-[mdi--pencil-outline]' }]),
 		{ id: 'delete', label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
@@ -95,6 +100,7 @@
 		if (choice === 'unsend') look.unsend(project);
 		if (choice === 'complete') look.setStatus(project, 'Complete');
 		if (choice === 'status') look.statusFor = project.id;
+		if (choice === 'translate') look.translate(project.id);
 		if (choice === 'delete')
 			look.confirm({
 				title: 'Delete Project?',

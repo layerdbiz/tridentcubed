@@ -53,6 +53,7 @@ import {
 	itemAttachment,
 	timeLogDay,
 	timeLogEntry,
+	translation,
 	user as users
 } from './db/schema';
 import { photo, photoGroup } from './db/photo.schema';
@@ -81,6 +82,8 @@ export const DRIZZLE_TABLES: Record<TableNameType, PgTable> = {
 	project_team: projectTeam,
 	personnel_company: personnelCompany,
 	personnel_person: personnelPerson,
+	// #360
+	translation,
 	panel,
 	// #189
 	photo_group: photoGroup,

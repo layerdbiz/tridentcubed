@@ -102,6 +102,9 @@ export type PersonnelType = {
 	company: string;
 	people: { id: string; name: string; title: string; phone: string; email: string }[];
 };
+// #360: the English of a text typed in Spanish, for the report: the text as typed (`source`, trimmed) and its English,
+// one each per project. The typed text stays as it was; the report prints the English wherever that text is.
+export type TranslationType = { id: string; source: string; english: string };
 // Something attached to the Items panel in place of typed rows, or beside them: a photo of the item list, or the
 // list itself as a file of any kind (#233). A photo prints on the report, whole; a file prints its name. #295: a PDF
 // prints its pages, `layout` of them to a report page (1, 2, 4, 6 or 8), as a photo group's photos do.
@@ -174,6 +177,8 @@ export type PanelType = {
 	introduction?: string;
 	// The Project panel: people on the job who are not on the team.
 	personnel?: PersonnelType[];
+	// The Project panel (#360): the English the report prints for texts typed in Spanish.
+	translations?: TranslationType[];
 	// The Items panel: photos of the item list, or the list itself as a file.
 	attachments?: AttachmentType[];
 	// The Operations panel (#233): the address of the project's folder elsewhere (a OneDrive folder), as typed.

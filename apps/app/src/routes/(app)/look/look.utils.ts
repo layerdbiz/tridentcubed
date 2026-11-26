@@ -77,3 +77,8 @@ export function toAddress(look: LookState, from: URL) {
 	else url.searchParams.delete('page');
 	return url;
 }
+
+/** A count and the word for what is counted, one or many: "1 entry", "3 entries". */
+export function toCountLabel(count: number, one: string, many = `${one}s`) {
+	return `${count} ${count === 1 ? one : many}`;
+}

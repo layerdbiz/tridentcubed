@@ -267,6 +267,13 @@ export const TABLES = {
 			email: TEXT
 		}
 	},
+	// #360: the English the report prints for a text typed in Spanish: the text as typed and its English, one row
+	// per text of the project. The typed text stays in its own row.
+	translation: {
+		scope: 'project',
+		parent: { table: 'project', column: 'projectId' },
+		columns: { projectId: ID, position: POSITION, source: TEXT, english: TEXT }
+	},
 	panel: {
 		scope: 'project',
 		parent: { table: 'project', column: 'projectId' },
