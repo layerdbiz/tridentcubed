@@ -26,6 +26,7 @@
 	import ProjectLogo from './project-logo.svelte';
 	import ProjectRoute from './project-route.svelte';
 	import { projectPhotosOf, recordOf } from './records.data';
+	import StatusPill from './status-pill.svelte';
 
 	let {
 		look,
@@ -115,12 +116,12 @@
 		/>
 	{/snippet}
 	{#snippet overlay(isLight)}
-		<button
-			class="pointer-events-auto mb-3 inline-flex items-center gap-1 rounded-full py-1 pr-2 pl-3 text-xs font-semibold text-white {status.bar}"
-			title="Change Status"
-			onclick={() => (look.statusFor = project.id)}
-			>{project.status}<span class="icon-[mdi--chevron-down] size-4"></span></button
-		>
+		<div class="pointer-events-auto mb-3 w-fit">
+			<StatusPill
+				{look}
+				{project}
+			/>
+		</div>
 		<div class="flex items-center gap-3">
 			<ProjectLogo
 				{project}
