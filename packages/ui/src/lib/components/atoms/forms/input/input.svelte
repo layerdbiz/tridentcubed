@@ -35,6 +35,12 @@
 		action?: FieldActionType;
 		/** What is wrong with the value, on a line under the box: the input is marked invalid and described by it. */
 		error?: string;
+		/**
+		 * Attributes for the field itself rather than its frame (#391), such as a form's own (a remote form's
+		 * `fields.email.as('email')`: its `name`, `type`, `aria-invalid`) or `autofocus`. They win over the Input's own,
+		 * but its value stays the Input's (`value`) and so does its typing.
+		 */
+		input?: HTMLInputAttributes;
 	};
 
 	let {
@@ -59,6 +65,7 @@
 		step = undefined,
 		action = undefined,
 		error = undefined,
+		input = undefined,
 		minlength = undefined,
 		maxlength = undefined,
 		inputmode = undefined,
@@ -95,6 +102,17 @@
 			iconEnd
 		})
 	);
+
+	// A form's own attributes for the field, less its value: the Input's value is the one it shows and marks the box
+	// filled by, so the two never disagree.
+	const fieldAttributes = $derived(toFieldAttributes(input));
+
+	function toFieldAttributes(attributes: HTMLInputAttributes | undefined): HTMLInputAttributes {
+		const rest = { ...attributes };
+		delete rest.value;
+		delete rest.defaultValue;
+		return rest;
+	}
 
 	// The input shows at once what its owner kept of what was typed: only the digits, or a date it will not let be
 	// emptied. With a Generated value, an emptied input stays empty under the caret instead.
@@ -245,6 +263,7 @@ Use thse emojis for comments about the state of the input in the examples below.
 		{autocorrect}
 		{autocapitalize}
 		{spellcheck}
+		{...fieldAttributes}
 		oninput={handleInput}
 		onblur={() => (draft = undefined)}
 		onclick={openPicker}

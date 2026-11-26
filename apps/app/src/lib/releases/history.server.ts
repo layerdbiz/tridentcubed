@@ -1,60 +1,61 @@
-// The branch's history for What's New (#399), read from git when the app is built: every commit the branch took and
-// when, the ones a merge brought counted as landing with the merge. A build on Vercel or in CI starts from a shallow
-// copy, so the rest of the history is fetched first; the repository is public, so no key is needed. Without git, or
-// without a network, What's New is empty and says so; the build goes on.
-import { execFileSync } from 'node:child_process';
+// The branch's history for What's New (#399, #400), read from git when the app is built: every commit the branch took
+// and when, the ones a merge brought counted as landing with the merge, and the release that first held each one
+// (releases.server.ts). A build on Vercel or in CI starts from a shallow copy without tags, so the rest is fetched
+// first; the repository is public, so no key is needed. Without git, or without a network, What's New is empty and
+// says so; the build goes on.
 import { NOTES } from './notes.ts';
 import { SHORT, toHistory, type HistoryType, type LandedType } from './history.utils.ts';
-
-const REPOSITORY = 'https://github.com/layerdbiz/tridentcubed.git';
-const UNIT = '\u001f';
-const RECORD = '\u001e';
-
-function git(...args: string[]) {
-	return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).trim();
-}
+import { FIELD, RECORD, git, readReleaseState, readyRepository } from './releases.server.ts';
 
 function read(range: string, ...options: string[]) {
-	const out = git('log', ...options, `--format=%H${UNIT}%P${UNIT}%cI${UNIT}%s${RECORD}`, range);
+	const out = git('log', ...options, `--format=%H${FIELD}%P${FIELD}%cI${FIELD}%s${RECORD}`, range);
 	return out
 		.split(RECORD)
 		.map((record) => record.trim())
 		.filter(Boolean)
 		.map((record) => {
-			const [commit, parents, at, subject] = record.split(UNIT);
+			const [commit, parents, at, subject] = record.split(FIELD);
 			return { commit, parents: parents.split(' ').filter(Boolean), at, subject };
 		});
-}
-
-function deepen(head: string) {
-	if (git('rev-parse', '--is-shallow-repository') !== 'true') return;
-	git('fetch', '--quiet', '--unshallow', '--no-tags', REPOSITORY, head);
 }
 
 /** The branch's commits, each with when it landed, oldest first. */
 export function readLanded(head = 'HEAD'): { head: string; chain: string[]; landed: LandedType[] } {
 	const commit = git('rev-parse', head);
-	deepen(commit);
 	const branch = read(commit, '--first-parent', '--reverse');
 	const landed: LandedType[] = [];
 	for (const [index, own] of branch.entries()) {
 		const [first, second] = own.parents;
 		if (!second) {
-			landed.push({ subject: own.subject, at: own.at, landed: index });
+			landed.push({ subject: own.subject, at: own.at, landed: index, commit: own.commit });
 			continue;
 		}
 		for (const brought of read(`${first}..${second}`, '--no-merges', '--reverse')) {
-			landed.push({ subject: brought.subject, at: own.at, landed: index });
+			landed.push({ subject: brought.subject, at: own.at, landed: index, commit: brought.commit });
 		}
 	}
 	return { head: commit, chain: branch.map((own) => own.commit.slice(0, SHORT)), landed };
 }
 
+/** The history of `head` with its releases, from a copy that is already whole. */
+export function readHistoryOf(head = 'HEAD'): HistoryType {
+	const { head: commit, chain, landed } = readLanded(head);
+	const state = readReleaseState(commit);
+	const released = landed.map((each) => {
+		const release = each.commit ? state.versionOf(each.commit) : undefined;
+		return release ? { ...each, release } : each;
+	});
+	return toHistory(commit, chain, released, NOTES, {
+		releases: state.releases,
+		version: state.label
+	});
+}
+
 /** What's New's history for the build: empty when git cannot tell it. */
 export function readHistory(): HistoryType {
 	try {
-		const { head, chain, landed } = readLanded();
-		return toHistory(head, chain, landed, NOTES);
+		readyRepository();
+		return readHistoryOf();
 	} catch (error) {
 		console.warn(`What's New: the branch's history could not be read (${String(error)})`);
 		return { head: '', chain: [], batches: [] };

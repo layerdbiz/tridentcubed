@@ -1,7 +1,16 @@
 // The release rule (#157) with plain commit subjects, the way `git log` gives them: which commits a release lists,
-// as new features or fixes, and which version it gets.
+// as new features or fixes, which version it gets and what the app calls its version.
 import { describe, expect, it } from 'vite-plus/test';
-import { FIRST_SUMMARY, planRelease, toAppChanges, toReleaseNotes } from './releases.utils';
+import {
+	FIRST_SUMMARY,
+	isAppChange,
+	planRelease,
+	toReleaseUrl,
+	toTag,
+	toTagVersion,
+	toVersionLabel,
+	type ReleaseChangeType
+} from './releases.utils';
 
 describe('the release rule', () => {
 	it('lists a feature and a fix in plain words, with the ticket taken off the end', () => {
@@ -112,65 +121,50 @@ describe('the release rule', () => {
 	});
 });
 
-describe('the release notes on GitHub', () => {
-	it('puts the summary first, then the new features and the fixes, each with its tickets', () => {
-		const notes = toReleaseNotes({
-			version: '1.1.0',
-			date: '2026-11-26',
-			summary: 'A short word first.',
-			changes: [
-				{ kind: 'feature', text: 'Install the app on phones', area: 'app', tickets: [206] },
-				{
-					kind: 'fix',
-					text: 'The time log prints in reports again',
-					area: 'app',
-					tickets: [224, 225]
-				}
-			]
-		});
-
-		expect(notes).toBe(
-			[
-				'A short word first.',
-				'',
-				'## ✨ New features',
-				'',
-				'- Install the app on phones (#206)',
-				'',
-				'## 🐛 Fixes',
-				'',
-				'- The time log prints in reports again (#224, #225)',
-				''
-			].join('\n')
-		);
+describe('the version people read', () => {
+	it('says nothing while nothing is released and releases are not made yet', () => {
+		expect(toVersionLabel({ isReleaseBranch: true, ahead: 40 })).toBe('');
 	});
 
-	it('leaves out a heading with nothing under it', () => {
-		const notes = toReleaseNotes({
-			version: '1.0.1',
-			date: '2026-11-26',
-			changes: [{ kind: 'fix', text: 'A fix', tickets: [] }]
-		});
+	it('is the last release when nothing new came since', () => {
+		expect(toVersionLabel({ last: '1.1.0', isReleaseBranch: false, ahead: 2 })).toBe('v1.1.0');
+	});
 
-		expect(notes).toBe(['## 🐛 Fixes', '', '- A fix', ''].join('\n'));
+	it('is the release being made on dev, before its tag exists', () => {
+		expect(
+			toVersionLabel({ last: '1.1.0', planned: '1.2.0', isReleaseBranch: true, ahead: 3 })
+		).toBe('v1.2.0');
+	});
+
+	it('is the release still to come on next, with the commits since the last one', () => {
+		expect(
+			toVersionLabel({ last: '1.1.0', planned: '1.2.0', isReleaseBranch: false, ahead: 12 })
+		).toBe('v1.2.0-next.12');
+	});
+
+	it('reads only plain release tags, and links each to its notes', () => {
+		expect(toTagVersion('v1.10.2')).toBe('1.10.2');
+		expect(toTagVersion('v1.2')).toBeUndefined();
+		expect(toTagVersion('v1.2.0-rc.1')).toBeUndefined();
+		expect(toTagVersion('persist')).toBeUndefined();
+		expect(toTag('1.2.0')).toBe('v1.2.0');
+		expect(toReleaseUrl('1.2.0')).toBe(
+			'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.2.0'
+		);
 	});
 });
 
 describe("the changes What's New lists", () => {
 	it('keeps the app and the library, and leaves out the website and the tools', () => {
-		const changes = toAppChanges({
-			version: '1.1.0',
-			date: '2026-11-26',
-			changes: [
-				{ kind: 'feature', text: 'In the app', area: 'app', tickets: [] },
-				{ kind: 'feature', text: 'On the website', area: 'site', tickets: [] },
-				{ kind: 'fix', text: 'In the library', area: 'ui', tickets: [] },
-				{ kind: 'fix', text: 'Named nowhere', tickets: [] },
-				{ kind: 'fix', text: 'In the prototypes', area: 'play', tickets: [] }
-			]
-		});
+		const changes: ReleaseChangeType[] = [
+			{ kind: 'feature', text: 'In the app', area: 'app', tickets: [] },
+			{ kind: 'feature', text: 'On the website', area: 'site', tickets: [] },
+			{ kind: 'fix', text: 'In the library', area: 'ui', tickets: [] },
+			{ kind: 'fix', text: 'Named nowhere', tickets: [] },
+			{ kind: 'fix', text: 'In the prototypes', area: 'play', tickets: [] }
+		];
 
-		expect(changes.map((change) => change.text)).toEqual([
+		expect(changes.filter((change) => isAppChange(change)).map((change) => change.text)).toEqual([
 			'In the app',
 			'In the library',
 			'Named nowhere'

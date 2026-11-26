@@ -12,7 +12,11 @@ Oneezy skills and any other skill where they disagree.
   the database but never rename or remove anything, since dev.app reads the
   same data.
 - **`dev`** takes `next` only on Justin's explicit word, after he has
-  checked the work on next.app. That merge is when the checks run.
+  checked the work on next.app. That merge is when the checks run. It is a
+  fast-forward, `git push origin origin/next:dev`, never a squash: the
+  release made from that push (#157) and What's New read every commit, and
+  dev stays inside next. If dev holds a commit next lacks, merge dev into
+  next first.
 - **`main`** changes only when Justin says so: never merge into, push to,
   or modify it.
 - **`play`** holds the team's prototypes at play.tridentcubed.com (#342),
@@ -97,8 +101,9 @@ See docs/agents/domain.md.
 ### Branch status and landing
 `/oneezy-status` renders the read-only status report for the branch, its PR
 and its builds. `/oneezy-merge` commits, pushes and opens the PR;
-`/oneezy-merge into dev` also squash-merges on green builds and cleans up,
-and runs only on Justin's word (Where work lands); both end with that report, which briefs the next agent when a wayfinder map
+`/oneezy-merge into dev` also merges on green builds and cleans up,
+and runs only on Justin's word; dev takes next by fast-forward, never the
+skill's squash (Where work lands); both end with that report, which briefs the next agent when a wayfinder map
 is in play. Skills prefixed `oneezy-` are Justin's; the rest are
 third-party skills declared in the library and are never edited here.
 

@@ -14,14 +14,11 @@
 	import { install } from '#lib/install/install.state.svelte.js';
 	import { fetchSignInWays, submitCode, submitEmail, submitProvider } from './login.remote';
 	import { readWaiting, toWaiting } from './waiting';
-	import { Button, Divider } from '@layerd/ui';
+	import { Button, Divider, Input } from '@layerd/ui';
 
 	// Written here until it comes from the release on GitHub (Justin, 2026-11-17: "for now, just do v1.0.0").
 	const VERSION = 'v1.0.0';
 
-	const FIELD =
-		'w-full rounded-xl border-0 bg-slate-900/[0.05] px-3.5 py-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-primary/40';
-	const LABEL = 'mb-1 block text-xs font-medium text-slate-500';
 	const OTHER_WAYS = [
 		{ id: 'google', name: 'Google', icon: 'icon-[logos--google-icon]' },
 		{ id: 'microsoft', name: 'Microsoft', icon: 'icon-[logos--microsoft-icon]' }
@@ -158,22 +155,20 @@
 							</p>
 							<input {...submitCode.fields.email.as('hidden', email)} />
 							<input {...submitCode.fields.next.as('hidden', next)} />
-							<label class="block">
-								<span class={LABEL}>Code</span>
-								<!-- svelte-ignore a11y_autofocus -->
-								<input
-									class="{FIELD} tracking-[0.3em]"
-									{...submitCode.fields.code.as('text')}
-									inputmode="numeric"
-									autocomplete="one-time-code"
-									maxlength="7"
-									placeholder="123456"
-									autofocus
-								/>
-							</label>
-							{#each submitCode.fields.code.issues() ?? [] as issue (issue.message)}
-								<p class="text-sm text-rose-600">{issue.message}</p>
-							{/each}
+							<!-- The library box (#391): the form's own name for the field reaches the field itself. The phone
+							     offers the code from its message (one-time-code). -->
+							<Input
+								label="Code"
+								inputmode="numeric"
+								autocomplete="one-time-code"
+								maxlength={7}
+								error={submitCode.fields.code.issues()?.[0]?.message}
+								input={{
+									...submitCode.fields.code.as('text'),
+									autofocus: true,
+									class: 'tracking-[0.3em]'
+								}}
+							/>
 							{#if problem}<p
 									class="text-sm text-rose-600"
 									role="alert"
@@ -210,20 +205,14 @@
 						})}
 					>
 						{#if step === 'email'}
-							<label class="block">
-								<span class={LABEL}>Email</span>
-								<!-- svelte-ignore a11y_autofocus -->
-								<input
-									class={FIELD}
-									{...submitEmail.fields.email.as('email')}
-									autocomplete="username"
-									placeholder="you@tridentcubed.com"
-									autofocus
-								/>
-							</label>
-							{#each submitEmail.fields.email.issues() ?? [] as issue (issue.message)}
-								<p class="text-sm text-rose-600">{issue.message}</p>
-							{/each}
+							<Input
+								label="Email"
+								type="email"
+								inputmode="email"
+								autocomplete="username"
+								error={submitEmail.fields.email.issues()?.[0]?.message}
+								input={{ ...submitEmail.fields.email.as('email'), autofocus: true }}
+							/>
 							{#if problem}<p
 									class="text-sm text-rose-600"
 									role="alert"

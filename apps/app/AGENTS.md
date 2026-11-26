@@ -163,6 +163,36 @@ the why is in ADR 0002, 0003 and 0005.
   which drizzle-kit cannot write, goes in `db/triggers.ts`: the in-process
   Postgres runs it, and each Supabase database is given the same SQL by hand.
 
+## Releases and What's New
+
+- **A release is a tag and a GitHub release, nothing else (#157).** Each
+  push to dev runs `.github/workflows/release.yml`: it works the version
+  out from the commit titles since the newest `v*` tag
+  (`src/lib/releases/releases.utils.ts`, breaking = major, feat = minor,
+  fix or perf = patch, else no release), tags dev's newest commit and
+  publishes the GitHub release with notes shaped like What's New
+  (`scripts/release.ts`, `--dry-run` previews, `--first` previews v1.0.0). Nothing is committed for a
+  release, so dev stays a fast-forward of next. Never tag or publish by
+  hand.
+- **The version comes from the tags.** A build reads them from git
+  (`src/lib/releases/releases.server.ts`; Vercel's copy has none, so it
+  fetches them from the public repository) and writes the label into the
+  app (`__APP_VERSION__`, `vite.config.ts`) and into What's New's history.
+  On dev and main a build with something new is the release being made, so
+  it shows `v1.2.0` before the workflow has made the tag; anywhere else it
+  is `v1.2.0-next.<commits since the last release>`.
+- **The first release waits for Justin's word.** `IS_RELEASING` in
+  `releases.utils.ts` is false: no tag is made and every build says "Not
+  released yet". Turning it on, in the push that brings next into dev,
+  makes v1.0.0, its notes listing everything up to it, the same as What's
+  New.
+- **What's New (#399, #400)** folds every app and library change into
+  batches of work; a release ends a batch, and a released batch names its
+  version and links its GitHub notes. The batches, their titles and days,
+  and the notes written from them live in `src/lib/releases/history.utils.ts`;
+  friendly titles and words for a batch go in `src/lib/releases/notes.ts`. The repository and its releases
+  are public: no client names, data or screenshots in either.
+
 ## The installed app
 
 Decided on "Install the app on phones" (#199), 2026-11-17; the why is in

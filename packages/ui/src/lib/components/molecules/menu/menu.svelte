@@ -19,7 +19,13 @@
 	// at the top to type in, which narrows the list; `onadd` puts "Add new" right under it; `onedit` puts a pencil at
 	// the far right of every choice, which opens that thing to edit it (run 28, Justin, 2026-11-12, for every dropdown
 	// in the app).
-	import type { Snippet } from 'svelte';
+	//
+	// `opens` 'left' or 'right' puts the list beside its button (#390, the report preview's zoom bar), centred on it
+	// or lined up with its top or bottom edge (`align`), kept on the screen, `offset` away from it. Given a look (the
+	// zoom bar's dark one), every choice is drawn in that look's words, the hint under its name a quieter shade of
+	// them, and the picked choice wears the look's two colours swapped, read off the list as it opens; a look with no
+	// fill of its own tints the picked choice with its words instead.
+	import { untrack, type Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { scale } from 'svelte/transition';
 	import {
@@ -60,10 +66,15 @@
 		// Draws what stands at the left of a choice, in place of its icon or image (a picker's faces and logos).
 		// The second argument says the choice is the one picked.
 		mark?: Snippet<[MenuOptionType, boolean]>;
-		align?: 'left' | 'right';
-		// Which way it opens when it fits either way: under its button, or over it (#376: a toolbar at the foot of a
-		// box, the photo pop-up's More, whose list would otherwise fall below the box on a tall screen).
-		opens?: 'down' | 'up';
+		// Which of its edges lines up with the same edge of its button: left or right for a list under or over its
+		// button (right unless told), top, bottom or its middle for one beside it (the middle unless told).
+		align?: 'left' | 'right' | 'top' | 'bottom' | 'center';
+		// Which way it opens: under its button, or over it when it fits either way (#376: a toolbar at the foot of a
+		// box, the photo pop-up's More, whose list would otherwise fall below the box on a tall screen); or beside it,
+		// on its left or right (#390).
+		opens?: 'down' | 'up' | 'left' | 'right';
+		// How far from its button the list stands, in pixels.
+		offset?: number;
 		isWide?: boolean;
 		// Given, the menu picks several: every id in it is ticked, and a pick does not close the list (run 19).
 		values?: string[];
@@ -81,8 +92,9 @@
 		trigger,
 		button,
 		mark,
-		align = 'right',
+		align,
 		opens = 'down',
+		offset = 8,
 		isWide = false,
 		values,
 		isSearchable = false,
@@ -92,11 +104,49 @@
 		...props
 	}: MenuProps = $props();
 
+	// What is inside the list is drawn in: the theme's greys and blue with no look given (`plain`), the look's own
+	// words when it is given one (`worn`), whose picked choice wears the look's two colours swapped once they are
+	// read (`SWAPPED`), or a tint of its words when they cannot be.
+	const TONES = {
+		plain: {
+			box: 'bg-surface',
+			search: 'border-secondary/[0.06] text-base-400',
+			field: 'text-secondary placeholder:text-base-400',
+			add: 'text-primary hover:bg-primary/[0.08]',
+			addMark: 'bg-primary/10',
+			choice: 'text-secondary-400 hover:bg-secondary/[0.04]',
+			picked: 'bg-primary/[0.08] font-medium text-secondary',
+			icon: 'text-base-500',
+			quiet: 'text-base-400',
+			tick: 'text-primary',
+			pencil: 'text-base-400 hover:bg-secondary/[0.05] hover:text-primary'
+		},
+		worn: {
+			box: '',
+			search: 'border-current/10 text-current/60',
+			field: 'text-current placeholder:text-current/50',
+			add: 'text-current hover:bg-current/10',
+			addMark: 'bg-current/10',
+			choice: 'text-current hover:bg-current/10',
+			picked: 'bg-current/15 font-medium text-current',
+			icon: '',
+			quiet: 'text-current/60',
+			tick: '',
+			pencil: 'text-current/60 hover:bg-current/10 hover:text-current'
+		}
+	};
+	const SWAPPED = 'bg-(--menu-ink) font-medium text-(--menu-paper)';
+
 	let isOpen = $state(false);
 	let root: HTMLDivElement | undefined = $state();
 	let place = $state('');
 	let query = $state('');
+	// The look's two colours, read off the open list, for the picked choice to wear swapped; empty with no look.
+	let swap = $state('');
+	// How tall the open list is, once it shows; 0 until then, when its height is reckoned from its choices.
+	let height = 0;
 	const current = $derived(options.find((option) => option.id === value));
+	const isBeside = $derived(opens === 'left' || opens === 'right');
 	const shown = $derived.by(() => {
 		const words = query.trim().toLowerCase();
 		if (!words) return options;
@@ -109,9 +159,9 @@
 		if (isOpen && root && !root.contains(event.target as Node)) isOpen = false;
 	}
 
-	// Where the list goes: under its button, or over it when there is more room there. Only the part of the screen
-	// in view counts, so with a phone's keyboard up the list stays above the keyboard. Nothing when the button has
-	// left the view.
+	// Where the list goes: under its button, or over it when there is more room there, or beside it. Only the part
+	// of the screen in view counts, so with a phone's keyboard up the list stays above the keyboard. Nothing when the
+	// button has left the view.
 	function placeOf() {
 		if (!root) return '';
 		const box = root.getBoundingClientRect();
@@ -119,19 +169,25 @@
 		const [viewTop, viewHeight] = [view?.offsetTop ?? 0, view?.height ?? innerHeight];
 		if (box.bottom < viewTop || box.top > viewTop + viewHeight) return '';
 		const rows = options.reduce((sum, option) => sum + (option.note ? 52 : 44), 0);
-		const tall = rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
+		// A list beside its button is measured once it shows; one under or over it keeps the reckoning, so which way
+		// it opens never changes on a scroll.
+		const tall = (isBeside && height) || rows + 16 + (isSearchable ? 48 : 0) + (onadd ? 44 : 0);
+		if (isBeside) return besideOf(box, viewTop, viewHeight, tall);
 		const below = viewTop + viewHeight - box.bottom - 24;
 		const above = box.top - viewTop - 24;
 		const need = Math.min(tall, 220);
 		const isUp = opens === 'up' ? above >= need || above > below : below < need && above > below;
-		const x = align === 'right' ? `right: ${innerWidth - box.right}px` : `left: ${box.left}px`;
-		const y = isUp ? `bottom: ${innerHeight - box.top + 8}px` : `top: ${box.bottom + 8}px`;
+		const edge = align === 'left' ? 'left' : 'right';
+		const x = edge === 'right' ? `right: ${innerWidth - box.right}px` : `left: ${box.left}px`;
+		const y = isUp
+			? `bottom: ${innerHeight - box.top + offset}px`
+			: `top: ${box.bottom + offset}px`;
 		// Run 14 (note 5): never taller than the room on its side, or 360px; longer lists scroll inside it.
 		const most = Math.max(140, Math.min(isUp ? above : below, 360));
 		// Never wider than the room from its button's edge to the screen's, keeping 8px clear.
 		const room = Math.min(
 			innerWidth - 16,
-			align === 'right' ? box.right - 8 : innerWidth - box.left - 8
+			edge === 'right' ? box.right - 8 : innerWidth - box.left - 8
 		);
 		const across = isWide
 			? `width: ${Math.min(Math.max(box.width, 192), room)}px`
@@ -139,8 +195,40 @@
 		return `${x}; ${y}; ${across}; max-height: ${most}px`;
 	}
 
+	// Beside its button (#390): its middle on the button's middle, or its top or bottom on the button's, and never
+	// past the top or bottom of the screen in view, keeping 8px clear; as wide as the room on its side allows.
+	function besideOf(box: DOMRect, viewTop: number, viewHeight: number, tall: number) {
+		const [first, last] = [viewTop + 8, viewTop + viewHeight - 8];
+		const most = Math.max(140, Math.min(last - first, 360));
+		const shown = Math.min(tall, most);
+		const x =
+			opens === 'left'
+				? `right: ${innerWidth - box.left + offset}px`
+				: `left: ${box.right + offset}px`;
+		const bottom = Math.min(box.bottom, last);
+		const wanted =
+			align === 'top'
+				? box.top
+				: align === 'bottom'
+					? bottom - shown
+					: box.top + (box.height - shown) / 2;
+		const top = Math.max(first, Math.min(wanted, last - shown));
+		// Lined up at the bottom, its foot is set exactly while it fits; otherwise its top keeps it on the screen.
+		const y =
+			align === 'bottom' && top === wanted
+				? `bottom: ${innerHeight - bottom}px`
+				: `top: ${Math.round(top)}px`;
+		const room = Math.min(
+			innerWidth - 16,
+			opens === 'left' ? box.left - offset - 8 : innerWidth - box.right - offset - 8
+		);
+		return `${x}; ${y}; min-width: ${Math.min(192, room)}px; max-width: ${room}px; max-height: ${most}px`;
+	}
+
 	function toggle() {
 		if (isOpen || !root) return (isOpen = false);
+		height = 0;
+		swap = '';
 		place = placeOf();
 		query = '';
 		isOpen = true;
@@ -168,6 +256,13 @@
 	// (the client's Safari report, 2026-11-18). There the list stays an ordinary fixed box, kept on top by its z-index.
 	const lift: Attachment<HTMLElement> = (node) => {
 		node.showPopover?.();
+		// Its real height, now it shows: a list beside its button centres on it exactly. Read once, as it opens, not
+		// followed: what it reads here never runs this again.
+		untrack(() => {
+			height = node.offsetHeight;
+			if (height && isBeside) place = placeOf() || place;
+			swap = /\btheme-/.test(node.className) ? swapOf(node) : '';
+		});
 		const onscroll = (event: Event) => {
 			if (!node.contains(event.target as Node)) follow();
 		};
@@ -187,6 +282,15 @@
 	const ready: Attachment<HTMLInputElement> = (node) => {
 		if (matchMedia('(pointer: fine)').matches) node.focus({ preventScroll: true });
 	};
+
+	// The look's words and fill, read off the open list, for the picked choice to wear swapped. A look with no fill
+	// of its own (ghost, or a see-through one) gives nothing, and the picked choice is tinted with the words instead.
+	function swapOf(node: HTMLElement) {
+		const { color, backgroundColor } = getComputedStyle(node);
+		const isClear = /^transparent$|^rgba\((?:[^,]*,){3}\s*0\)$|\/\s*0%?\)$/.test(backgroundColor);
+		if (!color || !backgroundColor || isClear) return '';
+		return `--menu-ink: ${color}; --menu-paper: ${backgroundColor};`;
+	}
 </script>
 
 <svelte:window
@@ -209,12 +313,13 @@
 </Component>
 
 {#snippet inside(look: string)}
+	{@const tone = /\btheme-/.test(look) ? TONES.worn : TONES.plain}
 	{#if button}
 		<Button
 			{...button}
 			aria-haspopup="listbox"
 			aria-expanded={isOpen}
-			aria-label={label}
+			aria-label={button['aria-label'] ?? label}
 			onclick={toggle}
 		/>
 	{:else}
@@ -230,22 +335,16 @@
 	{#if isOpen}
 		<div
 			popover="manual"
-			class="fixed z-[120] m-0 flex flex-col overflow-hidden rounded-2xl border-0 {/\btheme-/.test(
-				look
-			)
-				? ''
-				: 'bg-surface'} text-left shadow-menu {look}"
-			style="inset: auto; {place}"
+			class="fixed z-[120] m-0 flex flex-col overflow-hidden rounded-2xl border-0 {tone.box} text-left shadow-menu {look}"
+			style="inset: auto; {place}; {swap}"
 			transition:scale={{ start: 0.95, duration: 140 }}
 			{@attach lift}
 		>
 			{#if isSearchable}
-				<label
-					class="flex shrink-0 items-center gap-2 border-b border-secondary/[0.06] px-3.5 py-2.5 text-base-400"
-				>
+				<label class="flex shrink-0 items-center gap-2 border-b px-3.5 py-2.5 {tone.search}">
 					<span class="icon-[mdi--magnify] size-[18px] shrink-0"></span>
 					<input
-						class="w-full min-w-0 border-0 bg-transparent p-0 text-sm text-secondary outline-none placeholder:text-base-400 focus:ring-0"
+						class="w-full min-w-0 border-0 bg-transparent p-0 text-sm outline-none focus:ring-0 {tone.field}"
 						type="search"
 						placeholder="Search"
 						aria-label="Search {label}"
@@ -270,14 +369,14 @@
 				{#if onadd}
 					<button
 						type="button"
-						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium text-primary transition hover:bg-primary/[0.08]"
+						class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition {tone.add}"
 						onclick={() => {
 							isOpen = false;
 							onadd();
 						}}
 					>
 						<span
-							class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10"
+							class="flex size-7 shrink-0 items-center justify-center rounded-full {tone.addMark}"
 							><span class="icon-[mdi--plus] size-[18px]"></span></span
 						>
 						<span class="flex-1">Add new {addLabel || label}</span>
@@ -292,9 +391,11 @@
 							aria-selected={isOn}
 							class="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm transition {option.isDanger
 								? 'font-medium text-danger hover:bg-danger/10'
-								: isOn
-									? 'bg-primary/[0.08] font-medium text-secondary'
-									: 'text-secondary-400 hover:bg-secondary/[0.04]'}"
+								: !isOn
+									? tone.choice
+									: tone === TONES.worn && swap
+										? SWAPPED
+										: tone.picked}"
 							onclick={() => pick(option.id)}
 						>
 							{#if mark}{@render mark(option, isOn)}{:else}
@@ -304,9 +405,7 @@
 										fit={option.fit}
 									/>{/if}
 								{#if option.icon}<span
-										class="{option.icon} size-[18px] shrink-0 {option.isDanger
-											? ''
-											: 'text-base-500'}"
+										class="{option.icon} size-[18px] shrink-0 {option.isDanger ? '' : tone.icon}"
 									></span>{/if}
 								{#if option.dot}<span class="size-2.5 shrink-0 rounded-full {option.dot}"
 									></span>{/if}
@@ -316,20 +415,20 @@
 							{#if option.note}
 								<span class="flex min-w-0 flex-1 flex-col">
 									<span class="truncate">{option.label}</span>
-									<span class="truncate text-xs font-normal text-base-400">{option.note}</span>
+									<span class="truncate text-xs font-normal {tone.quiet}">{option.note}</span>
 								</span>
 							{:else}
 								<span class="min-w-0 flex-1 truncate">{option.label}</span>
 							{/if}
-							{#if option.count !== undefined}<span class="text-xs text-base-400 tabular-nums"
+							{#if option.count !== undefined}<span class="text-xs tabular-nums {tone.quiet}"
 									>{option.count}</span
 								>{/if}
-							{#if isOn}<span class="icon-[mdi--check] size-4 shrink-0 text-primary"></span>{/if}
+							{#if isOn}<span class="icon-[mdi--check] size-4 shrink-0 {tone.tick}"></span>{/if}
 						</button>
 						{#if onedit}
 							<button
 								type="button"
-								class="flex size-9 shrink-0 items-center justify-center rounded-full text-base-400 transition hover:bg-secondary/[0.05] hover:text-primary"
+								class="flex size-9 shrink-0 items-center justify-center rounded-full transition {tone.pencil}"
 								aria-label="Edit {option.label}"
 								title="Edit"
 								onclick={() => {
@@ -340,7 +439,7 @@
 						{/if}
 					</div>
 				{:else}
-					<p class="px-3 py-2 text-sm text-base-400">Nothing matches</p>
+					<p class="px-3 py-2 text-sm {tone.quiet}">Nothing matches</p>
 				{/each}
 			</div>
 		</div>

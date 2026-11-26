@@ -1,12 +1,15 @@
-// The release rule (#157): which commits a release lists and which version it gets. One version for the whole repo,
-// tagged v<major>.<minor>.<patch> (/oneezy-naming). Commit titles read `✨ feat(app): count an attached PDF (#290)`:
-// a `feat` is a new feature, a `fix` or `perf` a fix, and every other kind (chore, ci, docs, refactor, test, style)
-// is work the team never sees, so a release does not list it. The bump: any `!` or `BREAKING CHANGE:` is major, else
-// any feature is minor, else any fix is patch. With no feature or fix since the last release there is no release.
+// The release rule (#157): which commits a release lists, which version it gets, what the app calls its version and
+// what the GitHub release says. One version for the whole repo, tagged v<major>.<minor>.<patch> (/oneezy-naming), and
+// the tag is the one record of it: nothing is committed for a release. Commit titles read
+// `✨ feat(app): count an attached PDF (#290)`: a `feat` is a new feature, a `fix` or `perf` a fix, and every other kind
+// (chore, ci, docs, refactor, test, style) is work the team never sees, so a release does not list it. The bump: any
+// `!` or `BREAKING CHANGE:` is major, else any feature is minor, else any fix is patch. With no feature or fix since
+// the last release there is no release.
 //
-// Plain functions and data, no git or file: scripts/release.ts reads the commits and writes the release, and the app
-// reads releases.json. Written in the TypeScript Node runs as it is (no enums, `.ts` imports), for that script.
-
+// Plain functions and data, no git or file: releases.server.ts reads the tags and the commits, history.utils.ts folds
+// the changes into What's New's batches and the GitHub notes, scripts/release.ts makes the release, and the app shows
+// what the build was told. Written in the TypeScript Node runs as it is (no
+// enums, `.ts` imports), for that script.
 /** What a change is to the team: a new feature, or a fix to something that was wrong or slow. */
 export type ChangeKindType = 'feature' | 'fix';
 
@@ -33,8 +36,25 @@ export type ReleaseType = {
 	changes: ReleaseChangeType[];
 };
 
+/** A release as What's New names it: its version and where its notes are. */
+export type ReleaseRefType = { version: string; url: string };
+
 /** A commit as `git log` gives it. */
 export type CommitType = { subject: string; body?: string };
+
+/**
+ * Whether releases are made (#157). Off until Justin's word, so no tag and no GitHub release exist and every build
+ * says "Not released yet". Turned on, the next push to dev makes FIRST_VERSION, its notes listing everything up to it,
+ * and every push after it with a feature or a fix makes the next version. Once the first tag exists, this is no
+ * longer read.
+ */
+export const IS_RELEASING = false;
+
+/** The branches a release is made from (dev) or promoted to (main): a build there is the version being released. */
+export const RELEASE_BRANCHES = ['dev', 'main'];
+
+/** Where the releases are published. */
+export const REPOSITORY_URL = 'https://github.com/layerdbiz/tridentcubed';
 
 /** The version the first release gets (#157). */
 export const FIRST_VERSION = '1.0.0';
@@ -42,6 +62,9 @@ export const FIRST_VERSION = '1.0.0';
 /** What the first release says above its lists. */
 export const FIRST_SUMMARY =
 	'Trident Cubed now has version numbers. From here on, every update shows what is new and what was fixed, right here.';
+
+/** The team's clock, for the days and times the GitHub release names (the app uses the reader's own). */
+export const TEAM_TIME_ZONE = 'America/Chicago';
 
 const KINDS: Record<string, ChangeKindType> = { feat: 'feature', fix: 'fix', perf: 'fix' };
 
@@ -51,6 +74,8 @@ const TITLE =
 // One bracket of tickets, `(#346)` or `(#346, #345)`, and the numbers inside one.
 const TICKETS = /\s*\((#\d+(?:,\s*#\d+)*)\)/g;
 const NUMBER = /#(\d+)/g;
+// A release's tag: `v1.2.3`, nothing after it.
+const TAG = /^v(\d+\.\d+\.\d+)$/;
 
 type ParsedType = { change?: ReleaseChangeType; isBreaking: boolean };
 
@@ -124,24 +149,9 @@ export function planRelease(
 	return { version: bump(last, part), date, changes };
 }
 
-const HEADINGS: Record<ChangeKindType, string> = {
-	feature: '## ✨ New features',
-	fix: '## 🐛 Fixes'
-};
-
-/** A release's notes as GitHub shows them: the summary, then the new features and the fixes, each with its tickets. */
-export function toReleaseNotes(release: ReleaseType) {
-	const blocks = release.summary ? [release.summary] : [];
-	for (const kind of ['feature', 'fix'] as const) {
-		const lines = release.changes
-			.filter((change) => change.kind === kind)
-			.map((change) => {
-				const tickets = change.tickets.map((ticket) => `#${ticket}`).join(', ');
-				return `- ${change.text}${tickets ? ` (${tickets})` : ''}`;
-			});
-		if (lines.length > 0) blocks.push(HEADINGS[kind], lines.join('\n'));
-	}
-	return `${blocks.join('\n\n')}\n`;
+/** A release tag's version, `v1.2.3` → `1.2.3`; nothing for any other tag. */
+export function toTagVersion(tag: string) {
+	return TAG.exec(tag.trim())?.[1];
 }
 
 /** Whether version `a` is newer than version `b`, part by part as numbers: 1.10.0 is newer than 1.9.0. */
@@ -154,15 +164,42 @@ export function isNewer(a: string, b: string) {
 	return false;
 }
 
+/** A version's tag, `1.2.3` → `v1.2.3`: its name on GitHub and as people read it. */
+export function toTag(version: string) {
+	return `v${version}`;
+}
+
+/** The release's page on GitHub: its notes. */
+export function toReleaseUrl(version: string) {
+	return `${REPOSITORY_URL}/releases/tag/${toTag(version)}`;
+}
+
+export type VersionLabelOptionsType = {
+	/** The newest release the build holds all of. */
+	last?: string;
+	/** The release the build's changes since `last` make, if any. */
+	planned?: string;
+	/** Whether the build is on a branch releases are made from (RELEASE_BRANCHES). */
+	isReleaseBranch: boolean;
+	/** How many commits the build holds that `last` does not. */
+	ahead: number;
+};
+
+/**
+ * The app's version as people read it. On dev a build with something new is the release being made from it right
+ * now, so it carries that version even in the minute before its tag exists. Anywhere else, next above all, it is the
+ * release still to come, marked as a build before it: v1.2.0-next.12, the 12 counting the commits since the last
+ * release. Empty while nothing is released and releases are not made yet.
+ */
+export function toVersionLabel({ last, planned, isReleaseBranch, ahead }: VersionLabelOptionsType) {
+	if (!planned) return last ? toTag(last) : '';
+	return isReleaseBranch ? toTag(planned) : `${toTag(planned)}-next.${ahead}`;
+}
+
 // The areas whose changes people meet in the app: the app itself and the library it is drawn with.
 const APP_AREAS = new Set(['app', 'ui']);
 
 /** Whether people meet a change in the app: the app's and the library's, and those naming no area. */
 export function isAppChange(change: ReleaseChangeType) {
 	return !change.area || APP_AREAS.has(change.area);
-}
-
-/** A release's changes that What's New lists: those people meet in the app. */
-export function toAppChanges(release: ReleaseType) {
-	return release.changes.filter(isAppChange);
 }
