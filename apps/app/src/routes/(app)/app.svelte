@@ -10,9 +10,9 @@
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
 	import WhatsNew from '#lib/releases/whats-new.svelte';
-	import Changes from '#lib/update/changes.svelte';
-	import { HAS_CHANGE_LIST } from '#lib/update/changes.constants.js';
+	import { HAS_POP_UP } from '#lib/releases/releases.constants.js';
 	import UpdateNote from '#lib/update/note.svelte';
+	import { FOLD_LOOK } from './look/fold';
 	import Look from './look/look.svelte';
 
 	const lists = (async () => {
@@ -79,10 +79,13 @@
 		{self}
 		onready={ready}
 	/>
-	<!-- On next the update note is the new version window, listing every change since the last look (#396). -->
+	<!-- Where What's New opens by itself for a new version (next, #396), it takes the update note's place. -->
 	{#if shown}
-		{#if HAS_CHANGE_LIST}<Changes save={shown.sync} />{:else}<UpdateNote save={shown.sync} />{/if}
-		<WhatsNew />
+		{#if !HAS_POP_UP}<UpdateNote save={shown.sync} />{/if}
+		<WhatsNew
+			save={shown.sync}
+			fold={FOLD_LOOK}
+		/>
 	{/if}
 {:catch}
 	<div class="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">

@@ -1,130 +1,161 @@
-// What's New (#363) with plain releases and a plain store for the version this device last saw: when the window
-// opens by itself, which releases it shows, and that a closed window stays closed.
+// What's New (#363, #396, #399) with a plain history, store and reader: when it opens by itself, what counts as new,
+// and that only its button clears what is new.
 import { describe, expect, it } from 'vite-plus/test';
-import type { ReleaseType } from './releases.utils';
+import type { HistoryType } from './history.utils';
 import { WhatsNewState } from './releases.state.svelte';
 
-function createRelease(version: string): ReleaseType {
+// A branch of commits a, b, c, d (12 letters each), one change landing on each.
+const CHAIN = ['a', 'b', 'c', 'd'].map((letter) => letter.repeat(12));
+
+function createHistory(upTo: number): HistoryType {
+	const changes = CHAIN.slice(0, upTo + 1).map((_, landed) => ({
+		kind: 'feature' as const,
+		text: `Change ${landed}`,
+		tickets: [],
+		at: new Date(Date.UTC(2026, 10, 25, landed)).toISOString(),
+		landed
+	}));
 	return {
-		version,
-		date: '2026-11-26',
-		changes: [{ kind: 'feature', text: `In ${version}`, tickets: [] }]
+		head: `${CHAIN[upTo]}0000`,
+		chain: CHAIN.slice(0, upTo + 1),
+		batches: [{ from: changes[0].at, to: changes.at(-1)!.at, changes: changes.reverse() }]
 	};
 }
 
-// Newest first, as releases.json keeps them.
-const RELEASES = ['1.2.0', '1.1.1', '1.1.0', '1.0.0'].map(createRelease);
+type AppType = {
+	store: {
+		seen: string | undefined;
+		read: () => string | undefined;
+		write: (commit: string) => void;
+	};
+	server: { history: HistoryType | undefined };
+	whatsNew: WhatsNewState;
+};
 
-function createApp(releases: ReleaseType[], seen?: string) {
-	const store = {
-		seen,
+function createApp({
+	own = 1,
+	newest = own,
+	seen,
+	isLive = true
+}: { own?: number; newest?: number; seen?: number; isLive?: boolean } = {}): AppType {
+	const store: AppType['store'] = {
+		seen: seen === undefined ? undefined : `${CHAIN[seen]}0000`,
 		read: () => store.seen,
-		write: (version: string) => (store.seen = version)
+		write: (commit) => (store.seen = commit)
 	};
-	return { store, whatsNew: new WhatsNewState(releases, store) };
-}
-
-function shownVersions(whatsNew: WhatsNewState) {
-	return whatsNew.shown.map((release) => release.version);
+	const server: AppType['server'] = { history: createHistory(newest) };
+	const whatsNew = new WhatsNewState({
+		own: `${CHAIN[own]}0000`,
+		store,
+		read: async () => server.history,
+		isLive
+	});
+	return { store, server, whatsNew };
 }
 
 describe("What's New", () => {
-	it('opens on the newest release on a device that has seen none', () => {
-		const { whatsNew } = createApp(RELEASES);
+	it('stays shut on a first visit, and counts from there', async () => {
+		const { whatsNew, store } = createApp({ own: 1 });
 
-		whatsNew.start();
+		await whatsNew.start();
+
+		expect(whatsNew.isOpen).toBe(false);
+		expect(store.seen).toBe(`${CHAIN[1]}0000`);
+	});
+
+	it('opens on opening the app on everything since the last press, and only Got it', async () => {
+		const { whatsNew } = createApp({ own: 3, seen: 1 });
+
+		await whatsNew.start();
 
 		expect(whatsNew.isOpen).toBe(true);
-		expect(shownVersions(whatsNew)).toEqual(['1.2.0']);
+		expect(whatsNew.fresh.map((change) => change.text)).toEqual(['Change 3', 'Change 2']);
+		expect(whatsNew.isNewer).toBe(false);
+		expect(whatsNew.acknowledge()).toBe(false);
+		expect(whatsNew.isOpen).toBe(false);
 	});
 
-	it('shows every release newer than the one this device last saw, newest first', () => {
-		const { whatsNew } = createApp(RELEASES, '1.1.0');
+	it('stays shut once everything was seen', async () => {
+		const { whatsNew } = createApp({ own: 2, seen: 2 });
 
-		whatsNew.start();
-
-		expect(shownVersions(whatsNew)).toEqual(['1.2.0', '1.1.1']);
-	});
-
-	it('stays shut once the newest release was seen', () => {
-		const { whatsNew } = createApp(RELEASES, '1.2.0');
-
-		whatsNew.start();
+		await whatsNew.start();
 
 		expect(whatsNew.isOpen).toBe(false);
 	});
 
-	it('stays shut while there is no release', () => {
-		const { whatsNew } = createApp([]);
-
-		whatsNew.start();
-
-		expect(whatsNew.isOpen).toBe(false);
-	});
-
-	it('remembers the newest release when closed, so the next opening of the app shows nothing', () => {
-		const { store, whatsNew } = createApp(RELEASES, '1.0.0');
-		whatsNew.start();
-
+	it('opens the moment a new version is out, with what it brought on top of what was still unseen', async () => {
+		const { whatsNew, server } = createApp({ own: 1, seen: 0 });
+		await whatsNew.start();
 		whatsNew.close();
 
-		expect(whatsNew.isOpen).toBe(false);
-		expect(store.seen).toBe('1.2.0');
-
-		const again = new WhatsNewState(RELEASES, store);
-		again.start();
-
-		expect(again.isOpen).toBe(false);
-	});
-
-	it('opens on every release from the menu, even once they were seen', () => {
-		const { whatsNew } = createApp(RELEASES, '1.2.0');
-
-		whatsNew.openAll();
-
-		expect(shownVersions(whatsNew)).toEqual(['1.2.0', '1.1.1', '1.1.0', '1.0.0']);
-	});
-
-	it('opens from the menu before the first release too, with nothing to list', () => {
-		const { whatsNew } = createApp([]);
-
-		whatsNew.openAll();
+		server.history = createHistory(3);
+		await whatsNew.check();
 
 		expect(whatsNew.isOpen).toBe(true);
-		expect(whatsNew.shown).toEqual([]);
+		expect(whatsNew.isNewer).toBe(true);
+		expect(whatsNew.fresh.map((change) => change.landed)).toEqual([3, 2, 1]);
 	});
 
-	it('leaves out a release that changed nothing in the app, such as the website alone', () => {
-		const website: ReleaseType = {
-			version: '1.3.0',
-			date: '2026-11-27',
-			changes: [{ kind: 'feature', text: 'On the website', area: 'site', tickets: [] }]
-		};
-		const { whatsNew } = createApp([website, ...RELEASES], '1.1.1');
+	it('adds a version that lands while it is open to the list', async () => {
+		const { whatsNew, server } = createApp({ own: 1, seen: 1 });
+		await whatsNew.start();
+		server.history = createHistory(2);
+		await whatsNew.check();
 
-		whatsNew.start();
+		server.history = createHistory(3);
+		await whatsNew.check();
 
-		expect(shownVersions(whatsNew)).toEqual(['1.2.0']);
+		expect(whatsNew.fresh.map((change) => change.landed)).toEqual([3, 2]);
 	});
 
-	it('stays shut when the only new release changed nothing in the app', () => {
-		const website: ReleaseType = {
-			version: '1.3.0',
-			date: '2026-11-27',
-			changes: [{ kind: 'fix', text: 'On the website', area: 'site', tickets: [] }]
-		};
-		const { whatsNew } = createApp([website, ...RELEASES], '1.2.0');
+	it('closed with the X, opens again only for a further version', async () => {
+		const { whatsNew, server } = createApp({ own: 1, seen: 1 });
+		await whatsNew.start();
+		server.history = createHistory(2);
+		await whatsNew.check();
+		whatsNew.close();
 
-		whatsNew.start();
+		await whatsNew.check();
+		expect(whatsNew.isOpen).toBe(false);
+
+		server.history = createHistory(3);
+		await whatsNew.check();
+		expect(whatsNew.isOpen).toBe(true);
+	});
+
+	it('the button clears what is new up to the newest version, stays open and asks for the reload', async () => {
+		const { whatsNew, server, store } = createApp({ own: 1, seen: 1 });
+		await whatsNew.start();
+		server.history = createHistory(3);
+		await whatsNew.check();
+
+		expect(whatsNew.acknowledge()).toBe(true);
+
+		expect(store.seen).toBe(`${CHAIN[3]}0000`);
+		expect(whatsNew.fresh).toEqual([]);
+		expect(whatsNew.isOpen).toBe(true);
+	});
+
+	it('where it does not open by itself, a new version waits for the profile menu', async () => {
+		const { whatsNew, server } = createApp({ own: 1, seen: 1, isLive: false });
+		await whatsNew.start();
+		server.history = createHistory(2);
+		await whatsNew.check();
 
 		expect(whatsNew.isOpen).toBe(false);
+		whatsNew.openAll();
+		expect(whatsNew.isOpen).toBe(true);
 	});
 
-	it('compares versions as numbers, so 1.10.0 is newer than 1.9.0', () => {
-		const { whatsNew } = createApp(['1.10.0', '1.9.0'].map(createRelease), '1.9.0');
+	it('a history that cannot be read opens nothing, and the profile menu says so', async () => {
+		const { whatsNew, server } = createApp({ own: 1, seen: 0 });
+		server.history = undefined;
 
-		whatsNew.start();
+		await whatsNew.start();
+		expect(whatsNew.isOpen).toBe(false);
 
-		expect(shownVersions(whatsNew)).toEqual(['1.10.0']);
+		whatsNew.openAll();
+		await Promise.resolve();
+		expect(whatsNew.hasFailed).toBe(true);
 	});
 });

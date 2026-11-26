@@ -104,6 +104,15 @@ describe('the sign-in guard', () => {
 		expect(guard(file, 'staff')).toBeUndefined();
 	});
 
+	it('lets anyone read What’s New’s history, which an open app asks for without its cookies (#399)', () => {
+		expect(guard('/api/history.json')).toBeUndefined();
+		expect(guard('/api/history.json/more')).toEqual({
+			kind: 'refuse',
+			status: 401,
+			message: 'Sign in first.'
+		});
+	});
+
 	it('leaves the local folder’s signed links to their signature, as Storage’s are (#187)', () => {
 		expect(guard('/local-files/org/file.webp?op=get&expires=1&sig=x')).toBeUndefined();
 	});
