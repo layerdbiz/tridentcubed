@@ -5,13 +5,14 @@ import { Progress } from '@layerd/ui';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import {
 	type ConvertAnswerType,
+	type FileDetailsType,
 	type ConvertRequestType,
 	type FileTargetType,
 	PictureError,
 	type UploadAnswerType,
 	type UploadRequestType
 } from './files.schema';
-import { Upload, UploadBatch, type UploadStepsType } from './files.state.svelte';
+import { fileDetailsOf, Upload, UploadBatch, type UploadStepsType } from './files.state.svelte';
 import type { PreparedType } from './files.utils';
 
 const FILE_ID = '0b6f2f8e-2b1c-4c47-9d8e-1f4c6f0a1b2c';
@@ -491,5 +492,79 @@ describe('photos picked together (#293)', () => {
 		expect(toast.label).toBe('Uploading 1 photo');
 		await test.release('a.jpg');
 		expect(toast.label).toBe('1 photo uploaded');
+	});
+});
+
+describe('what a picture was and became (#343)', () => {
+	it('tells the server what the User picked and whether its metadata came across', async () => {
+		const original = { type: 'image/heic', size: 3_000_000, width: 4032, height: 3024 };
+		const test = createSteps(['ok'], { prepared: { ...COPY, original, carried: 'all' } });
+		const upload = new Upload(pick(), {
+			for: LOGO,
+			kind: 'photo',
+			ondone: () => {},
+			steps: test.steps
+		});
+
+		await upload.start();
+
+		expect(test.asked[0]).toMatchObject({ type: 'image/webp', original, carried: 'all' });
+	});
+});
+
+describe('a stored file’s details (#343, #349)', () => {
+	const DETAILS: FileDetailsType = {
+		name: 'IMG_0001.HEIC',
+		original: { type: 'image/heic', size: 3_000_000 },
+		saved: { type: 'image/webp', size: 600_000 },
+		carried: 'all',
+		hasFieldList: true,
+		isOriginalKept: false
+	};
+
+	it('asks the server once for each file, and gives back what it found once it answers', async () => {
+		const id = '7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+		const asked: string[] = [];
+		const ask = async (each: string) => {
+			asked.push(each);
+			return DETAILS;
+		};
+
+		expect(fileDetailsOf(`/files/${id}`, ask)).toBeUndefined();
+		expect(fileDetailsOf(`/files/${id}`, ask)).toBeUndefined();
+		await Promise.resolve();
+
+		expect(fileDetailsOf(`/files/${id}`, ask)).toEqual(DETAILS);
+		expect(asked).toEqual([id]);
+	});
+
+	it('asks nothing for a starting file or a picture still on its way', () => {
+		const asked: string[] = [];
+		const ask = async (each: string) => {
+			asked.push(each);
+			return null;
+		};
+
+		expect(fileDetailsOf('/start/photos/dock.webp', ask)).toBeUndefined();
+		expect(fileDetailsOf('blob:preview', ask)).toBeUndefined();
+		expect(asked).toEqual([]);
+	});
+
+	it('asks again next time when the server could not be reached', async () => {
+		const id = '8b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e';
+		let tries = 0;
+		const ask = async () => {
+			tries += 1;
+			if (tries === 1) throw new TypeError('Failed to fetch');
+			return DETAILS;
+		};
+
+		fileDetailsOf(`/files/${id}`, ask);
+		await new Promise((resolve) => setTimeout(resolve));
+		fileDetailsOf(`/files/${id}`, ask);
+		await new Promise((resolve) => setTimeout(resolve));
+
+		expect(fileDetailsOf(`/files/${id}`, ask)).toEqual(DETAILS);
+		expect(tries).toBe(2);
 	});
 });

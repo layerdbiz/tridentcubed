@@ -7,6 +7,7 @@ const generated = [
 	'packages/tools/**',
 	'packages/config/ts/**',
 	'apps/*/src/lib/index.ts',
+	'apps/app/src/lib/releases/releases.json',
 	'packages/ui/src/lib/index.ts',
 	'packages/ui/src/lib/base/index.ts',
 	'packages/ui/src/lib/base/helpers/index.ts',

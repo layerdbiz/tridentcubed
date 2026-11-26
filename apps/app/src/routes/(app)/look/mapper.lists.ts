@@ -5,6 +5,7 @@
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
 import type { AddressPartsType } from '@layerd/ui';
 import {
+	type DatasetType,
 	type FacilityKindType,
 	type FacilityType,
 	ORGANIZATION,
@@ -16,6 +17,7 @@ import {
 import { knowPlaces } from './location';
 import type { LookState } from './look.state.svelte';
 import type { PlaceType } from './map.data';
+import type { PinType } from './pins';
 import { text, toRecordId, toRecordName, toStamp } from './mapper.utils';
 
 /**
@@ -107,7 +109,26 @@ export function toListRows(look: LookState): RowType[] {
 				}
 			});
 	rows.push(...toOrganizationRows(look.organization));
+	for (const pin of look.pins)
+		rows.push({
+			table: 'pinned',
+			id: pin.id,
+			values: { page: pin.page, recordId: pin.recordId, pinnedAt: pin.at }
+		});
 	return rows;
+}
+
+// The signed-in person's pins (#346), newest first; Row Level Security sends nobody else's.
+function toPins(rows: SavedRowType[]): PinType[] {
+	return rows
+		.filter((row) => row.table === 'pinned' && !row.deletedAt)
+		.map((row) => ({
+			id: row.id,
+			page: text(row.values, 'page') as DatasetType,
+			recordId: text(row.values, 'recordId'),
+			at: text(row.values, 'pinnedAt') || row.createdAt
+		}))
+		.toSorted((a, b) => b.at.localeCompare(a.at) || b.id.localeCompare(a.id));
 }
 
 function toTransport(row: SavedRowType): TransportType {
@@ -214,6 +235,7 @@ export function takeListRows(look: LookState, rows: SavedRowType[]) {
 	knowPlaces(look.places);
 	look.organization = toOrganization(rows);
 	look.help = toHelp(rows);
+	look.pins = toPins(rows);
 }
 
 /** A Transport Mode's id from the name the screens use, in the Trash or not (#188: a stop's transport). */

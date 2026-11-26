@@ -8,9 +8,9 @@ import { describe, expect, it } from 'vite-plus/test';
 // every other build "preview". Until #254 the rule named branches, so each push to `dev` also built a preview in
 // the production project that nobody opens, four builds where two were needed. The dev project also builds
 // `next`, the branch for risky and overnight work, as a preview served at next.app.tridentcubed.com (#341).
-const { ignoreCommand } = JSON.parse(
+const { ignoreCommand, buildCommand } = JSON.parse(
 	readFileSync(fileURLToPath(new URL('../vercel.json', import.meta.url)), 'utf8')
-) as { ignoreCommand: string };
+) as { ignoreCommand: string; buildCommand?: string };
 
 type PushType = { VERCEL_ENV?: string; VERCEL_GIT_COMMIT_REF: string };
 
@@ -58,5 +58,19 @@ describe.skipIf(!hasShell)('which pushes Vercel builds', () => {
 
 	it('builds when Vercel does not say which kind of build it is, so a live site never stops updating', () => {
 		expect(isBuilt({ VERCEL_GIT_COMMIT_REF: 'dev' })).toBe(true);
+	});
+});
+
+// Both projects build with the app's own `pnpm build` (`vp build`), the command CI's build job runs. Left unset,
+// Vercel finds Turborepo in the repo and runs it instead, which first builds the UI package, about 7 s of each
+// build that nothing reads, since the app uses the UI source (#367, research on #364).
+describe('how Vercel builds', () => {
+	const { scripts } = JSON.parse(
+		readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')
+	) as { scripts: { build: string } };
+
+	it("runs the app's own build, not Turborepo", () => {
+		expect(buildCommand).toBe('pnpm build');
+		expect(scripts.build).toBe('vp build');
 	});
 });
