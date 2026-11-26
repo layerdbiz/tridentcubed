@@ -7,6 +7,11 @@ import type { AuthType } from '#lib/server/auth.js';
 import type { ActorType } from '#lib/server/db/claims.js';
 
 declare global {
+	/** The commit this build was made from, written in by vite.config.ts from Vercel's settings; empty elsewhere. */
+	const __BUILD_COMMIT__: string;
+	/** The branch this build was made from, written in the same way. */
+	const __BUILD_BRANCH__: string;
+
 	namespace App {
 		// interface Error {}
 		/**

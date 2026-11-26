@@ -10,6 +10,8 @@
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
 	import WhatsNew from '#lib/releases/whats-new.svelte';
+	import Changes from '#lib/update/changes.svelte';
+	import { HAS_CHANGE_LIST } from '#lib/update/changes.constants.js';
 	import UpdateNote from '#lib/update/note.svelte';
 	import Look from './look/look.svelte';
 
@@ -77,7 +79,11 @@
 		{self}
 		onready={ready}
 	/>
-	{#if shown}<UpdateNote save={shown.sync} /><WhatsNew />{/if}
+	<!-- On next the update note is the new version window, listing every change since the last look (#396). -->
+	{#if shown}
+		{#if HAS_CHANGE_LIST}<Changes save={shown.sync} />{:else}<UpdateNote save={shown.sync} />{/if}
+		<WhatsNew />
+	{/if}
 {:catch}
 	<div class="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
 		<p class="text-slate-700">

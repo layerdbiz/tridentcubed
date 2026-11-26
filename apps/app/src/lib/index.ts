@@ -2,6 +2,11 @@
 export * from "./activity/activity.remote.ts";
 export * from "./activity/activity.types.ts";
 export * from "./auth/auth.remote.ts";
+export { default as ChangeList } from "./releases/change-list.svelte";
+export { default as Changes } from "./update/changes.svelte";
+export * from "./update/changes.constants.ts";
+export * from "./update/changes.state.svelte.ts";
+export * from "./update/changes.utils.ts";
 export * from "./definitions/definitions.ts";
 export * from "./files/files.remote.ts";
 export * from "./files/files.schema.ts";
@@ -39,6 +44,7 @@ export * from "./update/update.state.svelte.ts";
 export * from "./update/update.utils.ts";
 export * from "./video/video.utils.ts";
 export { default as WhatsNew } from "./releases/whats-new.svelte";
+export { default as WindowHead } from "./releases/window-head.svelte";
 
 /* COMPONENTS */
 // attachment

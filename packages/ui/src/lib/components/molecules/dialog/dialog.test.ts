@@ -94,4 +94,24 @@ describe('Dialog', () => {
 		unmount();
 		expect(document.activeElement).toBe(input);
 	});
+
+	it('as a tall one, keeps its header and footer and scrolls what is between, which a pull there never closes', async () => {
+		const header = createRawSnippet(() => ({ render: () => `<h2>What's New</h2>` }));
+		const footer = createRawSnippet(() => ({
+			render: () => `<button type="button">Got it</button>`
+		}));
+		const { dialog, onclose } = show({ variant: 'tall', header, footer });
+		const middle = screen.getByText('Every status in order.');
+
+		expect(screen.getByRole('heading', { name: "What's New" })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'Got it' })).toBeTruthy();
+		expect(middle.closest('.dialog-scroll')).toBeTruthy();
+		expect(dialog.querySelector('.dialog-scroll h2')).toBeNull();
+
+		await pull(middle, 160, true);
+		expect(onclose).not.toHaveBeenCalled();
+
+		await pull(screen.getByRole('heading', { name: "What's New" }), 160, true);
+		expect(onclose).toHaveBeenCalledTimes(1);
+	});
 });
