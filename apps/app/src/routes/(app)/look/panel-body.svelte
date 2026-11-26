@@ -48,7 +48,7 @@
 	// label and place among the inputs with that label, as tally.ts lists them).
 	import { untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
-	import { Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
+	import { Generated, Help, Input, Menu, Radio, Select, Textarea } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
@@ -745,11 +745,7 @@
 	value: PageLayoutType,
 	onpick: (layout: PageLayoutType) => void
 )}
-	<div
-		class="has-help"
-		role="group"
-		aria-labelledby={id}
-	>
+	<div class="has-help">
 		<p class={labelClass}>
 			<span {id}>{label}</span>
 			{#if look.helpOf(key)}<Help
@@ -757,15 +753,21 @@
 					text={look.helpOf(key)}
 				/>{/if}
 		</p>
-		<div class="flex gap-1.5">
-			{#each LAYOUTS as layout (layout)}
+		<!-- #382: the library's pick-one group, so a screen reader hears which is picked and the arrow keys move. -->
+		<Radio
+			class="flex gap-1.5"
+			aria-labelledby={id}
+			options={LAYOUTS}
+			{value}
+			{onpick}
+		>
+			{#snippet option({ value: layout, isOn, props })}
 				<button
+					{...props}
 					type="button"
-					class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {value ===
-					layout
+					class="flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {isOn
 						? 'bg-primary text-white shadow-md shadow-primary/25'
 						: 'bg-white text-slate-500 hover:text-primary'}"
-					onclick={() => onpick(layout)}
 				>
 					<!-- The page in miniature: one column for one or two, two columns from four up. -->
 					<span
@@ -778,8 +780,8 @@
 						{/each}
 					</span>{layout}
 				</button>
-			{/each}
-		</div>
+			{/snippet}
+		</Radio>
 	</div>
 {/snippet}
 

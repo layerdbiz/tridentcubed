@@ -2,6 +2,7 @@
 	// The how-to behind Install App (#203), for a browser that offers no one-tap install: three short steps for an
 	// iPhone and three for an Android phone, in the sheet every other one is (it slides up on a phone and is a
 	// centred pop-up from tablet width up). The User picks their phone; nothing here guesses it. iPhone comes first.
+	import { Tabs } from '@layerd/ui';
 	import Sheet from '#lib/components/sheet/sheet.svelte';
 
 	let { onclose }: { onclose: () => void } = $props();
@@ -49,27 +50,26 @@
 		</p>
 	</div>
 
-	<div
+	<Tabs
 		class="mt-5 grid grid-cols-2 rounded-full bg-slate-900/[0.05] p-1"
-		role="tablist"
-		aria-label="Your phone"
+		label="Your phone"
+		options={PHONES.map((item) => item.id)}
+		bind:value={picked}
 	>
-		{#each PHONES as item (item.id)}
+		{#snippet option({ value, isOn, props })}
+			{@const item = PHONES.find((each) => each.id === value) ?? PHONES[0]}
 			<button
+				{...props}
 				type="button"
-				class="flex h-9 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition {picked ===
-				item.id
+				class="flex h-9 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition {isOn
 					? 'bg-white text-slate-900 shadow-sm'
 					: 'text-slate-500'}"
-				role="tab"
-				id="{uid}-{item.id}"
-				aria-selected={picked === item.id}
+				id="{uid}-{value}"
 				aria-controls="{uid}-steps"
-				onclick={() => (picked = item.id)}
 				><span class="{item.icon} size-[18px]"></span>{item.label}</button
 			>
-		{/each}
-	</div>
+		{/snippet}
+	</Tabs>
 
 	<!-- Three lines for either phone, each tall enough for two rows of words, so a change of tab moves nothing. -->
 	<div

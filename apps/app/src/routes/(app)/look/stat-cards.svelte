@@ -12,7 +12,7 @@
 	import { DATASETS, PAGES, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { countOf } from './records.data';
-	import { Help } from '@layerd/ui';
+	import { Help, Tabs } from '@layerd/ui';
 
 	let { look }: { look: LookState } = $props();
 
@@ -57,38 +57,37 @@
 
 <div
 	class="-mx-4 -my-4 scroll-px-4 overflow-x-auto px-4 py-4 md:mx-0 md:scroll-px-0 md:px-0"
-	role="tablist"
-	aria-label="What to count"
 	bind:this={row}
 >
 	<!-- Every card is as wide as the widest needs (Transport Mode on one line), and on a wide screen they share the
 	     row equally; when they cannot all fit, the row scrolls rather than a card squeezing its words out (2026-11-10). -->
 	<!-- Stat Cards B (run 22): on a desktop the cards wrap onto a second row when they cannot all fit, so none is cut
 	     off at the edge. -->
-	<div
+	<!-- #382: the cards are the library's Tabs, so the arrow keys move from card to card. Each card is a box rather
+	     than a button, since it holds the ? button. -->
+	<Tabs
 		class="grid gap-2 2xl:gap-3 {look.variant('stats') === 'B'
 			? 'w-max min-w-full auto-cols-fr grid-flow-col md:w-full md:auto-cols-auto md:grid-flow-row md:grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))]'
 			: 'w-max min-w-full auto-cols-fr grid-flow-col'}"
+		label="What to count"
+		options={SETS}
+		value={look.dataset}
+		onpick={(dataset) => {
+			look.pick(dataset);
+			reveal(dataset);
+		}}
 	>
-		{#each SETS as dataset (dataset)}
+		{#snippet option({ value: dataset, isOn, props })}
 			{@const info = DATASETS[dataset]}
 			{@const words = info.label.split(' ')}
-			{@const isOn = look.dataset === dataset}
 			<div
-				role="tab"
-				tabindex="0"
-				aria-selected={isOn}
+				{...props}
 				data-set={dataset}
 				class="relative flex cursor-pointer items-center gap-2 rounded-2xl p-2.5 pr-3.5 select-none md:gap-2 md:rounded-3xl md:px-3 md:py-4 2xl:gap-3 2xl:px-4 2xl:py-5 {isOn
 					? 'bg-primary text-white'
 					: 'bg-white text-slate-700'}"
-				onclick={(event) => {
-					if (isOnHelp(event)) return;
-					look.pick(dataset);
-					reveal(dataset);
-				}}
-				onkeydown={(event) =>
-					(event.key === 'Enter' || event.key === ' ') && !isOnHelp(event) && look.pick(dataset)}
+				onclick={(event) => isOnHelp(event) || props.onclick(event)}
+				onkeydown={(event) => isOnHelp(event) || props.onkeydown(event)}
 			>
 				<span
 					class="{info.icon} size-7 shrink-0 md:size-7 2xl:size-10 {isOn
@@ -123,6 +122,6 @@
 					</span>
 				</span>
 			</div>
-		{/each}
-	</div>
+		{/snippet}
+	</Tabs>
 </div>

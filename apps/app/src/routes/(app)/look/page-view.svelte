@@ -10,6 +10,7 @@
 	// map, white on a dark fade, with no card behind it. `isDarkMap` is Map B, the dark map. The sheet below holds
 	// only up-and-down scrolling, so a sideways swipe on it reaches the tabs.
 	import type { Snippet } from 'svelte';
+	import { Tabs } from '@layerd/ui';
 	import type { PinType } from './chart.data';
 	import Dots from './dots.svelte';
 	import { FADE, fadeTop } from './fade';
@@ -178,25 +179,27 @@
 			{/if}
 			<span class="flex-1"></span>
 			{#if photos.length || isAlike}
-				<span
+				<Tabs
 					class="pointer-events-auto flex rounded-full p-1 {GLASS}"
-					role="tablist"
-					aria-label="Picture or map"
+					label="Picture or map"
+					options={[false, true]}
+					value={isMap}
+					onpick={(value) => (picked = value)}
 				>
-					{#each [[false, 'Photo', 'icon-[mdi--image]'], [true, 'Map', 'icon-[mdi--map]']] as const as [value, label, icon] (label)}
+					{#snippet option({ value, isOn, props })}
+						{@const [label, icon] = value
+							? ['Map', 'icon-[mdi--map]']
+							: ['Photo', 'icon-[mdi--image]']}
 						<button
-							class="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-semibold transition {isMap ===
-							value
+							{...props}
+							class="flex h-8 items-center gap-1 rounded-full px-3 text-xs font-semibold transition {isOn
 								? isDark
 									? 'bg-white text-slate-900'
 									: 'bg-slate-900 text-white'
-								: ''}"
-							role="tab"
-							aria-selected={isMap === value}
-							onclick={() => (picked = value)}><span class="{icon} size-4"></span>{label}</button
+								: ''}"><span class="{icon} size-4"></span>{label}</button
 						>
-					{/each}
-				</span>
+					{/snippet}
+				</Tabs>
 			{/if}
 			{#if buttons !== 'glass'}<span class="flex-1"></span>{/if}
 			{#if buttons === 'none'}

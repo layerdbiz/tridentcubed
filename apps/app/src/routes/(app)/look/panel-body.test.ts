@@ -397,4 +397,27 @@ describe('the photo panels and the Time Log on the library’s inputs', () => {
 		expect(panel.days[0].date).toBe('2026-11-26');
 		expect(look.saved).toHaveBeenCalled();
 	});
+
+	// #382: the library's pick-one group, so a screen reader hears which is picked and the arrow keys move.
+	it('draws Photos per Page as a pick-one group named by its label, and saves a pick', async () => {
+		const { panel, look } = showPanel('photos', (panel) => (panel.groups = [{ ...GROUP }]));
+		const group = screen.getByRole('radiogroup', { name: 'Photos per Page' });
+		const choices = within(group).getAllByRole('radio');
+
+		expect(choices.map((choice) => choice.textContent?.trim())).toEqual(['1', '2', '4', '6', '8']);
+		expect(choices.map((choice) => choice.getAttribute('aria-checked'))).toEqual([
+			'false',
+			'false',
+			'true',
+			'false',
+			'false'
+		]);
+
+		await fireEvent.click(choices[4]);
+		expect(panel.groups[0].layout).toBe(8);
+		expect(look.saved).toHaveBeenCalled();
+
+		await fireEvent.keyDown(choices[4], { key: 'ArrowRight' });
+		expect(panel.groups[0].layout).toBe(1);
+	});
 });
