@@ -8,13 +8,16 @@
 	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and on the branches in
 	// POP_UP_BRANCHES the moment a new version is out, in place of the update note. With a newer version out, the
 	// button reloads onto it the way the note did (update.state.svelte.ts): never while a change is Saving or Not
-	// saved, and then the button says it waits.
-	import { onMount } from 'svelte';
+	// saved, and then the button says it waits. With a newer version out, the X, a tap outside and Escape do the same,
+	// so nobody stays on an old version (Justin, 2026-11-26, #401); a reload that still brings an older page takes the
+	// last resort once (rescue.ts): the service worker and its files are cleared and the page loads again.
+	import { onMount, untrack } from 'svelte';
 	import { updated } from '$app/state';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 	import { Accordion, Button, Dialog, type AccordionProps } from '@layerd/ui';
 	import { UpdateState } from '../update/update.state.svelte';
-	import { downloadWorker, takeOver } from '../update/update.utils';
+	import { noteReload, takeLastResort } from '../update/rescue';
+	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
 	import ChangeList from './change-list.svelte';
 	import type { HistoryBatchType } from './history.utils';
 	import { CHECK_EVERY, HAS_POP_UP } from './releases.constants';
@@ -34,7 +37,7 @@
 		isNew: () => whatsNew.isNewer,
 		save: () => save.state,
 		takeOver,
-		reload: () => location.reload()
+		reload
 	});
 	const step = $derived(update.step);
 	const batches = $derived(whatsNew.history?.batches ?? []);
@@ -110,17 +113,40 @@
 		return () => clearInterval(asking);
 	});
 
-	// SvelteKit's version check found a new version: what it brought. Its download starts quietly.
+	// SvelteKit's version check found a new version: what it brought. Its download starts quietly. Once per new
+	// version: the answers must not run this again, or it asks without end (#401).
 	$effect(() => {
 		if (!updated.current) return;
-		void whatsNew.check();
-		void downloadWorker();
+		untrack(() => {
+			void whatsNew.check();
+			void downloadWorker();
+		});
 	});
 
 	$effect(() => update.follow());
 
+	// The first history this page reads says whether the reload made for the newest version brought an older page.
+	let isLastResortAsked = false;
+	$effect(() => {
+		const head = whatsNew.history?.head;
+		if (!head || isLastResortAsked) return;
+		isLastResortAsked = true;
+		if (takeLastResort(whatsNew.isNewer, head)) void forgetWorker().then(() => location.reload());
+	});
+
+	function reload() {
+		const head = whatsNew.history?.head;
+		if (head) noteReload(head);
+		location.reload();
+	}
+
 	function press() {
 		if (whatsNew.acknowledge()) update.tap();
+	}
+
+	// The X, a tap outside or Escape: with a newer version out, the same as the button.
+	function dismiss() {
+		if (whatsNew.dismiss()) update.tap();
 	}
 </script>
 
@@ -128,7 +154,7 @@
 	<Dialog
 		label="What's New"
 		variant="tall"
-		onclose={() => whatsNew.close()}
+		onclose={dismiss}
 	>
 		{#snippet header()}
 			<WindowHead
@@ -140,7 +166,7 @@
 						: whatsNew.isNewer
 							? 'A new version is ready'
 							: 'Every update, newest first'}
-				onclose={() => whatsNew.close()}
+				onclose={dismiss}
 			/>
 		{/snippet}
 

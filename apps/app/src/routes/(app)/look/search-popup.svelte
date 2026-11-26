@@ -1,145 +1,167 @@
 <script lang="ts">
-	// The menu's search (#345; Justin, 2026-11-25: "a search icon that will open up a pop-up ... you can search for
-	// anything"). Opened from Search in the menu, or Ctrl K (⌘ K on a Mac) on a desktop. A desktop gets a pop-up near
-	// the top of the screen; a phone the whole screen, so its keyboard never covers the results. Before anything is
-	// typed it lists the Recents; then what search.ts finds, names first. Arrow keys move, Enter opens, Escape closes.
-	import type { Attachment } from 'svelte/attachments';
-	import { fade, fly } from 'svelte/transition';
-	import { PAGE_ICONS, type RecentType } from './look.data';
+	// The menu's search (#345), opened from the search icon beside the logo in the menu, or Ctrl K (⌘ K on a Mac). Round
+	// 2 (Justin, 2026-11-26, with a picture): a plain search that fills in as you type, in one group per page, a page
+	// with nothing found left out. Before anything is typed, Recents, then each page's latest (search.ts). Each row is
+	// the thing's own avatar (a logo, a face, initials), its name with the typed words marked, a line under it, and on
+	// the right a project's status or how many projects a record is on. No filter chips, no key hints, no Esc or Enter
+	// labels: a close X at the top right, and the list fades at its top and bottom as every list does (fade.ts).
+	// Arrow keys still move, Enter opens and Escape closes. It is the library Dialog's tall kind: near the full screen
+	// on a phone, a 36rem box from md up, the search field staying put while the results scroll.
+	import { Avatar, Button, Dialog } from '@layerd/ui';
+	import { FADE, fadeTop } from './fade';
+	import { PAGE_ICONS, STATUS } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import { openItem, recentOf, toneOfItem } from './records.data';
-	import { searchOf } from './search';
+	import { logoOf } from './marks';
+	import RecordMark from './record-mark.svelte';
+	import { openItem } from './records.data';
+	import { marksOf, searchOf, type SearchRowType } from './search';
 
 	let { look, onclose }: { look: LookState; onclose: () => void } = $props();
 
-	// More than this is a sign to type more.
-	const MOST = 50;
+	// A line too long for its row fades out at its end rather than ending in "…", which would take a found word's mark
+	// when the cut falls inside it.
+	const CUT =
+		'overflow-hidden whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]';
 
 	let query = $state('');
 	let active = $state(0);
 	let list: HTMLElement | undefined = $state();
-	const isTyped = $derived(query.trim().length > 0);
-	const results = $derived(isTyped ? searchOf(look, query).slice(0, MOST) : recentOf(look));
+	const groups = $derived(searchOf(look, query));
+	// Every row in the order shown, so the arrow keys run on from one group into the next.
+	const rows = $derived(groups.flatMap((group) => group.rows));
+	// Where each group's rows start among them all.
+	const starts = $derived(
+		groups.map((_, index) =>
+			groups.slice(0, index).reduce((total, group) => total + group.rows.length, 0)
+		)
+	);
 
-	// Opens in the browser's top layer, over the floating bar, as the sheets do; Safari 16 has no popovers. The field
-	// takes the cursor once the pop-up shows (a hidden field cannot), straight away, so a phone opens its keyboard.
-	const lift: Attachment<HTMLElement> = (node) => {
-		node.showPopover?.();
-		node.querySelector('input')?.focus();
-	};
-
-	function open(item: RecentType) {
+	function open(row: SearchRowType) {
 		onclose();
-		openItem(look, item);
+		openItem(look, row);
 	}
 
 	function move(by: number) {
-		if (results.length === 0) return;
-		active = (active + by + results.length) % results.length;
-		list?.querySelectorAll('[data-result]')[active]?.scrollIntoView({ block: 'nearest' });
+		if (rows.length === 0) return;
+		active = (active + by + rows.length) % rows.length;
+		list?.querySelector(`#search-result-${active}`)?.scrollIntoView({ block: 'nearest' });
 	}
 
 	function onkeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') onclose();
-		else if (event.key === 'ArrowDown') move(1);
+		if (event.key === 'ArrowDown') move(1);
 		else if (event.key === 'ArrowUp') move(-1);
-		else if (event.key === 'Enter' && results[active]) open(results[active]);
+		else if (event.key === 'Enter' && rows[active]) open(rows[active]);
 		else return;
 		event.preventDefault();
 	}
 </script>
 
-<div
-	popover="manual"
-	class="fixed z-[110] m-0 size-full max-h-none max-w-none overflow-visible border-0 bg-transparent p-0"
-	style="inset: 0"
-	{@attach lift}
+<Dialog
+	label="Search"
+	variant="tall"
+	{onclose}
 >
-	<button
-		type="button"
-		class="fixed inset-0 z-[110] hidden bg-slate-950/30 md:block"
-		aria-label="Close search"
-		tabindex="-1"
-		onclick={onclose}
-		transition:fade={{ duration: 150 }}
-	></button>
-	<div
-		class="fixed inset-0 z-[111] flex flex-col bg-white pt-[env(safe-area-inset-top)] md:inset-x-auto md:top-[12vh] md:bottom-auto md:left-1/2 md:max-h-[70vh] md:w-[36rem] md:-translate-x-1/2 md:overflow-hidden md:rounded-[28px] md:pt-0 md:shadow-[0_2px_6px_rgb(15_23_42/0.06),0_32px_80px_-16px_rgb(15_23_42/0.4)]"
-		role="dialog"
-		aria-modal="true"
-		aria-label="Search"
-		transition:fly={{ y: -12, duration: 180 }}
-	>
-		<div class="flex shrink-0 items-center gap-2 border-b border-slate-100 px-4 py-3">
-			<span class="icon-[mdi--magnify] size-6 shrink-0 text-slate-400"></span>
+	{#snippet header()}
+		<div class="-mx-5 flex shrink-0 items-center gap-3 border-b border-slate-100 pr-3 pb-3 pl-5">
+			<span class="icon-[mdi--magnify] size-7 shrink-0 text-primary"></span>
+			<!-- svelte-ignore a11y_autofocus -->
 			<input
-				class="min-w-0 flex-1 border-0 bg-transparent p-1 text-base text-slate-900 outline-none placeholder:text-slate-400 focus:ring-0"
-				type="search"
-				placeholder="Search projects, customers, team…"
+				class="min-w-0 flex-1 border-0 bg-transparent p-1 text-lg text-slate-900 outline-none placeholder:text-slate-400 focus:ring-0"
+				type="text"
+				inputmode="search"
+				placeholder="Search"
 				aria-label="Search"
 				aria-controls="search-results"
-				aria-activedescendant={results[active] ? `search-result-${active}` : undefined}
+				aria-activedescendant={rows[active] ? `search-result-${active}` : undefined}
 				autocomplete="off"
-				enterkeyhint="go"
+				enterkeyhint="search"
+				autofocus
 				bind:value={query}
 				oninput={() => (active = 0)}
 				{onkeydown}
 			/>
-			<button
-				type="button"
-				class="shrink-0 rounded-full px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-slate-900/[0.04] md:hidden"
-				onclick={onclose}>Cancel</button
-			>
-			<kbd
-				class="hidden shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-sans text-xs text-slate-500 md:block"
-				>Esc</kbd
-			>
+			<Button
+				ghost
+				icon="icon-[mdi--close]"
+				aria-label="Close search"
+				onclick={onclose}
+			/>
 		</div>
-		<div
-			id="search-results"
-			class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2"
-			role="listbox"
-			aria-label={isTyped ? 'Results' : 'Recents'}
-			bind:this={list}
-		>
-			{#if !isTyped && results.length}
-				<p class="px-3 pt-1 pb-1 text-[11px] font-bold tracking-wide text-slate-500 uppercase">
-					Recents
-				</p>
-			{/if}
-			{#each results as item, index (`${item.page}-${item.id ?? item.name}`)}
+	{/snippet}
+	<div
+		id="search-results"
+		class="h-full overflow-y-auto overscroll-contain pt-2 pb-10 {FADE}"
+		role="listbox"
+		aria-label="Search results"
+		bind:this={list}
+		{@attach fadeTop}
+	>
+		{#each groups as group, number (group.title)}
+			<p
+				class="px-2 pt-3 pb-1.5 text-xs font-bold tracking-widest text-slate-500 uppercase"
+				role="presentation"
+			>
+				{group.title}
+			</p>
+			{#each group.rows as row, index (`${row.page}-${row.id ?? row.name}`)}
+				{@const at = starts[number] + index}
 				<button
 					type="button"
-					id="search-result-{index}"
-					class="flex w-full items-center gap-3 rounded-2xl px-2 py-1.5 text-left transition {index ===
+					id="search-result-{at}"
+					class="flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition {at ===
 					active
-						? 'bg-slate-900/[0.06]'
+						? 'bg-primary/[0.07]'
 						: 'hover:bg-slate-900/[0.04]'}"
 					role="option"
-					aria-selected={index === active}
-					data-result
-					onpointermove={() => (active = index)}
-					onclick={() => open(item)}
+					aria-selected={at === active}
+					onpointermove={() => (active = at)}
+					onclick={() => open(row)}
 				>
-					<span
-						class="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full {toneOfItem(
-							look,
-							item
-						)}"
-						><span class="absolute inset-0 bg-current opacity-[0.12]"></span><span
-							class="{PAGE_ICONS[item.page]} relative size-[55%]"
-						></span></span
-					>
+					{#if row.record}
+						<RecordMark
+							record={row.record}
+							size={40}
+							hasBadge={false}
+						/>
+					{:else}
+						<Avatar
+							{...logoOf(row.project?.client ?? '', {
+								shape: 'circle',
+								fallback: PAGE_ICONS.projects
+							})}
+							size={40}
+						/>
+					{/if}
 					<span class="min-w-0 flex-1">
-						<span class="block truncate text-sm text-slate-800">{item.name}</span>
-						<span class="block truncate text-xs text-slate-400">{item.note}</span>
+						<span class="block {CUT} text-[15px] text-slate-900">{@render marked(row.name)}</span>
+						{#if row.line}<span class="block {CUT} text-sm text-slate-500"
+								>{@render marked(row.line)}</span
+							>{/if}
 					</span>
+					{#if row.project}
+						<span
+							class="flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-3 pl-2.5 text-xs font-semibold {STATUS[
+								row.project.status
+							].pill}"
+							><span class="size-2 rounded-full {STATUS[row.project.status].dot}"
+							></span>{row.side}</span
+						>
+					{:else if row.side}
+						<span class="shrink-0 text-xs text-slate-400">{row.side}</span>
+					{/if}
 				</button>
-			{:else}
-				<p class="px-3 py-8 text-center text-sm text-slate-400">
-					{isTyped ? `Nothing found for “${query.trim()}”.` : 'Type to search.'}
-				</p>
 			{/each}
-		</div>
+		{:else}
+			<p class="px-3 py-10 text-center text-sm text-slate-400">
+				{query.trim() ? `Nothing found for “${query.trim()}”.` : 'Nothing here yet.'}
+			</p>
+		{/each}
 	</div>
-</div>
+</Dialog>
+
+<!-- The typed words, marked where they were found. -->
+{#snippet marked(text: string)}
+	{#each marksOf(text, query) as part, index (index)}{#if part.isFound}<mark
+				class="rounded-sm bg-amber-200/70 text-inherit">{part.text}</mark
+			>{:else}{part.text}{/if}{/each}
+{/snippet}

@@ -32,6 +32,7 @@ export * from "./releases/releases.state.svelte.ts";
 export * from "./releases/releases.utils.ts";
 export * from "./report/report.constants.ts";
 export * from "./report/report.utils.ts";
+export * from "./update/rescue.ts";
 export * from "./rows/rows.remote.ts";
 export * from "./rows/rows.schema.ts";
 export * from "./rows/rows.state.svelte.ts";
