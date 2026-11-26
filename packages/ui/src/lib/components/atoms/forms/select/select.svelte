@@ -73,11 +73,6 @@
 		lookup?: LookupType;
 		/** Hears the words typed into a typed field. */
 		oninput?: (text: string) => void;
-		/**
-		 * The classes of a soft field typed into, in place of the panel's: the app's record forms draw a white box with
-		 * an edge (until #57 moves them onto the notched field).
-		 */
-		inputClass?: string;
 		/** A control of its own at the start of a soft field, in place of the picture: a facility's Start, Stop or End. */
 		start?: Snippet;
 		/** False for a second row of the same fields, which the first row's labels already name (soft). */
@@ -109,7 +104,6 @@
 		isTyped = false,
 		lookup = undefined,
 		oninput = undefined,
-		inputClass = undefined,
 		start = undefined,
 		hasLabel = true,
 		class: className = undefined,
@@ -466,7 +460,7 @@
 		{/if}
 		{#if isTyping}
 			<div class="relative">
-				{@render typedField(inputClass ?? TYPED)}
+				{@render typedField(TYPED)}
 				{@render choices()}
 			</div>
 		{:else if disabled}

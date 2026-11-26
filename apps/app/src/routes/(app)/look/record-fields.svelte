@@ -3,9 +3,11 @@
 	// (Justin, 2026-11-10: "turn the data into a component so we don't repeat ourselves"). The + sheet shows it over
 	// an empty draft and a record's Edit tab over the record itself, so the two always ask for the same things. It
 	// only reads `value` and reports each change through `set`; who keeps the change is the caller's business. A
-	// customer has any number of contacts (2026-11-10).
-	import { Help, Select } from '@layerd/ui';
+	// customer has any number of contacts (2026-11-10). Since #373 every input is the library's notched field with its
+	// ? on the border, like the Project panel's: Input for what is typed, Select for what is picked.
+	import { Input, Select } from '@layerd/ui';
 	import ImageField from './image-field.svelte';
+	import { toCode } from './initials';
 	import {
 		FACILITY_ICONS,
 		MODE_ICONS,
@@ -43,9 +45,14 @@
 		onname?: (name: string) => boolean;
 	} = $props();
 
-	const FIELD =
-		'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none focus:border-primary disabled:bg-slate-50';
-	const LABEL = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
+	// How each kind of input is typed into: words with capitals and spelling help; an email, a phone or a web address
+	// on its own keyboard, without.
+	const TYPING = { autocapitalize: 'sentences', autocorrect: 'on', spellcheck: true } as const;
+	const KEYBOARDS = {
+		email: { inputmode: 'email', autocapitalize: 'off', spellcheck: false },
+		tel: { inputmode: 'tel' },
+		url: { inputmode: 'url', autocapitalize: 'off', spellcheck: false }
+	} as const;
 	const CARD = 'space-y-4 rounded-3xl bg-white p-4 ring-1 ring-slate-900/[0.05]';
 	const HEADING = 'text-sm font-semibold text-slate-900';
 	const ROLES: TeamMemberType['role'][] = ['admin', 'manager', 'team'];
@@ -55,7 +62,11 @@
 	const transport = $derived(page === 'transport' ? (value as TransportType) : undefined);
 	const facility = $derived(page === 'facilities' ? (value as FacilityType) : undefined);
 	const contacts = $derived(customer?.contacts ?? []);
-	const uid = $props.id();
+	// The Short Code the app makes from the name (a Generated value), shown until someone types over it; none before
+	// the name is typed.
+	const madeCode = $derived(customer?.name.trim() ? toCode(customer.name) : '');
+	// A record's name as it is typed, kept here until the Name is left; then the record is renamed.
+	let typedName = $state<string>();
 	// What the record's inputs' Help text keys start with (#299): `customer.name`, `facility.city`.
 	const record = $derived(
 		(
@@ -74,9 +85,39 @@
 		return `particular.${first.toLowerCase()}${rest.map((word) => word[0].toUpperCase() + word.slice(1)).join('')}`;
 	}
 
-	function rename(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		if (onname && !onname(input.value)) input.value = value.name;
+	// A new record's form opens on its Name, as the input's own autofocus did: once everything around it is drawn and
+	// the sheet it sits in is open, since an input in a closed sheet takes no focus.
+	function focusName(node: HTMLElement) {
+		queueMicrotask(() => node.querySelector('input')?.focus());
+	}
+
+	// The Name is left: the record takes the name typed. Turned down, the field shows the record's own name again.
+	function rename() {
+		const name = typedName;
+		typedName = undefined;
+		if (name !== undefined) onname?.(name);
+	}
+
+	function keyboardOf(type: string) {
+		return type in KEYBOARDS ? KEYBOARDS[type as keyof typeof KEYBOARDS] : TYPING;
+	}
+
+	function leaveOnEnter(event: KeyboardEvent) {
+		if (event.key === 'Enter') (event.target as HTMLElement).blur();
+	}
+
+	function keepCode(text: unknown) {
+		set({
+			code: String(text ?? '')
+				.replace(/[^a-z0-9]/gi, '')
+				.toUpperCase()
+		});
+	}
+
+	// A customer that exists always has a Short Code, since its project numbers start with it: left empty or reset, it
+	// takes the one made from its name. A new one's stays empty and follows the name until it is added (look.add).
+	function fillCode() {
+		if (!isNew && customer && !customer.code) set({ code: madeCode });
 	}
 
 	function toggle(list: string[], label: string) {
@@ -90,40 +131,21 @@
 	}
 </script>
 
-<!-- An input's label and its ? (#299), outside the <label>, so a tap on the ? never reaches the input. The block
-     is `has-help`, with `data-empty` while the input has nothing in it (look.css). `id` tells apart the inputs of
-     a list that share a key, such as each contact's Name. -->
-{#snippet labelOf(label: string, key: string, id: string)}
-	<span class={LABEL}>
-		<label for={id}>{label}</label>
-		{#if look.helpOf(key)}<Help
-				{label}
-				text={look.helpOf(key)}
-			/>{/if}
-	</span>
-{/snippet}
-
+<!-- A typed input: the library's notched field, its ? from the Help text table (#299). -->
 {#snippet text(
 	label: string,
 	key: string,
 	current: string,
 	oninput: (text: string) => void,
-	type = 'text',
-	id = `${uid}-${key}`
+	type = 'text'
 )}
-	<div
-		class="has-help block"
-		data-empty={current ? undefined : ''}
-	>
-		{@render labelOf(label, key, id)}
-		<input
-			{id}
-			class={FIELD}
-			{type}
-			value={current}
-			oninput={(event) => oninput(event.currentTarget.value)}
-		/>
-	</div>
+	<Input
+		{label}
+		{type}
+		{...keyboardOf(type)}
+		bind:value={() => current, (text) => oninput(String(text ?? ''))}
+		help={look.helpOf(key)}
+	/>
 {/snippet}
 
 <!-- Where it is: one field everywhere, which suggests places and saves the one picked (place-field.svelte). -->
@@ -134,7 +156,6 @@
 		help={look.helpOf(key)}
 		value={current}
 		{oninput}
-		inputClass={FIELD}
 	/>
 {/snippet}
 
@@ -162,59 +183,46 @@
 				onpick={(url) => set({ photo: url })}
 			/>
 		{/if}
-		<div
-			class="has-help block"
-			data-empty={value.name ? undefined : ''}
-		>
-			{@render labelOf('Name', `${record}.name`, `${uid}-name`)}
-			{#if isNew}
-				<!-- svelte-ignore a11y_autofocus -->
-				<input
-					id="{uid}-name"
-					class={FIELD}
-					value={value.name}
-					placeholder={customer
-						? 'e.g. Gulf Coast Metals'
-						: member
-							? 'First and last name'
-							: transport
-								? 'e.g. MV Coral Dawn'
-								: 'e.g. Berth 12'}
-					oninput={(event) => set({ name: event.currentTarget.value })}
-					autofocus
+		{#if isNew}
+			<!-- A new record's name is typed like any field; the form opens on it. -->
+			<div {@attach focusName}>
+				<Input
+					label="Name"
+					{...TYPING}
+					bind:value={() => value.name, (name) => set({ name: String(name ?? '') })}
+					help={look.helpOf(`${record}.name`)}
 				/>
-			{:else}
-				<input
-					id="{uid}-name"
-					class={FIELD}
-					value={value.name}
-					onchange={rename}
-					onkeydown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
-				/>
-			{/if}
-		</div>
+			</div>
+		{:else}
+			<Input
+				label="Name"
+				{...TYPING}
+				bind:value={() => typedName ?? value.name, (name) => (typedName = String(name ?? ''))}
+				onchange={rename}
+				onkeydown={leaveOnEnter}
+				help={look.helpOf(`${record}.name`)}
+			/>
+		{/if}
 
 		{#if customer}
-			<div
-				class="has-help block"
-				data-empty={customer.code ? undefined : ''}
-			>
-				{@render labelOf('Short Code', 'customer.code', `${uid}-code`)}
-				<input
-					id="{uid}-code"
-					class="{FIELD} uppercase"
-					value={customer.code}
-					maxlength="5"
-					oninput={(event) =>
-						set({ code: event.currentTarget.value.replace(/[^a-z0-9]/gi, '').toUpperCase() })}
+			<div>
+				<Input
+					label="Short Code"
+					maxlength={5}
+					autocapitalize="characters"
+					bind:value={() => customer.code, keepCode}
+					generated={madeCode || undefined}
+					onreset={fillCode}
+					onchange={fillCode}
+					help={look.helpOf('customer.code')}
 				/>
-				<span class="mt-1.5 block text-xs text-slate-400"
+				<span class="mt-1.5 block px-1 text-xs text-slate-400"
 					>Starts its project numbers and document IDs, like {customer.code ||
-						'SGL'}-2026-05-12-J01.{isNew ? ' Left empty, it is made from the name.' : ''}</span
+						madeCode ||
+						'SGL'}-2026-05-12-J01.</span
 				>
 			</div>
 			<Select
-				variant="soft"
 				label="Type"
 				options={CUSTOMER_TYPES.map((label) => ({ value: label, label }))}
 				multiple
@@ -257,7 +265,6 @@
 			/>
 		{:else if member}
 			<Select
-				variant="soft"
 				label="Role"
 				options={ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role] }))}
 				value={member.role}
@@ -269,7 +276,6 @@
 			/>
 			{@render text('Title', 'team.title', member.title, (title) => set({ title }))}
 			<Select
-				variant="soft"
 				label="Labels"
 				options={[...new Set([...TEAM_LABELS, ...labelsOf(member)])].map((label) => ({
 					value: label,
@@ -287,7 +293,6 @@
 			{@render place('Location', 'team.location', member.location, (location) => set({ location }))}
 		{:else if transport}
 			<Select
-				variant="soft"
 				label="Transport Mode"
 				options={MODES.map((mode) => ({ value: mode, label: mode, icon: MODE_ICONS[mode] }))}
 				value={transport.mode}
@@ -306,7 +311,6 @@
 			/>
 		{:else if facility}
 			<Select
-				variant="soft"
 				label="Kind"
 				options={Object.entries(FACILITY_ICONS).map(([kind, icon]) => ({
 					value: kind,
@@ -362,37 +366,25 @@
 						help={look.helpOf('contact.photo')}
 						onpick={(url) => setContact(contact.id, { photo: url })}
 					/>
-					{@render text(
-						'Name',
-						'contact.name',
-						contact.name,
-						(name) => setContact(contact.id, { name }),
-						'text',
-						`${uid}-${contact.id}-name`
+					{@render text('Name', 'contact.name', contact.name, (name) =>
+						setContact(contact.id, { name })
 					)}
-					{@render text(
-						'Title',
-						'contact.title',
-						contact.title,
-						(title) => setContact(contact.id, { title }),
-						'text',
-						`${uid}-${contact.id}-title`
+					{@render text('Title', 'contact.title', contact.title, (title) =>
+						setContact(contact.id, { title })
 					)}
 					{@render text(
 						'Email',
 						'contact.email',
 						contact.email,
 						(email) => setContact(contact.id, { email }),
-						'email',
-						`${uid}-${contact.id}-email`
+						'email'
 					)}
 					{@render text(
 						'Phone',
 						'contact.phone',
 						contact.phone,
 						(phone) => setContact(contact.id, { phone }),
-						'tel',
-						`${uid}-${contact.id}-phone`
+						'tel'
 					)}
 				</div>
 			{/each}

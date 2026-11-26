@@ -197,7 +197,6 @@
 						label="Location"
 						help={look.helpOf('organization.address')}
 						value={organization.address}
-						inputClass={FIELD}
 						oninput={(value) => {
 							organization.address = value;
 							look.flash();
