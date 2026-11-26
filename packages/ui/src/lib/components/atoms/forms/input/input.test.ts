@@ -110,6 +110,19 @@ describe('Input', () => {
 		expect(input.value).toBe('2026-10-27');
 	});
 
+	it('keeps an empty date’s label up on the border, off the browser’s mm/dd/yyyy (#374)', () => {
+		const { container } = render(Input, { props: { label: 'Date', type: 'date', value: '' } });
+
+		expect(container.querySelector('fieldset.field')!.classList).toContain('field-filled');
+		expect(container.querySelector('fieldset.field')!.classList).not.toContain('field-empty');
+	});
+
+	it('lets an empty text box’s label sit inside it', () => {
+		const { container } = render(Input, { props: { label: 'Title', value: '' } });
+
+		expect(container.querySelector('fieldset.field')!.classList).toContain('field-empty');
+	});
+
 	it("shows a digit-only owner's digits over the app's value, and keeps an emptied one empty", async () => {
 		render(Input, {
 			props: keeping({ label: 'Job Number', generated: '3' }, (text) => text.replace(/\D/g, ''), '')
