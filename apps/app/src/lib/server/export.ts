@@ -74,7 +74,7 @@ export function toPrintDocument({
 	site: string;
 }) {
 	return `<!doctype html>
-<html lang="en" data-theme>
+<html lang="en" data-theme="trident">
 	<head>
 		<meta charset="utf-8" />
 		<base href="${site}/" />
