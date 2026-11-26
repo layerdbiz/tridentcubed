@@ -5,9 +5,9 @@
 	// typed it lists the Recents; then what search.ts finds, names first. Arrow keys move, Enter opens, Escape closes.
 	import type { Attachment } from 'svelte/attachments';
 	import { fade, fly } from 'svelte/transition';
-	import { PAGE_ICONS, STATUS, type RecentType } from './look.data';
+	import { PAGE_ICONS, type RecentType } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import { recentOf, recordOf } from './records.data';
+	import { openItem, recentOf, toneOfItem } from './records.data';
 	import { searchOf } from './search';
 
 	let { look, onclose }: { look: LookState; onclose: () => void } = $props();
@@ -21,12 +21,6 @@
 	const isTyped = $derived(query.trim().length > 0);
 	const results = $derived(isTyped ? searchOf(look, query).slice(0, MOST) : recentOf(look));
 
-	// Typing starts again at the best result.
-	$effect(() => {
-		void query;
-		active = 0;
-	});
-
 	// Opens in the browser's top layer, over the floating bar, as the sheets do; Safari 16 has no popovers. The field
 	// takes the cursor once the pop-up shows (a hidden field cannot), straight away, so a phone opens its keyboard.
 	const lift: Attachment<HTMLElement> = (node) => {
@@ -36,18 +30,7 @@
 
 	function open(item: RecentType) {
 		onclose();
-		if (item.page === 'projects') {
-			if (look.projects.some((project) => project.id === item.id)) look.open(item.id!);
-		} else if (look.has(item.page, item.name)) look.openRecord(item.page, item.name);
-		else look.say(`${item.name} is no longer there`);
-	}
-
-	function toneOf(item: RecentType) {
-		if (item.page === 'projects') {
-			const project = look.projects.find((one) => one.id === item.id);
-			return project ? STATUS[project.status].tone : 'text-slate-400';
-		}
-		return recordOf(look, item.page, item.name)?.tone.text ?? 'text-slate-400';
+		openItem(look, item);
 	}
 
 	function move(by: number) {
@@ -99,6 +82,7 @@
 				autocomplete="off"
 				enterkeyhint="go"
 				bind:value={query}
+				oninput={() => (active = 0)}
 				{onkeydown}
 			/>
 			<button
@@ -138,7 +122,8 @@
 					onclick={() => open(item)}
 				>
 					<span
-						class="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full {toneOf(
+						class="relative flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full {toneOfItem(
+							look,
 							item
 						)}"
 						><span class="absolute inset-0 bg-current opacity-[0.12]"></span><span

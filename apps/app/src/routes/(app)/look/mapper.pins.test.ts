@@ -106,6 +106,24 @@ describe('the menu’s pins', () => {
 		expect((await open(tom)).look.pins).toEqual([]);
 	});
 
+	it('shows a thing pinned on two devices once, and one Unpin takes both pins away', async () => {
+		const phone = await open(tom);
+		const desktop = await open(tom);
+		const transport = phone.look.transports[0].name;
+		togglePin(phone.look, 'transport', transport, minutesAgo(2));
+		togglePin(desktop.look, 'transport', transport, minutesAgo(1));
+		await save(phone, tom);
+		await save(desktop, tom);
+
+		const again = await open(tom);
+		expect(names(again.look)).toEqual([`transport: ${transport}`]);
+
+		togglePin(again.look, 'transport', transport);
+		expect(isPinned(again.look, 'transport', transport)).toBe(false);
+		await save(again, tom);
+		expect((await open(tom)).look.pins).toEqual([]);
+	});
+
 	it('keeps each person’s pins their own', async () => {
 		const mine = await open(tom);
 		togglePin(mine.look, 'transport', mine.look.transports[0].name);

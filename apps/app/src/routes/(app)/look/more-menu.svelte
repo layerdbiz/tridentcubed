@@ -35,7 +35,7 @@
 	const name = $derived(project?.title ?? id);
 	// Its page's own word, both words capitalised: "Edit Transport Mode" (run 16).
 	const one = $derived(DATASETS[page].one);
-	const isOn = $derived(isPinned(look, page, id));
+	const isPinnedNow = $derived(isPinned(look, page, id));
 
 	const options = $derived<MenuOptionType[]>([
 		...(isOpenable
@@ -43,7 +43,7 @@
 			: []),
 		...(isPinnable(look, page, id)
 			? [
-					isOn
+					isPinnedNow
 						? { id: 'pin', label: 'Unpin', icon: 'icon-[mdi--pin-off-outline]' }
 						: { id: 'pin', label: 'Pin', icon: 'icon-[mdi--pin-outline]' }
 				]
@@ -72,7 +72,7 @@
 	function act(choice: string) {
 		// Pin keeps a drawer open, so the pin can be seen arriving in the Pinned list.
 		if (choice === 'pin') {
-			look.say(isOn ? `Unpinned ${name}` : `Pinned ${name} to the menu`);
+			look.say(isPinnedNow ? `Unpinned ${name}` : `Pinned ${name} to the menu`);
 			return togglePin(look, page, id);
 		}
 		if (choice !== 'delete') onact?.();
