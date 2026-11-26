@@ -31,6 +31,7 @@
 	import { PAGES } from './look.data';
 	import { PIN_SIZES, type ClosenessType } from './map.utils';
 	import { faceOf } from './marks';
+	import { freeText, holdText } from './hold';
 	import type { LookState } from './look.state.svelte';
 	import PanelList from './panel-list.svelte';
 	import PhotoSelection from './photo-selection.svelte';
@@ -312,19 +313,6 @@
 		if (!isSizing) return;
 		isSizing = false;
 		side = side < (RAIL + SIDE_MIN) / 2 ? RAIL : Math.max(SIDE_MIN, side);
-	}
-
-	// No text is selected while something is dragged (Justin, 2026-11-17: dragging the lower half "will
-	// automatically select all the text in there"). Every drag in the app takes the pointer (setPointerCapture):
-	// the sheet, the desktop's line, the sidebar's edge, the drawer, a board's card, the preview, the zoom bar.
-	// So these two events cover them all, and whatever is dragged next. Fields keep their own selection.
-	function holdText() {
-		document.documentElement.classList.add('select-none');
-		getSelection()?.removeAllRanges();
-	}
-
-	function freeText() {
-		document.documentElement.classList.remove('select-none');
 	}
 </script>
 
