@@ -15,11 +15,13 @@
 	// the photo component's crop (lib/components/photo) in a frame of the photo's own shape, with a zoom slider in place of the dots;
 	// Text edits the description over the photo's bottom left; Reset brings back the whole photo, as a change that
 	// waits for Save; More holds Delete, which asks first and moves on to the next photo (the last one closes).
+	// #376: More is the library's Menu, with Delete as its red choice; it opens over the pop-up, as every menu does.
 	// #343: the i at the top right opens the Details under the photo: the file as it arrived beside the file the app
 	// kept (type, size, pixel size), how much smaller it got, and whether its metadata came across. They follow the
 	// photo open as the strip is swiped; a PDF or a video says what its own file is.
 	import { tick, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
+	import { MediaQuery } from 'svelte/reactivity';
 	import { fade } from 'svelte/transition';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import type { CropType, SizeType } from '#lib/components/photo/photo.types.js';
@@ -38,6 +40,7 @@
 	import Dots from './dots.svelte';
 	import type { GroupType, PhotoType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { Menu, type MenuOptionType } from '@layerd/ui';
 
 	let {
 		look,
@@ -69,7 +72,7 @@
 	let mode = $state<PopupModeType>(untrack(() => firstMode));
 	// Cropping or typing works on a copy of the photo's crop and description, kept only on Save.
 	let draft = $state<{ crop?: CropType; words: string } | null>(null);
-	let isMenuOpen = $state(false);
+	let more = $state<HTMLElement>();
 	let isDetailsOpen = $state(false);
 	let savedAt = $state(0);
 	let stageWidth = $state(0);
@@ -140,7 +143,6 @@
 
 	// Crop and Text are two tabs of one edit: moving between them keeps what was done in the other.
 	function choose(next: 'crop' | 'text') {
-		isMenuOpen = false;
 		isDetailsOpen = false;
 		startDraft();
 		mode = next;
@@ -152,14 +154,12 @@
 		photo.description = draft.words;
 		draft = null;
 		mode = 'view';
-		isMenuOpen = false;
 		savedAt = Date.now();
 		onsave();
 	}
 
 	// Reset brings back the whole photo, as a change that waits for Save; from looking, it starts cropping.
 	async function reset() {
-		isMenuOpen = false;
 		if (mode !== 'crop') {
 			startDraft();
 			mode = 'crop';
@@ -180,14 +180,12 @@
 			isGliding = false;
 			if (!next) return;
 			isStepping = false;
-			isMenuOpen = false;
 			openId = next.id;
 			offset = 0;
 		}, SLIDE_MS);
 	}
 
 	function askDelete() {
-		isMenuOpen = false;
 		const gone = photo;
 		if (!gone) return;
 		look.confirm({
@@ -221,7 +219,7 @@
 	} | null = null;
 
 	function onpointerdown(event: PointerEvent) {
-		if (mode !== 'view' || isStepping || isMenuOpen || swipe) return;
+		if (mode !== 'view' || isStepping || isMoreOpen() || swipe) return;
 		if (event.pointerType === 'mouse' && event.button !== 0) return;
 		if ((event.target as HTMLElement).closest('button, input, textarea')) return;
 		try {
@@ -268,14 +266,18 @@
 		stepTo(by);
 	}
 
-	// Escape shuts the menu, else leaves without saving; the arrow keys move between photos. A question on top (the
-	// delete) keeps its own keys.
+	// More's menu, while it is open, has the keys: Escape shuts it (the menu does that itself) and the pop-up stays.
+	function isMoreOpen() {
+		return Boolean(more?.querySelector('[aria-expanded="true"]'));
+	}
+
+	// Escape leaves without saving; the arrow keys move between photos. A question on top (the delete) and More's
+	// open menu keep their own keys.
 	function onkeydown(event: KeyboardEvent) {
-		if (look.asking) return;
+		if (look.asking || isMoreOpen()) return;
 		if (event.key === 'Escape') {
 			event.preventDefault();
-			if (isMenuOpen) isMenuOpen = false;
-			else onclose();
+			onclose();
 			return;
 		}
 		const isTyping = (event.target as HTMLElement | null)?.closest?.('input, textarea');
@@ -320,17 +322,17 @@
 		else choose(tool);
 	}
 
+	const MORE: MenuOptionType[] = [
+		{ id: 'delete', label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
+	];
+	// Its list hangs from More's right edge on a phone and its left edge on a wider screen, as it always has.
+	const isWide = new MediaQuery('min-width: 48rem');
+
 	const toolClass =
 		'flex w-[76px] flex-col items-center gap-[3px] rounded-[14px] pt-[7px] pb-1.5 text-[11px] font-semibold text-slate-300 transition disabled:opacity-30 md:h-11 md:w-auto md:flex-row md:gap-2 md:rounded-full md:px-[18px] md:py-0 md:text-sm md:enabled:hover:text-white';
 </script>
 
-<svelte:window
-	{onkeydown}
-	onpointerdown={(event) => {
-		if (isMenuOpen && !(event.target as HTMLElement | null)?.closest?.('[data-menu]'))
-			isMenuOpen = false;
-	}}
-/>
+<svelte:window {onkeydown} />
 
 <div
 	popover="manual"
@@ -614,30 +616,21 @@
 						></span><span>{photo.kind === 'video' ? 'Play' : 'Open'}</span></a
 					>
 				{/if}
-				<div
-					class="relative"
-					data-menu
-				>
-					<button
-						type="button"
-						class="{toolClass} {isMenuOpen ? 'bg-white/14 text-white' : ''}"
-						aria-expanded={isMenuOpen}
-						onclick={() => (isMenuOpen = !isMenuOpen)}
-						><span class="icon-[mdi--dots-vertical] size-6 md:size-5"></span><span>More</span
-						></button
+				<div bind:this={more}>
+					<Menu
+						label="More"
+						value=""
+						options={MORE}
+						align={isWide.current ? 'left' : 'right'}
+						onpick={(choice) => choice === 'delete' && askDelete()}
 					>
-					{#if isMenuOpen}
-						<div
-							class="absolute right-0 bottom-full z-10 mb-2 min-w-[170px] rounded-[14px] bg-white p-1.5 text-slate-900 shadow-[0_16px_36px_-10px_rgb(0_0_0/0.6)] md:right-auto md:left-0"
-						>
-							<button
-								type="button"
-								class="flex h-[42px] w-full items-center gap-2.5 rounded-[9px] px-2.5 font-semibold text-danger transition hover:bg-danger/10"
-								onclick={askDelete}
-								><span class="icon-[mdi--trash-can-outline] size-5"></span>Delete</button
+						{#snippet trigger(_, isOpen)}
+							<span class="{toolClass} md:hover:text-white {isOpen ? 'bg-white/14 text-white' : ''}"
+								><span class="icon-[mdi--dots-vertical] size-6 md:size-5"></span><span>More</span
+								></span
 							>
-						</div>
-					{/if}
+						{/snippet}
+					</Menu>
 				</div>
 			</div>
 		</div>

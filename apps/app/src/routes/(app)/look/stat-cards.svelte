@@ -8,11 +8,11 @@
 	// sheet casts its shadow under the rest. Run 12 (2026-11-07, note 13): each card's number is the same count the
 	// chart ends on and the list shows (records.data.ts). Run 13 (Justin, 2026-11-07 22:21): back to how they were, the
 	// ? right after the label and what changed up on the chart again; no hover effect and no shadow or glow at all.
-	import { scale } from 'svelte/transition';
-	import BottomSheet from '#lib/components/sheet/sheet.svelte';
+	// #376: the ? is the library's Help, the same ? as every input's: a pop-up by it with a mouse, a sheet on a phone.
 	import { DATASETS, PAGES, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { countOf } from './records.data';
+	import { Help } from '@layerd/ui';
 
 	let { look }: { look: LookState } = $props();
 
@@ -29,16 +29,11 @@
 			"The ports, airports, rail yards and depots in the organization's list, picked in a project's Facility drop-down or added there. The map shows where they are."
 	};
 
-	let hovered = $state<DatasetType>();
-	let tip = $state({ x: 0, y: 0 });
 	let row: HTMLDivElement | undefined = $state();
 
-	function hover(event: PointerEvent, dataset: DatasetType) {
-		const card = (event.currentTarget as HTMLElement)
-			.closest('[role="tab"]')!
-			.getBoundingClientRect();
-		tip = { x: Math.min(card.left, window.innerWidth - 272), y: card.bottom + 8 };
-		hovered = dataset;
+	// The ? sits inside its card, which is a tab: a tap or a key on the ? opens its help and leaves the picked card be.
+	function isOnHelp(event: Event) {
+		return event.target instanceof Element && Boolean(event.target.closest('[data-help]'));
 	}
 
 	// The picked card, whether tapped or picked from the menu, scrolls to the middle of the row so it shows in full
@@ -58,19 +53,7 @@
 	$effect(() => {
 		reveal(look.dataset);
 	});
-	let sheet = $state<DatasetType>();
-	// A mouse gets the popover on hover; a finger gets the sheet.
-	const hasHover =
-		typeof window !== 'undefined' &&
-		window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-
-	function ask(event: MouseEvent, dataset: DatasetType) {
-		event.stopPropagation();
-		if (!hasHover) sheet = dataset;
-	}
 </script>
-
-<svelte:window onkeydown={(event) => event.key === 'Escape' && (sheet = hovered = undefined)} />
 
 <div
 	class="-mx-4 -my-4 scroll-px-4 overflow-x-auto px-4 py-4 md:mx-0 md:scroll-px-0 md:px-0"
@@ -99,11 +82,13 @@
 				class="relative flex cursor-pointer items-center gap-2 rounded-2xl p-2.5 pr-3.5 select-none md:gap-2 md:rounded-3xl md:px-3 md:py-4 2xl:gap-3 2xl:px-4 2xl:py-5 {isOn
 					? 'bg-primary text-white'
 					: 'bg-white text-slate-700'}"
-				onclick={() => {
+				onclick={(event) => {
+					if (isOnHelp(event)) return;
 					look.pick(dataset);
 					reveal(dataset);
 				}}
-				onkeydown={(event) => (event.key === 'Enter' || event.key === ' ') && look.pick(dataset)}
+				onkeydown={(event) =>
+					(event.key === 'Enter' || event.key === ' ') && !isOnHelp(event) && look.pick(dataset)}
 			>
 				<span
 					class="{info.icon} size-7 shrink-0 md:size-7 2xl:size-10 {isOn
@@ -122,17 +107,17 @@
 							: 'text-slate-500'}"
 					>
 						{words.slice(0, -1).join(' ')}
+						<!-- The library's ? is 1.3 times its type, so its own type keeps it 18px, 20px on a wide screen. -->
 						<span class="whitespace-nowrap"
-							>{words.at(-1)}<button
-								type="button"
-								class="relative -my-2 -mr-2 -ml-1.5 inline-flex p-2 align-middle md:-ml-1 {isOn
+							>{words.at(-1)}<span
+								class="ml-0.5 inline-flex align-middle text-[14px] md:ml-1 2xl:text-[15.5px] {isOn
 									? 'text-white'
 									: 'text-slate-300'}"
-								aria-label="What does {info.label} count?"
-								onclick={(event) => ask(event, dataset)}
-								onpointerenter={(event) => hasHover && hover(event, dataset)}
-								onpointerleave={() => hasHover && (hovered = undefined)}
-								><span class="icon-[mdi--help-circle] size-[18px] 2xl:size-5"></span></button
+								data-help
+								><Help
+									label={info.label}
+									text={HELP[dataset]}
+								/></span
 							></span
 						>
 					</span>
@@ -141,31 +126,3 @@
 		{/each}
 	</div>
 </div>
-
-{#if hovered}
-	<div
-		class="pointer-events-none fixed z-50 w-64 rounded-2xl bg-slate-900 p-3 text-xs leading-relaxed text-white/90 shadow-xl"
-		style="left: {tip.x}px; top: {tip.y}px"
-		role="tooltip"
-		transition:scale={{ start: 0.96, duration: 140 }}
-	>
-		<b class="mb-0.5 block text-sm text-white">{DATASETS[hovered].label}</b>{HELP[hovered]}
-	</div>
-{/if}
-
-{#if sheet}
-	{@const info = DATASETS[sheet]}
-	<BottomSheet
-		label="About {info.label}"
-		onclose={() => (sheet = undefined)}
-	>
-		<div class="flex items-center gap-3">
-			<span class="{info.icon} size-9 text-primary"></span>
-			<p>
-				<b class="block text-lg text-slate-900">{info.label}</b>
-				<span class="text-sm text-slate-500">{countOf(look, sheet)} right now</span>
-			</p>
-		</div>
-		<p class="mt-4 text-[15px] leading-relaxed text-slate-600">{HELP[sheet]}</p>
-	</BottomSheet>
-{/if}
