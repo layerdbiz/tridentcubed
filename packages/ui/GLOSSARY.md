@@ -264,6 +264,10 @@ _Avoid_: dropdown, picker, variant (for these switches; a variant is a named loo
 What finds the choices for what someone types, such as places from an outside service. Every lookup answers in the same shape, so any component takes any lookup through one prop and never knows where the choices come from (Justin, 2026-11-24).
 _Avoid_: source (in the business glossary that is where a value comes from), API (for the piece), a prop name per service
 
+**Compact field**:
+The library box with no label of its own, a little lower, for a long list of small boxes under one heading row: the app's Items and Time Log rows. The heading row's words name each box for screen readers, with its row's number, and carry the ?. A single input, so a list of fifty rows types and scrolls as fast as plain inputs (#387).
+_Avoid_: cell (a grid position), bare input, inline field
+
 **Toast**:
 A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305).
 _Avoid_: snackbar, progress toast (as a component of its own), loading bar
