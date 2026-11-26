@@ -8,8 +8,9 @@
 	// and fade out at the bottom of the sheet.
 	import { flip } from 'svelte/animate';
 	import Board from './board.svelte';
-	import ClientLogo from './client-logo.svelte';
+	import { Stack } from '@layerd/ui';
 	import Faces from './faces.svelte';
+	import { logoOf } from './marks';
 	import { FADE, fadeTop } from './fade';
 	import { DATASETS, type DatasetType, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -48,20 +49,17 @@
 	);
 </script>
 
+<!-- A record's customers as overlapping logos, the library's stack (#379). -->
 {#snippet logoStack(names: string[])}
-	<span class="flex items-center">
-		{#each names.slice(0, 4) as name, index (name)}
-			<span
-				class="relative rounded-full ring-2 ring-white"
-				style="z-index: {10 - index}; margin-left: {index ? -8 : 0}px"
-				><ClientLogo
-					{name}
-					size={26}
-					shape="circle"
-				/></span
-			>
-		{/each}
-	</span>
+	<Stack
+		items={names.slice(0, 4).map((name) => ({
+			...logoOf(name),
+			shape: 'circle',
+			id: name,
+			ring: 'ring-2 ring-white'
+		}))}
+		size={26}
+	/>
 {/snippet}
 
 {#snippet projectCard(project: ProjectType)}

@@ -2377,14 +2377,11 @@
 										<div
 											class="flex flex-col items-center rounded-xl bg-slate-50 px-2 py-2 text-center"
 										>
-											<img
-												src={personOf(name).photo}
-												crossorigin={toCrossOrigin(personOf(name).photo)}
-												alt=""
-												draggable="false"
-												class="size-9 rounded-full object-cover ring-2 {personIndex === 0
-													? 'ring-primary'
-													: 'ring-white'}"
+											<Avatar
+												{name}
+												size={36}
+												ring={personIndex === 0 ? 'ring-primary' : 'ring-white'}
+												hasPresence={false}
 											/>
 											<p class="mt-1 w-full truncate text-[10.5px] font-semibold text-slate-900">
 												{name}

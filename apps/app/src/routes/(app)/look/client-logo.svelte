@@ -1,12 +1,14 @@
 <script lang="ts">
 	// PROTOTYPE (#161): a customer's square icon, app-icon style (Justin's note 6): the company's own artwork on white,
-	// never cropped or recoloured. A customer with no icon shows its code in a round circle on sky blue (#355, Justin,
-	// 2026-11-26; before that the Customers icon on grey); a project's Personnel company that is not a customer shows
-	// it white on black (`tone`). `fallback` names an icon to show instead, a project's folder: projects keep their icon. `isBare`
-	// drops the ring and shadow (the report footer, Justin's run 8 note 20).
-	import { toCrossOrigin } from '#lib/files/files.schema.js';
-	import { toCode, toInitialsPicture, type InitialsToneType } from './initials';
-	import { clientOf, PAGE_ICONS } from './look.data';
+	// never cropped or recoloured, drawn by the library's avatar (#379). A customer with no icon shows its code in a
+	// round circle on sky blue (#355, Justin, 2026-11-26; before that the Customers icon on grey); a project's
+	// Personnel company that is not a customer shows it white on black (`tone`). `fallback` names an icon to show
+	// instead, a project's folder: projects keep their icon. `isBare` drops the ring and shadow (the report footer,
+	// Justin's run 8 note 20).
+	import { Avatar } from '@layerd/ui';
+	import type { InitialsToneType } from './initials';
+	import { clientOf } from './look.data';
+	import { logoOf } from './marks';
 
 	let {
 		name,
@@ -26,46 +28,15 @@
 		tone?: Extract<InitialsToneType, 'customer' | 'company'>;
 	} = $props();
 
-	const client = $derived(clientOf(name));
-	// No customer picked yet shows the Customers icon, not a code made of nothing.
-	const picture = $derived(
-		client.icon || fallback || !name.trim()
-			? ''
-			: toInitialsPicture(toCode(client.name, client.code), tone)
-	);
+	const logo = $derived(logoOf(name, { fallback, tone }));
 </script>
 
-<span
-	class="relative inline-flex shrink-0 items-center justify-center overflow-hidden {client.icon
-		? 'bg-white'
-		: 'bg-slate-200'} {isBare ? '' : 'shadow-sm ring-1 ring-slate-900/[0.06]'} {shape ===
-		'circle' || picture
-		? 'rounded-full'
-		: 'rounded-[24%]'} {isMuted ? 'opacity-50 grayscale' : ''}"
-	style="width: {size}px; height: {size}px"
-	title={client.name}
-	role="img"
-	aria-label="{client.name} logo"
->
-	{#if client.icon}
-		<img
-			src={client.icon}
-			crossorigin={toCrossOrigin(client.icon)}
-			alt=""
-			draggable="false"
-			class="size-full object-contain"
-		/>
-	{:else if picture}
-		<img
-			src={picture}
-			alt=""
-			draggable="false"
-			class="size-full"
-		/>
-	{:else}
-		<span
-			class="{fallback ?? PAGE_ICONS.customers} text-slate-400"
-			style="width: {size * 0.56}px; height: {size * 0.56}px"
-		></span>
-	{/if}
-</span>
+<Avatar
+	{...logo}
+	{size}
+	shape={logo.shape ?? shape}
+	ring={isBare ? '' : 'shadow-sm ring-1 ring-slate-900/[0.06]'}
+	{isMuted}
+	class={isMuted ? 'opacity-50' : ''}
+	title={clientOf(name).name}
+/>
