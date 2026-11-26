@@ -1,52 +1,84 @@
-// The menu's search (#345; Justin, 2026-11-25: "you can search for anything and it'll pop up"): what typing in the
-// search pop-up finds among the projects, customers, team, transport and facilities. Names come first: a name that
-// starts with what was typed, then a name with a word that does, then a name with it anywhere, then what else a thing
-// is known by (a project's subtitle, customer and number, a record's labels, kind and place). Every typed word must
-// be found; capitals and accents never matter.
-import { DATASETS, PAGES, type DatasetType, type RecentType } from './look.data';
+// The menu's search (#345; Justin, 2026-11-25: "you can search for anything and it'll pop up"). Round 2 (Justin,
+// 2026-11-26, with a picture): one group per page, a page with nothing found left out, every match shown. A row is the
+// thing's avatar, its name, a line under it and one thing on the right: a project's status, or how many projects a
+// record is on. A place shows only as its city and state, never its street (#320).
+//
+// Names come first in a group: a name that starts with what was typed, then a name with a word that does, then a name
+// with it anywhere, then what else a thing is known by (a project's subtitle, customer, type and location, a record's
+// labels, kind and place). Every typed word must be found; capitals and accents never matter.
+import { cityStateOf } from './location';
+import { DATASETS, PAGES, routeOf, type DatasetType, type ProjectType } from './look.data';
 import type { LookState } from './look.state.svelte';
-import { recordsOf } from './records.data';
+import { recordsOf, type RecordType } from './records.data';
 
-// `detail` is the one thing the result's second line says beside its kind: a project's customer, a transport's
-// mode, a record's place.
-type CandidateType = {
+/** One row of the search pop-up: what it opens, what it shows, and the project or record its avatar is drawn from. */
+export type SearchRowType = {
 	page: DatasetType;
 	name: string;
+	// A project's id; a record is known by its name.
 	id?: string;
-	detail: string;
+	// Under the name: a project's customer and route, a record's labels and city.
+	line: string;
+	// On the right: a project's status, or "3 projects".
+	side: string;
+	project?: ProjectType;
+	record?: RecordType;
+	// Found again by what else it is known by, never shown.
 	also: string[];
+	updated: string;
 };
+
+export type SearchGroupType = { title: string; rows: SearchRowType[] };
 
 // Lower case with no accents, so "sao" finds "São Paulo".
 function toPlain(text: string) {
 	return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
-// Everything there is to find, each with its name and what else it is known by.
-function candidatesOf(look: LookState): CandidateType[] {
+function joined(parts: string[]) {
+	return [...new Set(parts.map((part) => part.trim()).filter(Boolean))].join(' · ');
+}
+
+function projectLine(look: LookState, project: ProjectType) {
+	const { from, to } = routeOf(project, look.facilities);
+	return joined([project.client, to ? `${from} → ${to}` : from]);
+}
+
+function countOf(record: RecordType) {
+	return record.count ? `${record.count} project${record.count === 1 ? '' : 's'}` : '';
+}
+
+// Everything there is to find, in the pages' order.
+function rowsOf(look: LookState): SearchRowType[] {
 	const projects = look.projects.map((project) => ({
 		page: 'projects' as const,
 		name: project.title.trim() || 'Untitled project',
 		id: project.id,
-		detail: project.client || project.subtitle,
-		also: [project.subtitle, project.client, project.type, project.location]
+		line: projectLine(look, project),
+		side: project.status,
+		project,
+		also: [project.subtitle, project.client, project.type, project.location],
+		updated: project.updated
 	}));
 	const records = PAGES.filter((page) => page !== 'projects').flatMap((page) =>
 		recordsOf(look, page).map((record) => ({
 			page,
 			name: record.key,
-			detail: record.sub || record.location || record.labels[0] || '',
-			also: [...record.labels, record.sub, record.location]
+			line: joined([...record.labels, record.sub, cityStateOf(record.location)]),
+			side: countOf(record),
+			record,
+			also: [...record.labels, record.sub, record.location],
+			updated: record.updated
 		}))
 	);
 	return [...projects, ...records];
 }
 
-// How well `name` and `also` hold every word: 0 the name starts with the first, 1 a word of the name does, 2 the
-// name holds them all, 3 they are found only in what else it is known by; nothing when a word is not found.
-function rankOf(candidate: CandidateType, words: string[]) {
-	const name = toPlain(candidate.name);
-	const all = toPlain([candidate.name, ...candidate.also].join(' '));
+// How well a row's name and what else it is known by hold every word: 0 the name starts with the first, 1 a word of
+// the name does, 2 the name holds them all, 3 they are found only in what else; nothing when a word is not found.
+function rankOf(row: SearchRowType, words: string[]) {
+	const name = toPlain(row.name);
+	const all = toPlain([row.name, ...row.also].join(' '));
 	if (!words.every((word) => all.includes(word))) return undefined;
 	if (!words.every((word) => name.includes(word))) return 3;
 	if (name.startsWith(words[0])) return 0;
@@ -54,25 +86,61 @@ function rankOf(candidate: CandidateType, words: string[]) {
 	return 2;
 }
 
-/** What `query` finds, best first. */
-export function searchOf(look: LookState, query: string): RecentType[] {
+function byPage(rows: SearchRowType[]): SearchGroupType[] {
+	return PAGES.map((page) => ({
+		title: DATASETS[page].label,
+		rows: rows.filter((row) => row.page === page)
+	})).filter((group) => group.rows.length);
+}
+
+/** `text` cut into the parts the typed words were found in and the parts between, for the found parts to stand out. */
+export function marksOf(text: string, query: string): { text: string; isFound: boolean }[] {
 	const words = toPlain(query).split(/\s+/).filter(Boolean);
-	if (words.length === 0) return [];
-	return candidatesOf(look)
-		.map((candidate) => ({ candidate, rank: rankOf(candidate, words) }))
-		.filter(
-			(found): found is { candidate: CandidateType; rank: number } => found.rank !== undefined
-		)
-		.toSorted(
-			(a, b) =>
-				a.rank - b.rank ||
-				PAGES.indexOf(a.candidate.page) - PAGES.indexOf(b.candidate.page) ||
-				a.candidate.name.localeCompare(b.candidate.name)
-		)
-		.map(({ candidate }) => ({
-			page: candidate.page,
-			name: candidate.name,
-			note: [DATASETS[candidate.page].one, candidate.detail].filter(Boolean).join(' · '),
-			...(candidate.id ? { id: candidate.id } : {})
-		}));
+	// Each letter of the text as it reads plain, so a found word maps back onto the letters it was found in.
+	const letters = Array.from(new Intl.Segmenter().segment(text), (part) => part.segment);
+	const plain = letters.map((letter) => toPlain(letter));
+	const flat = plain.join('');
+	// Which letter each of the plain text's characters came from.
+	const owner = plain.flatMap((part, index) => Array.from({ length: part.length }, () => index));
+	const isFound = letters.map(() => false);
+	for (const word of words) {
+		for (let at = flat.indexOf(word); at !== -1; at = flat.indexOf(word, at + word.length))
+			for (let index = at; index < at + word.length; index += 1) isFound[owner[index]] = true;
+	}
+	const parts: { text: string; isFound: boolean }[] = [];
+	for (const [index, letter] of letters.entries()) {
+		const last = parts.at(-1);
+		if (last && last.isFound === isFound[index]) last.text += letter;
+		else parts.push({ text: letter, isFound: isFound[index] });
+	}
+	return parts;
+}
+
+// Before anything is typed: how many of the things changed last show, in Recents and for each page.
+const LATEST = 10;
+
+function latestOf(rows: SearchRowType[]) {
+	return rows.toSorted((a, b) => b.updated.localeCompare(a.updated)).slice(0, LATEST);
+}
+
+/**
+ * What the pop-up lists: before anything is typed, Recents (the ten things changed last) and each page's ten changed
+ * last; then what `query` finds, a group per page, best first in each.
+ */
+export function searchOf(look: LookState, query: string): SearchGroupType[] {
+	const words = toPlain(query).split(/\s+/).filter(Boolean);
+	if (words.length === 0) {
+		const rows = rowsOf(look);
+		const recents = latestOf(rows);
+		const pages = byPage(
+			PAGES.flatMap((page) => latestOf(rows.filter((row) => row.page === page)))
+		);
+		return recents.length ? [{ title: 'Recents', rows: recents }, ...pages] : pages;
+	}
+	const found = rowsOf(look)
+		.map((row) => ({ row, rank: rankOf(row, words) }))
+		.filter((one): one is { row: SearchRowType; rank: number } => one.rank !== undefined)
+		.toSorted((a, b) => a.rank - b.rank || a.row.name.localeCompare(b.row.name))
+		.map(({ row }) => row);
+	return byPage(found);
 }

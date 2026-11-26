@@ -11,9 +11,9 @@
 	// and the cog and Admin both open Settings. Run 18 (Justin, 2026-11-10): Admin is out of the menu for now; the
 	// signed-in person's row and the cog both open Settings, where the organization is edited. #212 (Justin,
 	// 2026-11-18): Recent is "Recents", a panel that slides open and shut (menu-panel.svelte), with Online under it.
-	// #346 (Justin, 2026-11-25): Pinned sits above them, what this person pinned from a ⋮ menu (pins.ts). #345: Search
-	// heads the sections and opens the search pop-up (`onsearch`, search-popup.svelte).
-	import { Avatar } from '@layerd/ui';
+	// #346 (Justin, 2026-11-25): Pinned sits above them, what this person pinned from a ⋮ menu (pins.ts). #345: the search icon at
+	// the far right of the logo opens the search pop-up (`onsearch`, search-popup.svelte; a section row until 2026-11-26).
+	import { Avatar, Button } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 	import AccountMenu from './account-menu.svelte';
 	import { FADE, fadeTop } from './fade';
@@ -86,24 +86,22 @@
 			>
 		</button>
 		{#if bell}<div class="shrink-0">{@render bell()}</div>{/if}
+		{#if onsearch}
+			<!-- Search, at the far right of the logo (Justin, 2026-11-26: out of the sections, an icon beside the name). -->
+			<span class="shrink-0 {WORDS}"
+				><Button
+					ghost
+					icon="icon-[mdi--magnify]"
+					aria-label="Search"
+					title="Search ({SHORTCUT})"
+					lg
+					class="text-slate-900"
+					onclick={onsearch}
+				/></span
+			>
+		{/if}
 	</div>
 	<nav class="w-full space-y-0.5 px-3">
-		{#if onsearch}
-			<button
-				class="flex w-full items-center gap-1 overflow-hidden rounded-xl py-1.5 text-[15px] font-bold text-slate-500 transition hover:bg-slate-900/[0.04]"
-				title="Search ({SHORTCUT})"
-				onclick={onsearch}
-			>
-				<span class={COLUMN}
-					><span class="icon-[mdi--magnify] size-[30px] text-slate-900"></span></span
-				>
-				<span class="flex-1 text-left {WORDS}">Search</span>
-				<kbd
-					class="mr-2 hidden rounded-md bg-slate-900/[0.05] px-1.5 py-0.5 font-sans text-xs font-medium text-slate-400 md:block {WORDS}"
-					>{SHORTCUT}</kbd
-				>
-			</button>
-		{/if}
 		{#each NAV.filter((item) => item.id !== 'admin') as item (item.id)}
 			{@const isOn =
 				(look.screen === 'workspace' || look.screen === 'record' ? look.place : look.navSection) ===

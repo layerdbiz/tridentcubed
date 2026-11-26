@@ -374,7 +374,7 @@ _Avoid_: favourites, starred, bookmarks
 _Not_: the map's pin, the marker where a record sits on the map
 
 **Search**:
-The menu's pop-up that finds projects and records as they are typed, names first (#345); Ctrl K or ⌘ K on a desktop.
+The pop-up opened by the search icon beside the logo in the menu, or Ctrl K / ⌘ K on a desktop (#345): Recents and each page's latest before anything is typed, then what is found, grouped by page, names first.
 _Avoid_: finder, command palette
 
 **Label**:
