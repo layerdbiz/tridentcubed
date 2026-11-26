@@ -94,6 +94,32 @@ describe("What's New", () => {
 		expect(whatsNew.shown).toEqual([]);
 	});
 
+	it('leaves out a release that changed nothing in the app, such as the website alone', () => {
+		const website: ReleaseType = {
+			version: '1.3.0',
+			date: '2026-11-27',
+			changes: [{ kind: 'feature', text: 'On the website', area: 'site', tickets: [] }]
+		};
+		const { whatsNew } = createApp([website, ...RELEASES], '1.1.1');
+
+		whatsNew.start();
+
+		expect(shownVersions(whatsNew)).toEqual(['1.2.0']);
+	});
+
+	it('stays shut when the only new release changed nothing in the app', () => {
+		const website: ReleaseType = {
+			version: '1.3.0',
+			date: '2026-11-27',
+			changes: [{ kind: 'fix', text: 'On the website', area: 'site', tickets: [] }]
+		};
+		const { whatsNew } = createApp([website, ...RELEASES], '1.2.0');
+
+		whatsNew.start();
+
+		expect(whatsNew.isOpen).toBe(false);
+	});
+
 	it('compares versions as numbers, so 1.10.0 is newer than 1.9.0', () => {
 		const { whatsNew } = createApp(['1.10.0', '1.9.0'].map(createRelease), '1.9.0');
 
