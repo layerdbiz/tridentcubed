@@ -59,6 +59,7 @@ export { default as Metadata } from "./components/atoms/metadata/metadata.svelte
 export { default as Nav } from "./components/atoms/nav/nav.svelte";
 export { default as Number } from "./components/atoms/number/number.svelte";
 export * from "./components/atoms/number/number.data.ts";
+export { default as ProgressBar, type ProgressBarProps } from "./components/atoms/progress-bar/progress-bar.svelte";
 export { default as Radio, type RadioProps } from "./components/atoms/forms/radio/radio.svelte";
 export { default as Section } from "./components/atoms/section/section.svelte";
 export * from "./components/atoms/section/section.data.ts";

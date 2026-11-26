@@ -5,6 +5,7 @@
 	// whole project (note 11), the same MoreMenu the dashboard's lists use. The save cloud stands after the title
 	// (#372: the bars that held it instead are gone). A Sent, Complete or Archived project's bar is all in its status
 	// colour, the cloud too (themeOf, #335). #305: a tap on the percent lists the project's empty inputs in a toast.
+	import { ProgressBar } from '@layerd/ui';
 	import Back from './back.svelte';
 	import { STATUS } from './look.data';
 	import { themeOf, type LookState } from './look.state.svelte';
@@ -38,12 +39,13 @@
 				onclick={() => look.showEmpty()}
 			/>
 		</div>
-		<span class="mt-1.5 block h-2 overflow-hidden rounded-full bg-slate-900/[0.07]">
-			<span
-				class="block h-full rounded-full transition-[width] duration-500 {status.bar}"
-				style="width: {look.overall}%"
-			></span>
-		</span>
+		<ProgressBar
+			value={look.overall}
+			label="Project progress"
+			track="bg-slate-900/[0.07]"
+			bar={status.bar}
+			class="mt-1.5"
+		/>
 	</div>
 	<span class="flex size-10 shrink-0 items-center justify-center"
 		><MoreMenu
