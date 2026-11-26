@@ -10,6 +10,7 @@
 	import { Toast } from '@layerd/ui';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { noteActivity } from '#lib/activity/activity.note.js';
 	import { fetchLists, fetchProject, saveRows } from '#lib/rows/rows.remote.js';
 	import { type RowType, type SavedRowType, TABLES } from '#lib/rows/rows.schema.js';
 	import { SyncLoop } from '#lib/rows/rows.state.svelte.js';
@@ -79,11 +80,15 @@
 		untrack(() => void sync.refresh());
 	});
 
-	// Opening a project loads its panels and what is in them (#186), and takes in what others saved to it.
+	// Opening a project loads its panels and what is in them (#186), and takes in what others saved to it. It shows
+	// in an Admin's Activity too (#306): an opening again soon after counts once.
 	$effect(() => {
 		if (look.screen !== 'workspace' || !look.projectId) return;
 		const id = look.projectId;
-		untrack(() => void openProject(id));
+		untrack(() => {
+			void openProject(id);
+			noteActivity({ kind: 'open', projectId: id });
+		});
 	});
 
 	// The Cards view shows each project's photos, and those are among the rows a project loads as it opens. So
