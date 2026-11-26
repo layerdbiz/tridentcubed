@@ -324,7 +324,7 @@
 	<li
 		class={[
 			'flex min-w-0 items-start gap-3',
-			isBoxed ? 'rounded-2xl bg-slate-900/[0.03] py-3 pr-[42px] pl-3' : 'px-4 py-3'
+			isBoxed ? [FOLD_LOOK.class, 'py-3 pr-[42px] pl-3'] : 'px-4 py-3'
 		]}
 	>
 		<span
