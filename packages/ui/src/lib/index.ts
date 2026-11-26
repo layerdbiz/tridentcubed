@@ -49,6 +49,7 @@ export { default as IconTheme } from "./components/atoms/icon/icon-theme.svelte"
 export { default as Image, type ImageProps } from "./components/atoms/image/image.svelte";
 export * from "./components/atoms/image/image.data.ts";
 export { default as Indicator } from "./components/atoms/indicator/indicator.svelte";
+export * from "./components/atoms/avatar/initials.ts";
 export { default as Input } from "./components/atoms/forms/input/input.svelte";
 export { default as Link } from "./components/atoms/link/link.svelte";
 export * from "./components/atoms/link/link.data.ts";

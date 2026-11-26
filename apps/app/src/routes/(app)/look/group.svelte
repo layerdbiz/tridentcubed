@@ -13,7 +13,7 @@
 	// #389: the folding itself is the library's Accordion (header, grip, controls, slide, foot row with Delete); this
 	// file keeps what is the app's own: the icon, the name and its tally, the meta and the in-the-report switch.
 	import type { Snippet } from 'svelte';
-	import { Accordion, Switch } from '@layerd/ui';
+	import { Accordion, Avatar, Switch } from '@layerd/ui';
 	import { toTally } from './tally';
 
 	let {
@@ -78,11 +78,11 @@
 >
 	{#snippet head()}
 		{#if image}
-			<img
+			<Avatar
 				src={image}
 				alt=""
-				draggable="false"
-				class="size-8 shrink-0 rounded-full bg-white object-cover ring-1 ring-slate-900/10"
+				size={32}
+				ring="ring-1 ring-slate-900/10"
 			/>
 		{:else if number}
 			<span

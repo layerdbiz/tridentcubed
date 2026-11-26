@@ -2,7 +2,7 @@
 // seed (`#lib/server/db/seed.ts`) loads it, with the photos as the app's own files, and the mapper (`mapper.ts`)
 // turns its rows into these. Records are named by name on screen; `id` is the row's.
 import type { DeviceKindType } from '#lib/presence/presence.utils.js';
-import { initialsOf, toInitialsPicture } from './initials';
+import { initialsOf, toInitialsPicture } from '@layerd/ui';
 
 export type TeamMemberType = {
 	// Its row's id, made on the device (#185).

@@ -3,10 +3,11 @@
 	// "look exactly like the list view"): its title and team, its Project Type as a label, where it goes, and its
 	// progress. The list row shows it on white and the card lays the same lines over its photo (`isLight`). The label
 	// line keeps its height when there is no type, so every row is as tall as the next.
+	import { Stack } from '@layerd/ui';
 	import Chips from './chips.svelte';
-	import Faces from './faces.svelte';
 	import type { ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { facesOf } from './marks';
 	import ProjectProgress from './project-progress.svelte';
 	import ProjectRoute from './project-route.svelte';
 
@@ -24,11 +25,10 @@
 		<span class="truncate font-medium {isLight ? 'text-white' : 'text-slate-900'}"
 			>{project.title}</span
 		>
-		<Faces
-			names={project.team}
+		<Stack
+			items={facesOf(project.team, { isMuted: isArchived })}
 			size={22}
 			max={3}
-			isMuted={isArchived}
 		/>
 	</span>
 	<span class="flex h-[19px] items-center">
