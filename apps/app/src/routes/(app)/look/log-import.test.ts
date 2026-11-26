@@ -32,22 +32,22 @@ describe('a time log that runs past midnight', () => {
 00:30 Lashing commenced`;
 
 	it('keeps a range on the day it starts, its end in the activity, and says it runs past midnight', () => {
-		const [loading, standby] = readLog(NIGHT, { year: YEAR }).entries;
+		const rows = rowsOf(NIGHT);
+		const [loading, standby] = rows;
 
 		expect(loading).toMatchObject({
 			date: '2026-11-25',
 			time: '22:30',
 			end: '02:15',
-			activity: 'Loading transformer onto barge (until 02:15)',
-			notes: ['past-midnight']
+			activity: 'Loading transformer onto barge (until 02:15)'
 		});
 		expect(standby).toMatchObject({
 			date: '2026-11-25',
 			time: '23:40',
 			end: '00:05',
-			activity: "On standby, wind over the crane's limit (until 00:05)",
-			notes: ['past-midnight']
+			activity: "On standby, wind over the crane's limit (until 00:05)"
 		});
+		expect(notesOf(loading, rows, []).map((note) => note.kind)).toEqual(['past-midnight']);
 	});
 
 	it('moves a time that comes after midnight to the next day, and says so', () => {
@@ -313,5 +313,106 @@ describe('a time typed into an entry', () => {
 		['', '']
 	])('"%s" is kept as "%s"', (typed, kept) => {
 		expect(toTypedClock(typed)).toBe(kept);
+	});
+});
+
+describe('what is not read as a time or a date', () => {
+	it('keeps a start whose end is no time of day, and reads 24:00 as midnight', () => {
+		expect(entriesOf('25 Nov 2026\n22:00 - 24:00 Loading')).toEqual([
+			{ date: '2026-11-25', time: '22:00', activity: 'Loading (until 00:00)' }
+		]);
+	});
+
+	it('takes no quantity for a time', () => {
+		expect(entriesOf('25 Nov 2026\n08:00 - 1500 tons loaded\n2000 litres of fuel taken')).toEqual([
+			{ date: '2026-11-25', time: '08:00', activity: '1500 tons loaded 2000 litres of fuel taken' }
+		]);
+	});
+
+	it('takes no words that only begin like a month for a date', () => {
+		expect(entriesOf('25 Nov 2026\n07:30 Rigged\n1 set of slings\nMar 3 tugs alongside')).toEqual([
+			{ date: '2026-11-25', time: '07:30', activity: 'Rigged 1 set of slings Mar 3 tugs alongside' }
+		]);
+	});
+
+	it('reads a time with seconds, and a date and time written together', () => {
+		expect(entriesOf('25 Nov 2026\n07:30:15 Arrived\n2026-11-26T22:30 Departed')).toEqual([
+			{ date: '2026-11-25', time: '07:30', activity: 'Arrived' },
+			{ date: '2026-11-26', time: '22:30', activity: 'Departed' }
+		]);
+	});
+});
+
+describe('days that turn over', () => {
+	it('moves an evening stop and a morning start to the next day', () => {
+		expect(entriesOf('25 Nov 2026\n17:00 Stopped for the night\n06:30 Resumed')).toEqual([
+			{ date: '2026-11-25', time: '17:00', activity: 'Stopped for the night' },
+			{ date: '2026-11-26', time: '06:30', activity: 'Resumed' }
+		]);
+	});
+
+	it('turns the year over from December to January', () => {
+		expect(
+			entriesOf('31 Dec\n22:00 Loading\n1 Jan\n08:00 Sailed').map((entry) => entry.date)
+		).toEqual(['2026-12-31', '2027-01-01']);
+	});
+});
+
+describe('the check, once the person has fixed an entry', () => {
+	it('stops saying a date was moved or unclear once the date is changed', () => {
+		const rows = rowsOf('05/11/2026\n17:00 Stopped\n06:30 Resumed');
+		rows[0].date = '2026-11-05';
+		rows[1].date = '2026-11-06';
+
+		expect(rows.flatMap((row) => notesOf(row, rows, []))).toEqual([]);
+	});
+
+	it('stops saying a range runs past midnight once its end is taken out of the activity', () => {
+		const [row] = rowsOf('25 Nov 2026\n22:30 - 02:15 Loading');
+		row.activity = 'Loading';
+
+		expect(notesOf(row, [row], [])).toEqual([]);
+	});
+
+	it('finds an overlap across midnight, and an entry read twice with a full stop', () => {
+		const rows = rowsOf(
+			'25 Nov 2026\n22:30 - 02:15 Loading\n00:30 - 01:00 Crane fault\n00:30 - 01:00 Crane fault.'
+		);
+
+		expect(rows.map((row) => notesOf(row, rows, []).map((note) => note.kind))).toEqual([
+			['past-midnight'],
+			['next-day', 'overlap'],
+			['overlap', 'twice']
+		]);
+	});
+});
+
+describe('where entries with no date go', () => {
+	it('into a day of their own, never one with typed entries', () => {
+		const days: DayType[] = [
+			{ id: 'typed', date: '', entries: [{ id: 'a', time: '07:00', activity: 'Typed' }] }
+		];
+
+		addToLog(days, rowsOf('08:00 Pasted'), counter());
+
+		expect(days.map((day) => [day.id, day.entries.map((entry) => entry.activity)])).toEqual([
+			['typed', ['Typed']],
+			['id-1', ['Pasted']]
+		]);
+	});
+
+	it('fills a blank day only where its date keeps the days in order', () => {
+		const days: DayType[] = [
+			{ id: 'blank', date: '', entries: [] },
+			{ id: 'day-24', date: '2026-11-24', entries: [{ id: 'a', time: '07:00', activity: 'Typed' }] }
+		];
+
+		addToLog(days, rowsOf('26 Nov 2026\n08:00 Pasted'), counter());
+
+		expect(days.map((day) => [day.id, day.date])).toEqual([
+			['blank', ''],
+			['day-24', '2026-11-24'],
+			['id-1', '2026-11-26']
+		]);
 	});
 });

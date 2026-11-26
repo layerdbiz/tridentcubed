@@ -12,7 +12,8 @@
 	// the two join; and what was typed wins, since the import only adds. A range keeps its start as the entry's time and
 	// says its end in the activity, "Loading (until 02:15)". The pasted text and the file are not kept: the Time Log
 	// has no place for a file yet. A photo of a handwritten log, or a scan, needs its writing read, which is not built.
-	import { Button, Compact, Dialog, Icon, Switch, Textarea } from '@layerd/ui';
+	import { Accordion, Button, Compact, Dialog, Icon, Switch, Textarea } from '@layerd/ui';
+	import WindowHead from '#lib/releases/window-head.svelte';
 	import type { DayType } from './look.data';
 	import { readLogFile } from './log-files';
 	import {
@@ -46,6 +47,9 @@
 	let reason = $state('');
 	let isReading = $state(false);
 	let picker = $state<HTMLInputElement>();
+	// The file the words were read from, while they are still as read: the check says where its entries came from.
+	let file = $state<{ name: string; text: string }>();
+	const source = $derived(file && file.text === text ? ` from ${file.name}` : '');
 
 	const chosen = $derived(rows.filter((row) => row.isChosen));
 	const toCheck = $derived(
@@ -63,27 +67,29 @@
 	}
 
 	async function choose(event: Event & { currentTarget: HTMLInputElement }) {
-		const file = event.currentTarget.files?.[0];
+		const picked = event.currentTarget.files?.[0];
 		event.currentTarget.value = '';
-		if (!file) return;
+		if (!picked) return;
 		isReading = true;
 		reason = '';
 		try {
-			const words = await readLogFile(file);
+			const words = await readLogFile(picked);
 			if ('reason' in words) reason = words.reason;
 			else {
 				text = words.text;
+				file = { name: picked.name, text: words.text };
 				read();
 			}
 		} catch {
-			reason = `${file.name} could not be read. Copy its text and paste it.`;
+			reason = `${picked.name} could not be read. Copy its text and paste it.`;
 		} finally {
 			isReading = false;
 		}
 	}
 
-	const COUNT = (count: number, one: string, many = `${one}s`) =>
-		`${count} ${count === 1 ? one : many}`;
+	function countOf(count: number, one: string, many = `${one}s`) {
+		return `${count} ${count === 1 ? one : many}`;
+	}
 </script>
 
 <Dialog
@@ -92,30 +98,13 @@
 	{onclose}
 >
 	{#snippet header()}
-		<header class="-mx-5 flex shrink-0 items-start gap-2 border-b border-neutral-200 px-5 pb-3">
-			<div class="min-w-0 flex-1">
-				<h2 class="text-xl font-bold">
-					{step === 'words' ? 'Import a Time Log' : 'Check the Entries'}
-				</h2>
-				<p class="text-sm text-neutral-600">
-					{#if step === 'words'}
-						Paste it, or choose its file
-					{:else}
-						{COUNT(chosen.length, 'entry', 'entries')} to add{toCheck
-							? `, ${toCheck} to check`
-							: ''}
-					{/if}
-				</p>
-			</div>
-			<Button
-				neutral
-				ghost
-				md
-				icon="icon-[mdi--close]"
-				aria-label="Close"
-				onclick={onclose}
-			/>
-		</header>
+		<WindowHead
+			title={step === 'words' ? 'Import a Time Log' : 'Check the Entries'}
+			note={step === 'words'
+				? 'Paste it, or choose its file'
+				: `${countOf(chosen.length, 'entry', 'entries')} to add${toCheck ? `, ${toCheck} to check` : ''}${source}`}
+			{onclose}
+		/>
 	{/snippet}
 
 	{#if step === 'words'}
@@ -221,16 +210,18 @@
 			{/each}
 		</ol>
 		{#if skipped.length}
-			<details class="mb-4 rounded-2xl bg-neutral-100 px-3 py-2 text-sm">
-				<summary class="cursor-pointer text-neutral-600">
-					{COUNT(skipped.length, 'line')} with no time, left out
-				</summary>
-				<ul class="mt-2 space-y-1 text-neutral-500">
+			<Accordion
+				class="mb-4 text-sm"
+				neutral
+				lite
+				label="{countOf(skipped.length, 'line')} with no time, left out"
+			>
+				<ul class="space-y-1 text-neutral-600">
 					{#each skipped as line (line.line)}
 						<li><span class="tabular-nums">Line {line.line}:</span> {line.text}</li>
 					{/each}
 				</ul>
-			</details>
+			</Accordion>
 		{/if}
 	{/if}
 
@@ -268,7 +259,7 @@
 					heavy
 					sm
 					width="full"
-					label="Add {COUNT(chosen.length, 'Entry', 'Entries')}"
+					label="Add {countOf(chosen.length, 'Entry', 'Entries')}"
 					disabled={!chosen.length}
 					onclick={() => onadd(chosen)}
 				/>

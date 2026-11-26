@@ -5,7 +5,7 @@
 import { readFile as readSheet } from './spreadsheet';
 
 /** The words a file holds, or why none could be read. */
-export type LogFileType = { text: string } | { reason: string };
+export type LogFileReadType = { text: string } | { reason: string };
 
 const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
 
@@ -35,7 +35,7 @@ function runsOf(xml: string) {
 }
 
 /** The words of a Word file's document.xml: a line per paragraph, a table's row as one line of its cells. */
-export function wordText(xml: string) {
+export function toWordText(xml: string) {
 	const rows = xml.replace(/<w:tr\b[^>]*>([\s\S]*?)<\/w:tr>/g, (_, row: string) => {
 		const cells = [...row.matchAll(/<w:tc\b[^>]*>([\s\S]*?)<\/w:tc>/g)].map(([, cell]) =>
 			runsOf(cell)
@@ -61,7 +61,7 @@ export type PdfWordsType = {
  * A PDF page's text as lines: a new line where the text moves down, an empty line where it moves down more than a
  * line's height (a new paragraph), a space where words on a line stand apart.
  */
-export function pdfLines(items: PdfWordsType[]) {
+export function toPdfText(items: PdfWordsType[]) {
 	let text = '';
 	let last: PdfWordsType | undefined;
 	for (const item of items) {
@@ -84,7 +84,7 @@ const PICTURES = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'gif', 'tif', 't
 const SHEETS = ['xlsx', 'xls', 'xlsm', 'xlsb', 'ods', 'numbers', 'csv', 'tsv', 'tab'];
 const TEXTS = ['txt', 'text', 'md', 'log'];
 
-export const HANDWRITING =
+const HANDWRITING =
 	'A photo of a handwritten log needs its writing read, which the app does not do yet. Type or paste it instead.';
 const SCANNED =
 	'This PDF is a picture of the pages, with no text in it, so its writing needs reading, which the app does not do yet. Type or paste it instead.';
@@ -92,20 +92,20 @@ const OLD_WORD =
 	'This is an older Word file. Save it as .docx in Word, or copy its text and paste it.';
 const UNKNOWN = 'The app cannot read this kind of file. Copy its text and paste it.';
 
-function kindOf(file: File) {
+function extensionOf(file: File) {
 	return file.name.includes('.') ? file.name.split('.').pop()!.toLowerCase() : '';
 }
 
-async function readWord(file: File): Promise<LogFileType> {
+async function readWord(file: File): Promise<LogFileReadType> {
 	// The spreadsheet reader holds a reader of zip files, which a .docx is: no other library is loaded.
 	const { CFB } = await import('xlsx');
 	const zip = CFB.read(new Uint8Array(await file.arrayBuffer()), { type: 'array' });
 	const document = CFB.find(zip, '/word/document.xml');
 	if (!document) return { reason: 'This Word file could not be read. Copy its text and paste it.' };
-	return { text: wordText(new TextDecoder().decode(document.content)) };
+	return { text: toWordText(new TextDecoder().decode(document.content)) };
 }
 
-async function readPdfText(file: File): Promise<LogFileType> {
+async function readPdfText(file: File): Promise<LogFileReadType> {
 	const { openPdf } = await import('#lib/pdf/pdf.utils.js');
 	let pdf;
 	try {
@@ -129,7 +129,7 @@ async function readPdfText(file: File): Promise<LogFileType> {
 						height: item.height,
 						hasEOL: item.hasEOL
 					});
-			pages.push(pdfLines(items));
+			pages.push(toPdfText(items));
 			page.cleanup();
 		}
 		const text = pages.join('\n\n').trim();
@@ -140,8 +140,8 @@ async function readPdfText(file: File): Promise<LogFileType> {
 }
 
 /** A chosen file's words, for the check step; or, for a file whose words cannot be read, why not. */
-export async function readLogFile(file: File): Promise<LogFileType> {
-	const kind = kindOf(file);
+export async function readLogFile(file: File): Promise<LogFileReadType> {
+	const kind = extensionOf(file);
 	if (PICTURES.includes(kind) || file.type.startsWith('image/')) return { reason: HANDWRITING };
 	if (kind === 'pdf' || file.type === 'application/pdf') return readPdfText(file);
 	if (kind === 'docx') return readWord(file);

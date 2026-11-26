@@ -299,9 +299,9 @@
 		});
 	}
 
-	// A time log kept somewhere else, brought in (#359): its window is open while `importing`. The year a date
+	// A time log kept somewhere else, brought in (#359): its window is open while `isImporting`. The year a date
 	// written without one is in is the last dated day's, or this year.
-	let importing = $state(false);
+	let isImporting = $state(false);
 	const logYear = $derived(
 		Number(panel.days.findLast((day) => day.date)?.date.slice(0, 4)) || new Date().getFullYear()
 	);
@@ -311,9 +311,9 @@
 		const dates = new Set(rows.map((row) => row.date));
 		const touched = panel.days.filter((day) => dates.has(day.date)).map((day) => day.id);
 		openDays = [...new Set([...openDays, ...touched])];
-		importing = false;
+		isImporting = false;
 		save();
-		look.say(`${count} ${count === 1 ? 'entry' : 'entries'} added to the Time Log`);
+		look.say(`${count} ${count === 1 ? 'entry' : 'entries'} added to the time log`);
 	}
 
 	const customerName = $derived(
@@ -1371,7 +1371,7 @@
 				xs
 				icon="icon-[mdi--file-import-outline]"
 				label="Import Time Log"
-				onclick={() => (importing = true)}
+				onclick={() => (isImporting = true)}
 			/>
 			<Button
 				primary
@@ -1382,12 +1382,12 @@
 				onclick={addSampleDay}
 			/>
 		</div>
-		{#if importing}
+		{#if isImporting}
 			<LogImport
 				days={panel.days}
 				year={logYear}
 				onadd={addImported}
-				onclose={() => (importing = false)}
+				onclose={() => (isImporting = false)}
 			/>
 		{/if}
 	{:else}

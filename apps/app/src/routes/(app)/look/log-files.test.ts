@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { pdfLines, wordText } from './log-files';
+import { toPdfText, toWordText } from './log-files';
 
 describe('the words of a Word file', () => {
 	it('keeps each paragraph a line, a table row a line of cells, and a tab and a line break as written', () => {
@@ -11,7 +11,7 @@ describe('the words of a Word file', () => {
 <w:p><w:del><w:r><w:delText>struck out</w:delText></w:r></w:del><w:r><w:t>kept</w:t><w:t xml:space="preserve"> </w:t><w:t>as is</w:t></w:r></w:p>
 </w:body></w:document>`;
 
-		expect(wordText(xml).trim().split('\n')).toEqual([
+		expect(toWordText(xml).trim().split('\n')).toEqual([
 			'25 November 2026',
 			'22:30 - 02:15 Loading & lashing',
 			'23:40\tOn standby',
@@ -31,7 +31,7 @@ describe('the words of a PDF page', () => {
 			{ str: '23:40 On standby', x: 50, y: 672, width: 80, height: 10, hasEOL: false }
 		];
 
-		expect(pdfLines(items)).toBe('25 November 2026\n22:30 Loading\n23:40 On standby');
+		expect(toPdfText(items)).toBe('25 November 2026\n22:30 Loading\n23:40 On standby');
 	});
 
 	it('leaves an empty line where the text drops more than a line, as between paragraphs', () => {
@@ -41,6 +41,6 @@ describe('the words of a PDF page', () => {
 			{ str: 'Remarks: clear', x: 50, y: 670, width: 70, height: 10, hasEOL: false }
 		];
 
-		expect(pdfLines(items)).toBe('06:00 Barge departed\n\nRemarks: clear');
+		expect(toPdfText(items)).toBe('06:00 Barge departed\n\nRemarks: clear');
 	});
 });
