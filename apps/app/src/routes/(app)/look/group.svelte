@@ -13,18 +13,18 @@
 	// #389: the folding itself is the library's Accordion (header, grip, controls, slide, foot row with Delete); this
 	// file keeps what is the app's own: the icon, the name and its tally, the meta and the in-the-report switch.
 	// 2026-11-26 (Justin): a library piece's look is set from outside, so the panel groups' look is given here: the
-	// faint box, the grey chevron and the red Delete (until #384 picks the Delete's Button type).
+	// faint box, the grey chevron and the red Delete: red words and bin on no box, the type picked on #384.
 	import type { Snippet } from 'svelte';
 	import { Accordion, Avatar, Switch } from '@layerd/ui';
 	import { FOLD_LOOK } from './fold';
 	import { toTally } from './tally';
 
-	// The Delete at a group's foot: red words and bin on no box, faintly red behind under a pointer.
+	// The Delete at a group's foot: the theme's red words and bin on no box (#384).
 	const DELETE_LOOK = {
-		unstyled: true,
-		icon: 'icon-[mdi--trash-can-outline] size-[18px]',
-		class:
-			'ml-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger/10'
+		danger: true,
+		ghost: true,
+		sm: true,
+		icon: 'icon-[mdi--trash-can-outline]'
 	};
 
 	let {

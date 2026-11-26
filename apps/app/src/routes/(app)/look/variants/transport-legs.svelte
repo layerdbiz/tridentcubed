@@ -41,7 +41,7 @@
 	} from '../look.data';
 	import { cityStateOf } from '../location';
 	import type { LookState } from '../look.state.svelte';
-	import { Menu, Select } from '@layerd/ui';
+	import { Button, Menu, Select } from '@layerd/ui';
 	import { sortable } from '../sortable';
 	import { MARKED_LABELS, sectionsOf, valuesOf } from '../tally';
 
@@ -49,9 +49,6 @@
 
 	const POINT_NAMES = Object.keys(POINTS) as PointType[];
 	const REMOVE = '__remove';
-	// The panels' own small buttons (panel-body.svelte): tinted inside a card, black under the cards.
-	const BUTTON =
-		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 
 	const legs = $derived(legsOf(panel.stops));
 	// What each leg's line counts: the inputs tally.ts says it holds (#229).
@@ -287,19 +284,25 @@
 				{/each}
 			</div>
 			{#snippet actions()}
-				<button
-					type="button"
-					class="{BUTTON} bg-primary/10 text-primary hover:bg-primary/15"
-					onclick={() => addStop(leg)}><span class="icon-[mdi--plus] size-4"></span>Add Stop</button
-				>
+				<Button
+					primary
+					lite
+					xs
+					icon="icon-[mdi--plus]"
+					label="Add Stop"
+					onclick={() => addStop(leg)}
+				/>
 			{/snippet}
 		</Group>
 	{/each}
 </div>
 
-<button
-	type="button"
-	class="{BUTTON} bg-slate-900 text-white hover:bg-slate-700"
+<Button
+	secondary
+	heavy
+	xs
+	icon="icon-[mdi--plus]"
+	label="Add Transport Mode"
 	data-input={MARKED_LABELS.transportMode}
-	onclick={add}><span class="icon-[mdi--plus] size-4"></span>Add Transport Mode</button
->
+	onclick={add}
+/>

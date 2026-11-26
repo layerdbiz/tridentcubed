@@ -10,6 +10,7 @@
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
 	import WhatsNew from '#lib/releases/whats-new.svelte';
+	import { Button } from '@layerd/ui';
 	import { HAS_POP_UP } from '#lib/releases/releases.constants.js';
 	import UpdateNote from '#lib/update/note.svelte';
 	import { FOLD_LOOK } from './look/fold';
@@ -92,10 +93,12 @@
 		<p class="text-slate-700">
 			The app could not load its data. Check the connection and try again.
 		</p>
-		<button
-			type="button"
-			class="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
-			onclick={() => location.reload()}>Try again</button
-		>
+		<Button
+			secondary
+			heavy
+			sm
+			label="Try again"
+			onclick={() => location.reload()}
+		/>
 	</div>
 {/await}

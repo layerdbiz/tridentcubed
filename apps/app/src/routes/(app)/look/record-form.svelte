@@ -4,6 +4,7 @@
 	// kept when the field is left, and follows the record into every project that uses it. Delete is at the bottom and
 	// asks first. Run 15 added everything a report prints about the record. Run 16: the fields themselves are
 	// record-fields.svelte, shared with the + sheet, so this is only where their changes go (`look.patch`) and Delete.
+	import { Button } from '@layerd/ui';
 	import { DATASETS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import RecordFields from './record-fields.svelte';
@@ -41,9 +42,14 @@
 		/>
 	{/if}
 
-	<button
-		type="button"
-		class="flex w-full items-center justify-center gap-2 rounded-full bg-danger/10 py-3 text-sm font-semibold text-danger transition hover:bg-danger/15"
-		onclick={remove}><span class="icon-[mdi--trash-can-outline] size-5"></span>Delete</button
-	>
+	<Button
+		danger
+		lite
+		sm
+		width="full"
+		align="center"
+		icon="icon-[mdi--trash-can-outline]"
+		label="Delete"
+		onclick={remove}
+	/>
 </div>

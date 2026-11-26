@@ -40,7 +40,7 @@
 	import Dots from './dots.svelte';
 	import type { GroupType, PhotoType } from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import { Menu, type MenuOptionType } from '@layerd/ui';
+	import { Button, Menu, type MenuOptionType } from '@layerd/ui';
 
 	let {
 		look,
@@ -358,18 +358,24 @@
 		<div
 			class="box-content flex h-14 shrink-0 items-center justify-between px-2 pt-[env(safe-area-inset-top)] md:h-16 md:px-2.5 md:pt-0"
 		>
-			<button
-				type="button"
-				class="grid size-11 place-items-center rounded-full transition hover:bg-white/10"
+			<Button
+				ghost
+				invert
+				lg
+				icon="icon-[mdi--close]"
 				aria-label="Close without saving"
-				onclick={onclose}><span class="icon-[mdi--close] size-[26px]"></span></button
-			>
+				title="Close without saving"
+				onclick={onclose}
+			/>
 			{#if draft}
-				<button
-					type="button"
-					class="flex h-10 items-center gap-1.5 rounded-full bg-primary pr-[18px] pl-3.5 text-[15px] font-semibold text-white shadow-[0_6px_16px_-6px_rgb(37_99_235/0.8)] transition hover:brightness-110"
-					onclick={save}><span class="icon-[mdi--check] size-5"></span>Save</button
-				>
+				<Button
+					primary
+					heavy
+					sm
+					icon="icon-[mdi--check]"
+					label="Save"
+					onclick={save}
+				/>
 			{:else}
 				<div class="flex items-center">
 					{#if savedAt}
@@ -380,21 +386,18 @@
 							>
 						{/key}
 					{/if}
-					<button
-						type="button"
-						class="grid size-11 place-items-center rounded-full transition hover:bg-white/10 {isDetailsOpen
-							? 'bg-white/14 text-white'
-							: 'text-slate-200'}"
+					<Button
+						ghost
+						invert
+						md
+						icon="icon-[mdi--information-outline]"
+						iconToggle="icon-[mdi--information]"
+						toggled={isDetailsOpen}
 						aria-label="Details"
 						title="Details"
 						aria-pressed={isDetailsOpen}
 						onclick={() => (isDetailsOpen = !isDetailsOpen)}
-						><span
-							class="{isDetailsOpen
-								? 'icon-[mdi--information]'
-								: 'icon-[mdi--information-outline]'} size-6"
-						></span></button
-					>
+					/>
 				</div>
 			{/if}
 		</div>
@@ -566,26 +569,34 @@
 					</label>
 				{:else if mode === 'view' && photos.length > 1}
 					<div class="flex items-center justify-center gap-4">
-						<button
-							type="button"
-							class="hidden size-8 place-items-center rounded-full bg-white/12 transition enabled:hover:bg-white/24 disabled:opacity-25 md:grid"
-							aria-label="Previous photo"
-							disabled={index === 0}
-							onclick={() => stepTo(-1)}
-							><span class="icon-[mdi--chevron-left] size-[22px]"></span></button
-						>
+						<span class="hidden md:contents">
+							<Button
+								ghost
+								invert
+								md
+								icon="icon-[mdi--chevron-left]"
+								aria-label="Previous photo"
+								title="Previous photo"
+								disabled={index === 0}
+								onclick={() => stepTo(-1)}
+							/>
+						</span>
 						<Dots
 							at={index}
 							count={photos.length}
 						/>
-						<button
-							type="button"
-							class="hidden size-8 place-items-center rounded-full bg-white/12 transition enabled:hover:bg-white/24 disabled:opacity-25 md:grid"
-							aria-label="Next photo"
-							disabled={index === photos.length - 1}
-							onclick={() => stepTo(1)}
-							><span class="icon-[mdi--chevron-right] size-[22px]"></span></button
-						>
+						<span class="hidden md:contents">
+							<Button
+								ghost
+								invert
+								md
+								icon="icon-[mdi--chevron-right]"
+								aria-label="Next photo"
+								title="Next photo"
+								disabled={index === photos.length - 1}
+								onclick={() => stepTo(1)}
+							/>
+						</span>
 					</div>
 				{/if}
 			</div>

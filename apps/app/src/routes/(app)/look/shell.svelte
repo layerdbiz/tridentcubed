@@ -17,7 +17,7 @@
 	// screen edge to edge, down behind the sheet; a swipe slides the pages without fading them; the bell's list sits
 	// over the list's menus. Run 15 (2026-11-10): Settings is a screen of its own (settings-page.svelte), opened from
 	// the menu's cog or Admin, and slides in like a record.
-	import { Avatar } from '@layerd/ui';
+	import { Avatar, Button } from '@layerd/ui';
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
@@ -97,15 +97,14 @@
 	const COLUMN = 'mx-auto w-full max-w-[1600px]';
 	const FLOAT =
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
-	const ROUND =
-		'flex size-10 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-900/[0.05]';
+	// The menu and the bell at the top: the library Button in the types picked on #386, black icons on no shape
+	// (Header A, and the bell on the menu's white).
+	const ROUND = { secondary: true, ghost: true, md: true };
 	// Dashboard Header B (Justin, 2026-11-11): the menu and the bell are black circles with white icons, and the
 	// number with what changed sits between them, in the centre (hero-chart.svelte draws it there).
-	const ROUND_B =
-		'flex size-10 items-center justify-center rounded-full bg-black text-white transition hover:bg-slate-800';
+	const ROUND_B = { secondary: true, heavy: true, md: true };
 	// Dashboard Header C (run 33): back to black icons, each on a white circle that blurs what is behind it.
-	const ROUND_C =
-		'flex size-10 items-center justify-center rounded-full bg-white/70 text-slate-900 shadow-sm backdrop-blur-md transition hover:bg-white';
+	const ROUND_C = { glass: true, md: true };
 	const topLook = $derived(look.variant('dash-header'));
 	const isTopB = $derived(topLook !== 'A');
 	const round = $derived(topLook === 'C' ? ROUND_C : topLook === 'B' ? ROUND_B : ROUND);
@@ -351,24 +350,24 @@
 		class="relative"
 		bind:this={bell}
 	>
-		<button
-			class="{isPlain ? ROUND : round} relative"
+		<Button
+			{...isPlain ? ROUND : round}
+			icon="icon-[mdi--bell-outline]"
 			aria-label="Notifications"
+			title="Notifications"
 			aria-expanded={isBellOpen}
 			onclick={ring}
-		>
-			<span class="icon-[mdi--bell-outline] size-6"></span>
-			{#if !seen}
-				<span
-					class="absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isPlain ||
-					topLook === 'C'
-						? 'ring-white'
-						: topLook === 'B'
-							? 'ring-black'
-							: 'ring-slate-100'}"
-				></span>
-			{/if}
-		</button>
+		/>
+		{#if !seen}
+			<span
+				class="pointer-events-none absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isPlain ||
+				topLook === 'C'
+					? 'ring-white'
+					: topLook === 'B'
+						? 'ring-black'
+						: 'ring-slate-100'}"
+			></span>
+		{/if}
 		{#if isBellOpen}
 			<div
 				class="absolute top-full right-0 z-50 mt-2 w-72 max-w-[calc(100vw-1.5rem)] origin-top-right rounded-3xl bg-white p-2 shadow-[0_2px_6px_rgb(15_23_42/0.06),0_24px_50px_-12px_rgb(15_23_42/0.3)] md:w-80"
@@ -519,11 +518,15 @@
 							: 'px-2 pt-[max(0.25rem,env(safe-area-inset-top))]'} md:justify-end md:px-6 md:pt-5"
 						bind:clientHeight={headHeight}
 					>
-						<button
-							class="{round} md:hidden"
-							aria-label="Open menu"
-							onclick={() => (drawer = 1)}><span class="icon-[mdi--menu] size-6"></span></button
-						>
+						<span class="contents md:hidden">
+							<Button
+								{...round}
+								icon="icon-[mdi--menu]"
+								aria-label="Open menu"
+								title="Open menu"
+								onclick={() => (drawer = 1)}
+							/>
+						</span>
 						<!-- Your own picture, which opens the menu the sidebar's picture opens (Justin, 2026-11-16). A phone
 						     has the bell in its menu. A desktop has the bell here too, just left of the picture (#348, Justin,
 						     2026-11-25: "for the desktop only"); the sidebar keeps its picture as well. -->
@@ -716,14 +719,20 @@
 	<!-- Run 14 (note 11): a desktop dashboard has no floating bar (the sidebar has the pages), so its + floats on its
 	     own at the bottom right. -->
 	{#if isWide && look.screen === 'dashboard'}
-		<button
-			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex h-14 items-center justify-center gap-1.5 rounded-full bg-primary pr-6 pl-4 font-semibold text-base text-white transition hover:brightness-110"
-			aria-label="Add"
-			title="Add a Project, Customer, Team, Transport Mode or Facility"
-			onclick={() => (look.adding = look.dataset)}
+		<div
+			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55]"
 			transition:scale={{ start: 0.8, duration: 160 }}
-			><span class="icon-[mdi--plus] size-8"></span>Add</button
 		>
+			<Button
+				primary
+				heavy
+				lg
+				icon="icon-[mdi--plus]"
+				label="Add"
+				title="Add a Project, Customer, Team, Transport Mode or Facility"
+				onclick={() => (look.adding = look.dataset)}
+			/>
+		</div>
 	{/if}
 	<AddSheet {look} />
 	{#if isSearchOpen}<SearchPopup

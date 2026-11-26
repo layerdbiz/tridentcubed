@@ -6,6 +6,7 @@
 	// state label is filled with its own colour. A project with no photos shows a dark card with its customer's logo.
 	// Run 18 (Justin, 2026-11-10): the lines over the photo are the list row's own (project-lines.svelte), progress
 	// bar included, so nothing runs along the card's bottom edge; the ⋮ is bare white dots with no circle behind.
+	import { Button } from '@layerd/ui';
 	import { STATUS, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import ProjectLines from './project-lines.svelte';
@@ -62,20 +63,28 @@
 			</div>
 			{#if photos.length > 1}
 				{#if slides.at > 0}
-					<button
-						class="absolute top-[38%] left-3 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition hover:scale-105 md:group-hover/card:flex"
-						aria-label="Previous photo"
-						onclick={() => slides.step(-1)}
-						><span class="icon-[mdi--chevron-left] size-5"></span></button
-					>
+					<div class="absolute top-[38%] left-3 hidden -translate-y-1/2 md:group-hover/card:block">
+						<Button
+							glass
+							sm
+							icon="icon-[mdi--chevron-left]"
+							aria-label="Previous photo"
+							title="Previous photo"
+							onclick={() => slides.step(-1)}
+						/>
+					</div>
 				{/if}
 				{#if slides.at < photos.length - 1}
-					<button
-						class="absolute top-[38%] right-3 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-900 shadow-md transition hover:scale-105 md:group-hover/card:flex"
-						aria-label="Next photo"
-						onclick={() => slides.step(1)}
-						><span class="icon-[mdi--chevron-right] size-5"></span></button
-					>
+					<div class="absolute top-[38%] right-3 hidden -translate-y-1/2 md:group-hover/card:block">
+						<Button
+							glass
+							sm
+							icon="icon-[mdi--chevron-right]"
+							aria-label="Next photo"
+							title="Next photo"
+							onclick={() => slides.step(1)}
+						/>
+					</div>
 				{/if}
 			{/if}
 		{:else}

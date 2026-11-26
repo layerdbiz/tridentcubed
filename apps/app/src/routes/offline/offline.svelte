@@ -6,7 +6,7 @@
 	// because the page runs none of SvelteKit's (+page.ts). Everything it loads is kept on the device: the app's
 	// styles and the logo.
 	import { LOGO } from '#lib/install/install.constants.js';
-	import { Divider } from '@layerd/ui';
+	import { Button, Divider } from '@layerd/ui';
 </script>
 
 <svelte:head>
@@ -51,11 +51,14 @@
 				<p class="text-sm text-slate-600">
 					Trident needs a connection for now. Working with no signal is coming.
 				</p>
-				<button
-					type="button"
-					class="w-full rounded-full bg-primary py-3 font-semibold text-base text-white transition"
-					data-retry>Try Again</button
-				>
+				<Button
+					primary
+					heavy
+					md
+					width="full"
+					label="Try Again"
+					data-retry
+				/>
 			</div>
 		</div>
 	</div>

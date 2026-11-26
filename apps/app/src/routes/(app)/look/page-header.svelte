@@ -11,6 +11,7 @@
 	import type { Snippet } from 'svelte';
 	import { DATASETS, STATUS, type DatasetType, type StatusType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import Back from './back.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import Percent from './percent.svelte';
 	import SaveCloud from './save-cloud.svelte';
@@ -75,14 +76,13 @@
 		aria-hidden="true"
 	></span>
 	<div class="relative flex items-start gap-1 px-1.5 py-2">
-		<button
-			class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full transition-colors {ghost}"
-			aria-label={page ? `Back to ${DATASETS[page].label}` : 'Back'}
+		<Back
+			label={page ? `Back to ${DATASETS[page].label}` : 'Back'}
+			over={isLight && !isBar ? 'dark' : 'white'}
+			{hasChevron}
+			class="pointer-events-auto shrink-0"
 			onclick={() => look.home()}
-			><span
-				class={hasChevron ? 'icon-[mdi--chevron-left] size-7' : 'icon-[mdi--arrow-left] size-6'}
-			></span></button
-		>
+		/>
 		<div
 			class="min-w-0 flex-1"
 			style:opacity={shown}

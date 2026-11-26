@@ -544,17 +544,15 @@
 								</div>
 								{#if olderBefore}
 									<div class="mt-4 flex flex-col items-center gap-2">
-										<button
-											type="button"
-											class="flex h-10 items-center gap-2 rounded-full bg-slate-900/[0.05] px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-900/[0.08] disabled:opacity-60"
+										<Button
+											neutral
+											lite
+											sm
+											icon={isLoadingOlder ? 'icon-[svg-spinners--ring-resize]' : undefined}
+											label="Show Older"
 											disabled={isLoadingOlder}
 											onclick={showOlder}
-										>
-											{#if isLoadingOlder}<span
-													class="icon-[svg-spinners--ring-resize] size-4 text-slate-400"
-												></span>{/if}
-											Show Older
-										</button>
+										/>
 										{#if hasOlderFailed}
 											<p class="text-xs text-slate-500">
 												Older activity could not load. Check the connection and try again.

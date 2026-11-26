@@ -5,7 +5,7 @@
 	// only reads `value` and reports each change through `set`; who keeps the change is the caller's business. A
 	// customer has any number of contacts (2026-11-10). Since #373 every input is the library's notched field with its
 	// ? on the border, like the Project panel's: Input for what is typed, Select for what is picked.
-	import { Input, Select, toCode } from '@layerd/ui';
+	import { Button, Input, Select, toCode } from '@layerd/ui';
 	import ImageField from './image-field.svelte';
 	import {
 		FACILITY_ICONS,
@@ -400,12 +400,16 @@
 					)}
 				</div>
 			{/each}
-			<button
-				type="button"
-				class="flex w-full items-center justify-center gap-1.5 rounded-full bg-slate-100 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-200"
+			<Button
+				neutral
+				lite
+				sm
+				width="full"
+				align="center"
+				icon="icon-[mdi--plus]"
+				label="Add a contact"
 				onclick={() => set({ contacts: [...contacts, newContact()] })}
-				><span class="icon-[mdi--plus] size-5"></span>Add a contact</button
-			>
+			/>
 		</div>
 	{/if}
 

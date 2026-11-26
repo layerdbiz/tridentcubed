@@ -6,6 +6,7 @@
 	// header's row holds a page's title and the save cloud, and the floating bar and the + are at the bottom. It is
 	// over the pages and the bar, and under the menus and the sheets.
 	import { updated } from '$app/state';
+	import { Button } from '@layerd/ui';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 	import { UpdateState, type UpdateStepType } from './update.state.svelte';
 	import { downloadWorker, takeOver } from './update.utils';
@@ -40,19 +41,17 @@
 	role="status"
 >
 	{#if step !== 'none'}
-		<button
-			type="button"
-			class="pointer-events-auto flex h-9 items-center gap-2 rounded-full bg-slate-900 pr-4 pl-3 font-sans text-[13px] font-medium text-white shadow-xl transition enabled:hover:bg-slate-800"
+		<Button
+			secondary
+			heavy
+			sm
+			icon={step === 'offered'
+				? 'icon-[mdi--arrow-up-circle-outline]'
+				: 'icon-[svg-spinners--ring-resize]'}
+			label={LABELS[step]}
+			class="pointer-events-auto"
 			disabled={step !== 'offered'}
 			onclick={() => update.tap()}
-		>
-			<span
-				class="size-[18px] shrink-0 {step === 'offered'
-					? 'icon-[mdi--arrow-up-circle-outline]'
-					: 'icon-[svg-spinners--ring-resize]'}"
-				aria-hidden="true"
-			></span>
-			{LABELS[step]}
-		</button>
+		/>
 	{/if}
 </div>

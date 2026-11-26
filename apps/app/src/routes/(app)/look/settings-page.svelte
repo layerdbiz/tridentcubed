@@ -9,7 +9,7 @@
 	// soft fields: Details, Disclaimer, Sign-off. The signed-in person's profile is their Team page, reached from
 	// the same menu. On a desktop Edit keeps its floating column and the report it changes shows beside it.
 	// #377: its text fields are the library's, the label on the border and the ? beside it, as the Project panel's are.
-	import { Input, Textarea } from '@layerd/ui';
+	import { Button, Input, Textarea } from '@layerd/ui';
 	import Group from './group.svelte';
 	import ImageField from './image-field.svelte';
 	import type { LookState } from './look.state.svelte';
@@ -26,8 +26,6 @@
 	// Words people type in sentences keep the phone's own help, as in the panels (panel-body.svelte): the library's
 	// inputs switch capitals, autocorrect and spelling off, which suits the phone, emails and the website only.
 	const TYPING = { autocapitalize: 'sentences', autocorrect: 'on', spellcheck: true } as const;
-	const BUTTON =
-		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 
 	const organization = $derived(look.organization);
@@ -252,13 +250,16 @@
 				</fieldset>
 				{#snippet actions()}
 					{#if isEditable}
-						<!-- Placed (`relative`) so it sits above the library text area over it, which reaches a little below
-						     its own box (#394), and takes every tap. -->
-						<button
-							type="button"
-							class="{BUTTON} relative bg-primary/10 text-primary hover:bg-primary/15"
-							onclick={addPoint}><span class="icon-[mdi--plus] size-4"></span>Add Point</button
-						>
+						<!-- The library Button is placed (`relative`), so it sits above the library text area over it, which
+						     reaches a little below its own box (#394), and takes every tap. -->
+						<Button
+							primary
+							lite
+							xs
+							icon="icon-[mdi--plus]"
+							label="Add Point"
+							onclick={addPoint}
+						/>
 					{/if}
 				{/snippet}
 			</Group>

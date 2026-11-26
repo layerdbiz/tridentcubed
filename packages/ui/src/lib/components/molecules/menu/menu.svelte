@@ -8,7 +8,8 @@
 	//
 	// Its look is set from outside (Justin, 2026-11-26): it is the base component, and `color`, `appearance`, their
 	// shorthands and `class` land on its list, the box that shows, which is the theme's surface until it is given a
-	// look; its greys are the theme's. The app shows one per row's ⋮, so it takes the base component's light path.
+	// look; its greys are the theme's. The app shows one per row's ⋮, so it takes the base component's light path. It
+	// hangs from a button that shows the place's `trigger`, or from the library Button given through `button` (#386).
 	//
 	// Closes on a pick, a tap outside or Escape. `isWide` fills its row, and its list is as wide as the row. The list
 	// opens in the browser's top layer (a popover), placed under its button, or over it when there is no room below, so
@@ -21,7 +22,14 @@
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { scale } from 'svelte/transition';
-	import { Avatar, Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
+	import {
+		Avatar,
+		Button,
+		Component,
+		type ButtonProps,
+		type ComponentProps,
+		type ComponentReturn
+	} from '@layerd/ui';
 
 	export interface MenuOptionType {
 		id: string;
@@ -45,7 +53,10 @@
 		label: string;
 		onpick: (id: string) => void;
 		// What the button shows, told the picked choice and whether the list is open.
-		trigger: Snippet<[MenuOptionType | undefined, boolean]>;
+		trigger?: Snippet<[MenuOptionType | undefined, boolean]>;
+		// In place of `trigger`, the menu hangs from the library Button: its look, or any other Button prop, set from
+		// outside (#386, the list menus' round icons).
+		button?: Partial<ButtonProps>;
 		// Draws what stands at the left of a choice, in place of its icon or image (a picker's faces and logos).
 		// The second argument says the choice is the one picked.
 		mark?: Snippet<[MenuOptionType, boolean]>;
@@ -68,6 +79,7 @@
 		label,
 		onpick,
 		trigger,
+		button,
 		mark,
 		align = 'right',
 		opens = 'down',
@@ -197,14 +209,24 @@
 </Component>
 
 {#snippet inside(look: string)}
-	<button
-		type="button"
-		class="flex items-center {isWide ? 'w-full' : ''}"
-		aria-haspopup="listbox"
-		aria-expanded={isOpen}
-		aria-label={label}
-		onclick={toggle}>{@render trigger(current, isOpen)}</button
-	>
+	{#if button}
+		<Button
+			{...button}
+			aria-haspopup="listbox"
+			aria-expanded={isOpen}
+			aria-label={label}
+			onclick={toggle}
+		/>
+	{:else}
+		<button
+			type="button"
+			class="flex items-center {isWide ? 'w-full' : ''}"
+			aria-haspopup="listbox"
+			aria-expanded={isOpen}
+			aria-label={label}
+			onclick={toggle}>{@render trigger?.(current, isOpen)}</button
+		>
+	{/if}
 	{#if isOpen}
 		<div
 			popover="manual"

@@ -210,6 +210,7 @@
 				<Button
 					secondary
 					heavy
+					md
 					width="full"
 					label={BUTTON[step]}
 					disabled={step === 'waiting' || step === 'switching'}

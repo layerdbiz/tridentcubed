@@ -10,7 +10,9 @@
 	class="relative -mx-5 flex shrink-0 flex-col items-center border-b border-slate-200 px-14 pb-3 text-center"
 >
 	<Button
+		secondary
 		ghost
+		md
 		icon="icon-[mdi--close]"
 		aria-label="Close"
 		class="absolute! top-0 left-3"

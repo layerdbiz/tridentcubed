@@ -5,8 +5,10 @@
  * black (packages/ui/src/lib/css/1-theme/colors.css), and its looks take their colours from those shades
  * (css/3-presets/presets.css): a component's `color` (base, neutral, primary, secondary, accent) and `appearance`
  * (heavy, lite, outline, ghost, glass, gradient) props, or the boolean shorthands (`primary`, `lite`...), pick the
- * look, so `<Button color="primary" appearance="heavy">` is the app's blue button. The app's own Tailwind classes
- * read the same colours by name: bg-primary, text-danger, bg-success.
+ * look, so `<Button color="primary" appearance="heavy">` is the app's blue button and `<Button danger>` its red one.
+ * The Button's sizes, the light look's shades and the glass white are set here too (`--theme-button-*`,
+ * `--theme-lite-*`, `--theme-glass`): without them the library keeps its own, as the site does. The app's own
+ * Tailwind classes read the same colours by name: bg-primary, text-danger, bg-success.
  */
 [data-theme='trident'] {
 	/* colours */
@@ -18,8 +20,8 @@
 	/* the app's black (slate-900): its dark buttons, as color="secondary" appearance="heavy" */
 	--theme-color-secondary: var(--color-slate-900);
 	--theme-color-accent: var(--color-green-500);
-	/* the app's light grey: color="neutral" appearance="lite" draws shade 200 behind (slate-300 mixed 30% with
-	 * white, the app's slate-100) and shade 700 words (40% with black, as dark as the app's slate-700) */
+	/* the app's light grey: the library's Avatar, Select, Stack and Switch draw from its shades; the grey button
+	 * (color="neutral" appearance="lite") takes its own two greys, under the light look below */
 	--theme-color-neutral: var(--color-slate-300);
 	--theme-color-info: var(--color-blue-600);
 	--theme-color-warning: var(--color-amber-500);
@@ -49,4 +51,83 @@
 	--theme-edge-md: 3px;
 	--theme-edge-lg: 4px;
 	--theme-edge-xl: 5px;
+
+	/* buttons (the library Button): each size a step of the app's own buttons (#384, Justin's picks 2026-11-26).
+	 * Words: px and py (xs 28 px tall, the small Add; sm 44; md 48). An icon alone: p (round 28, 36, 40, 44, 56 px
+	 * from xs to xl). An icon with words: ps-icon on the icon's side, pe-icon on the words' side, py-icon (sm 40 px,
+	 * the photo pop-up's Save). Words semibold from sm up, md's 16 px. */
+	--theme-button-weight: var(--font-weight-semibold);
+	--theme-button-weight-xxs: var(--font-weight-medium);
+	--theme-button-weight-xs: var(--font-weight-medium);
+	--theme-button-text-md: var(--text-base);
+	--theme-button-px-xxs: calc(var(--spacing) * 2);
+	--theme-button-py-xxs: calc(var(--spacing) * 1);
+	--theme-button-p-xxs: calc(var(--spacing) * 1.25);
+	--theme-button-icon-xxs: calc(var(--spacing) * 3.5);
+	--theme-button-gap-xxs: calc(var(--spacing) * 1);
+	--theme-button-ps-icon-xxs: calc(var(--spacing) * 2);
+	--theme-button-pe-icon-xxs: calc(var(--spacing) * 2);
+	--theme-button-py-icon-xxs: calc(var(--spacing) * 1);
+	--theme-button-px-xs: calc(var(--spacing) * 3);
+	--theme-button-py-xs: calc(var(--spacing) * 1.5);
+	--theme-button-p-xs: calc(var(--spacing) * 1.5);
+	--theme-button-icon-xs: calc(var(--spacing) * 4);
+	--theme-button-gap-xs: calc(var(--spacing) * 1.5);
+	--theme-button-ps-icon-xs: calc(var(--spacing) * 3);
+	--theme-button-pe-icon-xs: calc(var(--spacing) * 3);
+	--theme-button-py-icon-xs: calc(var(--spacing) * 1.5);
+	--theme-button-px-sm: calc(var(--spacing) * 5);
+	--theme-button-py-sm: calc(var(--spacing) * 3);
+	--theme-button-p-sm: calc(var(--spacing) * 2);
+	--theme-button-icon-sm: calc(var(--spacing) * 5);
+	--theme-button-gap-sm: calc(var(--spacing) * 2);
+	--theme-button-ps-icon-sm: calc(var(--spacing) * 3.5);
+	--theme-button-pe-icon-sm: calc(var(--spacing) * 4.5);
+	--theme-button-py-icon-sm: calc(var(--spacing) * 2.5);
+	--theme-button-px-md: calc(var(--spacing) * 6);
+	--theme-button-py-md: calc(var(--spacing) * 3);
+	--theme-button-p-md: calc(var(--spacing) * 2);
+	--theme-button-icon-md: calc(var(--spacing) * 6);
+	--theme-button-gap-md: calc(var(--spacing) * 2);
+	--theme-button-ps-icon-md: calc(var(--spacing) * 4);
+	--theme-button-pe-icon-md: calc(var(--spacing) * 5);
+	--theme-button-py-icon-md: calc(var(--spacing) * 3);
+	--theme-button-px-lg: calc(var(--spacing) * 7);
+	--theme-button-py-lg: calc(var(--spacing) * 3.5);
+	--theme-button-p-lg: calc(var(--spacing) * 2);
+	--theme-button-icon-lg: calc(var(--spacing) * 7);
+	--theme-button-gap-lg: calc(var(--spacing) * 2.5);
+	--theme-button-ps-icon-lg: calc(var(--spacing) * 4.5);
+	--theme-button-pe-icon-lg: calc(var(--spacing) * 5.5);
+	--theme-button-py-icon-lg: calc(var(--spacing) * 3.5);
+	--theme-button-px-xl: calc(var(--spacing) * 8);
+	--theme-button-py-xl: calc(var(--spacing) * 4);
+	--theme-button-p-xl: calc(var(--spacing) * 3);
+	--theme-button-icon-xl: calc(var(--spacing) * 8);
+	--theme-button-gap-xl: calc(var(--spacing) * 3);
+	--theme-button-ps-icon-xl: calc(var(--spacing) * 6);
+	--theme-button-pe-icon-xl: calc(var(--spacing) * 7);
+	--theme-button-py-icon-xl: calc(var(--spacing) * 4.5);
+	--theme-button-px-xxl: calc(var(--spacing) * 10);
+	--theme-button-py-xxl: calc(var(--spacing) * 5);
+	--theme-button-p-xxl: calc(var(--spacing) * 3.5);
+	--theme-button-icon-xxl: calc(var(--spacing) * 9);
+	--theme-button-gap-xxl: calc(var(--spacing) * 3);
+	--theme-button-ps-icon-xxl: calc(var(--spacing) * 7.5);
+	--theme-button-pe-icon-xxl: calc(var(--spacing) * 9);
+	--theme-button-py-icon-xxl: calc(var(--spacing) * 5.5);
+
+	/* the light look: the app's light blue and light red (a 10% tint behind words in the full colour), and its grey
+	 * (slate-100 behind slate-700 words, which a grey ghost button keeps without the grey) */
+	--theme-lite-primary-bg: var(--color-primary-100-900);
+	--theme-lite-primary-text: var(--color-primary-500-300);
+	--theme-lite-danger-bg: var(--color-danger-100-900);
+	--theme-lite-danger-text: var(--color-danger-500-300);
+	--theme-lite-neutral-bg: var(--color-slate-100);
+	--theme-lite-neutral-text: var(--color-slate-700);
+
+	/* the glass look's white: the round buttons over a photo */
+	--theme-glass: 85%;
+	/* white icons on a photo keep a soft shadow, so they show on a light one too */
+	--theme-ghost-invert-filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.7));
 }

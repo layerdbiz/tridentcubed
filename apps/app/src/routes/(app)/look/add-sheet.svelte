@@ -7,7 +7,7 @@
 	// opens on Edit and anything else on its Page. Run 28: "Add new" in a dropdown opens this same sheet on that one
 	// page (look.addFor), with no page chips; what is added is picked in the dropdown and nothing else opens.
 	import { scale } from 'svelte/transition';
-	import { Dialog } from '@layerd/ui';
+	import { Button, Dialog } from '@layerd/ui';
 	import { DATASETS, draftOf, draftPanel, PAGE_ICONS, PAGES, type DatasetType } from './look.data';
 	import type { LookState, RecordDraftType } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
@@ -268,17 +268,25 @@
 				{/if}
 			</div>
 			<div class="mt-4 flex gap-2">
-				<button
-					type="button"
-					class="flex-1 rounded-full border border-slate-200 py-2.5 font-medium text-slate-600"
-					onclick={close}>Cancel</button
-				>
-				<button
+				<Button
+					neutral
+					lite
+					md
+					width="full"
+					class="flex-1"
+					label="Cancel"
+					onclick={close}
+				/>
+				<Button
+					primary
+					heavy
+					md
+					width="full"
+					class="flex-1"
 					type="submit"
-					class="flex-1 rounded-full bg-primary py-2.5 font-medium text-white disabled:opacity-40"
+					label={kind === 'projects' && look.variant('add') === 'A' ? 'Create' : 'Add'}
 					disabled={!canAdd}
-					>{kind === 'projects' && look.variant('add') === 'A' ? 'Create' : 'Add'}</button
-				>
+				/>
 			</div>
 		</form>
 	</Dialog>

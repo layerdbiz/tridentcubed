@@ -50,6 +50,7 @@
 	import { flip } from 'svelte/animate';
 	import {
 		Avatar,
+		Button,
 		Compact,
 		Generated,
 		Help,
@@ -531,8 +532,6 @@
 	}
 
 	const labelClass = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
-	const ghostButton =
-		'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition';
 </script>
 
 <!-- A row's handle (#188): hold it, then drag, to move the row. Only a list of two or more has one. -->
@@ -729,23 +728,28 @@
 				</div>
 			{/each}
 			{#snippet actions()}
-				<button
-					type="button"
-					class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+				<Button
+					primary
+					lite
+					xs
+					icon="icon-[mdi--plus]"
+					label="Add person"
 					onclick={() => {
 						company.people.push(newPerson());
 						save();
-					}}><span class="icon-[mdi--plus] size-4"></span>Add person</button
-				>
+					}}
+				/>
 			{/snippet}
 		</Group>
 	{/each}
-	<button
-		type="button"
-		class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+	<Button
+		secondary
+		heavy
+		xs
+		icon="icon-[mdi--account-multiple-plus-outline]"
+		label="Add Personnel"
 		onclick={addPersonnel}
-		><span class="icon-[mdi--account-multiple-plus-outline] size-4"></span>Add Personnel</button
-	>
+	/>
 {/snippet}
 
 <!-- How many share a report page, 1, 2, 4, 6 or 8 (run 9 note 17: each button draws its own layout): a photo group's
@@ -1195,22 +1199,27 @@
 				</div>
 			{/each}
 			<div class="flex flex-wrap gap-2">
-				<button
-					type="button"
-					class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+				<Button
+					secondary
+					heavy
+					xs
+					icon="icon-[mdi--plus]"
+					label="Add item"
 					data-input={MARKED_LABELS.item}
 					onclick={() => {
 						panel.items.push(itemOf());
 						save();
-					}}><span class="icon-[mdi--plus] size-4"></span>Add item</button
-				>
+					}}
+				/>
 				{#if !panel.grid}
-					<button
-						type="button"
-						class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+					<Button
+						primary
+						lite
+						xs
+						icon="icon-[mdi--auto-fix]"
+						label="Add Sample Data"
 						onclick={addSampleList}
-						><span class="icon-[mdi--auto-fix] size-4"></span>Add Sample Data</button
-					>
+					/>
 				{/if}
 			</div>
 		</div>
@@ -1306,14 +1315,17 @@
 							{/each}
 						</div>
 						{#snippet actions()}
-							<button
-								type="button"
-								class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+							<Button
+								primary
+								lite
+								xs
+								icon="icon-[mdi--plus]"
+								label="Add entry"
 								onclick={() => {
 									day.entries.push({ id: crypto.randomUUID(), time: '', activity: '' });
 									save();
-								}}><span class="icon-[mdi--plus] size-4"></span>Add entry</button
-							>
+								}}
+							/>
 						{/snippet}
 					</Group>
 				</div>
@@ -1322,18 +1334,23 @@
 			{/each}
 		</div>
 		<div class="flex flex-wrap gap-2">
-			<button
-				type="button"
-				class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+			<Button
+				secondary
+				heavy
+				xs
+				icon="icon-[mdi--calendar-plus]"
+				label="Add day"
 				data-input={MARKED_LABELS.day}
-				onclick={addDay}><span class="icon-[mdi--calendar-plus] size-4"></span>Add day</button
-			>
-			<button
-				type="button"
-				class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+				onclick={addDay}
+			/>
+			<Button
+				primary
+				lite
+				xs
+				icon="icon-[mdi--auto-fix]"
+				label="Add a sample day"
 				onclick={addSampleDay}
-				><span class="icon-[mdi--auto-fix] size-4"></span>Add a sample day</button
-			>
+			/>
 		</div>
 	{:else}
 		<!-- The panel's own name is the app's value (#374): a title cleared goes back to it once the field is left. -->
@@ -1646,12 +1663,14 @@
 							</label>
 						</div>
 						{#snippet actions()}
-							<button
-								type="button"
-								class="{ghostButton} bg-primary/10 text-primary hover:bg-primary/15"
+							<Button
+								primary
+								lite
+								xs
+								icon="icon-[mdi--auto-fix]"
+								label="Add sample photos"
 								onclick={() => addSamplePhotos(group)}
-								><span class="icon-[mdi--auto-fix] size-4"></span>Add sample photos</button
-							>
+							/>
 						{/snippet}
 					</Group>
 				</div>
@@ -1664,12 +1683,15 @@
 				</div>
 			{/each}
 		</div>
-		<button
-			type="button"
-			class="{ghostButton} bg-slate-900 text-white hover:bg-slate-700"
+		<Button
+			secondary
+			heavy
+			xs
+			icon="icon-[mdi--plus]"
+			label="Add {word}"
 			data-input={MARKED_LABELS.photos}
-			onclick={addGroup}><span class="icon-[mdi--plus] size-4"></span>Add {word}</button
-		>
+			onclick={addGroup}
+		/>
 	{/if}
 </fieldset>
 

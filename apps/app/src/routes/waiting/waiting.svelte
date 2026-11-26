@@ -4,7 +4,7 @@
 	// The server hook sends a Guest here from every other page, and a member away from it.
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import { fetchWaiting } from './waiting.remote';
-	import { Divider } from '@layerd/ui';
+	import { Button, Divider } from '@layerd/ui';
 
 	const waiting = $derived(await fetchWaiting());
 	let isLeaving = $state(false);
@@ -46,12 +46,15 @@
 					This address is not part of an organization yet. An Admin can let you in; then sign in
 					again.
 				</p>
-				<button
-					type="button"
-					class="w-full rounded-full bg-slate-900/[0.05] py-3 font-semibold text-base text-slate-800 transition hover:bg-slate-900/[0.08] disabled:opacity-60"
+				<Button
+					neutral
+					lite
+					md
+					width="full"
+					label="Log Out"
 					disabled={isLeaving}
-					onclick={logOut}>Log Out</button
-				>
+					onclick={logOut}
+				/>
 			</div>
 		</div>
 	</div>

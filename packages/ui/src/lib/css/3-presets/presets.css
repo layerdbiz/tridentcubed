@@ -30,25 +30,38 @@
 .theme-heavy-accent {
 	@apply bg-accent-500-500 text-accent-50-50;
 }
+.theme-heavy-danger {
+	@apply bg-danger-500-500 text-danger-50-50;
+}
 
-/* lite */
+/* lite: a colour's light shade behind its dark words, or the shades the theme sets for that colour
+   (--theme-lite-<colour>-bg and -text, as apps/app/src/theme.css does for its light blue, light red and grey) */
 .theme-lite {
 	@apply bg-base-200-700 text-base-700-200;
 }
 .theme-lite-base {
-	@apply bg-base-200-600 text-base-700-100;
+	background-color: var(--theme-lite-base-bg, var(--color-base-200-600));
+	color: var(--theme-lite-base-text, var(--color-base-700-100));
 }
 .theme-lite-neutral {
-	@apply bg-neutral-200-600 text-neutral-700-100;
+	background-color: var(--theme-lite-neutral-bg, var(--color-neutral-200-600));
+	color: var(--theme-lite-neutral-text, var(--color-neutral-700-100));
 }
 .theme-lite-primary {
-	@apply bg-primary-200-700 text-primary-700-200;
+	background-color: var(--theme-lite-primary-bg, var(--color-primary-200-700));
+	color: var(--theme-lite-primary-text, var(--color-primary-700-200));
 }
 .theme-lite-secondary {
-	@apply bg-secondary-200-700 text-secondary-700-200;
+	background-color: var(--theme-lite-secondary-bg, var(--color-secondary-200-700));
+	color: var(--theme-lite-secondary-text, var(--color-secondary-700-200));
 }
 .theme-lite-accent {
-	@apply bg-accent-200-700 text-accent-700-200;
+	background-color: var(--theme-lite-accent-bg, var(--color-accent-200-700));
+	color: var(--theme-lite-accent-text, var(--color-accent-700-200));
+}
+.theme-lite-danger {
+	background-color: var(--theme-lite-danger-bg, var(--color-danger-200-700));
+	color: var(--theme-lite-danger-text, var(--color-danger-700-200));
 }
 
 /* outline */
@@ -71,6 +84,9 @@
 .theme-outline-accent {
 	@apply border-sm border-accent-500-500 text-accent-500-500;
 }
+.theme-outline-danger {
+	@apply border-sm border-danger-500-500 text-danger-500-500;
+}
 
 /* ghost */
 .theme-ghost {
@@ -82,8 +98,10 @@
 .theme-ghost-base-invert {
 	@apply bg-[unset] text-base-50-950;
 }
+/* white on a picture: a theme may give it a shadow (--theme-ghost-invert-filter), none otherwise */
 .theme-ghost-invert {
 	@apply bg-[unset] text-white;
+	filter: var(--theme-ghost-invert-filter, none);
 }
 .theme-ghost-primary {
 	@apply bg-[unset] text-primary-500;
@@ -94,10 +112,18 @@
 .theme-ghost-accent {
 	@apply bg-[unset] text-accent-500;
 }
+.theme-ghost-danger {
+	@apply bg-[unset] text-danger-500;
+}
+/* the light grey button's words, with no shape */
+.theme-ghost-neutral {
+	background-color: unset;
+	color: var(--theme-lite-neutral-text, var(--color-neutral-700-100));
+}
 
-/* glass */
+/* glass: its white as strong as the theme's --theme-glass, half otherwise */
 .theme-glass {
-	@apply isolate bg-white/50 text-base-950-950/90 shadow backdrop-blur-2xl transition-all duration-200;
+	@apply isolate bg-white/[var(--theme-glass,50%)] text-base-950-950/90 shadow backdrop-blur-2xl transition-all duration-200;
 
 	&:is(.card) {
 		@apply rounded-box bg-base-50-950/80 shadow-2xs shadow-base-950-50/10;

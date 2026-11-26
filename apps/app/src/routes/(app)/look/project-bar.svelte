@@ -5,6 +5,7 @@
 	// whole project (note 11), the same MoreMenu the dashboard's lists use. The save cloud stands after the title
 	// (#372: the bars that held it instead are gone). A Sent, Complete or Archived project's bar is all in its status
 	// colour, the cloud too (themeOf, #335). #305: a tap on the percent lists the project's empty inputs in a toast.
+	import Back from './back.svelte';
 	import { STATUS } from './look.data';
 	import { themeOf, type LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
@@ -17,11 +18,11 @@
 </script>
 
 <div class="flex items-start gap-1 {themeOf(look.project.status)}">
-	<button
-		class="flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-900/5"
-		aria-label="Back to Home"
-		onclick={() => look.home()}><span class="icon-[mdi--arrow-left] size-6"></span></button
-	>
+	<Back
+		label="Back to Home"
+		class="shrink-0"
+		onclick={() => look.home()}
+	/>
 	<div
 		class="min-w-0 flex-1"
 		title="{look.overall}% of this project is done"

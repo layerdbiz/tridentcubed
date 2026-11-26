@@ -17,7 +17,7 @@
 	import { fade } from 'svelte/transition';
 	import { DATASETS, PAGE_ICONS, PAGES, type DatasetType } from '../look.data';
 	import type { LookState, TabType } from '../look.state.svelte';
-	import { Tabs } from '@layerd/ui';
+	import { Button, Tabs } from '@layerd/ui';
 
 	let {
 		look,
@@ -235,14 +235,20 @@
 {/if}
 {#if !isWide}
 	<!-- Flush with the bar's right edge, and as far over the bar as the bar is over the bottom. Inside, it goes. -->
-	<button
-		class="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-[55] flex size-14 items-center justify-center rounded-full bg-primary text-white transition duration-300 ease-out hover:brightness-110 {isInside
+	<div
+		class="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+84px)] z-[55] transition duration-300 ease-out {isInside
 			? 'pointer-events-none scale-50 opacity-0'
 			: ''}"
-		aria-label="Add"
-		title="Add a Project, Customer, Team, Transport Mode or Facility"
 		inert={isInside}
-		onclick={() => (look.adding = look.dataset)}
-		><span class="icon-[mdi--plus] size-8"></span></button
 	>
+		<Button
+			primary
+			heavy
+			xl
+			icon="icon-[mdi--plus]"
+			aria-label="Add"
+			title="Add a Project, Customer, Team, Transport Mode or Facility"
+			onclick={() => (look.adding = look.dataset)}
+		/>
+	</div>
 {/if}

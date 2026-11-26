@@ -140,6 +140,23 @@ describe('opening and picking', () => {
 
 		expect(screen.queryByRole('listbox')).toBeNull();
 	});
+
+	it('hangs from the library Button, whose look is set through button', async () => {
+		show({
+			trigger: undefined,
+			button: { ghost: true, md: true, icon: 'icon-[mdi--chart-donut]' }
+		});
+		const button = screen.getByRole('button', { name: 'View' });
+
+		expect(button.classList).toContain('btn');
+		expect(button.classList).toContain('theme-ghost');
+		expect(button.querySelector('.btn-icon')).not.toBeNull();
+		expect(button.getAttribute('aria-haspopup')).toBe('listbox');
+
+		await open();
+
+		expect(button.getAttribute('aria-expanded')).toBe('true');
+	});
 });
 
 describe('closing', () => {

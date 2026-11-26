@@ -11,6 +11,7 @@
 	// only up-and-down scrolling, so a sideways swipe on it reaches the tabs.
 	import type { Snippet } from 'svelte';
 	import { Tabs } from '@layerd/ui';
+	import Back from './back.svelte';
 	import type { PinType } from './chart.data';
 	import Dots from './dots.svelte';
 	import { FADE, fadeTop } from './fade';
@@ -169,17 +170,13 @@
 			{#if buttons === 'none'}
 				<span class="size-10 shrink-0"></span>
 			{:else}
-				<button
-					class="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full {buttons ===
-					'glass'
-						? GLASS
-						: GHOST}"
-					aria-label={backLabel}
+				<Back
+					label={backLabel}
+					over={buttons === 'glass' ? 'glass' : isDark ? 'dark' : 'white'}
+					{hasChevron}
+					class="pointer-events-auto shrink-0"
 					onclick={onback}
-					><span
-						class={hasChevron ? 'icon-[mdi--chevron-left] size-7' : 'icon-[mdi--arrow-left] size-6'}
-					></span></button
-				>
+				/>
 			{/if}
 			<span class="flex-1"></span>
 			{#if photos.length || isAlike}
