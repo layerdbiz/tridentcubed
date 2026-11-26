@@ -34,6 +34,13 @@ const CASES: Record<string, Record<string, unknown>> = {
 	unstyled: { unstyled: true, class: 'plain' },
 	style: { style: 'color: red', 'data-x': '1', role: 'note' },
 	disabled: { tag: 'button', disabled: true, type: 'button', label: 'Go' },
+	'unstyled disabled': {
+		tag: 'button',
+		unstyled: true,
+		disabled: true,
+		type: 'button',
+		label: 'Go'
+	},
 	link: { tag: 'a', href: '/x', disabled: true, label: 'Link' },
 	override: { component: own, class: 'mine', ghost: true }
 };
@@ -53,6 +60,15 @@ describe('Component', () => {
 		});
 
 		expect(seen?.tagName).toBe('SPAN');
+	});
+
+	// #402: an unstyled button told it is disabled is disabled, as a styled one is; it lost the attribute before.
+	it('keeps a button disabled when it is unstyled', () => {
+		const { container } = render(Component, {
+			props: { tag: 'button', unstyled: true, disabled: true, type: 'button', label: 'Go' }
+		});
+
+		expect(container.querySelector('button')?.disabled).toBe(true);
 	});
 
 	it('still lays out through Root when asked for layout', () => {
