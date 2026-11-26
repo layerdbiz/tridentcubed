@@ -29,7 +29,8 @@
 		"update": "pnpm up --latest -r",
 		"reset": "git clean -fdx",
 		"clean": "git clean -fdX",
-		"clear": "git clean -fd"
+		"clear": "git clean -fd",
+		"prepare": "vp config --no-agent"
 	},
 	"devDependencies": {
 		"@csstools/postcss-light-dark-function": "^3.0.1",
