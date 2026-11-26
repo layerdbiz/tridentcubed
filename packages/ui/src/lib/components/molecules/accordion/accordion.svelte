@@ -28,7 +28,8 @@
 	@reference "#ui.css";
 
 	:global {
-		:root {
+		/* Lets its height animate to and from auto: on the Accordion only, never the whole page (#371). */
+		.accordion {
 			interpolate-size: allow-keywords;
 		}
 

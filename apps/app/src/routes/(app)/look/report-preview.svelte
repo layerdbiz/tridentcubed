@@ -1985,6 +1985,8 @@
 			{/if}
 		{/if}
 	{:else if block.kind === 'cargo'}
+		<!-- The gap between Qty and Description, 4/7 of the text size, is the room the library's text styles gave every
+		     table cell until they were limited to `.prose` (#371); the cargo table on the one-page report keeps it too. -->
 		<table class="w-full text-left text-[10.5px]">
 			{#if !block.from}
 				<thead>
@@ -1997,8 +1999,10 @@
 			<tbody class="divide-y divide-slate-100">
 				{#each cargo.slice(block.from, block.to) as item (item.id)}
 					<tr>
-						<td class="w-14 py-1 font-bold text-slate-900 tabular-nums">{item.quantity || '–'}</td>
-						<td class="py-1 text-slate-700">{item.description}</td>
+						<td class="w-14 py-1 pr-[0.5714286em] font-bold text-slate-900 tabular-nums"
+							>{item.quantity || '–'}</td
+						>
+						<td class="py-1 pl-[0.5714286em] text-slate-700">{item.description}</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -2476,10 +2480,10 @@
 										<tbody class="divide-y divide-slate-100">
 											{#each cargo as item (item.id)}
 												<tr>
-													<td class="py-1 font-bold text-slate-900 tabular-nums"
+													<td class="py-1 pr-[0.5714286em] font-bold text-slate-900 tabular-nums"
 														>{item.quantity || '–'}</td
 													>
-													<td class="py-1 text-slate-700">{item.description}</td>
+													<td class="py-1 pl-[0.5714286em] text-slate-700">{item.description}</td>
 												</tr>
 											{/each}
 										</tbody>

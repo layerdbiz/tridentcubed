@@ -10,8 +10,9 @@
 	// pulls in, keeping its shape, and on letting go the frame grows back and the photo zooms to fill it with what it
 	// held. The box is best given the photo's own shape (bind `shape`).
 	//
-	// It is the app's own until the UI library can be imported a piece at a time: a component from `@layerd/ui` brings
-	// the whole library, whose global styles moved the edit panels about (#312).
+	// It is the app's own for now. The old reason for that, a component from `@layerd/ui` bringing the library's global
+	// styles that moved the edit panels about (#312), is gone: the form styles keep to the library's own fields (#315)
+	// and its text styles to `.prose` (#371).
 	import { untrack, type Snippet } from 'svelte';
 	import type { HTMLImgAttributes } from 'svelte/elements';
 	import { GRIPS, WHOLE } from './photo.constants';
