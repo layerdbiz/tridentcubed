@@ -24,6 +24,24 @@
 		dispatchEvent: () => false
 	})) as typeof window.matchMedia;
 
+	// jsdom has no showModal: the stand-in opens the library's Dialog, as a browser does (#375).
+	if (!('showModal' in HTMLDialogElement.prototype)) {
+		Object.defineProperties(HTMLDialogElement.prototype, {
+			showModal: {
+				configurable: true,
+				value(this: HTMLDialogElement) {
+					this.open = true;
+				}
+			},
+			close: {
+				configurable: true,
+				value(this: HTMLDialogElement) {
+					this.open = false;
+				}
+			}
+		});
+	}
+
 	// jsdom has no popovers: it hides every [popover] and has no showPopover. The stand-in shows one when asked, as a
 	// browser does, so a test can find the menu list that floats in one.
 	if (!('showPopover' in HTMLElement.prototype)) {

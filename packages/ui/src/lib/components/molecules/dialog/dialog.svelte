@@ -1,0 +1,181 @@
+<script lang="ts">
+	/**
+	 * @tags dialog, sheet, modal, popover
+	 * @layout horizontal
+	 */
+	// The Dialog (glossary, #375): the box that opens over the page. On a phone it slides up from the bottom as a
+	// sheet; drag it down (or flick it) or tap outside to close; dragging up only stretches a little and springs back.
+	// No close button. From md up it is a centred box (the help's kind stays a sheet). Escape closes it too. It is the browser's own <dialog>, in the
+	// top layer, so it covers the floating bar wherever it is opened from, and white runs on below its bottom edge, so
+	// dragging it up never shows a gap. It began as the app's sheet (Justin's note 14, from the look prototype #161:
+	// the install how-to, add, save, change status, confirm, the dashboard ? cards) and keeps its look, slate shades
+	// included, which belong to "UI library cleanup" (#33).
+	//
+	// It opens as a modal: the page behind it is shut until it closes, and the focus goes into it, onto the dialog
+	// itself rather than its first input, so a phone's keyboard does not jump up (an input marked autofocus takes it
+	// instead), and back to what opened it when it closes. `isModal={false}` is the help ?'s kind (#284): it opens
+	// beside an input being typed in, so it never takes the focus, a press on it never moves it, and it rises above
+	// the phone's keyboard. That kind is drawn in a plain box with the dialog role, as a popover, because a <dialog>
+	// always takes the focus when it is shown, even as a popover.
+	import type { Snippet } from 'svelte';
+	import type { Attachment } from 'svelte/attachments';
+	import { fade, fly } from 'svelte/transition';
+	import { Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
+
+	export interface DialogProps extends Omit<ComponentProps, 'label' | 'children'> {
+		/** What it holds, read out when it opens: "Change Status". */
+		label: string;
+		/** Asked to close, on Escape, a tap outside or a pull down: the place that opened it takes it away. */
+		onclose: () => void;
+		/** False for the help ?: the focus stays in the input being typed in and the page stays live. */
+		isModal?: boolean;
+		children: Snippet;
+	}
+
+	let { label, onclose, isModal = true, children, ...props }: DialogProps = $props();
+
+	let offset = $state(0);
+	let isDragging = $state(false);
+	let lift = $state(0);
+	let start = 0;
+	let samples: { y: number; t: number }[] = [];
+
+	function down(event: PointerEvent) {
+		// One finger or the main button, and only on this sheet: a sheet opened inside it pulls by itself.
+		if (!event.isPrimary || event.button !== 0) return;
+		const target = event.target as HTMLElement;
+		if (target.closest('.dialog-sheet') !== event.currentTarget) return;
+		if (target.closest('button, a, input, select, textarea, label')) return;
+		(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+		isDragging = true;
+		start = event.clientY;
+		samples = [{ y: event.clientY, t: event.timeStamp }];
+	}
+
+	function move(event: PointerEvent) {
+		if (!isDragging) return;
+		const dy = event.clientY - start;
+		// Up is a rubber band: it gives a little, then stops.
+		offset = dy >= 0 ? dy : -18 * (1 - Math.exp(dy / 60));
+		samples.push({ y: event.clientY, t: event.timeStamp });
+		samples = samples.filter((sample) => event.timeStamp - sample.t < 100);
+	}
+
+	function up(event: PointerEvent) {
+		if (!isDragging) return;
+		isDragging = false;
+		const first = samples[0];
+		const speed = first ? (event.clientY - first.y) / Math.max(1, event.timeStamp - first.t) : 0;
+		if (offset > 110 || speed > 0.6) onclose();
+		else offset = 0;
+	}
+
+	// Escape on a modal. A cancel the browser will not hold back (Chrome's, with no tap since the last one) closes the
+	// dialog anyway, and the close that follows asks then.
+	function cancel(event: Event) {
+		event.preventDefault();
+		if (event.defaultPrevented) onclose();
+	}
+
+	// What a phone's keyboard covers of the window's foot: the help's sheet rises by that much.
+	function placeAboveKeyboard() {
+		const seen = window.visualViewport;
+		lift = seen ? Math.max(0, Math.round(window.innerHeight - seen.offsetTop - seen.height)) : 0;
+	}
+
+	const show: Attachment<HTMLElement> = (node) => {
+		if (!(node instanceof HTMLDialogElement)) {
+			// Safari 16 has no popovers: there it is an ordinary fixed box, kept on top by its z-index.
+			node.showPopover?.();
+			return;
+		}
+		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		node.autofocus = !node.querySelector('[autofocus]');
+		node.showModal();
+		// Chrome hands the focus to the scrim, its first button, whatever autofocus says: it is moved on.
+		const first = node.querySelector<HTMLElement>('[autofocus]') ?? node;
+		if (document.activeElement !== first) first.focus({ preventScroll: true });
+		return () => {
+			const active = document.activeElement;
+			const isFocusLost = !active || active === document.body || node.contains(active);
+			if (opener?.isConnected && isFocusLost) opener.focus({ preventScroll: true });
+		};
+	};
+
+	$effect(() => {
+		if (isModal) return;
+		placeAboveKeyboard();
+		const seen = window.visualViewport;
+		seen?.addEventListener('resize', placeAboveKeyboard);
+		seen?.addEventListener('scroll', placeAboveKeyboard);
+		return () => {
+			seen?.removeEventListener('resize', placeAboveKeyboard);
+			seen?.removeEventListener('scroll', placeAboveKeyboard);
+		};
+	});
+</script>
+
+<svelte:window onkeydown={(event) => !isModal && event.key === 'Escape' && onclose()} />
+
+<Component {...props}>
+	{#snippet component({ props: root }: { props: ComponentReturn })}
+		<svelte:element
+			this={isModal ? 'dialog' : 'div'}
+			{...root}
+			class={`${root.class ?? ''} dialog`.trim()}
+			popover={isModal ? undefined : 'manual'}
+			role={isModal ? undefined : 'dialog'}
+			aria-label={label}
+			tabindex="-1"
+			style={`${root.style ? `${root.style}; ` : ''}--dialog-lift: ${lift}px`}
+			oncancel={cancel}
+			onclose={() => onclose()}
+			onmousedown={isModal ? undefined : (event: MouseEvent) => event.preventDefault()}
+			{@attach show}
+		>
+			<button
+				type="button"
+				class="fixed inset-0 cursor-default border-0 bg-slate-950/30 p-0"
+				aria-label="Close"
+				tabindex="-1"
+				onclick={() => onclose()}
+				transition:fade|global={{ duration: 180 }}
+			></button>
+			<div
+				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none rounded-t-[28px] bg-white px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgb(15_23_42/0.18)] after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-white {isModal
+					? 'md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[26rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden'
+					: ''} {isDragging
+					? ''
+					: 'transition-[transform,translate,bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'}"
+				style="transform: translateY({offset}px)"
+				role="presentation"
+				onpointerdown={down}
+				onpointermove={move}
+				onpointerup={up}
+				onpointercancel={up}
+				transition:fly|global={{ y: 320, duration: 260 }}
+			>
+				<span
+					class="mx-auto mb-4 block h-1.5 w-10 rounded-full bg-slate-200 {isModal
+						? 'md:hidden'
+						: ''}"
+				></span>
+				{@render children()}
+			</div>
+		</svelte:element>
+	{/snippet}
+</Component>
+
+<style lang="postcss">
+	@reference "#ui.css";
+
+	/* The browser's own box is undone: the dialog is a clear layer the size of the window, and what shows is the
+	   scrim and the sheet inside it. */
+	:global(.dialog) {
+		@apply fixed inset-0 z-[110] m-0 size-full max-h-none max-w-none overflow-visible border-0 bg-transparent p-0 outline-none;
+	}
+
+	:global(.dialog::backdrop) {
+		@apply bg-transparent;
+	}
+</style>
