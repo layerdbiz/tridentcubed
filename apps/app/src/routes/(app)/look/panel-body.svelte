@@ -54,6 +54,7 @@
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
+	import { initialsOf, toInitialsPicture } from './initials';
 	import TransportLegs from './variants/transport-legs.svelte';
 	import {
 		ATTACHMENT_ICONS,
@@ -909,7 +910,8 @@
 					value: item.id,
 					label: item.name,
 					note: item.title,
-					image: item.photo
+					// No photo: their initials on the customer's sky blue (#355).
+					image: item.photo || toInitialsPicture(initialsOf(item.name), 'customer')
 				}))}
 				value={contact?.id ?? ''}
 				placeholder={customerName ? 'No contacts on this customer yet' : 'Choose a customer first'}

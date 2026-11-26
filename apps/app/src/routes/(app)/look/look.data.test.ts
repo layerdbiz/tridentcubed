@@ -243,18 +243,16 @@ describe('a file attached to the Items panel', () => {
 
 // #355: a face with no photo shows the person's initials on their role's colour; a photo, once there, wins.
 describe('a face with no photo', () => {
-	const svgOf = (src: string) => decodeURIComponent(src);
-
 	it("shows a Team record's initials in their role's colour", () => {
 		resetPeople([
 			{ ...member('Ana Lopez'), role: 'admin' },
 			{ ...member('Ben Ruiz'), role: 'manager' },
 			member('Dee Shaw')
 		]);
-		expect(svgOf(personOf('Ana Lopez').photo)).toContain('>AL</text>');
-		expect(svgOf(personOf('Ana Lopez').photo)).toContain('#7c3aed');
-		expect(svgOf(personOf('Ben Ruiz').photo)).toContain('#2563eb');
-		expect(svgOf(personOf('Dee Shaw').photo)).toContain('#64748b');
+		expect(decodeURIComponent(personOf('Ana Lopez').photo)).toContain('>AL</text>');
+		expect(decodeURIComponent(personOf('Ana Lopez').photo)).toContain('#7c3aed');
+		expect(decodeURIComponent(personOf('Ben Ruiz').photo)).toContain('#2563eb');
+		expect(decodeURIComponent(personOf('Dee Shaw').photo)).toContain('#64748b');
 	});
 
 	it('shows their photo once they have one', () => {
@@ -265,6 +263,6 @@ describe('a face with no photo', () => {
 	it('changes colour with the role', () => {
 		resetPeople([member('Ana Lopez')]);
 		resetPeople([{ ...member('Ana Lopez'), role: 'admin' }]);
-		expect(svgOf(personOf('Ana Lopez').photo)).toContain('#7c3aed');
+		expect(decodeURIComponent(personOf('Ana Lopez').photo)).toContain('#7c3aed');
 	});
 });

@@ -29,12 +29,7 @@ export type StatusType =
 	| 'Archived';
 
 // `photo` is their own, or their initials on their role's colour when they have none (#355).
-export type PersonType = {
-	name: string;
-	photo: string;
-	seen?: string;
-	role?: TeamMemberType['role'];
-};
+export type PersonType = { name: string; photo: string; seen?: string };
 
 export type ProjectType = {
 	id: string;
@@ -336,8 +331,8 @@ export function toPresenceText(member: TeamMemberType, now = Date.now()) {
 export function registerPerson(member: TeamMemberType) {
 	const photo = photoOfMember(member);
 	const person = PEOPLE.find((item) => item.name === member.name);
-	if (person) Object.assign(person, { photo, seen: member.seen, role: member.role });
-	else PEOPLE.push({ name: member.name, photo, seen: member.seen, role: member.role });
+	if (person) Object.assign(person, { photo, seen: member.seen });
+	else PEOPLE.push({ name: member.name, photo, seen: member.seen });
 	touch();
 }
 
