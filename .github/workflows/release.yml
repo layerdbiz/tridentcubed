@@ -2,18 +2,17 @@
 # The version comes from the commit titles since the last release (src/lib/releases/releases.utils.ts holds the rule):
 # any breaking change is major, else any ✨ feat is minor, else any 🐛 fix or ⚡ perf is patch; with none of those,
 # there is no release. A release is two things, both made here, and nothing is committed:
-# - the tag v1.1.0 on the commit that was pushed, the one record of the version: every build reads it from git;
+# - the tag v1.1.0 on dev's newest commit, the one record of the version: every build reads it from git;
 # - the GitHub release v1.1.0, its notes the same as What's New in the app: each batch of work with its title and
 #   words, its new features, improvements and fixes, then the changes outside the app.
 # The tag is pushed with the workflow's own token, so it starts no other workflow. The app's build on dev does not
 # wait for it: it works the version out by the same rule, so it already says v1.1.0 (releases.server.ts).
 #
 # The first release waits for Justin's word: until IS_RELEASING in src/lib/releases/releases.utils.ts is true, a push
-# to dev with no v* tag makes nothing. Turned on, the push that brings it makes v1.0.0, its notes listing what that
-# push brought (everything after the commit dev was on). A hand run (Actions → release → Run workflow, or
-# `gh api -X POST repos/<owner>/<repo>/actions/workflows/release.yml/dispatches -f ref=dev`) makes a release that a
-# push did not, or publishes one whose tag exists without its GitHub release; dev.app shows a version made that way
-# only after its next build.
+# to dev with no v* tag makes nothing. Turned on, the push that brings it makes v1.0.0, its notes listing everything
+# up to it, the same as What's New. A hand run (Actions → release → Run workflow, or
+# `gh api -X POST repos/<owner>/<repo>/actions/workflows/release.yml/dispatches -f ref=dev`) does what a push would,
+# or publishes a release whose tag exists without its GitHub release.
 #
 # Easy to swap: the rule is one script with tests, and this file only tags and publishes what it worked out.
 name: release
@@ -22,17 +21,9 @@ on:
   push:
     branches: [dev]
   workflow_dispatch:
-    inputs:
-      first:
-        description: Make the first release, v1.0.0, though releases are not turned on in the code
-        required: false
-        type: boolean
-      since:
-        description: First release only, list the changes after this commit, tag or day (2026-11-20)
-        required: false
-        type: string
 
-# One release at a time, never cancelled half way: a second push waits, then releases what came after the first.
+# One release at a time, never cancelled half way. Each run releases dev as it is then, so a push that lands while
+# one runs is either in that release or, when it came too late for it, the next run's.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -46,10 +37,10 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      # The commit that was pushed, with the whole history and every tag, never a newer dev.
+      # Dev as it is now, with the whole history and every tag: the newest commit is the one the app is building.
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.sha }}
+          ref: dev
           fetch-depth: 0
           fetch-tags: true
       - uses: actions/setup-node@v5
@@ -57,20 +48,23 @@ jobs:
           node-version-file: package.json
       - name: Work out the release
         id: plan
-        env:
-          FIRST: ${{ inputs.first && '--first' || '' }}
-          # What the push brought, for the first release's notes; a hand run names its own.
-          SINCE: ${{ github.event_name == 'push' && github.event.before || inputs.since }}
-        run: node apps/app/scripts/release.ts $FIRST ${SINCE:+--since "$SINCE"} --notes "$RUNNER_TEMP/notes.md"
+        run: node apps/app/scripts/release.ts --notes "$RUNNER_TEMP/notes.md"
       - name: Tag and publish it
         if: steps.plan.outputs.version != ''
         env:
           TAG: v${{ steps.plan.outputs.version }}
         run: |
-          if ! git rev-parse --quiet --verify "refs/tags/$TAG" > /dev/null; then
+          HEAD_COMMIT=$(git rev-parse HEAD)
+          if TAGGED=$(git rev-parse --quiet --verify "refs/tags/$TAG^{commit}"); then
+            # A tag of this name on another commit means dev's history was replaced: stop rather than guess.
+            if [ "$TAGGED" != "$HEAD_COMMIT" ]; then
+              echo "::error::$TAG already marks $TAGGED, not dev's newest commit $HEAD_COMMIT."
+              exit 1
+            fi
+          else
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git tag --annotate "$TAG" --message "$TAG" "$GITHUB_SHA"
+            git tag --annotate "$TAG" --message "$TAG" "$HEAD_COMMIT"
             git push origin "refs/tags/$TAG"
           fi
           if gh release view "$TAG" > /dev/null 2>&1; then

@@ -5,24 +5,16 @@
 // says so; the build goes on.
 import { NOTES } from './notes.ts';
 import { SHORT, toHistory, type HistoryType, type LandedType } from './history.utils.ts';
-import {
-	git,
-	readReleaseState,
-	readyRepository,
-	type ReleaseStateOptionsType
-} from './releases.server.ts';
-
-const UNIT = '\u001f';
-const RECORD = '\u001e';
+import { FIELD, RECORD, git, readReleaseState, readyRepository } from './releases.server.ts';
 
 function read(range: string, ...options: string[]) {
-	const out = git('log', ...options, `--format=%H${UNIT}%P${UNIT}%cI${UNIT}%s${RECORD}`, range);
+	const out = git('log', ...options, `--format=%H${FIELD}%P${FIELD}%cI${FIELD}%s${RECORD}`, range);
 	return out
 		.split(RECORD)
 		.map((record) => record.trim())
 		.filter(Boolean)
 		.map((record) => {
-			const [commit, parents, at, subject] = record.split(UNIT);
+			const [commit, parents, at, subject] = record.split(FIELD);
 			return { commit, parents: parents.split(' ').filter(Boolean), at, subject };
 		});
 }
@@ -46,9 +38,9 @@ export function readLanded(head = 'HEAD'): { head: string; chain: string[]; land
 }
 
 /** The history of `head` with its releases, from a copy that is already whole. */
-export function readHistoryOf(head = 'HEAD', options: ReleaseStateOptionsType = {}): HistoryType {
+export function readHistoryOf(head = 'HEAD'): HistoryType {
 	const { head: commit, chain, landed } = readLanded(head);
-	const state = readReleaseState(commit, options);
+	const state = readReleaseState(commit);
 	const released = landed.map((each) => {
 		const release = each.commit ? state.versionOf(each.commit) : undefined;
 		return release ? { ...each, release } : each;

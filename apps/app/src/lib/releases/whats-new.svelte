@@ -21,10 +21,10 @@
 	import { noteReload, takeLastResort } from '../update/rescue';
 	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
 	import ChangeList from './change-list.svelte';
-	import type { HistoryBatchType } from './history.utils';
 	import { CHECK_EVERY, HAS_POP_UP } from './releases.constants';
 	import { whatsNew } from './releases.state.svelte';
-	import { toBatchCounts, toBatchTitle, toBatchWhen } from './releases.utils';
+	import { toTag } from './releases.utils';
+	import { toBatchCounts, toBatchTitle, toBatchWhen, type HistoryBatchType } from './history.utils';
 	import WindowHead from './window-head.svelte';
 
 	let {
@@ -149,7 +149,7 @@
 										<span class="mt-0.5 block text-xs leading-snug text-slate-500">
 											{#if batch.release}<span
 													class="font-semibold whitespace-nowrap text-slate-600"
-													>v{batch.release.version}{' · '}</span
+													>{toTag(batch.release.version)}{' · '}</span
 												>{/if}<span class="whitespace-nowrap">{toBatchWhen(batch)}</span>
 											{#each toBatchCounts(batch) as count (count)}<span class="whitespace-nowrap"
 													>{' · '}{count}</span
@@ -180,7 +180,7 @@
 										href={batch.release.url}
 										external
 										icon="icon-[mdi--github]"
-										label="v{batch.release.version} release notes"
+										label="{toTag(batch.release.version)} release notes"
 										class="mt-3 -ml-2"
 									/>
 								{/if}

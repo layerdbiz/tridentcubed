@@ -1,15 +1,12 @@
 // The release rule (#157) with plain commit subjects, the way `git log` gives them: which commits a release lists,
-// as new features or fixes, which version it gets, what the app calls its version and what GitHub's notes say.
+// as new features or fixes, which version it gets and what the app calls its version.
 import { describe, expect, it } from 'vite-plus/test';
-import type { HistoryBatchType } from './history.utils';
 import {
 	FIRST_SUMMARY,
 	isAppChange,
 	planRelease,
-	toBatchTitle,
-	toBatchWhen,
-	toReleaseNotes,
 	toReleaseUrl,
+	toTag,
 	toTagVersion,
 	toVersionLabel,
 	type ReleaseChangeType
@@ -150,97 +147,10 @@ describe('the version people read', () => {
 		expect(toTagVersion('v1.2')).toBeUndefined();
 		expect(toTagVersion('v1.2.0-rc.1')).toBeUndefined();
 		expect(toTagVersion('persist')).toBeUndefined();
+		expect(toTag('1.2.0')).toBe('v1.2.0');
 		expect(toReleaseUrl('1.2.0')).toBe(
 			'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.2.0'
 		);
-	});
-});
-
-describe('a batch as people read it', () => {
-	const CHICAGO = 'America/Chicago';
-
-	it('is named by its words, or by when it began on the clock given', () => {
-		expect(toBatchTitle({ title: 'Pins and search', from: '2026-11-26T03:00:00Z' }, CHICAGO)).toBe(
-			'Pins and search'
-		);
-		// 03:00 in London is 9 PM the day before in Chicago.
-		expect(toBatchTitle({ from: '2026-11-26T03:00:00Z' }, CHICAGO)).toBe('Wednesday night');
-		expect(toBatchTitle({ from: '2026-11-26T15:00:00Z' }, CHICAGO)).toBe('Thursday morning');
-	});
-
-	it('gives the day it ran, or the days it ran over', () => {
-		expect(toBatchWhen({ from: '2026-11-26T15:00:00Z', to: '2026-11-26T20:00:00Z' }, CHICAGO)).toBe(
-			'November 26, 2026'
-		);
-		expect(toBatchWhen({ from: '2026-11-24T15:00:00Z', to: '2026-11-25T20:00:00Z' }, CHICAGO)).toBe(
-			'November 24 – 25, 2026'
-		);
-		expect(toBatchWhen({ from: '2026-11-30T15:00:00Z', to: '2026-12-01T20:00:00Z' }, CHICAGO)).toBe(
-			'November 30 – December 1, 2026'
-		);
-	});
-});
-
-describe('the release notes on GitHub', () => {
-	const BATCH: HistoryBatchType = {
-		from: '2026-11-26T15:00:00Z',
-		to: '2026-11-26T20:00:00Z',
-		title: 'Pins and search',
-		summary: 'Pin anything, find anything.',
-		changes: [
-			{ kind: 'feature', text: 'Add a Pinned list', tickets: [346], at: '', landed: 3 },
-			{ kind: 'improved', text: 'Search groups by page', tickets: [345], at: '', landed: 2 },
-			{ kind: 'fix', text: 'Show a pin once', tickets: [346, 345], at: '', landed: 1 }
-		]
-	};
-
-	it('reads like What’s New: each batch with its title, days and words, then its kinds of change', () => {
-		const notes = toReleaseNotes({ batches: [BATCH], others: [] });
-
-		expect(notes).toBe(
-			[
-				'## Pins and search',
-				'',
-				'_November 26, 2026 · 1 new · 1 improved · 1 fix_',
-				'',
-				'Pin anything, find anything.',
-				'',
-				'### ✨ New features',
-				'',
-				'- Add a Pinned list (#346)',
-				'',
-				'### ⬆️ Improved',
-				'',
-				'- Search groups by page (#345)',
-				'',
-				'### 🐛 Fixes',
-				'',
-				'- Show a pin once (#346, #345)',
-				''
-			].join('\n')
-		);
-	});
-
-	it('puts the welcome first and what the app does not show last, by area', () => {
-		const notes = toReleaseNotes({
-			summary: FIRST_SUMMARY,
-			batches: [{ ...BATCH, title: undefined, summary: undefined, changes: [BATCH.changes[2]] }],
-			others: [{ kind: 'fix', text: 'Call the right number', area: 'site', tickets: [177] }]
-		});
-
-		expect(notes.split('\n\n')).toEqual([
-			FIRST_SUMMARY,
-			'## Thursday morning',
-			'_November 26, 2026 · 1 fix_',
-			'### 🐛 Fixes',
-			'- Show a pin once (#346, #345)',
-			'## Behind the scenes',
-			'- site: Call the right number (#177)\n'
-		]);
-	});
-
-	it('still says something when a release holds nothing the team sees', () => {
-		expect(toReleaseNotes({ batches: [], others: [] })).toBe('Small changes behind the scenes.\n');
 	});
 });
 

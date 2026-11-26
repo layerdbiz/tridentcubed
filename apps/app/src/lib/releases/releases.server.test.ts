@@ -8,11 +8,11 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { readReleaseState, readTags } from './releases.server';
 
-let where = '';
+let repository = '';
 const saved = { ...process.env };
 
 function run(...args: string[]) {
-	return execFileSync('git', args, { cwd: where, encoding: 'utf8' }).trim();
+	return execFileSync('git', args, { cwd: repository, encoding: 'utf8' }).trim();
 }
 
 function commit(subject: string) {
@@ -25,20 +25,20 @@ function tag(version: string, at = 'HEAD') {
 }
 
 beforeEach(() => {
-	where = mkdtempSync(join(tmpdir(), 'releases-'));
+	repository = mkdtempSync(join(tmpdir(), 'releases-'));
 	run('init', '--quiet', '--initial-branch', 'dev');
 	run('config', 'user.name', 'Test');
 	run('config', 'user.email', 'test@example.com');
 	run('config', 'commit.gpgsign', 'false');
 	run('config', 'tag.gpgsign', 'false');
 	// The module asks git in the working folder: point it at this repository.
-	process.env.GIT_DIR = join(where, '.git');
-	process.env.GIT_WORK_TREE = where;
+	process.env.GIT_DIR = join(repository, '.git');
+	process.env.GIT_WORK_TREE = repository;
 });
 
 afterEach(() => {
 	process.env = { ...saved };
-	rmSync(where, { recursive: true, force: true });
+	rmSync(repository, { recursive: true, force: true });
 });
 
 describe('the releases a build knows', () => {
@@ -55,17 +55,14 @@ describe('the releases a build knows', () => {
 		const one = commit('✨ feat(app): one (#1)');
 		commit('🐛 fix(app): two');
 
-		const dev = readReleaseState('HEAD', { branch: 'dev', isOn: true, date: '2026-11-27' });
+		const dev = readReleaseState('HEAD', { branch: 'dev', isOn: true });
 		const next = readReleaseState('HEAD', { branch: 'next', isOn: true });
 
 		expect(dev.label).toBe('v1.0.0');
+		expect(dev.planned?.changes.map((change) => change.text)).toEqual(['One', 'Two']);
 		expect(dev.versionOf(one)).toBe('1.0.0');
 		expect(dev.releases).toEqual([
-			{
-				version: '1.0.0',
-				date: '2026-11-27',
-				url: 'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.0.0'
-			}
+			{ version: '1.0.0', url: 'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.0.0' }
 		]);
 		expect(next.label).toBe('v1.0.0-next.2');
 		expect(next.versionOf(one)).toBeUndefined();

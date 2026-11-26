@@ -6,11 +6,10 @@
 // `!` or `BREAKING CHANGE:` is major, else any feature is minor, else any fix is patch. With no feature or fix since
 // the last release there is no release.
 //
-// Plain functions and data, no git or file: releases.server.ts reads the tags and the commits, scripts/release.ts
-// makes the release, and the app shows what the build was told. Written in the TypeScript Node runs as it is (no
+// Plain functions and data, no git or file: releases.server.ts reads the tags and the commits, history.utils.ts folds
+// the changes into What's New's batches and the GitHub notes, scripts/release.ts makes the release, and the app shows
+// what the build was told. Written in the TypeScript Node runs as it is (no
 // enums, `.ts` imports), for that script.
-import type { HistoryBatchType, HistoryKindType } from './history.utils.ts';
-
 /** What a change is to the team: a new feature, or a fix to something that was wrong or slow. */
 export type ChangeKindType = 'feature' | 'fix';
 
@@ -37,16 +36,17 @@ export type ReleaseType = {
 	changes: ReleaseChangeType[];
 };
 
-/** A release as What's New names it: its version, its day and where its notes are. */
-export type ReleaseRefType = { version: string; date: string; url: string };
+/** A release as What's New names it: its version and where its notes are. */
+export type ReleaseRefType = { version: string; url: string };
 
 /** A commit as `git log` gives it. */
 export type CommitType = { subject: string; body?: string };
 
 /**
  * Whether releases are made (#157). Off until Justin's word, so no tag and no GitHub release exist and every build
- * says "Not released yet". Turned on, the next push to dev makes FIRST_VERSION, and every push after it with a feature
- * or a fix makes the next version. Once the first tag exists, this is no longer read.
+ * says "Not released yet". Turned on, the next push to dev makes FIRST_VERSION, its notes listing everything up to it,
+ * and every push after it with a feature or a fix makes the next version. Once the first tag exists, this is no
+ * longer read.
  */
 export const IS_RELEASING = false;
 
@@ -164,9 +164,14 @@ export function isNewer(a: string, b: string) {
 	return false;
 }
 
+/** A version's tag, `1.2.3` → `v1.2.3`: its name on GitHub and as people read it. */
+export function toTag(version: string) {
+	return `v${version}`;
+}
+
 /** The release's page on GitHub: its notes. */
 export function toReleaseUrl(version: string) {
-	return `${REPOSITORY_URL}/releases/tag/v${version}`;
+	return `${REPOSITORY_URL}/releases/tag/${toTag(version)}`;
 }
 
 export type VersionLabelOptionsType = {
@@ -187,113 +192,8 @@ export type VersionLabelOptionsType = {
  * release. Empty while nothing is released and releases are not made yet.
  */
 export function toVersionLabel({ last, planned, isReleaseBranch, ahead }: VersionLabelOptionsType) {
-	if (!planned) return last ? `v${last}` : '';
-	return isReleaseBranch ? `v${planned}` : `v${planned}-next.${ahead}`;
-}
-
-// The parts of the day as people say them, from the hour each starts.
-const PARTS: { from: number; label: string }[] = [
-	{ from: 21, label: 'night' },
-	{ from: 17, label: 'evening' },
-	{ from: 12, label: 'afternoon' },
-	{ from: 5, label: 'morning' },
-	{ from: 0, label: 'night' }
-];
-
-/** A batch's title: the words written for it, or when it began as people say it, Wednesday evening. */
-export function toBatchTitle(batch: Pick<HistoryBatchType, 'title' | 'from'>, timeZone?: string) {
-	if (batch.title) return batch.title;
-	const from = new Date(batch.from);
-	const day = from.toLocaleDateString('en-US', { weekday: 'long', timeZone });
-	const hour = Number(
-		from.toLocaleString('en-US', { hour: 'numeric', hourCycle: 'h23', timeZone })
-	);
-	const part = PARTS.find((each) => hour >= each.from)!.label;
-	return `${day} ${part}`;
-}
-
-function toDay(at: string, timeZone?: string, isYear = true) {
-	return new Date(at).toLocaleDateString('en-US', {
-		month: 'long',
-		day: 'numeric',
-		...(isYear ? { year: 'numeric' } : {}),
-		timeZone
-	});
-}
-
-/** The day a batch was released, or the days it ran over: November 24 – 25, 2026. */
-export function toBatchWhen(batch: Pick<HistoryBatchType, 'from' | 'to'>, timeZone?: string) {
-	const from = toDay(batch.from, timeZone);
-	const to = toDay(batch.to, timeZone);
-	if (from === to) return to;
-	const parts = (at: string) =>
-		new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone })
-			.formatToParts(new Date(at))
-			.reduce<Record<string, string>>((all, part) => ({ ...all, [part.type]: part.value }), {});
-	const start = parts(batch.from);
-	const end = parts(batch.to);
-	if (start.year === end.year && start.month === end.month) {
-		return `${toDay(batch.from, timeZone, false)} – ${end.day}, ${end.year}`;
-	}
-	return `${toDay(batch.from, timeZone, false)} – ${to}`;
-}
-
-/** How many new features, improvements and fixes a batch holds, the ones it has: 3 new, 2 fixes. */
-export function toBatchCounts(batch: Pick<HistoryBatchType, 'changes'>) {
-	const count = (kind: HistoryKindType) =>
-		batch.changes.filter((change) => change.kind === kind).length;
-	const parts = [
-		[count('feature'), 'new'],
-		[count('improved'), 'improved'],
-		[count('fix'), count('fix') === 1 ? 'fix' : 'fixes']
-	] as const;
-	return parts.filter(([number]) => number > 0).map(([number, words]) => `${number} ${words}`);
-}
-
-const SECTIONS: { kind: HistoryKindType; heading: string }[] = [
-	{ kind: 'feature', heading: '### ✨ New features' },
-	{ kind: 'improved', heading: '### ⬆️ Improved' },
-	{ kind: 'fix', heading: '### 🐛 Fixes' }
-];
-
-function toLine(change: { text: string; tickets: number[]; area?: string }, hasArea = false) {
-	const tickets = change.tickets.map((ticket) => `#${ticket}`).join(', ');
-	const area = hasArea && change.area ? `${change.area}: ` : '';
-	return `- ${area}${change.text}${tickets ? ` (${tickets})` : ''}`;
-}
-
-export type ReleaseNotesType = {
-	/** The words above everything, the first release's welcome. */
-	summary?: string;
-	/** What's New's batches the release brings, newest first, as the app shows them. */
-	batches: HistoryBatchType[];
-	/** The features and fixes outside the app and its library (the website, the tools), which What's New leaves out. */
-	others: ReleaseChangeType[];
-};
-
-/**
- * A release's notes as GitHub shows them, the same as What's New in the app: each batch of work with its title, its
- * days and its words, then its new features, improvements and fixes, each with its tickets; then, under Behind the
- * scenes, the changes outside the app. Days are told on the team's clock.
- */
-export function toReleaseNotes({ summary, batches, others }: ReleaseNotesType) {
-	const blocks = summary ? [summary] : [];
-	for (const batch of batches) {
-		const when = [toBatchWhen(batch, TEAM_TIME_ZONE), ...toBatchCounts(batch)].join(' · ');
-		blocks.push(`## ${toBatchTitle(batch, TEAM_TIME_ZONE)}`, `_${when}_`);
-		if (batch.summary) blocks.push(batch.summary);
-		for (const section of SECTIONS) {
-			const lines = batch.changes
-				.filter((change) => change.kind === section.kind)
-				.map((change) => toLine(change));
-			if (lines.length > 0) blocks.push(section.heading, lines.join('\n'));
-		}
-	}
-	if (others.length > 0) {
-		blocks.push('## Behind the scenes', others.map((change) => toLine(change, true)).join('\n'));
-	}
-	if (blocks.length === 0) blocks.push('Small changes behind the scenes.');
-	return `${blocks.join('\n\n')}\n`;
+	if (!planned) return last ? toTag(last) : '';
+	return isReleaseBranch ? toTag(planned) : `${toTag(planned)}-next.${ahead}`;
 }
 
 // The areas whose changes people meet in the app: the app itself and the library it is drawn with.
