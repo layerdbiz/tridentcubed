@@ -207,6 +207,12 @@ fieldset.field legend .help {
 	@apply text-base-500;
 }
 
+/* The ? takes a finger 12px past itself (help.svelte) to the sides and above, but not below: under it is the box, and
+   a tap on the words there is the field's, to place the caret, never the help's. */
+fieldset.field legend .help::before {
+	bottom: 0;
+}
+
 fieldset.field:focus-within legend .help,
 fieldset.field legend .help[aria-expanded='true'] {
 	@apply text-info-500;

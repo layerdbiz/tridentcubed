@@ -71,4 +71,8 @@ describe('forms.css box', () => {
 			/fieldset\.field legend > \*\s*{[^}]*font-size:\s*calc\(var\(--legend-ratio\) \* 1em\)/
 		);
 	});
+
+	it('keeps the ?’s wider touch area out of the box below it, so a tap on the words is the field’s', () => {
+		expect(rules).toMatch(/fieldset\.field legend \.help::before\s*{[^}]*bottom:\s*0/);
+	});
 });

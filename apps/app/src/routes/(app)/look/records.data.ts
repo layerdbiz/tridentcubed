@@ -499,11 +499,6 @@ export function toneOfItem(look: LookState, item: RecentType) {
 	return recordOf(look, item.page, item.name)?.tone.text ?? 'text-slate-400';
 }
 
-// A count badge never needs more than two characters.
-export function badgeOf(count: number) {
-	return count > 9 ? '9+' : String(count);
-}
-
 // The picture at the top of a record's Page (run 13): the Website's own service photos, picked by what the record
 // is. A team member's own photo, blurred behind them. Trains, rail cars and rail yards have none yet, so their Page
 // opens on the map.

@@ -27,8 +27,11 @@ import {
 	addGroup,
 	addPhotos,
 	countLabelOf,
+	deletePhotos,
+	describePhotos,
 	filesLabelOf,
 	movePhoto,
+	movePhotos,
 	type ReadersType,
 	uploadOf
 } from './photos';
@@ -397,6 +400,124 @@ describe('order and removal', () => {
 		expect(shown(panelOf(theirs.look, 'discharge'))).toEqual(shown(discharge));
 		expect(panelOf(theirs.look, 'damages').groups[0].photos).toEqual([]);
 		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+	});
+});
+
+describe('several photos selected', () => {
+	// #402 (Justin on #287, 2026-11-24): photos selected in one panel are moved, described or deleted together, and
+	// another member sees the same. They keep the order they had, stage by stage, left to right, whatever order they
+	// were picked in; PDFs and videos go with them like any photo.
+	async function project() {
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const discharge = panelOf(mine.look, 'discharge');
+		const damages = panelOf(mine.look, 'damages');
+		discharge.groups.push(
+			groupOf({ title: 'Loading', photos: [stored('A'), stored('B'), stored('C')] }),
+			groupOf({
+				title: 'Lashing',
+				photos: [
+					stored('D'),
+					{
+						...stored('E'),
+						kind: 'pdf' as const,
+						source: `/files/${crypto.randomUUID()}`,
+						pageCount: 2
+					},
+					stored('F')
+				]
+			})
+		);
+		damages.isEnabled = true;
+		damages.groups.push(groupOf({ title: 'Dent', photos: [stored('G')] }));
+		expect((await save(mine)).result.isSaved).toBe(true);
+		function words(panel: PanelType) {
+			return panel.groups.map((group) => [
+				group.title,
+				group.photos.map((photo) => photo.description)
+			]);
+		}
+		function idOf(description: string) {
+			return mine.look.panels
+				.flatMap((panel) => panel.groups ?? [])
+				.flatMap((group) => group.photos)
+				.find((photo) => photo.description === description)!.id;
+		}
+		return { mine, id, discharge, damages, words, idOf };
+	}
+
+	async function theirs(id: string) {
+		const device = await open(mia);
+		await openProject(device, id);
+		return device;
+	}
+
+	it('moves them into another group in the order they sit, to where they were dropped or to its end', async () => {
+		const { mine, id, discharge, damages, words, idOf } = await project();
+		const [loading, lashing] = discharge.groups;
+
+		// Picked E, then A, then F: they land as A, E, F, before Lashing's D (the place of D, counted as it is now).
+		expect(movePhotos(mine.look.panels, [idOf('E'), idOf('A'), idOf('F')], lashing.id, 0)).toBe(3);
+		expect(words(discharge)).toEqual([
+			['Loading', ['B', 'C']],
+			['Lashing', ['A', 'E', 'F', 'D']]
+		]);
+		// Dropped on the group itself they go to its end, here in another photo panel; ids no group holds move nothing.
+		expect(movePhotos(mine.look.panels, [idOf('C'), idOf('B')], damages.groups[0].id)).toBe(2);
+		expect(movePhotos(mine.look.panels, [crypto.randomUUID()], loading.id)).toBe(0);
+		expect(movePhotos(mine.look.panels, [idOf('A')], crypto.randomUUID())).toBe(0);
+		expect((await save(mine)).result.isSaved).toBe(true);
+
+		const other = await theirs(id);
+		expect(words(panelOf(other.look, 'discharge'))).toEqual([
+			['Loading', []],
+			['Lashing', ['A', 'E', 'F', 'D']]
+		]);
+		expect(words(panelOf(other.look, 'damages'))).toEqual([['Dent', ['G', 'B', 'C']]]);
+		expect(panelOf(other.look, 'discharge').groups[1].photos[1]).toMatchObject({
+			kind: 'pdf',
+			pageCount: 2
+		});
+		expect(toChanges(other.confirmed, toRows(other.look))).toEqual([]);
+	});
+
+	it('moves them about inside their own group, before the photo they were dropped on', async () => {
+		const { mine, discharge, words, idOf } = await project();
+		const [loading] = discharge.groups;
+
+		// B and C dropped before A (place 0); then A dropped after C (place 3, past the end): B, C, A.
+		expect(movePhotos(mine.look.panels, [idOf('C'), idOf('B')], loading.id, 0)).toBe(2);
+		expect(words(discharge)[0]).toEqual(['Loading', ['B', 'C', 'A']]);
+		expect(movePhotos(mine.look.panels, [idOf('B')], loading.id, 2)).toBe(1);
+		expect(words(discharge)[0]).toEqual(['Loading', ['C', 'B', 'A']]);
+	});
+
+	it('gives them all one description, and another member reads it on each', async () => {
+		const { mine, id, words, idOf } = await project();
+
+		expect(
+			describePhotos(mine.look.panels, [idOf('B'), idOf('E')], '  Lashing points checked ')
+		).toBe(2);
+		expect((await save(mine)).result.isSaved).toBe(true);
+
+		expect(words(panelOf((await theirs(id)).look, 'discharge'))).toEqual([
+			['Loading', ['A', 'Lashing points checked', 'C']],
+			['Lashing', ['D', 'Lashing points checked', 'F']]
+		]);
+	});
+
+	it('deletes them all, and they are gone for another member', async () => {
+		const { mine, id, words, idOf } = await project();
+
+		expect(deletePhotos(mine.look.panels, [idOf('A'), idOf('E'), idOf('F')])).toBe(3);
+		expect((await save(mine)).result.isSaved).toBe(true);
+
+		const other = await theirs(id);
+		expect(words(panelOf(other.look, 'discharge'))).toEqual([
+			['Loading', ['B', 'C']],
+			['Lashing', ['D']]
+		]);
+		expect(toChanges(other.confirmed, toRows(other.look))).toEqual([]);
 	});
 });
 

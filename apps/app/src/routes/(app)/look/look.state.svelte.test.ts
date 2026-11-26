@@ -7,6 +7,7 @@ import {
 	metricsOf,
 	themeOf,
 	toFollowing,
+	toLocation,
 	toWorkBefore
 } from './look.state.svelte';
 import { sectionsOf, tallyOf } from './tally';
@@ -344,6 +345,36 @@ function finished() {
 	}
 	return look;
 }
+
+describe('where a project is (run 19)', () => {
+	const PORT = '400 Harbor Drive, Corpus Christi, TX 78401';
+
+	it('keeps what it had when it opens, whatever its first stop’s facility now says', () => {
+		expect(toLocation('Corpus Christi, TX', { now: 'Port of Corpus Christi', city: PORT })).toBe(
+			'Corpus Christi, TX'
+		);
+	});
+
+	it('takes the city of a first stop’s facility picked or changed while it is open', () => {
+		expect(toLocation('', { was: '', now: 'Port of Corpus Christi', city: PORT })).toBe(PORT);
+		expect(
+			toLocation('Houston, TX', { was: 'Port Houston', now: 'Port of Corpus Christi', city: PORT })
+		).toBe(PORT);
+	});
+
+	it('keeps what it had while that facility stays, or when the last stop goes', () => {
+		expect(
+			toLocation('Corpus Christi, TX', {
+				was: 'Port of Corpus Christi',
+				now: 'Port of Corpus Christi',
+				city: PORT
+			})
+		).toBe('Corpus Christi, TX');
+		expect(
+			toLocation('Corpus Christi, TX', { was: 'Port of Corpus Christi', now: '', city: '' })
+		).toBe('Corpus Christi, TX');
+	});
+});
 
 describe('a project’s status following its work (#328)', () => {
 	it('turns Ready once every input is filled in, at 100%', () => {

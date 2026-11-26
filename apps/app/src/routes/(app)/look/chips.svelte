@@ -4,6 +4,9 @@
 	// `isLight` for over a photo (a Page's picture, run 13).
 	// 2026-11-16 (Justin): with no labels yet the line is not left blank: one chip in a dashed outline says what
 	// is still to do (`placeholder`; empty words leave the line out).
+	// #381: each is the library Chip, in the app's own sizes and greys.
+	import { Chip } from '@layerd/ui';
+
 	let {
 		labels,
 		isWrapped = false,
@@ -15,17 +18,19 @@
 {#if labels.length}
 	<span class="flex gap-1 {isWrapped ? 'flex-wrap' : 'overflow-hidden'}">
 		{#each labels as label (label)}
-			<span
-				class="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium whitespace-nowrap {isLight
+			<Chip
+				{label}
+				class="px-2 py-0.5 text-[10px] font-medium {isLight
 					? 'bg-white/20 text-white backdrop-blur'
-					: 'bg-slate-100 text-slate-600'}">{label}</span
-			>
+					: 'bg-slate-100 text-slate-600'}"
+			/>
 		{/each}
 	</span>
 {:else if placeholder}
-	<span
-		class="shrink-0 rounded-full border border-dashed px-2 py-px text-[10px] font-medium whitespace-nowrap {isLight
+	<Chip
+		label={placeholder}
+		class="inline border border-dashed px-2 py-px text-[10px] font-medium {isLight
 			? 'border-white/50 text-white/75'
-			: 'border-slate-300 text-slate-400'}">{placeholder}</span
-	>
+			: 'border-slate-300 text-slate-400'}"
+	/>
 {/if}

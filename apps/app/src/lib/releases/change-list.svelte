@@ -2,6 +2,7 @@
 	// A batch's changes in What's New (#363, #399): each kind under its heading with a rule, the way Discord's
 	// changelog sets its sections (Justin's screenshot, 2026-11-26), new features, then what improved on something
 	// already out, then fixes. A change that landed after the last press on What's New's button (`seenAt`) says New.
+	import { Chip } from '@layerd/ui';
 	import type { HistoryChangeType, HistoryKindType } from './history.utils';
 
 	let { changes, seenAt = -1 }: { changes: HistoryChangeType[]; seenAt?: number } = $props();
@@ -56,10 +57,10 @@
 						aria-hidden="true"
 					></span>
 					<span class="min-w-0 flex-1"
-						>{change.text}{#if isNew}<span
-								class="ml-2 inline-block rounded-full bg-emerald-50 px-1.5 align-[0.1em] text-[11px] font-semibold text-emerald-700"
-								>New</span
-							>{/if}</span
+						>{change.text}{#if isNew}<Chip
+								label="New"
+								class="ml-2 inline-block bg-emerald-50 px-1.5 py-0 align-[0.1em] text-[11px] font-semibold text-emerald-700"
+							/>{/if}</span
 					>
 				</p>
 				{#if change.pictures?.length}

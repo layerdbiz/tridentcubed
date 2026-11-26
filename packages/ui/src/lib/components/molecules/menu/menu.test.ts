@@ -652,3 +652,97 @@ describe('a look given from outside (#390, the zoom bar’s dark menu)', () => {
 		expect(screen.getByRole('listbox', { name: 'How the pages lie' })).not.toBeNull();
 	});
 });
+
+describe('a row of buttons (the zoom bar’s Slide-out Row)', () => {
+	it('stands its choices in a row of library Buttons, each its icon alone, named by its label', async () => {
+		show({ isRow: true, opens: 'left', value: 'cards' });
+		const list = await open();
+		const choices = within(list).getAllByRole('option');
+
+		expect(list.getAttribute('aria-orientation')).toBe('horizontal');
+		expect(choices.map((choice) => choice.getAttribute('aria-label'))).toEqual([
+			'List',
+			'Cards',
+			'Board'
+		]);
+		expect(choices.map((choice) => choice.getAttribute('title'))).toEqual([
+			'List',
+			'Cards',
+			'Board'
+		]);
+		expect(choices.map((choice) => choice.getAttribute('aria-selected'))).toEqual([
+			'false',
+			'true',
+			'false'
+		]);
+		for (const choice of choices) {
+			expect(choice.classList).toContain('btn');
+			expect(choice.querySelector('.btn-icon')).not.toBeNull();
+			expect(choice.textContent?.trim()).toBe('');
+		}
+		expect(choices[1].innerHTML).toContain('icon-[mdi--view-grid-outline]');
+	});
+
+	it('lights the picked choice, heavy and the others ghost, and hands every choice any Button prop', async () => {
+		show({ isRow: true, value: 'cards', choiceButton: { invert: true, sm: true } });
+		const list = await open();
+		const [first, picked] = within(list).getAllByRole('option');
+
+		expect(picked.className).toContain('theme-heavy-base-invert');
+		expect(first.className).toContain('theme-ghost-invert');
+		expect(first.className).not.toContain('theme-heavy');
+	});
+
+	it('picks on a tap of a choice and closes', async () => {
+		const { onpick } = show({ isRow: true, value: 'cards' });
+		const list = await open();
+		await fireEvent.click(within(list).getByRole('option', { name: 'Board' }));
+
+		expect(onpick).toHaveBeenCalledWith('board');
+		expect(screen.queryByRole('listbox')).toBeNull();
+	});
+
+	it('is round, with no fill or shadow of its own: its look comes from outside', async () => {
+		show({ isRow: true, class: 'bg-black' });
+		await open();
+		const list = listOf();
+
+		expect(list?.className).toContain('rounded-full');
+		expect(list?.className).toContain('bg-black');
+		expect(list?.className).not.toContain('bg-surface');
+		expect(list?.className).not.toContain('shadow-menu');
+	});
+
+	it('is only as wide as its choices beside its button', async () => {
+		placeButton({ top: 400, left: 900, width: 36, height: 36 });
+		show({ isRow: true, opens: 'left', offset: 10 });
+		await open();
+		const style = listOf()?.getAttribute('style') ?? '';
+
+		expect(style).toContain(`right: ${innerWidth - 900 + 10}px`);
+		expect(style).not.toContain('min-width');
+	});
+});
+
+describe('a button told what is picked and whether the list is open', () => {
+	it('takes its Button props from a function of the picked choice and the list being open', async () => {
+		show({
+			trigger: undefined,
+			value: 'cards',
+			button: (current: { icon?: string } | undefined, isOpen: boolean) => ({
+				icon: current?.icon,
+				appearance: isOpen ? 'heavy' : 'ghost',
+				'aria-label': 'Mode'
+			})
+		});
+		const button = screen.getByRole('button', { name: 'Mode' });
+
+		expect(button.className).toContain('theme-ghost');
+		expect(button.innerHTML).toContain('icon-[mdi--view-grid-outline]');
+
+		await fireEvent.click(button);
+
+		expect(button.className).toContain('theme-heavy-base');
+		expect(button.getAttribute('aria-expanded')).toBe('true');
+	});
+});

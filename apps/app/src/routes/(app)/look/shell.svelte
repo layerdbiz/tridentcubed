@@ -33,6 +33,7 @@
 	import { faceOf } from './marks';
 	import type { LookState } from './look.state.svelte';
 	import PanelList from './panel-list.svelte';
+	import PhotoSelection from './photo-selection.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ProjectPage from './project-page.svelte';
 	import RecentList from './recent-list.svelte';
@@ -90,6 +91,8 @@
 	const record = $derived(
 		look.record ? recordOf(look, look.record.page, look.record.key) : undefined
 	);
+
+	const isSelecting = $derived(look.isSelecting);
 
 	const CANVAS = 'bg-slate-100';
 	// The cards and the list run the full width of the main part, inside its padding (2026-11-10: "see more"); a very
@@ -710,8 +713,19 @@
 		</div>
 	{/if}
 
-	<!-- The Organization has Page and Edit on the bar too. -->
-	<BarC
+	<!-- The Organization has Page and Edit on the bar too. While photos are selected (#402), the Selection bar takes
+	     its place. -->
+	<div
+		class="transition-opacity duration-150 {isSelecting ? 'pointer-events-none opacity-0' : ''}"
+		inert={isSelecting}
+	>
+		<BarC
+			{look}
+			{isWide}
+			left={barLeft()}
+		/>
+	</div>
+	<PhotoSelection
 		{look}
 		{isWide}
 		left={barLeft()}
