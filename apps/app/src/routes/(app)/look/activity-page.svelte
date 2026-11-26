@@ -26,6 +26,7 @@
 	import type { DeviceKindType } from '#lib/presence/presence.utils.js';
 	import { toDeviceIcons, toDuration } from '#lib/presence/presence.utils.js';
 	import type { LookState } from './look.state.svelte';
+	import { FOLD_LOOK } from './fold';
 	import { faceOf } from './marks';
 	import PageHeader from './page-header.svelte';
 	import type { PageType } from './records.data';
@@ -386,7 +387,7 @@
 		{@const summary = toRunSummary(each)}
 		{@const kinds = toRunKinds(summary)}
 		<li>
-			<Accordion>
+			<Accordion {...FOLD_LOOK}>
 				{#snippet head()}
 					<span class="flex min-w-0 flex-1 items-start gap-3">
 						<span class="mt-0.5 shrink-0">

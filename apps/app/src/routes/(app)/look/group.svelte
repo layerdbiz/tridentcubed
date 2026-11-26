@@ -16,6 +16,7 @@
 	// faint box, the grey chevron and the red Delete (until #384 picks the Delete's Button type).
 	import type { Snippet } from 'svelte';
 	import { Accordion, Avatar, Switch } from '@layerd/ui';
+	import { FOLD_LOOK } from './fold';
 	import { toTally } from './tally';
 
 	// The Delete at a group's foot: red words and bin on no box, faintly red behind under a pointer.
@@ -75,8 +76,7 @@
 </script>
 
 <Accordion
-	class="rounded-2xl bg-slate-900/[0.03] transition"
-	icon="icon-[mdi--chevron-down] text-slate-400"
+	{...FOLD_LOOK}
 	deleteButton={DELETE_LOOK}
 	open={isOpen}
 	{ontoggle}
