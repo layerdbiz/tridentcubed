@@ -29,6 +29,7 @@ export * from "./utils/trackevent.ts";
 
 /* COMPONENTS */
 // atoms
+export { default as Avatar, type AvatarProps } from "./components/atoms/avatar/avatar.svelte";
 export { default as Button, type ButtonProps } from "./components/atoms/button/button.svelte";
 export { default as Checkbox } from "./components/atoms/forms/checkbox/checkbox.svelte";
 export { default as Colorss } from "./components/atoms/Colorss.svelte";
@@ -88,6 +89,7 @@ export { default as Menu, type MenuOptionType, type MenuProps } from "./componen
 export { default as Navbar } from "./components/molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./components/molecules/preview/preview.svelte";
 export { default as Slider, type SliderProps } from "./components/molecules/slider/slider.svelte";
+export { default as Stack, type StackItemType, type StackProps } from "./components/molecules/stack/stack.svelte";
 export * from "./components/molecules/toast/toast.svelte.ts";
 export { default as Toast, type ToastProps } from "./components/molecules/toast/toast.svelte";
 export { default as Toggle, type ToggleProps } from "./components/molecules/toggle/toggle.svelte";

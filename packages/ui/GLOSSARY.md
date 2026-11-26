@@ -268,6 +268,14 @@ _Avoid_: source (in the business glossary that is where a value comes from), API
 A short message that pops up over the page and goes away by itself. Given progress, it shows what is happening, a percent and a bar until the work is done, and a failure keeps it open with the reason. Each job gets its own, and toasts stack when several run at once (Justin, 2026-11-24). Given a list, it shows each entry under its message as a tap of its own and stays until it is closed or its list is empty: the app's list of the empty inputs that keep a percent under 100% (#305).
 _Avoid_: snackbar, progress toast (as a component of its own), loading bar
 
+**Avatar**:
+One round picture standing for someone or something: a face or a logo, or an icon on grey when there is none. It can wear a presence dot (green online, orange idle, grey offline) at the top right, or a badge in its place at the bottom right. Plain and light, since it repeats in every list row (#379).
+_Avoid_: profile picture, user icon
+
+**Stack**:
+A few avatars overlapping, the first in front and each of the others tucked behind the one before, then a count of the rest: a project's team, a customer's logos (#379).
+_Avoid_: avatar group, face pile
+
 **Dialog**:
 The box that opens over the page and shuts the rest until it closes: a sheet rising from the bottom on a phone, which a pull down closes, and a centred box from tablet width. Escape and a tap outside close it too, and the focus goes into it and back to what opened it. The help ?'s kind leaves the focus in the input being typed in (#375).
 _Avoid_: popup, bottom sheet (as a component of its own), drawer
