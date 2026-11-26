@@ -207,7 +207,12 @@
 					{#if organization.disclaimer.points.length}
 						<div class="mt-3 divide-y divide-slate-900/[0.06] border-y border-slate-900/[0.06]">
 							{#each organization.disclaimer.points as point, index (point.id)}
-								<div class="space-y-3 py-3">
+								<!-- Named as a group, so a screen reader tells one point's Title and Text from the next. -->
+								<div
+									class="space-y-3 py-3"
+									role="group"
+									aria-label="Point {index + 1}"
+								>
 									<div class="flex items-start gap-2">
 										<Input
 											class="min-w-0 flex-1"

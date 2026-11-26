@@ -8,7 +8,7 @@ import type { LookState } from './look.state.svelte';
 import SettingsPage from './settings-page.svelte';
 
 // The organization as the seed starts it, cut short: two points are enough to tell one from the other.
-function organizationOf() {
+function createOrganization() {
 	return {
 		id: 'o1',
 		detailsId: 'd1',
@@ -34,8 +34,9 @@ function organizationOf() {
 
 // The app's state as far as the Organization screen reads it, on its Edit, with no project open.
 function lookOf(isEditable: boolean) {
+	const organization = toState(createOrganization());
 	const look = toState({
-		organization: organizationOf(),
+		organization,
 		isOrganizationEditable: isEditable,
 		project: undefined,
 		tab: 'edit',
@@ -50,10 +51,9 @@ function lookOf(isEditable: boolean) {
 		home: vi.fn(),
 		flash: vi.fn(),
 		confirm: vi.fn(),
-		nameOrganization: vi.fn()
-	});
-	look.nameOrganization = vi.fn((name: string) => {
-		look.organization.name = name;
+		nameOrganization: vi.fn((name: string) => {
+			organization.name = name;
+		})
 	});
 	return look as unknown as LookState & {
 		flash: ReturnType<typeof vi.fn>;
