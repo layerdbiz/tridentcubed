@@ -58,10 +58,10 @@ describe('when CI starts', () => {
 		expect(triggers).not.toMatch(/pull_request/);
 	});
 
-	it('leaves out the branches nobody pushes work to', () => {
+	it('leaves out the branches nobody pushes work to, and next and play, which skip the checks on purpose', () => {
 		const branches = /^ {4}branches: \[(.*)\]$/m.exec(triggers)?.[1].split(', ') ?? [];
 
-		expect(branches).toEqual(["'**'", "'!main'", "'!persist'"]);
+		expect(branches).toEqual(["'**'", "'!main'", "'!persist'", "'!next'", "'!play'"]);
 	});
 
 	it('lets a new push cancel the running checks on every branch but dev', () => {

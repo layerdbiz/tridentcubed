@@ -81,6 +81,12 @@ app.
 
 ### Protected branches
 `main` is promoted by hand; never merge into, push to, or modify it.
+`next` (risky and overnight work, served at next.app.tridentcubed.com with
+the dev data, #341) and `play` (prototypes at play.tridentcubed.com, #342)
+are long-lived like `dev`: never delete them. Neither runs the GitHub checks;
+work moves from them into `dev` only on Justin's word. Work on `next` may add
+to the database but never rename or remove anything, since dev.app reads the
+same data.
 
 ## Authoring conventions
 

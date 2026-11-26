@@ -47,6 +47,10 @@ describe.skipIf(!hasShell)('which pushes Vercel builds', () => {
 		);
 	});
 
+	it('skips a push to next, which only the app builds', () => {
+		expect(isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'next' })).toBe(false);
+	});
+
 	it('builds when Vercel does not say which kind of build it is, so a live site never stops updating', () => {
 		expect(isBuilt({ VERCEL_GIT_COMMIT_REF: 'dev' })).toBe(true);
 	});

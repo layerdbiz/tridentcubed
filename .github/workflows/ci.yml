@@ -7,7 +7,9 @@
 # starts before the pull request exists; its results show on the pull request through the head commit.
 # It tests the branch as pushed, not the branch combined with the newest dev: the run on dev after
 # every merge tests the combined result. main takes only promotions from dev, and persist is never
-# touched, so neither is checked here.
+# touched, so neither is checked here. next (risky and overnight work, next.app.tridentcubed.com) and
+# play (prototypes, play.tridentcubed.com) skip the checks on purpose, so a push shows up in about a
+# minute (#341, #342); work that moves from either into dev is checked on its way in.
 #
 # The gate is the root package.json's `check` script, the same command a thread runs locally
 # (`pnpm check`). Here its two halves run side by side instead of one after the other (#254), since
@@ -29,7 +31,7 @@ name: ci
 
 on:
   push:
-    branches: ['**', '!main', '!persist']
+    branches: ['**', '!main', '!persist', '!next', '!play']
   workflow_dispatch:
 
 # A new push to a branch cancels that branch's running checks; a run on dev itself always finishes,

@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vite-plus/test';
 // Two Vercel projects read this folder's `vercel.json`: the dev one, whose live branch is `dev`, and the
 // production one, whose live branch is `main`. Vercel calls a build of a project's live branch "production" and
 // every other build "preview". Until #254 the rule named branches, so each push to `dev` also built a preview in
-// the production project that nobody opens, four builds where two were needed.
+// the production project that nobody opens, four builds where two were needed. The dev project also builds
+// `next`, the branch for risky and overnight work, as a preview served at next.app.tridentcubed.com (#341).
 const { ignoreCommand } = JSON.parse(
 	readFileSync(fileURLToPath(new URL('../vercel.json', import.meta.url)), 'utf8')
 ) as { ignoreCommand: string };
@@ -45,6 +46,14 @@ describe.skipIf(!hasShell)('which pushes Vercel builds', () => {
 		expect(isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'feat/1-something' })).toBe(
 			false
 		);
+	});
+
+	it('builds a push to next in the dev project, the quick place for risky work at next.app', () => {
+		expect(isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'next' })).toBe(true);
+	});
+
+	it('skips a branch whose name only starts with next', () => {
+		expect(isBuilt({ VERCEL_ENV: 'preview', VERCEL_GIT_COMMIT_REF: 'next-try' })).toBe(false);
 	});
 
 	it('builds when Vercel does not say which kind of build it is, so a live site never stops updating', () => {
