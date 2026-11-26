@@ -1,3 +1,46 @@
+## Working rules
+
+Justin set these on 2026-11-25. They win over his global rules file, his
+Oneezy skills and any other skill where they disagree.
+
+### Where work lands
+- **`next` is the integration branch**, live at next.app.tridentcubed.com
+  with the dev data (#341). A fresh cloud checkout sits on `main`, whose
+  rules are older: cut each branch from an up-to-date `origin/next`, merge
+  it back into `next` when done, push, and delete the branch. All of that is
+  Justin's standing yes; go ahead without asking. Work on `next` may add to
+  the database but never rename or remove anything, since dev.app reads the
+  same data.
+- **`dev`** takes `next` only on Justin's explicit word, after he has
+  checked the work on next.app. That merge is when the checks run.
+- **`main`** changes only when Justin says so: never merge into, push to,
+  or modify it.
+- **`play`** holds the team's prototypes at play.tridentcubed.com (#342),
+  made-up data only. Like `next`, it runs no GitHub checks.
+- **Long-lived**: `main`, `dev`, `next` and `play` stay forever; never
+  delete them.
+- **Issues close by hand.** GitHub closes an issue from `Closes #<n>` only
+  on `main`, so close each issue yourself once its work reaches `dev`.
+
+### Starting work
+Use Matt Pocock's skills. At the start of new work, run `/ask-matt` (user-only:
+Read its SKILL.md) to pick the course of action. Separate tasks get separate threads.
+
+### Before and after pictures
+Once a round of changes is in, picture each change unasked, one image per
+change. Phone: before on the left, after on the right. Desktop: before on
+top, after below.
+
+### Names
+- **Threads and artifacts**: one uppercase word for the kind, a colon, a
+  short description: `NEXT: Initials Avatars`, `PROTOTYPE: Select Menus`.
+  A code change takes the branch it lands on (`NEXT`, `DEV`, `PLAY`); a
+  prototype takes `PROTOTYPE`; anything else one clear word (`GRILLING`,
+  `RESEARCH`, `TICKETS`, `WORKFLOW`). This replaces `/oneezy-naming`'s
+  chat titles.
+- **Ticket lists** give each ticket's number and title:
+  `#355 Show initials and company codes instead of icons`.
+
 ## Agent skills
 
 ### Skills library
@@ -31,7 +74,7 @@ GitHub workflow there checks it, merges it into `dev` and `main` and cuts
 the next release with no review (Justin approved that for `oneezy/skills`
 only), then the skill syncs it here. Never ask Justin to review or merge a
 skills change, and never put skill copies in this repo; this repo keeps its
-normal rules (PRs into `dev`, Justin promotes `main`). Pushing needs
+own Working rules above. Pushing needs
 `oneezy/skills` among this project's repositories; when a push is refused,
 say so and stop, and Justin adds the repo or runs the add from his AI
 Workflow project. The one skill still committed here,
@@ -54,8 +97,8 @@ See docs/agents/domain.md.
 ### Branch status and landing
 `/oneezy-status` renders the read-only status report for the branch, its PR
 and its builds. `/oneezy-merge` commits, pushes and opens the PR;
-`/oneezy-merge into dev` also squash-merges on green builds and cleans up;
-both end with that report, which briefs the next agent when a wayfinder map
+`/oneezy-merge into dev` also squash-merges on green builds and cleans up,
+and runs only on Justin's word (Where work lands); both end with that report, which briefs the next agent when a wayfinder map
 is in play. Skills prefixed `oneezy-` are Justin's; the rest are
 third-party skills declared in the library and are never edited here.
 
@@ -78,9 +121,6 @@ port and run the servers in the background, for example
 4174 inside `apps/app`. Preview needs a `vp build` first. A localhost-only
 run that is fetched with curl and then killed does not count as running the
 app.
-
-### Protected branches
-`main` is promoted by hand; never merge into, push to, or modify it.
 
 ## Authoring conventions
 
