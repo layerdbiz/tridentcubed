@@ -44,6 +44,7 @@ import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
 import { contactsOf, type PageType } from './records.data';
+import { Selection } from './selection.svelte';
 import { emptyOf, hasRequired, sectionsOf, tallyOf, toPercent, type EmptyType } from './tally';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
@@ -265,6 +266,8 @@ export class LookState {
 	// an input whose key has no row shows no ?.
 	help = $state.raw<Record<string, string>>({});
 	asking = $state<ConfirmType>();
+	// The photos selected in one photo panel, to move, describe or delete together (#402).
+	readonly selection = new Selection();
 	// Each project's row, Team Assigned rows and trip's stops (#188) as the server last gave them (#186, mapper.ts):
 	// what a project whose panels have not loaded saves as, since only its status and percent change from the lists.
 	fromServer: Record<

@@ -43,7 +43,9 @@
 
 	const metrics = $derived(metricsOf(panel, look));
 	const tone = $derived(toneOf(metrics.status));
-	const isOpen = $derived(look.panelId === panel.id);
+	// #402: a shut photo panel a dragged selection rests on opens beside the open one (sortable.ts), until either
+	// header is tapped.
+	const isOpen = $derived(look.panelId === panel.id || look.selection.alsoOpen === panel.id);
 	const frozen = $derived(look.isFrozen ? look.project.status : undefined);
 	const isQuiet = $derived(
 		look.variant('panels') !== 'A' && !frozen && panel.isEnabled && metrics.status === 'To do'
@@ -93,7 +95,9 @@
 	}
 
 	function toggleOpen() {
-		look.panelId = isOpen ? '' : panel.id;
+		const wasAlso = look.selection.alsoOpen === panel.id;
+		look.selection.alsoOpen = '';
+		if (!wasAlso) look.panelId = isOpen ? '' : panel.id;
 	}
 
 	function toggleEnabled() {
@@ -143,8 +147,11 @@
 <div
 	class="relative transition-shadow duration-300 {shell} {panel.isEnabled
 		? ''
-		: 'opacity-75'} {isOver ? 'ring-2 ring-primary' : ''}"
+		: 'opacity-75'} {isOver
+		? 'ring-2 ring-primary'
+		: ''} data-[drop]:ring-2 data-[drop]:ring-primary"
 	data-sort="panels"
+	data-photo-card={panel.kind === 'photos' && !isOpen && !frozen ? panel.id : undefined}
 	data-index={index}
 	role="group"
 	aria-label={panel.name}

@@ -109,6 +109,7 @@
 		addPhotos,
 		ATTACHMENT_ACCEPT,
 		countLabelOf,
+		movePhotos,
 		filesLabelOf,
 		hasFiles,
 		movePhoto,
@@ -119,7 +120,7 @@
 	import { contactsOf } from './records.data';
 	import { stageNumbersOf } from './report-flow';
 	import { SAMPLE_LIST, toSampleDay, toSamplePhotos } from './samples';
-	import { sortable } from './sortable';
+	import { sortable, type PickType } from './sortable';
 	import { readFile, readText, toGrid, toSaved, toTable, type SkippedType } from './spreadsheet';
 	import { MARKED_LABELS, sectionsOf, valuesOf } from './tally';
 	import { focusInput, inputIn } from './focus';
@@ -529,6 +530,44 @@
 			openGroups = [...openGroups, id];
 		look.say(`${ATTACHMENT_NAMES[kind]} moved to ${target?.title || 'the other group'}`);
 		save();
+	}
+
+	// #402: several photos selected in this panel (selection.svelte.ts). Let go on a group, any stage of any open photo
+	// panel, they join it where they were dropped, or at its end, in the order they had, and are saved.
+	const selection = $derived(look.selection);
+	const isSelecting = $derived(selection.isIn(panel.id));
+
+	function dropSelection(id: string, to?: number) {
+		const photos = selection.photosIn(look.panels);
+		const target = look.panels.flatMap((item) => item.groups ?? []).find((item) => item.id === id);
+		if (!movePhotos(look.panels, selection.ids, id, to)) return;
+		if (panel.groups.some((item) => item.id === id) && !openGroups.includes(id))
+			openGroups = [...openGroups, id];
+		look.say(`${countLabelOf(photos)} moved to ${target?.title || 'the other group'}`);
+		selection.end();
+		save();
+	}
+
+	// The selected photos' tiles in this panel as it is drawn here (a panel is drawn twice, for the phone and the
+	// desk), in the order they sit.
+	function selectedTiles() {
+		return [...(root?.querySelectorAll<HTMLElement>('[data-photo-id]') ?? [])].filter((tile) =>
+			selection.has(tile.dataset.photoId)
+		);
+	}
+
+	function pickOf(group: PanelType['groups'][number]): PickType {
+		return {
+			isPicked: (index) => isSelecting && selection.has(group.photos[index]?.id),
+			tiles: selectedTiles,
+			onhold: (index) => {
+				const id = group.photos[index]?.id;
+				if (id) selection.hold(panel.id, id);
+			},
+			ondropmany: dropSelection,
+			onopen: (id) => (selection.alsoOpen = id),
+			onend: (until) => (selection.quietUntil = until)
+		};
 	}
 
 	const labelClass = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
@@ -1471,28 +1510,39 @@
 						)}
 						<div
 							class="grid grid-cols-3 gap-2"
-							{@attach sortable(`photos-${group.id}`, (from, to) => move(group.photos, from, to), {
-								name: PHOTO_ZONE,
-								items: 'photos-',
-								ondrop: (from, id, to) => dropPhoto(group, from, id, to)
-							})}
+							{@attach sortable(
+								`photos-${group.id}`,
+								(from, to) => move(group.photos, from, to),
+								{
+									name: PHOTO_ZONE,
+									items: 'photos-',
+									ondrop: (from, id, to) => dropPhoto(group, from, id, to)
+								},
+								pickOf(group)
+							)}
 						>
 							{#each group.photos as photo, photoIndex (photo.id)}
 								{@const upload = uploadOf(photo)}
+								{@const isPicked = isSelecting && selection.has(photo.id)}
 								<div
 									class="relative aspect-square rounded-xl transition {upload?.isFailed
 										? 'ring-2 ring-danger'
 										: ''}"
 									data-sort="photos-{group.id}"
 									data-index={photoIndex}
+									data-photo-panel={panel.id}
+									data-photo-id={photo.id}
 									animate:flip={{ duration: 200 }}
 								>
 									<button
 										type="button"
 										class="relative block size-full overflow-hidden rounded-xl bg-slate-100 select-none [-webkit-touch-callout:none]"
-										aria-label="Open photo {photoIndex + 1}"
+										aria-label="{isSelecting ? 'Select' : 'Open'} photo {photoIndex + 1}"
+										aria-pressed={isSelecting ? isPicked : undefined}
 										data-grip="photos-{group.id}"
-										onclick={() => {
+										onclick={(event) => {
+											// #402: while selecting, or with Ctrl, Cmd or Shift, a click selects instead of opening.
+											if (selection.tap(panel, photo.id, event)) return;
 											// Nothing to show in the pop-up until the server has converted it (#294).
 											if (!upload || upload.hasPreview) openPhoto(group, photo);
 										}}
@@ -1564,6 +1614,13 @@
 														: arrived}</span
 											>
 										{/if}
+										<!-- #402: a selected photo wears a blue border (UI glossary "Selection bar"). -->
+										{#if isPicked}
+											<span
+												class="pointer-events-none absolute inset-0 rounded-xl inset-ring-3 inset-ring-primary"
+												data-picked
+											></span>
+										{/if}
 									</button>
 									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. #294: while
 									     the server converts it, the mark says so. -->
@@ -1594,8 +1651,9 @@
 											><span class="icon-[mdi--alert] size-3.5"></span>Retry</button
 										>
 									{/if}
+									<!-- #402: while its panel is selecting, a photo's ⋮ goes: the Selection bar acts on them all. -->
 									<div
-										class="absolute top-1 right-1"
+										class="absolute top-1 right-1 {isSelecting ? 'hidden' : ''}"
 										data-no-drag
 									>
 										<Menu

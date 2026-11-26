@@ -110,6 +110,60 @@ export function movePhoto(
 	return true;
 }
 
+// #402: photos selected together (Justin on #287, 2026-11-24). Every photo group of the project's photo panels, and
+// the photos with these ids in the order they sit there: stage by stage, left to right.
+function groupsOf(panels: PanelType[]) {
+	return panels.flatMap((panel) => panel.groups ?? []);
+}
+
+function photosOf(panels: PanelType[], ids: readonly string[]) {
+	return groupsOf(panels).flatMap((group) =>
+		group.photos.filter((photo) => ids.includes(photo.id))
+	);
+}
+
+/**
+ * Moves the photos with these ids, from any groups, into one group (#402): in the order they sit, before the photo at
+ * place `to` there (counted as the group is now, so it may be one of them), or at its end. Says how many moved;
+ * none when no group has that id.
+ */
+export function movePhotos(panels: PanelType[], ids: readonly string[], toId: string, to?: number) {
+	const target = groupsOf(panels).find((group) => group.id === toId);
+	if (!target) return 0;
+	const moving = photosOf(panels, ids);
+	const place =
+		to === undefined
+			? undefined
+			: target.photos.slice(0, Math.max(to, 0)).filter((photo) => !ids.includes(photo.id)).length;
+	for (const group of groupsOf(panels)) takeOut(group, ids);
+	target.photos.splice(place ?? target.photos.length, 0, ...moving);
+	return moving.length;
+}
+
+/** Deletes the photos with these ids from their groups (#402), and says how many went. */
+export function deletePhotos(panels: PanelType[], ids: readonly string[]) {
+	let count = 0;
+	for (const group of groupsOf(panels)) count += takeOut(group, ids);
+	return count;
+}
+
+/** Gives the photos with these ids one description for all (#402), and says how many took it. */
+export function describePhotos(panels: PanelType[], ids: readonly string[], description: string) {
+	const photos = photosOf(panels, ids);
+	for (const photo of photos) photo.description = description.trim();
+	return photos.length;
+}
+
+function takeOut(group: GroupType, ids: readonly string[]) {
+	let count = 0;
+	for (let at = group.photos.length - 1; at >= 0; at -= 1) {
+		if (!ids.includes(group.photos[at].id)) continue;
+		group.photos.splice(at, 1);
+		count += 1;
+	}
+	return count;
+}
+
 export type AddPhotosType = {
 	/** The group they join; none is the panel's last group, or a first one made for them. */
 	group?: GroupType;

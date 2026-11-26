@@ -245,9 +245,11 @@ export function createComponent(props: Partial<ComponentProps> = {}): ComponentR
 	/* STYLES
 	:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: */
 	if (unstyled) {
+		// Unstyled is about the look only: a disabled button stays disabled (#402).
 		return {
 			class: userClass,
-			...rest
+			...rest,
+			...(disabled && !rest.href ? { disabled } : {})
 		};
 	} else {
 		/* STATES

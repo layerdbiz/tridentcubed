@@ -33,6 +33,7 @@
 	import { faceOf } from './marks';
 	import type { LookState } from './look.state.svelte';
 	import PanelList from './panel-list.svelte';
+	import PhotoSelection from './photo-selection.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ProjectPage from './project-page.svelte';
 	import RecentList from './recent-list.svelte';
@@ -89,6 +90,10 @@
 	}
 	const record = $derived(
 		look.record ? recordOf(look, look.record.page, look.record.key) : undefined
+	);
+
+	const isSelecting = $derived(
+		look.selection.isOn && look.screen === 'workspace' && look.tab === 'edit'
 	);
 
 	const CANVAS = 'bg-slate-100';
@@ -710,8 +715,19 @@
 		</div>
 	{/if}
 
-	<!-- The Organization has Page and Edit on the bar too. -->
-	<BarC
+	<!-- The Organization has Page and Edit on the bar too. While photos are selected (#402), the Selection bar takes
+	     its place. -->
+	<div
+		class="transition-opacity duration-150 {isSelecting ? 'pointer-events-none opacity-0' : ''}"
+		inert={isSelecting}
+	>
+		<BarC
+			{look}
+			{isWide}
+			left={barLeft()}
+		/>
+	</div>
+	<PhotoSelection
 		{look}
 		{isWide}
 		left={barLeft()}
