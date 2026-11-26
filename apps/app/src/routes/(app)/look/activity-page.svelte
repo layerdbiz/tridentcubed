@@ -45,7 +45,8 @@
 		{ id: 'grouped', label: 'Grouped', icon: 'icon-[mdi--format-list-group]' },
 		{ id: 'time', label: 'By Time', icon: 'icon-[mdi--clock-outline]' }
 	];
-	let view = $state('grouped');
+	// Raw, so the picked view stays the very object in VIEWS that the library Tabs compares it with.
+	let view = $state.raw(VIEWS[0]);
 
 	// The record pages a row's name opens, by its table.
 	const PAGES: Partial<Record<ChangeEventType['table'], PageType>> = {
@@ -485,11 +486,24 @@
 							<div class="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-1">
 								<h3 class="text-sm font-semibold text-slate-900">All Activity</h3>
 								<Tabs
+									class="inline-flex rounded-full bg-slate-900/[0.05] p-1"
 									label="Activity view"
-									tabs={VIEWS}
-									panel="activity-entries"
+									options={VIEWS}
 									bind:value={view}
-								/>
+								>
+									{#snippet option({ value: item, isOn, props })}
+										<button
+											{...props}
+											type="button"
+											class="flex h-8 items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition {isOn
+												? 'bg-white text-slate-900 shadow-sm'
+												: 'text-slate-500'}"
+											id="activity-view-{item.id}"
+											aria-controls="activity-entries"
+											><span class="{item.icon} size-4"></span>{item.label}</button
+										>
+									{/snippet}
+								</Tabs>
 							</div>
 							{#if found.events.length}
 								{@const events = [...found.events, ...older]}
@@ -497,9 +511,9 @@
 									class="space-y-4"
 									id="activity-entries"
 									role="tabpanel"
-									aria-label={view === 'grouped' ? 'Grouped' : 'By Time'}
+									aria-labelledby="activity-view-{view.id}"
 								>
-									{#if view === 'grouped'}
+									{#if view.id === 'grouped'}
 										{#each byDay(toRuns(events), (each) => each.to) as day (day.label)}
 											<div>
 												<h4
