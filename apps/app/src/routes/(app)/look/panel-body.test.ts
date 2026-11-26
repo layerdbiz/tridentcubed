@@ -443,3 +443,89 @@ describe('the Operations panel’s link on the library’s box', () => {
 		expect(screen.queryByRole('link', { name: 'Open the URL' })).toBeNull();
 	});
 });
+
+// #387: the Items rows and the Time Log entries on the library's compact field: no label on each box, named for
+// screen readers by the list's heading row, whose words carry the ?; typing, a pasted list and the clock as before.
+describe('the Items and Time Log rows on the library’s compact field', () => {
+	function showPanel(kind: 'items' | 'timelog', change: (panel: PanelType) => void) {
+		const panels = createPanels({ stops: [], team: [] } as unknown as ProjectType);
+		const panel = toState(panels.find((each) => each.kind === kind)!);
+		change(panel);
+		const say = vi.fn();
+		const look = Object.assign(lookOf(panel), {
+			helpOf: (key: string) => `Help for ${key}.`,
+			say
+		});
+		const view = render(PanelBody, { props: { look, panel } });
+		return { ...view, look, panel, say };
+	}
+
+	function compactOf(name: string) {
+		const input = fieldOf(name);
+		expect(input.classList).toContain('field-compact');
+		expect(input.closest('fieldset.field')).toBeNull();
+		return input;
+	}
+
+	const DAY = {
+		id: 'd1',
+		date: '2026-10-27',
+		entries: [
+			{ id: 'e1', time: '07:30', activity: 'Gangway rigged' },
+			{ id: 'e2', time: '', activity: '' }
+		]
+	};
+
+	it('names each item’s boxes by the heading row, whose words carry the ?', () => {
+		showPanel('items', (panel) => (panel.items = [itemOf(), itemOf()]));
+
+		compactOf('Quantity of item 1');
+		compactOf('Description of item 1');
+		compactOf('Quantity of item 2');
+		compactOf('Description of item 2');
+		expect(screen.getByRole('button', { name: 'What goes in Quantity?' })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'What goes in Description?' })).toBeTruthy();
+	});
+
+	it('saves an item as it is typed, and turns rows pasted into a box into the table', async () => {
+		const { panel, look, say } = showPanel('items', (panel) => (panel.items = [itemOf()]));
+
+		await fireEvent.input(compactOf('Quantity of item 1'), { target: { value: '2' } });
+		await fireEvent.input(compactOf('Description of item 1'), {
+			target: { value: 'Accessory crates' }
+		});
+		expect(panel.items[0]).toMatchObject({ quantity: '2', description: 'Accessory crates' });
+		expect(look.saved).toHaveBeenCalled();
+
+		await fireEvent.paste(compactOf('Description of item 1'), {
+			clipboardData: { getData: () => 'Qty\tDescription\n1\tPump skid\n2\tSpare parts' }
+		});
+		expect(panel.grid).toBeTruthy();
+		expect(say).toHaveBeenCalledWith('2 items added as a table');
+	});
+
+	it('names each entry’s boxes by the heading row, whose words carry the ?', () => {
+		showPanel('timelog', (panel) => (panel.days = [structuredClone(DAY)]));
+
+		expect(compactOf('Time of entry 1').value).toBe('07:30');
+		expect(compactOf('Activity of entry 1').value).toBe('Gangway rigged');
+		compactOf('Time of entry 2');
+		compactOf('Activity of entry 2');
+		expect(screen.getByRole('button', { name: 'What goes in Time?' })).toBeTruthy();
+		expect(screen.getByRole('button', { name: 'What goes in Activity?' })).toBeTruthy();
+	});
+
+	it('keeps a time on the 24-hour clock, sorts the day by it, and saves an activity as it is typed', async () => {
+		const { panel, look } = showPanel('timelog', (panel) => (panel.days = [structuredClone(DAY)]));
+
+		const time = compactOf('Time of entry 2');
+		await fireEvent.change(time, { target: { value: '615' } });
+		expect(panel.days[0].entries.map((entry) => entry.time)).toEqual(['06:15', '07:30']);
+
+		await fireEvent.input(compactOf('Activity of entry 1'), {
+			target: { value: 'Pilot on board' }
+		});
+		expect(panel.days[0].entries[0]).toMatchObject({ time: '06:15', activity: 'Pilot on board' });
+		expect(look.saved).toHaveBeenCalled();
+	});
+});

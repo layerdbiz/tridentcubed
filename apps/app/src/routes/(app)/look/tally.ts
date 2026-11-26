@@ -33,6 +33,7 @@ export const MARKED_LABELS = {
 	item: 'Item',
 	day: 'Day',
 	time: 'Time',
+	activity: 'Activity',
 	photos: 'Photos',
 	transportMode: 'Transport Mode'
 } as const;
@@ -250,7 +251,7 @@ export function sectionsOf(panel: PanelType, contacts: { id: string }[] = []): S
 				{ label: 'Date', value: day.date },
 				...day.entries.flatMap((entry) => [
 					{ label: MARKED_LABELS.time, value: entry.time },
-					{ label: 'Activity', value: entry.activity }
+					{ label: MARKED_LABELS.activity, value: entry.activity }
 				])
 			]
 		}));
