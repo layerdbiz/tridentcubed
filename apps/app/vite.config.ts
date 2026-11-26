@@ -2,6 +2,7 @@ import { existsSync, globSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createAppConfig } from '@layerd/config-vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
+import { readVersionLabel } from './src/lib/releases/releases.server.ts';
 
 const root = import.meta.dirname;
 
@@ -17,11 +18,13 @@ export default createAppConfig({
 	root,
 	// The commit and the branch this build is made from, as Vercel names them, for the new version window (#396):
 	// src/lib/releases/releases.constants.ts; and the deployment it is, so the service worker and the server can name
-	// it (#401): src/lib/update/update.constants.ts. Empty in a build anywhere else.
+	// it (#401): src/lib/update/update.constants.ts. Empty in a build anywhere else. The version comes from the
+	// release tags (#157): on Vercel the copy is readied first, elsewhere it is read as it is.
 	define: {
 		__BUILD_COMMIT__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA ?? ''),
 		__BUILD_BRANCH__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_REF ?? ''),
-		__DEPLOYMENT_ID__: JSON.stringify(process.env.VERCEL_DEPLOYMENT_ID ?? '')
+		__DEPLOYMENT_ID__: JSON.stringify(process.env.VERCEL_DEPLOYMENT_ID ?? ''),
+		__APP_VERSION__: JSON.stringify(readVersionLabel())
 	},
 	// The service worker shows the Needs Internet screen at whatever address was asked for (#201), so its links to
 	// the app's styles start at the root, not beside the page.

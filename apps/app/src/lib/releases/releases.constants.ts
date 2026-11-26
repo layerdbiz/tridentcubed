@@ -1,13 +1,9 @@
-// The releases (#157), newest first, as scripts/release.ts writes them after each merge into dev, and what What's New
-// (#363, #396, #399) knows of this build. Vercel names the commit and the branch a build is made from;
-// apps/app/vite.config.ts writes them in, and a build anywhere else leaves them empty.
-import data from './releases.json';
-import type { ReleaseType } from './releases.utils';
+// What What's New (#363, #396, #399, #400) knows of this build. Vercel names the commit and the branch a build is
+// made from, and the build reads its version from the release tags (#157, releases.server.ts); apps/app/vite.config.ts
+// writes them in, and a build anywhere else leaves them empty.
 
-export const RELEASES = data as ReleaseType[];
-
-/** The app's version as people read it, from the newest release's tag: v1.1.0. */
-export const VERSION_LABEL = RELEASES[0] ? `v${RELEASES[0].version}` : 'Not released yet';
+/** The app's version as people read it, from the release tags: v1.1.0, or v1.2.0-next.4 on next. */
+export const VERSION_LABEL = __APP_VERSION__ || 'Not released yet';
 
 /** The commit this build was made from; empty outside Vercel. */
 export const BUILD_COMMIT = __BUILD_COMMIT__;
