@@ -21,18 +21,27 @@ What runs today works; change is welcome only when proven by running
 **Workspace launcher.** `pnpm dev|watch|build|preview` at the root call
 `bin/workspace.js`. It reads the root `package.json` `apps` map, keeps the apps
 set to `true`, validates them against `apps/*/package.json` names, and spawns
-Turbo from `node_modules`. Positional app names on the command line override the
-map; anything after `--` passes through to Turbo. The map is a developer
+Vite+'s task runner (`vp run`, the `vp` bin of `vite-plus`). Positional app names
+on the command line override the map; anything after `--` passes through to
+`vp run` as its options. The map is a developer
 convenience for "which apps start when I type `pnpm dev`". It never limits what
 the generators touch.
 
-**Turbo graph.** `build` depends on `//#barrels` (root script, workspace-mode
-barrels) and `^build`. `dev` and `watch` run `//#barrels:watch` beside each
-app's `dev`; `watch` is an alias of `dev` since the stories generator left
-(#100). See `turbo.json` for the task list.
-A persistent task (`dev`, `barrels:watch`) is never listed in another task's
-`dependsOn`: Turbo would wait for it forever. Run it beside the other task
-instead, as `dev` does (carried from the retired Copilot instructions on #16).
+**Task graph (`vp run`, #369).** Each app's `workspace:build`, from
+`createAppConfig` in `packages/config/vite`, depends on `tridentcubed#barrels`
+(the root `barrels` script, workspace-mode barrels) and is cached: a second
+`pnpm build` with nothing changed puts back the app's `.svelte-kit/output` and
+`.vercel/output` in about 2 s. No UI package build comes first (invariant 6).
+`dev` and `watch` run the root's `workspace:dev` (the barrels watcher, in the
+root `vite.config.ts`) beside each app's `workspace:dev` (`vp dev --host
+--open`); `preview` runs each app's `workspace:preview`; `watch` is an alias of
+`dev` since the stories generator left (#100). The tasks are named apart from
+the package.json scripts because `vp run` will not let a task share a script's
+name, and Vercel and CI run the apps' own `pnpm build` script.
+A never-ending task (a dev server, the barrels watcher) is never listed in
+another task's `dependsOn`: the runner would wait for it forever. Run it beside
+the other task with `vp run --parallel` instead, as `dev` does (carried from
+the retired Copilot instructions on #16).
 
 **Barrels.** Eleven committed `index.ts` files: five UI targets from
 `src/config.ts` plus one per app that has `src/lib`. The UI root barrel is the
@@ -91,7 +100,9 @@ reference, edited nowhere: it carries the note "moved to code on 2026-10-05"
   package `build` lists in `dependsOn`, and a persistent watch run beside
   `vp dev` with `vp run --parallel`, both work with the untouched generator.
   Vite Task loads every package's Vite config to build its task graph; the
-  frozen Kit 2 config that stopped it is archived (#100). Turbo stays.
+  frozen Kit 2 config that stopped it is archived (#100). Adopted on #369, once
+  the shared factory, which stopped it again as `vite.config.ts`, became
+  `packages/config/vite/config.ts`.
 
 ## Verified by running (2026-10-05, #101, cloud container on Node 22.22, below the 24.x floor; Vercel builds on 24)
 
@@ -104,14 +115,30 @@ reference, edited nowhere: it carries the note "moved to code on 2026-10-05"
   imports the factory as a workspace package and Node strips its types; no
   bundling step is involved.
 
+## Verified by running (2026-11-26, #369, cloud container, Node 24, pnpm 12, Vite+ 1.8.0)
+
+- `pnpm build app`: 34 s, then a cache hit in 2.3 s ("31.75s saved"); with
+  `.vercel/output` and `.svelte-kit/output` deleted, the hit put both back; an
+  edit to `src/app.html` rebuilt it. `pnpm build site play overview`: 30 s, then
+  3 of 3 cache hits in 2.7 s.
+- `pnpm dev` started the barrels watcher and `play` with `--host`; a new file in
+  `apps/play/src/lib` entered its barrel and left it again on delete. Before
+  #369 the watcher was handed `apps/*/src/lib`, a glob chokidar 4 and later do
+  not read, so app barrels never followed an edit; it now watches each app's
+  lib folder by name. Its lock files moved to `node_modules/.cache/barrels-locks`.
+- `pnpm preview app` served the app's sign-in page. `pnpm barrels` gave no diff.
+
 ## Vercel
 
-Two projects, `tridentcubed` (site) and `tridentcubed-app` (app), both on
-Node 24.x through the `engines` field, both deploy every push to `dev`. Root directory is `apps/site` or
-`apps/app`; build command `pnpm build` in that directory, which is the app's
-own `vp build`; install command `pnpm install`; "include files outside the
-root directory" on. Vercel therefore never runs Turbo, the barrels generator or
-the UI package build. Committed barrels are the only barrels Vercel sees.
+Four projects, all on Node 24.x through the `engines` field. Root directory is
+`apps/site` or `apps/app`. The dev projects (`tridentcubed-dev`,
+`tridentcubed-dev-app`) build `dev`, and the app's also `next`; the production
+ones (`tridentcubed`, `tridentcubed-app`) build `main`. Build command `pnpm build`
+in that directory, which is the app's own `vp build`, set in each app's
+`vercel.json` since #367; install command `pnpm install`; "include files outside
+the root directory" on. Vercel therefore never runs `vp run`, the barrels
+generator or the UI package build. Committed barrels are the only barrels Vercel
+sees.
 
 ## Invariants for "Settle the toolchain"
 
@@ -122,25 +149,28 @@ Decided 2026-09-19 on that ticket; the decision lives in its resolution
 comment, not here. It keeps all thirteen. Invariants 1 and 7 are gate steps
 on every upgrade PR; 3 is met by ignoring generated paths in the formatter
 config; 4 is met by an `engines` field of `24.x` in the root and every app
-plus the adapter runtime `nodejs24.x`; 5 is why Turborepo stays the
-orchestrator and Vite Task is not adopted.
+plus the adapter runtime `nodejs24.x`; 5 is met by Vite Task (`vp run`) since
+#369.
 
 1. **Generated files are committed and current.** Barrels live in
    git. Vercel trusts them. Proof for any toolchain change: on a clean checkout
    run `pnpm barrels`; `git status` shows no diff.
 2. **The barrels generator is not modified by a toolchain ticket.** Node,
-   TypeScript, pnpm and Turbo changes are proven by invariant 1 plus `pnpm dev`,
-   `pnpm build` and `pnpm preview`, all inspected by eye.
+   TypeScript, pnpm and Vite+ changes are proven by invariant 1 plus `pnpm dev`,
+   `pnpm build` and `pnpm preview`, all inspected by eye. #369 changed only
+   where it keeps its lock files and which folders it watches, proven the same
+   way.
 3. **Barrel output is byte-stable.** No formatter rewrites any generated
    `index.ts`. If a formatter is adopted, either ignore
    those paths or prove it is a no-op on them.
 4. **Tools run from source on Node 24 LTS.** Type stripping and
    `erasableSyntaxOnly` are the mechanism. Target: an `engines` field and both
    Vercel projects on 24.x.
-5. **A root task can precede package builds.** `//#barrels` before every
-   `build`, and a persistent, interruptible `//#barrels:watch` beside `dev`.
-   Any task runner that replaces Turbo must express both, and the workspace
-   launcher must be rewritten to spawn it (it resolves `turbo/bin/turbo`).
+5. **A root task can precede package builds.** The root `barrels` before
+   every app's `workspace:build`, and the never-ending barrels watcher beside
+   each app's dev server (`vp run --parallel`). Any task runner that replaces
+   Vite Task must express both, and the workspace launcher must be rewritten to
+   spawn it (it resolves the `vp` bin of `vite-plus`).
 6. **Apps consume UI source.** Every app aliases `@layerd/ui` to
    `packages/ui/src/lib`. The alias lives in one place, the `createAppConfig`
    factory in `packages/config/vite` (#101). The UI `dist` is not on the app
@@ -182,7 +212,7 @@ Cleaned up on ticket [#23](https://github.com/layerdbiz/tridentcubed/issues/23)
 (2026-10-05), proven by `pnpm barrels` with zero diff, then `pnpm build`,
 `pnpm dev` and `pnpm preview` inspected by eye. None of them ran.
 
-- `barrel` task in `turbo.json`: no package defined a `barrel` script.
+- `barrel` task in the old task list: no package defined a `barrel` script.
 - `src/generators/types.ts`, a stub, with its `types` bin, export and script.
 - `src/main.ts`, a second command router. `bin/stories.js` was its only
   importer, and importing it ran the barrels generator as a side effect

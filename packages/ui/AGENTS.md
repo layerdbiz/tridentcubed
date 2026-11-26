@@ -42,7 +42,7 @@ the module singletons in `observe` and `scroll`, five rune-free
 in place of the base component (kept from the app on #297: the same look,
 and a list of rows with a ⋮ each stays as fast as before), the toast's
 slate and amber shades (kept from the app's PDF download toast on #293),
-the select's slate shades and its `inputClass` (its `variant="soft"` look
+the select's slate shades (its `variant="soft"` look
 with its own box, and the typed list and choice marks the notched field
 shares with it: kept from the app's picker and place field on #298, the
 app's panel look until #57), the switch's slate off track (kept from the

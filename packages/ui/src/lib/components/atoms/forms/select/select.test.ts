@@ -640,12 +640,6 @@ describe('a lookup', () => {
 		).toBe('true');
 	});
 
-	it("takes its form's own input look when given one", () => {
-		const { input } = typeIn({ inputClass: 'boxed' });
-		expect(input.classList.contains('boxed')).toBe(true);
-		expect(input.classList.contains('bg-slate-900/[0.04]')).toBe(false);
-	});
-
 	it('wears an amber dot while it is empty and required, and never stops a form being sent', async () => {
 		const { rerender, input } = typeIn({ required: true });
 		expect(screen.getByTitle('Not filled in yet')).toBeTruthy();
