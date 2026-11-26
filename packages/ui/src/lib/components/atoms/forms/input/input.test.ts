@@ -198,4 +198,33 @@ describe('Input', () => {
 		expect(input.hasAttribute('aria-invalid')).toBe(false);
 		expect(input.hasAttribute('aria-describedby')).toBe(false);
 	});
+
+	// A form that names its own fields, such as a remote form's `fields.email.as('email')`, hands its attributes to the
+	// field itself (#391): put on the frame, they would name nothing the form sends.
+	it('hands named attributes to its field, not its frame, and keeps its own value and typing', async () => {
+		render(Input, {
+			props: {
+				label: 'Email',
+				value: '',
+				input: {
+					name: 'email/sign-in',
+					type: 'email',
+					autocomplete: 'username',
+					'data-form': 'sign-in',
+					value: 'from the form'
+				}
+			}
+		});
+
+		const field = screen.getByRole('textbox', { name: 'Email' }) as HTMLInputElement;
+		expect(field.getAttribute('name')).toBe('email/sign-in');
+		expect(field.getAttribute('type')).toBe('email');
+		expect(field.getAttribute('autocomplete')).toBe('username');
+		expect(field.dataset.form).toBe('sign-in');
+		expect(fieldsetOf(field).hasAttribute('data-form')).toBe(false);
+		expect(field.value).toBe('');
+
+		await fireEvent.input(field, { target: { value: 'ann@example.com' } });
+		expect(fieldsetOf(field).classList.contains('field-filled')).toBe(true);
+	});
 });
