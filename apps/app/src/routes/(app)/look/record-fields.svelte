@@ -53,6 +53,7 @@
 		tel: { inputmode: 'tel' },
 		url: { inputmode: 'url', autocapitalize: 'off', spellcheck: false }
 	} as const;
+	type InputKindType = 'text' | keyof typeof KEYBOARDS;
 	const CARD = 'space-y-4 rounded-3xl bg-white p-4 ring-1 ring-slate-900/[0.05]';
 	const HEADING = 'text-sm font-semibold text-slate-900';
 	const ROLES: TeamMemberType['role'][] = ['admin', 'manager', 'team'];
@@ -91,15 +92,26 @@
 		queueMicrotask(() => node.querySelector('input')?.focus());
 	}
 
-	// The Name is left: the record takes the name typed. Turned down, the field shows the record's own name again.
+	// The Name is left: the record takes the name typed. Turned down, the field shows the record's own name again. A
+	// customer whose Short Code is still the one made from its name, and that no project uses yet, takes the code of
+	// its new name (a + makes "New Customer", code NEW); once a project uses it, its project numbers keep their code.
 	function rename() {
 		const name = typedName;
 		typedName = undefined;
-		if (name !== undefined) onname?.(name);
+		if (name === undefined || !onname) return;
+		const isFollowing =
+			customer?.code === toCode(customer?.name ?? '') &&
+			!look.projects.some((project) => project.client === customer?.name);
+		if (onname(name) && isFollowing) set({ code: toCode(name) });
 	}
 
-	function keyboardOf(type: string) {
-		return type in KEYBOARDS ? KEYBOARDS[type as keyof typeof KEYBOARDS] : TYPING;
+	function keyboardOf(type: InputKindType) {
+		return type === 'text' ? TYPING : KEYBOARDS[type];
+	}
+
+	// What an input holds, as text: the library's Input may hand back no value at all.
+	function toText(value: unknown) {
+		return String(value ?? '');
 	}
 
 	function leaveOnEnter(event: KeyboardEvent) {
@@ -108,7 +120,7 @@
 
 	function keepCode(text: unknown) {
 		set({
-			code: String(text ?? '')
+			code: toText(text)
 				.replace(/[^a-z0-9]/gi, '')
 				.toUpperCase()
 		});
@@ -137,13 +149,13 @@
 	key: string,
 	current: string,
 	oninput: (text: string) => void,
-	type = 'text'
+	type: InputKindType = 'text'
 )}
 	<Input
 		{label}
 		{type}
 		{...keyboardOf(type)}
-		bind:value={() => current, (text) => oninput(String(text ?? ''))}
+		bind:value={() => current, (text) => oninput(toText(text))}
 		help={look.helpOf(key)}
 	/>
 {/snippet}
@@ -189,7 +201,7 @@
 				<Input
 					label="Name"
 					{...TYPING}
-					bind:value={() => value.name, (name) => set({ name: String(name ?? '') })}
+					bind:value={() => value.name, (name) => set({ name: toText(name) })}
 					help={look.helpOf(`${record}.name`)}
 				/>
 			</div>
@@ -197,8 +209,9 @@
 			<Input
 				label="Name"
 				{...TYPING}
-				bind:value={() => typedName ?? value.name, (name) => (typedName = String(name ?? ''))}
+				bind:value={() => typedName ?? value.name, (name) => (typedName = toText(name))}
 				onchange={rename}
+				onfocusout={() => (typedName = undefined)}
 				onkeydown={leaveOnEnter}
 				help={look.helpOf(`${record}.name`)}
 			/>

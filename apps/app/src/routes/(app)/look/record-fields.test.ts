@@ -61,6 +61,7 @@ const FACILITY: FacilityType = {
 function lookOf() {
 	return {
 		isAdmin: true,
+		projects: [{ client: 'Busy Lines' }],
 		places: [],
 		placeOf: () => undefined,
 		keepPlace: vi.fn(),
@@ -140,7 +141,7 @@ describe('the record forms', () => {
 		}
 	);
 
-	it('puts each input’s ? on its border, with its Help text', async () => {
+	it('puts each input’s ? on its border, with its Help text', () => {
 		show('customers', CUSTOMER);
 
 		for (const name of ['Name', 'Short Code', 'Type', 'Location', 'Email', 'Phone', 'Website'])
@@ -181,6 +182,37 @@ describe('the record forms', () => {
 
 			await fireEvent.change(name);
 			expect(onname).toHaveBeenCalledWith('Gulf Lines Ltd');
+		});
+
+		it('gives a renamed customer the code of its new name while its code is the made one and no project uses it', async () => {
+			const onname = vi.fn(() => true);
+			const { set } = show(
+				'customers',
+				{ ...CUSTOMER, name: 'New Customer', code: 'NEW' },
+				{ onname }
+			);
+			const [name] = screen.getAllByRole('textbox', { name: 'Name' });
+
+			await fireEvent.input(name, { target: { value: 'Blue Water' } });
+			await fireEvent.change(name);
+
+			expect(set).toHaveBeenLastCalledWith({ code: 'BLU' });
+		});
+
+		it('keeps the code of a renamed customer when it was typed, or a project uses it', async () => {
+			const onname = vi.fn(() => true);
+			const typed = show('customers', { ...CUSTOMER, code: 'GLX' }, { onname });
+			const [name] = screen.getAllByRole('textbox', { name: 'Name' });
+			await fireEvent.input(name, { target: { value: 'Blue Water' } });
+			await fireEvent.change(name);
+			expect(typed.set).not.toHaveBeenCalled();
+			typed.unmount();
+
+			const used = show('customers', { ...CUSTOMER, name: 'Busy Lines', code: 'BUS' }, { onname });
+			const [busy] = screen.getAllByRole('textbox', { name: 'Name' });
+			await fireEvent.input(busy, { target: { value: 'Blue Water' } });
+			await fireEvent.change(busy);
+			expect(used.set).not.toHaveBeenCalled();
 		});
 
 		it('leaves the Name on Enter', async () => {
