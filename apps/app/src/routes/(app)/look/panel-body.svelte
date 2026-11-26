@@ -1,7 +1,7 @@
 <script lang="ts">
 	// PROTOTYPE (#161): the inputs inside one panel, by kind: project, transport, items, time log or photo groups.
 	// Everything is live: typing moves the panel's count, its bar, the project's bar and the preview. The Project panel is
-	// its fields with the Team after Customer; its drop-downs offer "Add new", a quick sheet (note 26). The Transport panel
+	// its fields with the Team after Customer; its drop-downs offer "Add new" (note 26), the + sheet. The Transport panel
 	// (Justin, 2026-10-25) is the trip, one stop per place in trip order: its point (Start, Stop, End, each with its
 	// colour), Transport type, Transport mode, the transport from the organization's list, and the facility, whose list
 	// puts the kind that suits the transport type first. Stops, photo groups and time log days are the same Group, with
@@ -50,7 +50,6 @@
 	import { flip } from 'svelte/animate';
 	import { Generated, Help, Input, Menu, Select, Textarea } from '@layerd/ui';
 	import Photo from '#lib/components/photo/photo.svelte';
-	import BottomSheet from '#lib/components/sheet/sheet.svelte';
 	import Avatar from './avatar.svelte';
 	import ClientLogo from './client-logo.svelte';
 	import Group from './group.svelte';
@@ -75,7 +74,6 @@
 		createdDayOf,
 		createId,
 		dropUntyped,
-		FACILITY_ICONS,
 		groupWordOf,
 		isPdfAttachment,
 		itemOf,
@@ -88,7 +86,6 @@
 		projectNumberOf,
 		todayIso,
 		type AttachmentType,
-		type FacilityKindType,
 		type PanelType,
 		type PhotoType
 	} from './look.data';
@@ -402,26 +399,6 @@
 				save();
 			}
 		});
-	}
-
-	// "Add new" in a drop-down: the quick sheet adds the name to its list and picks it. A new facility also asks its
-	// kind; a new transport takes the stop's type and mode.
-	type AskType = { label: string; kinds?: FacilityKindType[]; onadd: (name: string) => void };
-	let asking = $state<AskType>();
-	let draft = $state('');
-	let draftKind = $state<FacilityKindType>('Port');
-
-	function ask(asked: AskType) {
-		draft = '';
-		draftKind = asked.kinds?.[0] ?? 'Port';
-		asking = asked;
-	}
-
-	function add() {
-		if (!asking || !draft.trim()) return;
-		asking.onadd(draft.trim());
-		asking = undefined;
-		save();
 	}
 
 	function addDay() {
@@ -802,13 +779,6 @@
 			{/each}
 		</div>
 	</div>
-{/snippet}
-
-{#snippet unpicked(isShown: boolean)}
-	{#if isShown}<span
-			class="size-1.5 rounded-full bg-warning"
-			title="Not picked yet"
-		></span>{/if}
 {/snippet}
 
 <fieldset
@@ -1711,57 +1681,6 @@
 		>
 	{/if}
 </fieldset>
-
-{#if asking}
-	{@const noun = asking.label}
-	<BottomSheet
-		label="Add a new {noun}"
-		onclose={() => (asking = undefined)}
-	>
-		<form
-			onsubmit={(event) => {
-				event.preventDefault();
-				add();
-			}}
-		>
-			<b class="block text-lg text-slate-900">New {noun}</b>
-			<p class="text-sm text-slate-500">
-				Added here and to the {asking.kinds ? 'Facilities' : noun} list, without leaving the project.
-			</p>
-			<label class="mt-4 block">
-				<span class={labelClass}>Name</span>
-				<!-- svelte-ignore a11y_autofocus -->
-				<input
-					class={inputClass}
-					bind:value={draft}
-					placeholder="{asking.label} name"
-					autofocus
-				/>
-			</label>
-			{#if asking.kinds}
-				<p class="{labelClass} mt-3">Facility Kind</p>
-				<div class="grid grid-cols-2 gap-1.5">
-					{#each asking.kinds as kind (kind)}
-						<button
-							type="button"
-							class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition {draftKind ===
-							kind
-								? 'bg-primary text-white shadow-md shadow-primary/25'
-								: 'bg-slate-900/[0.04] text-slate-600 hover:bg-primary/10'}"
-							aria-pressed={draftKind === kind}
-							onclick={() => (draftKind = kind)}
-							><span class="{FACILITY_ICONS[kind]} size-[18px]"></span>{kind}</button
-						>
-					{/each}
-				</div>
-			{/if}
-			<button
-				class="mt-5 w-full rounded-full bg-primary py-3 text-sm font-semibold text-white disabled:opacity-40"
-				disabled={!draft.trim()}>Add {noun}</button
-			>
-		</form>
-	</BottomSheet>
-{/if}
 
 {#if opened}
 	<PhotoPopup

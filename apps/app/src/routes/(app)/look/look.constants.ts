@@ -2,8 +2,10 @@
 // letters with its prototype selector; V1 (#180) ships without the selector, and each part shows the letter that
 // was its default there (the newest, or the one he picked). The code of the other letters is still in the parts
 // that read `look.variant(id)` and goes with the UI cleanup after sign-in and the database (spec #179, out of scope).
+// #372 took out the first of them: the bottom bar is always E (variants/bar-c.svelte), the report cover always C
+// (variants/cover-c.svelte), and the Project Report, Transport Mode and Disclaimer pages always the B that flows
+// over pages, so those parts are no longer listed here.
 export const LOOKS: Record<string, string> = {
-	bar: 'E',
 	sidebar: 'B',
 	login: 'A',
 	add: 'C',
@@ -32,12 +34,8 @@ export const LOOKS: Record<string, string> = {
 	'panel-timelog': 'A',
 	'panel-photos': 'A',
 	'record-form': 'A',
-	cover: 'C',
-	report: 'B',
-	'report-transport': 'B',
 	'report-timelog': 'A',
 	'report-photos': 'A',
-	disclaimer: 'B',
 	zoom: 'A',
 	settings: 'A'
 };

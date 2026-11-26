@@ -8,7 +8,7 @@
 	// 2026-10-26 16:34: the list sits in a sheet whose top drags down to grow the chart (like Airbnb's map and list);
 	// the phone menu pulls out from the left edge and pushes back the same way; the desktop sidebar's right edge drags
 	// it narrower, down to the icons alone, or wider, up to a limit. Run 11 (2026-10-26 19:22): one floating bar at the
-	// bottom for the pages, the + and, in a project, Panels and Preview (nav-bar.svelte); a finger swipes the list
+	// bottom for the pages, the + and, in a project, Panels and Preview (variants/bar-c.svelte); a finger swipes the list
 	// sideways to the next page; the sheet has rounder corners and a deep shadow that falls under the cards. Run 12
 	// (2026-11-07): the list's four menus stay put over the sheet while a swipe slides the title and the list, and the
 	// coming page fades in as it slides (notes 2 and 3); a customer, team member, transport or facility opens its own
@@ -31,7 +31,6 @@
 	import { PAGES } from './look.data';
 	import { PIN_SIZES, type ClosenessType } from './map.utils';
 	import type { LookState } from './look.state.svelte';
-	import NavBar from './nav-bar.svelte';
 	import PanelList from './panel-list.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ProjectPage from './project-page.svelte';
@@ -39,7 +38,6 @@
 	import RecordPage from './record-page.svelte';
 	import SearchPopup from './search-popup.svelte';
 	import SettingsPage from './settings-page.svelte';
-	import BarB from './variants/bar-b.svelte';
 	import BarC from './variants/bar-c.svelte';
 	import { recordOf } from './records.data';
 	import ReportPreview from './report-preview.svelte';
@@ -710,44 +708,22 @@
 		</div>
 	{/if}
 
-	<!-- The Organization has Page and Edit on the bar too, in the bars that know it (C, D, E). -->
-	{#if look.screen !== 'settings' || !['A', 'B'].includes(look.variant('bar'))}
-		{#if look.variant('bar') === 'B'}
-			<BarB
-				{look}
-				{isWide}
-				left={barLeft()}
-			/>
-		{:else if look.variant('bar') !== 'A'}
-			<BarC
-				{look}
-				{isWide}
-				left={barLeft()}
-				isBig={look.variant('bar') === 'E'}
-			/>
-		{:else}
-			<NavBar
-				{look}
-				{isWide}
-				left={barLeft()}
-			/>
-		{/if}
-	{/if}
+	<!-- The Organization has Page and Edit on the bar too. -->
+	<BarC
+		{look}
+		{isWide}
+		left={barLeft()}
+	/>
 	<!-- Run 14 (note 11): a desktop dashboard has no floating bar (the sidebar has the pages), so its + floats on its
 	     own at the bottom right. -->
 	{#if isWide && look.screen === 'dashboard'}
 		<button
-			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex h-14 items-center justify-center rounded-full bg-primary text-white transition hover:brightness-110 {look.variant(
-				'bar'
-			) !== 'A'
-				? 'gap-1.5 pr-6 pl-4 font-semibold text-base'
-				: 'w-14 shadow-lg shadow-primary/40'}"
+			class="fixed right-[max(1.5rem,env(safe-area-inset-right))] bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[55] flex h-14 items-center justify-center gap-1.5 rounded-full bg-primary pr-6 pl-4 font-semibold text-base text-white transition hover:brightness-110"
 			aria-label="Add"
 			title="Add a Project, Customer, Team, Transport Mode or Facility"
 			onclick={() => (look.adding = look.dataset)}
 			transition:scale={{ start: 0.8, duration: 160 }}
-			><span class="icon-[mdi--plus] size-8"
-			></span>{#if look.variant('bar') !== 'A'}Add{/if}</button
+			><span class="icon-[mdi--plus] size-8"></span>Add</button
 		>
 	{/if}
 	<AddSheet {look} />
