@@ -99,6 +99,47 @@ describe('Accordion', () => {
 		expect(ondelete).toHaveBeenCalledOnce();
 	});
 
+	it('wears the look it is given from outside, as the Button does', () => {
+		const { container } = show({ lite: true, neutral: true, size: 'sm', class: 'rounded-box' });
+		const box = container.querySelector('.accordion')!;
+
+		expect(box.classList).toContain('theme-lite-neutral');
+		expect(box.classList).toContain('sm');
+		expect(box.classList).toContain('rounded-box');
+		expect(box.contains(headerOf())).toBe(true);
+	});
+
+	it('is a bare section until a look is given: no theme and no colour of its own', () => {
+		const { container } = show({ open: true, ondelete: () => {} });
+
+		expect(container.querySelector('.accordion')!.className).not.toMatch(/theme-|bg-/);
+		expect(container.innerHTML).not.toMatch(/slate|gray|zinc|bg-white/);
+	});
+
+	it('shows its label in the header when no head is given', () => {
+		render(Accordion, { props: { label: 'Questions', children: inside } });
+
+		expect(headerOf().textContent).toContain('Questions');
+	});
+
+	it('takes the chevron it is given, and turns it over while open', async () => {
+		const { container } = show({ icon: 'icon-[mdi--plus] text-primary' });
+		const chevron = () => container.querySelector('.accordion-chevron')!;
+
+		expect(chevron().classList).toContain('icon-[mdi--plus]');
+		expect(chevron().classList).toContain('text-primary');
+		await fireEvent.click(headerOf());
+		expect(chevron().classList).toContain('rotate-180');
+	});
+
+	it('deletes with the library Button, whose look is set through deleteButton', () => {
+		show({ open: true, ondelete: () => {}, deleteButton: { outline: true } });
+		const remove = screen.getByRole('button', { name: 'Delete' });
+
+		expect(remove.classList).toContain('btn');
+		expect(remove.classList).toContain('theme-outline-base');
+	});
+
 	it('sets no rule for the whole page, whose height animation it once switched on (#371)', () => {
 		const source = readFileSync(join(import.meta.dirname, 'accordion.svelte'), 'utf8');
 		const style = source.includes('<style') ? source.slice(source.indexOf('<style')) : '';
