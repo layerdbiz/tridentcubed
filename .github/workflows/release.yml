@@ -1,0 +1,70 @@
+# Makes a release after each merge into dev (#157): the team works on dev.app, so what lands on dev is what they
+# get. The version comes from the commit titles since the last release (apps/app/scripts/release.ts holds the rule):
+# any breaking change is major, else any ✨ feat is minor, else any 🐛 fix or ⚡ perf is patch; with none of those,
+# there is no release. A release is three things, all made here:
+# - a commit on dev, `🔧 chore(repo): release v1.1.0`, that puts the release at the top of
+#   apps/app/src/lib/releases/releases.json, which the app shows as its version and in What's New (#363);
+# - the tag v1.1.0 on that commit;
+# - the GitHub release v1.1.0, its notes listing the new features and the fixes.
+# The commit is pushed with the workflow's own token, so it starts no other workflow; Vercel builds it like any push.
+#
+# The first release waits for a hand run: while no v* tag exists, a merge into dev makes nothing. Run this workflow
+# by hand (Actions → release → Run workflow, or `gh api -X POST repos/<owner>/<repo>/actions/workflows/release.yml/dispatches -f ref=dev`)
+# to make v1.0.0; `since` lists the changes after a commit, tag or day in it. After that, every merge makes its own.
+#
+# Easy to swap: the rule is one script with tests, and this file only commits, tags and publishes what it wrote.
+name: release
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      since:
+        description: First release only, list the changes after this commit, tag or day (2026-11-20)
+        required: false
+        type: string
+
+# One release at a time, never cancelled half way: a second merge waits and then releases what is left.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: package.json
+      - name: Work out the release
+        id: plan
+        env:
+          FIRST: ${{ github.event_name == 'workflow_dispatch' && '--first' || '' }}
+          SINCE: ${{ inputs.since }}
+        run: node apps/app/scripts/release.ts $FIRST ${SINCE:+--since "$SINCE"} --notes "$RUNNER_TEMP/notes.md"
+      - name: Commit, tag and publish it
+        if: steps.plan.outputs.version != ''
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/app/src/lib/releases/releases.json
+          git commit -m "🔧 chore(repo): release v$VERSION"
+          git tag -a "v$VERSION" -m "v$VERSION"
+          # Dev moved on while this ran: the run its push started releases all of it, this one's commits too.
+          if ! git push --atomic origin HEAD:dev "v$VERSION"; then
+            echo "dev moved on; the next run makes this release."
+            exit 0
+          fi
+          gh release create "v$VERSION" --title "v$VERSION" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
