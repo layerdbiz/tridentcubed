@@ -32,7 +32,8 @@ function boxOf() {
 }
 
 // Where the button sits on the page, and how big the box is once it shows. jsdom lays nothing out, so every element
-// answers with this one button's place, and the box with its width and the height of all it holds.
+// answers with this one button's place, and the box with the height of all it holds and its width, which, as in a
+// browser, a fixed box with no room left before the screen's right edge is squeezed to.
 function place(
 	button: { top: number; left: number; width: number; height: number },
 	box = { width: 288, tall: 400 }
@@ -48,7 +49,12 @@ function place(
 		...rect,
 		toJSON: () => rect
 	} as DOMRect);
-	vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(box.width);
+	vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (
+		this: HTMLElement
+	) {
+		const left = Number.parseFloat(this.style.left) || 0;
+		return Math.max(0, Math.min(box.width, innerWidth - left));
+	});
 	vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(box.tall);
 }
 
@@ -140,6 +146,16 @@ describe('where the box goes', () => {
 		expect(style).toContain('top: 68px');
 	});
 
+	it('is measured where nothing squeezes it, so a box near the right edge keeps its own width', async () => {
+		place({ top: 20, left: innerWidth - 60, width: 40, height: 40 });
+		show();
+		await open();
+
+		const style = boxOf()?.getAttribute('style') ?? '';
+		expect(style).toContain(`left: ${innerWidth - 20 - 288}px`);
+		expect(style).not.toContain('visibility');
+	});
+
 	it('lines up its left edge with the button’s when aligned left, so it opens toward the right', async () => {
 		place({ top: 20, left: 200, width: 40, height: 40 });
 		show({ align: 'left' });
@@ -153,7 +169,10 @@ describe('where the box goes', () => {
 		show({ align: 'left' });
 		await open();
 
-		expect(boxOf()?.getAttribute('style')).toContain(`left: ${innerWidth - 8 - 288}px`);
+		const style = boxOf()?.getAttribute('style') ?? '';
+		expect(style).toContain(`left: ${innerWidth - 8 - 288}px`);
+		// It grows out of the point under its button's left edge, not out of its own corner.
+		expect(style).toContain(`transform-origin: ${288 - 92}px top`);
 	});
 
 	it('moves back from the left edge of the screen, 8px clear, rather than run off it', async () => {

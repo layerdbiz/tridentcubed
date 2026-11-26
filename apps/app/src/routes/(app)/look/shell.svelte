@@ -148,6 +148,8 @@
 			if (dx > -8 || Math.abs(dx) < Math.abs(event.clientY - pull.y)) return;
 			pull.isOn = true;
 			isPulling = true;
+			// The bell's Notifications float over the page, not in the menu, so they close as it is pushed shut.
+			isBellOpen = false;
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		}
 		pull.isDragged = Math.abs(dx) > 4;
@@ -330,7 +332,6 @@
 			return;
 		}
 		if (event.key !== 'Escape') return;
-		isBellOpen = false;
 		drawer = 0;
 	}}
 />

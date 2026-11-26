@@ -33,9 +33,8 @@
 	export interface PopoverProps extends Omit<ComponentProps, 'label' | 'children'> {
 		// The box's name, read out for its button (unless the button has a label of its own) and for the box.
 		label: string;
-		// The library Button it hangs from: its look, or any other Button prop, set from outside; or a function of
-		// whether the box is open that gives them.
-		button?: Partial<ButtonProps> | ((isOpen: boolean) => Partial<ButtonProps>);
+		// The library Button it hangs from: its look, or any other Button prop, set from outside.
+		button?: Partial<ButtonProps>;
 		// Which of its edges lines up with the same edge of its button: right unless told, so it opens toward the left;
 		// left, so it opens toward the right.
 		align?: 'left' | 'right';
@@ -58,72 +57,87 @@
 
 	// How close to the edge of the screen it may come.
 	const EDGE = 8;
+	// Where the box stands until it is measured: unseen at the screen's left, where nothing squeezes it, so its own
+	// width is the one measured (at its button's edge it would shrink to the room left before the screen's edge).
+	const UNSEEN = `left: 0px; top: 0px; max-width: calc(100% - ${EDGE * 2}px); visibility: hidden`;
 
 	let root: HTMLDivElement | undefined = $state();
+	let box: HTMLElement | undefined;
 	let place = $state('');
-	// How wide the box is, and how tall all it holds, once it shows; 0 until then.
+	// How wide the box is, and how tall all it holds, once it shows.
 	let width = 0;
-	let tall = 0;
+	let height = 0;
 
 	function onpointerdown(event: PointerEvent) {
 		if (isOpen && root && !root.contains(event.target as Node)) isOpen = false;
 	}
 
 	// Where the box goes: under its button, or over it when it does not fit under it and there is more room above;
-	// its edge on its button's, moved back from the edge of the screen as far as it must. Only the part of the screen
-	// in view counts, so with a phone's keyboard up it stays above the keyboard. Nothing when the button has left the
-	// view.
+	// its edge on its button's, moved back from the edge of the screen as far as it must, and growing out of the point
+	// under its button's edge. Only the part of the screen in view counts, so with a phone's keyboard up it stays
+	// above the keyboard; never shorter than 140px, as the Menu's list. Nothing when the button has left the view.
 	function placeOf() {
 		if (!root) return '';
-		const box = root.getBoundingClientRect();
+		const anchor = root.getBoundingClientRect();
 		const view = window.visualViewport;
 		const [viewTop, viewHeight] = [view?.offsetTop ?? 0, view?.height ?? innerHeight];
-		if (box.bottom < viewTop || box.top > viewTop + viewHeight) return '';
-		const below = viewTop + viewHeight - box.bottom - offset - EDGE;
-		const above = box.top - viewTop - offset - EDGE;
-		const isUp = tall > below && above > below;
-		const y = isUp
-			? `bottom: ${Math.round(innerHeight - box.top + offset)}px`
-			: `top: ${Math.round(box.bottom + offset)}px`;
-		// The page's width without its scroll bar, which a fixed box stands inside.
+		if (anchor.bottom < viewTop || anchor.top > viewTop + viewHeight) return '';
+		// The page without its scroll bars, which a fixed box stands inside.
 		const screenWidth = document.documentElement.clientWidth || innerWidth;
-		const most = screenWidth - EDGE * 2;
-		const across = Math.min(width, most);
-		const wanted = align === 'left' ? box.left : box.right - across;
-		const left = Math.max(EDGE, Math.min(wanted, screenWidth - EDGE - across));
-		const origin = `${isUp ? 'bottom' : 'top'} ${align}`;
-		return `left: ${Math.round(left)}px; ${y}; max-width: ${most}px; max-height: ${Math.max(0, Math.floor(isUp ? above : below))}px; transform-origin: ${origin}`;
+		const screenHeight = document.documentElement.clientHeight || innerHeight;
+		const widest = screenWidth - EDGE * 2;
+		const below = viewTop + viewHeight - anchor.bottom - offset - EDGE;
+		const above = anchor.top - viewTop - offset - EDGE;
+		const isUp = height > below && above > below;
+		const y = isUp
+			? `bottom: ${Math.round(screenHeight - anchor.top + offset)}px`
+			: `top: ${Math.round(anchor.bottom + offset)}px`;
+		const boxWidth = Math.min(width, widest);
+		const lined = align === 'left' ? anchor.left : anchor.right - boxWidth;
+		const left = Math.max(EDGE, Math.min(lined, screenWidth - EDGE - boxWidth));
+		const tallest = Math.max(140, Math.floor(isUp ? above : below));
+		const edge = align === 'left' ? anchor.left : anchor.right;
+		const origin = `${Math.round(Math.max(0, Math.min(edge - left, boxWidth)))}px ${isUp ? 'bottom' : 'top'}`;
+		return `left: ${Math.round(left)}px; ${y}; max-width: ${widest}px; max-height: ${tallest}px; transform-origin: ${origin}`;
+	}
+
+	// How wide the box is and how tall all it holds.
+	function measure() {
+		if (!box) return;
+		width = box.offsetWidth;
+		height = box.scrollHeight;
 	}
 
 	function toggle(event: MouseEvent) {
-		own.onclick?.(event as never);
-		if (isOpen) return (isOpen = false);
-		width = 0;
-		tall = 0;
-		place = placeOf();
-		isOpen = true;
+		button.onclick?.(event as never);
+		isOpen = !isOpen;
 	}
 
-	// The page moved, the phone turned or the keyboard came up under an open box: the box follows its button. It
-	// closes once the button is out of view, unless something in it is being typed in.
+	// The page moved, the phone turned or the keyboard came up under an open box: the box follows its button, measured
+	// again (a turned phone can give it another width). It closes once the button is out of view, unless something in
+	// it is being typed in.
 	function follow() {
 		if (!isOpen) return;
+		measure();
 		const next = placeOf();
 		if (next) place = next;
 		else if (!root?.contains(document.activeElement) || document.activeElement?.tagName !== 'INPUT')
 			isOpen = false;
 	}
 
-	// In the top layer, then placed again once its width and the height of all it holds are known. Safari 16 and
+	// In the top layer, measured where it stands unseen, then placed. It stands unseen again once it has gone, for the
+	// next time it opens, from its button or from the place that uses it. Safari 16 and
 	// older (2022) has no popovers: there the box stays an ordinary fixed one, kept on top by its z-index (the Menu's
 	// "Whoops", 2026-11-18).
 	const lift: Attachment<HTMLElement> = (node) => {
 		node.showPopover?.();
-		// Read once, as it opens, not followed: what it reads here never runs this again.
+		box = node;
+		// Read once, as it opens, not followed: what it reads here never runs this again. Opened from the place that
+		// uses it as it first shows, the box is placed before its button's holder is bound, so it finds that itself.
 		untrack(() => {
-			width = node.offsetWidth;
-			tall = node.scrollHeight;
-			place = placeOf() || place;
+			root ??= node.parentElement as HTMLDivElement;
+			measure();
+			place = placeOf();
 		});
 		const onscroll = (event: Event) => {
 			if (!node.contains(event.target as Node)) follow();
@@ -132,13 +146,13 @@
 		window.visualViewport?.addEventListener('resize', follow);
 		window.visualViewport?.addEventListener('scroll', follow);
 		return () => {
+			box = undefined;
+			place = '';
 			document.removeEventListener('scroll', onscroll, { capture: true });
 			window.visualViewport?.removeEventListener('resize', follow);
 			window.visualViewport?.removeEventListener('scroll', follow);
 		};
 	};
-
-	const own = $derived(typeof button === 'function' ? button(isOpen) : button);
 </script>
 
 <svelte:window
@@ -156,10 +170,10 @@
 			bind:this={root}
 		>
 			<Button
-				{...own}
+				{...button}
 				aria-haspopup="dialog"
 				aria-expanded={isOpen}
-				aria-label={own['aria-label'] ?? label}
+				aria-label={button['aria-label'] ?? label}
 				onclick={toggle}
 			/>
 			{#if isOpen}
@@ -167,12 +181,12 @@
 					popover="manual"
 					role="dialog"
 					aria-label={label}
-					class="fixed z-[120] m-0 overflow-y-auto overscroll-contain rounded-3xl border-0 p-2 text-left shadow-menu {/\btheme-/.test(
+					class="fixed z-[120] m-0 overflow-y-auto overscroll-contain rounded-[1.5em] border-0 p-[0.5em] text-left shadow-menu {/\btheme-/.test(
 						look
 					)
 						? ''
 						: 'bg-surface text-inherit'} {look}"
-					style="inset: auto; {place}"
+					style="inset: auto; {place || UNSEEN}"
 					transition:scale={{ start: 0.95, duration: 140 }}
 					{@attach lift}
 				>
