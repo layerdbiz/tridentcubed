@@ -37,6 +37,18 @@
 	// Each kind's mark on the face, the way a dashboard row marks its state.
 	const KINDS: Record<ActivityKindType, { icon: string; tone: string; label: string }> = {
 		signIn: { icon: 'icon-[mdi--login-variant]', tone: 'bg-emerald-500', label: 'Signed in' },
+		signOut: { icon: 'icon-[mdi--logout-variant]', tone: 'bg-slate-400', label: 'Signed out' },
+		code: {
+			icon: 'icon-[mdi--email-alert-outline]',
+			tone: 'bg-rose-500',
+			label: 'Sign-in code never used'
+		},
+		open: { icon: 'icon-[mdi--folder-open-outline]', tone: 'bg-sky-500', label: 'Opened' },
+		download: {
+			icon: 'icon-[mdi--file-download-outline]',
+			tone: 'bg-violet-500',
+			label: 'Downloaded the PDF'
+		},
 		add: { icon: 'icon-[mdi--plus]', tone: 'bg-primary', label: 'Added' },
 		change: { icon: 'icon-[mdi--pencil]', tone: 'bg-amber-500', label: 'Changed' },
 		trash: {
@@ -182,14 +194,29 @@
 		return page && name && look.has(page, name) ? () => look.openRecord(page, name) : undefined;
 	}
 
-	// "made 97 changes", "signed in and made 3 changes", "signed in 2 times".
+	// "1 change", "3 changes"; "a project" for one when `one` is given.
+	function toCount(count: number, word: string, one = `1 ${word}`) {
+		return count === 1 ? one : `${count} ${word}s`;
+	}
+
+	// "made 97 changes", "signed in, opened 2 projects and made 3 changes", "signed in 2 times".
 	function toRunWords(summary: ActivityRunSummaryType) {
 		const changes = summary.added + summary.changed + summary.trashed;
 		const said: string[] = [];
+		if (summary.codes)
+			said.push(
+				summary.codes === 1
+					? 'asked for a sign-in code and never used it'
+					: `asked for ${summary.codes} sign-in codes and never used them`
+			);
 		if (summary.signIns)
 			said.push(summary.signIns === 1 ? 'signed in' : `signed in ${summary.signIns} times`);
-		if (changes) said.push(`made ${changes} ${changes === 1 ? 'change' : 'changes'}`);
-		return said.join(' and ');
+		if (summary.opened) said.push(`opened ${toCount(summary.opened, 'project', 'a project')}`);
+		if (changes) said.push(`made ${toCount(changes, 'change')}`);
+		if (summary.downloads) said.push(`downloaded ${toCount(summary.downloads, 'PDF', 'a PDF')}`);
+		if (summary.signOuts)
+			said.push(summary.signOuts === 1 ? 'signed out' : `signed out ${summary.signOuts} times`);
+		return toList(said);
 	}
 
 	// "12 added · 85 changed · 3 moved to the Trash", when a run's changes are of more than one kind.
@@ -270,6 +297,16 @@
 	{#if hasWho}{@render named(event.who, toPersonOpener(event.who))}{/if}
 	{#if event.kind === 'signIn'}
 		signed in{#if event.isGuest}, waiting for access{/if}
+	{:else if event.kind === 'signOut'}
+		signed out
+	{:else if event.kind === 'code'}
+		asked for a sign-in code and never used it
+	{:else if event.kind === 'open' || event.kind === 'download'}
+		{event.kind === 'open' ? 'opened' : 'downloaded the PDF of'}
+		{#if event.project !== undefined}{@render named(
+				event.project,
+				toProjectOpener(event.projectId)
+			)}{:else}a project no longer there{/if}
 	{:else if event.kind === 'add'}
 		added {event.name ? `the ${event.thing}` : `${toIndefiniteArticle(event.thing)} ${event.thing}`}
 		{#if event.name}{@render named(event.name, toRowOpener(event))}{/if}
@@ -290,14 +327,21 @@
 
 <!-- What a run did besides the who: the line under it, its words and the projects it touched. -->
 {#snippet details(event: ActivityEventType)}
-	{#if event.kind === 'signIn'}
+	{#if event.kind === 'signIn' || event.kind === 'signOut'}
 		{#if event.device}
 			<span class="mt-0.5 flex">{@render device(event.deviceKind, event.device)}</span>
 		{/if}
-	{:else if event.parts?.length}
-		<span class="mt-0.5 block text-xs text-slate-500">With {toList(event.parts)}</span>
-	{:else if event.columns.length}
-		<span class="mt-0.5 block text-xs text-slate-500">{event.columns.join(', ')}</span>
+	{:else if event.kind === 'code'}
+		<!-- The address it was sent to, when the name above is not already it. -->
+		{#if event.email !== event.who}
+			<span class="mt-0.5 block text-xs break-words text-slate-500">To {event.email}</span>
+		{/if}
+	{:else if event.kind === 'add' || event.kind === 'change' || event.kind === 'trash'}
+		{#if event.parts?.length}
+			<span class="mt-0.5 block text-xs text-slate-500">With {toList(event.parts)}</span>
+		{:else if event.columns.length}
+			<span class="mt-0.5 block text-xs text-slate-500">{event.columns.join(', ')}</span>
+		{/if}
 	{/if}
 {/snippet}
 
@@ -466,7 +510,8 @@
 			>
 			<h1 class="mt-4 text-2xl leading-tight font-semibold">Activity</h1>
 			<p class="mt-1.5 max-w-md text-sm text-white/75">
-				Sign-ins, projects added and every change in {look.organization.name}, newest first.
+				Sign-ins and sign-outs, projects opened, PDFs downloaded and every change in {look
+					.organization.name}, newest first.
 			</p>
 		</div>
 		<div
