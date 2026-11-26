@@ -11,7 +11,8 @@
 	// Its look is set from outside (Justin, 2026-11-26): it is the base component, so `color`, `appearance`, their
 	// shorthands, `size` and `class` land on the row. `labelClass`, `noteClass` and `textClass` give its lines and the
 	// box round them their looks; the second line is the theme's quieter grey and smaller until it is given one. Its
-	// width and the gap between its parts sit in the components layer, so any class a place gives beats them. Lists
+	// width, the gap between its parts and its type on the base size ladder sit in the components layer, so any class
+	// a place gives beats them; the gap and the second line are in em, so `size` grows the whole row. Lists
 	// draw it many times, so it takes the base component's light path, with no whitespace between its parts: every
 	// space would be one more node in every row (#379, measured).
 	import type { Snippet } from 'svelte';
@@ -44,7 +45,7 @@
 		children = undefined,
 		textClass = '',
 		labelClass = '',
-		noteClass = 'text-xs text-base-500',
+		noteClass = 'text-[0.75em] text-base-500',
 		class: className = '',
 		...props
 	}: ListRowProps = $props();
@@ -63,11 +64,32 @@
 >
 
 <style lang="postcss">
-	/* Its width and the gap between its parts, in the components layer, where a place's own class beats them. */
+	@reference "#ui.css";
+
+	/* Its width, the gap between its parts and its type on the base size ladder, in the components layer, where a
+	   place's own class beats them. */
 	@layer components {
 		:global(.list-row) {
 			width: 100%;
 			gap: 0.75em;
+		}
+		:global(.list-row:where(.xxs)) {
+			font-size: 0.75rem;
+		}
+		:global(.list-row:where(.xs)) {
+			font-size: 0.8125rem;
+		}
+		:global(.list-row:where(.sm)) {
+			font-size: 0.875rem;
+		}
+		:global(.list-row:where(.lg)) {
+			font-size: 1.125rem;
+		}
+		:global(.list-row:where(.xl)) {
+			font-size: 1.25rem;
+		}
+		:global(.list-row:where(.xxl)) {
+			font-size: 1.375rem;
 		}
 	}
 </style>

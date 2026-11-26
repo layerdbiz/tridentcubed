@@ -100,4 +100,13 @@ describe('ListRow', () => {
 
 		expect(container.querySelector('.list-row')?.className).toContain('theme-lite-primary');
 	});
+
+	it('puts its size on the row, so its type and the gaps in em grow with it', () => {
+		const { container } = render(ListRow, {
+			props: { label: 'Ana Lopez', note: 'Admin', sm: true }
+		});
+
+		expect(container.querySelector('.list-row')?.classList.contains('sm')).toBe(true);
+		expect(screen.getByText('Admin').className).toContain('text-[0.75em]');
+	});
 });

@@ -7,7 +7,7 @@
 	// labels: a close X at the top right, and the list fades at its top and bottom as every list does (fade.ts).
 	// Arrow keys still move, Enter opens and Escape closes. It is the library Dialog's tall kind: near the full screen
 	// on a phone, a 36rem box from md up, the search field staying put while the results scroll.
-	import { Avatar, Button, Dialog } from '@layerd/ui';
+	import { Avatar, Button, Chip, Dialog } from '@layerd/ui';
 	import { FADE, fadeTop } from './fade';
 	import { PAGE_ICONS, STATUS } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -139,12 +139,11 @@
 							>{/if}
 					</span>
 					{#if row.project}
-						<span
-							class="flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-3 pl-2.5 text-xs font-semibold {STATUS[
-								row.project.status
-							].pill}"
+						<Chip
+							class="flex gap-1.5 py-1 pr-3 pl-2.5 text-xs font-semibold {STATUS[row.project.status]
+								.pill}"
 							><span class="size-2 rounded-full {STATUS[row.project.status].dot}"
-							></span>{row.side}</span
+							></span>{row.side}</Chip
 						>
 					{:else if row.side}
 						<span class="shrink-0 text-xs text-slate-400">{row.side}</span>

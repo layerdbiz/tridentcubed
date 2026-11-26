@@ -43,7 +43,7 @@
 			value={look.overall}
 			label="Project progress"
 			track="bg-slate-900/[0.07]"
-			bar={status.bar}
+			fill={status.bar}
 			class="mt-1.5"
 		/>
 	</div>

@@ -21,7 +21,7 @@
 	// as it is tall, so one digit makes a circle, its count in the middle. Its box, padding, height and type sit on the
 	// base size ladder, in the components layer, so any class or style a place gives beats them. It repeats in every dashboard row, so it takes
 	// the base component's light path: one element and its count.
-	import { Component, type ComponentProps } from '@layerd/ui';
+	import { Component, toLook, type ComponentProps } from '@layerd/ui';
 
 	export interface BadgeProps extends Omit<ComponentProps, 'label' | 'children'> {
 		/** The count it shows. */
@@ -40,23 +40,20 @@
 	}: BadgeProps = $props();
 
 	// A colour or appearance given as a shorthand (`neutral`, `lite`) wins over the defaults, as on any base component.
-	const COLORS = ['base', 'neutral', 'primary', 'secondary', 'accent', 'danger'] as const;
-	const APPEARANCES = ['heavy', 'lite', 'outline', 'ghost', 'glass', 'gradient'] as const;
-	const look = $derived({
-		color: COLORS.some((each) => props[each] === true) ? undefined : color,
-		appearance: APPEARANCES.some((each) => props[each] === true) ? undefined : appearance
-	});
+	const parts = $derived(toLook(props, { color, appearance }));
 </script>
 
 <Component
 	tag="span"
-	{...look}
-	{...props}
+	{...parts.look}
+	{...parts.rest}
 	class="badge shrink-0 rounded-full font-bold tabular-nums {className}"
 	label={toCountText(count, max)}
 />
 
 <style lang="postcss">
+	@reference "#ui.css";
+
 	/* Its box and size on the base size ladder, in the components layer, where a place's own class or style beats it. */
 	@layer components {
 		:global(.badge) {

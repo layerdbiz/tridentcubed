@@ -9,6 +9,7 @@ export * from "./helpers/draggable.svelte.ts";
 export * from "./helpers/persist/adapters/indexeddb.ts";
 export * from "./light.ts";
 export * from "./helpers/persist/adapters/local.ts";
+export * from "./look.ts";
 export * from "./helpers/persist/adapters/memory.ts";
 export * from "./helpers/mq/mq.svelte.ts";
 export { default as Mq } from "./helpers/mq/mq.svelte";

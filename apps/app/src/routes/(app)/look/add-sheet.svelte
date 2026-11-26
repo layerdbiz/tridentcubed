@@ -1,11 +1,11 @@
 <script lang="ts">
 	// PROTOTYPE (#161) run 11: what the floating bar's blue + opens (Justin, 2026-10-26 19:22): one sheet from the
-	// bottom to add a project, customer, team, transport mode or facility. It opens on the page being looked at; the
-	// chips at its top switch what is added. Run 16 (Justin, 2026-11-10): the sheet asks for everything Edit does,
+	// bottom to add a project, customer, team, transport mode or facility. It opens on a short list of what can be
+	// added, a list row each (#383), and the one picked opens its sheet. Run 16 (Justin, 2026-11-10): the sheet asks for everything Edit does,
 	// through the same components. A new project is the Project panel itself (panel-body.svelte, over a draft); the
 	// others are record-fields.svelte over an empty record. Nothing exists until Create or Add; then a project
 	// opens on Edit and anything else on its Page. Run 28: "Add new" in a dropdown opens this same sheet on that one
-	// page (look.addFor), with no page chips; what is added is picked in the dropdown and nothing else opens.
+	// page (look.addFor), with no list; what is added is picked in the dropdown and nothing else opens.
 	import { scale } from 'svelte/transition';
 	import { Button, Dialog, ListRow } from '@layerd/ui';
 	import { DATASETS, draftOf, draftPanel, PAGE_ICONS, PAGES, type DatasetType } from './look.data';

@@ -157,7 +157,7 @@
 			value={progress}
 			label="Project progress"
 			track={isLight ? 'bg-white/20' : 'bg-slate-900/10'}
-			bar={status.bar}
+			fill={status.bar}
 			class="mt-3"
 			sm
 		/>
@@ -269,7 +269,7 @@
 							value={metrics.percent}
 							label="{panel.name} progress"
 							track="bg-slate-900/[0.07]"
-							bar={tone.bar}
+							fill={tone.bar}
 							class="w-16"
 							sm
 						/>

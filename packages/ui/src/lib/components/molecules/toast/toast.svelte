@@ -16,7 +16,7 @@
 	// shorthands and `class` land on the box that shows, which is the theme's secondary with the surface's colour for
 	// its words until it is given a look. What is inside takes its greys from the box's words, so it follows any look.
 	// Its Close and Try Again are the library Button, reached through `closeButton` and `retryButton`; its bar is the
-	// library ProgressBar (#380), on a track in the box's words' colour.
+	// library ProgressBar (#380), on a track in the box's words' colour, reached through `progressBar`.
 	//
 	// A short message may have an `icon` before it (the library Icon), and be a tap (`onclick`, #392: the update
 	// note's "New version, tap to update"): then the whole toast is a button, which takes taps, and `disabled` holds
@@ -32,7 +32,8 @@
 		type ButtonProps,
 		type ComponentProps,
 		type ComponentReturn,
-		type Progress
+		type Progress,
+		type ProgressBarProps
 	} from '@layerd/ui';
 
 	/** One entry of a toast's list: what it says, and what a tap on it does. */
@@ -53,6 +54,8 @@
 		closeButton?: Partial<ButtonProps>;
 		/** Any Button prop for a failure's Try Again. */
 		retryButton?: Partial<ButtonProps>;
+		/** Any ProgressBar prop for its bar: a track, a colour, a size. */
+		progressBar?: Partial<ProgressBarProps>;
 		/** An icon before a short message, as the library Icon takes it: "icon-[mdi--arrow-up-circle-outline]". */
 		icon?: string;
 		/** Makes a short message a tap that runs this; such a toast stays in a status region of its own. */
@@ -67,6 +70,7 @@
 		onclose,
 		closeButton = {},
 		retryButton = {},
+		progressBar = {},
 		icon,
 		onclick,
 		...props
@@ -182,6 +186,7 @@
 					track="bg-current/15"
 					class="mt-2.5 [--progress-speed:300ms]"
 					sm
+					{...progressBar}
 				/>
 			{/if}
 		</svelte:element>

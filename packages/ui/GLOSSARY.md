@@ -292,7 +292,7 @@ _Avoid_: tag (a label's value), pill (for the component), label chip
 
 **Badge**:
 A count in a small round mark: a board column's number of cards, a record's number of projects. Above its most it shows that and a plus ("9+"). It wears the theme's primary unless told (#381).
-_Avoid_: counter, count pill, dot (a presence or status dot has no number)
+_Avoid_: counter, count pill, dot (a presence or status dot has no number). Not the Avatar's badge, the small picture it can wear at its bottom right
 
 **Progress bar**:
 A thin rounded bar that fills as something gets done: a project, a panel, an upload in a Toast. A screen reader hears it as a progress bar with its value. Its filled part wears a colour (primary unless told), or a state's colour from outside (#380).

@@ -251,7 +251,7 @@
 			value={panel.isEnabled ? metrics.percent : 0}
 			label="{panel.name} progress"
 			track="bg-slate-900/[0.05]"
-			bar={tone.bar}
+			fill={tone.bar}
 			class="mx-4 mb-4"
 		/>
 	{/if}

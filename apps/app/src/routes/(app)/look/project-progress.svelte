@@ -18,7 +18,7 @@
 		value={progress}
 		label="{project.title} progress"
 		track={isLight ? 'bg-white/25' : 'bg-slate-900/[0.06]'}
-		bar={STATUS[project.status].bar}
+		fill={STATUS[project.status].bar}
 		class="flex-1"
 		sm
 	/>

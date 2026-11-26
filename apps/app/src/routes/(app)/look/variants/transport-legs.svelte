@@ -41,7 +41,7 @@
 	} from '../look.data';
 	import { cityStateOf } from '../location';
 	import type { LookState } from '../look.state.svelte';
-	import { Button, Menu, Select } from '@layerd/ui';
+	import { Button, Chip, Menu, Select } from '@layerd/ui';
 	import { sortable } from '../sortable';
 	import { MARKED_LABELS, sectionsOf, valuesOf } from '../tally';
 
@@ -268,12 +268,12 @@
 										onpick={(point) => pickPoint(stop, point)}
 									>
 										{#snippet trigger()}
-											<span
-												class="flex h-full items-center gap-1.5 rounded-full pr-3 pl-2 text-xs font-semibold whitespace-nowrap {stop.point
+											<Chip
+												class="flex h-full gap-1.5 py-0 pr-3 pl-2 text-xs font-semibold {stop.point
 													? POINTS[stop.point].chip
 													: 'bg-slate-900/[0.06] text-slate-500'}"
 												><span class="{iconOf(stop)} size-4 shrink-0"></span>{stop.point ||
-													'Point'}</span
+													'Point'}</Chip
 											>
 										{/snippet}
 									</Menu>
