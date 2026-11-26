@@ -316,6 +316,17 @@ describe('when and where the file says it was taken', () => {
 		expect(exif.longitude).toBeCloseTo(-97.5, 3);
 	});
 
+	it('reads the file’s last change, with its own offset, when the shutter time is missing', () => {
+		const tags = {
+			exif: {
+				DateTime: { value: '', description: '2026:11:26 06:03:00' },
+				OffsetTime: { value: '', description: '-06:00' }
+			}
+		} as unknown as Parameters<typeof toExifTaken>[0];
+
+		expect(toExifTaken(tags)).toEqual({ at: '2026-11-26T12:03:00.000Z' });
+	});
+
 	it('reads a time without an offset as the reader’s own time', () => {
 		expect(toExifTime('2026:05:12 11:30:00', '+02:00')).toBe('2026-05-12T09:30:00.000Z');
 		expect(toExifTime('2026:05:12 11:30:00')).toBe(new Date('2026-05-12T11:30:00').toISOString());
