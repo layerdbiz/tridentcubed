@@ -47,7 +47,8 @@ export type AttachmentKindType = 'photo' | 'pdf' | 'video';
  */
 export const ATTACHMENT_ICONS: Record<AttachmentKindType, string> = {
 	photo: 'icon-[mdi--image]',
-	pdf: 'icon-[mdi--file-pdf-box]',
+	// #349: the PDF document icon people know, not a box with the letters "PDF" (Justin, 2026-11-25).
+	pdf: 'icon-[mdi--file-pdf]',
 	video: 'icon-[mdi--video]'
 };
 
@@ -317,6 +318,89 @@ export function isFieldListKept(list: FieldListType) {
 	return (JSON.stringify(toStorableJson(list)) ?? '').length <= MAX_FIELD_LIST_CHARACTERS;
 }
 
+/**
+ * Whether every metadata field of the original came across into the file the app keeps (#343): all of them (a copy
+ * read back and checked, or the original kept as it came), some (a copy that could not carry every field, the
+ * untouched original kept beside it), none, or not known ('': a file kept before #343, or one still to convert).
+ */
+export const CARRIED = ['all', 'some', 'none', ''] as const;
+
+export type CarriedType = (typeof CARRIED)[number];
+
+/** A file's type, size and pixel size, as the original arrived or as it was saved (#343); what is unknown is left out. */
+export type FileFactsType = { type: string; size?: number; width?: number; height?: number };
+
+/**
+ * What the photo pop-up's Details show of an attachment's file (#343), and what the type on its tile reads (#349):
+ * the original the User picked beside the file the app keeps, and whether its metadata came across.
+ */
+export type FileDetailsType = {
+	/** The name it was picked with. */
+	name: string;
+	original: FileFactsType;
+	saved: FileFactsType;
+	carried: CarriedType;
+	/** The original's full field list is kept with it (#292). */
+	hasFieldList: boolean;
+	/** The untouched original is still in storage beside the copy (#294). */
+	isOriginalKept: boolean;
+};
+
+// Types as people say them, where the part after the slash is not it already (#349).
+const TYPE_LABELS: Record<string, string> = {
+	'image/jpeg': 'JPEG',
+	'image/webp': 'WebP',
+	'image/svg+xml': 'SVG',
+	'video/quicktime': 'MOV',
+	'video/webm': 'WebM',
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
+	'application/vnd.ms-excel': 'XLS',
+	[ANY_TYPE]: 'File'
+};
+
+/** A file's type the way people say it (#349): HEIC, JPEG, PNG, WebP, SVG, PDF, MP4; nothing for no type. */
+export function toTypeLabel(type: string) {
+	if (!type) return '';
+	if (Object.hasOwn(TYPE_LABELS, type)) return TYPE_LABELS[type];
+	const kind = type.split('/').pop() ?? '';
+	return /^[a-z0-9]+$/i.test(kind) ? kind.toUpperCase() : 'File';
+}
+
+/** A size in bytes the way people read it: 980 B, 1.5 KB, 612 KB, 3.2 MB; nothing when it is unknown. */
+export function toSizeLabel(bytes: number | undefined) {
+	if (bytes === undefined) return '';
+	if (bytes < 1024) return `${bytes} B`;
+	const kb = bytes / 1024;
+	if (kb < 1024) return `${kb < 10 ? kb.toFixed(1) : Math.round(kb)} KB`;
+	return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+/**
+ * How much smaller the saved file is than the original, as a whole percent (#343; below 0 when it grew); nothing
+ * when either size is unknown.
+ */
+export function toSmallerPercent(original: { size?: number }, saved: { size?: number }) {
+	if (!original.size || saved.size === undefined) return undefined;
+	return Math.round(100 * (1 - saved.size / original.size));
+}
+
+/** Whether the metadata came across, in words (#343). Every field of "nothing" is the original having none. */
+export function toCarriedLabel(carried: CarriedType, hasFieldList: boolean) {
+	if (carried === 'all') return hasFieldList ? 'Every field came across' : 'The original had none';
+	if (carried === 'some') return 'Some fields came across';
+	if (carried === 'none') return 'None came across';
+	return 'Not recorded';
+}
+
+/**
+ * The original's facts as the File row holds them (#343); for a file kept before they were recorded, its type from
+ * the name it was picked with when that names a picture, else the type it was kept as.
+ */
+export function toOriginalFacts(file: { name: string; type: string; original?: FileFactsType }) {
+	if (file.original) return file.original;
+	return { type: toPictureType({ name: file.name, type: '' }) || file.type };
+}
+
 const UUID = v.pipe(v.string(), v.uuid());
 
 export const UPLOAD_REQUEST = v.object({
@@ -342,7 +426,18 @@ export const UPLOAD_REQUEST = v.object({
 			v.record(v.string(), v.unknown()),
 			v.check(isFieldListKept, 'The photo’s field list is too long to keep.')
 		)
-	)
+	),
+	/** #343: the file the User picked, when what is sent is a copy of it; else the file sent is the original. */
+	original: v.optional(
+		v.object({
+			type: v.pipe(v.string(), v.maxLength(100)),
+			size: v.pipe(v.number(), v.integer(), v.minValue(0)),
+			width: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0))),
+			height: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)))
+		})
+	),
+	/** #343: whether the copy holds every metadata field of the original; nothing when the server is to say. */
+	carried: v.optional(v.picklist(CARRIED))
 });
 
 export type UploadRequestType = v.InferOutput<typeof UPLOAD_REQUEST>;
@@ -368,6 +463,13 @@ export type ConvertAnswerType = { isDone: true } | { isDone: false; reason: stri
 /** The app's address of the file with this id. */
 export function toFileAddress(id: string) {
 	return `${FILE_PREFIX}${id}`;
+}
+
+/** The id of the file at this app address (#343); nothing for a starting file, a `blob:` preview or nothing. */
+export function toFileId(address: string) {
+	if (!isFileAddress(address)) return '';
+	const id = address.slice(FILE_PREFIX.length);
+	return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) ? id : '';
 }
 
 /** Whether a picture's value is a file in storage (not a starting file, a data URL or nothing). */

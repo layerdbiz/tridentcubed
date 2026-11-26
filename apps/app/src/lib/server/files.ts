@@ -4,14 +4,19 @@
 // short-lived address the device sends the bytes to, straight to storage. `findFileLink` is what the app's address of
 // a file does: a member of the file's organization gets a short-lived signed link; anyone else gets nothing.
 // `readFieldList` reads the original's full field list a photo keeps (#292), which nothing else reads.
-import { eq, getTableColumns } from 'drizzle-orm';
+// `readFileDetails` reads what the photo pop-up's Details and a tile's type say of a file (#343, #349).
+import { eq, getTableColumns, inArray, sql } from 'drizzle-orm';
 import {
+	type CarriedType,
 	type FieldListType,
+	type FileDetailsType,
+	type FileFactsType,
 	isTypeAllowed,
 	MAX_FILE_BYTES,
 	type TakenType,
 	toEnding,
 	toFileAddress,
+	toOriginalFacts,
 	toStorableJson,
 	type UploadAnswerType,
 	type UploadRequestType
@@ -43,7 +48,11 @@ export type FileType = {
 	height?: number;
 	taken: TakenType;
 	/** Where the untouched file a device sent still lies, when the server's copy could not carry every field (#294). */
-	original?: string;
+	originalPath?: string;
+	/** #343: the file the User picked, as it arrived; nothing for a file kept before it was recorded. */
+	original?: FileFactsType;
+	/** #343: whether every metadata field of the original came across. */
+	carried: CarriedType;
 	uploadedBy?: string;
 	createdAt: string;
 };
@@ -61,6 +70,17 @@ function toTaken(row: FileRowType): TakenType {
 	return taken;
 }
 
+// The original's facts as the row holds them, what is unknown left out; nothing when its type was never recorded.
+function toOriginal(row: FileRowType): FileFactsType | undefined {
+	if (!row.originalType) return undefined;
+	return {
+		type: row.originalType,
+		...(row.originalSize !== null ? { size: row.originalSize } : {}),
+		...(row.originalWidth !== null ? { width: row.originalWidth } : {}),
+		...(row.originalHeight !== null ? { height: row.originalHeight } : {})
+	};
+}
+
 function toFile(row: FileRowType): FileType {
 	return {
 		id: row.id,
@@ -72,7 +92,9 @@ function toFile(row: FileRowType): FileType {
 		width: row.width ?? undefined,
 		height: row.height ?? undefined,
 		taken: toTaken(row),
-		original: row.originalPath ?? undefined,
+		originalPath: row.originalPath ?? undefined,
+		original: toOriginal(row),
+		carried: (row.metadataCarried || '') as CarriedType,
 		uploadedBy: row.uploadedBy ?? undefined,
 		createdAt: row.createdAt.toISOString()
 	};
@@ -106,6 +128,8 @@ export async function createUpload(
 		});
 		if (!allowed.isAllowed) return allowed;
 		const { taken } = request;
+		// #343: the original is the file sent, unless the device says it sent a copy of another.
+		const original = request.original ?? request;
 		await tx.insert(files).values({
 			id,
 			organizationId,
@@ -124,6 +148,11 @@ export async function createUpload(
 			takenFrom: taken.from,
 			// Written again as Postgres keeps it, whatever the device sent, so a field list never fails an upload.
 			metadata: request.metadata ? (toStorableJson(request.metadata) as FieldListType) : null,
+			originalType: original.type,
+			originalSize: original.size,
+			originalWidth: original.width ?? null,
+			originalHeight: original.height ?? null,
+			metadataCarried: request.carried ?? '',
 			uploadedBy: actor.userId
 		});
 		return allowed;
@@ -152,6 +181,35 @@ export async function readFieldList(
 		tx.select({ metadata: files.metadata }).from(files).where(eq(files.id, id))
 	);
 	return row?.metadata ?? undefined;
+}
+
+/**
+ * What the photo pop-up's Details and a tile's type say of each of these files (#343, #349), by id: the original the
+ * User picked beside the file kept, and whether its metadata came across. Only the actor's organization's files are
+ * found; any other id, or one that is not an id, is left out.
+ */
+export async function readFileDetails(claims: ClaimsType, actor: ActorType, ids: string[]) {
+	const found = new Map<string, FileDetailsType>();
+	const wanted = [...new Set(ids.filter((id) => UUID.test(id)))];
+	if (!actor.organizationId || !wanted.length) return found;
+	const rows = await claims.run(actor, (tx) =>
+		tx
+			.select({ ...FILE_COLUMNS, hasFieldList: sql<boolean>`${files.metadata} is not null` })
+			.from(files)
+			.where(inArray(files.id, wanted))
+	);
+	for (const { hasFieldList, ...row } of rows) {
+		const file = toFile(row);
+		found.set(file.id, {
+			name: file.name,
+			original: toOriginalFacts(file),
+			saved: { type: file.type, size: file.size, width: file.width, height: file.height },
+			carried: file.carried,
+			hasFieldList,
+			isOriginalKept: Boolean(file.originalPath)
+		});
+	}
+	return found;
 }
 
 /** A short-lived link that opens the file, for a member of its organization; nothing for anyone else. */

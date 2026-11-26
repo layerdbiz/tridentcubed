@@ -13,15 +13,18 @@
 // `AttachmentUpload`: a picture made from it on the device (a PDF's first page, a video's thumbnail) and the file
 // itself, two uploads that finish as one.
 import type { Progress } from '@layerd/ui';
+import { SvelteMap } from 'svelte/reactivity';
 import {
 	type ConvertAnswerType,
 	CONVERT_PATH,
 	type ConvertRequestType,
+	type FileDetailsType,
 	type FileTargetType,
 	MAX_FILE_BYTES,
 	PictureError,
 	type PictureKindType,
 	toDocumentType,
+	toFileId,
 	toTyped,
 	type UploadAnswerType,
 	type UploadRequestType,
@@ -166,7 +169,7 @@ export class Upload {
 	}
 
 	// Asks for an upload address and sends the bytes there; nothing when the server refuses, with its reason shown.
-	async #send({ blob, width, height, taken, metadata }: PreparedType) {
+	async #send({ blob, width, height, taken, metadata, original, carried }: PreparedType) {
 		const answer = await this.#steps.ask({
 			for: this.#options.for,
 			name: this.#file.name,
@@ -175,7 +178,10 @@ export class Upload {
 			width,
 			height,
 			taken,
-			...(metadata ? { metadata } : {})
+			...(metadata ? { metadata } : {}),
+			// #343: what the User picked, and whether its metadata came across, for the photo's Details.
+			...(original ? { original } : {}),
+			...(carried !== undefined ? { carried } : {})
 		});
 		if (!answer.isAllowed) {
 			this.#fail(answer.reason);
@@ -469,4 +475,32 @@ export function startAttachment(file: File, options: AttachmentOptionsType) {
 	const upload = new AttachmentUpload(file, options);
 	void upload.start();
 	return upload;
+}
+
+// #343, #349: what each stored file was and became, by its id, once the server has said; asked once per file.
+const DETAILS = new SvelteMap<string, FileDetailsType | null>();
+const ASKED = new Set<string>();
+
+/** Asks the server for one file's details; the asks of one moment go together (a batch query). */
+export type AskDetailsType = (id: string) => Promise<FileDetailsType | null>;
+
+const askDetails: AskDetailsType = async (id) =>
+	(await import('./files.remote')).fetchFileDetails(id);
+
+/**
+ * What the file at this app address was and became (#343: the photo pop-up's Details; #349: the type on its tile),
+ * once the server has said; nothing until then, and nothing for a starting file or a picture still on its way. The
+ * server is asked once for each file, and again later only when it could not be reached.
+ */
+export function fileDetailsOf(address: string, ask: AskDetailsType = askDetails) {
+	const id = toFileId(address);
+	if (!id) return undefined;
+	if (!ASKED.has(id)) {
+		ASKED.add(id);
+		ask(id).then(
+			(found) => DETAILS.set(id, found),
+			() => ASKED.delete(id)
+		);
+	}
+	return DETAILS.get(id) ?? undefined;
 }

@@ -15,14 +15,26 @@
 	// the photo component's crop (lib/components/photo) in a frame of the photo's own shape, with a zoom slider in place of the dots;
 	// Text edits the description over the photo's bottom left; Reset brings back the whole photo, as a change that
 	// waits for Save; More holds Delete, which asks first and moves on to the next photo (the last one closes).
+	// #343: the i at the top right opens the Details under the photo: the file as it arrived beside the file the app
+	// kept (type, size, pixel size), how much smaller it got, and whether its metadata came across. They follow the
+	// photo open as the strip is swiped; a PDF or a video says what its own file is.
 	import { tick, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { fade } from 'svelte/transition';
 	import Photo from '#lib/components/photo/photo.svelte';
 	import type { CropType, SizeType } from '#lib/components/photo/photo.types.js';
 	import { isWhole, toCrop } from '#lib/components/photo/photo.utils.js';
-	import { ATTACHMENT_NOUNS } from '#lib/files/files.schema.js';
-	import { toVideoLink } from '#lib/video/video.utils.js';
+	import {
+		ATTACHMENT_NOUNS,
+		type FileFactsType,
+		toCarriedLabel,
+		toFileId,
+		toSizeLabel,
+		toSmallerPercent,
+		toTypeLabel
+	} from '#lib/files/files.schema.js';
+	import { fileDetailsOf } from '#lib/files/files.state.svelte.js';
+	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
 	import Dots from './dots.svelte';
 	import type { GroupType, PhotoType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -58,6 +70,7 @@
 	// Cropping or typing works on a copy of the photo's crop and description, kept only on Save.
 	let draft = $state<{ crop?: CropType; words: string } | null>(null);
 	let isMenuOpen = $state(false);
+	let isDetailsOpen = $state(false);
 	let savedAt = $state(0);
 	let stageWidth = $state(0);
 	let stageHeight = $state(0);
@@ -72,6 +85,10 @@
 	const photo = $derived<PhotoType | undefined>(photos[index]);
 	const crop = $derived(draft ? draft.crop : photo?.crop);
 	const percent = $derived(Math.round((crop?.zoom ?? 1) * 100));
+	// #343: the file the Details are about: a photo's own, or a PDF's or a video's (not the picture made of it).
+	const detailsAddress = $derived(photo ? (photo.kind ? (photo.source ?? '') : photo.src) : '');
+	const details = $derived(isDetailsOpen ? fileDetailsOf(detailsAddress) : undefined);
+	const smaller = $derived(details ? toSmallerPercent(details.original, details.saved) : undefined);
 	// The photo open, and while looking the one either side of it, waiting just off the stage.
 	const slides = $derived.by(() => {
 		const wheres = mode === 'view' ? [-1, 0, 1] : [0];
@@ -103,6 +120,19 @@
 		return { width: shape.width * scale, height: shape.height * scale };
 	}
 
+	// A file's facts on one line: its size and pixel size, or what was not recorded.
+	function factsOf(facts: FileFactsType) {
+		const size = toSizeLabel(facts.size) || 'Size not recorded';
+		return facts.width && facts.height ? `${size} · ${facts.width} × ${facts.height}` : size;
+	}
+
+	// How much smaller it got, in words.
+	function smallerOf(percent: number | undefined) {
+		if (percent === undefined) return 'Not recorded';
+		if (percent === 0) return 'Same size';
+		return percent > 0 ? `${percent}% smaller` : `${-percent}% bigger`;
+	}
+
 	function startDraft() {
 		if (draft || !photo) return;
 		draft = { crop: photo.crop ? { ...photo.crop } : undefined, words: photo.description };
@@ -111,6 +141,7 @@
 	// Crop and Text are two tabs of one edit: moving between them keeps what was done in the other.
 	function choose(next: 'crop' | 'text') {
 		isMenuOpen = false;
+		isDetailsOpen = false;
 		startDraft();
 		mode = next;
 	}
@@ -337,13 +368,32 @@
 					class="flex h-10 items-center gap-1.5 rounded-full bg-primary pr-[18px] pl-3.5 text-[15px] font-semibold text-white shadow-[0_6px_16px_-6px_rgb(37_99_235/0.8)] transition hover:brightness-110"
 					onclick={save}><span class="icon-[mdi--check] size-5"></span>Save</button
 				>
-			{:else if savedAt}
-				{#key savedAt}
-					<span
-						class="saved flex h-10 items-center gap-1.5 px-2.5 text-[15px] font-semibold text-emerald-400"
-						role="status"><span class="icon-[mdi--check] size-5"></span>Saved</span
+			{:else}
+				<div class="flex items-center">
+					{#if savedAt}
+						{#key savedAt}
+							<span
+								class="saved flex h-10 items-center gap-1.5 px-2.5 text-[15px] font-semibold text-emerald-400"
+								role="status"><span class="icon-[mdi--check] size-5"></span>Saved</span
+							>
+						{/key}
+					{/if}
+					<button
+						type="button"
+						class="grid size-11 place-items-center rounded-full transition hover:bg-white/10 {isDetailsOpen
+							? 'bg-white/14 text-white'
+							: 'text-slate-200'}"
+						aria-label="Details"
+						title="Details"
+						aria-pressed={isDetailsOpen}
+						onclick={() => (isDetailsOpen = !isDetailsOpen)}
+						><span
+							class="{isDetailsOpen
+								? 'icon-[mdi--information]'
+								: 'icon-[mdi--information-outline]'} size-6"
+						></span></button
 					>
-				{/key}
+				</div>
 			{/if}
 		</div>
 
@@ -424,6 +474,72 @@
 				{/each}
 			</div>
 		</div>
+
+		{#if isDetailsOpen && mode === 'view' && photo}
+			<!-- #343: what the file was and became. -->
+			<section
+				class="mx-2.5 mt-2 shrink-0 rounded-2xl bg-white/[0.07] p-3 text-[13px] text-slate-300 md:mx-auto md:w-full md:max-w-2xl md:p-4"
+				aria-label="Details"
+				transition:fade={{ duration: 150 }}
+			>
+				{#if detailsAddress.startsWith('blob:')}
+					<p>The details show once it has uploaded.</p>
+				{:else if !toFileId(detailsAddress)}
+					<p>Details are kept for files added to a project. This one came with the sample.</p>
+				{:else if !details}
+					<p class="flex items-center gap-2">
+						<span class="icon-[svg-spinners--ring-resize] size-4 text-slate-400"></span>Reading the
+						details
+					</p>
+				{:else}
+					{@const isKept =
+						details.original.type === details.saved.type &&
+						details.original.size === details.saved.size}
+					<p class="mb-2 truncate font-semibold text-white">{details.name}</p>
+					<div class="grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
+						<div class="min-w-0 rounded-xl bg-white/[0.06] px-3 py-2.5">
+							<p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+								As it arrived
+							</p>
+							<p class="mt-0.5 font-bold text-base text-white">
+								{toTypeLabel(details.original.type) || 'Unknown'}
+							</p>
+							<p class="tabular-nums">{factsOf(details.original)}</p>
+						</div>
+						<span class="icon-[mdi--arrow-right] size-5 self-center text-slate-500"></span>
+						<div class="min-w-0 rounded-xl bg-white/[0.06] px-3 py-2.5">
+							<p class="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
+								As it was saved
+							</p>
+							<p class="mt-0.5 font-bold text-base text-white">{toTypeLabel(details.saved.type)}</p>
+							<p class="tabular-nums">{factsOf(details.saved)}</p>
+						</div>
+					</div>
+					<dl class="mt-2.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+						<dt class="text-slate-400">Size</dt>
+						<dd class="font-semibold text-white">
+							{isKept ? 'Kept as it came' : smallerOf(smaller)}
+						</dd>
+						{#if photo.kind === 'pdf'}
+							<dt class="text-slate-400">Pages</dt>
+							<dd class="font-semibold text-white">{photo.pageCount ?? 1}</dd>
+						{:else if photo.kind === 'video'}
+							<dt class="text-slate-400">Length</dt>
+							<dd class="font-semibold text-white">
+								{toLengthLabel(photo.duration) || 'Not read'}
+							</dd>
+						{:else}
+							<dt class="text-slate-400">Metadata</dt>
+							<dd class="font-semibold text-white">
+								{toCarriedLabel(details.carried, details.hasFieldList)}{details.isOriginalKept
+									? ', and the original is kept too'
+									: ''}
+							</dd>
+						{/if}
+					</dl>
+				{/if}
+			</section>
+		{/if}
 
 		<div
 			class="relative shrink-0 px-2.5 pt-1 pb-[max(16px,env(safe-area-inset-bottom))] md:px-5 md:pb-5"

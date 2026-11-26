@@ -53,6 +53,10 @@ export type ConvertedType = {
 	height: number;
 	/** Whether the copy holds every field the original's blocks held, read back and compared. */
 	isChecked: boolean;
+	/** #343: whether the copy holds some of the original's fields, when not every one (the blocks a WebP holds). */
+	hasSome: boolean;
+	/** #343: the original's pixel size, drawn upright. */
+	full: { width: number; height: number };
 	/** When and where, as the file itself says. */
 	taken: TakenType;
 	/** The original's full field list, when it is short enough to keep. */
@@ -83,7 +87,8 @@ async function takeTurn<T>(work: () => Promise<T>) {
 }
 
 // sharp's pipeline with the picture's pixels in it, drawn upright: libheif's for a HEIC (it applies the HEIC's own
-// turn), sharp's own reading for anything else (it turns the picture by its Orientation).
+// turn), sharp's own reading for anything else (it turns the picture by its Orientation). With it, the original's
+// pixel size drawn upright (#343).
 async function toPixels(bytes: Uint8Array, kind: PictureKindType) {
 	if (toPictureFormat(bytes) === 'heif') {
 		try {
@@ -91,15 +96,17 @@ async function toPixels(bytes: Uint8Array, kind: PictureKindType) {
 			const raw = Buffer.from(data.buffer, data.byteOffset, data.byteLength);
 			const image = sharp(raw, { raw: { width, height, channels: 4 } });
 			// A HEIC photo has no see-through parts; libheif hands every pixel an opaque alpha all the same.
-			return kind === 'photo' ? image.removeAlpha() : image;
+			return { image: kind === 'photo' ? image.removeAlpha() : image, full: { width, height } };
 		} catch {
 			// Not a HEVC HEIC (an AVIF): sharp reads those itself.
 		}
 	}
 	const image = sharp(bytes, { failOn: 'error' });
-	await image.metadata();
+	const { width = 0, height = 0, orientation = 1 } = await image.metadata();
+	// Orientation 5 to 8 turn the picture a quarter, so upright its sides swap.
+	const full = orientation >= 5 ? { width: height, height: width } : { width, height };
 	// Upright, and the colour numbers as they are: the original's own profile goes with them (`keepIccProfile`).
-	return image.rotate().keepIccProfile();
+	return { image: image.rotate().keepIccProfile(), full };
 }
 
 async function encode(image: Sharp, kind: PictureKindType, format: 'webp' | 'jpeg') {
@@ -122,8 +129,9 @@ export async function convertPicture(
 ): Promise<ConvertedType> {
 	const original = await readMetadata(bytes);
 	let image: Sharp;
+	let full: ConvertedType['full'];
 	try {
-		image = await toPixels(bytes, kind);
+		({ image, full } = await toPixels(bytes, kind));
 	} catch {
 		throw new Error(UNREADABLE);
 	}
@@ -133,19 +141,22 @@ export async function convertPicture(
 	const taken: TakenType = exif.at || hasPlace ? { from: 'file', ...exif } : { from: '' };
 	const kept = {
 		taken,
+		full,
 		...(fields && isFieldListKept(fields) ? { metadata: fields } : {})
 	};
 
 	const webp = await encode(image, kind, 'webp');
 	const carried = await carryMetadata(original, webp.bytes);
-	if (carried) return { ...webp, bytes: carried, type: 'image/webp', isChecked: true, ...kept };
+	const checked = { isChecked: true, hasSome: true, ...kept };
+	if (carried) return { ...webp, bytes: carried, type: 'image/webp', ...checked };
 	if (kind === 'photo') {
 		const jpeg = await encode(image, kind, 'jpeg');
 		const inJpeg = await carryMetadata(original, jpeg.bytes);
-		if (inJpeg) return { ...jpeg, bytes: inJpeg, type: 'image/jpeg', isChecked: true, ...kept };
+		if (inJpeg) return { ...jpeg, bytes: inJpeg, type: 'image/jpeg', ...checked };
 	}
 	// The blocks a WebP holds, unchecked, so the copy still says what it can; or none when even that fails.
 	let partial = webp.bytes;
+	let hasSome = false;
 	try {
 		const { exif: block, xmp, icc } = original.blocks;
 		partial = writeWebp(webp.bytes, {
@@ -154,10 +165,11 @@ export async function convertPicture(
 			icc,
 			xmpExtended: []
 		});
+		hasSome = Boolean(block || xmp || icc);
 	} catch {
 		// The plain copy, then.
 	}
-	return { ...webp, bytes: partial, type: 'image/webp', isChecked: false, ...kept };
+	return { ...webp, bytes: partial, type: 'image/webp', isChecked: false, hasSome, ...kept };
 }
 
 // A logo is kept at logo size; every other picture column holds a photo (as `image-field.svelte` picks its kind).
@@ -189,14 +201,23 @@ export async function convertFile(
 	} catch {
 		return { isDone: false, reason: UNREADABLE };
 	}
-	// A picture that shows as it is stays as it came rather than swap in a copy that lost something.
-	if (!converted.isChecked && isShownType(file.type)) return { isDone: true };
+	// A picture that shows as it is stays as it came rather than swap in a copy that lost something: the original,
+	// every field of it there (#343).
+	if (!converted.isChecked && isShownType(file.type)) {
+		await claims.run(actor, (tx) =>
+			tx.update(files).set({ metadataCarried: 'all' }).where(eq(files.id, id))
+		);
+		return { isDone: true };
+	}
 
 	const path = `${actor.organizationId}/${id}-${MAX_PICTURE_SIDE[kind]}.${toEnding(converted.type, '')}`;
 	await store.write(path, converted.bytes, converted.type);
 	// The device's reading of when and where stands when it read them from the file: it knows its own time zone.
 	const isTakenKept = file.taken.from === 'file' || converted.taken.from !== 'file';
-	const { taken, metadata } = converted;
+	const { taken, metadata, full } = converted;
+	// #343: the original as it arrived is the untouched file, its pixel size read here when the device could not.
+	const original = file.original ?? { type: file.type, size: file.size };
+	const carried = converted.isChecked ? 'all' : converted.hasSome ? 'some' : 'none';
 	await claims.run(actor, async (tx) => {
 		await tx
 			.update(files)
@@ -207,6 +228,11 @@ export async function convertFile(
 				width: converted.width,
 				height: converted.height,
 				originalPath: file.path,
+				originalType: original.type,
+				originalSize: original.size ?? null,
+				originalWidth: original.width ?? full.width,
+				originalHeight: original.height ?? full.height,
+				metadataCarried: carried,
 				...(isTakenKept
 					? {}
 					: {

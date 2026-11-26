@@ -59,9 +59,10 @@
 		ATTACHMENT_ICONS,
 		ATTACHMENT_NAMES,
 		ATTACHMENT_NOUNS,
-		toPictureType
+		toPictureType,
+		toTypeLabel
 	} from '#lib/files/files.schema.js';
-	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
+	import { fileDetailsOf, startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import { DEFAULT_LAYOUT, LAYOUTS, type PageLayoutType } from '#lib/report/report.constants.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
@@ -1542,21 +1543,34 @@
 											></span>
 										{/if}
 										<!-- #327: what kind of attachment it is, on every tile (Justin, 2026-11-25): a photo by its icon, a PDF
-										     with its pages, a video with its length. -->
+										     with its pages, a video with its length. #349: a photo by the type it arrived as (HEIC, JPEG,
+										     PNG), read from its name while it is on its way. -->
 										{#if photo.src}
 											{@const kind = photo.kind ?? 'photo'}
+											{@const arrived =
+												kind === 'photo'
+													? toTypeLabel(
+															fileDetailsOf(photo.src)?.original.type ??
+																(upload ? toPictureType({ name: upload.name, type: '' }) : '')
+														)
+													: ''}
+											{@const label = arrived ? `${arrived} photo` : ATTACHMENT_NAMES[kind]}
 											<span
 												class="pointer-events-none absolute right-1 bottom-1 flex items-center gap-0.5 rounded-md bg-black/65 py-0.5 text-[10px] leading-none font-semibold text-white tabular-nums {kind ===
-												'photo'
+													'photo' && !arrived
 													? 'px-0.5'
 													: 'pr-1.5 pl-1'}"
-												title={ATTACHMENT_NAMES[kind]}
-												aria-label={ATTACHMENT_NAMES[kind]}
-												><span class="{ATTACHMENT_ICONS[kind]} size-3.5"></span>{kind === 'pdf'
+												title={label}
+												aria-label={label}
+												><span
+													class="{ATTACHMENT_ICONS[kind]} size-3.5 {kind === 'pdf'
+														? 'text-red-400'
+														: ''}"
+												></span>{kind === 'pdf'
 													? `${photo.pageCount ?? 1} ${photo.pageCount === 1 ? 'page' : 'pages'}`
 													: kind === 'video'
 														? toLengthLabel(photo.duration) || 'Video'
-														: ''}</span
+														: arrived}</span
 											>
 										{/if}
 									</button>

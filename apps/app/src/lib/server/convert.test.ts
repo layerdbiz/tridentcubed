@@ -14,7 +14,7 @@ import { readMetadata, writeJpeg } from '#lib/metadata/metadata.utils.js';
 import type { ActorType } from './db/claims';
 import * as schema from './db/schema';
 import { convertFile, convertPicture } from './convert';
-import { createUpload, readFieldList, readFile } from './files';
+import { createUpload, readFieldList, readFile, readFileDetails } from './files';
 import { createLocalStore, type LocalStoreType } from './store';
 import { createTestSignIn } from './testing';
 
@@ -232,7 +232,19 @@ describe('converting a file in storage', () => {
 		const stored = await store.read(file!.path);
 		expect(stored.byteLength).toBe(file?.size);
 		expect((await sharp(stored).metadata()).format).toBe('webp');
-		expect(file?.original).toBeUndefined();
+		expect(file?.originalPath).toBeUndefined();
+		// #343: what came in, beside what was saved.
+		expect((await readFileDetails(test.claims, team, [id])).get(id)).toMatchObject({
+			original: {
+				type: 'image/heic',
+				size: fixture('phone.heic').byteLength,
+				width: 96,
+				height: 64
+			},
+			saved: { type: 'image/webp', size: file?.size, width: 96, height: 64 },
+			carried: 'all',
+			isOriginalKept: false
+		});
 	});
 
 	it('takes the time and place from the file when the device could not read them', async () => {
@@ -269,7 +281,13 @@ describe('converting a file in storage', () => {
 
 		const file = await readFile(test.claims, team, id);
 		expect(file?.type).toBe('image/webp');
-		expect(file?.original).toBe(`${team.organizationId}/${id}.tif`);
+		expect(file?.originalPath).toBe(`${team.organizationId}/${id}.tif`);
+		expect((await readFileDetails(test.claims, team, [id])).get(id)).toMatchObject({
+			original: { type: 'image/tiff', width: 120, height: 80 },
+			// A TIFF's fields are woven into it, not kept in a block a WebP holds: none come across, the original stays.
+			carried: 'none',
+			isOriginalKept: true
+		});
 		const stored = await filesInStorage();
 		expect(stored).toHaveLength(2);
 		expect(stored).toEqual(expect.arrayContaining([`${id}.tif`, file?.path.split('/').pop()]));

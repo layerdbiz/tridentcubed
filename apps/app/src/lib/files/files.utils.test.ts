@@ -9,6 +9,7 @@ import {
 	type BlobMakerType,
 	encodePicture,
 	toFittedSize,
+	toCarried,
 	toSent,
 	preparePicture,
 	toTaken,
@@ -172,5 +173,17 @@ describe('a picture the device cannot read (#294)', () => {
 
 		expect(failed).toBeInstanceOf(Error);
 		expect(failed).not.toBeInstanceOf(PictureError);
+	});
+});
+
+describe('whether the metadata came across (#343)', () => {
+	it('is every field for a carried copy or the original kept as it came, none for a plain copy', () => {
+		expect(toCarried('copy', false)).toBe('all');
+		expect(toCarried('original', false)).toBe('all');
+		expect(toCarried('plain', false)).toBe('none');
+	});
+
+	it('is the server’s to say when it converts the original', () => {
+		expect(toCarried('original', true)).toBe('');
 	});
 });
