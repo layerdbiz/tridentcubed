@@ -2,7 +2,7 @@
 	// PROTOTYPE (#161) run 26: the Transport Mode panel as legs (Justin, 2026-11-11: "without having to repeat
 	// ourselves"). The trip is one leg after another (legs.ts), each a card. A leg's transport is picked once.
 	// Run 28, from Justin's notes on the artifact (2026-11-12). Every pick is the library's Select (once
-	// picker.svelte, #298).
+	// picker.svelte, #298), on the notched field every other panel uses (#388).
 	// A leg starts with one facility, and each facility is a Start, a Stop or an End, because the job does not
 	// always begin at the Start. Add Stop is at the card's bottom left and Delete at its bottom right, as in every
 	// other card. No line is drawn down the facilities: the report's page will show the trip that way.
@@ -210,9 +210,9 @@
 			ontoggle={() => toggle(leg.id)}
 			ondelete={() => drop(leg)}
 		>
-			<div class="grid gap-2 sm:grid-cols-2">
+			<!-- One above the other: side by side, a notched field is too narrow for a vessel's name (#388). -->
+			<div class="grid gap-2">
 				<Select
-					variant="soft"
 					label="Transport Mode"
 					options={MODES.map((mode) => ({ value: mode, label: mode, icon: MODE_ICONS[mode] }))}
 					value={first.mode}
@@ -223,7 +223,6 @@
 				/>
 				{#if first.mode}
 					<Select
-						variant="soft"
 						label={first.mode}
 						options={transportsOf(leg)}
 						value={first.name}
@@ -252,7 +251,6 @@
 					>
 						<div class="min-w-0 flex-1">
 							<Select
-								variant="soft"
 								label="Facility"
 								options={facilitiesOf(leg)}
 								value={stop.facility}
