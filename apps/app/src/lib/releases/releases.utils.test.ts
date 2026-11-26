@@ -89,6 +89,17 @@ describe('the release rule', () => {
 		]);
 	});
 
+	it('takes several tickets in one bracket off the end too', () => {
+		const release = planRelease('1.0.0', [
+			{ subject: '🐛 fix(app): show a thing pinned on two devices once (#346, #345)' }
+		]);
+
+		expect(release?.changes[0]).toMatchObject({
+			text: 'Show a thing pinned on two devices once',
+			tickets: [346, 345]
+		});
+	});
+
 	it('makes the first release v1.0.0 with its welcome line, even with nothing to list', () => {
 		const release = planRelease(undefined, [], '2026-11-26');
 

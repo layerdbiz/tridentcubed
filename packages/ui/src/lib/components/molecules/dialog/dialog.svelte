@@ -17,6 +17,12 @@
 	// beside an input being typed in, so it never takes the focus, a press on it never moves it, and it rises above
 	// the phone's keyboard. That kind is drawn in a plain box with the dialog role, as a popover, because a <dialog>
 	// always takes the focus when it is shown, even as a popover.
+	//
+	// `variant="tall"` is for a long read (What's New, the new version's changes, #396): it fills a phone's screen up
+	// to the status bar and stands 36rem wide and up to 88% of the window's height from md up. Its `header` and
+	// `footer` stay put while what is between them scrolls, and a pull that starts in that middle scrolls it rather
+	// than closing the sheet. The default sheet is as tall as what it holds; a `header` or `footer` given to it sits
+	// above or below the rest.
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { fade, fly } from 'svelte/transition';
@@ -29,10 +35,27 @@
 		onclose: () => void;
 		/** False for the help ?: the focus stays in the input being typed in and the page stays live. */
 		isModal?: boolean;
+		/** `tall` for a long read: near the full screen, the middle scrolling between the header and the footer. */
+		variant?: 'sheet' | 'tall';
+		/** Stays at the top while the middle scrolls: a title, a close. */
+		header?: Snippet;
+		/** Stays at the foot while the middle scrolls: the button that ends it. */
+		footer?: Snippet;
 		children: Snippet;
 	}
 
-	let { label, onclose, isModal = true, children, ...props }: DialogProps = $props();
+	let {
+		label,
+		onclose,
+		isModal = true,
+		variant = 'sheet',
+		header,
+		footer,
+		children,
+		...props
+	}: DialogProps = $props();
+
+	const isTall = $derived(variant === 'tall');
 
 	let offset = $state(0);
 	let isDragging = $state(false);
@@ -45,7 +68,7 @@
 		if (!event.isPrimary || event.button !== 0) return;
 		const target = event.target as HTMLElement;
 		if (target.closest('.dialog-sheet') !== event.currentTarget) return;
-		if (target.closest('button, a, input, select, textarea, label')) return;
+		if (target.closest('button, a, input, select, textarea, label, .dialog-scroll')) return;
 		(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 		isDragging = true;
 		start = event.clientY;
@@ -142,8 +165,12 @@
 				transition:fade|global={{ duration: 180 }}
 			></button>
 			<div
-				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none rounded-t-[28px] bg-white px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgb(15_23_42/0.18)] after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-white {isModal
-					? 'md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[26rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden'
+				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none rounded-t-[28px] bg-white px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgb(15_23_42/0.18)] after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-white {isTall
+					? 'top-[calc(env(safe-area-inset-top)+0.75rem)] flex flex-col'
+					: ''} {isModal
+					? 'md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden'
+					: ''} {isModal && isTall ? 'md:h-[min(52rem,88vh)] md:w-[36rem]' : ''} {isModal && !isTall
+					? 'md:w-[26rem]'
 					: ''} {isDragging
 					? ''
 					: 'transition-[transform,translate,bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'}"
@@ -156,11 +183,21 @@
 				transition:fly|global={{ y: 320, duration: 260 }}
 			>
 				<span
-					class="mx-auto mb-4 block h-1.5 w-10 rounded-full bg-slate-200 {isModal
+					class="mx-auto mb-4 block h-1.5 w-10 shrink-0 rounded-full bg-slate-200 {isModal
 						? 'md:hidden'
 						: ''}"
 				></span>
-				{@render children()}
+				{@render header?.()}
+				{#if isTall}
+					<div
+						class="dialog-scroll -mx-5 min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-5"
+					>
+						{@render children()}
+					</div>
+				{:else}
+					{@render children()}
+				{/if}
+				{@render footer?.()}
 			</div>
 		</svelte:element>
 	{/snippet}

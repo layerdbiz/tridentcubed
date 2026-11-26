@@ -5,9 +5,8 @@
 	// meet on the page's centre line, under the middle of the logo: the icons and labels end there and the values
 	// begin there, however long a value is. Customer and Company lead with their logo, Team with the team's own
 	// faces. Looks A and B are kept beside it as they were.
-	import { toCrossOrigin } from '#lib/files/files.schema.js';
-	import ClientLogo from '../client-logo.svelte';
-	import { personOf } from '../look.data';
+	import { Avatar } from '@layerd/ui';
+	import { faceOf, logoOf } from '../marks';
 
 	export type CoverLineType = {
 		label: string;
@@ -42,18 +41,21 @@
 		{#each lines as line (line.label)}
 			{#if line.names?.length}
 				<dd class="has-mark">
-					<!-- The lead in front, ringed in blue; each of the others tucked behind the one before. -->
+					<!-- The lead in front, ringed in blue; each of the others tucked behind the one before. Someone with no
+					     photo yet shows their initials on their role's colour (#355). -->
 					<span class="faces">
 						{#each line.names.slice(0, FACES) as name, index (name)}
-							{@const photo = personOf(name).photo}
-							<!-- Someone with no photo yet shows their initials on their role's colour (#355). -->
-							<img
+							<span
 								class="face"
 								style="z-index: {FACES - index}"
-								src={photo}
-								crossorigin={toCrossOrigin(photo)}
-								alt={name}
-							/>
+								><Avatar
+									{...faceOf(name, { hasPresence: false })}
+									size={index ? 20 : 18}
+									ring={index
+										? 'ring-[1.5px] ring-slate-100'
+										: 'ring-2 ring-primary ring-offset-1 ring-offset-slate-100'}
+								/></span
+							>
 						{/each}
 					</span>
 					{#if line.more}<span class="more">{line.more}</span>{/if}
@@ -61,17 +63,16 @@
 			{:else if line.value && (line.customer || line.logo)}
 				<dd class="has-mark">
 					{#if line.customer}
-						<ClientLogo
-							name={line.customer}
+						<Avatar
+							{...logoOf(line.customer, { shape: 'circle' })}
 							size={24}
-							shape="circle"
 						/>
 					{:else}
-						<img
-							class="mark"
+						<Avatar
 							src={line.logo}
 							alt=""
-							draggable="false"
+							size={24}
+							ring="ring-1 ring-slate-900/10"
 						/>
 					{/if}
 					<span class="min-w-0 truncate">{line.value}</span>
@@ -137,44 +138,21 @@
 		min-width: 0;
 		white-space: nowrap;
 	}
-	.mark {
-		display: block;
-		width: 24px;
-		height: 24px;
-		flex: none;
-		border-radius: 50%;
-		object-fit: cover;
-		background: #fff;
-		box-shadow: 0 0 0 1px rgb(15 23 42 / 0.1);
-	}
 	.faces {
 		display: flex;
 		align-items: center;
 		flex: none;
 	}
-	/* A face is 20 across with a thin rim in the band's own gray, and overlaps the one before it by 7. */
+	/* A face is 20 across with a thin rim in the band's own gray (its ring), and overlaps the one before it by 7. */
 	.face {
 		position: relative;
-		display: grid;
-		place-items: center;
-		width: 20px;
-		height: 20px;
+		display: flex;
 		margin-left: -7px;
 		flex: none;
-		border-radius: 50%;
-		object-fit: cover;
-		background: #e2e8f0;
-		color: #94a3b8;
-		box-shadow: 0 0 0 1.5px #f1f5f9;
 	}
 	/* The lead: 18 across, a thin gap, then the blue ring, 24 in all. */
 	.face:first-child {
-		width: 18px;
-		height: 18px;
 		margin: 3px;
-		box-shadow:
-			0 0 0 1px #f1f5f9,
-			0 0 0 3px var(--color-primary);
 	}
 	/* The count sits a little closer to the last face. */
 	.more {

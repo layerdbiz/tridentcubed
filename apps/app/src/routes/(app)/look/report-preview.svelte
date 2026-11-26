@@ -33,6 +33,7 @@
 	// facility, transport, facility; a transport's page with its photo, particulars and facilities; the signature
 	// at the foot of the last page. Their one-page A versions are gone (#372).
 	import { onMount, untrack } from 'svelte';
+	import { Avatar } from '@layerd/ui';
 	import PdfPage from '#lib/components/attachment/pdf-page.svelte';
 	import { bytesOf, drawPage, pdfOf } from '#lib/pdf/pdf.utils.js';
 	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
@@ -49,11 +50,10 @@
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toReportLink } from '#lib/report/report.utils.js';
 	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
-	import Avatar from './avatar.svelte';
-	import ClientLogo from './client-logo.svelte';
 	import { introductionOf, listOf } from './introduction';
 	import ItemTable, { type FitType, type PartType } from './item-table.svelte';
 	import { legsOf, type LegType } from './legs';
+	import { faceOf, logoOf } from './marks';
 	import {
 		createdDayOf,
 		dayOf,
@@ -1356,11 +1356,9 @@
 				class="size-10 shrink-0 object-contain"
 			/>
 		{:else}
-			<ClientLogo
-				name={company}
+			<Avatar
+				{...logoOf(company, { isBare: true })}
 				size={40}
-				shape={client.icon ? 'rounded' : 'circle'}
-				isBare
 			/>
 		{/if}
 		<div class="min-w-0 text-[7.5px] leading-[1.5] text-slate-500">
@@ -1420,10 +1418,8 @@
 	{#if signer}
 		<div class="mt-6 flex items-start gap-3">
 			<Avatar
-				name={signer.name}
+				{...faceOf(signer.name, { hasPresence: false })}
 				size={76}
-				ring="ring-transparent"
-				hasPresence={false}
 				badge={ICON_192}
 				badgeScale={0.37}
 			/>
@@ -1491,12 +1487,10 @@
 	<div class="flex min-w-0 flex-col items-center rounded-xl bg-slate-50 px-1.5 py-2 text-center">
 		<!-- Anyone without the organization's badge is Personnel: black initials on white (#355). -->
 		<Avatar
-			{name}
+			{...faceOf(name, { hasPresence: false, tone: badge ? undefined : 'personnel' })}
 			size={36}
-			ring={isLead ? 'ring-primary' : 'ring-white'}
-			hasPresence={false}
+			ring="ring-2 {isLead ? 'ring-primary' : 'ring-white'}"
 			{badge}
-			tone={badge ? undefined : 'personnel'}
 		/>
 		<p class="mt-1.5 w-full text-[10px] leading-tight font-semibold text-balance text-slate-900">
 			{name}
@@ -1527,24 +1521,17 @@
 	<p class="pb-1 text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase">{text}</p>
 {/snippet}
 
-<!-- A transport's mark: its own photo when it has one, else its mode's icon. -->
-{#snippet carrierMark(leg: LegType, size: string)}
-	{@const photo = carrierOf(leg)?.photo}
-	{#if photo}
-		<img
-			src={photo}
-			crossorigin={toCrossOrigin(photo)}
-			alt=""
-			draggable="false"
-			class="{size} shrink-0 rounded-full object-cover"
-		/>
-	{:else}
-		<span
-			class="{size} flex shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-			><span class="{MODE_ICONS[leg.stops[0]?.mode] ?? PAGE_ICONS.transport} size-[60%]"
-			></span></span
-		>
-	{/if}
+<!-- A transport's mark: its own photo when it has one, else its mode's icon on pale blue. -->
+{#snippet carrierMark(leg: LegType, size: number)}
+	{@const photo = carrierOf(leg)?.photo ?? ''}
+	<Avatar
+		src={photo}
+		crossorigin={toCrossOrigin(photo)}
+		alt=""
+		{size}
+		fallback={MODE_ICONS[leg.stops[0]?.mode] ?? PAGE_ICONS.transport}
+		tint="bg-primary/10 text-primary"
+	/>
 {/snippet}
 
 <!-- A photo of the item list (#233; Michael's packing list printed with its sides cut off): the whole picture at its
@@ -1641,11 +1628,9 @@
 					class="mt-2 grid grid-cols-[1.4fr_1fr_1fr] gap-3 border-t border-slate-200 pt-2 text-[10px]"
 				>
 					<div class="flex min-w-0 items-center gap-2">
-						<ClientLogo
-							name={company}
+						<Avatar
+							{...logoOf(company, { shape: 'circle', isBare: true })}
 							size={24}
-							shape="circle"
-							isBare
 						/>
 						<div class="min-w-0">
 							<p class="truncate font-semibold text-slate-900">{company || 'No customer yet'}</p>
@@ -1702,12 +1687,13 @@
 				     on black (#355). -->
 				<div class="flex items-center gap-1 pb-1">
 					{#if other.company.trim()}
-						<ClientLogo
-							name={other.company}
+						<Avatar
+							{...logoOf(other.company, {
+								shape: 'circle',
+								isBare: true,
+								tone: CLIENTS.includes(other.company) ? 'customer' : 'company'
+							})}
 							size={14}
-							shape="circle"
-							isBare
-							tone={CLIENTS.includes(other.company) ? 'customer' : 'company'}
 						/>
 					{/if}
 					<p class="text-[7.5px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
@@ -1836,7 +1822,7 @@
 				<div class="pb-1.5">
 					<div class="rounded-xl bg-slate-50 px-3 py-2">
 						<div class="flex items-center gap-2">
-							{@render carrierMark(leg, 'size-7')}
+							{@render carrierMark(leg, 28)}
 							<p
 								class="text-[11px] font-semibold {lead.name
 									? 'text-slate-900'

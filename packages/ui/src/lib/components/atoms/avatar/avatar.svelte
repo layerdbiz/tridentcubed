@@ -2,6 +2,14 @@
 	lang="ts"
 	module
 >
+	import { initialsOf, toInitialsPicture, type InitialsToneType } from '@layerd/ui';
+
+	// No picture: the name's initials, or the letters given, drawn on the tone's colours (#355).
+	function toLetters(name = '', initials = '', tone: InitialsToneType = 'team') {
+		const letters = initials || initialsOf(name);
+		return letters ? toInitialsPicture(letters, tone) : '';
+	}
+
 	// The box's size, the dot's and the badge's, as one style made once for each avatar (#379, measured).
 	function toBoxStyle(size: number, badge: string | undefined, badgeScale: number) {
 		const box = `width: ${size}px; height: ${size}px; --dot: ${Math.max(8, Math.round(size * 0.28))}px`;
@@ -15,19 +23,26 @@
 	/**
 	 * @tags ui, avatar
 	 */
-	// One round picture, a face or a logo (#379, moved from the app's look/avatar.svelte and client-logo.svelte): the
-	// picture, or an icon on grey when there is none, with a presence dot at the top right or a badge at the bottom
-	// right in its place. It repeats in every dashboard row, so it is one element and a picture, with no base
+	// Every little round picture in the app, a face or a logo (#379, Justin, 2026-11-26: one component, never
+	// several): the photo or logo; with none, the name's initials (or a company's code) on the colours of its role or
+	// kind (#355); with no letters either, an icon on grey, or on a colour it is given. A presence dot sits at the top right, or a badge at the
+	// bottom right in its place. It repeats in every dashboard row, so it is one element and a picture, with no base
 	// component (#365 item 7, like the menu list's rows on #297), and the dot and the badge are drawn by the element
-	// itself rather than elements of their own. The app draws its initials and company codes as pictures and hands
-	// them over as `src` (#355).
+	// itself rather than elements of their own.
 
 	export type PresenceType = 'online' | 'idle' | 'offline';
 
 	export interface AvatarProps {
-		// The picture: a photo, a logo, or a drawn one. None shows `fallback`.
+		// The picture: a photo or a logo. None draws the initials.
 		src?: string;
-		// Who or what it is, read out in place of the picture.
+		// Who or what it is: read out in place of the picture, and its initials when there is none.
+		name?: string;
+		// The letters to draw instead of the name's: a company's code.
+		initials?: string;
+		// Whose initials they are, which sets their colours: a person's role (admin, manager, team), a customer, a
+		// project's Personnel, or another company. Team when not given.
+		tone?: InitialsToneType;
+		// What is read out, when it is not the name (a company's "logo").
 		alt?: string;
 		// Its width and height in pixels.
 		size?: number;
@@ -44,8 +59,10 @@
 		badge?: string;
 		// How wide the badge is, as a share of the avatar.
 		badgeScale?: number;
-		// The icon class shown on grey when there is no picture.
+		// The icon class shown when there is no picture and no letters.
 		fallback?: string;
+		// The icon's circle colours, as classes: grey unless given (a transport's mode on its own colour).
+		tint?: string;
 		crossorigin?: 'anonymous' | 'use-credentials';
 		title?: string;
 		class?: string;
@@ -53,7 +70,10 @@
 
 	let {
 		src = '',
-		alt = '',
+		name,
+		initials,
+		tone,
+		alt,
 		size = 36,
 		shape = 'circle',
 		fit = 'cover',
@@ -63,10 +83,13 @@
 		badge,
 		badgeScale = 0.42,
 		fallback = 'icon-[mdi--account]',
+		tint = 'bg-slate-200 text-slate-400',
 		crossorigin,
 		title,
 		class: className = ''
 	}: AvatarProps = $props();
+
+	const picture = $derived(src || toLetters(name, initials, tone));
 </script>
 
 <!-- No whitespace between the parts: every space is one more node in every row (#379, measured). -->
@@ -76,21 +99,20 @@
 	data-presence={badge ? undefined : presence}
 	data-badge={badge ? '' : undefined}
 	{title}
-	>{#if src}<img
-			{src}
-			{alt}
+	>{#if picture}<img
+			src={picture}
+			alt={alt ?? name ?? ''}
 			{crossorigin}
 			draggable="false"
 			class="size-full {shape === 'circle' ? 'rounded-full' : 'rounded-[24%]'} {fit === 'contain'
 				? 'bg-white object-contain'
 				: 'bg-slate-200 object-cover'} {ring} {isMuted ? 'grayscale' : ''}"
 		/>{:else}<span
-			class="flex size-full items-center justify-center bg-slate-200 text-slate-400 {shape ===
-			'circle'
+			class="flex size-full items-center justify-center {tint} {shape === 'circle'
 				? 'rounded-full'
 				: 'rounded-[24%]'} {ring}"
 			role="img"
-			aria-label={alt}><span class="{fallback} size-[58%]"></span></span
+			aria-label={alt ?? name ?? ''}><span class="{fallback} size-[58%]"></span></span
 		>{/if}</span
 >
 

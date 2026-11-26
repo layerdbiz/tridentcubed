@@ -68,15 +68,18 @@ export type AppConfigType = {
 	paths?: Config['paths'];
 	/** Vitest settings, for the apps that have tests. */
 	test?: ViteUserConfig['test'];
+	/** Values written into the code at build time: the app's build commit (#396). */
+	define?: ViteUserConfig['define'];
 };
 
 /**
  * The one Vite config for the SvelteKit apps (app, site, play, overview). SvelteKit 3 reads only
  * `vite.config.ts`, so an app's file is this call plus its overrides.
  */
-export function createAppConfig({ root, prerender, paths, test }: AppConfigType) {
+export function createAppConfig({ root, prerender, paths, test, define }: AppConfigType) {
 	return defineConfig(({ command }) => ({
 		root,
+		define,
 		plugins: lazyPlugins(() => [
 			tailwindcss(),
 			sveltekit({

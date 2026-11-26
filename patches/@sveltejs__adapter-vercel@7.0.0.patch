@@ -1,0 +1,45 @@
+diff --git a/index.js b/index.js
+index 7cec5f02109a9ace9d9c13463775257925636f75..dc7a57a0ccd4aa71584fa8c6fc2e731c59633061 100644
+--- a/index.js
++++ b/index.js
+@@ -530,6 +530,24 @@ function static_vercel_config(builder, config, dir) {
+ 	};
+ }
+ 
++// Trident (#397): one trace cache for every function of a build, so each package is read and parsed once
++// instead of once per function.
++/** @type {Record<string, Map<string, unknown>>} */
++const nft_cache = {};
++
++/**
++ * The adapter writes its entry files (`vercel-tmp/index.js`, `server.js`, `serverless.js`) anew for every
++ * function, so the cache forgets them before each trace.
++ * @param {string} tmp_dir
++ */
++function forget_entry_files(tmp_dir) {
++	for (const map of Object.values(nft_cache)) {
++		for (const file of map.keys()) {
++			if (file.startsWith(tmp_dir)) map.delete(file);
++		}
++	}
++}
++
+ /**
+  * @param {import('@sveltejs/kit').Builder} builder
+  * @param {string} entry
+@@ -542,11 +560,14 @@ async function create_function_bundle(builder, entry, dir, config) {
+ 	let base = entry;
+ 	while (base !== (base = path.dirname(base)));
+ 
++	forget_entry_files(path.dirname(path.resolve(entry)) + path.sep);
++
+ 	const traced = await nodeFileTrace([entry], {
+ 		base,
+ 		processCwd: process.cwd(),
+ 		// a wildcard directly under `base` would glob the entire filesystem
+-		ignore: (file) => file.startsWith('**')
++		ignore: (file) => file.startsWith('**'),
++		cache: nft_cache
+ 	});
+ 
+ 	/** @type {Map<string, string[]>} */

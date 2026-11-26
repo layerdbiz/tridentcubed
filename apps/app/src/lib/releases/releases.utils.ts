@@ -48,7 +48,9 @@ const KINDS: Record<string, ChangeKindType> = { feat: 'feature', fix: 'fix', per
 // An optional emoji, the kind, an optional (area), an optional `!`, a colon and the words: `✨ feat(app)!: words`.
 const TITLE =
 	/^(?:[^\sA-Za-z0-9]+\s+)?(?<kind>[a-z]+)(?:\((?<area>[^)]*)\))?(?<isBreaking>!)?:\s*(?<words>.+)$/u;
-const TICKET = /\s*\(#(\d+)\)/g;
+// One bracket of tickets, `(#346)` or `(#346, #345)`, and the numbers inside one.
+const TICKETS = /\s*\((#\d+(?:,\s*#\d+)*)\)/g;
+const NUMBER = /#(\d+)/g;
 
 type ParsedType = { change?: ReleaseChangeType; isBreaking: boolean };
 
@@ -59,8 +61,10 @@ function parse({ subject, body = '' }: CommitType): ParsedType {
 	const breaking = Boolean(isBreaking) || /^BREAKING[ -]CHANGE:/m.test(body);
 	const change = KINDS[kind];
 	if (!change) return { isBreaking: breaking };
-	const tickets = [...words.matchAll(TICKET)].map((ticket) => Number(ticket[1]));
-	const plain = words.replace(TICKET, '').trim();
+	const tickets = [...words.matchAll(TICKETS)].flatMap((bracket) =>
+		[...bracket[1].matchAll(NUMBER)].map((ticket) => Number(ticket[1]))
+	);
+	const plain = words.replace(TICKETS, '').trim();
 	return {
 		isBreaking: breaking,
 		change: {
@@ -81,15 +85,10 @@ function bump(version: string, part: 'major' | 'minor' | 'patch') {
 }
 
 /**
- * The release the commits since the last one make, or nothing when none of them is a feature or a fix. `last` is
- * the last release's version; with none, this is the first release: it gets FIRST_VERSION and FIRST_SUMMARY,
- * whatever it lists. Features come before fixes, each in the order given; a title met twice is listed once.
+ * The new features and fixes among the commits, as a release lists them: features first, then fixes, each in the
+ * order given, and a title met twice listed once. Every other kind of commit is left out.
  */
-export function planRelease(
-	last: string | undefined,
-	commits: CommitType[],
-	date = new Date().toISOString().slice(0, 10)
-): ReleaseType | undefined {
+export function toReleaseChanges(commits: CommitType[]) {
 	const parsed = commits.map(parse);
 	const seen = new Set<string>();
 	const changes: ReleaseChangeType[] = [];
@@ -100,6 +99,21 @@ export function planRelease(
 			changes.push(change);
 		}
 	}
+	return changes;
+}
+
+/**
+ * The release the commits since the last one make, or nothing when none of them is a feature or a fix. `last` is
+ * the last release's version; with none, this is the first release: it gets FIRST_VERSION and FIRST_SUMMARY,
+ * whatever it lists. Features come before fixes, each in the order given; a title met twice is listed once.
+ */
+export function planRelease(
+	last: string | undefined,
+	commits: CommitType[],
+	date = new Date().toISOString().slice(0, 10)
+): ReleaseType | undefined {
+	const parsed = commits.map(parse);
+	const changes = toReleaseChanges(commits);
 	if (!last) return { version: FIRST_VERSION, date, summary: FIRST_SUMMARY, changes };
 	if (changes.length === 0) return undefined;
 	const part = parsed.some((commit) => commit.isBreaking)
@@ -143,7 +157,12 @@ export function isNewer(a: string, b: string) {
 // The areas whose changes people meet in the app: the app itself and the library it is drawn with.
 const APP_AREAS = new Set(['app', 'ui']);
 
-/** A release's changes that What's New lists: the app's and the library's, and those naming no area. */
+/** Whether people meet a change in the app: the app's and the library's, and those naming no area. */
+export function isAppChange(change: ReleaseChangeType) {
+	return !change.area || APP_AREAS.has(change.area);
+}
+
+/** A release's changes that What's New lists: those people meet in the app. */
 export function toAppChanges(release: ReleaseType) {
-	return release.changes.filter((change) => !change.area || APP_AREAS.has(change.area));
+	return release.changes.filter(isAppChange);
 }

@@ -9,8 +9,7 @@
 	import { flip } from 'svelte/animate';
 	import Board from './board.svelte';
 	import { Stack } from '@layerd/ui';
-	import Faces from './faces.svelte';
-	import { logoOf } from './marks';
+	import { facesOf, logoOf } from './marks';
 	import { FADE, fadeTop } from './fade';
 	import { DATASETS, type DatasetType, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -56,8 +55,7 @@
 {#snippet logoStack(names: string[])}
 	<Stack
 		items={names.slice(0, 4).map((name) => ({
-			...logoOf(name),
-			shape: 'circle',
+			...logoOf(name, { shape: 'circle' }),
 			id: name,
 			ring: 'ring-2 ring-white'
 		}))}
@@ -208,10 +206,9 @@
 										/></td
 									>
 									<td class="py-3 {CELL_PADDING}"
-										><Faces
-											names={project.team}
+										><Stack
+											items={facesOf(project.team, { isMuted: isArchived })}
 											size={30}
-											isMuted={isArchived}
 										/></td
 									>
 									<td class="py-3 {CELL_PADDING} pr-4"
@@ -283,8 +280,8 @@
 										</td>
 									{/if}
 									<td class="py-3 {CELL_PADDING}"
-										>{#if record.people.length}<Faces
-												names={record.people}
+										>{#if record.people.length}<Stack
+												items={facesOf(record.people)}
 												size={28}
 											/>{:else}{@render logoStack(record.logos)}{/if}</td
 									>

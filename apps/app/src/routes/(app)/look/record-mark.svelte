@@ -30,7 +30,7 @@
 >
 	<!-- The library's avatar straight, with no app wrapper between: it is in every row (#379). -->
 	{#if record.page === 'customers'}
-		{@const logo = logoOf(record.key)}
+		{@const logo = logoOf(record.key, { shape: 'circle' })}
 		<Avatar
 			src={logo.src}
 			alt={logo.alt}
@@ -38,8 +38,9 @@
 			fit={logo.fit}
 			fallback={logo.fallback}
 			{size}
-			ring="shadow-sm ring-1 ring-slate-900/[0.06]"
-			title={record.key}
+			shape={logo.shape}
+			ring={logo.ring}
+			title={logo.title}
 		/>
 	{:else if record.page === 'team'}
 		{@const face = faceOf(record.key)}
@@ -52,10 +53,12 @@
 			ring="ring-2 {RING[record.member?.role ?? 'team']}"
 		/>
 	{:else}
-		<span
-			class="flex items-center justify-center rounded-full text-white {record.tone.bg}"
-			style="width: {size}px; height: {size}px"><span class="{record.icon} size-1/2"></span></span
-		>
+		<Avatar
+			alt={record.key}
+			{size}
+			fallback={record.icon}
+			tint="{record.tone.bg} text-white"
+		/>
 	{/if}
 	{#if hasBadge && record.count}
 		<span

@@ -15,7 +15,7 @@ import type { GridType } from './spreadsheet';
 // is made up by code any more. A project and every record carry when they were made and last changed (`created`,
 // `updated`), which the charts, Recent and "Updated" read; a project's number comes from its customer's code and its
 // day; a customer has several contacts; the online dot comes from when someone was last in the app.
-import { initialsOf, toCode, toInitialsPicture } from './initials';
+import { initialsOf, toCode, toInitialsPicture } from '@layerd/ui';
 import { photoOfMember, type PresenceType, type TeamMemberType } from './team.data';
 
 export type StatusType =
