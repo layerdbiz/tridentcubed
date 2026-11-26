@@ -134,8 +134,8 @@
 		class="help-layer"
 		onclose={close}
 	>
-		<b class="mb-1.5 block text-lg font-semibold text-slate-900">{label}</b>
-		<p class="m-0 text-[15px] leading-relaxed text-slate-600">{text}</p>
+		<b class="mb-1.5 block text-lg font-semibold text-base-900">{label}</b>
+		<p class="m-0 text-[15px] leading-relaxed text-base-600">{text}</p>
 	</Dialog>
 {/if}
 

@@ -23,10 +23,11 @@ function show(props: Record<string, unknown> = {}) {
 // A pull on the sheet from where the finger lands. A slow one rests a moment before it moves, so it lets go at no
 // speed; a quick one is a flick.
 async function pull(sheet: Element, distance: number, isSlow = false) {
-	await fireEvent.pointerDown(sheet, { pointerId: 1, clientY: 400 });
+	const finger = { pointerId: 1, isPrimary: true, button: 0 };
+	await fireEvent.pointerDown(sheet, { ...finger, clientY: 400 });
 	if (isSlow) await new Promise((resolve) => setTimeout(resolve, 150));
-	await fireEvent.pointerMove(sheet, { pointerId: 1, clientY: 400 + distance });
-	await fireEvent.pointerUp(sheet, { pointerId: 1, clientY: 400 + distance });
+	await fireEvent.pointerMove(sheet, { ...finger, clientY: 400 + distance });
+	await fireEvent.pointerUp(sheet, { ...finger, clientY: 400 + distance });
 }
 
 afterEach(() => {

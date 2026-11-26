@@ -62,7 +62,7 @@
 	// Add C (Justin, 2026-11-12): the + opens no form, only a small pop-up of what can be added. A pick makes the
 	// thing at once, under a name to be changed ("New Customer"), and opens its Edit to fill in. "Add new" in a
 	// dropdown still opens the form, since what it adds is picked the moment it has a name.
-	// On a phone the pop-up is the sheet every other one is, sliding up from the bottom (sheet.svelte); on a
+	// On a phone the pop-up is the sheet every other one is, sliding up from the bottom (the library's Dialog); on a
 	// desktop it is a small menu over the + button.
 	let innerWidth = $state(0);
 	const isWide = $derived(innerWidth >= 768);

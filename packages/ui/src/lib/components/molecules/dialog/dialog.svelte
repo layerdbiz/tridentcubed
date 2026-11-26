@@ -5,7 +5,7 @@
 	 */
 	// The Dialog (glossary, #375): the box that opens over the page. On a phone it slides up from the bottom as a
 	// sheet; drag it down (or flick it) or tap outside to close; dragging up only stretches a little and springs back.
-	// No close button. From md up it is a centred box. Escape closes it too. It is the browser's own <dialog>, in the
+	// No close button. From md up it is a centred box (the help's kind stays a sheet). Escape closes it too. It is the browser's own <dialog>, in the
 	// top layer, so it covers the floating bar wherever it is opened from, and white runs on below its bottom edge, so
 	// dragging it up never shows a gap. It began as the app's sheet (Justin's note 14, from the look prototype #161:
 	// the install how-to, add, save, change status, confirm, the dashboard ? cards) and keeps its look, slate shades
@@ -22,7 +22,7 @@
 	import { fade, fly } from 'svelte/transition';
 	import { Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
 
-	export interface DialogProps extends ComponentProps {
+	export interface DialogProps extends Omit<ComponentProps, 'label' | 'children'> {
 		/** What it holds, read out when it opens: "Change Status". */
 		label: string;
 		/** Asked to close, on Escape, a tap outside or a pull down: the place that opened it takes it away. */
@@ -41,7 +41,11 @@
 	let samples: { y: number; t: number }[] = [];
 
 	function down(event: PointerEvent) {
-		if ((event.target as HTMLElement).closest('button, a, input, select, textarea, label')) return;
+		// One finger or the main button, and only on this sheet: a sheet opened inside it pulls by itself.
+		if (!event.isPrimary || event.button !== 0) return;
+		const target = event.target as HTMLElement;
+		if (target.closest('.dialog-sheet') !== event.currentTarget) return;
+		if (target.closest('button, a, input, select, textarea, label')) return;
 		(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
 		isDragging = true;
 		start = event.clientY;
@@ -123,7 +127,7 @@
 			role={isModal ? undefined : 'dialog'}
 			aria-label={label}
 			tabindex="-1"
-			style="--dialog-lift: {lift}px"
+			style={`${root.style ? `${root.style}; ` : ''}--dialog-lift: ${lift}px`}
 			oncancel={cancel}
 			onclose={() => onclose()}
 			onmousedown={isModal ? undefined : (event: MouseEvent) => event.preventDefault()}
@@ -138,7 +142,9 @@
 				transition:fade|global={{ duration: 180 }}
 			></button>
 			<div
-				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none rounded-t-[28px] bg-white px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgb(15_23_42/0.18)] after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-white md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[26rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden {isDragging
+				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none rounded-t-[28px] bg-white px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-[0_-12px_40px_rgb(15_23_42/0.18)] after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-white {isModal
+					? 'md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[26rem] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden'
+					: ''} {isDragging
 					? ''
 					: 'transition-[transform,translate,bottom] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]'}"
 				style="transform: translateY({offset}px)"
@@ -149,7 +155,11 @@
 				onpointercancel={up}
 				transition:fly|global={{ y: 320, duration: 260 }}
 			>
-				<span class="mx-auto mb-4 block h-1.5 w-10 rounded-full bg-slate-200 md:hidden"></span>
+				<span
+					class="mx-auto mb-4 block h-1.5 w-10 rounded-full bg-slate-200 {isModal
+						? 'md:hidden'
+						: ''}"
+				></span>
 				{@render children()}
 			</div>
 		</svelte:element>

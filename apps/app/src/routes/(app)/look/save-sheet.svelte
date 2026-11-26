@@ -7,6 +7,12 @@
 
 	let { look }: { look: LookState } = $props();
 
+	// A retry that is under way takes the sheet away; it does not come back by itself on the next failure, where it
+	// would take the focus from whatever is being typed (#375).
+	$effect(() => {
+		if (look.sync.state !== 'failed') look.isSaveSheetOpen = false;
+	});
+
 	function retry() {
 		look.isSaveSheetOpen = false;
 		look.sync.retry();
