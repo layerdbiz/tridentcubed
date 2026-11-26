@@ -88,6 +88,7 @@ export { default as Menu, type MenuOptionType, type MenuProps } from "./componen
 export { default as Navbar } from "./components/molecules/navbar/navbar.svelte";
 export { default as Preview, type PreviewProps } from "./components/molecules/preview/preview.svelte";
 export { default as Slider, type SliderProps } from "./components/molecules/slider/slider.svelte";
+export { default as Tabs, type TabsProps } from "./components/molecules/tabs/tabs.svelte";
 export * from "./components/molecules/toast/toast.svelte.ts";
 export { default as Toast, type ToastProps } from "./components/molecules/toast/toast.svelte";
 export { default as Toggle, type ToggleProps } from "./components/molecules/toggle/toggle.svelte";

@@ -155,6 +155,42 @@ describe('the Activity', () => {
 		});
 	});
 
+	it('records a sign-in the database is given by any copy of the app, even one that does not record it itself', async () => {
+		// dev.app and next.app share one database, and dev.app's code had no sign-in record: Ian's first sign-in there
+		// showed no device in the Last Sign-In list (Justin, 2026-11-26). The database records each new session.
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const tom = await test.signIn('tom.diaz@tridentcubed.com');
+		const at = new Date(Date.now() + 60_000);
+		await test.db.insert(schema.session).values({
+			token: 'another-copy-of-the-app',
+			userId: tom.user.id,
+			expiresAt: new Date(Date.now() + 86_400_000),
+			createdAt: at,
+			updatedAt: at,
+			userAgent: IPHONE,
+			activeOrganizationId: TRIDENT_CUBED.id
+		});
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+
+		const { people, events } = await readAs(test, ana);
+
+		expect(
+			events
+				.filter((event) => event.who === 'Tom Diaz')
+				.map(toLine)
+				.map(({ kind, device }) => ({ kind, device }))
+		).toEqual([
+			{ kind: 'signIn', device: 'iPhone · Safari' },
+			{ kind: 'signIn', device: undefined }
+		]);
+		expect(people.find((person) => person.who === 'Tom Diaz')).toMatchObject({
+			at: at.toISOString(),
+			isFirst: false,
+			device: 'iPhone · Safari'
+		});
+	});
+
 	it('lets only an Admin’s queries read sign-ins, with the permission check skipped, and nobody a session', async () => {
 		const test = await createTestSignIn();
 		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
@@ -221,6 +257,45 @@ describe('the Activity', () => {
 			project: 'Untitled project',
 			columns: ['On or Off', 'URL']
 		});
+	});
+
+	it('gives each change its row and the project it is in, so a tap on a name opens them', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const project = crypto.randomUUID();
+		const panel = crypto.randomUUID();
+		const customer = crypto.randomUUID();
+		await save(test, ana, {
+			table: 'project',
+			id: project,
+			operation: 'put',
+			values: { title: 'Hull survey' }
+		});
+		await save(test, ana, {
+			table: 'panel',
+			id: panel,
+			operation: 'put',
+			values: { projectId: project, kind: 'photos', key: 'operations', name: 'Operations' }
+		});
+		await save(test, ana, {
+			table: 'customer',
+			id: customer,
+			operation: 'put',
+			values: { name: 'Harbor Lines' }
+		});
+
+		const { events } = await readAs(test, ana);
+
+		expect(
+			events.flatMap((event) =>
+				event.kind === 'signIn' ? [] : [{ rowId: event.rowId, projectId: event.projectId }]
+			)
+		).toEqual([
+			{ rowId: customer, projectId: undefined },
+			{ rowId: panel, projectId: project },
+			{ rowId: project, projectId: project }
+		]);
 	});
 
 	it('counts what a new project starts with on the project’s own line, the project first', async () => {

@@ -33,6 +33,10 @@ export type ChangeEventType = ActivityLineType & {
 	/** What kind of row it was, as the app says it in a sentence: "project", "customer", "photo". */
 	thing: string;
 	table: TableNameType;
+	/** The row's id, which a tap on its name opens. */
+	rowId: string;
+	/** The id of the project it is, or is inside, which a tap on the project's name opens. */
+	projectId?: string;
 	/** The row's own name or title, when it has one. */
 	name?: string;
 	/** The title of the project a row inside one belongs to. */
