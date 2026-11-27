@@ -19,7 +19,6 @@ export * from "./definitions/inputs.ts";
 export * from "./install/install.constants.ts";
 export * from "./install/install.state.svelte.ts";
 export * from "./metadata/metadata.utils.ts";
-export { default as Note } from "./update/note.svelte";
 export * from "./releases/notes.ts";
 export * from "./start/organization.ts";
 export * from "./definitions/pages.ts";

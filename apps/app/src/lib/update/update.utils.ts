@@ -1,4 +1,4 @@
-// The update note's two words with the browser's service worker (#202). Neither decides anything: whether a new
+// What's New's two words with the browser's service worker (#202). Neither decides anything: whether a new
 // version exists is SvelteKit's version check, and when to switch is the update rule (update.state.svelte.ts).
 import { TAKE_OVER, TAKE_OVER_WAIT } from './update.constants';
 

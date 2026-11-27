@@ -4,8 +4,8 @@
 // serves the same one, the Website's videos and photos included) and it never answers data. What it does with a
 // request is in service-worker.utils.ts: a kept file comes from the device, a page load comes from the newest
 // version or gets the Needs Internet screen when it cannot be reached, the rest is left alone. It never calls
-// `skipWaiting()` on install: a new version waits until the app is closed, or until the User taps the update note or
-// What's New (#202, #396), whose message is the only thing that lets it take over an open app.
+// `skipWaiting()` on install: a new version waits until the app is closed, or until the User taps What's New's button
+// (#202, #396), whose message is the only thing that lets it take over an open app.
 //
 // Which version answers (#401): the install asks for its files from the deployment it was built in, and a page load
 // asks the newest one, whatever Vercel's version cookie says. Navigation preload is turned off: the page is asked

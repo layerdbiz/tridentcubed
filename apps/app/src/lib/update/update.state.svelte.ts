@@ -1,5 +1,6 @@
 // The update rule (#202, ADR 0007): when an open app switches to a new version. A new version is offered, never
-// taken: the switch needs the User's tap on the note, and it never happens while a change is Saving or Not saved.
+// taken: the switch needs the User's tap on What's New's button, and it never happens while a change is Saving or
+// Not saved.
 // A tap made then is kept, and the switch follows once the Save state is back to Saved. The switch is the new
 // version's service worker taking over, then a reload onto the same address.
 //
@@ -7,7 +8,7 @@
 // `takeOver` (the service worker) and `reload` are handed to it.
 import type { SaveStateType } from '#lib/rows/rows.state.svelte.js';
 
-/** What the note shows: nothing, the offer, that it waits for the save, or that the app is switching. */
+/** What the button shows: nothing, the offer, that it waits for the save, or that the app is switching. */
 export type UpdateStepType = 'none' | 'offered' | 'waiting' | 'switching';
 
 export type UpdateOptionsType = {

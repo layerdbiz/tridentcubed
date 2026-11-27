@@ -95,7 +95,7 @@ export function toOld(names: string[], version: string) {
 	return names.filter((name) => name.startsWith(STORE_PREFIX) && name !== current);
 }
 
-/** Whether a message asks a waiting version to take over the open app: the update note's, sent on the User's tap. */
+/** Whether a message asks a waiting version to take over the open app: What's New's, sent on the User's tap. */
 export function isTakeOver(message: unknown) {
 	return message === TAKE_OVER;
 }

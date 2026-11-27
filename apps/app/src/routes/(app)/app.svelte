@@ -1,18 +1,16 @@
 <script lang="ts">
 	// The Report Generator V1 (#180): the look prototype's screens (#161, branch prototype/161-look-claude-prototype)
 	// carried across whole as the app. This names the browser tab after what is on screen and loads the organization's
-	// lists (#183) and who is signed in (#185) before the app starts; look/look.svelte is the app. The update note
-	// (#202) and What's New (#363) are here, in the signed-in app only, so neither shows on the login page. What's
-	// New opens once the app is on screen, after the reload the update note makes, when a release is new to this
-	// device.
+	// lists (#183) and who is signed in (#185) before the app starts; look/look.svelte is the app. What's New (#363) is
+	// here, in the signed-in app only, so it never shows on the login page. It opens once the app is on screen, when a
+	// release is new to this device, and the moment a newer version is out: its button is the one way to update
+	// (Justin, 2026-11-27: no "New version, tap to update" note).
 	import { fetchSelf } from '#lib/auth/auth.remote.js';
 	import { fetchLists } from '#lib/rows/rows.remote.js';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
 	import WhatsNew from '#lib/releases/whats-new.svelte';
 	import { Button } from '@layerd/ui';
-	import { HAS_POP_UP } from '#lib/releases/releases.constants.js';
-	import UpdateNote from '#lib/update/note.svelte';
 	import { FOLD_LOOK } from './look/fold';
 	import Look from './look/look.svelte';
 
@@ -21,7 +19,7 @@
 		return { rows, self };
 	})();
 
-	// What the tab title needs to name the page on screen, and the Save state the update note waits for.
+	// What the tab title needs to name the page on screen, and the Save state What's New's reload waits for.
 	type PageType = {
 		sync: Pick<SaveStatusType, 'state'>;
 		screen: string;
@@ -81,9 +79,7 @@
 		{self}
 		onready={ready}
 	/>
-	<!-- Where What's New opens by itself for a new version (next, #396), it takes the update note's place. -->
 	{#if shown}
-		{#if !HAS_POP_UP}<UpdateNote save={shown.sync} />{/if}
 		<WhatsNew
 			save={shown.sync}
 			fold={FOLD_LOOK}
