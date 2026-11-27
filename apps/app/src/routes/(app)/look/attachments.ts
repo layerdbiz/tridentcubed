@@ -250,9 +250,10 @@ export function cellAspectOf(grid: PageGridType, room = ROOM) {
 }
 
 /**
- * The shape the crop frame keeps (width over height), or none when it takes any shape: what the stage gives it
- * (its Ratio under Fit, the shape of its spots under Fill), else the ratio picked for it. A PDF's pages print whole
- * and an attachment popped out keeps its own shape, so neither takes the stage's.
+ * The shape the crop frame keeps (width over height), or none when it takes any shape: the ratio picked for the
+ * attachment itself, Free included, else what the stage gives it (its Ratio under Fit, the shape of its spots under
+ * Fill). The stage's shape is where an attachment starts, never a lock (Justin, 2026-11-27). A PDF's pages print
+ * whole and an attachment popped out keeps its own shape, so neither takes the stage's.
  */
 export function lockedAspectOf(
 	stage: StageLayoutType,
@@ -260,13 +261,18 @@ export function lockedAspectOf(
 	edit: EditType,
 	pictureAspect: number
 ): number | undefined {
-	const isOwn = photo.kind === 'pdf' || Boolean(photo.ownLayout);
-	if (!isOwn) {
-		if (fitOf(stage) === 'fit' && ratioOf(stage) !== 'free') return RATIO_VALUES[ratioOf(stage)];
-		if (fitOf(stage) === 'fill' && !stage.isAuto) return cellAspectOf(gridOf(stage));
-	}
 	if (edit.ratio === 'original') return turnedAspect(pictureAspect, edit);
-	return edit.ratio ? RATIO_VALUES[edit.ratio] : undefined;
+	if (edit.ratio) return RATIO_VALUES[edit.ratio];
+	if (photo.kind === 'pdf' || photo.ownLayout) return undefined;
+	if (fitOf(stage) === 'fit' && ratioOf(stage) !== 'free') return RATIO_VALUES[ratioOf(stage)];
+	if (fitOf(stage) === 'fill' && !stage.isAuto) return cellAspectOf(gridOf(stage));
+	return undefined;
+}
+
+/** Whether a spot's attachment was given a shape of its own, over the stage's. */
+function hasOwnShape<T>(spot: SpotType<T>) {
+	const photo = spot.photo as EditedType | undefined;
+	return Boolean(photo && editOf(photo, spot.page).ratio);
 }
 
 /** The stage's own frame shape, when it sets one: the editor names it in place of the ratio buttons. */
@@ -313,20 +319,27 @@ export function placeOf<T>(
 		);
 	const ratio = ratioOf(stage);
 	const isFree = ratio === 'free';
-	// Under Fit a set Ratio is every spot's shape, but a PDF's page keeps its own: it prints whole.
+	// Under Fit a set Ratio is every spot's shape, but a PDF's page keeps its own, as it prints whole, and so does an
+	// attachment given a shape of its own.
 	const aspects = spots.map((spot) =>
-		isFree || (spot.photo as EditedType | undefined)?.kind === 'pdf'
+		isFree || (spot.photo as EditedType | undefined)?.kind === 'pdf' || hasOwnShape(spot)
 			? aspectOf(spot)
 			: RATIO_VALUES[ratio]
 	);
 	if (fitOf(stage) === 'fill') {
-		if (page.mode === 'auto') {
-			const target = Math.exp(
-				spots.reduce((sum, spot) => sum + Math.log(aspectOf(spot)), 0) / spots.length
-			);
-			return fillGrid(spots, bestGrid(spots.length, target, width, height), width, height);
-		}
-		return fillGrid(spots, page.grid, width, height);
+		const grid =
+			page.mode === 'auto'
+				? bestGrid(
+						spots.length,
+						Math.exp(spots.reduce((sum, spot) => sum + Math.log(aspectOf(spot)), 0) / spots.length),
+						width,
+						height
+					)
+				: page.grid;
+		// One given a shape of its own prints whole in that shape, in the middle of the spot it would fill.
+		return fillGrid(spots, grid, width, height).map((each) =>
+			hasOwnShape(each.spot) ? inside(each, aspectOf(each.spot)) : each
+		);
 	}
 	if (page.mode === 'auto') {
 		if (isFree) return justified(spots, aspects, width, height);
@@ -334,6 +347,13 @@ export function placeOf<T>(
 		return fitGrid(spots, aspects, grid, false, width, height);
 	}
 	return fitGrid(spots, aspects, page.grid, isFree, width, height);
+}
+
+// The biggest box of `shape` (width over height) a placed spot holds, in its middle.
+function inside<T>(each: PlacedType<T>, shape: number): PlacedType<T> {
+	const w = Math.min(each.w, each.h * shape);
+	const h = w / shape;
+	return { ...each, x: each.x + (each.w - w) / 2, y: each.y + (each.h - h) / 2, w, h };
 }
 
 // Fill: the rows the spots need share the room's height, and each row's spots its width.

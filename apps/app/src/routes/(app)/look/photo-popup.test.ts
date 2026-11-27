@@ -44,7 +44,7 @@ vi.mock('#lib/pdf/pdf.state.svelte.js', () => ({
 
 type QuestionType = { title: string; note?: string; onyes: () => void };
 
-function show(photos?: unknown[], id = 'a') {
+function show(photos?: unknown[], id = 'a', layout: Record<string, unknown> = {}) {
 	const questions: QuestionType[] = [];
 	const look = {
 		asking: false,
@@ -52,6 +52,7 @@ function show(photos?: unknown[], id = 'a') {
 	} as unknown as LookState;
 	const group = {
 		layout: 4,
+		...layout,
 		photos: photos ?? [
 			{ id: 'a', src: '/a.webp', description: '' },
 			{ id: 'b', src: '/b.webp', description: '' }
@@ -170,6 +171,32 @@ describe("the photo pop-up's editor", () => {
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
 		expect(group.photos[0].edit).toEqual({ turns: 1 });
+	});
+
+	it('offers every crop shape under a stage’s Ratio, starting on the stage’s, never locked in', async () => {
+		const { group } = show(undefined, 'a', { fit: 'fit', ratio: '4:3' });
+		const shapes = screen
+			.getAllByRole('button', { pressed: true })
+			.filter((each) => each.hasAttribute('data-crop-ratio'))
+			.map((each) => each.textContent);
+		expect(shapes).toEqual(['Stage']);
+		for (const label of ['Free', 'Original', '16:9', '9:16', '1:1', '4:3'])
+			expect(screen.getByRole('button', { name: label })).toBeTruthy();
+
+		await fireEvent.click(screen.getByRole('button', { name: '9:16' }));
+		expect(screen.getByRole('button', { name: '9:16' }).getAttribute('aria-pressed')).toBe('true');
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+		expect(group.photos[0].edit?.ratio).toBe('9:16');
+	});
+
+	it('goes back to the stage’s shape from one of its own', async () => {
+		const own = { id: 'a', src: '/a.webp', description: '', edit: { ratio: 'free' } };
+		const { group } = show([own], 'a', { fit: 'fit', ratio: '4:3' });
+		await fireEvent.click(screen.getByRole('button', { name: /Stage/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+		expect(group.photos[0].edit).toBeUndefined();
 	});
 
 	it('pops one out onto pages of its own, two to a page', async () => {
