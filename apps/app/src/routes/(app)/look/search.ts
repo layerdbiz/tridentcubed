@@ -93,29 +93,6 @@ function byPage(rows: SearchRowType[]): SearchGroupType[] {
 	})).filter((group) => group.rows.length);
 }
 
-/** `text` cut into the parts the typed words were found in and the parts between, for the found parts to stand out. */
-export function marksOf(text: string, query: string): { text: string; isFound: boolean }[] {
-	const words = toPlain(query).split(/\s+/).filter(Boolean);
-	// Each letter of the text as it reads plain, so a found word maps back onto the letters it was found in.
-	const letters = Array.from(new Intl.Segmenter().segment(text), (part) => part.segment);
-	const plain = letters.map((letter) => toPlain(letter));
-	const flat = plain.join('');
-	// Which letter each of the plain text's characters came from.
-	const owner = plain.flatMap((part, index) => Array.from({ length: part.length }, () => index));
-	const isFound = letters.map(() => false);
-	for (const word of words) {
-		for (let at = flat.indexOf(word); at !== -1; at = flat.indexOf(word, at + word.length))
-			for (let index = at; index < at + word.length; index += 1) isFound[owner[index]] = true;
-	}
-	const parts: { text: string; isFound: boolean }[] = [];
-	for (const [index, letter] of letters.entries()) {
-		const last = parts.at(-1);
-		if (last && last.isFound === isFound[index]) last.text += letter;
-		else parts.push({ text: letter, isFound: isFound[index] });
-	}
-	return parts;
-}
-
 // Before anything is typed: how many of the things changed last show, in Recents and for each page.
 const LATEST = 10;
 
