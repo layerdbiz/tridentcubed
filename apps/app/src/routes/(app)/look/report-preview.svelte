@@ -101,7 +101,7 @@
 	import { fromSaved, toSaved, toTable } from './spreadsheet';
 	import { stagePagesOf } from './attachments';
 	import StageRoom from './stage-room.svelte';
-	import { toEnglish } from './translation';
+	import { IS_TRANSLATING, toEnglish } from './translation';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
 	import Qr from './qr.svelte';
@@ -211,8 +211,9 @@
 	// svelte-ignore state_referenced_locally
 	let back: 'column' | 'spread' = start;
 
-	// The panels as the report prints them (#360): each text typed in Spanish that has its English, in English.
-	const panels = $derived(toEnglish(look.panels));
+	// The panels as the report prints them (#360): each text typed in Spanish that has its English, in English, where
+	// the build translates (translation.ts); as typed everywhere else.
+	const panels = $derived(IS_TRANSLATING ? toEnglish(look.panels) : look.panels);
 
 	function valueOf(kind: string, label: string) {
 		return panels

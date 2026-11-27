@@ -113,3 +113,10 @@ export const PLAIN: PlainType = {
 	"Every push to next is a prerelease, v1.0.0-next.1 and on, and a new release opens What's New on its own glow":
 		"Every update has a version number, and What's New opens it in its own colours."
 };
+
+/**
+ * Tickets whose work is on the branch but switched off for now, left out of What's New and a release's notes until
+ * they are taken off here, when the feature is turned on. #360 Translate to English (Justin, 2026-11-27: "I don't
+ * want you to include the translate to English feature yet").
+ */
+export const HIDDEN_TICKETS = [360];

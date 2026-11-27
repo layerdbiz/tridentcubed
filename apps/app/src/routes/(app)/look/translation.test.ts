@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { groupOf, itemOf, panelOf, type PanelType } from './look.data';
 import {
 	isSpanish,
+	isTranslating,
 	keptWordsOf,
 	textsOf,
 	toEnglish,
@@ -55,6 +56,15 @@ function projectOf(): PanelType[] {
 		panel('items', 'Items', { items: [itemOf('2', 'Transformadores'), itemOf('1', '')] })
 	];
 }
+
+describe('where Translate to English is offered', () => {
+	it('is next.app and a build on a computer, not yet dev.app or the live app', () => {
+		expect(isTranslating('next')).toBe(true);
+		expect(isTranslating('')).toBe(true);
+		expect(isTranslating('dev')).toBe(false);
+		expect(isTranslating('main')).toBe(false);
+	});
+});
 
 describe('the typed texts of a report', () => {
 	it('lists each text that prints once, trimmed, with where it is', () => {
