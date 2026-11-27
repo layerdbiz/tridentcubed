@@ -271,13 +271,17 @@
 		});
 	}
 
-	function pickRatio(ratio: CropRatioType) {
+	// A shape picked for this attachment wins over the stage's; none goes back to the stage's (Justin, 2026-11-27:
+	// "I don't ever want to be locked in"). Where the stage sets no shape, Free is where every picture starts, so it is
+	// kept as none. The frame takes the new shape around the same middle; Free leaves it as it is, free to drag.
+	function pickRatio(ratio: CropRatioType | undefined) {
 		if (!photo) return;
+		const kept = !stageAspect && ratio === 'free' ? undefined : ratio;
 		change((edit) => {
-			const next = { ...edit, ratio };
-			edit.ratio = ratio;
-			if (ratio !== 'free')
-				edit.frame = frameOf(next, aspect, lockedAspectOf(group, placed, next, aspect));
+			if (kept) edit.ratio = kept;
+			else delete edit.ratio;
+			const shape = lockedAspectOf(group, placed, { ...edit }, aspect);
+			if (shape) edit.frame = frameOf({ ...edit }, aspect, shape);
 		});
 	}
 
@@ -621,10 +625,11 @@
 		return shape >= 1 ? { width: 18, height: 18 / shape } : { width: 18 * shape, height: 18 };
 	}
 
-	// What the stage sets the frame to, in words, in place of the ratio buttons.
+	// The stage's shape, the first of the ratio buttons when it sets one: its name, and what it is in words.
+	const stageShapeName = $derived(`${word.charAt(0).toUpperCase()}${word.slice(1)}`);
 	const stageShapeLabel = $derived(
 		fitOf(group) === 'fit'
-			? `${RATIOS.find(({ id: each }) => each === ratioOf(group))?.label}, set by the ${word}’s Ratio`
+			? `${RATIOS.find(({ id: each }) => each === ratioOf(group))?.label}, the ${word}’s Ratio`
 			: `Shaped to fill the ${word}’s page`
 	);
 
@@ -1186,7 +1191,8 @@
 				{/if}
 			</section>
 		{:else if tool === 'crop' && mine}
-			<!-- The crop's choices, all in one row: turn, flip, then the frame's ratio, unless the stage sets its shape. -->
+			<!-- The crop's choices, all in one row: turn, flip, then the frame's shape: the stage's first when it sets one,
+			     where the frame starts, then every other, any of them picked for this attachment alone. -->
 			<div
 				class="flex h-[58px] shrink-0 items-stretch gap-0.5 px-2 md:justify-center md:gap-1.5"
 				data-options
@@ -1209,38 +1215,47 @@
 				<span class="mx-0.5 my-2.5 w-px shrink-0 bg-white/15"></span>
 				{#if stageAspect}
 					{@const glyph = glyphOf('', stageAspect)}
-					<p
-						class="flex min-w-0 flex-[6] items-center justify-center gap-2 text-xs text-slate-400 md:flex-none md:px-3"
-						data-stage-shape
+					{@const isOn = !current.ratio}
+					<button
+						type="button"
+						class="{optionClass} {isOn
+							? 'bg-white/14 text-white'
+							: 'text-slate-300 hover:text-white'}"
+						aria-pressed={isOn}
+						title={stageShapeLabel}
+						data-crop-ratio="stage"
+						onclick={() => pickRatio(undefined)}
+						><span class="grid h-5 place-items-center"
+							><span
+								class="block rounded-[2px] border-[1.5px] border-current"
+								style="width: {glyph.width * 0.9}px; height: {glyph.height * 0.9}px"
+							></span></span
+						>{stageShapeName}</button
 					>
-						<span
-							class="shrink-0 rounded-[2px] border-[1.5px] border-current text-white"
-							style="width: {glyph.width}px; height: {glyph.height}px"
-						></span><span>{stageShapeLabel}</span>
-					</p>
-				{:else}
-					{#each CROP_RATIOS as ratio (ratio.id)}
-						{@const glyph = glyphOf(ratio.id)}
-						{@const isOn = (current.ratio ?? 'free') === ratio.id}
-						<button
-							type="button"
-							class="{optionClass} {isOn
-								? 'bg-white/14 text-white'
-								: 'text-slate-300 hover:text-white'}"
-							aria-pressed={isOn}
-							data-crop-ratio={ratio.id}
-							onclick={() => pickRatio(ratio.id)}
-							><span class="grid h-5 place-items-center"
-								><span
-									class="block rounded-[2px] border-[1.5px] border-current {ratio.id === 'free'
-										? 'border-dashed'
-										: ''}"
-									style="width: {glyph.width * 0.9}px; height: {glyph.height * 0.9}px"
-								></span></span
-							>{ratio.label}</button
-						>
-					{/each}
 				{/if}
+				{#each CROP_RATIOS as ratio (ratio.id)}
+					{@const glyph = glyphOf(ratio.id)}
+					{@const isOn = stageAspect
+						? current.ratio === ratio.id
+						: (current.ratio ?? 'free') === ratio.id}
+					<button
+						type="button"
+						class="{optionClass} {isOn
+							? 'bg-white/14 text-white'
+							: 'text-slate-300 hover:text-white'}"
+						aria-pressed={isOn}
+						data-crop-ratio={ratio.id}
+						onclick={() => pickRatio(ratio.id)}
+						><span class="grid h-5 place-items-center"
+							><span
+								class="block rounded-[2px] border-[1.5px] border-current {ratio.id === 'free'
+									? 'border-dashed'
+									: ''}"
+								style="width: {glyph.width * 0.9}px; height: {glyph.height * 0.9}px"
+							></span></span
+						>{ratio.label}</button
+					>
+				{/each}
 			</div>
 		{/if}
 

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+	cleanEdit,
 	draggedFrame,
 	editOf,
 	frameOf,
 	fromOldCrop,
+	hasEdit,
 	lockedAspectOf,
 	stagePagesOf,
 	placeOf,
@@ -170,6 +172,51 @@ describe('an edit', () => {
 		const stage = { layout: 4, fit: 'fit' as const, ratio: '16:9' as const };
 		expect(lockedAspectOf(stage, {}, {}, 1)).toBeCloseTo(16 / 9);
 		expect(lockedAspectOf(stage, { kind: 'pdf' }, {}, 1)).toBeUndefined();
+	});
+
+	it('lets one attachment take a shape of its own over the stage’s, never locked in (Justin, 2026-11-27)', () => {
+		const fit = { layout: 4, fit: 'fit' as const, ratio: '16:9' as const };
+		const fill = { layout: 4, fit: 'fill' as const };
+		expect(lockedAspectOf(fit, {}, { ratio: '1:1' }, 1)).toBeCloseTo(1);
+		expect(lockedAspectOf(fit, {}, { ratio: 'free' }, 1)).toBeUndefined();
+		expect(lockedAspectOf(fit, {}, { ratio: 'original' }, 4 / 3)).toBeCloseTo(4 / 3);
+		expect(lockedAspectOf(fill, {}, { ratio: '9:16' }, 1)).toBeCloseTo(9 / 16);
+	});
+
+	it('keeps Free picked over a stage’s shape, as a change of its own', () => {
+		expect(cleanEdit({ ratio: 'free' })).toEqual({ ratio: 'free' });
+		expect(hasEdit({ ratio: 'free' })).toBe(true);
+	});
+});
+
+describe('placeOf: an attachment with a shape of its own', () => {
+	const own = (stage: StageLayoutType) => {
+		const shaped = {
+			...stage,
+			photos: [{ id: 'own', edit: { ratio: '9:16' as const } }, ...photos(3)]
+		};
+		const [page] = stagePagesOf(shaped);
+		return placeOf(
+			page,
+			shaped,
+			(spot) => (spot.photo.id === 'own' ? 9 / 16 : 16 / 9),
+			ROOM.width,
+			ROOM.height
+		);
+	};
+
+	it('keeps it under Fit, where the others keep the stage’s Ratio', () => {
+		const [first, second] = own({ layout: 4, fit: 'fit', ratio: '16:9' });
+		expect(first.w / first.h).toBeCloseTo(9 / 16);
+		expect(second.w / second.h).toBeCloseTo(16 / 9);
+	});
+
+	it('keeps it whole in its spot under Fill, in the middle, where the others fill theirs', () => {
+		const [first, second] = own({ layout: 4, fit: 'fill' });
+		expect(first).toMatchObject({ y: 0, h: 344 });
+		expect(first.w).toBeCloseTo((344 * 9) / 16);
+		expect(first.x + first.w / 2).toBeCloseTo(122);
+		expect(second).toMatchObject({ x: 256, y: 0, w: 244, h: 344 });
 	});
 });
 

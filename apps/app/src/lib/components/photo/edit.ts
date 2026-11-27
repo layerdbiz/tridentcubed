@@ -14,7 +14,11 @@ export type EditType = {
 	isFlipped?: boolean;
 	/** Straightened, in degrees, -45 to 45. */
 	tilt?: number;
-	/** The frame's shape, when one was picked; none is Free. */
+	/**
+	 * The frame's shape, when one was picked for this picture: it wins over any shape its stage sets (Justin,
+	 * 2026-11-27: "I always need the option to edit or change"), Free included. None follows the stage's, or is Free
+	 * where the stage sets none.
+	 */
 	ratio?: CropRatioType;
 	/** What prints; none is the whole picture. */
 	frame?: FrameType;
@@ -36,11 +40,7 @@ export function isWholeFrame(frame?: FrameType) {
 export function hasEdit(edit?: EditType) {
 	if (!edit) return false;
 	return Boolean(
-		edit.turns ||
-		edit.isFlipped ||
-		edit.tilt ||
-		(edit.ratio && edit.ratio !== 'free') ||
-		!isWholeFrame(edit.frame)
+		edit.turns || edit.isFlipped || edit.tilt || edit.ratio || !isWholeFrame(edit.frame)
 	);
 }
 
@@ -51,7 +51,7 @@ export function cleanEdit(edit: EditType): EditType | undefined {
 	if (turns) kept.turns = turns;
 	if (edit.isFlipped) kept.isFlipped = true;
 	if (edit.tilt) kept.tilt = Math.round(edit.tilt * 10) / 10;
-	if (edit.ratio && edit.ratio !== 'free') kept.ratio = edit.ratio;
+	if (edit.ratio) kept.ratio = edit.ratio;
 	if (edit.frame && !isWholeFrame(edit.frame)) {
 		const round = (value: number) => Math.round(value * 10_000) / 10_000;
 		const { x, y, w, h } = edit.frame;
