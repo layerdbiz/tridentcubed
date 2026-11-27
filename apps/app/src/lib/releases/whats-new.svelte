@@ -1,9 +1,10 @@
 <script lang="ts">
 	// What's New (#363, #396, #399, #400), the one window for what the app has brought, kept plain (Justin, 2026-11-27):
 	// each release's day of work under its date in bold (history.utils.ts), newest first, each a section of the library
-	// Accordion in the look the page hands it (`fold`), every one open. A section shows its release and how many
-	// features and fixes it holds, those changes in everyday words, all alike, and the link to the release's notes on
-	// GitHub. The head is the release in view on a glow of its own colours from edge to edge, ending on the library's
+	// Accordion in the look the page hands it (`fold`), only the newest open each time it opens and one open at a time
+	// (Justin, 2026-11-27: the Accordion's `group`). A section shows its release and how many features and fixes it
+	// holds, each count after a dot of its kind's colour (KIND_COLORS), those changes in everyday words, all alike,
+	// and the link to the release's notes on GitHub. The head is the release in view on a glow of its own colours from edge to edge, ending on the library's
 	// wave: v1.0.0-next.6 at the top, and as the list scrolls down, next.5, next.4 and on, the colours moving with it. On
 	// the newest release, when it holds something this person has not seen, it says New release. With no release yet the
 	// sections are the same, with no version.
@@ -24,10 +25,10 @@
 	import { noteReload, takeLastResort } from '../update/rescue';
 	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
 	import ChangeList from './change-list.svelte';
-	import { CHECK_EVERY } from './releases.constants';
+	import { CHECK_EVERY, KIND_COLORS } from './releases.constants';
 	import { whatsNew } from './releases.state.svelte';
 	import { toReleaseGlow, toTag } from './releases.utils';
-	import { toBatchCounts, toSectionInView } from './history.utils';
+	import { toBatchCounts, toBatchTallies, toSectionInView } from './history.utils';
 
 	let {
 		save,
@@ -218,11 +219,12 @@
 					class="space-y-2"
 					{@attach followScroll}
 				>
-					{#each batches as batch (batch.from)}
+					{#each batches as batch, at (batch.from)}
 						<li>
 							<Accordion
 								{...fold}
-								open
+								open={at === 0}
+								group="whats-new"
 							>
 								{#snippet head()}
 									<span class="min-w-0 flex-1">
@@ -230,14 +232,21 @@
 											class="block text-[15px] leading-snug font-bold text-slate-800 tabular-nums"
 											>{batch.day}</span
 										>
-										<span class="mt-0.5 block text-xs leading-snug text-slate-500">
+										<span
+											class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs leading-snug text-slate-500"
+										>
 											{#if batch.release}<span
 													class="font-semibold whitespace-nowrap text-slate-600"
 													>{toTag(batch.release.version)}</span
-												>{/if}{#each toBatchCounts(batch) as count, at (count)}<span
-													class="whitespace-nowrap"
-													>{batch.release || at > 0 ? ' · ' : ''}{count}</span
-												>{/each}
+												>{/if}
+											{#each toBatchTallies(batch) as tally (tally.kind)}
+												<span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+													<span
+														class="size-2 shrink-0 rounded-full {KIND_COLORS[tally.kind].dot}"
+														aria-hidden="true"
+													></span>{tally.text}
+												</span>
+											{/each}
 										</span>
 									</span>
 								{/snippet}

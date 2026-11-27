@@ -79,6 +79,32 @@ describe('Accordion', () => {
 		expect(control.closest('[data-no-drag]')).toBeTruthy();
 	});
 
+	it('opens one at a time with the sections of its group, telling each one it shuts', async () => {
+		const shut = vi.fn();
+		const one = createRawSnippet(() => ({ render: () => '<span>One</span>' }));
+		const two = createRawSnippet(() => ({ render: () => '<span>Two</span>' }));
+		const three = createRawSnippet(() => ({ render: () => '<span>Three</span>' }));
+		render(Accordion, {
+			props: { head: one, children: inside, group: 'releases', open: true, ontoggle: shut }
+		});
+		render(Accordion, { props: { head: two, children: inside, group: 'releases' } });
+		render(Accordion, { props: { head: three, children: inside, group: 'other' } });
+		const header = (name: string) =>
+			screen.getByText(name).closest<HTMLElement>('[aria-expanded]')!;
+		const opened = () =>
+			['One', 'Two', 'Three'].filter((name) => header(name).ariaExpanded === 'true');
+
+		await fireEvent.click(header('Three'));
+		expect(opened()).toEqual(['One', 'Three']);
+
+		await fireEvent.click(header('Two'));
+		expect(opened()).toEqual(['Two', 'Three']);
+		expect(shut).toHaveBeenLastCalledWith(false);
+
+		await fireEvent.click(header('Two'));
+		expect(opened()).toEqual(['Three']);
+	});
+
 	it('carries a grip for a drag, and whatever marks its owner gives it', () => {
 		const { container } = show({ grip: 'stops-1', 'data-section': 'stage-1' });
 

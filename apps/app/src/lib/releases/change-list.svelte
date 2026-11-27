@@ -3,8 +3,10 @@
 	// sets its sections (Justin's screenshot, 2026-11-26), Features, then Fixes, and only those two (Justin,
 	// 2026-11-27). Each bullet sits in a column as wide as its heading's icon, centred on the first line, so the icons,
 	// the bullets and the words line up. Every line of a release looks the same (Justin, 2026-11-27): what is new to
-	// this person is told once, at the top of What's New, never line by line.
+	// this person is told once, at the top of What's New, never line by line. The bullets wear their kind's colour,
+	// light (Justin, 2026-11-27): green for a feature, blue for a fix, the theme's success and info (KIND_COLORS).
 	import type { HistoryChangeType } from './history.utils';
+	import { KIND_COLORS } from './releases.constants';
 	import type { ChangeKindType } from './releases.utils';
 
 	let { changes }: { changes: HistoryChangeType[] } = $props();
@@ -47,7 +49,8 @@
 				<p class="flex gap-3">
 					<span
 						class="flex h-[1lh] w-4 shrink-0 items-center justify-center"
-						aria-hidden="true"><span class="size-1.5 rounded-full bg-slate-400"></span></span
+						aria-hidden="true"
+						><span class="size-1.5 rounded-full {KIND_COLORS[section.kind].bullet}"></span></span
 					>
 					<span class="min-w-0 flex-1">{change.text}</span>
 				</p>

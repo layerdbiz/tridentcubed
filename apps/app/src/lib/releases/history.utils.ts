@@ -273,15 +273,22 @@ function countKind(batch: Pick<HistoryBatchType, 'changes'>, kind: ChangeKindTyp
 	return batch.changes.filter((change) => change.kind === kind).length;
 }
 
-/** How many features and fixes a day holds, the ones it has: 2 features, 1 fix. */
-export function toBatchCounts(batch: Pick<HistoryBatchType, 'changes'>) {
+/** How many features and fixes a section holds, the kinds it has, each with its kind: 2 features, 1 fix. */
+export function toBatchTallies(batch: Pick<HistoryBatchType, 'changes'>) {
 	const features = countKind(batch, 'feature');
 	const fixes = countKind(batch, 'fix');
 	const parts = [
-		[features, features === 1 ? 'feature' : 'features'],
-		[fixes, fixes === 1 ? 'fix' : 'fixes']
+		['feature', features, features === 1 ? 'feature' : 'features'],
+		['fix', fixes, fixes === 1 ? 'fix' : 'fixes']
 	] as const;
-	return parts.filter(([number]) => number > 0).map(([number, words]) => `${number} ${words}`);
+	return parts
+		.filter(([, number]) => number > 0)
+		.map(([kind, number, words]) => ({ kind, text: `${number} ${words}` }));
+}
+
+/** How many features and fixes a section holds, the ones it has: 2 features, 1 fix. */
+export function toBatchCounts(batch: Pick<HistoryBatchType, 'changes'>) {
+	return toBatchTallies(batch).map((tally) => tally.text);
 }
 
 const SECTIONS: { kind: ChangeKindType; heading: string }[] = [
