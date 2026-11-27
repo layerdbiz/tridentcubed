@@ -372,9 +372,9 @@
 					{look}
 					{notifications}
 					onclose={() => (isBellOpen = false)}
-					onsettings={() => {
+					onall={() => {
 						isBellOpen = false;
-						look.openAccount('notifications');
+						look.openAccount('activity');
 					}}
 				/>
 			</Popover>
@@ -665,8 +665,8 @@
 	{/if}
 
 	{#if look.screen === 'account'}
-		<!-- Settings (#403): anyone's own, opened from the menu on their profile picture or the bell's cog, sliding in
-		     like the Organization. -->
+		<!-- Settings (#403): anyone's own, opened from the menu on their profile picture, or at the Activity Log from an
+		     Admin's bell, sliding in like the Organization. -->
 		<div
 			class="fixed inset-0 z-50"
 			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
@@ -803,10 +803,10 @@
 					isBellPage = false;
 					if (hasOpened) drawer = 0;
 				}}
-				onsettings={() => {
+				onall={() => {
 					isBellPage = false;
 					drawer = 0;
-					look.openAccount('notifications');
+					look.openAccount('activity');
 				}}
 			/>
 		</div>

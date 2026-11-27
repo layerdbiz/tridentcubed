@@ -509,7 +509,7 @@ export class LookState {
 	}
 
 	// Settings (#403; Justin, 2026-11-27): everything that is the person's own, opened from the menu on their picture
-	// or the Notifications' gear, at one of its parts or at its menu.
+	// or the Notifications' Activity Log link, at one of its parts or at its menu.
 	openAccount(section: AccountSectionType | '' = '') {
 		if (this.screen === 'workspace') this.#keepProject();
 		this.#isFromAccount = false;

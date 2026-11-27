@@ -14,7 +14,7 @@
 	import { install } from '#lib/install/install.state.svelte.js';
 	import { VERSION_LABEL } from '#lib/releases/releases.constants.js';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
-	import { HEADING_HEIGHT } from './activity-list.svelte';
+	import { HEADING, HEADING_HEIGHT } from './activity-list.svelte';
 	import ActivityLog from './activity-log.svelte';
 	import Back from './back.svelte';
 	import type { AccountSectionType, LookState } from './look.state.svelte';
@@ -213,6 +213,7 @@
 			<Scroller
 				fade="y"
 				inset={{ top: HEADING_HEIGHT }}
+				keep={HEADING}
 				class="min-h-0 flex-1 overscroll-y-contain bg-white px-3 pt-3 pb-10"
 			>
 				<ActivityLog {look} />
@@ -336,6 +337,7 @@
 			<Scroller
 				fade="y"
 				inset={shown === 'activity' ? { top: HEADING_HEIGHT } : {}}
+				keep={HEADING}
 				class="min-h-0 flex-1 overscroll-y-contain"
 			>
 				<div class="mx-auto w-full max-w-3xl px-10 pt-8 pb-16">
