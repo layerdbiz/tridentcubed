@@ -13,6 +13,7 @@ import {
 	WORKER_PATH
 } from '#lib/install/install.constants.js';
 import { HISTORY_PATH } from '#lib/releases/releases.constants.js';
+import { SIGNATURE_PICTURES } from '#lib/signature/signature.constants.js';
 
 export type AccessType = 'signed-out' | 'guest' | 'staff';
 
@@ -23,7 +24,8 @@ export type GuardType =
 // The local folder's file links are signed and short-lived, as Supabase Storage's are, so they answer by their
 // signature alone (#187). The app's own file addresses (/files/<id>) answer like server routes: a refusal, never a
 // page.
-const OPEN = ['/login', '/api/auth/', '/_app/', '/local-files/'];
+// A signature's pictures (#354) are loaded by every reader's mail app, signed out.
+const OPEN = ['/login', '/api/auth/', '/_app/', '/local-files/', SIGNATURE_PICTURES];
 // What a browser asks for to install the app, with no session (#199): the manifest, the service worker, and what the
 // service worker keeps on the device (the Needs Internet screen, the icons and the logo). A signed-out visitor can
 // install too. Each is one address, nothing under it. The icons and the service worker are files, which a host

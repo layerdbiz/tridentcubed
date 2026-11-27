@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vite-plus/test';
 import type { ActorType } from './db/claims';
 import * as schema from './db/schema';
 import { TRIDENT_CUBED } from './db/seed';
-import { type ChangeType, checkPermission } from './permission';
+import { type ChangeType, checkPermission, checkSignature } from './permission';
 import { createTestSignIn } from './testing';
 
 const ORG = TRIDENT_CUBED.id;
@@ -460,5 +460,35 @@ describe('the one permission check', () => {
 				adminCount: 1
 			})
 		).toEqual({ isAllowed: false, reason: 'The organization must keep at least one Admin.' });
+	});
+});
+
+describe('who may open an email signature (#354)', () => {
+	const base = { userId: 'u1', email: 'tom@tridentcubed.com', isSuperAdmin: false };
+	const guest: ActorType = { ...base, organizationId: null, role: null };
+	const team: ActorType = { ...base, organizationId: ORG, role: 'team' };
+	const manager: ActorType = { ...base, organizationId: ORG, role: 'manager' };
+	const admin: ActorType = { ...base, organizationId: ORG, role: 'admin' };
+	const superAdmin: ActorType = { ...base, organizationId: ORG, role: 'team', isSuperAdmin: true };
+
+	it('lets anyone on the staff open their own, and nobody waiting for access', () => {
+		for (const actor of [team, manager, admin, superAdmin]) {
+			expect(checkSignature(actor, { isOwn: true }).isAllowed).toBe(true);
+		}
+		expect(checkSignature(guest, { isOwn: true }).isAllowed).toBe(false);
+	});
+
+	it('keeps someone else’s and the shared mailboxes’ to an Admin', () => {
+		for (const actor of [team, manager]) {
+			expect(checkSignature(actor, { isOwn: false })).toEqual({
+				isAllowed: false,
+				reason: 'Only an Admin can open someone else’s email signature.'
+			});
+			expect(checkSignature(actor, { isOwn: false, isMailbox: true }).isAllowed).toBe(false);
+		}
+		for (const actor of [admin, superAdmin]) {
+			expect(checkSignature(actor, { isOwn: false }).isAllowed).toBe(true);
+			expect(checkSignature(actor, { isOwn: false, isMailbox: true }).isAllowed).toBe(true);
+		}
 	});
 });

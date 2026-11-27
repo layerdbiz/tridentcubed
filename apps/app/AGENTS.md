@@ -59,6 +59,14 @@ src/lib/activity/              the Activity (#306): activity.remote.ts (`fetchAc
                                (`noteActivity`, which loads that command when first used), activity.types.ts
                                and activity.utils.ts (the Grouped view's runs); the screen is
                                routes/(app)/look/activity-page.svelte
+src/lib/signature/             Email Signature (#354): signature.utils.ts (a signature from the Team record, the
+                               signature Sheets filling in the rest), .types.ts, .constants.ts; the server's
+                               work is lib/server/signature.ts (who may open which, the pictures made with
+                               sharp), asked at routes/api/signature (its own Vercel function);
+                               routes/signature/[file] answers a signature's pictures to anyone, since every
+                               reader's mail app loads them signed out; the screen is
+                               routes/(app)/look/signature-page.svelte
+src/lib/start/files.ts         the starting files' built addresses, for routes/start and the signature pictures
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
 src/routes/<group>/<route>/    +page.svelte thin; <route>.svelte renders it; <route>.<role>.ts beside it

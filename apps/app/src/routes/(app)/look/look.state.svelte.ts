@@ -50,7 +50,13 @@ import { emptyOf, hasRequired, sectionsOf, tallyOf, toPercent, type EmptyType } 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import type { TeamMemberType } from './team.data';
 
-export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings' | 'activity';
+export type ScreenType =
+	| 'dashboard'
+	| 'workspace'
+	| 'record'
+	| 'settings'
+	| 'activity'
+	| 'signature';
 export type ViewType = 'table' | 'cards' | 'board';
 // A project has Edit (its panels, once called Panels) and Preview; a record has Page (how it reads) and Edit.
 export type TabType = 'page' | 'edit' | 'preview';
@@ -480,6 +486,14 @@ export class LookState {
 		this.tab = 'page';
 		this.tabProgress = 0;
 		this.screen = 'activity';
+	}
+
+	// Email Signature (#354): anyone's own, opened from the menu on their profile picture; an Admin picks anyone's there.
+	openSignature() {
+		if (this.screen === 'workspace') this.#keepProject();
+		this.tab = 'page';
+		this.tabProgress = 0;
+		this.screen = 'signature';
 	}
 
 	// The organization's new name follows it into every project's Organization drop-down.

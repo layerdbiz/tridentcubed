@@ -70,6 +70,8 @@ const REASONS = {
 	help: 'Only an Admin can change the help text.',
 	pin: 'A pin is only its owner’s.',
 	activity: 'Only an Admin can see the Activity.',
+	signature: 'Only an Admin can open someone else’s email signature.',
+	mailbox: 'Only an Admin can open a shared mailbox’s email signature.',
 	role: 'Only an Admin can change a Team role.',
 	teamEmail:
 		'Only an Admin can change the email of an Admin’s or Manager’s Team record before they sign in.',
@@ -211,4 +213,18 @@ export function checkPermission(actor: ActorType, change: ChangeType): VerdictTy
 export function checkActivity(actor: ActorType): VerdictType {
 	if (!actor.organizationId) return { isAllowed: false, reason: REASONS.guest };
 	return isAdmin(actor) ? { isAllowed: true } : { isAllowed: false, reason: REASONS.activity };
+}
+
+/**
+ * Whether `actor` may open an email signature (#354): their own, from the Team record they are tied to, for anyone on
+ * the staff; anyone else's and the shared mailboxes' for an Admin.
+ */
+export function checkSignature(
+	actor: ActorType,
+	asked: { isOwn: boolean; isMailbox?: boolean }
+): VerdictType {
+	if (!actor.organizationId) return { isAllowed: false, reason: REASONS.guest };
+	if (isAdmin(actor)) return { isAllowed: true };
+	if (asked.isMailbox) return { isAllowed: false, reason: REASONS.mailbox };
+	return asked.isOwn ? { isAllowed: true } : { isAllowed: false, reason: REASONS.signature };
 }
