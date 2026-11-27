@@ -2,7 +2,7 @@
 // starts the new version's download once, not again each time an answer lands. It did, about 15 times a second, until
 // the tab was closed. Opened, it names the version, titles each day by its date, and links each released day to its
 // notes on GitHub (#400).
-import { render } from '@testing-library/svelte';
+import { fireEvent, render } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { HistoryType } from './history.utils';
 import { HISTORY_PATH } from './releases.constants';
@@ -108,8 +108,11 @@ describe("What's New with releases", () => {
 		whatsNew.openAll();
 
 		const day = await findByText('2026-11-26');
+		const beneath = day.nextElementSibling!;
 		expect(day.className).toContain('font-bold');
-		expect(day.nextElementSibling?.textContent?.trim()).toBe('v1.1.0 · 1 feature');
+		expect(beneath.textContent?.replace(/\s+/g, ' ').trim()).toBe('v1.1.0 1 feature');
+		// Each count follows a dot of its kind's full colour: green for features.
+		expect(beneath.querySelector('[aria-hidden="true"]')?.className).toContain('bg-success');
 	});
 
 	it('opens on the glow every time: once everything is seen it says Latest release, not New release', async () => {
@@ -132,7 +135,7 @@ describe("What's New with releases", () => {
 		expect(queryByText('New release')).toBeNull();
 	});
 
-	it('opens every release, its lines all alike, with nothing marked new line by line', async () => {
+	it('opens only the newest release, one at a time, its lines all alike, with nothing marked new line by line', async () => {
 		whatsNew.close();
 		const older = {
 			day: '2026-11-25',
@@ -160,9 +163,13 @@ describe("What's New with releases", () => {
 		whatsNew.openAll();
 
 		expect(await findByText('Pin anything')).toBeTruthy();
-		expect(await findByText('A pin shows once')).toBeTruthy();
+		expect(queryByText('A pin shows once')).toBeNull();
 		expect(await findByText('New release')).toBeTruthy();
 		expect(queryByText('New')).toBeNull();
 		expect(queryByText(/^\d+ new$/)).toBeNull();
+
+		await fireEvent.click((await findByText('2026-11-25')).closest('[aria-expanded]')!);
+		expect(await findByText('A pin shows once')).toBeTruthy();
+		await vi.waitFor(() => expect(queryByText('Pin anything')).toBeNull());
 	});
 });

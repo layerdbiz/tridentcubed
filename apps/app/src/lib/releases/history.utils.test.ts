@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
 	isHidden,
 	toBatchCounts,
+	toBatchTallies,
 	toBatches,
 	toDay,
 	toHistory,
@@ -332,6 +333,9 @@ describe("What's New's history", () => {
 			})
 		).toEqual(['2 features', '1 fix']);
 		expect(toBatchCounts({ changes: [{ ...change, kind: 'fix', text: 'C' }] })).toEqual(['1 fix']);
+		expect(toBatchTallies({ changes: [{ ...change, kind: 'fix', text: 'C' }] })).toEqual([
+			{ kind: 'fix', text: '1 fix' }
+		]);
 	});
 });
 
