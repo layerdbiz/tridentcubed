@@ -1,3 +1,11 @@
+<script
+	module
+	lang="ts"
+>
+	// The sections open in each group, by its name: opening one shuts the others (`group`).
+	const GROUPS = new Map<string, Set<() => void>>();
+</script>
+
 <script lang="ts">
 	/**
 	 * @tags accordion, section, fold, group
@@ -10,7 +18,8 @@
 	// Sent or Complete project) would switch a button off, and the section could not be opened to read. `controls`
 	// sit on its right (a switch); a press on them never folds the section or starts a drag. `grip` names the header
 	// for a drag-to-reorder script (`data-grip`). At its foot, the owner's `actions` and, with `ondelete`, a Delete on
-	// the far right.
+	// the far right. Sections given the same `group` open one at a time, as `<details name>` do: opening one, by a press
+	// or from outside, shuts the others, each telling its `ontoggle`.
 	//
 	// Its look is set from outside (Justin, 2026-11-26), like the Button's: it is the base component, so `color`,
 	// `appearance`, `size` and their shorthands (`lite`, `neutral`, `sm`) and `class` all land on its box; with none it
@@ -18,7 +27,7 @@
 	// library Icon (`icon`, in any form the Icon takes, such as `icon-[mdi--chevron-down] text-base-400`), and the
 	// Delete is the library Button, which takes any Button prop through `deleteButton`, as the Toggle's trigger takes
 	// `button`. Layout snippets (`left`, `center`, `a1c3`...) lay out what it holds.
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import {
 		Button,
@@ -33,8 +42,10 @@
 	export interface AccordionProps extends ComponentProps {
 		/** Whether it is open (bindable). */
 		open?: boolean;
-		/** Told after each press on the header, with whether it is now open. */
+		/** Told after each press on the header, with whether it is now open, and when its group shuts it. */
 		ontoggle?: (open: boolean) => void;
+		/** The sections given the same name open one at a time: opening one shuts the others. */
+		group?: string;
 		/** The header's words, when no `head` draws it. */
 		label?: string;
 		/** What the section is: the header's content, before its controls and the chevron. */
@@ -57,6 +68,7 @@
 	let {
 		open = $bindable(false),
 		ontoggle = undefined,
+		group = undefined,
 		label = undefined,
 		head = undefined,
 		controls = undefined,
@@ -74,6 +86,34 @@
 		open = !open;
 		ontoggle?.(open);
 	}
+
+	// Shut by another section of its group opening.
+	function shut(): void {
+		if (!open) return;
+		open = false;
+		ontoggle?.(false);
+	}
+
+	$effect(() => {
+		if (!group) return;
+		const name = group;
+		const members = GROUPS.get(name) ?? new Set();
+		GROUPS.set(name, members);
+		members.add(shut);
+		return () => {
+			members.delete(shut);
+			if (members.size === 0) GROUPS.delete(name);
+		};
+	});
+
+	// Opening shuts the rest of its group.
+	$effect(() => {
+		if (!open || !group) return;
+		const name = group;
+		untrack(() => {
+			for (const each of GROUPS.get(name) ?? []) if (each !== shut) each();
+		});
+	});
 
 	// A press on the header's controls is theirs alone.
 	function isControl(event: Event): boolean {
