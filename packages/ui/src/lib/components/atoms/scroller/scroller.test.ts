@@ -107,6 +107,41 @@ describe('Scroller', () => {
 		expect(fades(box)).toEqual(['20px', '56px', '0px', '0px']);
 	});
 
+	// The Notifications' day headings (Justin, 2026-11-27: "It should not fade the sticky text. It should only fade
+	// the notifications."): what `keep` names shows whole wherever it is, in the fade or out of it.
+	it('keeps what it is told whole, wherever it stands', async () => {
+		const withHeadings = createRawSnippet(() => ({
+			render: () =>
+				'<ul><li data-keep>Today</li><li>Pin anything to the menu.</li><li data-keep>Earlier</li></ul>'
+		}));
+		render(Scroller, { props: { children: withHeadings, fade: 'y', keep: '[data-keep]' } });
+		const box = scrollerOf();
+		const [today, earlier] = box.querySelectorAll('[data-keep]');
+		const rect = (top: number, height: number) => () =>
+			({ top, bottom: top + height, left: 0, right: 300, width: 300, height }) as DOMRect;
+		box.getBoundingClientRect = rect(100, 300);
+		today.getBoundingClientRect = rect(130, 32);
+		// Scrolled past, out of view: nothing to keep.
+		earlier.getBoundingClientRect = rect(500, 32);
+
+		measure(box, { top: 20 });
+		await fireEvent.scroll(box);
+		expect(box.style.getPropertyValue('--scroller-keep-image')).toBe(
+			'linear-gradient(black, black)'
+		);
+		expect(box.style.getPropertyValue('--scroller-keep-size')).toBe('300px 32px');
+		expect(box.style.getPropertyValue('--scroller-keep-position')).toBe('0px 30px');
+		expect(box.style.getPropertyValue('--scroller-keep-composite')).toBe('add');
+	});
+
+	it('keeps nothing unless told', async () => {
+		render(Scroller, { props: { children: list, fade: 'y' } });
+		const box = scrollerOf();
+		measure(box, { top: 20 });
+		await fireEvent.scroll(box);
+		expect(box.style.getPropertyValue('--scroller-keep-image')).toBe('');
+	});
+
 	it('takes the class it is given', () => {
 		render(Scroller, { props: { children: list, class: 'max-h-80 px-5' } });
 
