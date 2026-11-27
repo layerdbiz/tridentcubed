@@ -52,6 +52,7 @@ import {
 	toPersonSignature,
 	toPhotoChoices,
 	toPhotoSource,
+	toSheetDetails,
 	toSheets
 } from '#lib/signature/signature.utils.js';
 import type { ActorType, ClaimsType } from './db/claims';
@@ -307,6 +308,7 @@ async function answerPerson(
 	]);
 	return {
 		signature: toPersonSignature(record, sheets, look, made),
+		sheet: toSheetDetails(record, sheets),
 		choices: {
 			photos,
 			banners,

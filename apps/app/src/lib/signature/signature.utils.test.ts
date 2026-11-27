@@ -18,6 +18,7 @@ import {
 	toDriveFile,
 	toFetchAddress,
 	toIconPictures,
+	toLiveSignature,
 	toMailboxLook,
 	toMailboxSignature,
 	toPersonLook,
@@ -26,6 +27,7 @@ import {
 	toPhotoSource,
 	toPreview,
 	toSharedAddresses,
+	toSheetDetails,
 	toSheets
 } from './signature.utils';
 
@@ -337,6 +339,40 @@ describe('a person’s signature', () => {
 		expect(
 			toPersonSignature(stranger, sheets, toPersonLook(stranger, sheets), { icons: {} })
 		).toMatchObject({ src: COMPANY_LOGO, group: '', href: '', banner: undefined });
+	});
+});
+
+describe('a person’s signature as their Team record is typed', () => {
+	it('follows the record at once, the Sheet still filling in what it leaves empty', () => {
+		const signature = toPersonSignature(ada, sheets, toPersonLook(ada, sheets), MADE);
+		const typed = { name: 'Ada King', title: '', phone: '+1 555 0199', email: 'ada@example.com' };
+
+		expect(toLiveSignature(signature, typed, toSheetDetails(ada, sheets))).toEqual({
+			...signature,
+			name: 'Ada King',
+			title: 'Sheet Title',
+			phone: '+1 555 0199',
+			email: 'ada@example.com',
+			group: 'ops@example.com, sales@example.com'
+		});
+	});
+
+	it('keeps an email typed to a shared address out of the shared addresses under it', () => {
+		const signature = toPersonSignature(ada, sheets, toPersonLook(ada, sheets), MADE);
+		const typed = { ...ada, email: 'OPS@example.com' };
+
+		expect(toLiveSignature(signature, typed, toSheetDetails(ada, sheets)).group).toBe(
+			'ada@example.com, sales@example.com'
+		);
+	});
+
+	it('has nothing from the Sheet for someone not on it', () => {
+		expect(toSheetDetails(stranger, sheets)).toEqual({
+			title: '',
+			phone: '',
+			email: '',
+			group: ''
+		});
 	});
 });
 

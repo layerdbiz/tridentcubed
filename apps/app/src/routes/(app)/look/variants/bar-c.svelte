@@ -54,7 +54,7 @@
 	const ORGANIZATION = { name: 'Organization', icon: 'icon-[mdi--domain]' };
 	// The Activity (#306) is one view, so it has no tabs.
 	const ACTIVITY = { name: 'Activity Log', icon: 'icon-[mdi--timeline-clock-outline]' };
-	// Email Signature (#354) is one view too.
+	// Email Signature (#354) has a project's Page, Edit and Preview (Justin, 2026-11-27).
 	const SIGNATURE = { name: 'Email Signature', icon: 'icon-[mdi--card-account-mail-outline]' };
 	let inside = $state({ name: DATASETS[PAGES[0]].label, icon: PAGE_ICONS[PAGES[0]] });
 	const leadIcon = $derived(isInside ? inside.icon : PAGE_ICONS[lead]);
@@ -92,8 +92,8 @@
 
 	$effect(() => {
 		if (look.screen === 'record' || look.screen === 'settings') tabs = RECORD;
-		else if (look.screen === 'workspace') tabs = PROJECT;
-		else if (look.screen === 'activity' || look.screen === 'signature') tabs = [];
+		else if (look.screen === 'workspace' || look.screen === 'signature') tabs = PROJECT;
+		else if (look.screen === 'activity') tabs = [];
 	});
 
 	$effect(() => {
