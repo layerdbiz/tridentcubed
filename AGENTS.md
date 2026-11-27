@@ -161,6 +161,11 @@ hold what is specific to `packages/ui`, `apps/app`, `apps/site` and
   `<name>.svelte.test.ts`), written with `/tdd` and imported from
   `vite-plus/test`. Lint takes over from this prose where Oxlint can express a
   rule.
+- **What's New lines.** A `feat`, `fix` or `perf` commit people will
+  notice in the app carries a line `What's New: <everyday words>` in its
+  message body, one per thing they will notice; without one it stays out of
+  What's New (Justin, 2026-11-27: "only things in layman terms for the
+  user"). The rule is in `apps/app/AGENTS.md`, "Releases and What's New".
 - **Checks before a PR.** CI (`.github/workflows/ci.yml`) runs the gate and
   the two Vercel-shaped builds on every push to a branch, so they are already
   running when the PR opens and no thread re-runs them by hand. The gate is one local command for a pre-push run,

@@ -3,8 +3,8 @@
 # any breaking change is major, else any ✨ feat is minor, else any 🐛 fix or ⚡ perf is patch; with none of those,
 # there is no release. A release is two things, both made here, and nothing is committed:
 # - the tag v1.1.0 on dev's newest commit, the one record of the version: every build reads it from git;
-# - the GitHub release v1.1.0, its notes the same as What's New in the app: each batch of work with its title and
-#   words, its new features, improvements and fixes, then the changes outside the app.
+# - the GitHub release v1.1.0, its notes the same as What's New in the app: each day under its date, its features and
+#   fixes in plain words, then, folded away, the rest.
 # The tag is pushed with the workflow's own token, so it starts no other workflow. The app's build on dev does not
 # wait for it: it works the version out by the same rule, so it already says v1.1.0 (releases.server.ts).
 #
@@ -15,9 +15,10 @@
 # or publishes a release whose tag exists without its GitHub release.
 #
 # Every push to next is a prerelease of the release to come (Justin, 2026-11-27): v1.0.0-next.1, -next.2 and on,
-# whatever it holds, each with its tag and a GitHub pre-release (never marked Latest) listing what came since the one
-# before; the first lists everything up to it. next.app shows its version and links its notes from What's New. A
-# release on dev starts the count again toward the one after it: v1.1.0-next.1.
+# whatever it holds, each with its tag and a GitHub release named that and nothing more (no Pre-release badge, never
+# marked Latest), made from next and saying so, listing what came since the one before; the first lists everything up
+# to it. next.app shows its version and links its notes from What's New. A release on dev starts the count again
+# toward the one after it: v1.1.0-next.1.
 #
 # Easy to swap: the rule is one script with tests, and this file only tags and publishes what it worked out.
 name: release
@@ -75,10 +76,25 @@ jobs:
             git tag --annotate "$TAG" --message "$TAG" "$HEAD_COMMIT"
             git push origin "refs/tags/$TAG"
           fi
-          if gh release view "$TAG" > /dev/null 2>&1; then
+          if [ "$IS_PRERELEASE" = true ]; then
+            # Named v1.0.0-next.4 and nothing more (Justin, 2026-11-27): no Pre-release badge, never Latest, and made
+            # from next, as its page says.
+            NEXT=(--title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --target "$GITHUB_REF_NAME" --prerelease=false --latest=false)
+            if gh release view "$TAG" > /dev/null 2>&1; then
+              gh release edit "$TAG" "${NEXT[@]}"
+            else
+              gh release create "$TAG" --verify-tag "${NEXT[@]}"
+            fi
+            # The ones made before that rule, marked Pre-release and made from the default branch, are tidied the same,
+            # their notes written again in today's plain words.
+            gh release list --limit 100 --json tagName,isPrerelease \
+              --jq '.[] | select(.isPrerelease and (.tagName | test("-next\\."))) | .tagName' |
+              while read -r OLD; do
+                GITHUB_OUTPUT= node apps/app/scripts/release.ts --branch "$GITHUB_REF_NAME" --head "$OLD" --notes "$RUNNER_TEMP/old.md" > /dev/null
+                gh release edit "$OLD" --notes-file "$RUNNER_TEMP/old.md" --target "$GITHUB_REF_NAME" --prerelease=false --latest=false
+              done
+          elif gh release view "$TAG" > /dev/null 2>&1; then
             echo "$TAG is published already."
-          elif [ "$IS_PRERELEASE" = true ]; then
-            gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag --prerelease --latest=false
           else
             gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
           fi

@@ -18,7 +18,9 @@ function createHistory(upTo: number): HistoryType {
 	return {
 		head: `${CHAIN[upTo]}0000`,
 		chain: CHAIN.slice(0, upTo + 1),
-		batches: [{ from: changes[0].at, to: changes.at(-1)!.at, changes: changes.reverse() }]
+		batches: [
+			{ day: '2026-11-25', from: changes[0].at, to: changes.at(-1)!.at, changes: changes.reverse() }
+		]
 	};
 }
 
