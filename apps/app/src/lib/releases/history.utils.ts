@@ -243,18 +243,19 @@ export function toHistory(
 
 /**
  * Which section is in view, for What's New's head to name (Justin, 2026-11-27): the last whose top (`tops`, in the
- * scroll's own terms, newest first) has passed `line`, the top of the scroll; the last of all once the scroll is at
- * its end, where a short last section never reaches the line.
+ * scroll's own terms, newest first) has passed `line`, the top of the scroll. Once the scroll is at its end, where the
+ * sections near it never reach the line, the `open` one while it is on screen (a tap opened it and it scrolled as far
+ * as it could), else the last of all.
  */
-export function toSectionInView(tops: number[], line: number, isAtEnd = false) {
+export function toSectionInView(tops: number[], line: number, isAtEnd = false, open = -1) {
 	if (tops.length === 0) return 0;
-	if (isAtEnd) return tops.length - 1;
 	let index = 0;
 	for (const [at, top] of tops.entries()) {
 		if (top > line) break;
 		index = at;
 	}
-	return index;
+	if (!isAtEnd) return index;
+	return open >= index ? open : tops.length - 1;
 }
 
 /** Where a commit sits on the branch, oldest 0, or -1 when the branch does not hold it. */
