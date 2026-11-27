@@ -5,6 +5,7 @@
 import { fetchNotifications } from '#lib/activity/activity.remote.js';
 import type { ChangeEventType } from '#lib/activity/activity.types.js';
 import type { WhatsNewState } from '#lib/releases/releases.state.svelte.js';
+import { toTag } from '#lib/releases/releases.utils.js';
 import type { ReleaseLineType } from './activity-list.svelte';
 import type { LookState } from './look.state.svelte';
 import { markSeen, unseenOf } from './seen';
@@ -15,23 +16,20 @@ export const NOTIFICATIONS_EVERY_MS = 3 * 60_000;
 /** How many of What's New's days the bell shows. */
 const RELEASE_DAYS = 3;
 
-// A line's name: a release's version ("v1.2.0"), or, for a day no release has ended yet or a prerelease of next's,
-// the day itself, as What's New titles it.
-function toReleaseTitle(day: string, version: string | undefined) {
-	if (!version || version.includes('-')) return day;
-	return version.startsWith('v') ? version : `v${version}`;
-}
-
-/** What's New's newest days as the bell's lines: new while a thing in them was not seen in What's New. */
+/**
+ * What's New's newest sections as the bell's lines: new while a thing in them was not seen in What's New. Every push
+ * to next is a release (#400), so one day can hold several: each is named by its version as What's New tags it
+ * ("v1.0.0-next.6"), or by its day while nothing has released it, and keyed by its last moment, never by its day.
+ */
 export function toReleaseLines(whatsNew: WhatsNewState): ReleaseLineType[] {
 	const history = whatsNew.history;
 	if (!history) return [];
 	return history.batches.slice(0, RELEASE_DAYS).map((batch) => {
 		const words = batch.changes.map((change) => change.text);
 		return {
-			id: `release-${batch.day}`,
+			id: `release-${batch.release?.version ?? batch.day}-${batch.to}`,
 			at: batch.to,
-			title: toReleaseTitle(batch.day, batch.release?.version),
+			title: batch.release ? toTag(batch.release.version) : batch.day,
 			words:
 				words.length > 2
 					? `${words.slice(0, 2).join(' · ')} and ${words.length - 2} more`
