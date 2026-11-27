@@ -198,10 +198,10 @@ the why is in ADR 0002, 0003 and 0005.
   first, then the version next's changes since the last release make
   (`v1.1.0-next.1`). next.app shows its version, and its build names it
   before the tag exists. Each one ends a What's New section, like a release.
-- **The first release waits for Justin's word.** `IS_RELEASING` in
-  `releases.utils.ts` is false: no tag is made and every build says "Not
-  released yet". Turning it on, in the push that brings next into dev,
-  makes v1.0.0.
+- **The first release is made (Justin, 2026-11-27).** `IS_RELEASING` in
+  `releases.utils.ts` is on: the push that brought next into dev made
+  v1.0.0. Each later push to dev with a feature or a fix makes the next
+  version, and dev still takes next only on Justin's word.
 - **v1.0.0 is one list (Justin, 2026-11-27).** The first release is told in
   its own words, `src/lib/releases/first-release.ts`: what the app does
   today, features only, each once, in everyday words, in place of every day
