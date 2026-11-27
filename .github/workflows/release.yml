@@ -14,18 +14,23 @@
 # `gh api -X POST repos/<owner>/<repo>/actions/workflows/release.yml/dispatches -f ref=dev`) does what a push would,
 # or publishes a release whose tag exists without its GitHub release.
 #
+# Every push to next is a prerelease of the release to come (Justin, 2026-11-27): v1.0.0-next.1, -next.2 and on,
+# whatever it holds, each with its tag and a GitHub pre-release (never marked Latest) listing what came since the one
+# before; the first lists everything up to it. next.app shows its version and links its notes from What's New. A
+# release on dev starts the count again toward the one after it: v1.1.0-next.1.
+#
 # Easy to swap: the rule is one script with tests, and this file only tags and publishes what it worked out.
 name: release
 
 on:
   push:
-    branches: [dev]
+    branches: [dev, next]
   workflow_dispatch:
 
-# One release at a time, never cancelled half way. Each run releases dev as it is then, so a push that lands while
-# one runs is either in that release or, when it came too late for it, the next run's.
+# One release at a time on each branch, never cancelled half way. Each run releases the branch as it is then, so a
+# push that lands while one runs is either in that release or, when it came too late for it, the next run's.
 concurrency:
-  group: release
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 permissions:
@@ -37,10 +42,10 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      # Dev as it is now, with the whole history and every tag: the newest commit is the one the app is building.
+      # The branch as it is now, with the whole history and every tag: the newest commit is the one the app is building.
       - uses: actions/checkout@v5
         with:
-          ref: dev
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
           fetch-tags: true
       - uses: actions/setup-node@v5
@@ -48,17 +53,18 @@ jobs:
           node-version-file: package.json
       - name: Work out the release
         id: plan
-        run: node apps/app/scripts/release.ts --notes "$RUNNER_TEMP/notes.md"
+        run: node apps/app/scripts/release.ts --branch "$GITHUB_REF_NAME" --notes "$RUNNER_TEMP/notes.md"
       - name: Tag and publish it
         if: steps.plan.outputs.version != ''
         env:
           TAG: v${{ steps.plan.outputs.version }}
+          IS_PRERELEASE: ${{ steps.plan.outputs.prerelease }}
         run: |
           HEAD_COMMIT=$(git rev-parse HEAD)
           if TAGGED=$(git rev-parse --quiet --verify "refs/tags/$TAG^{commit}"); then
             # A tag of this name on another commit means dev's history was replaced: stop rather than guess.
             if [ "$TAGGED" != "$HEAD_COMMIT" ]; then
-              echo "::error::$TAG already marks $TAGGED, not dev's newest commit $HEAD_COMMIT."
+              echo "::error::$TAG already marks $TAGGED, not $GITHUB_REF_NAME's newest commit $HEAD_COMMIT."
               exit 1
             fi
           else
@@ -69,6 +75,8 @@ jobs:
           fi
           if gh release view "$TAG" > /dev/null 2>&1; then
             echo "$TAG is published already."
+          elif [ "$IS_PRERELEASE" = true ]; then
+            gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag --prerelease --latest=false
           else
             gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
           fi

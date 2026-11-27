@@ -114,6 +114,21 @@ describe("What's New's history", () => {
 		]);
 	});
 
+	it("folds next's prereleases together by time, each batch named by the newest one in it", () => {
+		const landed = landedAt([0, 1, 2]).map((each, index) => ({
+			...each,
+			release: `1.0.0-next.${index + 1}`
+		}));
+		const releases = ['1.0.0-next.1', '1.0.0-next.2', '1.0.0-next.3'].map((version) => ({
+			version,
+			url: `https://example.com/v${version}`
+		}));
+		const history = toHistory('abc', ['a', 'b', 'c'], landed, [], { releases });
+
+		expect(history.batches).toHaveLength(1);
+		expect(history.batches[0].release?.version).toBe('1.0.0-next.3');
+	});
+
 	it('gives each batch the release that brought it and the build its version (#400)', () => {
 		const landed = landedAt([0, 1, 2, 10, 11, 12]).map((each, index) => ({
 			...each,

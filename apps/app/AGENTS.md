@@ -179,13 +179,24 @@ the why is in ADR 0002, 0003 and 0005.
   fetches them from the public repository) and writes the label into the
   app (`__APP_VERSION__`, `vite.config.ts`) and into What's New's history.
   On dev and main a build with something new is the release being made, so
-  it shows `v1.2.0` before the workflow has made the tag; anywhere else it
-  is `v1.2.0-next.<commits since the last release>`.
+  it shows `v1.2.0` before the workflow has made the tag.
+- **Every push to next is a prerelease (Justin, 2026-11-27).** The same
+  workflow tags next's newest commit `v1.0.0-next.1`, `-next.2` and on,
+  whatever the push holds, and publishes a GitHub pre-release (never
+  Latest) with what came since the one before. The count leads to the
+  release to come: v1.0.0 before the first, then the version next's changes
+  since the last release make (`v1.1.0-next.1`). next.app shows its
+  prerelease, and its build names it before the tag exists. Prereleases do
+  not end a What's New batch; a batch names the newest one in it.
 - **The first release waits for Justin's word.** `IS_RELEASING` in
   `releases.utils.ts` is false: no tag is made and every build says "Not
   released yet". Turning it on, in the push that brings next into dev,
   makes v1.0.0, its notes listing everything up to it, the same as What's
   New.
+- **A new release opens on its glow.** When What's New opens on something
+  the person has not seen, its head is the library `Glow` in that
+  release's own pair of theme colours (`toReleaseGlow`), "New release" and
+  the version; with nothing new, it is the plain head.
 - **What's New (#399, #400)** folds every app and library change into
   batches of work; a release ends a batch, and a released batch names its
   version and links its GitHub notes. The batches, their titles and days,

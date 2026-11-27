@@ -4,11 +4,15 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
 	FIRST_SUMMARY,
 	isAppChange,
+	isPrerelease,
 	planRelease,
+	toNextPrerelease,
+	toPrereleaseBase,
+	toPrereleaseVersion,
+	toReleaseGlow,
 	toReleaseUrl,
 	toTag,
 	toTagVersion,
-	toVersionLabel,
 	type ReleaseChangeType
 } from './releases.utils';
 
@@ -122,24 +126,38 @@ describe('the release rule', () => {
 });
 
 describe('the version people read', () => {
-	it('says nothing while nothing is released and releases are not made yet', () => {
-		expect(toVersionLabel({ isReleaseBranch: true, ahead: 40 })).toBe('');
+	it('counts next up toward the first release, v1.0.0-next.1 first', () => {
+		expect(toPrereleaseBase(undefined, [])).toBe('1.0.0');
+		expect(toNextPrerelease('1.0.0', [])).toBe('1.0.0-next.1');
+		expect(toNextPrerelease('1.0.0', [1, 3, 2])).toBe('1.0.0-next.4');
 	});
 
-	it('is the last release when nothing new came since', () => {
-		expect(toVersionLabel({ last: '1.1.0', isReleaseBranch: false, ahead: 2 })).toBe('v1.1.0');
+	it("leads next's prereleases to the release its changes since the last one make", () => {
+		expect(toPrereleaseBase('1.0.0', [{ subject: '✨ feat(app): a thing' }])).toBe('1.1.0');
+		expect(toPrereleaseBase('1.0.0', [{ subject: '🐛 fix(app): a thing' }])).toBe('1.0.1');
+		// Every push to next is a prerelease, even one with no feature or fix.
+		expect(toPrereleaseBase('1.0.0', [{ subject: '📝 docs(repo): a note' }])).toBe('1.0.1');
 	});
 
-	it('is the release being made on dev, before its tag exists', () => {
-		expect(
-			toVersionLabel({ last: '1.1.0', planned: '1.2.0', isReleaseBranch: true, ahead: 3 })
-		).toBe('v1.2.0');
+	it('reads prerelease tags apart from releases', () => {
+		expect(toPrereleaseVersion('v1.0.0-next.12')).toEqual({
+			version: '1.0.0-next.12',
+			base: '1.0.0',
+			number: 12
+		});
+		expect(toPrereleaseVersion('v1.0.0')).toBeUndefined();
+		expect(toPrereleaseVersion('v1.0.0-rc.1')).toBeUndefined();
+		expect(toTagVersion('v1.0.0-next.12')).toBeUndefined();
+		expect(isPrerelease('1.0.0-next.12')).toBe(true);
+		expect(isPrerelease('1.0.0')).toBe(false);
 	});
 
-	it('is the release still to come on next, with the commits since the last one', () => {
-		expect(
-			toVersionLabel({ last: '1.1.0', planned: '1.2.0', isReleaseBranch: false, ahead: 12 })
-		).toBe('v1.2.0-next.12');
+	it("gives each release its own glow from the theme's colours, the same every time", () => {
+		const glows = ['1.0.0-next.1', '1.0.0-next.2', '1.0.0-next.3', '1.0.0'].map(toReleaseGlow);
+
+		expect(toReleaseGlow('1.0.0-next.1')).toEqual(glows[0]);
+		expect(new Set(glows.map((glow) => `${glow.color} ${glow.blend}`)).size).toBeGreaterThan(1);
+		for (const glow of glows) expect(glow.color).not.toBe(glow.blend);
 	});
 
 	it('reads only plain release tags, and links each to its notes', () => {
