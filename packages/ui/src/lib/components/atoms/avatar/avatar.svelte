@@ -11,11 +11,16 @@
 	}
 
 	// The box's size, the dot's and the badge's, as one style made once for each avatar (#379, measured).
-	function toBoxStyle(size: number, badge: string | undefined, badgeScale: number) {
+	function toBoxStyle(
+		size: number,
+		badge: string | undefined,
+		badgeScale: number,
+		hasMark: boolean
+	) {
 		const box = `width: ${size}px; height: ${size}px; --dot: ${Math.max(8, Math.round(size * 0.28))}px`;
-		return badge
-			? `${box}; --badge: url("${badge}"); --mark: ${Math.round(size * badgeScale)}px`
-			: box;
+		const mark = `--mark: ${Math.round(size * badgeScale)}px`;
+		if (badge) return `${box}; --badge: url("${badge}"); ${mark}`;
+		return hasMark ? `${box}; ${mark}` : box;
 	}
 </script>
 
@@ -27,7 +32,8 @@
 	// Every little round picture in the app, a face or a logo (#379, Justin, 2026-11-26: one component, never
 	// several): the photo or logo; with none, the name's initials (or a company's code) on the colours of its role or
 	// kind (#355); with no letters either, an icon on grey, or on a colour it is given. A presence dot sits at the top
-	// right, or a badge at the bottom right in its place, both drawn by the element itself.
+	// right, or a badge at the bottom right in its place, both drawn by the element itself. An icon badge (#403: what
+	// someone did, "added", "changed", "deleted") sits at the bottom right beside the dot, an icon on its own colours.
 	//
 	// It is the base component (Justin, 2026-11-26), so `color`, `appearance`, their shorthands and `class` land on its
 	// box. It repeats in every dashboard row, so it takes the base component's light path: one element and a picture,
@@ -64,6 +70,12 @@
 		badge?: string;
 		// How wide the badge is, as a share of the avatar.
 		badgeScale?: number;
+		// An icon at the bottom right on a colour of its own (#403: an action, "changed"), beside the presence dot.
+		badgeIcon?: string;
+		// The icon badge's colours, as classes (`bg-warning text-surface`); the theme's darkest when not given.
+		badgeTint?: string;
+		// What the icon badge is read out as ("Changed").
+		badgeLabel?: string;
 		// The icon class shown when there is no picture and no letters.
 		fallback?: string;
 		// The icon's circle colours, as classes: grey unless given (a transport's mode on its own colour).
@@ -87,6 +99,9 @@
 		presence,
 		badge,
 		badgeScale = 0.42,
+		badgeIcon,
+		badgeTint = 'bg-secondary-950 text-surface',
+		badgeLabel,
 		fallback = 'icon-[mdi--account]',
 		tint = 'bg-neutral-300 text-base-400',
 		crossorigin,
@@ -105,7 +120,7 @@
 	class={`avatar relative inline-block shrink-0 ${className}`}
 	>{#snippet component({ props: root }: ComponentRenderArgs)}<span
 			{...root}
-			style={toBoxStyle(size, badge, badgeScale)}
+			style={toBoxStyle(size, badge, badgeScale, Boolean(badgeIcon))}
 			data-presence={badge ? undefined : presence}
 			data-badge={badge ? '' : undefined}
 			{title}
@@ -124,6 +139,10 @@
 						: 'rounded-[24%]'} {ring}"
 					role="img"
 					aria-label={alt ?? name ?? ''}><span class="{fallback} size-[58%]"></span></span
+				>{/if}{#if badgeIcon}<span
+					class="avatar-mark absolute -right-1 -bottom-1 flex items-center justify-center rounded-full ring-2 ring-surface {badgeTint}"
+					role="img"
+					aria-label={badgeLabel ?? ''}><span class="{badgeIcon} size-[66%]"></span></span
 				>{/if}</span
 		>{/snippet}</Component
 >
@@ -146,6 +165,12 @@
 	}
 	.avatar[data-presence='offline']::after {
 		@apply bg-base-400;
+	}
+
+	/* The icon badge's size, set with the box. */
+	.avatar-mark {
+		width: var(--mark);
+		height: var(--mark);
 	}
 
 	/* The badge: a small round picture on the theme's darkest at the bottom right. */
