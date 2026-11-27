@@ -48,9 +48,11 @@ jobs:
           ref: ${{ github.ref_name }}
           fetch-depth: 0
           fetch-tags: true
+      # Plain Node runs the script: no packages, so no pnpm and no cache of them.
       - uses: actions/setup-node@v5
         with:
           node-version-file: package.json
+          package-manager-cache: false
       - name: Work out the release
         id: plan
         run: node apps/app/scripts/release.ts --branch "$GITHUB_REF_NAME" --notes "$RUNNER_TEMP/notes.md"
