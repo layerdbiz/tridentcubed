@@ -9,7 +9,9 @@
 	// Its look is set from outside (Justin, 2026-11-26): it is the base component, and the box that shows takes
 	// `class`, `size` and everything else given. `color` (or its shorthand, `accent`) is the main light, primary unless
 	// told, and `blend` the second, any of the theme's colours, the status ones too; the dark is the theme's shade.
-	// The light stands still for anyone who asks for less motion. Only the light is cut to the box's shape: what it holds
+	// Given new colours, the light moves to them over a moment, as What's New's head does when the list scrolls to an
+	// older release (Justin, 2026-11-27). The light stands still, and changes at once, for anyone who asks for less
+	// motion. Only the light is cut to the box's shape: what it holds
 	// may reach past its edge, as a wave pulled a pixel down over the seam does (Justin, 2026-11-27), and its own
 	// margins stay inside it.
 	import type { Snippet } from 'svelte';
@@ -80,10 +82,31 @@
 <style lang="postcss">
 	@reference "#ui.css";
 
+	/* The three colours, known to the browser as colours so a change of them can move from one to the next. */
+	@property --glow-a {
+		syntax: '<color>';
+		inherits: true;
+		initial-value: transparent;
+	}
+	@property --glow-b {
+		syntax: '<color>';
+		inherits: true;
+		initial-value: transparent;
+	}
+	@property --glow-c {
+		syntax: '<color>';
+		inherits: true;
+		initial-value: transparent;
+	}
+
 	/* The light, in the components layer, where a place's own class beats it. */
 	@layer components {
 		:global(.glow) {
 			box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-on-shade) 14%, transparent);
+			transition:
+				--glow-a 700ms ease,
+				--glow-b 700ms ease,
+				--glow-c 700ms ease;
 		}
 		:global(.glow-light) {
 			position: absolute;
@@ -124,6 +147,9 @@
 		}
 
 		@media (prefers-reduced-motion: reduce) {
+			:global(.glow) {
+				transition: none;
+			}
 			:global(.glow[data-moving] .glow-light) {
 				animation: none;
 			}

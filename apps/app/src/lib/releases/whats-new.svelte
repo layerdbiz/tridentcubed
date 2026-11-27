@@ -1,11 +1,12 @@
 <script lang="ts">
 	// What's New (#363, #396, #399, #400), the one window for what the app has brought, kept plain (Justin, 2026-11-27):
-	// each day of work under its date in bold (history.utils.ts), newest first, each a section of the library Accordion
-	// in the look the page hands it (`fold`). A day shows the release that brought it and how many features and fixes it
-	// holds; open, those changes in everyday words and the link to that release's notes on GitHub. The head names the
-	// newest version on a glow of its own colours from edge to edge, ending on the library's wave, every time it opens
-	// (Justin, 2026-11-27); on something new it says "New release". With no release yet the days are the same, with no
-	// version. What landed since this device last pressed the button says New, and its days start open with the newest.
+	// each release's day of work under its date in bold (history.utils.ts), newest first, each a section of the library
+	// Accordion in the look the page hands it (`fold`), every one open. A section shows its release and how many
+	// features and fixes it holds, those changes in everyday words, all alike, and the link to the release's notes on
+	// GitHub. The head is the release in view on a glow of its own colours from edge to edge, ending on the library's
+	// wave: v1.0.0-next.6 at the top, and as the list scrolls down, next.5, next.4 and on, the colours moving with it. On
+	// the newest release, when it holds something this person has not seen, it says New release. With no release yet the
+	// sections are the same, with no version.
 	//
 	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and on the branches in
 	// POP_UP_BRANCHES the moment a new version is out, in place of the update note. With a newer version out, the
@@ -14,9 +15,11 @@
 	// so nobody stays on an old version (Justin, 2026-11-26, #401); a reload that still brings an older page takes the
 	// last resort once (rescue.ts): the service worker and its files are cleared and the page loads again.
 	import { onMount, untrack } from 'svelte';
+	import { prefersReducedMotion } from 'svelte/motion';
+	import { fly } from 'svelte/transition';
 	import { updated } from '$app/state';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
-	import { Accordion, Button, Chip, Dialog, Divider, Glow, type AccordionProps } from '@layerd/ui';
+	import { Accordion, Button, Dialog, Divider, Glow, type AccordionProps } from '@layerd/ui';
 	import { UpdateState } from '../update/update.state.svelte';
 	import { noteReload, takeLastResort } from '../update/rescue';
 	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
@@ -24,7 +27,7 @@
 	import { CHECK_EVERY, HAS_POP_UP } from './releases.constants';
 	import { whatsNew } from './releases.state.svelte';
 	import { toReleaseGlow, toTag } from './releases.utils';
-	import { toBatchCounts, type HistoryBatchType } from './history.utils';
+	import { toBatchCounts, toSectionInView } from './history.utils';
 
 	let {
 		save,
@@ -45,21 +48,56 @@
 	const batches = $derived(whatsNew.history?.batches ?? []);
 	const freshCount = $derived(whatsNew.fresh.length);
 	const version = $derived(whatsNew.history?.version ?? '');
-	// The head is the version on a glow of its own colours every time (Justin, 2026-11-27). It fills the sheet to its
-	// edges, over the sheet's own grab handle (it draws its own), and its wave is the sheet's colour rising into it.
-	// On something this person has not seen, it says New release.
+	// The head is the release in view on a glow of its own colours, every time it opens (Justin, 2026-11-27). It fills
+	// the sheet to its edges, over the sheet's own grab handle (it draws its own), and its wave is the sheet's colour
+	// rising into it.
 	const isFresh = $derived(whatsNew.isNewer || freshCount > 0);
-	const badge = $derived(isFresh ? 'New release' : version ? "What's New" : '');
-	const glow = $derived(toReleaseGlow(version));
-	const note = $derived(
-		freshCount === 1
-			? '1 new since you last looked'
-			: freshCount > 1
-				? `${freshCount} new since you last looked`
-				: whatsNew.isNewer
-					? 'A new version is ready'
-					: 'Every update, newest first'
+	let shownAt = $state(0);
+	const shown = $derived(batches[shownAt] ?? batches[0]);
+	const shownVersion = $derived(
+		shown?.release ? toTag(shown.release.version) : shown === batches[0] ? version : ''
 	);
+	const badge = $derived(
+		!shownVersion
+			? ''
+			: shownVersion !== version
+				? 'Earlier release'
+				: isFresh
+					? 'New release'
+					: 'Latest release'
+	);
+	const glow = $derived(toReleaseGlow(shownVersion || version));
+	const note = $derived(
+		shown ? [shown.day, ...toBatchCounts(shown)].join(' · ') : 'Every update, newest first'
+	);
+	// A section names the head once its top is this far down the scroll, or the last once the scroll ends.
+	const LINE = 64;
+
+	/** Follows the scroll the list sits in, so the head names the section in view. */
+	function followScroll(list: HTMLElement) {
+		let area = list.parentElement;
+		while (area && !/auto|scroll/.test(getComputedStyle(area).overflowY)) area = area.parentElement;
+		if (!area) return;
+		const scroller = area;
+		let frame = 0;
+		function read() {
+			frame = 0;
+			const top = scroller.getBoundingClientRect().top;
+			const tops = [...list.children].map((item) => item.getBoundingClientRect().top - top);
+			const isAtEnd =
+				scroller.scrollTop > 0 &&
+				scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
+			shownAt = toSectionInView(tops, LINE, isAtEnd);
+		}
+		function wait() {
+			if (!frame) frame = requestAnimationFrame(read);
+		}
+		scroller.addEventListener('scroll', wait, { passive: true });
+		return () => {
+			scroller.removeEventListener('scroll', wait);
+			cancelAnimationFrame(frame);
+		};
+	}
 
 	const BUTTON = {
 		none: 'Got it',
@@ -67,11 +105,6 @@
 		waiting: 'Will update once saved',
 		switching: 'Updating…'
 	};
-
-	function freshIn(batch: HistoryBatchType) {
-		const seenAt = whatsNew.seenAt;
-		return seenAt < 0 ? 0 : batch.changes.filter((change) => change.landed > seenAt).length;
-	}
 
 	onMount(() => {
 		if (!HAS_POP_UP) return;
@@ -139,21 +172,25 @@
 						class="mx-auto mt-3 block h-1.5 w-10 rounded-full bg-on-shade/30 md:hidden"
 						aria-hidden="true"
 					></span>
-					<!-- Room under the words, so they never sit on the wave. -->
-					<div class="px-12 pt-5 pb-7 md:pt-8 md:pb-9">
-						{#if badge}
-							<p
-								class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-on-shade/10 px-3 py-1 text-[11px] font-bold tracking-[0.18em] uppercase ring-1 ring-on-shade/20"
-							>
-								<span class="icon-[mdi--star-four-points] size-3.5"></span>{badge}
-							</p>
-						{/if}
-						<h2
-							class="bg-linear-to-r from-on-shade from-40% to-(--glow-c) bg-clip-text text-4xl leading-tight font-black tracking-tight text-transparent"
-						>
-							{version || "What's New"}
-						</h2>
-						<p class="mt-1 text-sm text-on-shade/75">{isFresh ? `What's New · ${note}` : note}</p>
+					<!-- Room under the words, so they never sit on the wave. The words change with the release in view. -->
+					<div class="px-12 pt-5 pb-10 md:pt-8 md:pb-14">
+						{#key shownVersion}
+							<div in:fly={{ y: 10, duration: prefersReducedMotion.current ? 0 : 280 }}>
+								{#if badge}
+									<p
+										class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-on-shade/10 px-3 py-1 text-[11px] font-bold tracking-[0.18em] uppercase ring-1 ring-on-shade/20"
+									>
+										<span class="icon-[mdi--star-four-points] size-3.5"></span>{badge}
+									</p>
+								{/if}
+								<h2
+									class="bg-linear-to-r from-on-shade from-40% to-(--glow-c) bg-clip-text text-4xl leading-tight font-black tracking-tight text-transparent"
+								>
+									{shownVersion || "What's New"}
+								</h2>
+								<p class="mt-1 text-sm text-on-shade/75">{note}</p>
+							</div>
+						{/key}
 					</div>
 					<!-- The wave takes its own room under the words, and hangs a pixel past the glow's edge (negative margin),
 					     so no thin line of the dark shows under it. -->
@@ -161,7 +198,7 @@
 						shape="waves"
 						color="text-surface"
 						bleed={false}
-						height="64px"
+						height="56px"
 						class="-mb-px"
 					/>
 				</Glow>
@@ -170,7 +207,7 @@
 					md
 					icon="icon-[mdi--close]"
 					aria-label="Close"
-					class="absolute! top-4 left-3 text-on-shade! hover:bg-on-shade/10!"
+					class="absolute! top-4 right-3 text-on-shade! hover:bg-on-shade/10!"
 					onclick={dismiss}
 				/>
 			</header>
@@ -178,13 +215,15 @@
 
 		<div class="pt-4 pb-6">
 			{#if batches.length}
-				<ul class="space-y-2">
-					{#each batches as batch, index (batch.from)}
-						{@const fresh = freshIn(batch)}
+				<ul
+					class="space-y-2"
+					{@attach followScroll}
+				>
+					{#each batches as batch (batch.from)}
 						<li>
 							<Accordion
 								{...fold}
-								open={index === 0 || fresh > 0}
+								open
 							>
 								{#snippet head()}
 									<span class="min-w-0 flex-1">
@@ -202,18 +241,9 @@
 												>{/each}
 										</span>
 									</span>
-									{#if fresh > 0}
-										<Chip
-											label="{fresh} new"
-											class="bg-emerald-500 px-2 py-0.5 text-[11px] font-bold text-white"
-										/>
-									{/if}
 								{/snippet}
 								<div>
-									<ChangeList
-										changes={batch.changes}
-										seenAt={whatsNew.seenAt}
-									/>
+									<ChangeList changes={batch.changes} />
 								</div>
 								{#if batch.release}
 									<Button

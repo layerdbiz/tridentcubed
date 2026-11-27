@@ -112,7 +112,7 @@ describe("What's New with releases", () => {
 		expect(day.nextElementSibling?.textContent?.trim()).toBe('v1.1.0 · 1 feature');
 	});
 
-	it('opens on the glow every time: once everything is seen it says What’s New, not New release', async () => {
+	it('opens on the glow every time: once everything is seen it says Latest release, not New release', async () => {
 		whatsNew.close();
 		vi.stubGlobal(
 			'fetch',
@@ -127,7 +127,42 @@ describe("What's New with releases", () => {
 
 		const heading = await findByRole('heading', { name: 'v1.1.0' });
 		expect(heading.closest('.glow')).not.toBeNull();
-		expect(await findByText('Every update, newest first')).toBeTruthy();
+		expect(await findByText('Latest release')).toBeTruthy();
+		expect(await findByText('2026-11-26 · 1 feature')).toBeTruthy();
 		expect(queryByText('New release')).toBeNull();
+	});
+
+	it('opens every release, its lines all alike, with nothing marked new line by line', async () => {
+		whatsNew.close();
+		const older = {
+			day: '2026-11-25',
+			from: '2026-11-25T15:00:00Z',
+			to: '2026-11-25T15:00:00Z',
+			release: { version: '1.0.0', url: toReleaseUrl('1.0.0') },
+			changes: [
+				{
+					kind: 'fix',
+					text: 'A pin shows once',
+					tickets: [],
+					at: '2026-11-25T15:00:00Z',
+					landed: 1
+				}
+			]
+		};
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => Response.json({ ...RELEASED, batches: [...RELEASED.batches, older] }))
+		);
+		// Last seen before both: everything is new to this person.
+		whatsNew.seen = 'a'.repeat(40);
+
+		const { findByText, queryByText } = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		whatsNew.openAll();
+
+		expect(await findByText('Pin anything')).toBeTruthy();
+		expect(await findByText('A pin shows once')).toBeTruthy();
+		expect(await findByText('New release')).toBeTruthy();
+		expect(queryByText('New')).toBeNull();
+		expect(queryByText(/^\d+ new$/)).toBeNull();
 	});
 });

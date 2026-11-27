@@ -10,6 +10,7 @@ import {
 	toNewSince,
 	toPlainLines,
 	toReleaseNotes,
+	toSectionInView,
 	type HistoryBatchType,
 	type LandedType
 } from './history.utils';
@@ -117,19 +118,21 @@ describe("What's New's history", () => {
 		]);
 	});
 
-	it("ends a day where a release ends, and keeps next's prereleases together", () => {
+	it("ends a day where a release ends, next's prereleases too", () => {
 		const landed = [
 			{ ...feature('2026-11-26T14:00:00Z', 'One', 0), release: '1.0.0' },
 			{ ...feature('2026-11-26T15:00:00Z', 'Two', 1), release: '1.1.0-next.1' },
-			{ ...feature('2026-11-26T16:00:00Z', 'Three', 2), release: '1.1.0-next.2' }
+			{ ...feature('2026-11-26T15:30:00Z', 'Three', 2), release: '1.1.0-next.1' },
+			{ ...feature('2026-11-26T16:00:00Z', 'Four', 3), release: '1.1.0-next.2' },
+			{ ...feature('2026-11-26T17:00:00Z', 'Five', 4) }
 		];
 
 		expect(toBatches(toHistoryChanges(landed)).map((batch) => batch.changes.length)).toEqual([
-			1, 2
+			1, 2, 1, 1
 		]);
 	});
 
-	it("names each day by its newest change's release, newest day first, and gives the build its version", () => {
+	it('names each section by its release, newest first, and gives the build its version', () => {
 		const landed = [
 			{ ...feature('2026-11-25T15:00:00Z', 'One', 0), release: '1.0.0-next.1' },
 			{ ...feature('2026-11-26T15:00:00Z', 'Two', 1), release: '1.0.0-next.1' },
@@ -147,9 +150,10 @@ describe("What's New's history", () => {
 		expect(history.version).toBe('v1.0.0-next.2');
 		expect(history.batches.map((batch) => [batch.day, batch.release?.version])).toEqual([
 			['2026-11-26', '1.0.0-next.2'],
+			['2026-11-26', '1.0.0-next.1'],
 			['2026-11-25', '1.0.0-next.1']
 		]);
-		expect(history.batches[0].changes.map((change) => change.text)).toEqual(['Three', 'Two']);
+		expect(history.batches[1].changes.map((change) => change.text)).toEqual(['Two']);
 	});
 
 	it('has no version, and days with no release, while nothing is released', () => {
@@ -169,6 +173,32 @@ describe("What's New's history", () => {
 		expect(toNewSince(history, 'aaaaaaaaaaaaaaaa').map((change) => change.landed)).toEqual([2, 1]);
 		expect(toNewSince(history, 'cccccccccccccccc')).toEqual([]);
 		expect(toNewSince(history, 'dddddddddddd')).toEqual([]);
+	});
+
+	it('names the section whose top has passed the top of the scroll, and the last one at the end', () => {
+		const tops = [0, 300, 900, 1400];
+
+		expect(toSectionInView(tops, 24)).toBe(0);
+		expect(
+			toSectionInView(
+				tops.map((top) => top - 320),
+				24
+			)
+		).toBe(1);
+		expect(
+			toSectionInView(
+				tops.map((top) => top - 1390),
+				24
+			)
+		).toBe(3);
+		expect(
+			toSectionInView(
+				tops.map((top) => top - 800),
+				24,
+				true
+			)
+		).toBe(3);
+		expect(toSectionInView([], 24)).toBe(0);
 	});
 
 	it('counts the features and fixes a day holds, only the kinds it has', () => {

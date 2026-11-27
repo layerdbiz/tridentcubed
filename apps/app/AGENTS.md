@@ -197,23 +197,27 @@ the why is in ADR 0002, 0003 and 0005.
   the one before. The count leads to the release to come: v1.0.0 before the
   first, then the version next's changes since the last release make
   (`v1.1.0-next.1`). next.app shows its version, and its build names it
-  before the tag exists. Prereleases do not end a What's New day; a day
-  names the newest one in it.
+  before the tag exists. Each one ends a What's New section, like a release.
 - **The first release waits for Justin's word.** `IS_RELEASING` in
   `releases.utils.ts` is false: no tag is made and every build says "Not
   released yet". Turning it on, in the push that brings next into dev,
   makes v1.0.0, its notes listing everything up to it, the same as What's
   New.
 - **What's New always opens on its glow (Justin, 2026-11-27).** Its head is
-  the library `Glow` in the version's own pair of theme colours
-  (`toReleaseGlow`) with the version, from edge to edge, ending on the
-  library's wave `Divider`, which takes its own room under the words and
-  hangs a pixel past the glow's edge so no line shows. On something the
-  person has not seen it also says "New release".
+  the library `Glow` from edge to edge, ending on the library's wave
+  `Divider`, which takes its own room under padded words and hangs a pixel
+  past the glow's edge so no line shows; the X is at the top right. It
+  names the release in view: as the list scrolls down it moves from
+  v1.0.0-next.6 to next.5, next.4 and on, each in its own pair of theme
+  colours (`toReleaseGlow`), the light easing from one to the next. The
+  newest says "New release" when it holds something the person has not
+  seen, else "Latest release"; older ones "Earlier release". Every section
+  is open, and every line looks alike: nothing is marked new line by line.
 - **What's New is plain (Justin, 2026-11-27).** It lists each day under
   its date in bold (`2026-11-27`, the team's clock), and in it only
-  Features and Fixes people notice, in everyday words. A release also ends
-  a day, and a released day names its version and links its GitHub notes.
+  Features and Fixes people notice, in everyday words. Every release also
+  ends a section, so each section is one release's day, naming its version
+  and linking its GitHub notes.
   The days and the notes written from them live in
   `src/lib/releases/history.utils.ts`.
 - **A change shows only with its plain words.** A `feat`, `fix` or `perf`

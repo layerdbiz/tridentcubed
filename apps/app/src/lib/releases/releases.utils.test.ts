@@ -158,6 +158,17 @@ describe('the version people read', () => {
 		for (const glow of glows) expect(glow.color).not.toBe(glow.blend);
 	});
 
+	it('gives releases one after another glows of a different main colour, eight before one comes again', () => {
+		const glows = Array.from({ length: 9 }, (_, index) =>
+			toReleaseGlow(`v1.0.0-next.${index + 1}`)
+		);
+
+		for (const [index, glow] of glows.slice(1).entries()) {
+			expect(glow.color).not.toBe(glows[index].color);
+		}
+		expect(new Set(glows.slice(0, 8).map((glow) => `${glow.color} ${glow.blend}`)).size).toBe(8);
+	});
+
 	it('reads only plain release tags, and links each to its notes', () => {
 		expect(toTagVersion('v1.10.2')).toBe('1.10.2');
 		expect(toTagVersion('v1.2')).toBeUndefined();

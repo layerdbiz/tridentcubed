@@ -211,17 +211,21 @@ export function toNextPrerelease(base: string, numbers: number[]) {
 	return `${base}-next.${Math.max(0, ...numbers) + 1}`;
 }
 
-// The theme's colours a release's glow is made of, in pairs that sit well together on the dark.
+// The theme's colours a release's glow is made of, in pairs that sit well together on the dark, ordered so the main
+// colour of each differs from the next: next's releases one after another, as What's New scrolls through them
+// (Justin, 2026-11-27), each look different from the one before.
 const GLOWS: {
-	color: 'primary' | 'accent' | 'danger';
+	color: 'primary' | 'accent' | 'danger' | 'warning';
 	blend: 'primary' | 'accent' | 'danger' | 'warning';
 }[] = [
 	{ color: 'primary', blend: 'danger' },
 	{ color: 'danger', blend: 'warning' },
 	{ color: 'accent', blend: 'primary' },
+	{ color: 'warning', blend: 'danger' },
 	{ color: 'primary', blend: 'accent' },
 	{ color: 'danger', blend: 'primary' },
-	{ color: 'accent', blend: 'warning' }
+	{ color: 'accent', blend: 'warning' },
+	{ color: 'warning', blend: 'accent' }
 ];
 
 /**
