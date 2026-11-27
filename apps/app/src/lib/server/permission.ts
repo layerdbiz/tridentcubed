@@ -69,6 +69,7 @@ const REASONS = {
 	member: 'Only an Admin can change who is in the organization.',
 	help: 'Only an Admin can change the help text.',
 	pin: 'A pin is only its owner’s.',
+	seen: 'What someone has seen is only theirs.',
 	activity: 'Only an Admin can see the Activity.',
 	signature: 'Only an Admin can open someone else’s email signature.',
 	mailbox: 'Only an Admin can open a shared mailbox’s email signature.',
@@ -137,6 +138,10 @@ const TABLE_RULES: Partial<Record<CheckedTableType, RuleType[]>> = {
 	// The menu's pins (#346): each person's own, whatever their role. The server sets whose a new one is.
 	pinned: [
 		(actor, change) => (change.row && change.row.userId !== actor.userId ? REASONS.pin : undefined)
+	],
+	// What each person has seen (#403): their own, whatever their role. The server sets whose a new one is.
+	seen: [
+		(actor, change) => (change.row && change.row.userId !== actor.userId ? REASONS.seen : undefined)
 	],
 	member: [adminsOnly(REASONS.member), keepAdmins],
 	// Team records (#185): staff edit them, but only an Admin changes a role, and an Admin stays one. Staff may add a
@@ -213,6 +218,11 @@ export function checkPermission(actor: ActorType, change: ChangeType): VerdictTy
 export function checkActivity(actor: ActorType): VerdictType {
 	if (!actor.organizationId) return { isAllowed: false, reason: REASONS.guest };
 	return isAdmin(actor) ? { isAllowed: true } : { isAllowed: false, reason: REASONS.activity };
+}
+
+/** Whether `actor` may read the bell's Notifications (#403): anyone in an organization reads their own. */
+export function checkNotifications(actor: ActorType): VerdictType {
+	return actor.organizationId ? { isAllowed: true } : { isAllowed: false, reason: REASONS.guest };
 }
 
 /**

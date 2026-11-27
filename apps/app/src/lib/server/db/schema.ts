@@ -15,4 +15,5 @@ export * from './file.schema';
 export * from './photo.schema';
 export * from './trip.schema';
 export * from './pinned.schema';
+export * from './seen.schema';
 export * from './activity.schema';

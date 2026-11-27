@@ -600,6 +600,20 @@ CREATE TABLE "pinned" (
 --> statement-breakpoint
 ALTER TABLE "pinned" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "seen" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"user_id" uuid NOT NULL,
+	"line" text NOT NULL,
+	"seen_at" text NOT NULL
+);
+
+--> statement-breakpoint
+ALTER TABLE "seen" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 CREATE TABLE "activity_event" (
 	"id" uuid PRIMARY KEY DEFAULT pg_catalog.gen_random_uuid() NOT NULL,
 	"kind" text NOT NULL,
@@ -746,6 +760,10 @@ ALTER TABLE "pinned" ADD CONSTRAINT "pinned_organization_id_organization_id_fk" 
 --> statement-breakpoint
 ALTER TABLE "pinned" ADD CONSTRAINT "pinned_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "seen" ADD CONSTRAINT "seen_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "seen" ADD CONSTRAINT "seen_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 ALTER TABLE "activity_event" ADD CONSTRAINT "activity_event_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");
@@ -820,6 +838,8 @@ CREATE INDEX "time_log_entry_project_idx" ON "time_log_entry" USING btree ("proj
 --> statement-breakpoint
 CREATE INDEX "pinned_user_idx" ON "pinned" USING btree ("organization_id","user_id");
 --> statement-breakpoint
+CREATE INDEX "seen_user_idx" ON "seen" USING btree ("organization_id","user_id");
+--> statement-breakpoint
 CREATE INDEX "activity_event_at_idx" ON "activity_event" USING btree ("created_at");
 --> statement-breakpoint
 CREATE INDEX "activity_event_user_idx" ON "activity_event" USING btree ("user_id","kind","created_at");
@@ -893,6 +913,8 @@ CREATE POLICY "time_log_day in the acting organization" ON "time_log_day" AS PER
 CREATE POLICY "time_log_entry in the acting organization" ON "time_log_entry" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "pinned of the acting user" ON "pinned" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id() and user_id = app.user_id()) WITH CHECK (organization_id = app.organization_id() and user_id = app.user_id());
+--> statement-breakpoint
+CREATE POLICY "seen of the acting user" ON "seen" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id() and user_id = app.user_id()) WITH CHECK (organization_id = app.organization_id() and user_id = app.user_id());
 --> statement-breakpoint
 CREATE POLICY "activity_event is read by an Admin" ON "activity_event" AS PERMISSIVE FOR SELECT TO "trident_app" USING ((app.claims() ->> 'role' = 'admin' or exists (select 1 from public."user" u where u.id = app.user_id() and u.is_super_admin)) and ("activity_event".organization_id = app.organization_id() or ("activity_event".organization_id is null and ("activity_event".user_id is null or app.is_guest_shown("activity_event".user_id)))));
 --> statement-breakpoint

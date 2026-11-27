@@ -8,13 +8,31 @@
 	// each time it opens (`fetchActivity`), and Show Older reads the next ones before the oldest shown through the same
 	// query; how it stays up to date while open is the live updates research's to decide (#282).
 	import { Button } from '@layerd/ui';
+	import { untrack } from 'svelte';
 	import { fetchActivity } from '#lib/activity/activity.remote.js';
 	import type { ActivityEventType } from '#lib/activity/activity.types.js';
 	import ActivityList, { type ActivityTabType } from './activity-list.svelte';
 	import type { LookState } from './look.state.svelte';
 	import PageHeader from './page-header.svelte';
+	import { logSeenAt, markLogSeen } from './seen';
 
 	let { look }: { look: LookState } = $props();
+
+	// What others did since the person last opened the Log is light blue for this visit (#403); on the first visit,
+	// nothing is. The lines they tapped in the bell are seen already.
+	const since = untrack(() => logSeenAt(look));
+	const tapped = untrack(() => new Set(look.seen.map((each) => each.line)));
+	untrack(() => markLogSeen(look));
+	function unreadOf(events: ActivityEventType[]) {
+		if (!since) return new Set<string>();
+		return new Set(
+			events
+				.filter(
+					(event) => event.at > since && event.userId !== look.userId && !tapped.has(event.id)
+				)
+				.map((event) => event.id)
+		);
+	}
 
 	let tab = $state<ActivityTabType>('all');
 	let isGrouped = $state(true);
@@ -105,6 +123,7 @@
 						<ActivityList
 							{look}
 							events={[...found.events, ...older]}
+							unread={unreadOf([...found.events, ...older])}
 							isFull
 							bind:tab
 							bind:isGrouped

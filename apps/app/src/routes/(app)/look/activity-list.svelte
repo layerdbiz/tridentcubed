@@ -3,6 +3,17 @@
 	module
 >
 	export type ActivityTabType = 'all' | 'projects' | 'users';
+
+	/** A new version's line in the bell: What's New's day, its first things in words, and whether it is unseen. */
+	export type ReleaseLineType = {
+		id: string;
+		at: string;
+		/** "v1.2.0", or the day ("2026-11-27") while no release has ended it. */
+		title: string;
+		/** The day's things: "Pin anything to your menu · Search from the menu". */
+		words: string;
+		isNew: boolean;
+	};
 </script>
 
 <script lang="ts">
@@ -19,7 +30,7 @@
 	// file counts (#350): on the right where the list is wide, after the time on a phone. Not grouped, Projects and
 	// Users are rows like any other, with no arrow: one per project, with its newest action, and one per person, with
 	// their online dot and how long they have been online or away, coloured like the Online list.
-	import { Avatar, Button, ListRow, Menu, Tabs, type MenuOptionType } from '@layerd/ui';
+	import { Avatar, Badge, Button, ListRow, Menu, Tabs, type MenuOptionType } from '@layerd/ui';
 	import { SvelteSet } from 'svelte/reactivity';
 	import type { ActivityEventType, ChangeEventType } from '#lib/activity/activity.types.js';
 	import {
@@ -37,6 +48,7 @@
 		type ActivityTimeType,
 		type AgoToneType
 	} from '#lib/activity/activity.utils.js';
+	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toDeviceIcons } from '#lib/presence/presence.utils.js';
 	import { PAGE_ICONS, STATUS, presenceOf, toPresenceText } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -50,7 +62,9 @@
 		tab = $bindable('all'),
 		isGrouped = $bindable(true),
 		unread = undefined,
-		ontap = undefined
+		releases = [],
+		ontap = undefined,
+		onrelease = undefined
 	}: {
 		look: LookState;
 		events: ActivityEventType[];
@@ -62,6 +76,9 @@
 		unread?: ReadonlySet<string>;
 		// Told of every tap on a row, before it opens what the row is about.
 		ontap?: (event: ActivityEventType) => void;
+		// The bell's: What's New's days, each a line among the rest, which a tap opens.
+		releases?: ReleaseLineType[];
+		onrelease?: (release: ReleaseLineType) => void;
 	} = $props();
 
 	type KindType = ActivityEventType['kind'];
@@ -130,6 +147,13 @@
 		}
 	};
 
+	// A new version's mark, on the app's own picture.
+	const RELEASE_MARK = {
+		icon: 'icon-[mdi--rocket-launch]',
+		badge: 'bg-primary text-white',
+		label: 'New version'
+	};
+
 	// How long ago, in the Online list's colours: green within 5 minutes, orange within the hour, grey after.
 	const AGO_TONES: Record<AgoToneType, string> = {
 		fresh: 'text-emerald-700',
@@ -181,6 +205,19 @@
 		)
 	);
 	const view = $derived(isFull ? tab : 'all');
+	// One by one, with the bell's new versions among the lines, newest first.
+	type FlatType = {
+		id: string;
+		at: string;
+		event?: ActivityEventType;
+		release?: ReleaseLineType;
+	};
+	const flat = $derived<FlatType[]>(
+		[
+			...shown.map((event) => ({ id: event.id, at: event.at, event })),
+			...releases.map((release) => ({ id: release.id, at: release.at, release }))
+		].toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at))
+	);
 	const runs = $derived(toRuns(shown));
 	const projects = $derived(toProjectGroups(shown));
 	const people = $derived(toPeopleGroups(shown));
@@ -287,6 +324,8 @@
 	function whereOf(event: ActivityEventType, hasProject = true) {
 		const parts: string[] = [];
 		const where = projectOfEvent(event);
+		// What is about the reader says its project and its columns in its first line.
+		if ('isAboutYou' in event && event.isAboutYou) return '';
 		if (hasProject && where?.title && !(event.kind === 'open' || event.kind === 'download'))
 			parts.push(where.title);
 		if (event.kind === 'signIn' || event.kind === 'signOut') {
@@ -340,11 +379,15 @@
 {#snippet said(event: ActivityEventType, hasWho = true, hasProject = true)}
 	{@const where = projectOfEvent(event)}
 	<span class={hasWho ? '' : 'inline-block first-letter:uppercase'}
-		>{#if hasWho}{@render bold(whoOf(event.who))}{' '}{/if}{#if event.kind === 'signIn'}signed in{#if event.isGuest},
-				waiting for access{/if}{:else if event.kind === 'signOut'}signed out{:else if event.kind === 'code'}asked
-			for a sign-in code and never used it{:else if event.kind === 'open'}opened {#if hasProject && where?.title}{@render bold(
-					where.title
-				)}{:else}the project{/if}{:else if event.kind === 'download'}downloaded the PDF{#if hasProject && where?.title}{' '}of
+		>{#if hasWho}{@render bold(
+				whoOf(event.who)
+			)}{' '}{/if}{#if 'isAboutYou' in event && event.isAboutYou}{@render aboutYou(
+				event,
+				hasProject
+			)}{:else if event.kind === 'signIn'}signed in{#if event.isGuest}, waiting for access{/if}{:else if event.kind === 'signOut'}signed
+			out{:else if event.kind === 'code'}asked for a sign-in code and never used it{:else if event.kind === 'open'}opened
+			{#if hasProject && where?.title}{@render bold(where.title)}{:else}the project{/if}{:else if event.kind === 'download'}downloaded
+			the PDF{#if hasProject && where?.title}{' '}of
 				{@render bold(
 					where.title
 				)}{/if}{:else if event.kind === 'add'}{#if event.table === 'project'}started a project{:else if event.name}added
@@ -355,6 +398,15 @@
 				)}{:else}the {event.thing}{/if}{:else if event.table === 'project'}changed the project{:else if event.name}changed
 			{@render bold(event.name)}{:else}changed the {event.thing}{/if}</span
 	>
+{/snippet}
+
+<!-- What was done to the reader (#403): put on or taken off a project's Team Assigned, their Team record changed. -->
+{#snippet aboutYou(event: ChangeEventType, hasProject: boolean)}
+	{@const title = hasProject ? event.project : undefined}
+	{#if event.table === 'project_team'}{event.kind === 'trash'
+			? 'took you off'
+			: 'added you to'}{' '}{#if title}{@render bold(title)}{:else}the project{/if}{:else if event.kind === 'trash'}deleted
+		your Team record{:else}changed your {event.columns.join(', ') || 'Team record'}{/if}
 {/snippet}
 
 <!-- A row's second line: how long ago (or how long online), coloured, then the counts on a phone, then where. -->
@@ -440,10 +492,11 @@
 	isNew: boolean
 )}
 	{#if counts}<span class="hidden shrink-0 @md:flex">{@render tally(counts)}</span>{/if}
-	{#if fresh}<span
-			class="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-white tabular-nums"
-			aria-label="{fresh} new">{fresh}</span
-		>{/if}
+	{#if fresh}<Badge
+			count={fresh}
+			xs
+			aria-label="{fresh} new"
+		/>{/if}
 	{#if isOpen !== undefined}<span
 			class="icon-[mdi--chevron-down] size-5 shrink-0 text-slate-400 transition {isOpen
 				? 'rotate-180'
@@ -503,6 +556,26 @@
 		{@render row(picture, first, agoOf(event.at), whereOf(event), {
 			isNew: isUnread(event),
 			onclick: () => tap(event)
+		})}
+	</li>
+{/snippet}
+
+<!-- A new version: the app's picture with a rocket, "v1.2.0 release notes", how long ago and its first things. -->
+{#snippet releaseLine(release: ReleaseLineType)}
+	{#snippet picture()}<Avatar
+			src={ICON_192}
+			alt="Trident Cubed"
+			size={40}
+			badgeIcon={RELEASE_MARK.icon}
+			badgeTint={RELEASE_MARK.badge}
+			badgeLabel={RELEASE_MARK.label}
+			badgeScale={0.45}
+		/>{/snippet}
+	{#snippet first()}{@render bold(release.title)} release notes{/snippet}
+	<li class="py-[3px]">
+		{@render row(picture, first, agoOf(release.at), release.words, {
+			isNew: release.isNew,
+			onclick: () => onrelease?.(release)
 		})}
 	</li>
 {/snippet}
@@ -662,15 +735,19 @@
 	{/if}
 
 	<div>
-		{#if !shown.length}
+		{#if !shown.length && !releases.length}
 			<p class="px-3 py-10 text-center text-sm text-slate-500">
 				{events.length ? 'Nothing here matches. Try another filter.' : 'Nothing has happened yet.'}
 			</p>
 		{:else if view === 'all' && !(isFull && isGrouped)}
 			<ul>
-				{#each byBucket(shown, (event) => event.at, now) as bucket (bucket.label)}
+				{#each byBucket(flat, (item) => item.at, now) as bucket (bucket.label)}
 					{@render heading(bucket.label)}
-					{#each bucket.items as event (event.id)}{@render line(event)}{/each}
+					{#each bucket.items as item (item.id)}
+						{#if item.release}{@render releaseLine(item.release)}{:else if item.event}{@render line(
+								item.event
+							)}{/if}
+					{/each}
 				{/each}
 			</ul>
 		{:else if view === 'all'}

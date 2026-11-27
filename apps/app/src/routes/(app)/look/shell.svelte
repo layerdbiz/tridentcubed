@@ -17,7 +17,8 @@
 	// screen edge to edge, down behind the sheet; a swipe slides the pages without fading them; the bell's list sits
 	// over the list's menus. Run 15 (2026-11-10): Settings is a screen of its own (settings-page.svelte), opened from
 	// the menu's cog or Admin, and slides in like a record.
-	import { Avatar, Button, Popover } from '@layerd/ui';
+	import { Avatar, Badge, Button, Popover } from '@layerd/ui';
+	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
 	import type { Attachment } from 'svelte/attachments';
 	import { cubicOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
@@ -38,7 +39,8 @@
 	import PhotoSelection from './photo-selection.svelte';
 	import ProjectBar from './project-bar.svelte';
 	import ProjectPage from './project-page.svelte';
-	import RecentList from './recent-list.svelte';
+	import Notifications from './notifications.svelte';
+	import { NOTIFICATIONS_EVERY_MS, NotificationsState } from './bell.svelte';
 	import RecordPage from './record-page.svelte';
 	import SearchPopup from './search-popup.svelte';
 	import SettingsPage from './settings-page.svelte';
@@ -61,9 +63,17 @@
 	// Counts each time the sheet is let go, wherever it comes to rest: the map fits its markers again each time.
 	let sheetMoves = $state(0);
 	let isBellOpen = $state(false);
+	// The bell's Notifications (#403): read as the app opens, each time the bell opens, and every few minutes; the
+	// bell counts the lines not seen yet. A phone shows them on a page of their own over the menu.
+	const notifications = new NotificationsState(() => look, whatsNew);
+	let isBellPage = $state(false);
+	$effect(() => {
+		void notifications.read();
+		const timer = setInterval(() => void notifications.read(), NOTIFICATIONS_EVERY_MS);
+		return () => clearInterval(timer);
+	});
 	// The search pop-up (#345): from Search in the menu, or Ctrl K / ⌘ K.
 	let isSearchOpen = $state(false);
-	let seen = $state(false);
 	let headHeight = $state(0);
 	let cardsHeight = $state(0);
 	const isWide = $derived(innerWidth >= 768);
@@ -326,38 +336,57 @@
 />
 
 <!-- The bell: top right of a desktop's dashboard, and in the phone's menu beside the name (`isPlain`: on the menu's
-     white it needs no circle of its own). Its Notifications are the library Popover (#405): on a desktop the bell sits
-     at the top right, so the box opens toward the left; in the phone's menu it sits in the middle, so the box opens
-     toward the right, and either way it stays on the screen (Justin, 2026-11-26: it ran off the left of his phone). -->
+     white it needs no circle of its own), with the number of Notifications not seen yet (#403). On a desktop they are
+     the library Popover (#405), opening toward the left from the top right; on a phone, a page of their own over the
+     menu, with a back arrow (Justin, 2026-11-27, picked on the prototype). -->
 {#snippet bellButton(isPlain = false)}
 	<div class="relative">
-		<Popover
-			label="Notifications"
-			align={isPlain ? 'left' : 'right'}
-			class="w-72 md:w-80"
-			button={{
-				...(isPlain ? ROUND : round),
-				icon: 'icon-[mdi--bell-outline]',
-				title: 'Notifications',
-				onclick: () => (seen = true)
-			}}
-			bind:isOpen={isBellOpen}
-		>
-			<p class="px-3 pt-2 pb-1 text-sm font-semibold text-slate-900">Notifications</p>
-			<RecentList
-				{look}
-				onpick={() => (isBellOpen = false)}
+		{#if isPlain}
+			<Button
+				{...ROUND}
+				icon="icon-[mdi--bell-outline]"
+				aria-label="Notifications"
+				title="Notifications"
+				onclick={() => {
+					isBellPage = true;
+					void notifications.read();
+				}}
 			/>
-		</Popover>
-		{#if !seen}
-			<span
-				class="pointer-events-none absolute top-2 right-2.5 size-2.5 rounded-full bg-danger ring-2 {isPlain ||
-				topLook === 'C'
-					? 'ring-white'
-					: topLook === 'B'
-						? 'ring-black'
-						: 'ring-slate-100'}"
-			></span>
+		{:else}
+			<Popover
+				label="Notifications"
+				align="right"
+				class="w-[420px]"
+				button={{
+					...round,
+					icon: 'icon-[mdi--bell-outline]',
+					title: 'Notifications',
+					onclick: () => {
+						if (!isBellOpen) void notifications.read();
+					}
+				}}
+				bind:isOpen={isBellOpen}
+			>
+				<Notifications
+					{look}
+					{notifications}
+					onclose={() => (isBellOpen = false)}
+				/>
+			</Popover>
+		{/if}
+		{#if notifications.count}
+			<span class="pointer-events-none absolute -top-0.5 -right-0.5"
+				><Badge
+					count={notifications.count}
+					danger
+					xs
+					class="ring-2 {isPlain || topLook === 'C'
+						? 'ring-white'
+						: topLook === 'B'
+							? 'ring-black'
+							: 'ring-slate-100'}"
+				/></span
+			>
 		{/if}
 	</div>
 {/snippet}
@@ -740,4 +769,20 @@
 			{look}
 			onclose={() => (isSearchOpen = false)}
 		/>{/if}
+	{#if isBellPage && !isWide}
+		<div
+			class="fixed inset-0 z-[70] bg-white"
+			transition:fly={{ x: 40, duration: 180, easing: cubicOut }}
+		>
+			<Notifications
+				{look}
+				{notifications}
+				hasBack
+				onclose={(hasOpened) => {
+					isBellPage = false;
+					if (hasOpened) drawer = 0;
+				}}
+			/>
+		</div>
+	{/if}
 </div>
