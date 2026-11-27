@@ -50,40 +50,56 @@
 
 	let { data, onMount, children = undefined, ...props }: EmailProps = $props();
 
+	// Every value goes into the HTML as text, never as markup: a name typed with a < or an & shows as typed, and
+	// nothing typed can add to the signature (#354, where the app shows a Team record's details as they are typed).
+	const ESCAPES: Record<string, string> = {
+		'&': '&amp;',
+		'<': '&lt;',
+		'>': '&gt;',
+		'"': '&quot;',
+		"'": '&#39;'
+	};
+	function toText(value: string | undefined) {
+		return (value ?? '').replace(/[&<>"']/g, (character) => ESCAPES[character]);
+	}
+
 	// Shared template data - single source of truth
 	const template = $derived({
-		linkedinUrl: data.href,
-		profileImage: data.src,
-		name: data.name,
-		title: data.title,
-		phone: data.phone,
-		phoneDisplay: data.phone, // Use phone as-is for display
-		email: data.email,
+		linkedinUrl: toText(data.href),
+		profileImage: toText(data.src),
+		name: toText(data.name),
+		title: toText(data.title),
+		phone: toText(data.phone),
+		phoneDisplay: toText(data.phone), // Use phone as-is for display
+		email: toText(data.email),
 		groupEmails: (data.group || '')
 			.split(',')
-			.map((e) => e.trim())
+			.map((e) => toText(e.trim()))
 			.filter((e) => e.length > 0), // Split all group emails and filter empty
-		logoImage: data.logoImage || 'https://tridentcubed.com/branding/logo-dark-horizontal.png',
+		logoImage: toText(
+			data.logoImage || 'https://tridentcubed.com/branding/logo-dark-horizontal.png'
+		),
 		icons: {
-			phone: data.icons?.phone || 'https://tridentcubed.com/emails/icon-phone.png',
-			email: data.icons?.email || 'https://tridentcubed.com/emails/icon-email.png',
-			globe: data.icons?.globe || 'https://tridentcubed.com/emails/icon-globe.png',
-			linkedin: data.icons?.linkedin || 'https://tridentcubed.com/emails/icon-linkedin.png',
-			facebook: data.icons?.facebook || 'https://tridentcubed.com/emails/icon-facebook.png',
-			whatsapp: data.icons?.whatsapp || 'https://tridentcubed.com/emails/icon-whatsapp.png',
-			bbb: data.icons?.bbb || 'https://tridentcubed.com/emails/bbb-logo.png'
+			phone: toText(data.icons?.phone || 'https://tridentcubed.com/emails/icon-phone.png'),
+			email: toText(data.icons?.email || 'https://tridentcubed.com/emails/icon-email.png'),
+			globe: toText(data.icons?.globe || 'https://tridentcubed.com/emails/icon-globe.png'),
+			linkedin: toText(data.icons?.linkedin || 'https://tridentcubed.com/emails/icon-linkedin.png'),
+			facebook: toText(data.icons?.facebook || 'https://tridentcubed.com/emails/icon-facebook.png'),
+			whatsapp: toText(data.icons?.whatsapp || 'https://tridentcubed.com/emails/icon-whatsapp.png'),
+			bbb: toText(data.icons?.bbb || 'https://tridentcubed.com/emails/bbb-logo.png')
 		},
 		socialLinks: {
-			linkedin:
-				data.socialLinks?.linkedin || 'https://www.linkedin.com/company/trident-cubed-solutions',
-			facebook: data.socialLinks?.facebook || 'https://www.facebook.com/TridentCubed',
-			whatsapp: data.socialLinks?.whatsapp || 'https://wa.me/15705751179'
+			linkedin: toText(
+				data.socialLinks?.linkedin || 'https://www.linkedin.com/company/trident-cubed-solutions'
+			),
+			facebook: toText(data.socialLinks?.facebook || 'https://www.facebook.com/TridentCubed'),
+			whatsapp: toText(data.socialLinks?.whatsapp || 'https://wa.me/15705751179')
 		},
 		banner: data.banner
 			? {
-					href: data.banner.href,
-					src: data.banner.src,
-					alt: data.banner.alt
+					href: toText(data.banner.href),
+					src: toText(data.banner.src),
+					alt: toText(data.banner.alt)
 				}
 			: undefined
 	});
