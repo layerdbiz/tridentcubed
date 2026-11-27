@@ -11,6 +11,7 @@ export * from "./files/files.remote.ts";
 export * from "./files/files.schema.ts";
 export * from "./files/files.state.svelte.ts";
 export * from "./files/files.utils.ts";
+export * from "./releases/first-release.ts";
 export * from "./start/help.ts";
 export * from "./releases/history.utils.ts";
 export { default as HowTo } from "./install/how-to.svelte";

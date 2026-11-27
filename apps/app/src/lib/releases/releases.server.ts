@@ -182,10 +182,12 @@ export function readReleaseState(
 	// Prereleases are next's own: dev and main name only releases.
 	const prereleases = isReleaseBranch ? [] : readPrereleaseTags();
 
-	// Which release first held each commit: each prerelease in turn, then each release over them, less what the ones
-	// before it held. A commit a release holds is that release's, whichever prerelease brought it first.
+	// Which release first held each commit: each release in turn, less what the ones before it held, then on next each
+	// prerelease over them the same way. On next a commit stays the prerelease's that brought it, after a release holds
+	// it too: next.app keeps its next versions, and dev and main, which read no prereleases, name only releases
+	// (Justin, 2026-11-27).
 	const versions = new Map<string, string>();
-	for (const group of [prereleases, tags]) {
+	for (const group of [tags, prereleases]) {
 		for (const [index, tag] of group.entries()) {
 			const before = group.slice(0, index).map((each) => each.commit);
 			const held = readCommitIds(tag.commit, ...(before.length ? ['--not', ...before] : []));

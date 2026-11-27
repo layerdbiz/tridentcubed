@@ -156,6 +156,52 @@ describe("What's New's history", () => {
 		expect(history.batches[1].changes.map((change) => change.text)).toEqual(['Two']);
 	});
 
+	it('tells the first release in its own words: one list of features, in place of its days', () => {
+		const landed = [
+			{ ...feature('2026-11-25T15:00:00Z', 'One', 0), release: '1.0.0' },
+			{ ...feature('2026-11-26T15:00:00Z', 'Two', 1), release: '1.0.0' },
+			{
+				subject: '🐛 fix(app): three',
+				body: "What's New: Three.",
+				at: '2026-11-26T16:00:00Z',
+				landed: 2,
+				release: '1.0.0'
+			},
+			{ ...feature('2026-11-28T15:00:00Z', 'Four', 3), release: '1.1.0' }
+		];
+		const releases = ['1.0.0', '1.1.0'].map((version) => ({
+			version,
+			url: `https://example.com/v${version}`
+		}));
+		const history = toHistory('abc', ['a', 'b', 'c', 'd'], landed, {
+			releases,
+			first: ['Sign in.', 'Search.']
+		});
+
+		expect(
+			history.batches.map((batch) => [
+				batch.day,
+				batch.release?.version,
+				batch.changes.map((change) => `${change.kind} ${change.text}`)
+			])
+		).toEqual([
+			['2026-11-28', '1.1.0', ['feature Four']],
+			['2026-11-26', '1.0.0', ['feature Sign in.', 'feature Search.']]
+		]);
+		// Everything the first release brought counts as landing with its last change.
+		expect(history.batches[1].changes.map((change) => change.landed)).toEqual([2, 2]);
+	});
+
+	it('lists every day as it is where the first release has not been made', () => {
+		const landed = [{ ...feature('2026-11-26T15:00:00Z', 'One', 0), release: '1.0.0-next.1' }];
+
+		expect(
+			toHistory('abc', ['a'], landed, { first: ['Sign in.'] }).batches[0].changes.map(
+				(change) => change.text
+			)
+		).toEqual(['One']);
+	});
+
 	it('has no version, and days with no release, while nothing is released', () => {
 		const history = toHistory('abc', ['a'], [feature('2026-11-26T15:00:00Z', 'One')]);
 

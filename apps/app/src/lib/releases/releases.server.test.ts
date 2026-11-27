@@ -131,6 +131,26 @@ describe('the releases a build knows', () => {
 		expect(next.versionOf(three)).toBe('1.1.0-next.1');
 	});
 
+	it("keeps next's commits in the prereleases that brought them after a release holds them; dev names the release", () => {
+		const one = commit('✨ feat(app): one');
+		tag('1.0.0-next.1');
+		const two = commit('🐛 fix(app): two');
+		tag('1.0.0-next.2');
+		tag('1.0.0');
+		const three = commit('✨ feat(app): three');
+
+		const next = readReleaseState('HEAD', { branch: 'next' });
+		const dev = readReleaseState('HEAD', { branch: 'dev' });
+
+		expect([one, two, three].map((each) => next.versionOf(each))).toEqual([
+			'1.0.0-next.1',
+			'1.0.0-next.2',
+			'1.1.0-next.1'
+		]);
+		expect([one, two].map((each) => dev.versionOf(each))).toEqual(['1.0.0', '1.0.0']);
+		expect(dev.releases.map((each) => each.version)).toEqual(['1.0.0', '1.1.0']);
+	});
+
 	it('is the last release itself when nothing since is a feature or a fix', () => {
 		commit('✨ feat(app): one');
 		tag('1.0.0');
