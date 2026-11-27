@@ -105,36 +105,42 @@ describe('Accordion', () => {
 		expect(opened()).toEqual(['Three']);
 	});
 
-	it('given `snap`, scrolls itself to the top of its scroll area once a press has opened it, and only then', async () => {
-		// jsdom lays nothing out and has no scrolling into view: it is stood in for here.
+	it('given `snap`, glides to the top of the box it scrolls in as a press opens it, and only then', async () => {
+		// jsdom lays nothing out: the box scrolls by `scrollTo`, stood in for, and the section stands 300 px down it.
+		const box = document.body.appendChild(document.createElement('div'));
+		box.style.overflowY = 'auto';
 		const scrolled = vi.fn();
-		const before = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
-		Object.defineProperty(Element.prototype, 'scrollIntoView', {
-			configurable: true,
-			writable: true,
-			value: scrolled
-		});
+		box.scrollTo = scrolled as typeof box.scrollTo;
 		try {
-			const { container, rerender } = show({ snap: true });
+			const { container, rerender } = render(Accordion, {
+				target: box,
+				props: { head, children: inside, snap: true }
+			});
+			const section = container.querySelector<HTMLElement>('.accordion')!;
+			section.getBoundingClientRect = () => ({ top: 300 }) as DOMRect;
+
 			await fireEvent.click(headerOf());
-			await vi.waitFor(() => expect(scrolled).toHaveBeenCalledOnce());
-			expect(scrolled).toHaveBeenLastCalledWith({ block: 'start', behavior: 'smooth' });
-			expect(scrolled.mock.contexts[0]).toBe(container.querySelector('.accordion'));
+			await vi.waitFor(() =>
+				expect(scrolled).toHaveBeenLastCalledWith({ top: 300, behavior: 'instant' })
+			);
+			// It moved there step by step, not at once.
+			expect(scrolled.mock.calls.length).toBeGreaterThan(2);
+			expect(scrolled.mock.calls[0][0].top).toBeLessThan(300);
 
 			// Shut by a press, or opened from outside: it stays where it is.
+			const glided = scrolled.mock.calls.length;
 			await fireEvent.click(headerOf());
 			await rerender({ open: true });
-			await new Promise((done) => setTimeout(done, 20));
-			expect(scrolled).toHaveBeenCalledOnce();
+			await new Promise((done) => setTimeout(done, 60));
+			expect(scrolled).toHaveBeenCalledTimes(glided);
 
 			// Without `snap` a press opens it where it is.
 			await rerender({ open: false, snap: false });
 			await fireEvent.click(headerOf());
-			await new Promise((done) => setTimeout(done, 20));
-			expect(scrolled).toHaveBeenCalledOnce();
+			await new Promise((done) => setTimeout(done, 60));
+			expect(scrolled).toHaveBeenCalledTimes(glided);
 		} finally {
-			if (before) Object.defineProperty(Element.prototype, 'scrollIntoView', before);
-			else Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+			box.remove();
 		}
 	});
 

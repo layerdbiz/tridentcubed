@@ -29,7 +29,8 @@
 	// above or below the rest. `variant="full"` is the tall one that, on a phone, fills the whole screen, edge to edge
 	// and top to bottom, with no grab handle and no pull to close: it closes on the X its header gives, or Escape (Justin,
 	// 2026-11-27, for What's New). `fade` fades the tall middle out at the edges it names as it scrolls, through the
-	// library Scroller.
+	// library Scroller, which takes any other Scroller prop through `scroller`, as the Accordion's Delete takes Button
+	// props through `deleteButton`: what it `keep`s whole, its `depth`, its `inset`.
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { fade as dim, fly } from 'svelte/transition';
@@ -55,6 +56,8 @@
 		variant?: 'sheet' | 'tall' | 'full';
 		/** The edges a tall one's middle fades out at as it scrolls: `y` for the top and the bottom. */
 		fade?: ScrollerProps['fade'];
+		/** The tall middle's other Scroller props, set from outside: what it keeps whole, its depth, its inset. */
+		scroller?: Partial<ScrollerProps>;
 		/** Stays at the top while the middle scrolls: a title, a close. */
 		header?: Snippet;
 		/** Stays at the foot while the middle scrolls: the button that ends it. */
@@ -68,6 +71,7 @@
 		isModal = true,
 		variant = 'sheet',
 		fade = [],
+		scroller = {},
 		header,
 		footer,
 		children,
@@ -218,8 +222,10 @@
 				{@render header?.()}
 				{#if isTall}
 					<Scroller
+						{...scroller}
 						{fade}
-						class="dialog-scroll -mx-5 min-h-0 flex-1 touch-pan-y overscroll-contain px-5"
+						class="dialog-scroll -mx-5 min-h-0 flex-1 touch-pan-y overscroll-contain px-5 {scroller.class ??
+							''}"
 					>
 						{@render children()}
 					</Scroller>

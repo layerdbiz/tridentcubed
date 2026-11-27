@@ -2,8 +2,9 @@
 	// What's New (#363, #396, #399, #400), the one window for what the app has brought, kept plain (Justin, 2026-11-27):
 	// each release's day of work under its date in bold (history.utils.ts), newest first, each a section of the library
 	// Accordion in the look the page hands it (`fold`), only the newest open each time it opens and one open at a time
-	// (Justin, 2026-11-27: the Accordion's `group`); one opened by a tap scrolls itself to the top, just under the list's
-	// fade, so the head names it (the Accordion's `snap`). A section shows its release and how many features and fixes it
+	// (Justin, 2026-11-27: the Accordion's `group`); one opened by a tap glides to the top as the one before slides shut,
+	// all one move (the Accordion's `snap`), so the head names it, with nothing of the section above it showing; the open
+	// section's header never fades (the Scroller's `keep`). A section shows its release and how many features and fixes it
 	// holds, each count after a dot of its kind's colour (KIND_COLORS), those changes in everyday words, all alike,
 	// and the link to the release's notes on GitHub. The head is the release in view on a glow of its own colours from edge to edge, ending on the library's
 	// wave: v1.0.0-next.6 at the top, and as the list scrolls down, next.5, next.4 and on, the colours moving with it. On
@@ -182,6 +183,7 @@
 		label="What's New"
 		variant="full"
 		fade="y"
+		scroller={{ keep: '[aria-expanded="true"]' }}
 		onclose={dismiss}
 	>
 		{#snippet header()}
@@ -242,10 +244,11 @@
 				>
 					{#each batches as batch, at (batch.from)}
 						<li>
-							<!-- The room above a section a tap scrolls up is the Dialog's fade, the Scroller's 56 px depth. -->
+							<!-- A section a tap opens stands at the top as the first does with nothing scrolled: the list's
+							     own room above it, nothing of the one before it showing. -->
 							<Accordion
 								{...fold}
-								class="{fold.class ?? ''} scroll-mt-14"
+								class="{fold.class ?? ''} scroll-mt-4"
 								open={at === 0}
 								group="whats-new"
 								snap
