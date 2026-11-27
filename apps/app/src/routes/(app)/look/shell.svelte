@@ -680,12 +680,15 @@
 
 	{#if look.screen === 'signature'}
 		<!-- Email Signature (#354): anyone's own, opened from the menu on their profile picture, sliding in like the
-		     Activity. -->
+		     Organization, with a project's Page, Edit and Preview. -->
 		<div
 			class="fixed inset-0 z-50"
 			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
 		>
-			<SignaturePage {look} />
+			<SignaturePage
+				{look}
+				{isWide}
+			/>
 		</div>
 	{/if}
 

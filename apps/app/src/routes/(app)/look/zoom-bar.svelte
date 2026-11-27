@@ -4,23 +4,30 @@
 	// bottom. No + and − buttons: the slider, pinch and scroll do that. #324 (Justin, 2026-11-25): one button for how
 	// the pages lie, its icon the mode they are in, and Stack, Spread and Present (a play button: the pages one at a
 	// time) sliding out of it in a row (Justin, 2026-11-26: the prototype's Slide-out Row, in place of the menu), the
-	// library Menu's row (#390).
+	// library Menu's row (#390). #354 (Justin, 2026-11-27): the Email Signature's preview has the same bar, with Copy
+	// in Download's place, its Code beside it and no modes, since a signature is one page.
+	import type { Snippet } from 'svelte';
 	import { Button, Menu } from '@layerd/ui';
 	import type { LayoutType } from './presentation.svelte';
 	import { ZOOM_MAX, ZOOM_MIN, type Viewport } from './viewport.svelte';
 
 	let {
 		viewport,
-		layout,
+		layout = 'column',
 		onfit,
 		onmode,
-		ondownload
+		action,
+		children
 	}: {
 		viewport: Viewport;
-		layout: LayoutType;
+		layout?: LayoutType;
 		onfit: () => void;
-		onmode: (mode: LayoutType) => void;
-		ondownload: () => void;
+		// How the pages lie; with no `onmode` there is no mode button.
+		onmode?: (mode: LayoutType) => void;
+		// The last button, in the theme's blue: Download PDF on a report, Copy on a signature.
+		action: { label: string; icon: string; onclick: () => void };
+		// The caller's own buttons, between the mode and the last one.
+		children?: Snippet;
 	} = $props();
 
 	const MODES: { id: LayoutType; name: string; label: string; icon: string }[] = [
@@ -138,34 +145,37 @@
 	/>
 	<!-- The mode the pages are in. Stack, Spread and Present slide out of it in a row to its left, the mode the pages
 	     are in lit; a tap anywhere else or Escape puts the row back. -->
-	<Menu
-		isRow
-		opens="left"
-		offset={10}
-		label="How the pages lie"
-		options={MODES}
-		value={layout}
-		onpick={(id) => id !== layout && onmode(id as LayoutType)}
-		class="bg-black"
-		button={(_, isOpen) => ({
-			appearance: isOpen ? 'heavy' : 'ghost',
-			invert: true,
-			sm: true,
-			icon: now.icon,
-			class: `${NOTCH} ${isOpen ? 'after:opacity-0' : 'bg-current/10 after:opacity-55'}`,
-			'aria-label': `${now.name}: choose how the pages lie`,
-			title: `${now.name}: choose how the pages lie`
-		})}
-		choiceButton={{ invert: true, sm: true }}
-	/>
+	{#if onmode}
+		<Menu
+			isRow
+			opens="left"
+			offset={10}
+			label="How the pages lie"
+			options={MODES}
+			value={layout}
+			onpick={(id) => id !== layout && onmode(id as LayoutType)}
+			class="bg-black"
+			button={(_, isOpen) => ({
+				appearance: isOpen ? 'heavy' : 'ghost',
+				invert: true,
+				sm: true,
+				icon: now.icon,
+				class: `${NOTCH} ${isOpen ? 'after:opacity-0' : 'bg-current/10 after:opacity-55'}`,
+				'aria-label': `${now.name}: choose how the pages lie`,
+				title: `${now.name}: choose how the pages lie`
+			})}
+			choiceButton={{ invert: true, sm: true }}
+		/>
+	{/if}
+	{@render children?.()}
 	<Button
 		primary
 		heavy
 		md
-		icon="icon-[mdi--tray-arrow-down]"
-		aria-label="Download PDF"
-		title="Download PDF"
+		icon={action.icon}
+		aria-label={action.label}
+		title={action.label}
 		class="mt-1"
-		onclick={ondownload}
+		onclick={action.onclick}
 	/>
 </div>

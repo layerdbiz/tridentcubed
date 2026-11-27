@@ -6,6 +6,8 @@ Observed November 26, 2026. Research for "Decide how email signatures move into 
 
 **Second round, November 27, 2026.** Justin asked for the signature's photo to be its own, never the profile picture, and always a circle; for each person to pick or upload their photo and their banner, starting from good defaults in Google Drive; and for the pictures to stop running up Vercel. What was built is in section 6.
 
+**Third round, November 27, 2026.** Justin asked for the screen to be built the way the rest of the app is: a project's Page, Edit and Preview. Section 7.
+
 ## Short answer
 
 1. **The app already holds nearly every detail a person's signature needs.** 17 of the 19 people with a signature have a Team record, with name, job title, phone, email, LinkedIn link and location filled in. What the app does not have yet: the shared company addresses listed under a person (18 of 19 show one to three), the banner, the company's three social links, and the 7 shared mailboxes' own signatures.
@@ -92,3 +94,14 @@ Written only once Justin has answered; listed so the session can end with them.
 **The website's own pictures.** Signatures already pasted from the website keep pointing at `tridentcubed.com`. `apps/site/vercel.json` now lets mail apps keep `/emails/*` and `/team/*-email.png` for 30 days and `/branding/*.png` for 7, once that reaches the live website. The redirect stays until the domain setting changes.
 
 **Further, if needed.** Putting Cloudflare's cache in front of the picture address (the DNS is already on Cloudflare) would take almost every picture request off Vercel; it needs a DNS name and a project domain, so it waits for Justin.
+
+## 7. Page, Edit and Preview (November 27, 2026)
+
+Justin: "we should be using the way that we've already built the app with the ... edit panels and the preview ... We do need to use the canvas though, because we're actually creating something that we need to preview." So the screen has the bottom bar's Page, Edit and Preview, swiped between on a phone, like a project and the Organization.
+
+1. **Page** says what the signature is, whose it is, and how to add it to Outlook.
+2. **Edit** is the Project panel's sections: Details (the Team record's Name, Title, Phone and Email, saved as they are typed, the signature following at once; a shared mailbox's come from the Sheet, with a link to it), Photo and Banner (the pickers of section 6). An Admin's picker of whose signature it is sits on top. On a desktop Edit is the floating column with the signature beside it, as on a project.
+3. **Preview** is the signature alone on the report's canvas, dragged and zoomed the same way, with the same zoom bar. Copy takes Download's place in it. The gray Edit button and the Preview and Code buttons over the old preview are gone.
+4. **Copy** puts the signature on the clipboard as HTML, with its words as plain text beside it, so it pastes styled into Outlook's signature box. The old Copy selected the signature in its frame and copied that, which a browser can refuse when the button press is outside the frame.
+5. **Code** (a default; Justin is not sure yet what it is for) is a button in the zoom bar that shows the signature's HTML on the page in its place; Copy then copies the code.
+6. The library Email now writes every value as text, so a name or title typed with `<` or `&` shows as typed and cannot add to the signature.

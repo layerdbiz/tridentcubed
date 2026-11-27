@@ -2286,7 +2286,7 @@
 				{layout}
 				onfit={refit}
 				onmode={choose}
-				ondownload={download}
+				action={{ label: 'Download PDF', icon: 'icon-[mdi--tray-arrow-down]', onclick: download }}
 			/>
 		</div>
 	{/if}

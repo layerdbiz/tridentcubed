@@ -65,7 +65,9 @@ src/lib/signature/             Email Signature (#354): signature.utils.ts (a sig
                                sharp), asked at routes/api/signature (its own Vercel function);
                                routes/signature/[file] answers a signature's pictures to anyone, since every
                                reader's mail app loads them signed out; the screen is
-                               routes/(app)/look/signature-page.svelte
+                               routes/(app)/look/signature-page.svelte (Page, Edit and Preview, as a
+                               project's), its Preview signature-canvas.svelte (the report's canvas, Copy
+                               in the zoom bar)
 src/lib/start/files.ts         the starting files' built addresses, for routes/start and the signature pictures
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)

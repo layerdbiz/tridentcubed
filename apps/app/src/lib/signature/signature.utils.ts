@@ -17,7 +17,13 @@ import {
 	UPLOAD_BANNER_LINK,
 	WEBSITE_ICONS
 } from './signature.constants';
-import type { ChoiceType, MailboxType, PictureSourceType, SignatureType } from './signature.types';
+import type {
+	ChoiceType,
+	MailboxType,
+	PictureSourceType,
+	SheetDetailsType,
+	SignatureType
+} from './signature.types';
 
 /** A person row of the signature Sheet, as the app uses it. */
 export type SheetPersonType = {
@@ -446,19 +452,52 @@ export function toPersonSignature(
 	made: MadeLookType
 ): SignatureType {
 	const row = findRow(record, sheets);
-	const email = record.email || row?.email || '';
 	return {
 		id: record.id,
 		type: 'person',
-		name: record.name,
-		title: record.title || row?.title || '',
-		phone: record.phone || row?.phone || '',
-		email,
-		group: toSharedAddresses(row?.group ?? '', email),
+		...toDetails(record, toSheetDetails(record, sheets)),
 		href: record.link || row?.href || '',
 		slug: record.id,
 		...toPictureParts(look, made, sheets)
 	};
+}
+
+/** What a person's Sheet row gives their signature where their Team record is empty: nothing for one not on it. */
+export function toSheetDetails(record: SignatureRecordType, sheets: SheetsType): SheetDetailsType {
+	const row = findRow(record, sheets);
+	return {
+		title: row?.title ?? '',
+		phone: row?.phone ?? '',
+		email: row?.email ?? '',
+		group: row?.group ?? ''
+	};
+}
+
+type DetailsType = Pick<SignatureRecordType, 'name' | 'title' | 'phone' | 'email'>;
+
+// The words a person's signature shows: the Team record's, the Sheet's where it is empty, and the shared addresses
+// under them, never their own.
+function toDetails(record: DetailsType, sheet: SheetDetailsType) {
+	const email = record.email || sheet.email;
+	return {
+		name: record.name,
+		title: record.title || sheet.title,
+		phone: record.phone || sheet.phone,
+		email,
+		group: toSharedAddresses(sheet.group, email)
+	};
+}
+
+/**
+ * A person's signature with their Team record's details as they are typed on the screen, the same way the server
+ * makes them; its pictures stay the ones the server copied.
+ */
+export function toLiveSignature(
+	signature: SignatureType,
+	record: DetailsType,
+	sheet: SheetDetailsType
+): SignatureType {
+	return { ...signature, ...toDetails(record, sheet) };
 }
 
 /** A shared mailbox's signature, from its Sheet row, with its pictures where they were copied to. */

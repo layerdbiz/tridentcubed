@@ -174,6 +174,8 @@ describe('a person’s own email signature', () => {
 			group: 'operations@tridentcubed.com',
 			socialLinks: { linkedin: 'https://www.linkedin.com/company/example' }
 		});
+		// What the Sheet gives, so the screen shows the record's details as they are typed.
+		expect(answer.sheet?.group).toContain('operations@tridentcubed.com');
 		expect(answer.mailboxes).toEqual([]);
 	});
 

@@ -20,13 +20,23 @@ export type ChoicesType = {
 	banner: string;
 };
 
-/** One signature, with the shared mailboxes for an Admin and, for a person's, what can be picked; or why not. */
+/**
+ * What a person's row of the signature Sheet gives their signature where their Team record is empty: so the screen
+ * can show the record's details as they are typed, as the server would make them.
+ */
+export type SheetDetailsType = { title: string; phone: string; email: string; group: string };
+
+/**
+ * One signature, with the shared mailboxes for an Admin and, for a person's, what can be picked and what their Sheet
+ * row fills in; or why not.
+ */
 export type SignatureAnswerType =
 	| {
 			isAllowed: true;
 			signature: SignatureType;
 			mailboxes: MailboxType[];
 			choices?: ChoicesType;
+			sheet?: SheetDetailsType;
 	  }
 	| { isAllowed: false; reason: string };
 
