@@ -48,9 +48,10 @@
 	const batches = $derived(whatsNew.history?.batches ?? []);
 	const freshCount = $derived(whatsNew.fresh.length);
 	const version = $derived(whatsNew.history?.version ?? '');
-	// The head is the release in view on a glow of its own colours, every time it opens (Justin, 2026-11-27). It fills
-	// the sheet to its edges, over the sheet's own grab handle (it draws its own), and its wave is the sheet's colour
-	// rising into it.
+	// The head is the release in view on a glow of its own colours, every time it opens (Justin, 2026-11-27). On a phone
+	// the window fills the whole screen with no grab handle, the glow across its top; the glow fills the sheet to its
+	// edges, and its wave is the sheet's colour rising into it. The list fades out under it and above the button as it
+	// scrolls (the library Scroller, through the Dialog's `fade`).
 	const isFresh = $derived(whatsNew.isNewer || freshCount > 0);
 	let shownAt = $state(0);
 	const shown = $derived(batches[shownAt] ?? batches[0]);
@@ -158,22 +159,20 @@
 {#if whatsNew.isOpen}
 	<Dialog
 		label="What's New"
-		variant="tall"
+		variant="full"
+		fade="y"
 		onclose={dismiss}
 	>
 		{#snippet header()}
-			<header class="relative -mx-5 -mt-[2.125rem] shrink-0 md:-mt-5">
+			<!-- On a phone the glow fills the screen's top, under the status bar too, its words below it. -->
+			<header class="relative -mx-5 -mt-[env(safe-area-inset-top)] shrink-0 md:-mt-5">
 				<Glow
 					color={glow.color}
 					blend={glow.blend}
-					class="rounded-t-[28px] text-center"
+					class="text-center md:rounded-t-[28px]"
 				>
-					<span
-						class="mx-auto mt-3 block h-1.5 w-10 rounded-full bg-on-shade/30 md:hidden"
-						aria-hidden="true"
-					></span>
 					<!-- Room under the words, so they never sit on the wave. The words change with the release in view. -->
-					<div class="px-12 pt-5 pb-10 md:pt-8 md:pb-14">
+					<div class="px-12 pt-[calc(env(safe-area-inset-top)+1.75rem)] pb-10 md:pt-8 md:pb-14">
 						{#key shownVersion}
 							<div in:fly={{ y: 10, duration: prefersReducedMotion.current ? 0 : 280 }}>
 								{#if badge}
@@ -207,7 +206,7 @@
 					md
 					icon="icon-[mdi--close]"
 					aria-label="Close"
-					class="absolute! top-4 right-3 text-on-shade! hover:bg-on-shade/10!"
+					class="absolute! top-[calc(env(safe-area-inset-top)+0.75rem)] right-3 text-on-shade! hover:bg-on-shade/10! md:top-4"
 					onclick={dismiss}
 				/>
 			</header>

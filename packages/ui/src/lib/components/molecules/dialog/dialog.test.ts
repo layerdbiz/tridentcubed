@@ -115,6 +115,26 @@ describe('Dialog', () => {
 		expect(onclose).toHaveBeenCalledTimes(1);
 	});
 
+	it('as a full one, fills a phone with no grab handle and is never pulled shut', async () => {
+		const header = createRawSnippet(() => ({ render: () => `<h2>What's New</h2>` }));
+		const { dialog, onclose } = show({ variant: 'full', header });
+		const sheet = dialog.querySelector('.dialog-sheet')!;
+
+		expect(sheet.className).toMatch(/(^|\s)top-0(\s|$)/);
+		expect(sheet.className).not.toMatch(/(^|\s)rounded-t-/);
+		expect(sheet.querySelector('.bg-grab')).toBeNull();
+		expect(screen.getByText('Every status in order.').closest('.dialog-scroll')).toBeTruthy();
+
+		await pull(screen.getByRole('heading', { name: "What's New" }), 200, true);
+		expect(onclose).not.toHaveBeenCalled();
+	});
+
+	it('fades its middle at the edges it is told, through the library Scroller', () => {
+		const { dialog } = show({ variant: 'tall', fade: 'y' });
+
+		expect(dialog.querySelector('.dialog-scroll')?.className).toContain('scroller-y');
+	});
+
 	// Its look is set from outside (Justin, 2026-11-26), like the Button's.
 	it('wears the look it is given on the sheet that shows, not on the layer over the page', () => {
 		const { dialog } = show({ lite: true, neutral: true, class: 'gap-2' });

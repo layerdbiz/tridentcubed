@@ -26,11 +26,20 @@
 	// to the status bar and stands 36rem wide and up to 88% of the window's height from md up. Its `header` and
 	// `footer` stay put while what is between them scrolls, and a pull that starts in that middle scrolls it rather
 	// than closing the sheet. The default sheet is as tall as what it holds; a `header` or `footer` given to it sits
-	// above or below the rest.
+	// above or below the rest. `variant="full"` is the tall one that, on a phone, fills the whole screen, edge to edge
+	// and top to bottom, with no grab handle and no pull to close: it closes on the X its header gives, or Escape (Justin,
+	// 2026-11-27, for What's New). `fade` fades the tall middle out at the edges it names as it scrolls, through the
+	// library Scroller.
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { fade, fly } from 'svelte/transition';
-	import { Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
+	import { fade as dim, fly } from 'svelte/transition';
+	import {
+		Component,
+		Scroller,
+		type ComponentProps,
+		type ComponentReturn,
+		type ScrollerProps
+	} from '@layerd/ui';
 
 	export interface DialogProps extends Omit<ComponentProps, 'label' | 'children'> {
 		/** What it holds, read out when it opens: "Change Status". */
@@ -39,8 +48,13 @@
 		onclose: () => void;
 		/** False for the help ?: the focus stays in the input being typed in and the page stays live. */
 		isModal?: boolean;
-		/** `tall` for a long read: near the full screen, the middle scrolling between the header and the footer. */
-		variant?: 'sheet' | 'tall';
+		/**
+		 * `tall` for a long read: near the full screen, the middle scrolling between the header and the footer. `full`:
+		 * the same, filling a phone's whole screen, with no grab handle.
+		 */
+		variant?: 'sheet' | 'tall' | 'full';
+		/** The edges a tall one's middle fades out at as it scrolls: `y` for the top and the bottom. */
+		fade?: ScrollerProps['fade'];
 		/** Stays at the top while the middle scrolls: a title, a close. */
 		header?: Snippet;
 		/** Stays at the foot while the middle scrolls: the button that ends it. */
@@ -53,13 +67,15 @@
 		onclose,
 		isModal = true,
 		variant = 'sheet',
+		fade = [],
 		header,
 		footer,
 		children,
 		...props
 	}: DialogProps = $props();
 
-	const isTall = $derived(variant === 'tall');
+	const isFull = $derived(variant === 'full');
+	const isTall = $derived(variant === 'tall' || isFull);
 
 	let offset = $state(0);
 	let isDragging = $state(false);
@@ -69,7 +85,8 @@
 
 	function down(event: PointerEvent) {
 		// One finger or the main button, and only on this sheet: a sheet opened inside it pulls by itself.
-		if (!event.isPrimary || event.button !== 0) return;
+		// A full one is never pulled: it has no handle, and fills the screen.
+		if (isFull || !event.isPrimary || event.button !== 0) return;
 		const target = event.target as HTMLElement;
 		if (target.closest('.dialog-sheet') !== event.currentTarget) return;
 		if (target.closest('button, a, input, select, textarea, label, .dialog-scroll')) return;
@@ -167,16 +184,16 @@
 				aria-label="Close"
 				tabindex="-1"
 				onclick={() => onclose()}
-				transition:fade|global={{ duration: 180 }}
+				transition:dim|global={{ duration: 180 }}
 			></button>
 			<div
-				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none rounded-t-[28px] {/\btheme-/.test(
-					look
-				)
+				class="dialog-sheet fixed inset-x-0 bottom-(--dialog-lift) touch-none {isFull
+					? 'top-0 pt-[env(safe-area-inset-top)]'
+					: 'rounded-t-[28px] pt-3'} {/\btheme-/.test(look)
 					? ''
-					: 'bg-surface'} px-5 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-sheet after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-inherit {look} {isTall
-					? 'top-[calc(env(safe-area-inset-top)+0.75rem)] flex flex-col'
-					: ''} {isModal
+					: 'bg-surface'} px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-sheet after:absolute after:inset-x-0 after:top-full after:h-40 after:bg-inherit {look} {isTall
+					? 'flex flex-col'
+					: ''} {isTall && !isFull ? 'top-[calc(env(safe-area-inset-top)+0.75rem)]' : ''} {isModal
 					? 'md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[28px] md:pt-5 md:after:hidden'
 					: ''} {isModal && isTall ? 'md:h-[min(52rem,88vh)] md:w-[36rem]' : ''} {isModal && !isTall
 					? 'md:w-[26rem]'
@@ -191,18 +208,21 @@
 				onpointercancel={up}
 				transition:fly|global={{ y: 320, duration: 260 }}
 			>
-				<span
-					class="mx-auto mb-4 block h-1.5 w-10 shrink-0 rounded-full bg-grab {isModal
-						? 'md:hidden'
-						: ''}"
-				></span>
+				{#if !isFull}
+					<span
+						class="mx-auto mb-4 block h-1.5 w-10 shrink-0 rounded-full bg-grab {isModal
+							? 'md:hidden'
+							: ''}"
+					></span>
+				{/if}
 				{@render header?.()}
 				{#if isTall}
-					<div
-						class="dialog-scroll -mx-5 min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-5"
+					<Scroller
+						{fade}
+						class="dialog-scroll -mx-5 min-h-0 flex-1 touch-pan-y overscroll-contain px-5"
 					>
 						{@render children()}
-					</div>
+					</Scroller>
 				{:else}
 					{@render children()}
 				{/if}
