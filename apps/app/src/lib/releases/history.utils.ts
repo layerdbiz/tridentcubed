@@ -1,5 +1,6 @@
-// What's New keeps every update (#399), and Justin, 2026-11-27, wants it plain: each day of work under its date
-// (2026-11-27), and in it only what people notice, in everyday words, as Features and Fixes.
+// What's New keeps every update (#399), and Justin, 2026-11-27, wants it plain: each release's day of work under its
+// date (2026-11-27), and in it only what people notice, in everyday words, as Features and Fixes. Every release has its
+// own sections, next's prereleases too, so scrolling down reads v1.0.0-next.6, then next.5, next.4.
 //
 // Plain functions and data, no git or browser: history.server.ts reads which commits landed on the branch and when,
 // at build time, and hands them here. A commit titled `✨ feat(...)` is a feature and a `🐛 fix` or `⚡ perf` a fix
@@ -9,7 +10,6 @@
 // merge that brought it. The same days, written out, are a GitHub release's notes (#157).
 import {
 	TEAM_TIME_ZONE,
-	isPrerelease,
 	toReleaseChanges,
 	type ChangeKindType,
 	type CommitType,
@@ -119,22 +119,17 @@ export function toDay(at: string, timeZone = TEAM_TIME_ZONE) {
 	}).format(new Date(at));
 }
 
-// The release a change is in, for cutting days: a prerelease is not one, so next's pushes, each its own prerelease,
-// share their day.
-function toCut(change: HistoryChangeType) {
-	return change.release && !isPrerelease(change.release) ? change.release : undefined;
-}
-
 /**
- * The changes, oldest first, folded into days, oldest first. A release also ends one (#400): a day never holds the
- * changes of two releases, or of a release and what is not released yet. A prerelease does not end one.
+ * The changes, oldest first, folded into days, oldest first. A release also ends one (#400), next's prereleases too
+ * (Justin, 2026-11-27): a day never holds the changes of two releases, or of a release and what is not released yet,
+ * so each section is one release's day and names it.
  */
 export function toBatches(changes: HistoryChangeType[], timeZone = TEAM_TIME_ZONE) {
 	const batches: HistoryBatchType[] = [];
 	for (const change of changes) {
 		const day = toDay(change.at, timeZone);
 		const batch = batches.at(-1);
-		if (batch && batch.day === day && toCut(batch.changes[0]) === toCut(change)) {
+		if (batch && batch.day === day && batch.changes[0].release === change.release) {
 			batch.changes.push(change);
 			batch.to = change.at;
 		} else batches.push({ day, from: change.at, to: change.at, changes: [change] });
@@ -161,11 +156,27 @@ export function toHistory(
 	{ releases = [], version, plain = {}, timeZone = TEAM_TIME_ZONE }: HistoryOptionsType = {}
 ): HistoryType {
 	const batches = toBatches(toHistoryChanges(landed, plain), timeZone).map((batch) => {
-		// A day is its newest change's release: on next, the latest prerelease in it.
+		// Every change of a day is of one release.
 		const release = releases.find((each) => each.version === batch.changes.at(-1)?.release);
 		return { ...batch, ...(release ? { release } : {}), changes: batch.changes.toReversed() };
 	});
 	return { head, chain, batches: batches.reverse(), ...(version ? { version } : {}) };
+}
+
+/**
+ * Which section is in view, for What's New's head to name (Justin, 2026-11-27): the last whose top (`tops`, in the
+ * scroll's own terms, newest first) has passed `line`, the top of the scroll; the last of all once the scroll is at
+ * its end, where a short last section never reaches the line.
+ */
+export function toSectionInView(tops: number[], line: number, isAtEnd = false) {
+	if (tops.length === 0) return 0;
+	if (isAtEnd) return tops.length - 1;
+	let index = 0;
+	for (const [at, top] of tops.entries()) {
+		if (top > line) break;
+		index = at;
+	}
+	return index;
 }
 
 /** Where a commit sits on the branch, oldest 0, or -1 when the branch does not hold it. */
