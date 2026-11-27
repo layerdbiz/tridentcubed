@@ -9,7 +9,9 @@
 	// Its look is set from outside (Justin, 2026-11-26): it is the base component, and the box that shows takes
 	// `class`, `size` and everything else given. `color` (or its shorthand, `accent`) is the main light, primary unless
 	// told, and `blend` the second, any of the theme's colours, the status ones too; the dark is the theme's shade.
-	// The light stands still for anyone who asks for less motion.
+	// The light stands still for anyone who asks for less motion. Only the light is cut to the box's shape: what it holds
+	// may reach past its edge, as a wave pulled a pixel down over the seam does (Justin, 2026-11-27), and its own
+	// margins stay inside it.
 	import type { Snippet } from 'svelte';
 	import {
 		Component,
@@ -60,23 +62,18 @@
 	tag="div"
 	>{#snippet component({ props: root }: { props: ComponentReturn })}<div
 			{...root}
-			class="glow relative isolate overflow-hidden bg-shade text-on-shade {root.class}"
+			class="glow relative isolate bg-shade text-on-shade {root.class}"
 			style="{lights} {root.style ?? ''}"
 			data-moving={isMoving ? '' : undefined}
 		>
 			<span
-				class="glow-light glow-a"
+				class="glow-lights absolute inset-0 -z-10 overflow-hidden rounded-[inherit]"
 				aria-hidden="true"
-			></span>
-			<span
-				class="glow-light glow-b"
-				aria-hidden="true"
-			></span>
-			<span
-				class="glow-light glow-c"
-				aria-hidden="true"
-			></span>
-			<div class="relative">{@render children?.()}</div>
+				><span class="glow-light glow-a"></span><span class="glow-light glow-b"></span><span
+					class="glow-light glow-c"
+				></span></span
+			>
+			<div class="relative flow-root">{@render children?.()}</div>
 		</div>{/snippet}</Component
 >
 
