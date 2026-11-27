@@ -94,6 +94,29 @@ describe('Avatar', () => {
 		expect(box.style.getPropertyValue('--badge')).toBe('url("/icon.png")');
 	});
 
+	// #403: an action on a face, "added", "changed", "deleted": an icon on its own colour at the bottom right, which
+	// leaves the presence dot where it is.
+	it('wears an icon badge in the colours it is given, beside the dot', () => {
+		const { container } = render(Avatar, {
+			props: {
+				src: '/files/ana.webp',
+				alt: 'Ana Lopez',
+				presence: 'online',
+				size: 40,
+				badgeIcon: 'icon-[mdi--pencil]',
+				badgeTint: 'bg-warning text-surface',
+				badgeLabel: 'Changed'
+			}
+		});
+
+		const box = container.firstElementChild as HTMLElement;
+		expect(box.dataset.presence).toBe('online');
+		const badge = screen.getByRole('img', { name: 'Changed' });
+		expect(badge.className).toContain('bg-warning text-surface');
+		expect(badge.querySelector('.icon-\\[mdi--pencil\\]')).not.toBeNull();
+		expect(box.style.getPropertyValue('--mark')).toBe('17px');
+	});
+
 	it('is as big as it is asked to be', () => {
 		const { container } = render(Avatar, {
 			props: { src: '/files/ana.webp', alt: 'Ana', size: 22 }

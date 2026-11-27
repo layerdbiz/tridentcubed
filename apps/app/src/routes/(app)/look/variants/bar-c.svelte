@@ -53,7 +53,7 @@
 	// opened, so they do not change while they slide away.
 	const ORGANIZATION = { name: 'Organization', icon: 'icon-[mdi--domain]' };
 	// The Activity (#306) is one view, so it has no tabs.
-	const ACTIVITY = { name: 'Activity', icon: 'icon-[mdi--timeline-clock-outline]' };
+	const ACTIVITY = { name: 'Activity Log', icon: 'icon-[mdi--timeline-clock-outline]' };
 	// Email Signature (#354) is one view too.
 	const SIGNATURE = { name: 'Email Signature', icon: 'icon-[mdi--card-account-mail-outline]' };
 	let inside = $state({ name: DATASETS[PAGES[0]].label, icon: PAGE_ICONS[PAGES[0]] });
