@@ -7,8 +7,10 @@
 // (releases.utils.ts reads the title), but it shows only with its plain words: a line `What's New: <words>` in its
 // message, one per thing people will notice, or, for the commits made before that rule, the words in notes.ts. Every
 // other commit stays out of What's New. A change lands when the branch takes it: its own commit on the branch, or the
-// merge that brought it. The same days, written out, are a GitHub release's notes (#157).
+// merge that brought it. The same days, written out, are a GitHub release's notes (#157). The first release, v1.0.0,
+// is told in its own words instead (first-release.ts): one list of what the app does, each feature once.
 import {
+	FIRST_VERSION,
 	TEAM_TIME_ZONE,
 	toReleaseChanges,
 	type ChangeKindType,
@@ -163,7 +165,33 @@ export type HistoryOptionsType = {
 	hidden?: number[];
 	/** The clock the days are told on: the team's. */
 	timeZone?: string;
+	/**
+	 * The first release's own words (first-release.ts): its changes, the ones `release` names FIRST_VERSION, show as
+	 * this one list of features in place of their days.
+	 */
+	first?: string[];
 };
+
+/**
+ * The first release as one section (Justin, 2026-11-27): its own list of features, in the order written, dated the
+ * day its last change landed.
+ */
+function toFirstBatch(landed: LandedType[], lines: string[], timeZone: string): HistoryBatchType {
+	const last = landed.at(-1)!;
+	return {
+		day: toDay(last.at, timeZone),
+		from: landed[0].at,
+		to: last.at,
+		changes: lines.map((text) => ({
+			kind: 'feature',
+			text,
+			tickets: [],
+			at: last.at,
+			landed: last.landed,
+			release: FIRST_VERSION
+		}))
+	};
+}
 
 /** The days with the release that brought them, newest first, and each day's changes newest first. */
 export function toHistory(
@@ -175,14 +203,22 @@ export function toHistory(
 		version,
 		plain = {},
 		hidden = [],
-		timeZone = TEAM_TIME_ZONE
+		timeZone = TEAM_TIME_ZONE,
+		first
 	}: HistoryOptionsType = {}
 ): HistoryType {
-	const batches = toBatches(toHistoryChanges(landed, plain, hidden), timeZone).map((batch) => {
+	// The first release's changes, told in its own words when there are some: they come before everything else.
+	const firsts = first ? landed.filter((each) => each.release === FIRST_VERSION) : [];
+	const rest = firsts.length > 0 ? landed.filter((each) => each.release !== FIRST_VERSION) : landed;
+	const batches = toBatches(toHistoryChanges(rest, plain, hidden), timeZone).map((batch) => {
 		// Every change of a day is of one release.
 		const release = releases.find((each) => each.version === batch.changes.at(-1)?.release);
 		return { ...batch, ...(release ? { release } : {}), changes: batch.changes.toReversed() };
 	});
+	if (first && firsts.length > 0) {
+		const release = releases.find((each) => each.version === FIRST_VERSION);
+		batches.unshift({ ...toFirstBatch(firsts, first, timeZone), ...(release ? { release } : {}) });
+	}
 	return { head, chain, batches: batches.reverse(), ...(version ? { version } : {}) };
 }
 

@@ -43,12 +43,11 @@ export type ReleaseRefType = { version: string; url: string };
 export type CommitType = { subject: string; body?: string };
 
 /**
- * Whether releases are made (#157). Off until Justin's word, so no tag and no GitHub release exist and every build
- * says "Not released yet". Turned on, the next push to dev makes FIRST_VERSION, its notes listing everything up to it,
- * and every push after it with a feature or a fix makes the next version. Once the first tag exists, this is no
- * longer read.
+ * Whether releases are made (#157). On since Justin's word on 2026-11-27: the push that brought next into dev made
+ * FIRST_VERSION, its notes the one list in first-release.ts, and every push to dev after it with a feature or a fix
+ * makes the next version. Once the first tag exists, this is no longer read.
  */
-export const IS_RELEASING = false;
+export const IS_RELEASING = true;
 
 /** The branches a release is made from (dev) or promoted to (main): a build there is the version being released. */
 export const RELEASE_BRANCHES = ['dev', 'main'];

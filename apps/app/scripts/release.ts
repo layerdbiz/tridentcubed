@@ -3,8 +3,8 @@
 // newest one and applies the release rule (src/lib/releases/releases.utils.ts); on next every push is the next
 // prerelease of the release to come, v1.0.0-next.4 (Justin, 2026-11-27). It writes the notes the GitHub release
 // shows: What's New's days, each under its date, with their features and fixes in plain words, then, folded away,
-// the rest. The first
-// release, and next's first prerelease, list everything up to it, the same as What's New. The workflow tags the
+// the rest. Next's first prerelease lists everything up to it, the same as What's New; dev's first release, v1.0.0,
+// is its own one list of what the app does (src/lib/releases/first-release.ts), features only. The workflow tags the
 // commit and publishes the release; this script never writes to git. Plain Node, no packages, so the workflow
 // needs no install.
 //
@@ -20,6 +20,7 @@
 // GitHub release that failed to publish is made the second time.
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
+import { FIRST_FEATURES } from '../src/lib/releases/first-release.ts';
 import { readLanded } from '../src/lib/releases/history.server.ts';
 import {
 	isHidden,
@@ -115,19 +116,25 @@ const isTagged = [...tags, ...readPrereleaseTags()].some(
 	(tag) => tag.commit === head && tag.version === version
 );
 
-// The release's own commits, What's New's days made of them, and the rest of its features and fixes.
+// The release's own commits, What's New's days made of them, and the rest of its features and fixes. Dev's first
+// release is its own one list instead, with nothing behind the scenes (Justin, 2026-11-27).
+const isFirst = !last && !isPrerelease(version);
 const range = toReleaseRange(head, last);
 const held = new Set(readCommitIds(...range));
 const { chain, landed } = readLanded(head);
 const batches = toHistory(
 	head,
 	chain,
-	landed.filter((each) => each.commit && held.has(each.commit)),
-	{ plain: PLAIN, hidden: HIDDEN_TICKETS }
+	landed
+		.filter((each) => each.commit && held.has(each.commit))
+		.map((each) => (isFirst ? { ...each, release: version } : each)),
+	{ plain: PLAIN, hidden: HIDDEN_TICKETS, first: FIRST_FEATURES }
 ).batches;
-const others = toReleaseChanges(
-	readCommits(...range).filter((commit) => toPlainLines(commit, PLAIN).length === 0)
-).filter((change) => !isHidden(change, HIDDEN_TICKETS));
+const others = isFirst
+	? []
+	: toReleaseChanges(
+			readCommits(...range).filter((commit) => toPlainLines(commit, PLAIN).length === 0)
+		).filter((change) => !isHidden(change, HIDDEN_TICKETS));
 // Where it was made from, so a release from next reads as next's, and the first one's welcome.
 const summary = [
 	isPrerelease(version) ? 'Made from **next**, for next.app.tridentcubed.com.' : '',
