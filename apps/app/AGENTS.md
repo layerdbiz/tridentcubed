@@ -201,9 +201,11 @@ the why is in ADR 0002, 0003 and 0005.
 - **The first release is made (Justin, 2026-11-27).** `IS_RELEASING` in
   `releases.utils.ts` is on: the push that brought next into dev made
   v1.0.0. Each later push to dev with a feature or a fix makes the next
-  version, and dev still takes next only on Justin's word. On next and
-  dev What's New opens by itself the moment a new version is out
-  (`POP_UP_BRANCHES`, Justin, 2026-11-27).
+  version, and dev still takes next only on Justin's word.
+- **What's New is the one update prompt (Justin, 2026-11-27).** It opens
+  by itself the moment a new version is out, and when the app is opened on
+  something new; its button reloads onto the newest version. There is no
+  "New version, tap to update" note on any branch.
 - **v1.0.0 is one list (Justin, 2026-11-27).** The first release is told in
   its own words, `src/lib/releases/first-release.ts`: what the app does
   today, features only, each once, in everyday words, in place of every day
@@ -212,6 +214,12 @@ the why is in ADR 0002, 0003 and 0005.
   releases; next.app keeps its next versions, each commit staying in the
   prerelease that brought it. Releases after it list their commits'
   `What's New:` lines as usual.
+- **A dev release is one section, dated the day it reached dev (Justin,
+  2026-11-27).** However many days its work took on next, a release made
+  on dev is one What's New section and one `## <date>` in its GitHub notes,
+  dated by its tag (the workflow tags it the moment the push lands), or
+  today for the one being made. next.app keeps a section per prerelease
+  and per day.
 - **What's New always opens on its glow (Justin, 2026-11-27).** It is a
   full library `Dialog` (`variant="full"`): on a phone it fills the whole
   screen, with no grab handle, and its list fades out under the head and
@@ -261,8 +269,8 @@ src/routes/offline/                the Needs Internet screen the service worker 
 src/lib/install/                   Install App: install.constants.ts, install.state.svelte.ts (it starts
                                    hearing the browser in src/hooks.client.ts) and how-to.svelte; used by
                                    routes/(app)/look/account-menu.svelte and routes/login/login.svelte
-src/lib/update/                    the update note: its rule, its test and the note, wired into the
-                                   signed-in app only; in lib because the service worker reads its
+src/lib/update/                    the update rule What's New's button follows, its test and the
+                                   service worker's words; in lib because the service worker reads its
                                    one message (update.constants.ts) too
 ```
 
@@ -296,10 +304,10 @@ src/lib/update/                    the update note: its rule, its test and the n
   Try Again and the browser's `online` event are a plain reload.
 - **Updates use the default handover.** A new service worker waits until
   the app is closed; it does not call `skipWaiting()` on install. A tap on
-  the update note asks the waiting worker to take over and reloads, and the
-  tap waits while the Save state is Saving or Not saved.
+  What's New's button asks the waiting worker to take over and reloads, and
+  the tap waits while the Save state is Saving or Not saved.
   SvelteKit's own version check (`updated` of `$app/state`) is the only
-  thing that says a new version exists; the note then asks the browser to
+  thing that says a new version exists; What's New then asks the browser to
   fetch the new service worker, since an open app loads no page and the
   browser looks for one only then. When to switch is the update rule
   (`src/lib/update/update.state.svelte.ts`); change it there, test first.

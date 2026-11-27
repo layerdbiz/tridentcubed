@@ -104,9 +104,38 @@ describe('the releases a build knows', () => {
 		expect(dev.planned?.changes.map((change) => change.text)).toEqual(['One', 'Two']);
 		expect(dev.versionOf(one)).toBe('1.0.0');
 		expect(dev.releases).toEqual([
-			{ version: '1.0.0', url: 'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.0.0' }
+			{
+				version: '1.0.0',
+				url: 'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.0.0',
+				date: expect.any(String)
+			}
 		]);
 		expect(next.label).toBe('v1.0.0-next.1');
+		expect(next.releases[0]).not.toHaveProperty('date');
+	});
+
+	it("dates each release made on dev the moment its tag was made, the one being made now, and next's not at all", () => {
+		commit('✨ feat(app): one');
+		tag('1.0.0-next.1');
+		process.env.GIT_COMMITTER_DATE = '2026-11-30T15:00:00Z';
+		tag('1.0.0');
+		delete process.env.GIT_COMMITTER_DATE;
+		commit('✨ feat(app): two');
+
+		const dev = readReleaseState('HEAD', { branch: 'dev' });
+		const next = readReleaseState('HEAD', { branch: 'next' });
+
+		expect(readTags()[0].date).toBe('2026-11-30T15:00:00+00:00');
+		expect(dev.releases.map((each) => [each.version, Boolean(each.date)])).toEqual([
+			['1.0.0', true],
+			['1.1.0', true]
+		]);
+		expect(dev.releases[0].date).toBe('2026-11-30T15:00:00+00:00');
+		expect(next.releases.map((each) => [each.version, Boolean(each.date)])).toEqual([
+			['1.0.0-next.1', false],
+			['1.0.0', true],
+			['1.1.0-next.1', false]
+		]);
 	});
 
 	it('reads each tag as the release that first held its commits, and plans the next one', () => {

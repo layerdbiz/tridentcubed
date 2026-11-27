@@ -8,9 +8,9 @@
 	// the newest release, when it holds something this person has not seen, it says New release. With no release yet the
 	// sections are the same, with no version.
 	//
-	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and on the branches in
-	// POP_UP_BRANCHES the moment a new version is out, in place of the update note. With a newer version out, the
-	// button reloads onto it the way the note did (update.state.svelte.ts): never while a change is Saving or Not
+	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and the moment a new version
+	// is out, the one way the app offers it (Justin, 2026-11-27: no "New version, tap to update" note anywhere). With a
+	// newer version out, the button reloads onto it (update.state.svelte.ts): never while a change is Saving or Not
 	// saved, and then the button says it waits. With a newer version out, the X, a tap outside and Escape do the same,
 	// so nobody stays on an old version (Justin, 2026-11-26, #401); a reload that still brings an older page takes the
 	// last resort once (rescue.ts): the service worker and its files are cleared and the page loads again.
@@ -24,7 +24,7 @@
 	import { noteReload, takeLastResort } from '../update/rescue';
 	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
 	import ChangeList from './change-list.svelte';
-	import { CHECK_EVERY, HAS_POP_UP } from './releases.constants';
+	import { CHECK_EVERY } from './releases.constants';
 	import { whatsNew } from './releases.state.svelte';
 	import { toReleaseGlow, toTag } from './releases.utils';
 	import { toBatchCounts, toSectionInView } from './history.utils';
@@ -108,7 +108,6 @@
 	};
 
 	onMount(() => {
-		if (!HAS_POP_UP) return;
 		// Asks about once a minute while the app is in view: SvelteKit's own check until it finds a new version,
 		// then the newest history, so one more landing joins the list.
 		const asking = setInterval(() => {

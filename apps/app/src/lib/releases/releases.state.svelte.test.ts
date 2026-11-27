@@ -37,9 +37,8 @@ type AppType = {
 function createApp({
 	own = 1,
 	newest = own,
-	seen,
-	isLive = true
-}: { own?: number; newest?: number; seen?: number; isLive?: boolean } = {}): AppType {
+	seen
+}: { own?: number; newest?: number; seen?: number } = {}): AppType {
 	const store: AppType['store'] = {
 		seen: seen === undefined ? undefined : `${CHAIN[seen]}0000`,
 		read: () => store.seen,
@@ -49,8 +48,7 @@ function createApp({
 	const whatsNew = new WhatsNewState({
 		own: `${CHAIN[own]}0000`,
 		store,
-		read: async () => server.history,
-		isLive
+		read: async () => server.history
 	});
 	return { store, server, whatsNew };
 }
@@ -138,17 +136,6 @@ describe("What's New", () => {
 		expect(whatsNew.isOpen).toBe(true);
 	});
 
-	it('where it does not open by itself, a new version waits for the profile menu', async () => {
-		const { whatsNew, server } = createApp({ own: 1, seen: 1, isLive: false });
-		await whatsNew.start();
-		server.history = createHistory(2);
-		await whatsNew.check();
-
-		expect(whatsNew.isOpen).toBe(false);
-		whatsNew.openAll();
-		expect(whatsNew.isOpen).toBe(true);
-	});
-
 	it('a history that cannot be read opens nothing, and the profile menu says so', async () => {
 		const { whatsNew, server } = createApp({ own: 1, seen: 0 });
 		server.history = undefined;
@@ -206,14 +193,11 @@ describe("What's New", () => {
 		expect(whatsNew.fresh).toHaveLength(2);
 	});
 
-	it('stays shut on a first visit to an older version only where it does not open by itself', async () => {
-		const live = createApp({ own: 1, newest: 2 });
-		const quiet = createApp({ own: 1, newest: 2, isLive: false });
+	it('opens on a first visit to an older version, so its button brings the newest', async () => {
+		const { whatsNew } = createApp({ own: 1, newest: 2 });
 
-		await live.whatsNew.start();
-		await quiet.whatsNew.start();
+		await whatsNew.start();
 
-		expect(live.whatsNew.isOpen).toBe(true);
-		expect(quiet.whatsNew.isOpen).toBe(false);
+		expect(whatsNew.isOpen).toBe(true);
 	});
 });

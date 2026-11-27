@@ -1,8 +1,9 @@
 // What's New (#363, #396, #399): every update the branch ever took, in batches, and what this device has not seen.
 // Justin, 2026-11-26: nothing ever leaves it; it opens by itself when the app is opened on something new, and the
-// moment a new version comes out while the app is open (on the branches in POP_UP_BRANCHES, where it takes the
-// update note's place); updates that land unseen build on each other; and only its button clears them, reloading
-// onto the newest version when one is out (update.state.svelte.ts holds when, so a change being saved is never lost).
+// moment a new version comes out while the app is open, the one way the app offers a new version (Justin, 2026-11-27:
+// no "New version, tap to update" note); updates that land unseen build on each other; and only its button clears
+// them, reloading onto the newest version when one is out (update.state.svelte.ts holds when, so a change being saved
+// is never lost).
 //
 // "Seen" is the commit this device last pressed the button on: every change that landed after it is new. The history
 // comes from the newest version (routes/api/history.json), so an open app learns what a newer one brought. With a
@@ -13,7 +14,7 @@
 // It knows nothing of the browser: this build's commit, where the seen commit is kept and where the history is read
 // are handed to it.
 import { untrack } from 'svelte';
-import { BUILD_COMMIT, HAS_POP_UP, HISTORY_PATH } from './releases.constants';
+import { BUILD_COMMIT, HISTORY_PATH } from './releases.constants';
 import { SHORT, toLanded, toNewSince, type HistoryType } from './history.utils';
 
 /** Where the commit this device last pressed the button on is kept. */
@@ -28,8 +29,6 @@ export type WhatsNewOptionsType = {
 	store: SeenStoreType;
 	/** The newest version's history, or nothing when it cannot be read. */
 	read: () => Promise<HistoryType | undefined>;
-	/** Whether it opens by itself the moment a new version is out. */
-	isLive: boolean;
 };
 
 export class WhatsNewState {
@@ -62,7 +61,7 @@ export class WhatsNewState {
 
 	/**
 	 * On opening the app: opens on what came since the last press, if anything did, and on a newer version than the
-	 * one opened, if it opens by itself, so the reload is offered even when everything was seen.
+	 * one opened, so the reload is offered even when everything was seen.
 	 */
 	async start() {
 		const { own, store } = this.#options;
@@ -70,18 +69,17 @@ export class WhatsNewState {
 		await this.#read();
 		const history = this.history;
 		if (!history) return;
-		const isNewerOffered = this.#options.isLive && this.isNewer;
 		// A first visit, or a press on a commit this branch does not hold: nothing counts as new until the next one.
 		if (!this.seen || toLanded(history, this.seen) < 0) {
 			this.#see(own || history.head);
-			this.isOpen = isNewerOffered;
+			this.isOpen = this.isNewer;
 			return;
 		}
-		if (this.fresh.length > 0 || isNewerOffered) this.isOpen = true;
+		if (this.fresh.length > 0 || this.isNewer) this.isOpen = true;
 	}
 
 	/**
-	 * Asks for the newest history; opens on it when a new version brought something, if it opens by itself. Asked from
+	 * Asks for the newest history; opens on it when a new version brought something. Asked from
 	 * an effect, it never makes the effect hang on the history: the answer would ask again, without end (#401).
 	 */
 	async check() {
@@ -91,7 +89,7 @@ export class WhatsNewState {
 		const head = this.history?.head;
 		if (!head || head === before) return;
 		const isWorthOpening = this.fresh.length > 0 || this.isNewer;
-		if (this.#options.isLive && isWorthOpening && this.#closedOn !== head) this.isOpen = true;
+		if (isWorthOpening && this.#closedOn !== head) this.isOpen = true;
 	}
 
 	/** From the profile menu: the whole history, read again. */
@@ -184,6 +182,5 @@ async function readHistory(): Promise<HistoryType | undefined> {
 export const whatsNew = new WhatsNewState({
 	own: BUILD_COMMIT,
 	store: browserStore,
-	read: readHistory,
-	isLive: HAS_POP_UP
+	read: readHistory
 });

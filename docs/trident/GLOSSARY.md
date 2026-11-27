@@ -479,7 +479,7 @@ What the Report Generator shows when it is opened with no signal: the logo, Need
 _Avoid_: offline page, error page, no connection screen
 
 **Update note**:
-The small "New version, tap to update" note an open Report Generator shows when a newer version is ready. A tap switches to it, and only once every change is Saved.
+Retired (Justin, 2026-11-27): the small "New version, tap to update" note an open Report Generator showed when a newer version was ready. What's New now opens by itself instead, and its button switches to the newer version, only once every change is Saved.
 _Avoid_: update banner, update prompt, popup
 
 ### Releases

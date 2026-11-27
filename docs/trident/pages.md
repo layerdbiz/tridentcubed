@@ -98,4 +98,4 @@ Spec [#199](https://github.com/layerdbiz/tridentcubed/issues/199), 2026-11-17, m
 
 - Install App: a line in the profile picture menu, between Organization and Log Out, and a small link on Sign in. It is hidden inside the installed app.
 - The Needs Internet screen, shown with no signal at whatever page was asked for. It needs no sign-in.
-- The update note, "New version, tap to update", in the signed-in app.
+- What's New, in the signed-in app: it opens by itself when a new version is out, and its button updates the app.

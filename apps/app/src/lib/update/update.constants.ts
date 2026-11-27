@@ -1,5 +1,5 @@
-// What the update note says to a waiting service worker (#202), and how a request names the version it wants (#401),
-// named once so the note, the worker and the server agree.
+// What What's New's button says to a waiting service worker (#202), and how a request names the version it wants
+// (#401), named once so the app, the worker and the server agree.
 
 /** The message that asks a waiting service worker to take over the open app. Only the User's tap sends it. */
 export const TAKE_OVER = 'take-over';

@@ -155,6 +155,56 @@ describe("What's New's history", () => {
 		]);
 	});
 
+	it('keeps a release made on dev in one section, however many days it took; next keeps a section a day', () => {
+		const landed = [
+			{ ...feature('2026-11-26T15:00:00Z', 'One', 0), release: '1.1.0' },
+			{ ...feature('2026-11-27T15:00:00Z', 'Two', 1), release: '1.1.0' },
+			{ ...feature('2026-11-28T15:00:00Z', 'Three', 2), release: '1.2.0-next.1' },
+			{ ...feature('2026-11-29T15:00:00Z', 'Four', 3), release: '1.2.0-next.1' }
+		];
+
+		expect(
+			toBatches(toHistoryChanges(landed)).map((batch) => [
+				batch.day,
+				batch.changes.map((change) => change.text)
+			])
+		).toEqual([
+			['2026-11-27', ['One', 'Two']],
+			['2026-11-28', ['Three']],
+			['2026-11-29', ['Four']]
+		]);
+	});
+
+	it('dates a release made on dev the day it reached dev, not the days its work landed on next', () => {
+		const landed = [
+			{ ...feature('2026-11-25T15:00:00Z', 'One', 0), release: '1.0.0' },
+			{ ...feature('2026-11-26T15:00:00Z', 'Two', 1), release: '1.1.0' },
+			{ ...feature('2026-11-27T15:00:00Z', 'Three', 2), release: '1.1.0' }
+		];
+		const releases = [
+			{ version: '1.0.0', url: 'https://example.com/v1.0.0', date: '2026-11-26T03:00:00Z' },
+			{ version: '1.1.0', url: 'https://example.com/v1.1.0', date: '2026-11-30T15:00:00Z' }
+		];
+		const history = toHistory('abc', ['a', 'b', 'c'], landed, {
+			releases,
+			first: ['Sign in.']
+		});
+
+		expect(
+			history.batches.map((batch) => [
+				batch.day,
+				batch.release?.version,
+				batch.changes.map((change) => change.text)
+			])
+		).toEqual([
+			['2026-11-30', '1.1.0', ['Three', 'Two']],
+			['2026-11-25', '1.0.0', ['Sign in.']]
+		]);
+		expect(toReleaseNotes({ batches: history.batches.slice(0, 1), others: [] })).toBe(
+			'## 2026-11-30\n\n### ✨ Features\n\n- Three\n- Two\n'
+		);
+	});
+
 	it('names each section by its release, newest first, and gives the build its version', () => {
 		const landed = [
 			{ ...feature('2026-11-25T15:00:00Z', 'One', 0), release: '1.0.0-next.1' },
