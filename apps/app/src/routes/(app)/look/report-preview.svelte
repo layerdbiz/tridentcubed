@@ -38,19 +38,11 @@
 	import PdfPage from '#lib/components/attachment/pdf-page.svelte';
 	import { bytesOf, drawPage, pdfOf } from '#lib/pdf/pdf.utils.js';
 	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
-	import Photo from '#lib/components/photo/photo.svelte';
 	import Trip from '#lib/components/trip/trip.svelte';
 	import type { TripLegType } from '#lib/components/trip/trip.types.js';
-	import {
-		ATTACHMENT_ICONS,
-		ATTACHMENT_NAMES,
-		toCrossOrigin,
-		toTypeLabel
-	} from '#lib/files/files.schema.js';
-	import { fileDetailsOf } from '#lib/files/files.state.svelte.js';
+	import { ATTACHMENT_ICONS, ATTACHMENT_NAMES, toCrossOrigin } from '#lib/files/files.schema.js';
 	import { ICON_192 } from '#lib/install/install.constants.js';
 	import { toReportLink } from '#lib/report/report.utils.js';
-	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
 	import { introductionOf, listOf } from './introduction';
 	import ItemTable, { type FitType, type PartType } from './item-table.svelte';
 	import { legsOf, type LegType } from './legs';
@@ -102,12 +94,13 @@
 		rangeOf,
 		sheetsOf,
 		spanOf,
-		spotsOf,
 		stageNumbersOf,
 		targetOf,
 		type ContentLineType
 	} from './report-flow';
 	import { fromSaved, toSaved, toTable } from './spreadsheet';
+	import { stagePagesOf } from './attachments';
+	import StageRoom from './stage-room.svelte';
 	import { toEnglish } from './translation';
 	import { labelsOf } from './team.data';
 	import type { LookState } from './look.state.svelte';
@@ -344,11 +337,6 @@
 		return id ? toReportLink(document.location.origin, id, page) : siteLink;
 	}
 	const documentNumber = $derived(documentIdOf(look.project, look.projects, company));
-	// What a video's thumbnail opens (#327): the video played in the app this report was made in.
-	function videoLinkOf(source: string | undefined) {
-		return toVideoLink(document.location.origin, source ?? '') || undefined;
-	}
-
 	// The trip as legs (legs.ts): one transport and the facilities it calls at.
 	const legs = $derived(
 		legsOf(trip?.stops ?? []).filter((leg) =>
@@ -823,15 +811,6 @@
 		}));
 	}
 
-	// How tall each photo prints for each photos-per-page choice: one or two fill the width; four, six and eight sit in
-	// two columns of two, three and four rows (run 9 note 13).
-	const PHOTO_SIZES: Record<number, string> = {
-		1: 'aspect-[4/3]',
-		2: 'aspect-[16/9]',
-		4: 'aspect-[4/3]',
-		6: 'h-[172px]',
-		8: 'h-[128px]'
-	};
 	// #295: an Items PDF's pages in their spots: a photo group's sizes, held down where a full sheet would not fit a
 	// page under the Cargo Description heading and the PDF's name (two to a page, and eight), so a sheet never leaves
 	// its heading alone at the foot of a page or runs into the footer.
@@ -2052,8 +2031,10 @@
 				{@const rect = rects[index]}
 				<!-- Presenting, only the page shown and the two beside it are drawn, and a page moves with no easing. -->
 				<article
-					class="absolute overflow-hidden bg-white text-slate-800 shadow-[0_1px_3px_rgb(15_23_42/0.08),0_24px_48px_-24px_rgb(15_23_42/0.25)] ring-4 {isPresenting ||
-					landing !== undefined
+					class="absolute overflow-hidden bg-white text-slate-800 shadow-[0_1px_3px_rgb(15_23_42/0.08),0_24px_48px_-24px_rgb(15_23_42/0.25)] ring-4 {item.kind ===
+					'photos'
+						? 'flex flex-col'
+						: ''} {isPresenting || landing !== undefined
 						? ''
 						: 'transition-[box-shadow,top,left] duration-300'} {item.key === target && !isPresenting
 						? 'ring-primary/70'
@@ -2119,7 +2100,12 @@
 							</div>
 							<div class="mt-3 h-px bg-slate-900/15"></div>
 						</header>
-						<div class="px-10 pt-6">
+						<!-- #295: a stage's page is a column whose spots take the room left down to the footer. -->
+						<div
+							class="px-10 pt-6 {item.kind === 'photos'
+								? 'flex min-h-0 flex-1 flex-col pb-[88px]'
+								: ''}"
+						>
 							<!-- The link to the project's files stands beside the title of the Project Report's first page and of
 							     the Operations panel's first (#233), where it takes no room from what is under it. -->
 							<div class="flex items-baseline justify-between gap-4">
@@ -2156,11 +2142,9 @@
 								</ol>
 							{:else if item.kind === 'photos' && item.panel}
 								{@const group = item.panel.groups[item.group ?? 0]}
-								<!-- #327: a PDF's pages each take a spot, so they fill the layout as photos do. -->
-								{@const shown = spotsOf(group.photos).slice(
-									(item.part ?? 0) * group.layout,
-									((item.part ?? 0) + 1) * group.layout
-								)}
+								<!-- #295: this page of the stage's spots (a PDF's pages each take one), laid out by its Per page, Fill
+								     or Fit and Ratio in the room left down to the footer. -->
+								{@const shown = stagePagesOf(group)[item.part ?? 0]}
 								<!-- A stage of the Operations panel wears its number before its title, white in a black circle
 								     (Justin, 2026-11-19): the number it has in the panel, by the stages' order. -->
 								{@const stageNumber =
@@ -2181,106 +2165,13 @@
 								{#if group.description && !item.part}
 									<p class="mt-1 text-[11px] text-slate-500">{group.description}</p>
 								{/if}
-								<div class="mt-4 grid gap-3 {group.layout <= 2 ? 'grid-cols-1' : 'grid-cols-2'}">
-									{#each shown as { key, photo, page } (key)}
-										<!-- #312: the photo as it is cropped for this spot, placed in percentages so the PDF prints it the same. -->
-										<!-- #327: a PDF's page shown whole; a video as its thumbnail with a play button and its length, a
-										     link that opens the video in the app (the PDF cannot play it). -->
-										{@const hasDescription = Boolean(photo.description) && page === 1}
-										{@const kind = photo.kind ?? 'photo'}
-										{@const arrived =
-											kind === 'photo'
-												? toTypeLabel(fileDetailsOf(photo.src)?.original.type ?? '')
-												: ''}
-										<figure class="relative overflow-hidden rounded">
-											<!-- A PDF still on its way has no stored file yet: its first page shows its picture, whole, and
-											     its other pages wait as quiet placeholders. -->
-											{#if photo.kind === 'pdf'}
-												<PdfPage
-													source={photo.source ?? ''}
-													{page}
-													picture={photo.src}
-													class="w-full {PHOTO_SIZES[group.layout]}"
-												/>
-											{:else if photo.kind === 'video'}
-												<a
-													href={videoLinkOf(photo.source)}
-													target="_blank"
-													rel="noopener"
-													class="relative block"
-													aria-label="Play the video{photo.description
-														? `: ${photo.description}`
-														: ''}"
-												>
-													<Photo
-														src={photo.src}
-														crossorigin={toCrossOrigin(photo.src)}
-														crop={photo.crop}
-														class="w-full {PHOTO_SIZES[group.layout]}"
-													/>
-													<span class="absolute inset-0 flex items-center justify-center">
-														<span
-															class="flex items-center justify-center rounded-full bg-black/55 text-white {group.layout <=
-															2
-																? 'size-14'
-																: 'size-9'}"
-															><span
-																class="icon-[mdi--play] {group.layout <= 2 ? 'size-9' : 'size-6'}"
-															></span></span
-														>
-													</span>
-													{#if toLengthLabel(photo.duration)}
-														<span
-															class="absolute right-1.5 bottom-1.5 z-[1] rounded bg-black/70 px-1 py-px text-[8px] leading-tight font-semibold text-white tabular-nums"
-															>{toLengthLabel(photo.duration)}</span
-														>
-													{/if}
-												</a>
-											{:else}
-												<Photo
-													src={photo.src}
-													crossorigin={toCrossOrigin(photo.src)}
-													crop={photo.crop}
-													class="w-full {PHOTO_SIZES[group.layout]}"
-												/>
-											{/if}
-											<!-- #327: what kind of attachment each spot holds, at a glance (Justin, 2026-11-25): a mark on
-											     the Preview only, left out of the download (sheetOf), so the report the client reads stays clean.
-											     #349: a photo by the type it arrived as. -->
-											<span
-												class="pointer-events-none absolute top-1 left-1 z-[1] flex items-center gap-0.5 rounded bg-black/65 p-0.5 text-[8px] leading-none font-semibold text-white tabular-nums {kind ===
-													'photo' && !arrived
-													? ''
-													: 'pr-1'}"
-												title={arrived ? `${arrived} photo` : ATTACHMENT_NAMES[kind]}
-												data-screen-only
-												><span
-													class="{ATTACHMENT_ICONS[kind]} size-3 {kind === 'pdf'
-														? 'text-red-400'
-														: ''}"
-												></span>{kind === 'pdf'
-													? (photo.pageCount ?? 1) > 1
-														? `PDF · ${page} of ${photo.pageCount}`
-														: 'PDF'
-													: kind === 'video'
-														? 'Video'
-														: arrived}</span
-											>
-											{#if hasDescription}
-												<figcaption
-													class="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-black/75 via-black/40 to-transparent px-2 pt-5 pb-1.5 font-medium text-white {group.layout <=
-													2
-														? 'text-[10px]'
-														: 'truncate text-[8px]'} {photo.kind === 'video' ? 'pr-10' : ''}"
-												>
-													{photo.description}
-												</figcaption>
-											{/if}
-										</figure>
-									{:else}
-										<p class="text-[11px] text-slate-300 italic">No photos yet</p>
-									{/each}
-								</div>
+								{#if shown}
+									<StageRoom
+										{group}
+										page={shown}
+										class="mt-4 min-h-0 flex-1"
+									/>
+								{/if}
 							{/if}
 						</div>
 						{#if item.hasSignature}

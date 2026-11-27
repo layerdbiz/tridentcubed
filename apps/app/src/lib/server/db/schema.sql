@@ -473,7 +473,11 @@ CREATE TABLE "photo_group" (
 	"title" text DEFAULT '' NOT NULL,
 	"description" text DEFAULT '' NOT NULL,
 	"layout" integer DEFAULT 4 NOT NULL,
-	"is_enabled" boolean DEFAULT true NOT NULL
+	"is_enabled" boolean DEFAULT true NOT NULL,
+	"grid" text DEFAULT '' NOT NULL,
+	"is_auto" boolean DEFAULT false NOT NULL,
+	"ratio" text DEFAULT '4:3' NOT NULL,
+	"fit" text DEFAULT 'fill' NOT NULL
 );
 
 --> statement-breakpoint
@@ -494,7 +498,9 @@ CREATE TABLE "photo" (
 	"kind" text DEFAULT 'photo' NOT NULL,
 	"source" text DEFAULT '' NOT NULL,
 	"page_count" integer DEFAULT 0 NOT NULL,
-	"duration" double precision DEFAULT 0 NOT NULL
+	"duration" double precision DEFAULT 0 NOT NULL,
+	"edit" jsonb,
+	"own_layout" integer DEFAULT 0 NOT NULL
 );
 
 --> statement-breakpoint

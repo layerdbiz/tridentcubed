@@ -56,10 +56,10 @@ export { default as WindowHead } from "./releases/window-head.svelte";
 export { default as PdfPage } from "./components/attachment/pdf-page.svelte";
 
 // photo
-export { default as Photo } from "./components/photo/photo.svelte";
-export * from "./components/photo/photo.constants.ts";
+export * from "./components/photo/edit.ts";
 export * from "./components/photo/photo.types.ts";
-export * from "./components/photo/photo.utils.ts";
+export { default as Picture } from "./components/photo/picture.svelte";
+export * from "./components/photo/shape.svelte.ts";
 
 // trip
 export { default as Trip } from "./components/trip/trip.svelte";

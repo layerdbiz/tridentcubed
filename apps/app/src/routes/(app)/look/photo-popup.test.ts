@@ -1,6 +1,8 @@
 // The photo pop-up's More (#376): the library's menu, holding a red Delete. Delete still asks first, and only a yes
 // takes the photo out of its group. Escape with the menu open shuts the menu and leaves the pop-up open.
 // Its Details (#343): when and where the photo was taken, and every metadata field the original had, to copy out.
+// Its editor (#295): a back arrow until something changes, then the X and the ✓; undo and redo; Pop out; a PDF as
+// one box of its pages on the strip, a change going to every page or to the one picked.
 import { fireEvent, render, screen, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import type { GroupType } from './look.data';
@@ -33,23 +35,31 @@ vi.mock('#lib/files/files.state.svelte.js', () => ({
 	})
 }));
 
+// A PDF's pages are drawn by PDF.js on a device; here none is drawn, and each page reads as A4.
+vi.mock('#lib/pdf/pdf.state.svelte.js', () => ({
+	pagePictureOf: () => undefined,
+	pageShapeOf: () => undefined,
+	pageCountOf: () => undefined
+}));
+
 type QuestionType = { title: string; note?: string; onyes: () => void };
 
-function show() {
+function show(photos?: unknown[], id = 'a') {
 	const questions: QuestionType[] = [];
 	const look = {
 		asking: false,
 		confirm: vi.fn((question: QuestionType) => questions.push(question))
 	} as unknown as LookState;
 	const group = {
-		photos: [
+		layout: 4,
+		photos: photos ?? [
 			{ id: 'a', src: '/a.webp', description: '' },
 			{ id: 'b', src: '/b.webp', description: '' }
 		]
 	} as unknown as GroupType;
 	const onsave = vi.fn();
 	const onclose = vi.fn();
-	render(PhotoPopup, { props: { look, group, id: 'a', word: 'stage', onsave, onclose } });
+	render(PhotoPopup, { props: { look, group, id, word: 'stage', onsave, onclose } });
 	return { look, group, questions, onsave, onclose };
 }
 
@@ -131,5 +141,71 @@ describe("the photo pop-up's Details", () => {
 		expect(writeText).toHaveBeenCalledWith(
 			'EXIF\nMake: Google\nModel: Pixel 9\n\nGPS\nLatitude: 29.760427'
 		);
+	});
+});
+
+describe("the photo pop-up's editor", () => {
+	it('stands a back arrow at the top until something changes, then the X and the ✓, which keeps it', async () => {
+		const { group, onsave, onclose } = show();
+		expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
+		expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Rotate' }));
+		expect(screen.getByRole('button', { name: 'Close without saving' })).toBeTruthy();
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+		expect(group.photos.map((photo) => photo.edit)).toEqual([{ turns: 1 }, undefined]);
+		expect(onsave).toHaveBeenCalled();
+		expect(onclose).toHaveBeenCalled();
+	});
+
+	it('steps back and on through what was changed', async () => {
+		const { group } = show();
+		await fireEvent.click(screen.getByRole('button', { name: 'Rotate' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Flip' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+		expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+		await fireEvent.click(screen.getByRole('button', { name: 'Redo' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+		expect(group.photos[0].edit).toEqual({ turns: 1 });
+	});
+
+	it('pops one out onto pages of its own, two to a page', async () => {
+		const { group } = show();
+		await openMore();
+		await fireEvent.click(screen.getByRole('option', { name: /Pop out, 2 per page/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+		expect(group.photos.map((photo) => photo.ownLayout)).toEqual([2, undefined]);
+	});
+
+	it('holds a PDF’s pages in one box on the strip, and with All pages off changes the page picked only', async () => {
+		const pdf = {
+			id: 'p',
+			src: '/p.webp',
+			description: '',
+			kind: 'pdf',
+			source: '/files/plan',
+			pageCount: 3
+		};
+		const { group } = show([{ id: 'a', src: '/a.webp', description: '' }, pdf], 'p');
+		const box = screen.getByRole('group', { name: 'PDF, 3 pages' });
+		const pages = within(box).getAllByRole('button');
+		expect(pages.map((page) => page.getAttribute('aria-label'))).toEqual([
+			'PDF page 1',
+			'PDF page 2',
+			'PDF page 3'
+		]);
+
+		await fireEvent.click(pages[1]);
+		await fireEvent.click(screen.getByRole('switch', { name: /All pages/ }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Rotate' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+		const [, saved] = group.photos;
+		expect(saved.edit).toBeUndefined();
+		expect(saved.pageEdits).toEqual({ '2': { turns: 1 } });
 	});
 });

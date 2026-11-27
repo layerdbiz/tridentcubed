@@ -12,6 +12,8 @@
 // opens a part, and one that would not fit in what is left of the page starts on a new page. A part longer than a
 // page starts on a new page too, and runs on from there. A block may always open a page (`breaks`; #295): a sheet of
 // an Items PDF that carries on from the one before, so no page holds more of its pages than its layout says.
+import { stagePagesOf, type StageLayoutType } from './attachments';
+
 export function paginate(
 	heights: number[],
 	room: number,
@@ -115,39 +117,17 @@ export function heightOf(heights: number[], page: number[]) {
 // Each page knows which of its group's pages it is (`part`, from 0) and how many the group has (`parts`, #259).
 export type PhotoPageType = { group: number; part: number; parts: number; isContinued: boolean };
 
-// How many spots an attachment of a photo group takes (#327): a PDF one for each of its pages, a photo or a video one.
-function spotsIn(photo: unknown) {
-	const { kind, pageCount } = (photo ?? {}) as { kind?: unknown; pageCount?: unknown };
-	return kind === 'pdf' && typeof pageCount === 'number' && pageCount > 1
-		? Math.floor(pageCount)
-		: 1;
-}
-
-/** One spot on a photo group's pages (#327): a photo, a video, or one page of a PDF (`page`, from 1). */
-export type SpotType<T> = { key: string; photo: T; page: number };
-
-/**
- * A photo group's attachments as the spots its pages are laid out in, in order (#327; Justin, 2026-11-24: "PDFs lay
- * out exactly like photos per page"): each page of a PDF is a spot of its own, so its pages fill the group's layout
- * as photos do and run on over pages.
- */
-export function spotsOf<T extends { id: string }>(photos: readonly T[]): SpotType<T>[] {
-	const spots: SpotType<T>[] = [];
-	for (const photo of photos) {
-		for (let page = 1; page <= spotsIn(photo); page += 1)
-			spots.push({ key: `${photo.id}:${page}`, photo, page });
-	}
-	return spots;
-}
+// A stage's spots and how they are dealt into pages are attachments.ts's (#295): a set number to a page, a grid
+// picked on its own, Auto, and an attachment popped out onto pages of its own.
+export { spotsOf, type SpotType } from './attachments';
 
 export function photoPagesOf(
-	groups: { isEnabled: boolean; layout: number; photos: readonly unknown[] }[]
+	groups: (StageLayoutType & { isEnabled: boolean; photos: readonly unknown[] })[]
 ): PhotoPageType[] {
 	const pages: PhotoPageType[] = [];
-	for (const [group, { isEnabled, layout, photos }] of groups.entries()) {
-		if (!isEnabled) continue;
-		const spots = photos.reduce<number>((sum, photo) => sum + spotsIn(photo), 0);
-		const parts = Math.max(1, Math.ceil(spots / layout));
+	for (const [group, stage] of groups.entries()) {
+		if (!stage.isEnabled) continue;
+		const parts = stagePagesOf(stage).length;
 		for (let part = 0; part < parts; part += 1)
 			pages.push({ group, part, parts, isContinued: pages.length > 0 });
 	}
