@@ -1,6 +1,7 @@
 // What's New in the open app the moment SvelteKit finds a new version (#401): it asks for the newest history and
 // starts the new version's download once, not again each time an answer lands. It did, about 15 times a second, until
-// the tab was closed. Opened, it names the version and links each released batch to its notes on GitHub (#400).
+// the tab was closed. Opened, it names the version, titles each day by its date, and links each released day to its
+// notes on GitHub (#400).
 import { render } from '@testing-library/svelte';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { HistoryType } from './history.utils';
@@ -32,6 +33,7 @@ const RELEASED: HistoryType = {
 	version: 'v1.1.0',
 	batches: [
 		{
+			day: '2026-11-26',
 			from: '2026-11-26T15:00:00Z',
 			to: '2026-11-26T16:00:00Z',
 			release: { version: '1.1.0', url: toReleaseUrl('1.1.0') },
@@ -71,7 +73,7 @@ describe("What's New when a new version is out", () => {
 });
 
 describe("What's New with releases", () => {
-	it('opens a new release on its glow with the version, and links a released batch to its notes', async () => {
+	it('opens a new release on its glow with the version, and links a released day to its notes', async () => {
 		vi.stubGlobal(
 			'fetch',
 			vi.fn(async () => Response.json(RELEASED))
@@ -90,6 +92,24 @@ describe("What's New with releases", () => {
 		const heading = await findByRole('heading', { name: 'v1.1.0' });
 		expect(heading.closest('.glow')).not.toBeNull();
 		expect(await findByText('New release')).toBeTruthy();
+		// The glow ends on the library's wave.
+		expect(heading.closest('.glow')?.querySelector('svg path')).not.toBeNull();
+	});
+
+	it('titles each day by its date in bold, with its version and what it holds beneath', async () => {
+		whatsNew.close();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => Response.json(RELEASED))
+		);
+		whatsNew.seen = 'c'.repeat(40);
+
+		const { findByText } = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		whatsNew.openAll();
+
+		const day = await findByText('2026-11-26');
+		expect(day.className).toContain('font-bold');
+		expect(day.nextElementSibling?.textContent?.trim()).toBe('v1.1.0 · 1 feature');
 	});
 
 	it('keeps the plain head, with the version, once everything is seen', async () => {

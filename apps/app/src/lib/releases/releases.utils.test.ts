@@ -3,7 +3,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
 	FIRST_SUMMARY,
-	isAppChange,
 	isPrerelease,
 	planRelease,
 	toNextPrerelease,
@@ -12,8 +11,7 @@ import {
 	toReleaseGlow,
 	toReleaseUrl,
 	toTag,
-	toTagVersion,
-	type ReleaseChangeType
+	toTagVersion
 } from './releases.utils';
 
 describe('the release rule', () => {
@@ -169,23 +167,5 @@ describe('the version people read', () => {
 		expect(toReleaseUrl('1.2.0')).toBe(
 			'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.2.0'
 		);
-	});
-});
-
-describe("the changes What's New lists", () => {
-	it('keeps the app and the library, and leaves out the website and the tools', () => {
-		const changes: ReleaseChangeType[] = [
-			{ kind: 'feature', text: 'In the app', area: 'app', tickets: [] },
-			{ kind: 'feature', text: 'On the website', area: 'site', tickets: [] },
-			{ kind: 'fix', text: 'In the library', area: 'ui', tickets: [] },
-			{ kind: 'fix', text: 'Named nowhere', tickets: [] },
-			{ kind: 'fix', text: 'In the prototypes', area: 'play', tickets: [] }
-		];
-
-		expect(changes.filter((change) => isAppChange(change)).map((change) => change.text)).toEqual([
-			'In the app',
-			'In the library',
-			'Named nowhere'
-		]);
 	});
 });

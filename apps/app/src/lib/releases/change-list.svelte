@@ -1,24 +1,19 @@
 <script lang="ts">
-	// A batch's changes in What's New (#363, #399): each kind under its heading with a rule, the way Discord's
-	// changelog sets its sections (Justin's screenshot, 2026-11-26), new features, then what improved on something
-	// already out, then fixes. A change that landed after the last press on What's New's button (`seenAt`) says New.
+	// A day's changes in What's New (#363, #399): each kind under its heading with a rule, the way Discord's changelog
+	// sets its sections (Justin's screenshot, 2026-11-26), Features, then Fixes, and only those two (Justin,
+	// 2026-11-27). A change that landed after the last press on What's New's button (`seenAt`) says New.
 	import { Chip } from '@layerd/ui';
-	import type { HistoryChangeType, HistoryKindType } from './history.utils';
+	import type { HistoryChangeType } from './history.utils';
+	import type { ChangeKindType } from './releases.utils';
 
 	let { changes, seenAt = -1 }: { changes: HistoryChangeType[]; seenAt?: number } = $props();
 
-	const SECTIONS: { kind: HistoryKindType; label: string; icon: string; tone: string }[] = [
+	const SECTIONS: { kind: ChangeKindType; label: string; icon: string; tone: string }[] = [
 		{
 			kind: 'feature',
-			label: 'New features',
+			label: 'Features',
 			icon: 'icon-[mdi--star-four-points-outline]',
 			tone: 'text-emerald-600 after:bg-emerald-500/60'
-		},
-		{
-			kind: 'improved',
-			label: 'Improved',
-			icon: 'icon-[mdi--arrow-up-circle-outline]',
-			tone: 'text-violet-600 after:bg-violet-500/60'
 		},
 		{
 			kind: 'fix',

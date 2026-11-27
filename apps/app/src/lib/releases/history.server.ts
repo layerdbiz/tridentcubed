@@ -3,19 +3,24 @@
 // (releases.server.ts). A build on Vercel or in CI starts from a shallow copy without tags, so the rest is fetched
 // first; the repository is public, so no key is needed. Without git, or without a network, What's New is empty and
 // says so; the build goes on.
-import { NOTES } from './notes.ts';
+import { PLAIN } from './notes.ts';
 import { SHORT, toHistory, type HistoryType, type LandedType } from './history.utils.ts';
 import { FIELD, RECORD, git, readReleaseState, readyRepository } from './releases.server.ts';
 
 function read(range: string, ...options: string[]) {
-	const out = git('log', ...options, `--format=%H${FIELD}%P${FIELD}%cI${FIELD}%s${RECORD}`, range);
+	const out = git(
+		'log',
+		...options,
+		`--format=%H${FIELD}%P${FIELD}%cI${FIELD}%s${FIELD}%b${RECORD}`,
+		range
+	);
 	return out
 		.split(RECORD)
 		.map((record) => record.trim())
 		.filter(Boolean)
 		.map((record) => {
-			const [commit, parents, at, subject] = record.split(FIELD);
-			return { commit, parents: parents.split(' ').filter(Boolean), at, subject };
+			const [commit, parents, at, subject, body] = record.split(FIELD);
+			return { commit, parents: parents.split(' ').filter(Boolean), at, subject, body };
 		});
 }
 
@@ -27,11 +32,23 @@ export function readLanded(head = 'HEAD'): { head: string; chain: string[]; land
 	for (const [index, own] of branch.entries()) {
 		const [first, second] = own.parents;
 		if (!second) {
-			landed.push({ subject: own.subject, at: own.at, landed: index, commit: own.commit });
+			landed.push({
+				subject: own.subject,
+				body: own.body,
+				at: own.at,
+				landed: index,
+				commit: own.commit
+			});
 			continue;
 		}
 		for (const brought of read(`${first}..${second}`, '--no-merges', '--reverse')) {
-			landed.push({ subject: brought.subject, at: own.at, landed: index, commit: brought.commit });
+			landed.push({
+				subject: brought.subject,
+				body: brought.body,
+				at: own.at,
+				landed: index,
+				commit: brought.commit
+			});
 		}
 	}
 	return { head: commit, chain: branch.map((own) => own.commit.slice(0, SHORT)), landed };
@@ -45,7 +62,8 @@ export function readHistoryOf(head = 'HEAD'): HistoryType {
 		const release = each.commit ? state.versionOf(each.commit) : undefined;
 		return release ? { ...each, release } : each;
 	});
-	return toHistory(commit, chain, released, NOTES, {
+	return toHistory(commit, chain, released, {
+		plain: PLAIN,
 		releases: state.releases,
 		version: state.label
 	});

@@ -2,7 +2,8 @@
 // .github/workflows/release.yml on each push to dev and to next. On dev it reads the tags and the commits since the
 // newest one and applies the release rule (src/lib/releases/releases.utils.ts); on next every push is the next
 // prerelease of the release to come, v1.0.0-next.4 (Justin, 2026-11-27). It writes the notes the GitHub release
-// shows: What's New's batches of work with their titles and words, then the changes outside the app. The first
+// shows: What's New's days, each under its date, with their features and fixes in plain words, then, folded away,
+// the rest. The first
 // release, and next's first prerelease, list everything up to it, the same as What's New. The workflow tags the
 // commit and publishes the release; this script never writes to git. Plain Node, no packages, so the workflow
 // needs no install.
@@ -10,6 +11,8 @@
 //   --branch <name>  the branch pushed: dev (unless told) or next; any other makes nothing
 //   --first          show dev's first release, v1.0.0, though releases are not turned on yet (IS_RELEASING): a preview
 //   --notes <file>   where to write the release notes (Markdown)
+//   --head <ref>     work on this commit as though it were the branch's newest: an earlier prerelease's tag, to write
+//                    its notes again
 //   --dry-run        print what the release would be, and write nothing
 //
 // It says what it found in GITHUB_OUTPUT when that is set: `version=1.1.0` and `prerelease=false`, or nothing when
@@ -18,8 +21,8 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { readLanded } from '../src/lib/releases/history.server.ts';
-import { toHistory, toReleaseNotes } from '../src/lib/releases/history.utils.ts';
-import { NOTES } from '../src/lib/releases/notes.ts';
+import { toHistory, toPlainLines, toReleaseNotes } from '../src/lib/releases/history.utils.ts';
+import { PLAIN } from '../src/lib/releases/notes.ts';
 import {
 	git,
 	isHeld,
@@ -35,7 +38,6 @@ import {
 	FIRST_SUMMARY,
 	IS_RELEASING,
 	PRERELEASE_BRANCH,
-	isAppChange,
 	isPrerelease,
 	toReleaseChanges,
 	toTag
@@ -46,6 +48,7 @@ const { values } = parseArgs({
 		branch: { type: 'string', default: 'dev' },
 		first: { type: 'boolean', default: false },
 		notes: { type: 'string' },
+		head: { type: 'string', default: 'HEAD' },
 		'dry-run': { type: 'boolean', default: false }
 	}
 });
@@ -60,7 +63,7 @@ function toNewer(a: TagType | undefined, b: TagType | undefined) {
 	return isHeld(a, b.commit) ? b : a;
 }
 
-const head = git('rev-parse', 'HEAD');
+const head = git('rev-parse', `${values.head}^{commit}`);
 const tags = readTags();
 
 let version: string;
@@ -107,7 +110,7 @@ const isTagged = [...tags, ...readPrereleaseTags()].some(
 	(tag) => tag.commit === head && tag.version === version
 );
 
-// The release's own commits, and What's New's batches made of them.
+// The release's own commits, What's New's days made of them, and the rest of its features and fixes.
 const range = toReleaseRange(head, last);
 const held = new Set(readCommitIds(...range));
 const { chain, landed } = readLanded(head);
@@ -115,10 +118,19 @@ const batches = toHistory(
 	head,
 	chain,
 	landed.filter((each) => each.commit && held.has(each.commit)),
-	NOTES
+	{ plain: PLAIN }
 ).batches;
-const others = toReleaseChanges(readCommits(...range)).filter((change) => !isAppChange(change));
-const notes = toReleaseNotes({ summary: last ? undefined : FIRST_SUMMARY, batches, others });
+const others = toReleaseChanges(
+	readCommits(...range).filter((commit) => toPlainLines(commit, PLAIN).length === 0)
+);
+// Where it was made from, so a release from next reads as next's, and the first one's welcome.
+const summary = [
+	isPrerelease(version) ? 'Made from **next**, for next.app.tridentcubed.com.' : '',
+	last ? '' : FIRST_SUMMARY
+]
+	.filter(Boolean)
+	.join('\n\n');
+const notes = toReleaseNotes({ summary: summary || undefined, batches, others });
 
 say(`${toTag(version)}${isTagged ? ' (tagged already)' : ''}\n\n${notes}`);
 if (values['dry-run']) process.exit(0);

@@ -69,7 +69,7 @@ export const FIRST_VERSION = '1.0.0';
 export const FIRST_SUMMARY =
 	'Trident Cubed now has version numbers. From here on, every update shows what is new and what was fixed, right here.';
 
-/** The team's clock, for the days and times the GitHub release names (the app uses the reader's own). */
+/** The team's clock, for the days What's New and the GitHub releases are told on. */
 export const TEAM_TIME_ZONE = 'America/Chicago';
 
 const KINDS: Record<string, ChangeKindType> = { feat: 'feature', fix: 'fix', perf: 'fix' };
@@ -232,12 +232,4 @@ export function toReleaseGlow(version: string) {
 	let hash = 0;
 	for (const character of version) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
 	return GLOWS[hash % GLOWS.length];
-}
-
-// The areas whose changes people meet in the app: the app itself and the library it is drawn with.
-const APP_AREAS = new Set(['app', 'ui']);
-
-/** Whether people meet a change in the app: the app's and the library's, and those naming no area. */
-export function isAppChange(change: ReleaseChangeType) {
-	return !change.area || APP_AREAS.has(change.area);
 }

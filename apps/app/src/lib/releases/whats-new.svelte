@@ -1,12 +1,11 @@
 <script lang="ts">
-	// What's New (#363, #396, #399, #400), the one window for what the app has brought: every update the branch ever
-	// took, folded into batches of work (history.utils.ts) like the Activity's Grouped view, newest first, each a section
-	// of the library Accordion in the look the page hands it (`fold`). A batch shows its title, the release that brought
-	// it, its day and how many new features, improvements and fixes it holds; open, its words, the changes, each kind
-	// under its heading, and the link to that release's notes on GitHub. The head names the newest version; opened on
-	// a new release, it is a glow of that release's own colours, "New release" and the version (Justin, 2026-11-27).
-	// With no release yet the batches are the same, with no version. What landed since this device last pressed the button says
-	// New, and its batches start open with the newest.
+	// What's New (#363, #396, #399, #400), the one window for what the app has brought, kept plain (Justin, 2026-11-27):
+	// each day of work under its date in bold (history.utils.ts), newest first, each a section of the library Accordion
+	// in the look the page hands it (`fold`). A day shows the release that brought it and how many features and fixes it
+	// holds; open, those changes in everyday words and the link to that release's notes on GitHub. The head names the
+	// newest version; opened on a new release, it is a glow of that release's own colours from edge to edge, "New
+	// release" and the version, ending on the library's wave. With no release yet the days are the same, with no
+	// version. What landed since this device last pressed the button says New, and its days start open with the newest.
 	//
 	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and on the branches in
 	// POP_UP_BRANCHES the moment a new version is out, in place of the update note. With a newer version out, the
@@ -17,7 +16,7 @@
 	import { onMount, untrack } from 'svelte';
 	import { updated } from '$app/state';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
-	import { Accordion, Button, Chip, Dialog, Glow, type AccordionProps } from '@layerd/ui';
+	import { Accordion, Button, Chip, Dialog, Divider, Glow, type AccordionProps } from '@layerd/ui';
 	import { UpdateState } from '../update/update.state.svelte';
 	import { noteReload, takeLastResort } from '../update/rescue';
 	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
@@ -25,7 +24,7 @@
 	import { CHECK_EVERY, HAS_POP_UP } from './releases.constants';
 	import { whatsNew } from './releases.state.svelte';
 	import { toReleaseGlow, toTag } from './releases.utils';
-	import { toBatchCounts, toBatchTitle, toBatchWhen, type HistoryBatchType } from './history.utils';
+	import { toBatchCounts, type HistoryBatchType } from './history.utils';
 	import WindowHead from './window-head.svelte';
 
 	let {
@@ -48,7 +47,8 @@
 	const freshCount = $derived(whatsNew.fresh.length);
 	const version = $derived(whatsNew.history?.version ?? '');
 	// A new release, newer than what this person last saw (Justin, 2026-11-27): the window opens on a glow of its own
-	// colours with the version, in place of the plain head.
+	// colours with the version, in place of the plain head. The glow fills the sheet to its edges, over the sheet's
+	// own grab handle (it draws its own), and its wave is the sheet's colour rising into it.
 	const isRelease = $derived(Boolean(version) && (whatsNew.isNewer || freshCount > 0));
 	const glow = $derived(toReleaseGlow(version));
 	const note = $derived(
@@ -130,30 +130,44 @@
 	>
 		{#snippet header()}
 			{#if isRelease}
-				<header class="relative -mx-1 mb-1 shrink-0">
+				<header class="relative -mx-5 -mt-[2.125rem] shrink-0 md:-mt-5">
 					<Glow
 						color={glow.color}
 						blend={glow.blend}
-						class="rounded-[22px] px-12 pt-6 pb-7 text-center"
+						class="rounded-t-[28px] text-center"
 					>
-						<p
-							class="inline-flex items-center gap-1.5 rounded-full bg-on-shade/10 px-3 py-1 text-[11px] font-bold tracking-[0.18em] uppercase ring-1 ring-on-shade/20"
-						>
-							<span class="icon-[mdi--star-four-points] size-3.5"></span>New release
-						</p>
-						<h2
-							class="mt-3 bg-linear-to-r from-on-shade from-40% to-(--glow-c) bg-clip-text text-4xl leading-tight font-black tracking-tight text-transparent"
-						>
-							{version}
-						</h2>
-						<p class="mt-1 text-sm text-on-shade/75">What's New · {note}</p>
+						<span
+							class="mx-auto mt-3 block h-1.5 w-10 rounded-full bg-on-shade/30 md:hidden"
+							aria-hidden="true"
+						></span>
+						<div class="px-12 pt-5 md:pt-8">
+							<p
+								class="inline-flex items-center gap-1.5 rounded-full bg-on-shade/10 px-3 py-1 text-[11px] font-bold tracking-[0.18em] uppercase ring-1 ring-on-shade/20"
+							>
+								<span class="icon-[mdi--star-four-points] size-3.5"></span>New release
+							</p>
+							<h2
+								class="mt-3 bg-linear-to-r from-on-shade from-40% to-(--glow-c) bg-clip-text text-4xl leading-tight font-black tracking-tight text-transparent"
+							>
+								{version}
+							</h2>
+							<p class="mt-1 text-sm text-on-shade/75">What's New · {note}</p>
+						</div>
+						<!-- Down a pixel past the glow's edge, so no line of the dark shows under the wave. -->
+						<Divider
+							shape="waves"
+							color="text-surface"
+							bleed={false}
+							height="64px"
+							class="-mb-px"
+						/>
 					</Glow>
 					<Button
 						ghost
 						md
 						icon="icon-[mdi--close]"
 						aria-label="Close"
-						class="absolute! top-2 left-2 text-on-shade! hover:bg-on-shade/10!"
+						class="absolute! top-4 left-3 text-on-shade! hover:bg-on-shade/10!"
 						onclick={dismiss}
 					/>
 				</header>
@@ -178,16 +192,17 @@
 							>
 								{#snippet head()}
 									<span class="min-w-0 flex-1">
-										<span class="block text-[15px] leading-snug font-semibold text-slate-800"
-											>{toBatchTitle(batch)}</span
+										<span
+											class="block text-[15px] leading-snug font-bold text-slate-800 tabular-nums"
+											>{batch.day}</span
 										>
 										<span class="mt-0.5 block text-xs leading-snug text-slate-500">
 											{#if batch.release}<span
 													class="font-semibold whitespace-nowrap text-slate-600"
-													>{toTag(batch.release.version)}{' · '}</span
-												>{/if}<span class="whitespace-nowrap">{toBatchWhen(batch)}</span>
-											{#each toBatchCounts(batch) as count (count)}<span class="whitespace-nowrap"
-													>{' · '}{count}</span
+													>{toTag(batch.release.version)}</span
+												>{/if}{#each toBatchCounts(batch) as count, at (count)}<span
+													class="whitespace-nowrap"
+													>{batch.release || at > 0 ? ' · ' : ''}{count}</span
 												>{/each}
 										</span>
 									</span>
@@ -198,9 +213,6 @@
 										/>
 									{/if}
 								{/snippet}
-								{#if batch.summary}
-									<p class="text-sm leading-relaxed text-slate-600">{batch.summary}</p>
-								{/if}
 								<div>
 									<ChangeList
 										changes={batch.changes}

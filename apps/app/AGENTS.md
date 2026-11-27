@@ -171,7 +171,8 @@ the why is in ADR 0002, 0003 and 0005.
   (`src/lib/releases/releases.utils.ts`, breaking = major, feat = minor,
   fix or perf = patch, else no release), tags dev's newest commit and
   publishes the GitHub release with notes shaped like What's New
-  (`scripts/release.ts`, `--dry-run` previews, `--first` previews v1.0.0). Nothing is committed for a
+  (`scripts/release.ts`, `--dry-run` previews, `--first` previews v1.0.0,
+  `--head <tag>` writes an older one's notes again). Nothing is committed for a
   release, so dev stays a fast-forward of next. Never tag or publish by
   hand.
 - **The version comes from the tags.** A build reads them from git
@@ -182,12 +183,14 @@ the why is in ADR 0002, 0003 and 0005.
   it shows `v1.2.0` before the workflow has made the tag.
 - **Every push to next is a prerelease (Justin, 2026-11-27).** The same
   workflow tags next's newest commit `v1.0.0-next.1`, `-next.2` and on,
-  whatever the push holds, and publishes a GitHub pre-release (never
-  Latest) with what came since the one before. The count leads to the
-  release to come: v1.0.0 before the first, then the version next's changes
-  since the last release make (`v1.1.0-next.1`). next.app shows its
-  prerelease, and its build names it before the tag exists. Prereleases do
-  not end a What's New batch; a batch names the newest one in it.
+  whatever the push holds, and publishes a GitHub release named that and
+  nothing more: no Pre-release badge, never Latest, made from next
+  (`--target next`) and saying so in its first line, with what came since
+  the one before. The count leads to the release to come: v1.0.0 before the
+  first, then the version next's changes since the last release make
+  (`v1.1.0-next.1`). next.app shows its version, and its build names it
+  before the tag exists. Prereleases do not end a What's New day; a day
+  names the newest one in it.
 - **The first release waits for Justin's word.** `IS_RELEASING` in
   `releases.utils.ts` is false: no tag is made and every build says "Not
   released yet". Turning it on, in the push that brings next into dev,
@@ -197,12 +200,22 @@ the why is in ADR 0002, 0003 and 0005.
   the person has not seen, its head is the library `Glow` in that
   release's own pair of theme colours (`toReleaseGlow`), "New release" and
   the version; with nothing new, it is the plain head.
-- **What's New (#399, #400)** folds every app and library change into
-  batches of work; a release ends a batch, and a released batch names its
-  version and links its GitHub notes. The batches, their titles and days,
-  and the notes written from them live in `src/lib/releases/history.utils.ts`;
-  friendly titles and words for a batch go in `src/lib/releases/notes.ts`. The repository and its releases
-  are public: no client names, data or screenshots in either.
+- **What's New is plain (Justin, 2026-11-27).** It lists each day under
+  its date in bold (`2026-11-27`, the team's clock), and in it only
+  Features and Fixes people notice, in everyday words. A release also ends
+  a day, and a released day names its version and links its GitHub notes.
+  The days and the notes written from them live in
+  `src/lib/releases/history.utils.ts`.
+- **A change shows only with its plain words.** A `feat`, `fix` or `perf`
+  commit people will notice carries one line per thing they will notice in
+  its message body: `What's New: Pin anything to the menu.` Short, everyday
+  words, no code names, no ticket numbers (the notes add those). A commit
+  with no such line stays out of What's New and goes under the GitHub
+  notes' folded Behind the scenes, as does every other kind. The commits
+  made before this rule have their words in `src/lib/releases/notes.ts`,
+  keyed by their title words; never add to it, write the line instead. The
+  repository and its releases are public: no client names, data or
+  screenshots in either.
 
 ## The installed app
 
