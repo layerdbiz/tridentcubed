@@ -2,6 +2,7 @@
 // people notice, in everyday words, and the same days as a GitHub release's notes (#157).
 import { describe, expect, it } from 'vite-plus/test';
 import {
+	isHidden,
 	toBatchCounts,
 	toBatches,
 	toDay,
@@ -95,6 +96,28 @@ describe("What's New's history", () => {
 			{ kind: 'feature', text: 'A bell.', tickets: [348], landed: 0 },
 			{ kind: 'fix', text: 'Faster faces.', tickets: [], landed: 1 }
 		]);
+	});
+
+	it('leaves out the changes of a ticket hidden for now, its work in but switched off for now', () => {
+		const landed: LandedType[] = [
+			{
+				...feature('2026-11-26T03:00:00Z', 'Type in Spanish.', 0),
+				subject: '✨ feat(app): spanish (#360)'
+			},
+			{
+				...feature('2026-11-26T04:00:00Z', 'Import a time log.', 1),
+				subject: '✨ feat(app): log (#359)'
+			}
+		];
+
+		expect(toHistoryChanges(landed, {}, [360]).map(({ text }) => text)).toEqual([
+			'Import a time log.'
+		]);
+		expect(
+			toHistory('h', [], landed, { hidden: [360] }).batches[0].changes.map(({ text }) => text)
+		).toEqual(['Import a time log.']);
+		expect(isHidden({ tickets: [359, 360] }, [360])).toBe(true);
+		expect(isHidden({ tickets: [359] }, [360])).toBe(false);
 	});
 
 	it("tells each day on the team's clock, as 2026-11-27", () => {

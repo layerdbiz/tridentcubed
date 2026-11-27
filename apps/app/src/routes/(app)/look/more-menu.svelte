@@ -10,6 +10,7 @@
 	import { DATASETS, type DatasetType } from './look.data';
 	import { FROZEN, type LookState } from './look.state.svelte';
 	import { isPinnable, isPinned, togglePin } from './pins';
+	import { IS_TRANSLATING } from './translation';
 	import { Menu, type MenuOptionType } from '@layerd/ui';
 
 	let {
@@ -65,8 +66,9 @@
 								}
 							]),
 					{ id: 'status', label: 'Change Status', icon: 'icon-[mdi--swap-horizontal]' },
-					// #360: a Sent, Complete or Archived project takes no change, so it offers none.
-					...(FROZEN.includes(project.status)
+					// #360: a Sent, Complete or Archived project takes no change, so it offers none; nor does a build
+					// that does not translate yet (translation.ts).
+					...(!IS_TRANSLATING || FROZEN.includes(project.status)
 						? []
 						: [{ id: 'translate', label: 'Translate to English', icon: 'icon-[mdi--translate]' }])
 				]

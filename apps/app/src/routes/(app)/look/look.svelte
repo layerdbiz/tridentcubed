@@ -20,6 +20,7 @@
 	import Shell from './shell.svelte';
 	import StatusSheet from './status-sheet.svelte';
 	import TranslateSheet from './translate-sheet.svelte';
+	import { IS_TRANSLATING } from './translation';
 	import { openAddress, placeOf, toAddress } from './look.utils';
 	import { isOfProject, takeProject, takeReads, takeRows, toRows } from './mapper';
 	import { downloadToast, photoToasts } from './toasts';
@@ -200,7 +201,7 @@
 <div class="look font-sans text-slate-900 [color-scheme:light]">
 	<Shell {look} />
 	<StatusSheet {look} />
-	{#if look.translateFor && look.workspaces[look.translateFor]}
+	{#if IS_TRANSLATING && look.translateFor && look.workspaces[look.translateFor]}
 		<TranslateSheet
 			{look}
 			projectId={look.translateFor}

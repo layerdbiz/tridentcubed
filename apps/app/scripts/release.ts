@@ -21,8 +21,13 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { readLanded } from '../src/lib/releases/history.server.ts';
-import { toHistory, toPlainLines, toReleaseNotes } from '../src/lib/releases/history.utils.ts';
-import { PLAIN } from '../src/lib/releases/notes.ts';
+import {
+	isHidden,
+	toHistory,
+	toPlainLines,
+	toReleaseNotes
+} from '../src/lib/releases/history.utils.ts';
+import { HIDDEN_TICKETS, PLAIN } from '../src/lib/releases/notes.ts';
 import {
 	git,
 	isHeld,
@@ -118,11 +123,11 @@ const batches = toHistory(
 	head,
 	chain,
 	landed.filter((each) => each.commit && held.has(each.commit)),
-	{ plain: PLAIN }
+	{ plain: PLAIN, hidden: HIDDEN_TICKETS }
 ).batches;
 const others = toReleaseChanges(
 	readCommits(...range).filter((commit) => toPlainLines(commit, PLAIN).length === 0)
-);
+).filter((change) => !isHidden(change, HIDDEN_TICKETS));
 // Where it was made from, so a release from next reads as next's, and the first one's welcome.
 const summary = [
 	isPrerelease(version) ? 'Made from **next**, for next.app.tridentcubed.com.' : '',
