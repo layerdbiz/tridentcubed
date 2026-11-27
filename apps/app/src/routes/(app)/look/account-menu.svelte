@@ -32,7 +32,7 @@
 	const ACCOUNT = [
 		{ id: 'profile', label: 'Profile', icon: 'icon-[mdi--account-circle-outline]' },
 		{ id: 'organization', label: 'Organization', icon: 'icon-[mdi--domain]' },
-		{ id: 'activity', label: 'Activity', icon: 'icon-[mdi--timeline-clock-outline]' },
+		{ id: 'activity', label: 'Activity Log', icon: 'icon-[mdi--timeline-clock-outline]' },
 		{ id: 'signature', label: 'Email Signature', icon: 'icon-[mdi--card-account-mail-outline]' },
 		{ id: 'install', label: 'Install App', icon: 'icon-[mdi--cellphone-arrow-down]' },
 		{ id: 'whats-new', label: "What's New", note: VERSION_LABEL, icon: 'icon-[mdi--gift-outline]' },

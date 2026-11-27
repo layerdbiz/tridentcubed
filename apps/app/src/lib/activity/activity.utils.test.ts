@@ -2,7 +2,16 @@
 // page is not one huge list.
 import { describe, expect, it } from 'vite-plus/test';
 import type { ActivityEventType } from './activity.types';
-import { toRunSummary, toRuns } from './activity.utils';
+import {
+	isInTime,
+	toAgo,
+	toBucket,
+	toPeopleGroups,
+	toProjectGroups,
+	toRunSummary,
+	toRuns,
+	toTally
+} from './activity.utils';
 
 // A local time on 25 November 2026, so a test reads the same in every time zone.
 function at(hour: number, minute = 0) {
@@ -168,5 +177,128 @@ describe('toRunSummary', () => {
 				{ id: 'p2', title: 'Harbor Lines job' }
 			]
 		});
+	});
+});
+
+// The Activity Log and the bell (#403, Justin 2026-11-27): rows under Today, Yesterday, Last 7 days and Earlier, how
+// long ago in the Online list's colours, and the Projects and Users views with each group's counts.
+describe('toBucket', () => {
+	const now = new Date(2026, 10, 25, 18).getTime();
+
+	it('puts each time under Today, Yesterday, Last 7 days or Earlier', () => {
+		expect(toBucket(at(9), now)).toBe('Today');
+		expect(toBucket(new Date(2026, 10, 24, 23).toISOString(), now)).toBe('Yesterday');
+		expect(toBucket(new Date(2026, 10, 19, 8).toISOString(), now)).toBe('Last 7 days');
+		expect(toBucket(new Date(2026, 10, 18, 8).toISOString(), now)).toBe('Earlier');
+	});
+});
+
+describe('toAgo', () => {
+	const now = new Date(2026, 10, 25, 18).getTime();
+
+	it('says how long ago in words, fresh within 5 minutes, recent within the hour, old after', () => {
+		expect(toAgo(at(17, 58), now)).toEqual({ words: '2 min ago', tone: 'fresh' });
+		expect(toAgo(at(17, 50), now)).toEqual({ words: '10 min ago', tone: 'recent' });
+		expect(toAgo(at(15), now)).toEqual({ words: '3 hours ago', tone: 'old' });
+		expect(toAgo(at(17), now)).toEqual({ words: '1 hour ago', tone: 'old' });
+		expect(toAgo(new Date(2026, 10, 21, 18).toISOString(), now)).toEqual({
+			words: '4 days ago',
+			tone: 'old'
+		});
+	});
+
+	it('never says less than a minute', () => {
+		expect(toAgo(at(18), now).words).toBe('1 min ago');
+	});
+});
+
+describe('isInTime', () => {
+	const now = new Date(2026, 10, 25, 18).getTime();
+
+	it('keeps what falls in the time picked: any time, today, the last 7 days or the last 30 days', () => {
+		const lastWeek = new Date(2026, 10, 20, 8).toISOString();
+		expect(isInTime(at(9), 'today', now)).toBe(true);
+		expect(isInTime(lastWeek, 'today', now)).toBe(false);
+		expect(isInTime(lastWeek, 'week', now)).toBe(true);
+		expect(isInTime(new Date(2026, 9, 1).toISOString(), 'month', now)).toBe(false);
+		expect(isInTime(new Date(2026, 9, 1).toISOString(), 'any', now)).toBe(true);
+	});
+});
+
+describe('toTally', () => {
+	it('counts what a group did by kind, added first, then changed, deleted, opened and downloaded', () => {
+		const events = [
+			change('Duncan', at(15, 40)),
+			change('Duncan', at(15, 30), { kind: 'add' }),
+			change('Duncan', at(15, 20)),
+			{
+				id: 'o1',
+				at: at(15, 10),
+				kind: 'open',
+				who: 'Duncan',
+				userId: 'u-Duncan',
+				projectId: 'p1'
+			} as ActivityEventType
+		];
+
+		expect(toTally(events)).toEqual([
+			{ kind: 'add', count: 1 },
+			{ kind: 'change', count: 2 },
+			{ kind: 'open', count: 1 }
+		]);
+	});
+});
+
+describe('toProjectGroups', () => {
+	it('gathers each project’s entries, the project touched last first, with who worked in it', () => {
+		const panel = { table: 'panel', thing: 'panel' } as const;
+		const events = [
+			change('Duncan', at(15, 40), { ...panel, projectId: 'p1', project: 'Reactor' }),
+			change('Oziel', at(15, 30), { ...panel, projectId: 'p2', project: 'Turbine' }),
+			change('Ana', at(15, 20), { ...panel, projectId: 'p1', project: 'Reactor' }),
+			change('Duncan', at(15, 10), { ...panel, projectId: 'p1', project: 'Reactor' })
+		];
+
+		const groups = toProjectGroups(events);
+
+		expect(groups.map((group) => [group.id, group.title, group.events.length])).toEqual([
+			['p1', 'Reactor', 3],
+			['p2', 'Turbine', 1]
+		]);
+		expect(groups[0].people).toEqual(['Duncan', 'Ana']);
+	});
+
+	it('names a project by its own title on a change to the project itself, and keeps the rest together apart', () => {
+		const events = [
+			change('Duncan', at(15, 40), {
+				table: 'project',
+				thing: 'project',
+				projectId: 'p1',
+				name: 'Reactor'
+			}),
+			{ id: 's1', at: at(15, 30), kind: 'signIn', who: 'Ana', userId: 'u-Ana' } as ActivityEventType
+		];
+
+		const groups = toProjectGroups(events);
+
+		expect(groups.map((group) => [group.id, group.title])).toEqual([
+			['p1', 'Reactor'],
+			['', '']
+		]);
+	});
+});
+
+describe('toPeopleGroups', () => {
+	it('gathers each person’s entries, whoever did something last first', () => {
+		const events = [
+			change('Duncan', at(15, 40)),
+			change('Oziel', at(15, 30)),
+			change('Duncan', at(15, 20))
+		];
+
+		expect(toPeopleGroups(events).map((group) => [group.who, group.events.length])).toEqual([
+			['Duncan', 2],
+			['Oziel', 1]
+		]);
 	});
 });
