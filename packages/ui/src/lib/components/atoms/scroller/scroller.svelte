@@ -7,7 +7,9 @@
 	// for the top and the bottom, `x` for the left and the right, `all`, or a list of them. Each edge fades only as
 	// far as there is more to see past it: at the very top the top shows whole, and the fade grows with the first
 	// `depth` pixels scrolled (the app's rule since 2026-11-16; every list in the app fades through here); at the very
-	// end the end shows whole. With no `fade` it is a plain scrolling box.
+	// end the end shows whole. With no `fade` it is a plain scrolling box. `inset` starts a fade that far in from its
+	// edge, leaving a strip there whole for a heading that sticks to it (#403: the Notifications' Today, Yesterday...),
+	// so the heading shows whole and what scrolls fades away under it.
 	//
 	// It is the base component, and its look is set from outside (Justin, 2026-11-26): the box takes `class`, `size`
 	// and everything else given, its colours included. The fade is a mask, so whatever lies behind shows through it.
@@ -25,10 +27,19 @@
 		fade?: 'x' | 'y' | 'all' | ScrollerEdgeType[];
 		/** How deep a fade grows, in pixels, once there is that much more to see past its edge. */
 		depth?: number;
+		/** How far in from each edge its fade starts, in pixels: room for a heading that sticks to that edge. */
+		inset?: Partial<Record<ScrollerEdgeType, number>>;
 		children?: Snippet;
 	}
 
-	let { axis = 'y', fade = [], depth = 56, children, ...props }: ScrollerProps = $props();
+	let {
+		axis = 'y',
+		fade = [],
+		depth = 56,
+		inset = {},
+		children,
+		...props
+	}: ScrollerProps = $props();
 
 	const EDGES: Record<string, ScrollerEdgeType[]> = {
 		x: ['left', 'right'],
@@ -99,6 +110,10 @@
 			style:--scroller-bottom="{shown.bottom}px"
 			style:--scroller-left="{shown.left}px"
 			style:--scroller-right="{shown.right}px"
+			style:--scroller-inset-top="{inset.top ?? 0}px"
+			style:--scroller-inset-bottom="{inset.bottom ?? 0}px"
+			style:--scroller-inset-left="{inset.left ?? 0}px"
+			style:--scroller-inset-right="{inset.right ?? 0}px"
 			{@attach follow}
 		>
 			{@render children?.()}
@@ -112,39 +127,49 @@
 	   mask, black is no colour that shows, only "keep this": the content shows where the mask is black, and fades
 	   where it turns clear. */
 	@layer components {
+		/* Each gradient runs from one edge to the other: whole in the edge's inset strip, clear where the fade starts,
+		   whole again once it has grown its depth, and the same backwards at the far edge. */
 		:global(.scroller-y) {
 			mask-image: linear-gradient(
 				to bottom,
-				transparent,
-				black var(--scroller-top, 0px),
-				black calc(100% - var(--scroller-bottom, 0px)),
-				transparent
+				black var(--scroller-inset-top, 0px),
+				transparent var(--scroller-inset-top, 0px),
+				black calc(var(--scroller-inset-top, 0px) + var(--scroller-top, 0px)),
+				black calc(100% - var(--scroller-inset-bottom, 0px) - var(--scroller-bottom, 0px)),
+				transparent calc(100% - var(--scroller-inset-bottom, 0px)),
+				black calc(100% - var(--scroller-inset-bottom, 0px))
 			);
 		}
 		:global(.scroller-x) {
 			mask-image: linear-gradient(
 				to right,
-				transparent,
-				black var(--scroller-left, 0px),
-				black calc(100% - var(--scroller-right, 0px)),
-				transparent
+				black var(--scroller-inset-left, 0px),
+				transparent var(--scroller-inset-left, 0px),
+				black calc(var(--scroller-inset-left, 0px) + var(--scroller-left, 0px)),
+				black calc(100% - var(--scroller-inset-right, 0px) - var(--scroller-right, 0px)),
+				transparent calc(100% - var(--scroller-inset-right, 0px)),
+				black calc(100% - var(--scroller-inset-right, 0px))
 			);
 		}
 		:global(.scroller-xy) {
 			mask-image:
 				linear-gradient(
 					to bottom,
-					transparent,
-					black var(--scroller-top, 0px),
-					black calc(100% - var(--scroller-bottom, 0px)),
-					transparent
+					black var(--scroller-inset-top, 0px),
+					transparent var(--scroller-inset-top, 0px),
+					black calc(var(--scroller-inset-top, 0px) + var(--scroller-top, 0px)),
+					black calc(100% - var(--scroller-inset-bottom, 0px) - var(--scroller-bottom, 0px)),
+					transparent calc(100% - var(--scroller-inset-bottom, 0px)),
+					black calc(100% - var(--scroller-inset-bottom, 0px))
 				),
 				linear-gradient(
 					to right,
-					transparent,
-					black var(--scroller-left, 0px),
-					black calc(100% - var(--scroller-right, 0px)),
-					transparent
+					black var(--scroller-inset-left, 0px),
+					transparent var(--scroller-inset-left, 0px),
+					black calc(var(--scroller-inset-left, 0px) + var(--scroller-left, 0px)),
+					black calc(100% - var(--scroller-inset-right, 0px) - var(--scroller-right, 0px)),
+					transparent calc(100% - var(--scroller-inset-right, 0px)),
+					black calc(100% - var(--scroller-inset-right, 0px))
 				);
 			mask-composite: intersect;
 		}

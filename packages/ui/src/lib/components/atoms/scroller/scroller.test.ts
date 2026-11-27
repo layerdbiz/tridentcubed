@@ -94,6 +94,19 @@ describe('Scroller', () => {
 		expect(fades(box)).toEqual(['20px', '56px', '0px', '0px']);
 	});
 
+	// A heading that sticks to the top (the Notifications' Today, Yesterday...) stands in a strip the fade leaves
+	// whole: the fade starts under it (#403).
+	it('starts a fade as far in from its edge as told, for a heading that sticks there', async () => {
+		render(Scroller, { props: { children: list, fade: 'y', inset: { top: 32 } } });
+		const box = scrollerOf();
+		expect(box.style.getPropertyValue('--scroller-inset-top')).toBe('32px');
+		expect(box.style.getPropertyValue('--scroller-inset-bottom')).toBe('0px');
+
+		measure(box, { top: 20 });
+		await fireEvent.scroll(box);
+		expect(fades(box)).toEqual(['20px', '56px', '0px', '0px']);
+	});
+
 	it('takes the class it is given', () => {
 		render(Scroller, { props: { children: list, class: 'max-h-80 px-5' } });
 

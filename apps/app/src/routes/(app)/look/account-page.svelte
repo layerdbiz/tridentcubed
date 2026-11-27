@@ -8,12 +8,13 @@
 	// A desktop shows the groups down the left and the Activity Log or what the bell shows on the right; a phone shows
 	// the groups as rows, and those two open on a page of their own with a back arrow. Profile, the Organization and
 	// Email Signature open the pages they have always had, whose back comes back here; What's New opens its window.
-	import { Avatar, Button, Chip, ListRow } from '@layerd/ui';
+	import { Avatar, Button, Chip, ListRow, Scroller } from '@layerd/ui';
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import HowTo from '#lib/install/how-to.svelte';
 	import { install } from '#lib/install/install.state.svelte.js';
 	import { VERSION_LABEL } from '#lib/releases/releases.constants.js';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
+	import { HEADING_HEIGHT } from './activity-list.svelte';
 	import ActivityLog from './activity-log.svelte';
 	import Back from './back.svelte';
 	import type { AccountSectionType, LookState } from './look.state.svelte';
@@ -209,11 +210,18 @@
 			</h1>
 		</header>
 		{#if part === 'activity'}
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-white px-3 pt-3 pb-10">
+			<Scroller
+				fade="y"
+				inset={{ top: HEADING_HEIGHT }}
+				class="min-h-0 flex-1 overscroll-y-contain bg-white px-3 pt-3 pb-10"
+			>
 				<ActivityLog {look} />
-			</div>
+			</Scroller>
 		{:else}
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-10">
+			<Scroller
+				fade="y"
+				class="min-h-0 flex-1 overscroll-y-contain px-4 pb-10"
+			>
 				{#if part}
 					<p class="px-1 pb-3 text-sm text-slate-500">{TITLES[part][1]}</p>
 					{@render section(part)}
@@ -263,7 +271,7 @@
 						{look.organization.name} · {VERSION_LABEL}
 					</p>
 				{/if}
-			</div>
+			</Scroller>
 		{/if}
 	</div>
 
@@ -297,7 +305,10 @@
 				note={[role, look.organization.name].filter(Boolean).join(' · ')}
 				onclick={() => pick('profile')}
 			/>
-			<div class="min-h-0 flex-1 overflow-y-auto">
+			<Scroller
+				fade="y"
+				class="min-h-0 flex-1"
+			>
 				{#each groups as group (group.label)}
 					<p
 						class="px-2 pt-4 pb-1 text-[11px] font-semibold tracking-[0.08em] text-slate-400 uppercase"
@@ -308,7 +319,7 @@
 						{#each group.items as each (each.id)}{@render item(each, shown === each.id)}{/each}
 					</ul>
 				{/each}
-			</div>
+			</Scroller>
 			<Button
 				danger
 				ghost
@@ -319,12 +330,20 @@
 				onclick={logOut}
 			/>
 		</nav>
-		<main class="min-w-0 flex-1 overflow-y-auto overscroll-y-contain">
-			<div class="mx-auto w-full max-w-3xl px-10 pt-8 pb-16">
-				<h2 class="text-2xl font-semibold text-slate-900">{TITLES[shown][0]}</h2>
-				<p class="mt-1 mb-6 text-sm text-slate-500">{TITLES[shown][1]}</p>
-				{@render section(shown)}
-			</div>
+		<!-- The part beside the menu scrolls in the library Scroller, the Activity Log's day headings sticking to its
+		     top above the fade. -->
+		<main class="flex min-w-0 flex-1 flex-col">
+			<Scroller
+				fade="y"
+				inset={shown === 'activity' ? { top: HEADING_HEIGHT } : {}}
+				class="min-h-0 flex-1 overscroll-y-contain"
+			>
+				<div class="mx-auto w-full max-w-3xl px-10 pt-8 pb-16">
+					<h2 class="text-2xl font-semibold text-slate-900">{TITLES[shown][0]}</h2>
+					<p class="mt-1 mb-6 text-sm text-slate-500">{TITLES[shown][1]}</p>
+					{@render section(shown)}
+				</div>
+			</Scroller>
 		</main>
 	</div>
 {/if}
