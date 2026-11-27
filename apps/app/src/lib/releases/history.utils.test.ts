@@ -321,6 +321,17 @@ describe("What's New's history", () => {
 		expect(toSectionInView([], 24)).toBe(0);
 	});
 
+	it('names the open section at the end of the scroll while it is on screen, else the last', () => {
+		// Scrolled to the end: section 1's top is past the line, 2 and 3 are on screen below it.
+		const tops = [-700, -20, 200, 500];
+
+		expect(toSectionInView(tops, 64, true, 2)).toBe(2);
+		expect(toSectionInView(tops, 64, true, 1)).toBe(1);
+		expect(toSectionInView(tops, 64, true, 0)).toBe(3);
+		expect(toSectionInView(tops, 64, true)).toBe(3);
+		expect(toSectionInView(tops, 64, false, 2)).toBe(1);
+	});
+
 	it('counts the features and fixes a day holds, only the kinds it has', () => {
 		const change = { tickets: [], at: '', landed: 0 };
 		expect(

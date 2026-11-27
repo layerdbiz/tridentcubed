@@ -2,7 +2,8 @@
 	// What's New (#363, #396, #399, #400), the one window for what the app has brought, kept plain (Justin, 2026-11-27):
 	// each release's day of work under its date in bold (history.utils.ts), newest first, each a section of the library
 	// Accordion in the look the page hands it (`fold`), only the newest open each time it opens and one open at a time
-	// (Justin, 2026-11-27: the Accordion's `group`). A section shows its release and how many features and fixes it
+	// (Justin, 2026-11-27: the Accordion's `group`); one opened by a tap scrolls itself to the top, just under the list's
+	// fade, so the head names it (the Accordion's `snap`). A section shows its release and how many features and fixes it
 	// holds, each count after a dot of its kind's colour (KIND_COLORS), those changes in everyday words, all alike,
 	// and the link to the release's notes on GitHub. The head is the release in view on a glow of its own colours from edge to edge, ending on the library's
 	// wave: v1.0.0-next.6 at the top, and as the list scrolls down, next.5, next.4 and on, the colours moving with it. On
@@ -55,6 +56,8 @@
 	// scrolls (the library Scroller, through the Dialog's `fade`).
 	const isFresh = $derived(whatsNew.isNewer || freshCount > 0);
 	let shownAt = $state(0);
+	// The open section, newest first: the newest each time What's New opens, then the one a tap opened; -1 with none.
+	let openAt = $state(0);
 	const shown = $derived(batches[shownAt] ?? batches[0]);
 	const shownVersion = $derived(
 		shown?.release ? toTag(shown.release.version) : shown === batches[0] ? version : ''
@@ -72,8 +75,11 @@
 	const note = $derived(
 		shown ? [shown.day, ...toBatchCounts(shown)].join(' · ') : 'Every update, newest first'
 	);
-	// A section names the head once its top is this far down the scroll, or the last once the scroll ends.
+	// A section names the head once its top is this far down the scroll; at the scroll's end the open one names it while
+	// on screen, else the last.
 	const LINE = 64;
+	// What the scroll is read again with, after a tap opens a section: the one following the scroll there is.
+	let reread = () => {};
 
 	/** Follows the scroll the list sits in, so the head names the section in view. */
 	function followScroll(list: HTMLElement) {
@@ -86,19 +92,34 @@
 			frame = 0;
 			const top = scroller.getBoundingClientRect().top;
 			const tops = [...list.children].map((item) => item.getBoundingClientRect().top - top);
-			const isAtEnd =
-				scroller.scrollTop > 0 &&
-				scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
-			shownAt = toSectionInView(tops, LINE, isAtEnd);
+			const isAtBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2;
+			// A list too short to scroll is at its end only once a tap has opened a section in it.
+			const isAtEnd = isAtBottom && (scroller.scrollTop > 0 || openAt > 0);
+			shownAt = toSectionInView(tops, LINE, isAtEnd, openAt);
 		}
 		function wait() {
 			if (!frame) frame = requestAnimationFrame(read);
 		}
 		scroller.addEventListener('scroll', wait, { passive: true });
+		reread = wait;
 		return () => {
 			scroller.removeEventListener('scroll', wait);
 			cancelAnimationFrame(frame);
+			reread = () => {};
 		};
+	}
+
+	// A tap opened or shut a section: once it has slid (and scrolled, where it could), the head names what is in view,
+	// even where nothing scrolled.
+	$effect(() => {
+		void openAt;
+		const timer = setTimeout(() => reread(), 400);
+		return () => clearTimeout(timer);
+	});
+
+	function follow(at: number, isOpen: boolean) {
+		if (isOpen) openAt = at;
+		else if (openAt === at) openAt = -1;
 	}
 
 	const BUTTON = {
@@ -221,10 +242,14 @@
 				>
 					{#each batches as batch, at (batch.from)}
 						<li>
+							<!-- The room above a section a tap scrolls up is the Dialog's fade, the Scroller's 56 px depth. -->
 							<Accordion
 								{...fold}
+								class="{fold.class ?? ''} scroll-mt-14"
 								open={at === 0}
 								group="whats-new"
+								snap
+								ontoggle={(isOpen) => follow(at, isOpen)}
 							>
 								{#snippet head()}
 									<span class="min-w-0 flex-1">

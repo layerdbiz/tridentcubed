@@ -84,4 +84,14 @@
 			}
 		});
 	}
+
+	// jsdom lays nothing out, so it has no scrolling into view: a section that snaps to the top (the library
+	// Accordion's `snap`) asks for it all the same.
+	if (!('scrollIntoView' in Element.prototype)) {
+		Object.defineProperty(Element.prototype, 'scrollIntoView', {
+			configurable: true,
+			writable: true,
+			value: () => {}
+		});
+	}
 }
