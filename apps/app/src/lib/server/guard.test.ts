@@ -117,6 +117,25 @@ describe('the sign-in guard', () => {
 		expect(guard('/local-files/org/file.webp?op=get&expires=1&sig=x')).toBeUndefined();
 	});
 
+	it('lets every reader’s mail app load a signature’s pictures, and keeps the signature itself behind sign-in (#354)', () => {
+		expect(guard('/signature/0123456789abcdef01234567.png')).toBeUndefined();
+		expect(guard('/signature/0123456789abcdef01234567.png', 'guest')).toBeUndefined();
+		expect(guard('/api/signature')).toEqual({
+			kind: 'refuse',
+			status: 401,
+			message: 'Sign in first.'
+		});
+		expect(guard('/api/signature', 'guest')).toEqual({
+			kind: 'refuse',
+			status: 403,
+			message: 'You are waiting for access.'
+		});
+		expect(guard('/signatures')).toEqual({
+			kind: 'redirect',
+			location: '/login?next=%2Fsignatures'
+		});
+	});
+
 	it('closes Better Auth’s organization routes to everyone: memberships change only through the app', () => {
 		for (const access of ['signed-out', 'guest', 'staff'] as const) {
 			expect(guard('/api/auth/organization/update-member-role', access)).toEqual({

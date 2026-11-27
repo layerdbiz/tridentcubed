@@ -92,7 +92,10 @@
 		</div>
 
 		<!-- Preview component that displays the HTML -->
-		<Preview componentRef={emailComponent} />
+		<Preview
+			componentRef={emailComponent}
+			edit="https://docs.google.com/spreadsheets/d/1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs/edit?gid=0#gid=0"
+		/>
 	{:else}
 		<div class="py-20 text-center">
 			<h1 class="mb-4 text-2xl font-bold text-neutral-600">Email Signature Not Found</h1>

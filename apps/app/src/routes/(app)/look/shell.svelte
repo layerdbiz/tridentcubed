@@ -23,6 +23,7 @@
 	import { fade, fly, scale } from 'svelte/transition';
 	import AccountMenu from './account-menu.svelte';
 	import ActivityPage from './activity-page.svelte';
+	import SignaturePage from './signature-page.svelte';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
 	import AddSheet from './add-sheet.svelte';
@@ -626,6 +627,17 @@
 			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
 		>
 			<ActivityPage {look} />
+		</div>
+	{/if}
+
+	{#if look.screen === 'signature'}
+		<!-- Email Signature (#354): anyone's own, opened from the menu on their profile picture, sliding in like the
+		     Activity. -->
+		<div
+			class="fixed inset-0 z-50"
+			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
+		>
+			<SignaturePage {look} />
 		</div>
 	{/if}
 

@@ -14,6 +14,10 @@
 		defaultView?: 'preview' | 'code';
 		/** Component reference with getHTML() method for automatic code generation */
 		componentRef?: { getHTML?: () => string };
+		/** Where Edit opens what the preview is made from; with neither this nor `onedit`, there is no Edit. */
+		edit?: string;
+		/** What Edit does, when it opens something in the page rather than a link. */
+		onedit?: () => void;
 	}
 
 	let {
@@ -21,6 +25,8 @@
 		code = undefined,
 		defaultView = 'preview',
 		componentRef = undefined,
+		edit = undefined,
+		onedit = undefined,
 		children = undefined,
 		...props
 	}: PreviewProps = $props();
@@ -198,19 +204,22 @@
 				>
 					<div class="absolute top-2 right-2 flex gap-1">
 						<!-- EDIT -->
-						<Button
-							variant="icon text"
-							label="edit"
-							icon="icon-[mdi--pencil-outline]"
-							align="center"
-							size="xxs"
-							appearance="lite"
-							color="base"
-							class="min-w-18 uppercase"
-							href="https://docs.google.com/spreadsheets/d/1Eauw3boJ1Gu6B78ywFuYB_bE3H1yHZyes0U0Mg9qRUs/edit?gid=0#gid=0"
-							target="_blank"
-							rel="noopener"
-						/>
+						{#if edit || onedit}
+							<Button
+								variant="icon text"
+								label="edit"
+								icon="icon-[mdi--pencil-outline]"
+								align="center"
+								size="xxs"
+								appearance="lite"
+								color="base"
+								class="min-w-18 uppercase"
+								href={edit}
+								target={edit ? '_blank' : undefined}
+								rel={edit ? 'noopener' : undefined}
+								onclick={onedit}
+							/>
+						{/if}
 
 						<!-- COPY -->
 						<Button
@@ -254,7 +263,7 @@
 	@reference "#ui.css";
 
 	.preview {
-		@apply rounded-lg border border-neutral-200-600 bg-surface p-8;
+		@apply rounded-lg border border-neutral-200-600 bg-surface p-2 sm:p-8;
 
 		background-image: repeating-linear-gradient(
 			45deg,
@@ -276,7 +285,7 @@
 	}
 
 	.preview-content {
-		@apply rounded p-4;
+		@apply rounded p-2 sm:p-4;
 
 		/* Iframe styling */
 		.preview-iframe {

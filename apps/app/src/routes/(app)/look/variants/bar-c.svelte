@@ -54,6 +54,8 @@
 	const ORGANIZATION = { name: 'Organization', icon: 'icon-[mdi--domain]' };
 	// The Activity (#306) is one view, so it has no tabs.
 	const ACTIVITY = { name: 'Activity', icon: 'icon-[mdi--timeline-clock-outline]' };
+	// Email Signature (#354) is one view too.
+	const SIGNATURE = { name: 'Email Signature', icon: 'icon-[mdi--card-account-mail-outline]' };
 	let inside = $state({ name: DATASETS[PAGES[0]].label, icon: PAGE_ICONS[PAGES[0]] });
 	const leadIcon = $derived(isInside ? inside.icon : PAGE_ICONS[lead]);
 	const isLeadOn = $derived(isInside || look.navSection === lead);
@@ -91,12 +93,13 @@
 	$effect(() => {
 		if (look.screen === 'record' || look.screen === 'settings') tabs = RECORD;
 		else if (look.screen === 'workspace') tabs = PROJECT;
-		else if (look.screen === 'activity') tabs = [];
+		else if (look.screen === 'activity' || look.screen === 'signature') tabs = [];
 	});
 
 	$effect(() => {
 		if (look.screen === 'settings') inside = ORGANIZATION;
 		else if (look.screen === 'activity') inside = ACTIVITY;
+		else if (look.screen === 'signature') inside = SIGNATURE;
 		else if (isInside) inside = { name: DATASETS[home].label, icon: PAGE_ICONS[home] };
 	});
 

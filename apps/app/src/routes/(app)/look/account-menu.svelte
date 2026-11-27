@@ -4,7 +4,7 @@
 	// of the phone's dashboard. Whoever uses it draws the picture (`picture`, told whether the menu is open). Install
 	// App (#203) is there only while the app is not installed; a tap installs where the browser offered that, and
 	// otherwise opens the how-to. Activity (#306) is there for an Admin only, the one who may open it. What's New
-	// (#363) shows every release, with the app's version under it.
+	// (#363) shows every release, with the app's version under it. Email Signature (#354) is everyone's own.
 	import type { Snippet } from 'svelte';
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import HowTo from '#lib/install/how-to.svelte';
@@ -25,7 +25,7 @@
 		picture: Snippet<[boolean]>;
 		align?: 'left' | 'right';
 		isWide?: boolean;
-		// After Profile, Organization or Activity opens, so a drawer can shut.
+		// After Profile, Organization, Activity or Email Signature opens, so a drawer can shut.
 		onnavigate?: () => void;
 	} = $props();
 
@@ -33,6 +33,7 @@
 		{ id: 'profile', label: 'Profile', icon: 'icon-[mdi--account-circle-outline]' },
 		{ id: 'organization', label: 'Organization', icon: 'icon-[mdi--domain]' },
 		{ id: 'activity', label: 'Activity', icon: 'icon-[mdi--timeline-clock-outline]' },
+		{ id: 'signature', label: 'Email Signature', icon: 'icon-[mdi--card-account-mail-outline]' },
 		{ id: 'install', label: 'Install App', icon: 'icon-[mdi--cellphone-arrow-down]' },
 		{ id: 'whats-new', label: "What's New", note: VERSION_LABEL, icon: 'icon-[mdi--gift-outline]' },
 		{ id: 'logout', label: 'Log Out', icon: 'icon-[mdi--logout]', isDanger: true }
@@ -64,6 +65,7 @@
 		if (id === 'whats-new') return whatsNew.openAll();
 		if (id === 'organization') look.openSettings();
 		else if (id === 'activity') look.openActivity();
+		else if (id === 'signature') look.openSignature();
 		else if (look.me) look.openRecord('team', look.me.name, 'page');
 		onnavigate?.();
 	}

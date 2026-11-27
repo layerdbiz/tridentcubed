@@ -10,7 +10,14 @@ import type { PageType } from './records.data';
 // An address's search, as the browser or Kit's read-only page.url hands it over.
 type AddressType = Pick<URLSearchParams, 'get' | 'has'>;
 
-const SCREENS: ScreenType[] = ['dashboard', 'workspace', 'record', 'settings', 'activity'];
+const SCREENS: ScreenType[] = [
+	'dashboard',
+	'workspace',
+	'record',
+	'settings',
+	'activity',
+	'signature'
+];
 
 // Puts the address's place on screen. Anything it names that is not there (an old link, a deleted project or
 // record) opens the dashboard instead.
