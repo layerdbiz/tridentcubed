@@ -10,6 +10,8 @@
 	import { groupWordOf } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { countLabelOf, deletePhotos, describePhotos, movePhotos } from './photos';
+	import { countsOfPhotos } from './counts';
+	import FileCounts from './file-counts.svelte';
 
 	let { look, isWide, left }: { look: LookState; isWide: boolean; left: string } = $props();
 
@@ -269,13 +271,18 @@
 							<span class="block truncate text-sm font-semibold text-slate-900"
 								>{group.title || `Untitled ${place.word}`}</span
 							>
-							<span class="block text-xs text-slate-500"
-								>{here
-									? photos.length === 1
-										? 'It is here'
-										: 'They are here'
-									: countLabelOf(group.photos)}</span
-							>
+							{#if here || !group.photos.length}
+								<span class="block text-xs text-slate-500"
+									>{here
+										? photos.length === 1
+											? 'It is here'
+											: 'They are here'
+										: countLabelOf(group.photos)}</span
+								>
+							{:else}
+								<!-- #350: what it holds, as the group's own header shows it. -->
+								<span class="mt-0.5 flex"><FileCounts count={countsOfPhotos(group.photos)} /></span>
+							{/if}
 						</span>
 						<span class="icon-[mdi--chevron-right] size-5 shrink-0 text-slate-300"></span>
 					</Button>

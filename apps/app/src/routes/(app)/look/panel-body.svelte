@@ -104,6 +104,7 @@
 	import type { LookState } from './look.state.svelte';
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
+	import { countsOfPhotos } from './counts';
 	import {
 		addGroup as addPhotoGroup,
 		addPhotos,
@@ -1493,7 +1494,7 @@
 						title={group.title || `Untitled ${word}`}
 						section={group.id}
 						values={counted(group.id)}
-						meta={countLabelOf(group.photos)}
+						files={countsOfPhotos(group.photos)}
 						isEnabled={group.isEnabled}
 						onenable={() => toggleGroup(group)}
 						icon="icon-[mdi--image-multiple-outline]"
