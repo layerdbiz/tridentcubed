@@ -94,6 +94,11 @@ export type ChangeEventType = ActivityLineType & {
 	parts?: string[];
 	/** What a change changed, as the app labels it: "Title", "Status". Empty for an add or a move to the Trash. */
 	columns: string[];
+	/**
+	 * In the bell's Notifications (#403): true when it is about the person reading, put on or taken off a project's
+	 * Team Assigned ("added you to the Team Assigned"), or their own Team record changed.
+	 */
+	isAboutYou?: boolean;
 };
 
 /** One line of the Activity: a sign-in, or a change to a row. */
@@ -135,4 +140,9 @@ export type ActivityType = {
 /** What the Activity's read answers: the Activity, or why this User may not see it. */
 export type ActivityResultType =
 	| ({ isAllowed: true } & ActivityType)
+	| { isAllowed: false; reason: string };
+
+/** What the bell's read answers (#403): the newest changes about the person reading, or why there are none. */
+export type NotificationsResultType =
+	| { isAllowed: true; events: ChangeEventType[] }
 	| { isAllowed: false; reason: string };

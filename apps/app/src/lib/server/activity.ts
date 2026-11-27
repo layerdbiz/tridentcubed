@@ -12,12 +12,25 @@
 //   before and after, of which only the names and the columns that changed are read, never the rows themselves. The
 //   rows a new project starts with (its panels, their photo groups, its first stop), added in the same save, are
 //   counted on the project's own line ("7 panels") rather than given a line each.
-import { and, desc, eq, gt, isNotNull, ne, type SQL, sql } from 'drizzle-orm';
+import {
+	and,
+	desc,
+	eq,
+	gt,
+	inArray,
+	isNotNull,
+	isNull,
+	notInArray,
+	or,
+	type SQL,
+	sql
+} from 'drizzle-orm';
 import type {
 	ActivityEventType,
 	ActivityResultType,
 	ChangeEventType,
 	LastSignInType,
+	NotificationsResultType,
 	ProjectActivityType,
 	SignInEventType
 } from '#lib/activity/activity.types.js';
@@ -26,8 +39,17 @@ import { TABLE_NAMES, type TableNameType } from '#lib/rows/rows.schema.js';
 import type { ActorType, ClaimsType, TransactionType } from './db/claims';
 import { toNameOfEmail } from './access';
 import { CODE_MINUTES } from './auth';
-import { activityEvent, change, member, project, signIn, team, user } from './db/schema';
-import { checkActivity } from './permission';
+import {
+	activityEvent,
+	change,
+	member,
+	project,
+	projectTeam,
+	signIn,
+	team,
+	user
+} from './db/schema';
+import { checkActivity, checkNotifications } from './permission';
 
 // What each table's row is called in a sentence, as the app's screens say it: one ("added the customer Harbor
 // Lines"), and a few of a kind, on a new project's line ("7 panels").
@@ -55,9 +77,14 @@ const ROW_NAMES: Record<TableNameType, { one: string; many: string }> = {
 	item_attachment: { one: 'attachment', many: 'attachments' },
 	time_log_day: { one: 'Time Log day', many: 'Time Log days' },
 	time_log_entry: { one: 'Time Log entry', many: 'Time Log entries' },
-	// Never shown: pins stay out of the Activity (#346).
-	pinned: { one: 'pin', many: 'pins' }
+	// Never shown: pins stay out of the Activity (#346), and so does what each person has seen (#403).
+	pinned: { one: 'pin', many: 'pins' },
+	seen: { one: 'seen mark', many: 'seen marks' }
 };
+
+// Each person's own ways into the app, not changes to the organization's work: pins (#346) and what they have seen in
+// the bell and the Activity Log (#403).
+const OWN_TABLES = ['pinned', 'seen'];
 
 /** How many sign-ins and changes a page of the Activity reads: the newest, then the next ones on Show Older. */
 export const ACTIVITY_LIMIT = 200;
@@ -175,6 +202,7 @@ function readChanges(tx: TransactionType, where: SQL, limit?: number) {
 			label: toRowText('label'),
 			kind: toRowText('kind'),
 			projectId: toRowText('projectId'),
+			teamId: toRowText('teamId'),
 			columns: sql<
 				string[]
 			>`case when ${change.before} is null or ${change.after} is null then array[]::text[]
@@ -182,8 +210,7 @@ function readChanges(tx: TransactionType, where: SQL, limit?: number) {
 					where each.value is distinct from ${change.before} -> each.key order by each.key) end`
 		})
 		.from(change)
-		// A pin (#346) is one person's own way into their menu, not a change to the organization's work.
-		.where(and(where, ne(change.tableName, 'pinned')))
+		.where(and(where, notInArray(change.tableName, OWN_TABLES)))
 		.orderBy(desc(change.at), desc(change.id));
 	return limit === undefined ? query : query.limit(limit);
 }
@@ -322,6 +349,31 @@ function byNewest(a: ActivityEventType, b: ActivityEventType) {
 	return Date.parse(b.at) - Date.parse(a.at) || toRank(a) - toRank(b) || b.id.localeCompare(a.id);
 }
 
+// What each User goes by: their Team record's name, the one outside the Trash first; else their own name; else, for
+// a User who gave none (a Guest who signed in with an email code), their email's: "Sam Lee".
+async function readNames(
+	tx: TransactionType,
+	users: { id: string; name: string | null; email: string }[]
+) {
+	const records = await tx
+		.select({ userId: team.userId, name: team.name, deletedAt: team.deletedAt })
+		.from(team)
+		.where(isNotNull(team.userId))
+		.orderBy(sql`${team.deletedAt} is not null`);
+	const names = new Map<string, string>();
+	for (const record of records)
+		if (record.userId && !names.has(record.userId)) names.set(record.userId, record.name);
+	for (const each of users)
+		if (!names.has(each.id)) names.set(each.id, each.name || toNameOfEmail(each.email));
+	return names;
+}
+
+// Every project's title, by its id.
+async function readTitles(tx: TransactionType) {
+	const rows = await tx.select({ id: project.id, title: project.title }).from(project);
+	return new Map(rows.map((each) => [each.id, each.title]));
+}
+
 /** Which page of the Activity to read: the newest, or the one `before` the oldest shown (Show Older). */
 export type ActivityPageType = {
 	/** How many sign-ins and changes, about: a millisecond's rows are never split, so a page may hold a few more. */
@@ -381,26 +433,9 @@ export async function readActivity(
 		function guestOf(userId: string) {
 			return members.has(userId) ? {} : { isGuest: true };
 		}
-		// A User's Team record names them, the one outside the Trash first.
-		const records = await tx
-			.select({ userId: team.userId, name: team.name, deletedAt: team.deletedAt })
-			.from(team)
-			.where(isNotNull(team.userId))
-			.orderBy(sql`${team.deletedAt} is not null`);
-		const projects = new Map(
-			(await tx.select({ id: project.id, title: project.title }).from(project)).map((each) => [
-				each.id,
-				each.title
-			])
-		);
-
+		const projects = await readTitles(tx);
 		const folded = foldProjectStarts(changes);
-		const names = new Map<string, string>();
-		for (const record of records)
-			if (record.userId && !names.has(record.userId)) names.set(record.userId, record.name);
-		// A User who gave no name (a Guest who signed in with an email code) goes by their email's: "Sam Lee".
-		for (const each of users)
-			if (!names.has(each.id)) names.set(each.id, each.name || toNameOfEmail(each.email));
+		const names = await readNames(tx, users);
 		function whoOf(userId: string | null) {
 			return (userId ? names.get(userId) : undefined) ?? 'Someone';
 		}
@@ -476,6 +511,102 @@ export async function readActivity(
 			),
 			...(Number.isFinite(end) ? { olderBefore: new Date(end).toISOString() } : {})
 		};
+	});
+}
+
+/** How many lines the bell's Notifications read: the newest. */
+export const NOTIFICATIONS_LIMIT = 50;
+
+// The id of the project a change's row is, or is inside, as text.
+const PROJECT_OF_ROW = sql`case when ${change.tableName} = 'project' then ${change.rowId}::text
+	else ${ROW} ->> 'projectId' end`;
+
+// The SQL list of `ids`, for `in (...)`.
+function toList(ids: string[]) {
+	return sql.join(
+		ids.map((id) => sql`${id}`),
+		sql`, `
+	);
+}
+
+/**
+ * The bell's Notifications (#403, Justin, 2026-11-27: only what is about you): the newest changes someone else made in
+ * the projects `actor` is on (on its Team Assigned, its Team Lead, or who started it), and what was done to them: put
+ * on or taken off a project's Team Assigned, their own Team record changed. Never their own doing, and never a
+ * sign-in, a project opened or a PDF downloaded. Anyone on the staff reads their own.
+ */
+export async function readNotifications(
+	claims: ClaimsType,
+	actor: ActorType,
+	{ limit = NOTIFICATIONS_LIMIT }: { limit?: number } = {}
+): Promise<NotificationsResultType> {
+	const verdict = checkNotifications(actor);
+	if (!verdict.isAllowed) return verdict;
+	return claims.run(actor, async (tx) => {
+		const mine = (
+			await tx
+				.select({ id: team.id })
+				.from(team)
+				.where(and(eq(team.userId, actor.userId), isNull(team.deletedAt)))
+		).map((row) => row.id);
+		const assigned = mine.length
+			? await tx
+					.select({ id: projectTeam.projectId })
+					.from(projectTeam)
+					.where(and(inArray(projectTeam.teamId, mine), isNull(projectTeam.deletedAt)))
+			: [];
+		const own = await tx
+			.select({ id: project.id })
+			.from(project)
+			.where(
+				or(
+					eq(project.createdBy, actor.userId),
+					mine.length ? inArray(project.teamLeadId, mine) : undefined
+				)
+			);
+		const projectIds = [...new Set([...assigned, ...own].map((row) => row.id))];
+		const about = or(
+			projectIds.length ? sql`${PROJECT_OF_ROW} in (${toList(projectIds)})` : undefined,
+			mine.length ? and(eq(change.tableName, 'team'), inArray(change.rowId, mine)) : undefined,
+			mine.length
+				? and(eq(change.tableName, 'project_team'), sql`${ROW} ->> 'teamId' in (${toList(mine)})`)
+				: undefined
+		);
+		if (!about) return { isAllowed: true, events: [] };
+		const rows = await readChanges(
+			tx,
+			and(sql`${change.userId} is distinct from ${actor.userId}`, about) as SQL,
+			limit
+		);
+
+		// A put on or a taking off of their own Team Assigned keeps a line of its own, even in the save that started
+		// the project; every other row a new project started with folds into the project's line.
+		function isAboutYou(row: ChangeRowType) {
+			if (row.table === 'team') return mine.includes(row.rowId);
+			return row.table === 'project_team' && mine.includes(row.teamId ?? '');
+		}
+		const folded = foldProjectStarts(rows.filter((row) => !isAboutYou(row)));
+		const users = await tx.select({ id: user.id, name: user.name, email: user.email }).from(user);
+		const names = await readNames(tx, users);
+		const projects = await readTitles(tx);
+		const lines = [...folded.lines, ...rows.filter(isAboutYou)];
+		const events = lines
+			.map((row) => ({
+				...toChangeEvent(
+					row,
+					(row.userId ? names.get(row.userId) : undefined) ?? 'Someone',
+					projects,
+					folded.startedWith(row)
+				),
+				...(isAboutYou(row) ? { isAboutYou: true } : {})
+			}))
+			// A change that changed nothing anyone sees (only what the server keeps), or a Team Assigned only moved in
+			// its order, says nothing.
+			.filter(
+				(event) =>
+					event.kind !== 'change' || (event.columns.length > 0 && event.table !== 'project_team')
+			);
+		return { isAllowed: true, events: events.sort(byNewest) };
 	});
 }
 

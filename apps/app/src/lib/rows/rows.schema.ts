@@ -404,6 +404,18 @@ export const TABLES = {
 			// When it was pinned, the device's ISO time: the list's order, newest on top.
 			pinnedAt: v.pipe(v.string(), v.isoTimestamp())
 		}
+	},
+	// What a person has seen (#403): each line of the bell's Notifications they opened, by the line's id, and when
+	// they last opened the Activity Log (the line `log`), which shows what came since in light blue. Each person's own,
+	// as pins are: the server sets whose it is (`userId`).
+	seen: {
+		scope: 'organization',
+		reads: ['userId'],
+		columns: {
+			line: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+			// When, the device's ISO time.
+			seenAt: v.pipe(v.string(), v.isoTimestamp())
+		}
 	}
 } as const satisfies Record<string, TableSpecType>;
 

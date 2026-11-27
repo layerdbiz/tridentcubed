@@ -18,6 +18,7 @@ import { knowPlaces } from './location';
 import type { LookState } from './look.state.svelte';
 import type { PlaceType } from './map.data';
 import type { PinType } from './pins';
+import type { SeenType } from './seen';
 import { text, toRecordId, toRecordName, toStamp } from './mapper.utils';
 
 /**
@@ -115,7 +116,20 @@ export function toListRows(look: LookState): RowType[] {
 			id: pin.id,
 			values: { page: pin.page, recordId: pin.recordId, pinnedAt: pin.at }
 		});
+	for (const each of look.seen)
+		rows.push({ table: 'seen', id: each.id, values: { line: each.line, seenAt: each.at } });
 	return rows;
+}
+
+// What the signed-in person has seen (#403), oldest first; Row Level Security sends nobody else's.
+function toSeen(rows: SavedRowType[]): SeenType[] {
+	return rows
+		.filter((row) => row.table === 'seen' && !row.deletedAt)
+		.map((row) => ({
+			id: row.id,
+			line: text(row.values, 'line'),
+			at: text(row.values, 'seenAt') || row.createdAt
+		}));
 }
 
 // The signed-in person's pins (#346), newest first; Row Level Security sends nobody else's.
@@ -236,6 +250,7 @@ export function takeListRows(look: LookState, rows: SavedRowType[]) {
 	look.organization = toOrganization(rows);
 	look.help = toHelp(rows);
 	look.pins = toPins(rows);
+	look.seen = toSeen(rows);
 }
 
 /** A Transport Mode's id from the name the screens use, in the Trash or not (#188: a stop's transport). */

@@ -4,7 +4,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vite-plus/test';
 import type { ActivityEventType } from '#lib/activity/activity.types.js';
 import type { RowChangeType } from '#lib/rows/rows.schema.js';
-import { readActivity, recordProjectActivity } from './activity';
+import { readActivity, readNotifications, recordProjectActivity } from './activity';
 import { CODE_MINUTES } from './auth';
 import type { ActorType } from './db/claims';
 import { TRIDENT_CUBED } from './db/seed';
@@ -656,5 +656,129 @@ describe('the Activity', () => {
 			tx.select({ userId: schema.signIn.userId }).from(schema.signIn)
 		);
 		expect(signIns).toEqual([{ userId: ana.userId }]);
+	});
+});
+
+describe('the bell’s Notifications (#403)', () => {
+	async function teamIdOf(test: TestType, actor: ActorType) {
+		const [record] = await test.db
+			.select({ id: schema.team.id })
+			.from(schema.team)
+			.where(eq(schema.team.userId, actor.userId));
+		return record.id;
+	}
+
+	async function notesOf(test: TestType, actor: ActorType) {
+		const result = await readNotifications(test.claims, actor);
+		if (!result.isAllowed) throw new Error(result.reason);
+		return result.events.map((event) => ({
+			kind: event.kind,
+			who: event.who,
+			table: event.table,
+			...(event.isAboutYou ? { isAboutYou: true } : {}),
+			...(event.columns.length ? { columns: event.columns } : {})
+		}));
+	}
+
+	it('tells someone only what others did in their projects and to them, newest first', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const tomTeam = await teamIdOf(test, tom);
+		const ours = crypto.randomUUID();
+		const theirs = crypto.randomUUID();
+		await save(
+			test,
+			ana,
+			{ table: 'project', id: ours, operation: 'put', values: { title: 'Hull survey' } },
+			{
+				table: 'project_team',
+				id: crypto.randomUUID(),
+				operation: 'put',
+				values: { projectId: ours, teamId: tomTeam, position: 0 }
+			}
+		);
+		await save(test, ana, {
+			table: 'project',
+			id: theirs,
+			operation: 'put',
+			values: { title: 'Crane lift' }
+		});
+		await save(test, ana, {
+			table: 'project',
+			id: theirs,
+			operation: 'put',
+			values: { subtitle: 'Not on it' }
+		});
+		await save(test, tom, {
+			table: 'project',
+			id: ours,
+			operation: 'put',
+			values: { subtitle: 'His own' }
+		});
+		await save(test, ana, {
+			table: 'project',
+			id: ours,
+			operation: 'put',
+			values: { location: 'Houston' }
+		});
+		await save(test, ana, {
+			table: 'team',
+			id: tomTeam,
+			operation: 'put',
+			values: { title: 'Surveyor' }
+		});
+
+		expect(await notesOf(test, tom)).toEqual([
+			{ kind: 'change', who: 'Ana Reyes', table: 'team', isAboutYou: true, columns: ['Title'] },
+			{ kind: 'change', who: 'Ana Reyes', table: 'project', columns: ['Location'] },
+			{ kind: 'add', who: 'Ana Reyes', table: 'project' },
+			{ kind: 'add', who: 'Ana Reyes', table: 'project_team', isAboutYou: true }
+		]);
+		// Ana sees none of her own doing, and Tom's change in a project she started.
+		expect(await notesOf(test, ana)).toEqual([
+			{ kind: 'change', who: 'Tom Diaz', table: 'project', columns: ['Subtitle'] }
+		]);
+	});
+
+	it('tells someone taken off a project, and nothing of it after', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const tomTeam = await teamIdOf(test, tom);
+		const id = crypto.randomUUID();
+		const seat = crypto.randomUUID();
+		await save(test, ana, {
+			table: 'project',
+			id,
+			operation: 'put',
+			values: { title: 'Hull survey' }
+		});
+		await save(test, ana, {
+			table: 'project_team',
+			id: seat,
+			operation: 'put',
+			values: { projectId: id, teamId: tomTeam, position: 0 }
+		});
+		await save(test, ana, {
+			table: 'project_team',
+			id: seat,
+			operation: 'put',
+			values: { position: 1 }
+		});
+		await save(test, ana, { table: 'project_team', id: seat, operation: 'delete' });
+		await save(test, ana, {
+			table: 'project',
+			id,
+			operation: 'put',
+			values: { location: 'Houston' }
+		});
+
+		expect(await notesOf(test, tom)).toEqual([
+			{ kind: 'trash', who: 'Ana Reyes', table: 'project_team', isAboutYou: true },
+			{ kind: 'add', who: 'Ana Reyes', table: 'project_team', isAboutYou: true }
+		]);
 	});
 });

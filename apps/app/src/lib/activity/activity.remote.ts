@@ -6,7 +6,7 @@
 // signed in to an organization: what they did shows in an Admin's Activity.
 import { command, query } from '$app/server';
 import * as v from 'valibot';
-import { readActivity, recordProjectActivity } from '#lib/server/activity.js';
+import { readActivity, readNotifications, recordProjectActivity } from '#lib/server/activity.js';
 import { requireStaff } from '#lib/server/server.js';
 
 /** Which page: the newest, or the one before the oldest shown (an ISO time). */
@@ -28,4 +28,10 @@ const PROJECT_ACTIVITY = v.object({
 export const recordActivity = command(PROJECT_ACTIVITY, async (done) => {
 	const { actor, claims } = await requireStaff();
 	return recordProjectActivity(claims, actor, done);
+});
+
+/** The bell's Notifications (#403): the newest changes about the User asking, for anyone on the staff. */
+export const fetchNotifications = query(async () => {
+	const { actor, claims } = await requireStaff();
+	return readNotifications(claims, actor);
 });
