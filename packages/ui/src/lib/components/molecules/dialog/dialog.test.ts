@@ -135,6 +135,19 @@ describe('Dialog', () => {
 		expect(dialog.querySelector('.dialog-scroll')?.className).toContain('scroller-y');
 	});
 
+	it('hands its middle Scroller any other Scroller prop, set from outside', () => {
+		const { dialog } = show({
+			variant: 'tall',
+			fade: 'y',
+			scroller: { inset: { top: 12 }, class: 'pt-2' }
+		});
+		const middle = dialog.querySelector<HTMLElement>('.dialog-scroll')!;
+
+		expect(middle.style.getPropertyValue('--scroller-inset-top')).toBe('12px');
+		expect(middle.className).toContain('pt-2');
+		expect(middle.className).toContain('scroller-y');
+	});
+
 	// Its look is set from outside (Justin, 2026-11-26), like the Button's.
 	it('wears the look it is given on the sheet that shows, not on the layer over the page', () => {
 		const { dialog } = show({ lite: true, neutral: true, class: 'gap-2' });
