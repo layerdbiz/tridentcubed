@@ -49,6 +49,8 @@ export class NotificationsState {
 	hasFailed = $state(false);
 	/** It was read at least once. */
 	isRead = $state(false);
+	/** Grouped, as the Activity Log can be: one by one until switched, and kept while the app is open. */
+	isGrouped = $state(false);
 
 	constructor(look: () => LookState, whatsNew: WhatsNewState) {
 		this.#look = look;

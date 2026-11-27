@@ -10,6 +10,9 @@
 	 */
 	export const HEADING_HEIGHT = 32;
 
+	/** The headings, for the library Scroller's `keep`: its fade never touches them (Justin, 2026-11-27). */
+	export const HEADING = '[data-heading]';
+
 	/** A new version's line in the bell: What's New's day, its first things in words, and whether it is unseen. */
 	export type ReleaseLineType = {
 		id: string;
@@ -225,6 +228,14 @@
 		].toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at))
 	);
 	const runs = $derived(toRuns(shown));
+	// Grouped, with the bell's new versions among the groups, newest first.
+	type GroupedType = { id: string; at: string; run?: ActivityRunType; release?: ReleaseLineType };
+	const grouped = $derived<GroupedType[]>(
+		[
+			...runs.map((run) => ({ id: run.id, at: run.to, run })),
+			...releases.map((release) => ({ id: release.id, at: release.at, release }))
+		].toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at))
+	);
 	const projects = $derived(toProjectGroups(shown));
 	const people = $derived(toPeopleGroups(shown));
 
@@ -651,9 +662,10 @@
 {/snippet}
 
 <!-- A soft heading: Today, Yesterday, Last 7 days, Earlier. It sticks to the top of what scrolls the list, its
-     height HEADING_HEIGHT. -->
+     height HEADING_HEIGHT, and the fade of what scrolls the list leaves it whole (`HEADING`). -->
 {#snippet heading(label: string)}
 	<li
+		data-heading
 		class="sticky top-0 z-10 h-8 bg-white px-2 pt-3 pb-1 text-xs leading-4 font-semibold text-slate-400"
 	>
 		{label}
@@ -746,7 +758,7 @@
 			<p class="px-3 py-10 text-center text-sm text-slate-500">
 				{events.length ? 'Nothing here matches. Try another filter.' : 'Nothing has happened yet.'}
 			</p>
-		{:else if view === 'all' && !(isFull && isGrouped)}
+		{:else if view === 'all' && !isGrouped}
 			<ul>
 				{#each byBucket(flat, (item) => item.at, now) as bucket (bucket.label)}
 					{@render heading(bucket.label)}
@@ -758,14 +770,17 @@
 				{/each}
 			</ul>
 		{:else if view === 'all'}
-			<!-- All, grouped: one person's back-to-back work as one group under their face. -->
+			<!-- All, grouped: one person's back-to-back work as one group under their face; the bell's new versions
+			     stay lines of their own. -->
 			<ul>
-				{#each byBucket(runs, (run) => run.to, now) as bucket (bucket.label)}
+				{#each byBucket(grouped, (item) => item.at, now) as bucket (bucket.label)}
 					{@render heading(bucket.label)}
-					{#each bucket.items as run (run.id)}
-						{#if run.events.length === 1}
+					{#each bucket.items as { id, run, release } (id)}
+						{#if release}
+							{@render releaseLine(release)}
+						{:else if run?.events.length === 1}
 							{@render line(run.events[0])}
-						{:else}
+						{:else if run}
 							{@const isOpen = !shut.has(run.id)}
 							{@const isSpread = toRunSummary(run).projects.length > 1}
 							{#snippet picture()}<Avatar

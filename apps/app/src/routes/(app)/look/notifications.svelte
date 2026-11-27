@@ -2,13 +2,14 @@
 	// The bell's Notifications (#403; Justin, 2026-11-27, picked on the prototype): a heading with how many are new,
 	// then the one list the Activity Log wears (activity-list.svelte), one by one, newest first, with no sorting or
 	// filters. Only what is about the person signed in, and What's New's days. A line is light blue until it is
-	// tapped; a tap opens what it is about and closes the Notifications. On a phone they fill the screen with a back
+	// tapped; a tap opens what it is about and closes the Notifications. Group folds one person's back-to-back work
+	// into one line, as in the Activity Log, which an Admin opens from the top right (Justin, 2026-11-27). On a phone they fill the screen with a back
 	// arrow; on a desktop they hang from the bell, half the screen tall at most (Justin, 2026-11-27: the box ran all
 	// the way down the page). The heading stays put while the list scrolls in the library Scroller, fading at its top
 	// and bottom like every list, under the day headings that stick to its top on a desktop as on a phone.
 	import { Button, Scroller } from '@layerd/ui';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
-	import ActivityList, { HEADING_HEIGHT } from './activity-list.svelte';
+	import ActivityList, { HEADING, HEADING_HEIGHT } from './activity-list.svelte';
 	import type { LookState } from './look.state.svelte';
 	import type { NotificationsState } from './bell.svelte';
 
@@ -17,7 +18,7 @@
 		notifications,
 		hasBack = false,
 		onclose,
-		onsettings
+		onall
 	}: {
 		look: LookState;
 		notifications: NotificationsState;
@@ -25,8 +26,8 @@
 		hasBack?: boolean;
 		// Told when they close: by the back arrow, or by a line opening what it is about (`hasOpened`).
 		onclose: (hasOpened?: boolean) => void;
-		// The cog: what rings the bell, on Settings.
-		onsettings?: () => void;
+		// "Activity Log", an Admin's: every line of everyone's, in Settings (Justin, 2026-11-27: in the cog's place).
+		onall?: () => void;
 	} = $props();
 
 	// The library Button in the type picked on #386, as the shell's.
@@ -52,18 +53,36 @@
 				class="ml-1 rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger"
 				>{notifications.count} new</span
 			>{/if}
-		{#if onsettings}<Button
-				{...ROUND}
-				icon="icon-[mdi--cog-outline]"
-				aria-label="Notification settings"
-				title="Notification settings"
-				class="ml-auto"
-				onclick={onsettings}
+		<!-- Group, as the Activity Log's: one person's back-to-back work as one line that opens. -->
+		<Button
+			{...notifications.isGrouped
+				? { primary: true, lite: true }
+				: { secondary: true, ghost: true }}
+			sm
+			icon="icon-[mdi--format-list-group]"
+			label={hasBack ? undefined : 'Group'}
+			aria-label="Group"
+			aria-pressed={notifications.isGrouped}
+			title={notifications.isGrouped
+				? 'Grouped: tap to list one by one'
+				: 'One by one: tap to group'}
+			class="ml-auto shrink-0"
+			onclick={() => (notifications.isGrouped = !notifications.isGrouped)}
+		/>
+		{#if onall && look.isAdmin}<Button
+				primary
+				ghost
+				sm
+				label="Activity Log"
+				title="See all activity"
+				class="shrink-0"
+				onclick={onall}
 			/>{/if}
 	</header>
 	<Scroller
 		fade="y"
 		inset={{ top: HEADING_HEIGHT }}
+		keep={HEADING}
 		class="min-h-0 flex-1 overscroll-y-contain px-2 pb-3"
 	>
 		{#if !notifications.isRead}
@@ -82,6 +101,7 @@
 				events={notifications.events}
 				unread={notifications.unread}
 				releases={notifications.releases}
+				isGrouped={notifications.isGrouped}
 				ontap={(event) => {
 					notifications.see(event.id);
 					onclose(true);
