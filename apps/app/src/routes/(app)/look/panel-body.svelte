@@ -62,9 +62,7 @@
 		Textarea,
 		toInitialsPicture
 	} from '@layerd/ui';
-	import Picture from '#lib/components/photo/picture.svelte';
 	import {
-		editOf,
 		fitOf,
 		GRID_MOST,
 		gridOf,
@@ -85,10 +83,9 @@
 		ATTACHMENT_ICONS,
 		ATTACHMENT_NAMES,
 		ATTACHMENT_NOUNS,
-		toPictureType,
-		toTypeLabel
+		toPictureType
 	} from '#lib/files/files.schema.js';
-	import { fileDetailsOf, startUpload, type Upload } from '#lib/files/files.state.svelte.js';
+	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import {
 		DEFAULT_LAYOUT,
 		FITS,
@@ -123,6 +120,8 @@
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
+	import PhotoAdd from './photo-add.svelte';
+	import PhotoTile from './photo-tile.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { countsOfPhotos } from './counts';
 	import {
@@ -136,7 +135,6 @@
 		movePhoto,
 		uploadOf
 	} from './photos';
-	import { toLengthLabel } from '#lib/video/video.utils.js';
 	import { createPhotoToast } from './toasts';
 	import { contactsOf } from './records.data';
 	import { stageNumbersOf } from './report-flow';
@@ -1803,201 +1801,67 @@
 									data-photo-id={photo.id}
 									animate:flip={{ duration: 200 }}
 								>
-									<button
-										type="button"
-										class="relative block size-full overflow-hidden rounded-xl bg-slate-100 select-none [-webkit-touch-callout:none]"
-										aria-label="{isSelecting ? 'Select' : 'Open'} photo {photoIndex + 1}"
-										aria-pressed={isSelecting ? isPicked : undefined}
-										data-grip="photos-{group.id}"
-										onclick={(event) => {
+									<PhotoTile
+										{photo}
+										index={photoIndex}
+										sortKey="photos-{group.id}"
+										{upload}
+										{isSelecting}
+										{isPicked}
+										align={photoIndex % 3 === 0 ? 'left' : 'right'}
+										options={[
+											// #295: every attachment is edited the same way, a PDF's pages and a video's picture too.
+											{
+												id: 'crop',
+												label: 'Crop',
+												icon: 'icon-[mdi--crop]'
+											},
+											{
+												id: 'describe',
+												label: 'Edit description',
+												icon: 'icon-[mdi--pencil-outline]'
+											},
+											{
+												id: 'delete',
+												label: 'Delete',
+												icon: 'icon-[mdi--trash-can-outline]',
+												isDanger: true
+											}
+										]}
+										onopen={(event) => {
 											// #402: while selecting, or with Ctrl, Cmd or Shift, a click selects instead of opening.
 											if (selection.tap(panel, photo.id, event)) return;
 											// Nothing to show in the pop-up until the server has converted it (#294).
 											if (!upload || upload.hasPreview) openPhoto(group, photo);
 										}}
-									>
-										<!-- #294: a photo the device cannot draw (a HEIC in Chrome) shows its name, never a broken picture.
-										     #327: so does a PDF or a video until its picture is made. -->
-										{#if upload && (!upload.hasPreview || !photo.src)}
-											<span
-												class="pointer-events-none flex size-full flex-col items-center justify-center gap-1 p-2 pb-8 text-center"
-											>
-												<span
-													class="{ATTACHMENT_ICONS[
-														photo.kind ?? 'photo'
-													]} size-6 shrink-0 text-slate-400"
-												></span>
-												<span class="line-clamp-2 text-[11px] font-medium break-all text-slate-600"
-													>{upload.name}</span
-												>
-											</span>
-										{:else}
-											<!-- #295: the tile as it is edited: turned, flipped, straightened and cropped. -->
-											<Picture
-												src={photo.src}
-												alt={photo.description}
-												edit={editOf(photo)}
-												class="pointer-events-none size-full {upload ? 'opacity-60' : ''}"
-												onerror={() => {
-													if (upload) upload.hasPreview = false;
-												}}
-											/>
-										{/if}
-										<!-- A soft shade in the corner, so the white ⋮ reads on a pale photo too (run 19). -->
-										<span
-											class="pointer-events-none absolute top-0 right-0 size-12 bg-[radial-gradient(circle_at_top_right,rgb(0_0_0/0.45),transparent_70%)]"
-										></span>
-										{#if photo.description}
-											<span
-												class="absolute bottom-1 left-1 icon-[mdi--text-box] size-5 text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
-												title="Has a description"
-											></span>
-										{/if}
-										<!-- #327: what kind of attachment it is, on every tile (Justin, 2026-11-25): a photo by its icon, a PDF
-										     with its pages, a video with its length. #349: a photo by the type it arrived as (HEIC, JPEG,
-										     PNG), read from its name while it is on its way. -->
-										{#if photo.src}
-											{@const kind = photo.kind ?? 'photo'}
-											{@const arrived =
-												kind === 'photo'
-													? toTypeLabel(
-															fileDetailsOf(photo.src)?.original.type ??
-																(upload ? toPictureType({ name: upload.name, type: '' }) : '')
-														)
-													: ''}
-											{@const label = arrived ? `${arrived} photo` : ATTACHMENT_NAMES[kind]}
-											<span
-												class="pointer-events-none absolute right-1 bottom-1 flex items-center gap-0.5 rounded-md bg-black/65 py-0.5 text-[10px] leading-none font-semibold text-white tabular-nums {kind ===
-													'photo' && !arrived
-													? 'px-0.5'
-													: 'pr-1.5 pl-1'}"
-												title={label}
-												aria-label={label}
-												><span
-													class="{ATTACHMENT_ICONS[kind]} size-3.5 {kind === 'pdf'
-														? 'text-red-400'
-														: ''}"
-												></span>{kind === 'pdf'
-													? `${photo.pageCount ?? 1} ${photo.pageCount === 1 ? 'page' : 'pages'}`
-													: kind === 'video'
-														? toLengthLabel(photo.duration) || 'Video'
-														: arrived}</span
-											>
-										{/if}
-										<!-- #402: a selected photo wears a blue border (UI glossary "Selection bar"). -->
-										{#if isPicked}
-											<span
-												class="pointer-events-none absolute inset-0 rounded-xl inset-ring-3 inset-ring-primary"
-												data-picked
-											></span>
-										{/if}
-									</button>
-									<!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. #294: while
-									     the server converts it, the mark says so. -->
-									{#if upload?.isConverting}
-										<span
-											class="pointer-events-none absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded-lg bg-white px-1.5 py-1 text-[11px] font-semibold text-slate-700 shadow"
-											role="status"
-											aria-label="Converting photo {photoIndex + 1}"
-											><span class="icon-[svg-spinners--ring-resize] size-3.5 shrink-0 text-primary"
-											></span>Converting</span
-										>
-									{:else if upload?.isUploading}
-										<span
-											class="pointer-events-none absolute bottom-1 left-1 flex size-6 items-center justify-center rounded-full bg-white shadow"
-											role="status"
-											aria-label="Uploading photo {photoIndex + 1}"
-											><span class="icon-[svg-spinners--ring-resize] size-4 text-primary"
-											></span></span
-										>
-									{:else if upload?.isFailed}
-										<button
-											type="button"
-											class="absolute inset-x-1 bottom-1 flex items-center justify-center gap-1 rounded-lg bg-danger px-1.5 py-1 text-[11px] font-semibold text-white shadow"
-											aria-label="Not uploaded. Retry photo {photoIndex + 1}"
-											title={upload.reason}
-											data-no-drag
-											onclick={() => upload.retry()}
-											><span class="icon-[mdi--alert] size-3.5"></span>Retry</button
-										>
-									{/if}
-									<!-- #402: while its panel is selecting, a photo's ⋮ goes: the Selection bar acts on them all. -->
-									<div
-										class="absolute top-1 right-1 {isSelecting ? 'hidden' : ''}"
-										data-no-drag
-									>
-										<Menu
-											label="More for photo {photoIndex + 1}"
-											value=""
-											align={photoIndex % 3 === 0 ? 'left' : 'right'}
-											options={[
-												// #295: every attachment is edited the same way, a PDF's pages and a video's picture too.
-												{
-													id: 'crop',
-													label: 'Crop',
-													icon: 'icon-[mdi--crop]'
-												},
-												{
-													id: 'describe',
-													label: 'Edit description',
-													icon: 'icon-[mdi--pencil-outline]'
-												},
-												{
-													id: 'delete',
-													label: 'Delete',
-													icon: 'icon-[mdi--trash-can-outline]',
-													isDanger: true
-												}
-											]}
-											onpick={(id) =>
-												id === 'delete'
-													? remove(
-															group.photos,
-															photo,
-															`Delete ${ATTACHMENT_NOUNS[photo.kind ?? 'photo']}?`,
-															`It leaves the ${word} and the report.`
-														)
-													: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
-										>
-											{#snippet trigger()}
-												<span class="flex size-7 items-center justify-center text-white"
-													><span
-														class="icon-[mdi--dots-vertical] size-6 drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
-													></span></span
-												>
-											{/snippet}
-										</Menu>
-									</div>
+										onpick={(id) =>
+											id === 'delete'
+												? remove(
+														group.photos,
+														photo,
+														`Delete ${ATTACHMENT_NOUNS[photo.kind ?? 'photo']}?`,
+														`It leaves the ${word} and the report.`
+													)
+												: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
+									/>
 								</div>
 							{/each}
 							<!-- Lit while its file input has the focus: where an entry of the empty-inputs list for Photos lands. -->
-							<label
-								class="relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition focus-within:ring-2 focus-within:ring-primary/40 hover:bg-primary/10 hover:text-primary"
-							>
-								<span class="icon-[mdi--image-plus-outline] size-6"></span>
-								<span class="text-[11px] font-medium">Upload</span>
-								<input
-									type="file"
-									accept={ATTACHMENT_ACCEPT}
-									multiple
-									data-input={MARKED_LABELS.photos}
-									class="sr-only"
-									onchange={(event) => pickPhotos(event, group)}
-								/>
-							</label>
-							<label
-								class="relative flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl bg-primary/[0.06] text-primary/70 transition hover:bg-primary/10 hover:text-primary"
-							>
-								<span class="icon-[mdi--camera-outline] size-6"></span>
-								<span class="text-[11px] font-medium">Camera</span>
-								<input
-									type="file"
-									accept="image/*,video/*"
-									capture="environment"
-									class="sr-only"
-									onchange={(event) => pickPhotos(event, group)}
-								/>
-							</label>
+							<PhotoAdd
+								icon="icon-[mdi--image-plus-outline]"
+								label="Upload"
+								accept={ATTACHMENT_ACCEPT}
+								multiple
+								data-input={MARKED_LABELS.photos}
+								onchange={(event) => pickPhotos(event, group)}
+							/>
+							<PhotoAdd
+								icon="icon-[mdi--camera-outline]"
+								label="Camera"
+								accept="image/*,video/*"
+								capture="environment"
+								onchange={(event) => pickPhotos(event, group)}
+							/>
 						</div>
 						{#snippet actions()}
 							<Button

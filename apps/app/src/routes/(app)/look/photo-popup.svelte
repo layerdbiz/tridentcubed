@@ -21,6 +21,9 @@
 	// strip. The ⋮ holds Pop out (on pages of its own, 1, 2 or 4 to a page) and Delete, which asks first and moves on
 	// to the next one. Nothing is made of the picture: what is changed is kept as numbers (edit.ts), and the report
 	// draws the picture with them.
+	// #354 (Justin, 2026-11-27): the Email Signature's photo and banners open here too, "that same photo editor", with
+	// only what a picture alone needs (`isPictureOnly`): no Text, no Pop out and no Details, Delete still in the ⋮. A
+	// signature's photo shows its circle over the crop (`isRound`).
 	// #343: the i at the top opens the Details under the picture: the file as it arrived beside the file the app kept
 	// (type, size, pixel size), how much smaller it got, and whether its metadata came across. They follow the
 	// attachment open; a PDF or a video says what its own file is. When and where it was taken come first, and under
@@ -82,6 +85,10 @@
 		id,
 		mode: firstMode = 'view',
 		word,
+		noun = undefined,
+		deleteNote = undefined,
+		isPictureOnly = false,
+		isRound = false,
 		onsave,
 		onclose
 	}: {
@@ -92,6 +99,14 @@
 		mode?: PopupModeType;
 		/** "stage" or "group", for the question before a delete. */
 		word: string;
+		/** What one is called, in place of its kind ("banner"). */
+		noun?: string;
+		/** What the question before a delete says happens. */
+		deleteNote?: string;
+		/** Only the picture is edited: no description, no pop-out and no Details. */
+		isPictureOnly?: boolean;
+		/** It shows in a circle: the circle is drawn over the crop. */
+		isRound?: boolean;
 		onsave: () => void;
 		onclose: () => void;
 	} = $props();
@@ -357,8 +372,8 @@
 		const gone = photo;
 		if (!gone) return;
 		look.confirm({
-			title: `Delete ${ATTACHMENT_NOUNS[gone.kind ?? 'photo']}?`,
-			note: `It leaves the ${word} and the report.`,
+			title: `Delete ${noun ?? ATTACHMENT_NOUNS[gone.kind ?? 'photo']}?`,
+			note: deleteNote ?? `It leaves the ${word} and the report.`,
 			onyes: () => {
 				const at = group.photos.findIndex((each) => each.id === gone.id);
 				if (at < 0) return;
@@ -641,37 +656,47 @@
 				: ''
 	);
 
-	const MORE = $derived<MenuOptionType[]>([
-		{
-			id: 'own-1',
-			label: 'Pop out',
-			note: 'On a page of its own',
-			icon: 'icon-[mdi--arrow-expand]'
-		},
-		{
-			id: 'own-2',
-			label: 'Pop out, 2 per page',
-			note: 'Its own pages, 2 to each',
-			icon: 'icon-[mdi--view-agenda-outline]'
-		},
-		{
-			id: 'own-4',
-			label: 'Pop out, 4 per page',
-			note: 'Its own pages, 4 to each',
-			icon: 'icon-[mdi--view-grid-outline]'
-		},
-		...(mine?.ownLayout
-			? [
+	const DELETE: MenuOptionType = {
+		id: 'delete',
+		label: 'Delete',
+		icon: 'icon-[mdi--trash-can-outline]',
+		isDanger: true
+	};
+	const MORE = $derived<MenuOptionType[]>(
+		isPictureOnly
+			? [DELETE]
+			: [
 					{
-						id: 'own-0',
-						label: `Back with the ${word}`,
-						note: 'On its pages with the others',
-						icon: 'icon-[mdi--arrow-collapse]'
-					}
+						id: 'own-1',
+						label: 'Pop out',
+						note: 'On a page of its own',
+						icon: 'icon-[mdi--arrow-expand]'
+					},
+					{
+						id: 'own-2',
+						label: 'Pop out, 2 per page',
+						note: 'Its own pages, 2 to each',
+						icon: 'icon-[mdi--view-agenda-outline]'
+					},
+					{
+						id: 'own-4',
+						label: 'Pop out, 4 per page',
+						note: 'Its own pages, 4 to each',
+						icon: 'icon-[mdi--view-grid-outline]'
+					},
+					...(mine?.ownLayout
+						? [
+								{
+									id: 'own-0',
+									label: `Back with the ${word}`,
+									note: 'On its pages with the others',
+									icon: 'icon-[mdi--arrow-collapse]'
+								}
+							]
+						: []),
+					DELETE
 				]
-			: []),
-		{ id: 'delete', label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
-	]);
+	);
 
 	function pickMore(choice: string) {
 		if (choice === 'delete') askDelete();
@@ -707,7 +732,7 @@
 		class="fixed inset-0 flex flex-col bg-[#05070b] md:inset-auto md:top-1/2 md:left-1/2 md:h-[min(812px,calc(100dvh-48px))] md:w-[min(1040px,calc(100vw-48px))] md:-translate-x-1/2 md:-translate-y-1/2 md:overflow-hidden md:rounded-3xl md:shadow-[0_30px_80px_-20px_rgb(0_0_0/0.7)]"
 		role="dialog"
 		aria-modal="true"
-		aria-label="Edit {ATTACHMENT_NOUNS[photo?.kind ?? 'photo']}"
+		aria-label="Edit {noun ?? ATTACHMENT_NOUNS[photo?.kind ?? 'photo']}"
 		data-editor
 		transition:fade={{ duration: 180 }}
 	>
@@ -751,18 +776,20 @@
 					<p class="truncate text-[13px] font-medium text-slate-300 tabular-nums">{shownAt}</p>
 				{/if}
 			</div>
-			<Button
-				ghost
-				invert
-				md
-				icon="icon-[mdi--information-outline]"
-				iconToggle="icon-[mdi--information]"
-				toggled={isDetailsOpen}
-				aria-label="Details"
-				title="Details"
-				aria-pressed={isDetailsOpen}
-				onclick={() => (isDetailsOpen = !isDetailsOpen)}
-			/>
+			{#if !isPictureOnly}
+				<Button
+					ghost
+					invert
+					md
+					icon="icon-[mdi--information-outline]"
+					iconToggle="icon-[mdi--information]"
+					toggled={isDetailsOpen}
+					aria-label="Details"
+					title="Details"
+					aria-pressed={isDetailsOpen}
+					onclick={() => (isDetailsOpen = !isDetailsOpen)}
+				/>
+			{/if}
 			<div bind:this={moreBox}>
 				<Menu
 					label="More"
@@ -864,6 +891,11 @@
 								crop.height}px"
 							data-handle="move"
 						>
+							{#if isRound}
+								<span
+									class="pointer-events-none absolute inset-0 rounded-full border-2 border-white/85"
+								></span>
+							{/if}
 							{#each [1, 2] as at (at)}
 								<span
 									class="pointer-events-none absolute inset-y-0 w-px bg-white/45"
@@ -1350,14 +1382,17 @@
 				onclick={() => (tool = 'crop')}
 				><span class="icon-[mdi--crop] size-6 md:size-5"></span><span>Crop</span></button
 			>
-			<button
-				type="button"
-				class="{toolClass} {tool === 'text' ? 'bg-white/14 text-white' : ''}"
-				aria-pressed={tool === 'text'}
-				data-tool="text"
-				onclick={() => (tool = 'text')}
-				><span class="icon-[mdi--pencil-outline] size-6 md:size-5"></span><span>Text</span></button
-			>
+			{#if !isPictureOnly}
+				<button
+					type="button"
+					class="{toolClass} {tool === 'text' ? 'bg-white/14 text-white' : ''}"
+					aria-pressed={tool === 'text'}
+					data-tool="text"
+					onclick={() => (tool = 'text')}
+					><span class="icon-[mdi--pencil-outline] size-6 md:size-5"></span><span>Text</span
+					></button
+				>
+			{/if}
 			{#if hasEdit(current)}
 				<button
 					type="button"

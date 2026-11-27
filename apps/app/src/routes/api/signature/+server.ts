@@ -1,19 +1,23 @@
 // Email signatures for the screen (#354). GET: one signature, the signed-in User's own, or for an Admin anyone's on
-// the Team page or a shared mailbox's (`?person=<id>`, `?mailbox=<slug>`), with a person's photos and banners to pick
-// from. POST with JSON: keeps a photo or banner picked (`{ person?, photo?, banner? }`). POST with a picture
-// (`?kind=photo|banner&person=<id>`): keeps an uploaded photo or banner. Each answers the signature as it is now. The
-// work, who may ask and how its pictures are made are in #lib/server/signature.ts. The sign-in guard refuses a
-// signed-out visitor or a Guest before this runs; this checks again itself, as a remote function would.
+// the Team page or a shared mailbox's (`?person=<id>`, `?mailbox=<slug>`), with a person's photo and banners to edit;
+// or a picture uploaded for one, as it came, for the editor (`?upload=<file>`). POST with JSON: keeps the photo and
+// banners as edited (`{ person?, photo?, banners? }`, each whole, with its edit and link). POST with a picture
+// (`?kind=photo|banner&person=<id>`): keeps an uploaded photo, or a banner under the others. Each answers the
+// signature as it is now. The work, who may ask and how its pictures are made are in #lib/server/signature.ts. The
+// sign-in guard refuses a signed-out visitor or a Guest before this runs; this checks again itself, as a remote
+// function would.
 import { json } from '@sveltejs/kit';
 import * as v from 'valibot';
 import { getServer } from '#lib/server/server.js';
+import { CROP_RATIOS } from '#lib/report/report.constants.js';
 import {
-	pickSignature,
 	readSignature,
+	readUpload,
+	saveSignature,
 	uploadSignature,
 	UPLOAD_TYPES
 } from '#lib/server/signature.js';
-import { MAX_UPLOAD_BYTES } from '#lib/signature/signature.constants.js';
+import { MAX_BANNERS, MAX_LINK, MAX_UPLOAD_BYTES } from '#lib/signature/signature.constants.js';
 import type { RequestHandler } from './$types';
 
 // Its own Vercel function: sharp loads only here, with time for a cold start and a few pictures made at once.
@@ -28,10 +32,49 @@ const ASK = v.object({
 	mailbox: v.optional(v.pipe(v.string(), v.regex(/^[\w-]{1,80}$/)))
 });
 
-const PICK = v.object({
+// A part of a picture, in parts of it.
+const PART = v.pipe(v.number(), v.minValue(0), v.maxValue(1));
+
+// How the editor left a picture (edit.ts).
+const EDIT = v.optional(
+	v.object({
+		turns: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0), v.maxValue(3))),
+		isFlipped: v.optional(v.boolean()),
+		tilt: v.optional(v.pipe(v.number(), v.minValue(-45), v.maxValue(45))),
+		ratio: v.optional(v.picklist(CROP_RATIOS)),
+		frame: v.optional(
+			v.object({
+				x: PART,
+				y: PART,
+				w: v.pipe(PART, v.minValue(0.01)),
+				h: v.pipe(PART, v.minValue(0.01))
+			})
+		)
+	})
+);
+
+const LINK = v.pipe(v.string(), v.maxLength(MAX_LINK));
+
+const SAVE = v.object({
 	person: PERSON,
-	photo: v.optional(v.nullable(v.pipe(SOURCE, v.minLength(1)))),
-	banner: v.optional(v.nullable(SOURCE))
+	photo: v.optional(
+		v.nullable(v.object({ source: v.pipe(SOURCE, v.minLength(1)), edit: EDIT, link: LINK }))
+	),
+	banners: v.optional(
+		v.nullable(
+			v.pipe(
+				v.array(
+					v.object({
+						id: v.pipe(v.string(), v.regex(/^[\w-]{1,64}$/)),
+						source: v.pipe(SOURCE, v.minLength(1)),
+						edit: EDIT,
+						link: LINK
+					})
+				),
+				v.maxLength(MAX_BANNERS)
+			)
+		)
+	)
 });
 
 const UPLOAD = v.object({ person: PERSON, kind: v.picklist(['photo', 'banner']) });
@@ -55,6 +98,18 @@ async function readParts(locals: App.Locals) {
 export const GET: RequestHandler = async ({ url, locals }) => {
 	const parts = await readParts(locals);
 	if (parts instanceof Response) return parts;
+	const file = url.searchParams.get('upload');
+	if (file) {
+		const upload = await readUpload(parts.server.store, file);
+		if (!upload) return refuse('That picture is not there.', 404);
+		// Named by its bytes, so it never changes; kept by the browser alone.
+		return new Response(upload.bytes, {
+			headers: {
+				'content-type': upload.type,
+				'cache-control': 'private, max-age=31536000, immutable'
+			}
+		});
+	}
 	const asked = v.safeParse(ASK, {
 		person: url.searchParams.get('person') ?? undefined,
 		mailbox: url.searchParams.get('mailbox') ?? undefined
@@ -74,9 +129,9 @@ export const POST: RequestHandler = async ({ url, request, locals }) => {
 	const type = request.headers.get('content-type')?.split(';')[0].trim() ?? '';
 
 	if (type === 'application/json') {
-		const picked = v.safeParse(PICK, await request.json().catch(() => undefined));
-		if (!picked.success) return refuse('Say which photo or banner.', 400);
-		const answer = await pickSignature(parts.server, parts.actor, picked.output, asking);
+		const saved = v.safeParse(SAVE, await request.json().catch(() => undefined));
+		if (!saved.success) return refuse('Say which photo or banners.', 400);
+		const answer = await saveSignature(parts.server, parts.actor, saved.output, asking);
 		return json(answer, { headers: NO_STORE });
 	}
 

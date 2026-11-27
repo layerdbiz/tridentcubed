@@ -25,7 +25,7 @@ export const SIGNATURE_API = '/api/signature';
  */
 export const PICTURE_SIZES = {
 	photo: { width: 224, height: 264 },
-	banner: { width: 1200, height: 600 },
+	banner: { width: 1200, height: 1200 },
 	icon: { width: 480, height: 192 }
 } as const;
 
@@ -34,9 +34,19 @@ export const CIRCLE_SIZE = PICTURE_SIZES.photo.width;
 
 /**
  * Raised when the way a picture is made changes, so every picture is made again under a new name and emails already
- * sent keep the one they were sent with. 2: photos are circles, and every picture, icons too, is copied (#354).
+ * sent keep the one they were sent with. 2: photos are circles, and every picture, icons too, is copied (#354). 3: a
+ * photo not edited is cut square from its middle, as its tile on the screen shows it.
  */
-export const PICTURE_VERSION = 2;
+export const PICTURE_VERSION = 3;
+
+/** How wide a banner shows in a signature at most: the signature's own width, as mail apps draw it. */
+export const BANNER_WIDTH = 600;
+
+/** How many banners a signature takes. */
+export const MAX_BANNERS = 10;
+
+/** The longest link a photo or banner takes. */
+export const MAX_LINK = 2048;
 
 /** The picture a signature shows when no photo can be made, as the website's signatures do. */
 export const COMPANY_LOGO = 'https://tridentcubed.com/branding/logo.png';
@@ -87,7 +97,7 @@ export const DEFAULT_BANNER = {
 	href: 'https://tridentcubed.com'
 };
 
-/** Where a banner someone uploads takes a reader. */
+/** Where a banner someone uploads takes a reader, until they give it a link of its own. */
 export const UPLOAD_BANNER_LINK = 'https://tridentcubed.com';
 
 /**

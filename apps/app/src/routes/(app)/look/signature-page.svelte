@@ -4,26 +4,21 @@
 	// an Admin picks anyone on the Team page or a shared mailbox. It is the website's signature (`/company/emails`,
 	// #62) moved into the app: the library's Email writes it, and the server copies every picture to the app's public
 	// signature address (#lib/server/signature.ts), since a pasted signature's pictures are loaded by every reader's
-	// mail app, signed out. The person picks or uploads their signature's photo, always a circle and never their
-	// profile picture, and the banner at the bottom (Justin, 2026-11-27).
-	// Round 3 (Justin, 2026-11-27: "we should be using the way that we've already built the app with the ... edit
-	// panels and the preview"): built like the Organization and a project, with Page, Edit and Preview on the bottom
-	// bar. Page says what it is and how to add it to Outlook. Edit is the Project panel's sections (group.svelte):
-	// Details, the Team record's own fields, which the signature shows as they are typed, then Photo and Banner. On
-	// a desktop Edit keeps its floating column with the signature beside it. Preview is the signature alone on the
-	// report's canvas (signature-canvas.svelte), with Copy in the zoom bar where Download is.
-	import {
-		Avatar,
-		Button,
-		Email,
-		Image,
-		Input,
-		ListRow,
-		Menu,
-		type MenuOptionType
-	} from '@layerd/ui';
+	// mail app, signed out. Round 3 (Justin, 2026-11-27): built like the Organization and a project, with Page, Edit
+	// and Preview on the bottom bar; Preview is the signature alone on the report's canvas (signature-canvas.svelte),
+	// with Copy in the zoom bar where Download is.
+	// Round 4 (Justin, 2026-11-27: "So really all we need here is a drop down for it to select the person ... this
+	// photo panel here, it should be the same thing that we have in the project edit panels"): Edit is the Team
+	// member picker, as a project's Team Lead is picked, the details coming from the Team page; then Photo and
+	// Banners, each the Project panel's photo tiles (photo-tile.svelte, photo-add.svelte) opening the same photo
+	// editor (photo-popup.svelte). The photo is the signature's own, never the profile picture, always a circle, and a
+	// tap on it in an email goes to its link. Banners show at their own shape, as the email draws them, are dragged to
+	// reorder, edited and deleted, and each opens its own link in a new window.
+	import { flip } from 'svelte/animate';
+	import { Avatar, Button, Email, Input, Menu, Select, type SelectOptionType } from '@layerd/ui';
 	import { toFittedSize } from '#lib/files/files.utils.js';
 	import {
+		MAX_BANNERS,
 		SHEET_EDIT_URL,
 		SIGNATURE_API,
 		UPLOAD_SIDE
@@ -31,14 +26,22 @@
 	import type {
 		SignatureAnswerType,
 		SignatureAskType,
-		SignaturePickType
+		SignaturePartsType,
+		SignatureSaveType
 	} from '#lib/signature/signature.types.js';
-	import { toLiveSignature } from '#lib/signature/signature.utils.js';
+	import { toLink } from '#lib/signature/signature.utils.js';
+	import { croppedAspect, keptAspectOf, type EditType } from './attachments';
 	import Group from './group.svelte';
+	import type { GroupType, PhotoType } from './look.data';
 	import { PROJECT_TABS, type LookState } from './look.state.svelte';
 	import { faceOf } from './marks';
 	import PageHeader from './page-header.svelte';
+	import PhotoAdd, { ADD_TILE } from './photo-add.svelte';
+	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
+	import PhotoTile from './photo-tile.svelte';
+	import { pictureAspectOf } from './shapes';
 	import SignatureCanvas from './signature-canvas.svelte';
+	import { sortable } from './sortable';
 
 	let { look, isWide }: { look: LookState; isWide: boolean } = $props();
 
@@ -46,8 +49,7 @@
 		'rounded-[28px] bg-white/85 shadow-[0_2px_6px_rgb(15_23_42/0.05),0_24px_60px_-24px_rgb(15_23_42/0.35)] ring-1 ring-white/70 backdrop-blur-xl';
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 	const MAILBOX = 'mailbox:';
-	// Words people type in sentences keep the phone's own help, as in the panels.
-	const TYPING = { autocapitalize: 'sentences', autocorrect: 'on', spellcheck: true } as const;
+	const BANNERS = 'signature-banners';
 
 	// Whose signature: the User's own first, then whoever an Admin picks.
 	let picked = $state('');
@@ -83,12 +85,10 @@
 	});
 	const isLoading = $derived(loaded?.key !== askKey);
 
-	// The answer after a pick or an upload, for the signature it was made for; a pick that was refused says why.
+	// The answer after a save or an upload, for the signature it was made for; a save that was refused says why.
 	let changed = $state<{ key: string; answer: SignatureAnswerType }>();
 	let busy = $state('');
 	let problem = $state('');
-	// Drawn again after a refused pick, so the picked circle goes back to the one the signature shows.
-	let round = $state(0);
 
 	const found = $derived(
 		isLoading || !loaded?.answer
@@ -98,56 +98,141 @@
 				: loaded.answer
 	);
 	const allowed = $derived(found?.isAllowed ? found : undefined);
+	const signature = $derived(allowed?.signature);
 
-	// A person's Team record, which Details changes; the signature shows it as it is typed, the Sheet still filling in
-	// what it leaves empty, as the server does.
-	const member = $derived(
-		allowed?.signature.type === 'person'
-			? look.members.find((each) => each.id === allowed.signature.id)
-			: undefined
-	);
-	// The Name is kept when it is left, as on the Team page; until then the signature shows it as typed.
-	let typedName = $state<string>();
-	const signature = $derived(
-		allowed && member && allowed.sheet
-			? toLiveSignature(
-					allowed.signature,
-					{ ...member, name: typedName ?? member.name },
-					allowed.sheet
-				)
-			: allowed?.signature
-	);
+	// The photo and banners as they are being edited: the last answer's, changed here at once while the server makes
+	// their pictures again.
+	type PartsType = Pick<SignaturePartsType, 'photo' | 'banners'>;
+	let draft = $state<PartsType>();
+	$effect(() => {
+		const parts = allowed?.parts;
+		draft = parts
+			? { photo: { ...parts.photo }, banners: parts.banners.map((banner) => ({ ...banner })) }
+			: undefined;
+	});
 
 	// The library Email writes the signature's HTML once drawn; the canvas shows and copies it.
 	let email = $state<{ getHTML: () => string }>();
 	const html = $derived(signature && email ? email.getHTML() : '');
 
+	// Only the last thing sent is shown when it answers, so a change made while another was on its way is never lost.
+	let sent = 0;
+
 	async function send(body: BodyInit, query: string, type: string) {
 		const key = askKey;
+		const at = ++sent;
 		problem = '';
+		let reason = '';
+		let answer: SignatureAnswerType | undefined;
 		try {
 			const response = await fetch(`${SIGNATURE_API}${query}`, {
 				method: 'POST',
 				body,
 				headers: { 'content-type': type }
 			});
-			const answer = (await response.json().catch(() => undefined)) as
-				| SignatureAnswerType
-				| undefined;
-			if (!answer) throw new Error(`The signature answered ${response.status}.`);
-			if (answer.isAllowed) changed = { key, answer };
-			else problem = answer.reason;
+			answer = (await response.json().catch(() => undefined)) as SignatureAnswerType | undefined;
+			if (!answer) reason = `The signature answered ${response.status}.`;
+			else if (!answer.isAllowed) reason = answer.reason;
 		} catch {
-			problem = 'That did not save. Check the connection and try again.';
+			reason = 'That did not save. Check the connection and try again.';
 		}
-		if (problem) round += 1;
+		if (at !== sent) return;
 		busy = '';
+		if (answer?.isAllowed) changed = { key, answer };
+		else {
+			problem = reason || 'That did not save. Try again.';
+			// What the server keeps comes back, the change undone.
+			const parts = allowed?.parts;
+			if (parts)
+				draft = { photo: { ...parts.photo }, banners: parts.banners.map((each) => ({ ...each })) };
+		}
 	}
 
-	function pick(person: string, kind: 'photo' | 'banner', source: string) {
-		busy = `${kind}:${source}`;
-		const body: SignaturePickType = { person, [kind]: source };
+	// Saves the photo and banners as they are now (only what changed), for the signature shown.
+	function save(what: 'photo' | 'banners') {
+		if (!draft || !signature) return;
+		busy = what;
+		const body: SignatureSaveType = { person: signature.id };
+		if (what === 'photo') {
+			const { source, edit, link } = draft.photo;
+			body.photo = { source, ...(edit ? { edit } : {}), link };
+		} else {
+			body.banners = draft.banners.map(({ id, source, edit, link }) => ({
+				id,
+				source,
+				...(edit ? { edit } : {}),
+				link
+			}));
+		}
 		void send(JSON.stringify(body), '', 'application/json');
+	}
+
+	// Back to the photo the Sheet and the defaults give.
+	function resetPhoto() {
+		if (!signature) return;
+		busy = 'photo';
+		void send(JSON.stringify({ person: signature.id, photo: null }), '', 'application/json');
+	}
+
+	function pickPhoto(source: string) {
+		if (!draft || source === draft.photo.source) return;
+		const choice = allowed?.parts?.photos.find((each) => each.source === source);
+		draft.photo = {
+			...draft.photo,
+			source,
+			edit: undefined,
+			label: choice?.label ?? draft.photo.label,
+			preview: choice?.preview || draft.photo.preview,
+			original: choice?.preview || draft.photo.original
+		};
+		save('photo');
+	}
+
+	function addBanner(source: string) {
+		const choice = allowed?.parts?.companyBanners.find((each) => each.source === source);
+		if (!draft || !choice) return;
+		draft.banners.push({
+			id: crypto.randomUUID(),
+			source,
+			link: choice.link ?? '',
+			label: choice.label,
+			preview: choice.preview,
+			original: choice.preview
+		});
+		save('banners');
+	}
+
+	// A banner dragged gives way as it goes; the order is saved once it has been let go a moment.
+	let moved: ReturnType<typeof setTimeout> | undefined;
+	function moveBanner(from: number, to: number) {
+		if (!draft) return false;
+		const [banner] = draft.banners.splice(from, 1);
+		draft.banners.splice(to, 0, banner);
+		clearTimeout(moved);
+		moved = setTimeout(() => save('banners'), 700);
+	}
+
+	function deleteBanner(id: string) {
+		look.confirm({
+			title: 'Delete banner?',
+			note: 'It leaves the signature.',
+			onyes: () => {
+				if (!draft) return;
+				draft.banners = draft.banners.filter((each) => each.id !== id);
+				save('banners');
+			}
+		});
+	}
+
+	// A link is kept as it is left: an address as typed, an email as a mail link, anything else on the web.
+	function setLink(what: 'photo' | 'banners', typed: string, apply: (link: string) => void) {
+		const link = toLink(typed);
+		if (link === undefined) {
+			problem = 'That link is not an address. Check it and try again.';
+			return;
+		}
+		apply(link);
+		save(what);
 	}
 
 	// A picture shrunk on the device before it goes, its long side at most `UPLOAD_SIDE`: a JPEG, or a PNG for a
@@ -170,18 +255,121 @@
 		return file;
 	}
 
-	async function upload(person: string, kind: 'photo' | 'banner', input: HTMLInputElement) {
-		const file = input.files?.[0];
-		input.value = '';
-		if (!file) return;
-		busy = `${kind}:upload`;
-		const blob = await shrink(file, kind);
-		const query = `?${new URLSearchParams({ kind, person })}`;
-		await send(blob, query, blob.type || file.type);
+	// Photos and banners from the device or dropped on their section, one after the other: a photo takes the photo's
+	// place, a banner goes under the others.
+	async function upload(kind: 'photo' | 'banner', files: File[]) {
+		const person = signature?.id;
+		const pictures = files.filter((file) => file.type.startsWith('image/'));
+		if (!person || !pictures.length) return;
+		for (const file of kind === 'photo' ? pictures.slice(0, 1) : pictures) {
+			busy = kind === 'photo' ? 'photo' : 'banners';
+			const blob = await shrink(file, kind);
+			const query = `?${new URLSearchParams({ kind, person })}`;
+			await send(blob, query, blob.type || file.type);
+			if (problem) break;
+		}
 	}
 
-	let photoInput = $state<HTMLInputElement>();
-	let bannerInput = $state<HTMLInputElement>();
+	function pickFiles(kind: 'photo' | 'banner', event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const files = [...(input.files ?? [])];
+		input.value = '';
+		void upload(kind, files);
+	}
+
+	// Files dragged in from the desktop land in the section they are dropped on, as in a project's photo groups.
+	let dropping = $state('');
+	function overFiles(event: DragEvent, kind: string) {
+		if (!event.dataTransfer?.types.includes('Files')) return;
+		event.preventDefault();
+		dropping = kind;
+	}
+
+	function dropFiles(event: DragEvent, kind: 'photo' | 'banner') {
+		if (!event.dataTransfer?.files.length) return;
+		event.preventDefault();
+		dropping = '';
+		void upload(kind, [...event.dataTransfer.files]);
+	}
+
+	// The photo editor, open on the photo or on a banner with the others beside it, as on a project's photos. A photo
+	// is kept square, its circle drawn over it; a banner starts whole, in its own shape.
+	let editing = $state<{
+		what: 'photo' | 'banners';
+		group: GroupType;
+		id: string;
+		mode: PopupModeType;
+	}>();
+
+	function toGroup(id: string, photos: PhotoType[], ratio: GroupType['ratio']): GroupType {
+		return {
+			id,
+			title: '',
+			description: '',
+			layout: 1,
+			isEnabled: true,
+			photos,
+			fit: 'fit',
+			ratio
+		};
+	}
+
+	function openPhoto(mode: PopupModeType = 'crop') {
+		if (!draft) return;
+		const { original, edit } = draft.photo;
+		editing = {
+			what: 'photo',
+			id: 'photo',
+			mode,
+			group: toGroup(
+				'signature-photo',
+				[{ id: 'photo', src: original, description: '', edit }],
+				'1:1'
+			)
+		};
+	}
+
+	function openBanner(id: string, mode: PopupModeType = 'crop') {
+		if (!draft) return;
+		const photos = draft.banners.map((banner) => ({
+			id: banner.id,
+			src: banner.original,
+			description: '',
+			edit: banner.edit
+		}));
+		editing = { what: 'banners', id, mode, group: toGroup(BANNERS, photos, 'free') };
+	}
+
+	// The editor's ✓, or a delete in it: the edits go to the photo or the banners and are saved.
+	function saveEditing() {
+		if (!editing || !draft) return;
+		const kept = editing.group.photos;
+		if (editing.what === 'photo') {
+			if (!kept.length) resetPhoto();
+			else {
+				draft.photo.edit = kept[0].edit;
+				save('photo');
+			}
+			return;
+		}
+		draft.banners = kept.flatMap((photo) => {
+			const banner = draft?.banners.find((each) => each.id === photo.id);
+			return banner ? [{ ...banner, edit: photo.edit }] : [];
+		});
+		save('banners');
+	}
+
+	// A tile's picture: the small one, with its edit drawn over it.
+	function tileOf(id: string, part: { preview: string; edit?: EditType }): PhotoType {
+		return { id, src: part.preview, description: '', edit: part.edit };
+	}
+
+	// A banner's tile has the banner's shape once edited, as the email shows it.
+	function shapeOf(part: { preview: string; edit?: EditType }) {
+		const edit = part.edit ?? {};
+		const aspect = pictureAspectOf(tileOf('', part));
+		return croppedAspect(edit, aspect, keptAspectOf(edit, aspect));
+	}
 
 	// The shared mailboxes the last answer named, for an Admin's picker.
 	let mailboxes = $state<{ slug: string; name: string }[]>([]);
@@ -189,59 +377,39 @@
 		if (allowed?.mailboxes.length) mailboxes = allowed.mailboxes;
 	});
 
-	// An Admin's picker: everyone on the Team page in its order, then the shared mailboxes.
+	// The Team member picker, as a project's Team Lead: everyone on the Team page in its order for an Admin, then the
+	// shared mailboxes; anyone else has only their own.
 	const people = $derived(
 		look.members
-			.filter((each) => each.id)
+			.filter((each) => each.id && (look.isAdmin || each.id === look.me?.id))
 			.toSorted((left, right) => left.rank - right.rank || left.name.localeCompare(right.name))
 	);
-	const options = $derived<MenuOptionType[]>([
-		...people.map((each) => {
-			const image = faceOf(each.name, { hasPresence: false }).src || undefined;
-			return {
-				id: each.id ?? '',
-				label: each.name,
-				note: each.title || undefined,
-				image,
-				icon: image ? undefined : 'icon-[mdi--account-circle-outline]'
-			};
-		}),
-		...mailboxes.map((mailbox) => ({
-			id: `${MAILBOX}${mailbox.slug}`,
-			label: mailbox.name,
-			note: 'Shared mailbox',
-			icon: 'icon-[mdi--email-multiple-outline]'
-		}))
+	const options = $derived<SelectOptionType[]>([
+		...people.map((each) => ({
+			value: each.id ?? '',
+			label: each.name,
+			note: each.title || undefined
+		})),
+		...(look.isAdmin
+			? mailboxes.map((mailbox) => ({
+					value: `${MAILBOX}${mailbox.slug}`,
+					label: mailbox.name,
+					note: 'Shared mailbox'
+				}))
+			: [])
 	]);
-	const shownId = $derived(picked || look.me?.id || '');
+	const shownId = $derived(picked || signature?.id || look.me?.id || '');
+	const member = $derived(
+		signature?.type === 'person' ? look.members.find((each) => each.id === signature.id) : undefined
+	);
 	const whose = $derived(
-		signature?.name || options.find((option) => option.id === shownId)?.label || ''
+		signature?.name || options.find((option) => option.value === shownId)?.label || ''
 	);
 
-	// Edit's sections, as a Project panel's open and close; all three start open, there being only these.
-	let open = $state<string[]>(['details', 'photo', 'banner']);
+	// Edit's sections, as a Project panel's open and close; both start open, there being only these.
+	let open = $state<string[]>(['photo', 'banners']);
 	function toggle(id: string) {
 		open = open.includes(id) ? open.filter((item) => item !== id) : [...open, id];
-	}
-
-	// What an input holds, as text: the library's Input may hand back no value at all.
-	function toText(value: unknown) {
-		return String(value ?? '');
-	}
-
-	// The Name is left: the Team record takes the name typed; turned down, it shows its own name again.
-	function rename() {
-		const name = typedName;
-		typedName = undefined;
-		if (name !== undefined && member) look.rename('team', member.name, name);
-	}
-
-	function leaveOnEnter(event: KeyboardEvent) {
-		if (event.key === 'Enter') (event.target as HTMLElement).blur();
-	}
-
-	function setDetail(change: Record<string, string>) {
-		if (member) look.patch('team', member.name, change);
 	}
 
 	const STEPS = [
@@ -338,296 +506,286 @@
 	{/if}
 {/snippet}
 
-<!-- An Admin's picker of whose signature it is. -->
-{#snippet whoseMenu()}
-	<Menu
-		class="block"
-		label="Whose signature"
-		value={shownId}
-		{options}
-		isWide
-		isSearchable
-		align="left"
-		onpick={(id) => {
-			typedName = undefined;
-			picked = id;
-		}}
-	>
-		{#snippet trigger(current, isOpen)}
-			<ListRow
-				class="w-full gap-3 px-4 py-2.5 text-left transition hover:bg-slate-900/[0.03] {CARD}"
-				label={current?.label ?? 'Pick someone'}
-				labelClass="text-sm font-medium text-slate-900"
-				note={current?.note ?? 'Whose signature'}
-				noteClass="text-xs text-slate-500"
-			>
-				{#snippet start()}
-					{#if current?.image}
-						<Avatar
-							src={current.image}
-							alt={current.label}
-							size={36}
-							ring="ring-2 ring-slate-200"
-						/>
-					{:else}
-						<span
-							class="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.06] text-slate-500"
-							><span class="{current?.icon ?? 'icon-[mdi--account-circle-outline]'} size-5"
-							></span></span
-						>
-					{/if}
-				{/snippet}
-				{#snippet end()}
-					<span
-						class="icon-[mdi--chevron-down] size-5 text-slate-400 transition {isOpen
-							? 'rotate-180'
-							: ''}"
-					></span>
-				{/snippet}
-			</ListRow>
-		{/snippet}
-	</Menu>
+<!-- A Team member's face, or a shared mailbox's icon, for the picker. -->
+{#snippet whoMark(value: string, size: number)}
+	{@const person = look.members.find((each) => each.id === value)}
+	{#if person}
+		<Avatar
+			{...faceOf(person.name, { hasPresence: false })}
+			{size}
+			ring="ring-2 ring-white"
+		/>
+	{:else}
+		<Avatar
+			alt="Shared mailbox"
+			fallback="icon-[mdi--email-multiple-outline]"
+			{size}
+		/>
+	{/if}
 {/snippet}
 
-<!-- Edit: the same sections a Project panel has, each opening and closing. -->
+<!-- Edit: whose signature, then its Photo and Banners as a Project panel's photo groups. -->
 {#snippet form()}
 	<div class="space-y-3">
-		{#if look.isAdmin && options.length}{@render whoseMenu()}{/if}
-		{#if !allowed || !signature}
-			{@render status()}
-		{:else}
-			<Group
-				title="Details"
-				values={member
-					? [member.name, member.title, member.phone, member.email]
-					: [signature.name, signature.title, signature.phone, signature.email]}
-				icon="icon-[mdi--card-account-details-outline]"
-				isOpen={open.includes('details')}
-				ontoggle={() => toggle('details')}
-			>
-				{#if member}
-					<!-- The Team record itself: a change here is a change there, and saves as it is typed. -->
-					<div class="min-w-0 space-y-3">
-						<Input
-							label="Name"
-							{...TYPING}
-							bind:value={() => typedName ?? member.name, (name) => (typedName = toText(name))}
-							onchange={rename}
-							onfocusout={() => (typedName = undefined)}
-							onkeydown={leaveOnEnter}
-							help={look.helpOf('team.name')}
+		<div class="space-y-2">
+			<Select
+				label="Team member"
+				mark={whoMark}
+				icon="icon-[mdi--account-outline]"
+				{options}
+				value={shownId}
+				required
+				onpick={(id) => (picked = id)}
+			/>
+			{#if signature}
+				<div class="flex items-center justify-between gap-3 px-1">
+					<p class="text-xs text-slate-500">
+						{member
+							? 'The name, title, phone and email are the Team page’s.'
+							: 'A shared mailbox’s details, photo and banner are the website’s signature Sheet’s.'}
+					</p>
+					{#if member}
+						<Button
+							primary
+							lite
+							xs
+							icon="icon-[mdi--account-edit-outline]"
+							label="Team page"
+							onclick={() => look.openRecord('team', member.name, 'edit')}
 						/>
-						<Input
-							label="Title"
-							{...TYPING}
-							bind:value={() => member.title, (title) => setDetail({ title: toText(title) })}
-							help={look.helpOf('team.title')}
-						/>
-						<Input
-							label="Phone"
-							type="tel"
-							inputmode="tel"
-							autocomplete="off"
-							bind:value={() => member.phone, (phone) => setDetail({ phone: toText(phone) })}
-							help={look.helpOf('team.phone')}
-						/>
-						<Input
-							label="Email"
-							type="email"
-							inputmode="email"
-							autocomplete="off"
-							bind:value={() => member.email, (value) => setDetail({ email: toText(value) })}
-							help={look.helpOf('team.email')}
-						/>
-						<p class="px-1 text-xs text-slate-500">
-							These are the Team record’s. A field left empty shows the website’s signature Sheet.
-						</p>
-					</div>
-				{:else}
-					<!-- A shared mailbox lives in the website's signature Sheet. -->
-					<dl class="divide-y divide-slate-900/[0.05] {CARD}">
-						{#each [['Name', signature.name], ['Title', signature.title], ['Phone', signature.phone], ['Email', signature.email]] as [label, value] (label)}
-							<div class="flex justify-between gap-3 px-4 py-2.5 text-sm">
-								<dt class="shrink-0 text-slate-500">{label}</dt>
-								<dd class="min-w-0 text-right font-medium break-words text-slate-900">
-									{value || '—'}
-								</dd>
-							</div>
-						{/each}
-					</dl>
-				{/if}
-				{#snippet actions()}
-					{#if !member}
+					{:else}
 						<Button
 							primary
 							lite
 							xs
 							icon="icon-[mdi--open-in-new]"
-							label="Change in the Sheet"
+							label="Sheet"
 							href={SHEET_EDIT_URL}
 							target="_blank"
 							rel="noopener"
 						/>
 					{/if}
-				{/snippet}
-			</Group>
-			{#if allowed.choices}
-				{@const choices = allowed.choices}
-				{@const person = allowed.signature.id}
-				{@const photo = choices.photos.find((choice) => choice.source === choices.photo)}
-				{@const banner = choices.banners.find((choice) => choice.source === choices.banner)}
-				{#key round}
-					<Group
-						title="Photo"
-						meta={photo?.label ?? ''}
-						image={photo?.preview || undefined}
-						icon="icon-[mdi--account-circle-outline]"
-						isOpen={open.includes('photo')}
-						ontoggle={() => toggle('photo')}
-					>
-						<div aria-busy={busy.startsWith('photo')}>
-							<p class="mb-3 px-1 text-xs text-slate-500">
-								Always shown in a circle. It is the signature’s own, not the profile picture.
-							</p>
-							<div class="flex flex-wrap gap-3 px-1">
-								{#each choices.photos as choice (choice.source)}
-									{#if choice.preview}
-										<Button
-											type="radio"
-											name="signature-photo"
-											value={choice.source}
-											checked={choice.source === choices.photo}
-											padding="none"
-											unstyled
-											class="relative cursor-pointer rounded-full has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary"
-											title={choice.label}
-											onToggle={(isOn) => isOn && pick(person, 'photo', choice.source)}
-										>
-											<Avatar
-												src={choice.preview}
-												alt={choice.label}
-												size={56}
-												ring={choice.source === choices.photo
-													? 'ring-3 ring-primary ring-offset-2'
-													: 'ring-1 ring-slate-900/10'}
-											/>
-											{#if busy === `photo:${choice.source}`}
-												<span
-													class="absolute inset-0 flex items-center justify-center rounded-full bg-white/70"
-													><span class="icon-[svg-spinners--ring-resize] size-6 text-slate-500"
-													></span></span
-												>
-											{/if}
-										</Button>
-									{/if}
-								{/each}
-								<Button
-									unstyled
-									class="flex size-14 shrink-0 cursor-pointer items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-600 ring-1 ring-slate-900/10 transition hover:bg-slate-900/[0.09]"
-									aria-label="Upload a photo"
-									title="Upload a photo"
-									onclick={() => photoInput?.click()}
-								>
-									<span
-										class="{busy === 'photo:upload'
-											? 'icon-[svg-spinners--ring-resize]'
-											: 'icon-[mdi--camera-plus-outline]'} size-6"
-									></span>
-								</Button>
-								<input
-									bind:this={photoInput}
-									type="file"
-									accept="image/*"
-									class="hidden"
-									onchange={(event) => upload(person, 'photo', event.currentTarget)}
-								/>
-							</div>
-						</div>
-					</Group>
-					<Group
-						title="Banner"
-						meta={choices.banner ? (banner?.label ?? '') : 'None'}
-						icon="icon-[mdi--image-outline]"
-						isOpen={open.includes('banner')}
-						ontoggle={() => toggle('banner')}
-					>
-						<div aria-busy={busy.startsWith('banner')}>
-							<p class="mb-3 px-1 text-xs text-slate-500">
-								The picture under the signature. The Email Banners folder in Google Drive holds the
-								company’s.
-							</p>
-							<div class="grid grid-cols-2 gap-3 px-1">
-								{#each [...choices.banners, { source: '', label: 'No banner', preview: '' }] as choice (choice.source)}
-									{@const isPicked = choice.source === choices.banner}
-									<Button
-										type="radio"
-										name="signature-banner"
-										value={choice.source}
-										checked={isPicked}
-										padding="none"
-										unstyled
-										class="relative flex cursor-pointer flex-col gap-1.5 rounded-2xl p-1 text-left transition has-focus-visible:outline-2 has-focus-visible:outline-primary {isPicked
-											? 'bg-primary/[0.06] ring-2 ring-primary'
-											: 'ring-1 ring-slate-900/[0.06] hover:bg-slate-900/[0.03]'}"
-										onToggle={(isOn) => isOn && pick(person, 'banner', choice.source)}
-									>
-										{#if choice.preview}
-											<Image
-												src={choice.preview}
-												alt={choice.label}
-												class="aspect-[24/7] w-full overflow-hidden rounded-xl bg-slate-900"
-											/>
-										{:else}
-											<span
-												class="flex aspect-[24/7] w-full items-center justify-center rounded-xl bg-slate-900/[0.04] text-slate-400"
-												><span class="icon-[mdi--image-off-outline] size-6"></span></span
-											>
-										{/if}
-										<span class="truncate px-1 pb-0.5 text-xs text-slate-600">{choice.label}</span>
-										{#if busy === `banner:${choice.source}`}
-											<span
-												class="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70"
-												><span class="icon-[svg-spinners--ring-resize] size-6 text-slate-500"
-												></span></span
-											>
-										{/if}
-									</Button>
-								{/each}
-								<Button
-									unstyled
-									class="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl bg-slate-900/[0.04] p-1 text-xs text-slate-600 ring-1 ring-slate-900/[0.06] transition hover:bg-slate-900/[0.08]"
-									onclick={() => bannerInput?.click()}
-								>
-									<span
-										class="{busy === 'banner:upload'
-											? 'icon-[svg-spinners--ring-resize]'
-											: 'icon-[mdi--image-plus-outline]'} size-6"
-									></span>
-									<span>Upload a banner</span>
-								</Button>
-								<input
-									bind:this={bannerInput}
-									type="file"
-									accept="image/*"
-									class="hidden"
-									onchange={(event) => upload(person, 'banner', event.currentTarget)}
-								/>
-							</div>
-							<p class="mt-2 px-1 text-xs text-slate-500">
-								Banners are made 1200 by 350 pixels; one of another size is shown whole.
-							</p>
-						</div>
-					</Group>
-				{/key}
+				</div>
 			{/if}
-			{#if problem}
-				<p
-					class="px-1 text-sm text-red-600"
-					role="alert"
+		</div>
+		{#if !allowed || !signature}
+			{@render status()}
+		{:else if draft && allowed.parts}
+			{@const parts = allowed.parts}
+			<div
+				class="rounded-2xl transition {dropping === 'photo' ? 'ring-2 ring-primary' : ''}"
+				role="group"
+				aria-label="Photo"
+				ondragover={(event) => overFiles(event, 'photo')}
+				ondragleave={() => (dropping = '')}
+				ondrop={(event) => dropFiles(event, 'photo')}
+			>
+				<Group
+					title="Photo"
+					meta={draft.photo.label}
+					image={draft.photo.preview || undefined}
+					icon="icon-[mdi--account-circle-outline]"
+					isOpen={open.includes('photo')}
+					ontoggle={() => toggle('photo')}
 				>
-					{problem}
-				</p>
-			{/if}
+					<p class="px-1 text-xs text-slate-500">
+						The signature’s own, not the profile picture, and always a circle.
+					</p>
+					<div class="grid grid-cols-3 gap-2">
+						<div class="relative aspect-square rounded-full">
+							<PhotoTile
+								photo={tileOf('photo', draft.photo)}
+								index={0}
+								sortKey="signature-photo"
+								isRound
+								hasBadge={false}
+								isBusy={busy === 'photo'}
+								align="left"
+								options={[
+									{ id: 'crop', label: 'Crop', icon: 'icon-[mdi--crop]' },
+									...(draft.photo.isPicked
+										? [
+												{
+													id: 'delete',
+													label: 'Delete',
+													note: 'Back to the starting photo',
+													icon: 'icon-[mdi--trash-can-outline]',
+													isDanger: true
+												}
+											]
+										: [])
+								]}
+								onopen={() => openPhoto()}
+								onpick={(id) => (id === 'delete' ? resetPhoto() : openPhoto())}
+							/>
+						</div>
+						<PhotoAdd
+							icon="icon-[mdi--image-plus-outline]"
+							label="Upload"
+							accept="image/*"
+							onchange={(event) => pickFiles('photo', event)}
+						/>
+						<Menu
+							class="block"
+							isWide
+							label="Pick a photo"
+							value={draft.photo.source}
+							options={parts.photos.map((choice) => ({
+								id: choice.source,
+								label: choice.label,
+								image: choice.preview || undefined,
+								icon: choice.preview ? undefined : 'icon-[mdi--image-outline]'
+							}))}
+							align="right"
+							onpick={pickPhoto}
+						>
+							{#snippet trigger()}
+								<span class="{ADD_TILE} aspect-square w-full">
+									<span class="icon-[mdi--image-multiple-outline] size-6"></span>
+									<span class="text-[11px] font-medium">Pick</span>
+								</span>
+							{/snippet}
+						</Menu>
+					</div>
+					<Input
+						label="Photo link"
+						type="url"
+						inputmode="url"
+						autocomplete="off"
+						autocapitalize="off"
+						spellcheck={false}
+						placeholder="Where a tap on the photo goes"
+						value={draft.photo.link}
+						onchange={(event: Event) =>
+							setLink('photo', (event.target as HTMLInputElement).value, (link) => {
+								if (draft) draft.photo.link = link;
+							})}
+					/>
+				</Group>
+			</div>
+			<div
+				class="rounded-2xl transition {dropping === 'banner' ? 'ring-2 ring-primary' : ''}"
+				role="group"
+				aria-label="Banners"
+				ondragover={(event) => overFiles(event, 'banner')}
+				ondragleave={() => (dropping = '')}
+				ondrop={(event) => dropFiles(event, 'banner')}
+			>
+				<Group
+					title="Banners"
+					meta={draft.banners.length
+						? `${draft.banners.length} ${draft.banners.length === 1 ? 'banner' : 'banners'}`
+						: 'None'}
+					image={draft.banners[0]?.preview || undefined}
+					icon="icon-[mdi--image-outline]"
+					isOpen={open.includes('banners')}
+					ontoggle={() => toggle('banners')}
+				>
+					<p class="px-1 text-xs text-slate-500">
+						Under the signature in this order, each its own shape, as wide as the email at most.
+						Drag one to move it.
+					</p>
+					<div
+						class="space-y-3"
+						{@attach sortable(BANNERS, moveBanner)}
+					>
+						{#each draft.banners as banner, index (banner.id)}
+							<div
+								class="space-y-2"
+								data-sort={BANNERS}
+								data-index={index}
+								animate:flip={{ duration: 200 }}
+							>
+								<div
+									class="relative w-full rounded-xl"
+									style="aspect-ratio: {shapeOf(banner)}"
+								>
+									<PhotoTile
+										photo={tileOf(banner.id, banner)}
+										{index}
+										sortKey={BANNERS}
+										hasBadge={false}
+										isBusy={busy === 'banners'}
+										options={[
+											{ id: 'crop', label: 'Crop', icon: 'icon-[mdi--crop]' },
+											{
+												id: 'delete',
+												label: 'Delete',
+												icon: 'icon-[mdi--trash-can-outline]',
+												isDanger: true
+											}
+										]}
+										onopen={() => openBanner(banner.id)}
+										onpick={(id) =>
+											id === 'delete' ? deleteBanner(banner.id) : openBanner(banner.id)}
+									/>
+								</div>
+								<Input
+									label="Link"
+									type="url"
+									inputmode="url"
+									autocomplete="off"
+									autocapitalize="off"
+									spellcheck={false}
+									placeholder="Opens in a new window"
+									value={banner.link}
+									onchange={(event: Event) =>
+										setLink('banners', (event.target as HTMLInputElement).value, (link) => {
+											banner.link = link;
+										})}
+								/>
+							</div>
+						{:else}
+							<div
+								class="flex flex-col items-center gap-1 rounded-2xl bg-slate-900/[0.03] py-6 text-slate-400"
+							>
+								<span class="icon-[mdi--image-filter-hdr] size-8"></span>
+								<p class="text-sm">No banners.</p>
+							</div>
+						{/each}
+					</div>
+					{#if draft.banners.length < MAX_BANNERS}
+						<div class="grid grid-cols-2 gap-2">
+							<PhotoAdd
+								icon="icon-[mdi--image-plus-outline]"
+								label="Upload"
+								accept="image/*"
+								multiple
+								class="h-20"
+								onchange={(event) => pickFiles('banner', event)}
+							/>
+							<Menu
+								class="block"
+								isWide
+								label="Add a company banner"
+								value=""
+								options={parts.companyBanners.map((choice) => ({
+									id: choice.source,
+									label: choice.label,
+									image: choice.preview || undefined
+								}))}
+								align="right"
+								onpick={addBanner}
+							>
+								{#snippet trigger()}
+									<span class="{ADD_TILE} h-20 w-full">
+										<span class="icon-[mdi--image-multiple-outline] size-6"></span>
+										<span class="text-[11px] font-medium">Company banners</span>
+									</span>
+								{/snippet}
+							</Menu>
+						</div>
+					{/if}
+				</Group>
+			</div>
+		{/if}
+		{#if problem}
+			<p
+				class="px-1 text-sm text-red-600"
+				role="alert"
+			>
+				{problem}
+			</p>
 		{/if}
 	</div>
 {/snippet}
@@ -653,8 +811,8 @@
 			<h1 class="mt-4 text-2xl leading-tight font-semibold">Email Signature</h1>
 			{#if whose}<p class="mt-1 text-sm font-medium text-white/85">{whose}</p>{/if}
 			<p class="mt-2 max-w-md text-sm text-white/70">
-				Edit changes its details, photo and banner. Preview shows it: press Copy there, then paste
-				it into Outlook’s signature settings on a computer.
+				Edit picks whose it is and changes its photo and banners. Preview shows it: press Copy
+				there, then paste it into Outlook’s signature settings on a computer.
 			</p>
 		</div>
 		<div
@@ -771,4 +929,22 @@
 			</div>
 		</div>
 	</div>
+{/if}
+
+{#if editing}
+	<PhotoPopup
+		{look}
+		group={editing.group}
+		id={editing.id}
+		mode={editing.mode}
+		word={editing.what === 'photo' ? 'photo' : 'banner'}
+		noun={editing.what === 'photo' ? 'photo' : 'banner'}
+		deleteNote={editing.what === 'photo'
+			? 'The signature shows its starting photo again.'
+			: 'It leaves the signature.'}
+		isPictureOnly
+		isRound={editing.what === 'photo'}
+		onsave={saveEditing}
+		onclose={() => (editing = undefined)}
+	/>
 {/if}

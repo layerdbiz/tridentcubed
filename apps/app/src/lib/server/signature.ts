@@ -14,10 +14,19 @@
 // is left out: the company logo shows instead of a photo, no banner, and the website's own icon.
 import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, eq, isNull } from 'drizzle-orm';
-import sharp from 'sharp';
+import sharp, { type OutputInfo, type Sharp } from 'sharp';
+import {
+	cleanEdit,
+	type EditType,
+	frameOf,
+	hasEdit,
+	keptAspectOf,
+	tiltCover
+} from '#lib/components/photo/edit.js';
 import {
 	CIRCLE_SIZE,
 	COMPANY_LOGO,
+	MAX_BANNERS,
 	MAX_UPLOAD_BYTES,
 	PICTURE_SIZES,
 	PICTURE_VERSION,
@@ -25,34 +34,40 @@ import {
 	SIGNATURE_FOLDER,
 	SIGNATURE_PICTURES,
 	UPLOAD,
+	UPLOAD_BANNER_LINK,
 	UPLOAD_FILE,
 	UPLOAD_FOLDER
 } from '#lib/signature/signature.constants.js';
 import type {
 	ChoiceType,
-	SignatureKindType,
 	PictureSourceType,
 	SignatureAnswerType,
 	SignatureAskType,
-	SignaturePickType
+	SignatureBannerType,
+	SignatureKindType,
+	SignaturePhotoType,
+	SignatureSaveType
 } from '#lib/signature/signature.types.js';
 import {
 	type MadeLookType,
+	type MadePictureType,
 	NO_SHEETS,
 	type SavedPicksType,
 	type SheetsType,
 	type SignatureLookType,
 	toBannerChoices,
-	toBannerSource,
 	toFetchAddress,
 	toIconPictures,
+	toLink,
 	toMailboxLook,
 	toMailboxSignature,
+	toPersonBanners,
 	toPersonLook,
+	toPersonParts,
+	toPersonPhoto,
 	toPersonSignature,
 	toPhotoChoices,
-	toPhotoSource,
-	toSheetDetails,
+	toPhotoLink,
 	toSheets
 } from '#lib/signature/signature.utils.js';
 import type { ActorType, ClaimsType } from './db/claims';
@@ -104,7 +119,8 @@ export function readSheets(send: typeof fetch, now = Date.now()): Promise<Sheets
 
 /** A signature picture's file name: a hash of what it is made from and how, so it is never written twice. */
 export function toPictureName(picture: PictureSourceType) {
-	const made = `${PICTURE_VERSION}\n${picture.kind}\n${picture.source}\n${picture.version ?? ''}`;
+	const edit = picture.edit && hasEdit(picture.edit) ? JSON.stringify(cleanEdit(picture.edit)) : '';
+	const made = `${PICTURE_VERSION}\n${picture.kind}\n${picture.source}\n${picture.version ?? ''}\n${edit}`;
 	return `${createHash('sha256').update(made).digest('hex').slice(0, 24)}.png`;
 }
 
@@ -124,15 +140,16 @@ async function isShaped(bytes: Uint8Array) {
 // A photo or banner keeps 256 colours: a quarter of the bytes, and it looks the same at the size a signature shows it.
 const PALETTE = { palette: true, quality: 90, effort: 10, compressionLevel: 9 } as const;
 
-// A photo in the circle: cut square around what draws the eye (a face), then everything outside the circle cleared.
-async function makeCircle(bytes: Uint8Array) {
+// A photo in the circle: cut square from its middle, as its tile on the screen shows it, then everything outside the
+// circle cleared.
+async function makeCircle(bytes: Uint8Array | Buffer) {
 	const size = CIRCLE_SIZE;
 	const mask = Buffer.from(
 		`<svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}"/></svg>`
 	);
 	const square = await sharp(bytes)
 		.rotate()
-		.resize(size, size, { fit: 'cover', position: sharp.strategy.attention })
+		.resize(size, size, { fit: 'cover', position: 'centre' })
 		.ensureAlpha()
 		.toBuffer();
 	return sharp(square)
@@ -141,18 +158,102 @@ async function makeCircle(bytes: Uint8Array) {
 		.toBuffer();
 }
 
+type RawType = { data: Buffer; info: OutputInfo };
+
+function toRaw(image: Sharp): Promise<RawType> {
+	return image.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+}
+
+function fromRaw({ data, info }: RawType) {
+	return sharp(data, { raw: { width: info.width, height: info.height, channels: info.channels } });
+}
+
+function clamp(value: number, low: number, high: number) {
+	return Math.min(high, Math.max(low, value));
+}
+
+// The part of a picture inside a box, the box kept inside the picture and at least a pixel.
+function toBox(picture: OutputInfo, left: number, top: number, width: number, height: number) {
+	const w = clamp(Math.round(width), 1, picture.width);
+	const h = clamp(Math.round(height), 1, picture.height);
+	return {
+		left: clamp(Math.round(left), 0, picture.width - w),
+		top: clamp(Math.round(top), 0, picture.height - h),
+		width: w,
+		height: h
+	};
+}
+
+/**
+ * A picture as the screen's editor leaves it (edit.ts, drawn by picture.svelte): turned to the left a quarter at a
+ * time, then mirrored, then straightened clockwise about its frame's middle and grown so the frame stays covered, then
+ * cut to its frame. `kept` is the shape the frame keeps when the edit picks none (a photo's circle is square). The
+ * picture comes back as it is cut, at its own pixels; nothing is made larger.
+ */
+export async function editPicture(bytes: Uint8Array | Buffer, edit: EditType, kept?: number) {
+	let picture = await toRaw(sharp(bytes).rotate());
+	const aspect = picture.info.width / picture.info.height;
+	const turns = (((edit.turns ?? 0) % 4) + 4) % 4;
+	if (turns) picture = await toRaw(fromRaw(picture).rotate(360 - 90 * turns));
+	if (edit.isFlipped) picture = await toRaw(fromRaw(picture).flop());
+	const frame = frameOf(edit, aspect, keptAspectOf(edit, aspect, kept));
+	const { width, height } = picture.info;
+	const frameWidth = frame.w * width;
+	const frameHeight = frame.h * height;
+	const middleX = (frame.x + frame.w / 2) * width;
+	const middleY = (frame.y + frame.h / 2) * height;
+	const tilt = clamp(edit.tilt ?? 0, -45, 45);
+	if (!tilt) {
+		const box = toBox(picture.info, frame.x * width, frame.y * height, frameWidth, frameHeight);
+		return fromRaw(picture).extract(box).png().toBuffer();
+	}
+	// Turned the whole picture about its middle, the frame's middle goes with it; the frame then cuts a part as many
+	// times smaller as the picture grew, which is the same as growing the picture under it.
+	const turned = await toRaw(
+		fromRaw(picture).rotate(tilt, { background: { r: 255, g: 255, b: 255, alpha: 0 } })
+	);
+	const angle = (tilt * Math.PI) / 180;
+	const dx = middleX - width / 2;
+	const dy = middleY - height / 2;
+	const x = turned.info.width / 2 + dx * Math.cos(angle) - dy * Math.sin(angle);
+	const y = turned.info.height / 2 + dx * Math.sin(angle) + dy * Math.cos(angle);
+	const grow = tiltCover(tilt, frameWidth / frameHeight);
+	const cutWidth = frameWidth / grow;
+	const cutHeight = frameHeight / grow;
+	const box = toBox(turned.info, x - cutWidth / 2, y - cutHeight / 2, cutWidth, cutHeight);
+	return fromRaw(turned).extract(box).png().toBuffer();
+}
+
 /**
  * The signature picture made from `bytes`, as a PNG at twice its shown size: a photo in its circle, a banner, or an
- * icon or logo as it is.
+ * icon or logo as it is. An `edit` from the screen's editor is made first; a photo's frame keeps square unless the
+ * edit picks another shape.
  */
-export async function makePicture(bytes: Uint8Array, kind: SignatureKindType) {
-	if (kind === 'photo' && !(await isShaped(bytes))) return new Uint8Array(await makeCircle(bytes));
+export async function makePicture(
+	bytes: Uint8Array | Buffer,
+	kind: SignatureKindType,
+	edit?: EditType
+) {
+	const isEdited = Boolean(edit && hasEdit(edit) && kind !== 'icon');
+	const source =
+		isEdited && edit ? await editPicture(bytes, edit, kind === 'photo' ? 1 : undefined) : bytes;
+	if (kind === 'photo' && (isEdited || !(await isShaped(source)))) {
+		return new Uint8Array(await makeCircle(source));
+	}
 	const { width, height } = PICTURE_SIZES[kind];
-	const sized = sharp(bytes)
+	const sized = sharp(source)
 		.rotate()
 		.resize({ width, height, fit: 'inside', withoutEnlargement: true });
 	const png = kind === 'icon' ? sized.png({ compressionLevel: 9 }) : sized.png(PALETTE);
 	return new Uint8Array(await png.toBuffer());
+}
+
+/** A PNG's size, read from its header; none for what is not a PNG. */
+export function toPngSize(bytes: Uint8Array) {
+	const isPng = bytes.length > 24 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[12] === 0x49;
+	if (!isPng) return undefined;
+	const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+	return { width: view.getUint32(16), height: view.getUint32(20) };
 }
 
 // The bytes of a picture a signature shows: an upload from the file store, anything else from its address.
@@ -167,63 +268,74 @@ async function readSource(store: FileStoreType, source: string, request: Signatu
 	return response.ok ? new Uint8Array(await response.arrayBuffer()) : undefined;
 }
 
-// The pictures this copy of the server has made or found, so a signature opened again reads nothing to know it.
-const made = new Set<string>();
+// The pictures this copy of the server has made or found, with their sizes, so a signature opened again reads nothing
+// to know them.
+const made = new Map<string, { width: number; height: number }>();
 
 /**
- * Where a signature shows this picture: the app's public signature address, the picture made the first time it is
- * asked for. Nothing when it cannot be read or made.
+ * Where a signature shows this picture, and its size: the app's public signature address, the picture made the first
+ * time it is asked for. Nothing when it cannot be read or made.
  */
-export async function toPictureAddress(
+export async function toMadePicture(
 	store: FileStoreType,
 	picture: PictureSourceType | undefined,
 	request: SignatureRequestType
-) {
+): Promise<MadePictureType | undefined> {
 	if (!picture?.source) return undefined;
 	const name = toPictureName(picture);
 	const address = new URL(`${SIGNATURE_PICTURES}${name}`, request.origin).href;
 	const path = `${SIGNATURE_FOLDER}/${name}`;
-	if (made.has(path)) return address;
-	const isThere = await store.read(path).then(
-		() => true,
-		() => false
-	);
-	if (isThere) {
-		made.add(path);
-		return address;
+	const known = made.get(path);
+	if (known) return { address, ...known };
+	const kept = await store.read(path).catch(() => undefined);
+	const keptSize = kept && toPngSize(kept);
+	if (keptSize) {
+		made.set(path, keptSize);
+		return { address, ...keptSize };
 	}
 	try {
 		const bytes = await readSource(store, picture.source, request);
 		if (!bytes) return undefined;
-		await store.write(path, await makePicture(bytes, picture.kind), 'image/png');
-		made.add(path);
-		return address;
+		const png = await makePicture(bytes, picture.kind, picture.edit);
+		await store.write(path, png, 'image/png');
+		const size = toPngSize(png) ?? { width: 0, height: 0 };
+		made.set(path, size);
+		return { address, ...size };
 	} catch {
 		return undefined;
 	}
 }
 
-// Every picture a signature shows, copied: the photo (the company logo's when it cannot be made), the banner and the
-// website's icons and logos (left out when one cannot be made, so the website's own shows).
+/** Where a signature shows this picture, made the first time it is asked for; nothing when it cannot be. */
+export async function toPictureAddress(
+	store: FileStoreType,
+	picture: PictureSourceType | undefined,
+	request: SignatureRequestType
+) {
+	return (await toMadePicture(store, picture, request))?.address;
+}
+
+// Every picture a signature shows, copied: the photo (the company logo's when it cannot be made), the banners and the
+// website's icons and logos (one left out when it cannot be made: no banner, the website's own icon).
 async function makeLook(
 	store: FileStoreType,
 	look: SignatureLookType,
 	request: SignatureRequestType
 ): Promise<MadeLookType> {
 	const icons = toIconPictures();
-	const [photo, banner, ...made] = await Promise.all([
+	const [photo, banners, made] = await Promise.all([
 		toPictureAddress(store, look.photo, request).then(
 			(address) =>
 				address ?? toPictureAddress(store, { source: COMPANY_LOGO, kind: 'photo' }, request)
 		),
-		toPictureAddress(store, look.banner?.picture, request),
-		...icons.map((icon) => toPictureAddress(store, icon.picture, request))
+		Promise.all(look.banners.map((banner) => toMadePicture(store, banner.picture, request))),
+		Promise.all(icons.map((icon) => toPictureAddress(store, icon.picture, request)))
 	]);
 	const shown: MadeLookType['icons'] = {};
 	for (const [index, icon] of icons.entries()) {
 		if (made[index]) shown[icon.name] = made[index];
 	}
-	return { photo, banner, icons: shown };
+	return { photo, banners, icons: shown };
 }
 
 const RECORD_COLUMNS = {
@@ -261,11 +373,17 @@ async function findRecord(
 
 type RecordType = NonNullable<Awaited<ReturnType<typeof findRecord>>>;
 
-// What the person picked for their signature; nothing when they never did.
+// What the person saved for their signature; nothing when they never did.
 async function readPicks(claims: ClaimsType, actor: ActorType, teamId: string) {
 	const [row] = await claims.run(actor, (tx) =>
 		tx
-			.select({ photo: signatures.photo, banner: signatures.banner })
+			.select({
+				photo: signatures.photo,
+				photoEdit: signatures.photoEdit,
+				photoLink: signatures.photoLink,
+				banner: signatures.banner,
+				banners: signatures.banners
+			})
 			.from(signatures)
 			.where(and(eq(signatures.teamId, teamId), isNull(signatures.deletedAt)))
 	);
@@ -291,7 +409,7 @@ async function toShownChoices(
 	);
 }
 
-// A person's signature, with what they can pick for it.
+// A person's signature, with its photo and banners to edit.
 async function answerPerson(
 	server: SignatureServerType,
 	actor: ActorType,
@@ -301,20 +419,14 @@ async function answerPerson(
 ) {
 	const picks = await readPicks(server.claims, actor, record.id);
 	const look = toPersonLook(record, sheets, picks);
-	const [made, photos, banners] = await Promise.all([
+	const parts = toPersonParts(record, sheets, picks);
+	const [made, photos] = await Promise.all([
 		makeLook(server.store, look, request),
-		toShownChoices(server.store, toPhotoChoices(record, sheets, picks.photo), 'photo', request),
-		toShownChoices(server.store, toBannerChoices(sheets, picks.banner), 'banner', request)
+		toShownChoices(server.store, parts.photos, 'photo', request)
 	]);
 	return {
 		signature: toPersonSignature(record, sheets, look, made),
-		sheet: toSheetDetails(record, sheets),
-		choices: {
-			photos,
-			banners,
-			photo: toPhotoSource(record, sheets, picks.photo),
-			banner: toBannerSource(record, sheets, picks.banner)
-		}
+		parts: { ...parts, photos }
 	};
 }
 
@@ -375,7 +487,7 @@ async function findAllowed(
 	return verdict.isAllowed ? { isAllowed: true, record } : verdict;
 }
 
-// Keeps a person's picks, the ones given (`undefined` leaves one as it is).
+// Keeps what a person saved, the parts given (`undefined` leaves one as it is).
 async function writePicks(
 	claims: ClaimsType,
 	actor: ActorType,
@@ -384,10 +496,14 @@ async function writePicks(
 ) {
 	const organizationId = actor.organizationId;
 	if (!organizationId) return;
-	const changed = {
-		...(picks.photo !== undefined ? { photo: picks.photo } : {}),
-		...(picks.banner !== undefined ? { banner: picks.banner } : {})
-	};
+	const changed = Object.fromEntries(
+		Object.entries({
+			photo: picks.photo,
+			photoEdit: picks.photoEdit,
+			photoLink: picks.photoLink,
+			banners: picks.banners
+		}).filter(([, value]) => value !== undefined)
+	);
 	await claims.run(actor, (tx) =>
 		tx
 			.insert(signatures)
@@ -399,34 +515,93 @@ async function writePicks(
 	);
 }
 
+// The photo as it is kept: each part the same as the Sheet and the defaults give is kept empty, so it follows them.
+function toSavedPhoto(
+	photo: SignaturePhotoType | null,
+	defaults: { source: string; link: string }
+): Pick<SavedPicksType, 'photo' | 'photoEdit' | 'photoLink'> {
+	if (!photo) return { photo: null, photoEdit: null, photoLink: null };
+	const edit = cleanEdit(photo.edit ?? {}) ?? null;
+	const isDefault = photo.source === defaults.source && !edit;
+	return {
+		photo: isDefault ? null : photo.source,
+		photoEdit: isDefault ? null : edit,
+		photoLink: photo.link === defaults.link ? null : photo.link
+	};
+}
+
+function sameBanners(left: SignatureBannerType[], right: SignatureBannerType[]) {
+	const plain = (list: SignatureBannerType[]) =>
+		JSON.stringify(list.map(({ source, edit, link }) => ({ source, edit: edit ?? null, link })));
+	return plain(left) === plain(right);
+}
+
 /**
- * Keeps the photo and banner picked for a person's signature (the User's own with no `person`): each one of its
- * choices, '' for no banner, or `null` to follow the Sheet and the defaults again. Answers the signature as it is now.
+ * Keeps the photo and banners saved for a person's signature (the User's own with no `person`), each given whole: a
+ * photo one of its choices, banners the company's or ones already under it (an upload comes through
+ * `uploadSignature`), each link an address. `null` follows the Sheet and the defaults again. Answers the signature as
+ * it is now.
  */
-export async function pickSignature(
+export async function saveSignature(
 	server: SignatureServerType,
 	actor: ActorType,
-	pick: SignaturePickType,
+	save: SignatureSaveType,
 	request: SignatureRequestType
 ): Promise<SignatureAnswerType> {
 	const isAdmin = checkSignature(actor, { isOwn: false }).isAllowed;
-	const found = await findAllowed(server, actor, pick.person, isAdmin);
+	const found = await findAllowed(server, actor, save.person, isAdmin);
 	if (!found.isAllowed) return found;
+	const { record } = found;
 	const sheets = await readSheets(request.fetch);
-	const saved = await readPicks(server.claims, actor, found.record.id);
-	const photos = toPhotoChoices(found.record, sheets, saved.photo).map((each) => each.source);
-	const banners = toBannerChoices(sheets, saved.banner).map((each) => each.source);
-	if (pick.photo && !photos.includes(pick.photo)) {
-		return { isAllowed: false, reason: 'That photo is not one to pick.' };
+	const saved = await readPicks(server.claims, actor, record.id);
+	const picks: SavedPicksType = {};
+
+	if (save.photo !== undefined) {
+		if (save.photo) {
+			const photos = toPhotoChoices(record, sheets, saved.photo).map((each) => each.source);
+			if (!photos.includes(save.photo.source)) {
+				return { isAllowed: false, reason: 'That photo is not one to pick.' };
+			}
+			const link = toLink(save.photo.link);
+			if (link === undefined)
+				return { isAllowed: false, reason: 'That photo link is not an address.' };
+			save.photo = { ...save.photo, link };
+		}
+		const defaults = toPersonPhoto(record, sheets, {});
+		Object.assign(
+			picks,
+			toSavedPhoto(save.photo, { source: defaults.source, link: toPhotoLink(record, sheets) })
+		);
 	}
-	if (pick.banner && !banners.includes(pick.banner)) {
-		return { isAllowed: false, reason: 'That banner is not one to pick.' };
+
+	if (save.banners !== undefined) {
+		if (save.banners) {
+			if (save.banners.length > MAX_BANNERS) {
+				return { isAllowed: false, reason: `A signature takes ${MAX_BANNERS} banners at most.` };
+			}
+			const offered = new Set([
+				...toBannerChoices(sheets).map((each) => each.source),
+				...toPersonBanners(record, sheets, saved).map((each) => each.source)
+			]);
+			const banners: SignatureBannerType[] = [];
+			for (const banner of save.banners) {
+				if (!offered.has(banner.source)) {
+					return { isAllowed: false, reason: 'That banner is not one to pick.' };
+				}
+				const link = toLink(banner.link);
+				if (link === undefined) {
+					return { isAllowed: false, reason: 'That banner link is not an address.' };
+				}
+				const edit = cleanEdit(banner.edit ?? {});
+				banners.push({ id: banner.id, source: banner.source, ...(edit ? { edit } : {}), link });
+			}
+			const defaults = toPersonBanners(record, sheets, { banner: saved.banner });
+			picks.banners = sameBanners(banners, defaults) ? null : banners;
+		} else picks.banners = null;
 	}
-	await writePicks(server.claims, actor, found.record.id, {
-		photo: pick.photo,
-		banner: pick.banner
-	});
-	return readSignature(server, actor, { person: found.record.id }, request);
+
+	await writePicks(server.claims, actor, record.id, picks);
+	return readSignature(server, actor, { person: record.id }, request);
 }
 
 /** The picture types an upload takes: what every browser draws and the screen sends. */
@@ -466,8 +641,33 @@ export async function uploadSignature(
 	const path = `${SIGNATURE_FOLDER}/${toPictureName({ source, kind: upload.kind })}`;
 	await server.store.write(`${UPLOAD_FOLDER}/${hash}.${ending}`, upload.bytes, upload.type);
 	await server.store.write(path, picture, 'image/png');
-	made.add(path);
-	const picks = upload.kind === 'photo' ? { photo: source } : { banner: source };
-	await writePicks(server.claims, actor, found.record.id, picks);
-	return readSignature(server, actor, { person: found.record.id }, request);
+	made.set(path, toPngSize(picture) ?? { width: 0, height: 0 });
+
+	// A photo takes the signature's photo's place, keeping its link; a banner goes under the others.
+	const { record } = found;
+	const saved = await readPicks(server.claims, actor, record.id);
+	if (upload.kind === 'photo') {
+		await writePicks(server.claims, actor, record.id, { photo: source, photoEdit: null });
+	} else {
+		const sheets = await readSheets(request.fetch);
+		const banners = toPersonBanners(record, sheets, saved);
+		if (banners.length >= MAX_BANNERS) {
+			return { isAllowed: false, reason: `A signature takes ${MAX_BANNERS} banners at most.` };
+		}
+		const banner = { id: randomUUID(), source, link: UPLOAD_BANNER_LINK };
+		await writePicks(server.claims, actor, record.id, { banners: [...banners, banner] });
+	}
+	return readSignature(server, actor, { person: record.id }, request);
+}
+
+/**
+ * A picture someone uploaded for a signature, as it came, for the screen's editor: to the signed-in only, since it
+ * was never meant for anyone else. Nothing for a name that is not an upload's.
+ */
+export async function readUpload(store: FileStoreType, file: string) {
+	if (!UPLOAD_FILE.test(file)) return undefined;
+	const bytes = await store.read(`${UPLOAD_FOLDER}/${file}`).catch(() => undefined);
+	const ending = file.split('.').at(-1) ?? '';
+	const type = Object.entries(UPLOAD_TYPES).find(([, each]) => each === ending)?.[0];
+	return bytes && type ? { bytes, type } : undefined;
 }
