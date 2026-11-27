@@ -105,6 +105,39 @@ describe('Accordion', () => {
 		expect(opened()).toEqual(['Three']);
 	});
 
+	it('given `snap`, scrolls itself to the top of its scroll area once a press has opened it, and only then', async () => {
+		// jsdom lays nothing out and has no scrolling into view: it is stood in for here.
+		const scrolled = vi.fn();
+		const before = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+		Object.defineProperty(Element.prototype, 'scrollIntoView', {
+			configurable: true,
+			writable: true,
+			value: scrolled
+		});
+		try {
+			const { container, rerender } = show({ snap: true });
+			await fireEvent.click(headerOf());
+			await vi.waitFor(() => expect(scrolled).toHaveBeenCalledOnce());
+			expect(scrolled).toHaveBeenLastCalledWith({ block: 'start', behavior: 'smooth' });
+			expect(scrolled.mock.contexts[0]).toBe(container.querySelector('.accordion'));
+
+			// Shut by a press, or opened from outside: it stays where it is.
+			await fireEvent.click(headerOf());
+			await rerender({ open: true });
+			await new Promise((done) => setTimeout(done, 20));
+			expect(scrolled).toHaveBeenCalledOnce();
+
+			// Without `snap` a press opens it where it is.
+			await rerender({ open: false, snap: false });
+			await fireEvent.click(headerOf());
+			await new Promise((done) => setTimeout(done, 20));
+			expect(scrolled).toHaveBeenCalledOnce();
+		} finally {
+			if (before) Object.defineProperty(Element.prototype, 'scrollIntoView', before);
+			else Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+		}
+	});
+
 	it('carries a grip for a drag, and whatever marks its owner gives it', () => {
 		const { container } = show({ grip: 'stops-1', 'data-section': 'stage-1' });
 

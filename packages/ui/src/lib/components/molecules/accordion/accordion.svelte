@@ -19,7 +19,10 @@
 	// sit on its right (a switch); a press on them never folds the section or starts a drag. `grip` names the header
 	// for a drag-to-reorder script (`data-grip`). At its foot, the owner's `actions` and, with `ondelete`, a Delete on
 	// the far right. Sections given the same `group` open one at a time, as `<details name>` do: opening one, by a press
-	// or from outside, shuts the others, each telling its `ontoggle`.
+	// or from outside, shuts the others, each telling its `ontoggle`. With `snap`, a section a press opened scrolls itself
+	// to the top of the area it scrolls in once it has slid open (Justin, 2026-11-27), so what it holds is in view from
+	// its header; its owner leaves room above it with a `scroll-mt-*` class, under a fade say. Opened from outside, or by
+	// its group, it stays where it is.
 	//
 	// Its look is set from outside (Justin, 2026-11-26), like the Button's: it is the base component, so `color`,
 	// `appearance`, `size` and their shorthands (`lite`, `neutral`, `sm`) and `class` all land on its box; with none it
@@ -46,6 +49,8 @@
 		ontoggle?: (open: boolean) => void;
 		/** The sections given the same name open one at a time: opening one shuts the others. */
 		group?: string;
+		/** Opened by a press, it scrolls itself to the top of the area it scrolls in once it has slid open. */
+		snap?: boolean;
 		/** The header's words, when no `head` draws it. */
 		label?: string;
 		/** What the section is: the header's content, before its controls and the chevron. */
@@ -69,6 +74,7 @@
 		open = $bindable(false),
 		ontoggle = undefined,
 		group = undefined,
+		snap = false,
 		label = undefined,
 		head = undefined,
 		controls = undefined,
@@ -82,15 +88,30 @@
 		...props
 	}: AccordionProps = $props();
 
+	// Whether a press opened it, for `snap`.
+	let isPressed = false;
+
 	function toggle(): void {
 		open = !open;
+		isPressed = open;
 		ontoggle?.(open);
+	}
+
+	// Slid open: a section a press opened scrolls itself to the top, when it snaps. Its neighbours have slid shut by then,
+	// so the top it scrolls to is where it stays.
+	function settle(event: Event): void {
+		if (!snap || !isPressed) return;
+		isPressed = false;
+		const section = (event.currentTarget as HTMLElement).parentElement;
+		const isStill = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		section?.scrollIntoView({ block: 'start', behavior: isStill ? 'auto' : 'smooth' });
 	}
 
 	// Shut by another section of its group opening.
 	function shut(): void {
 		if (!open) return;
 		open = false;
+		isPressed = false;
 		ontoggle?.(false);
 	}
 
@@ -163,6 +184,7 @@
 				<div
 					class="accordion-body space-y-[0.75em] px-[1em] pb-[0.75em]"
 					transition:slide={{ duration: 180 }}
+					onintroend={settle}
 				>
 					{@render layout()}
 					<!-- The foot row is drawn even when empty: its gap is part of the section's spacing. -->
