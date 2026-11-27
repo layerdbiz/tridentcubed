@@ -578,6 +578,71 @@ describe('a crop', () => {
 	});
 });
 
+describe('a stage’s layout and an edit (#295)', () => {
+	// A stage keeps its Per page (a grid picked, or Auto), its Ratio and Fill or Fit; an attachment keeps its edit,
+	// a PDF its pages' own edits, and its own per page once popped out. All of it is numbers on the rows: the files
+	// never change.
+	it('comes back the same for another member, and nothing is sent twice', async () => {
+		const mine = await open(tom);
+		const id = create(mine.look);
+		const operations = panelOf(mine.look, 'operations');
+		const edit = {
+			turns: 1,
+			isFlipped: true,
+			tilt: -3.5,
+			ratio: '1:1' as const,
+			frame: { x: 0.1, y: 0.2, w: 0.5, h: 0.5 }
+		};
+		const plan = {
+			...stored('Plan'),
+			kind: 'pdf' as const,
+			source: `/files/${crypto.randomUUID()}`,
+			pageCount: 3,
+			pageEdits: { '2': { turns: 2 }, '3': { tilt: 4 } }
+		};
+		operations.groups.push(
+			groupOf({
+				title: 'Hatch 2',
+				layout: 6,
+				grid: { columns: 3, rows: 3 },
+				ratio: '16:9',
+				fit: 'fit',
+				photos: [{ ...stored('Lashing'), edit, ownLayout: 2 }, plan, stored('Deck')]
+			}),
+			groupOf({ title: 'Hatch 3', isAuto: true })
+		);
+		expect((await save(mine)).result.isSaved).toBe(true);
+		const theirs = await open(mia);
+		await openProject(theirs, id);
+
+		const [hatch2, hatch3] = panelOf(theirs.look, 'operations').groups.filter((group) =>
+			['Hatch 2', 'Hatch 3'].includes(group.title)
+		);
+		expect(hatch2).toMatchObject({
+			layout: 6,
+			grid: { columns: 3, rows: 3 },
+			isAuto: false,
+			ratio: '16:9',
+			fit: 'fit'
+		});
+		expect(hatch3).toMatchObject({ isAuto: true, ratio: '4:3', fit: 'fill', grid: undefined });
+		expect(
+			hatch2.photos.map(({ description, edit, pageEdits, ownLayout }) => ({
+				description,
+				edit,
+				pageEdits,
+				ownLayout
+			}))
+		).toEqual([
+			{ description: 'Lashing', edit, pageEdits: undefined, ownLayout: 2 },
+			{ description: 'Plan', edit: undefined, pageEdits: plan.pageEdits, ownLayout: undefined },
+			{ description: 'Deck', edit: undefined, pageEdits: undefined, ownLayout: undefined }
+		]);
+		expect(toChanges(theirs.confirmed, toRows(theirs.look))).toEqual([]);
+		expect(toChanges(mine.confirmed, toRows(mine.look))).toEqual([]);
+	});
+});
+
 describe('the freeze', () => {
 	it('refuses groups and photos added, changed or removed on a Sent, Complete or Archived project', async () => {
 		await test.db

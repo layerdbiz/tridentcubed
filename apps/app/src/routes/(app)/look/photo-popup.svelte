@@ -2,33 +2,37 @@
 	lang="ts"
 	module
 >
-	/** What the pop-up opens on: looking, cropping or typing the description. */
+	/** What the pop-up opens on: the crop (`view` too, since #295), or typing the description. */
 	export type PopupModeType = 'view' | 'crop' | 'text';
 </script>
 
 <script lang="ts">
-	// #312: a photo opened from its group in an edit panel, as Justin signed it off in the prototype (#286): the whole
-	// screen on a phone, a box in the middle of the window over the dimmed app from tablet width up, the same tools in
-	// both. The X leaves without saving; Save shows while cropping or typing and keeps the change, as Enter in the
-	// description does. The group's photos sit side by side on a strip to swipe through, with the photo slider's dots
-	// under them (on a desktop also arrows either side of the dots, and the arrow keys); the ends do not wrap. Crop is
-	// the photo component's crop (lib/components/photo) in a frame of the photo's own shape, with a zoom slider in place of the dots;
-	// Text edits the description over the photo's bottom left; Reset brings back the whole photo, as a change that
-	// waits for Save; More holds Delete, which asks first and moves on to the next photo (the last one closes).
-	// #376: More is the library's Menu, with Delete as its red choice; it opens over the pop-up, as every menu does.
-	// #343: the i at the top right opens the Details under the photo: the file as it arrived beside the file the app
-	// kept (type, size, pixel size), how much smaller it got, and whether its metadata came across. They follow the
-	// photo open as the strip is swiped; a PDF or a video says what its own file is. Justin's ask (2026-11-26): when
-	// and where it was taken come first, and under the rest every metadata field the original had, group by group,
-	// to read through or copy out whole; the Details scroll on their own when they run long.
+	// #312: an attachment opened from its stage in an edit panel: the whole screen on a phone, a box in the middle of
+	// the window over the dimmed app from tablet width up, the same tools in both.
+	// #295 (Justin, 2026-11-25, round 5 of the prototype, and 2026-11-27): it opens on the crop, the whole picture with
+	// its frame over it, the frame's corners and edges in view. Dragging a corner or an edge grows or shrinks the frame
+	// from its middle (edit.ts `draggedFrame`); dragging inside it moves it. Under the picture: the stage's attachments
+	// on a strip, a PDF as one box holding its pages side by side; then the crop's choices in one row with nothing to
+	// scroll (Rotate, Flip, and the frame's ratio: Free, Original, 16:9, 9:16, 1:1, 4:3, or the shape the stage sets);
+	// the straighten dial at the bottom, undo and redo either side of it once there is something to step to; and the
+	// tools: Crop, Text, Reset once this one is changed, Open for a PDF and Play for a video. At the top a back arrow
+	// until something changes, then the X (leave without saving) and the ✓ (keep every change and close). A PDF of
+	// more than one page has All pages at the top: on, a change goes to every page; off, to the page picked on the
+	// strip. The ⋮ holds Pop out (on pages of its own, 1, 2 or 4 to a page) and Delete, which asks first and moves on
+	// to the next one. Nothing is made of the picture: what is changed is kept as numbers (edit.ts), and the report
+	// draws the picture with them.
+	// #343: the i at the top opens the Details under the picture: the file as it arrived beside the file the app kept
+	// (type, size, pixel size), how much smaller it got, and whether its metadata came across. They follow the
+	// attachment open; a PDF or a video says what its own file is. When and where it was taken come first, and under
+	// the rest every metadata field the original had, group by group, to read through or copy out whole; the Details
+	// scroll on their own when they run long.
 	import { tick, untrack } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { fade } from 'svelte/transition';
-	import Photo from '#lib/components/photo/photo.svelte';
-	import type { CropType, SizeType } from '#lib/components/photo/photo.types.js';
-	import { isWhole, toCrop } from '#lib/components/photo/photo.utils.js';
+	import Picture from '#lib/components/photo/picture.svelte';
 	import {
+		ATTACHMENT_ICONS,
 		ATTACHMENT_NOUNS,
 		type FileFactsType,
 		isPlaceRemoved,
@@ -44,10 +48,32 @@
 		toTypeLabel
 	} from '#lib/files/files.schema.js';
 	import { fieldListOf, fileDetailsOf } from '#lib/files/files.state.svelte.js';
+	import { pagePictureOf } from '#lib/pdf/pdf.state.svelte.js';
 	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
-	import Dots from './dots.svelte';
+	import {
+		CROP_RATIOS,
+		cleanEdit,
+		draggedFrame,
+		editOf,
+		frameOf,
+		hasEdit,
+		isWholeFrame,
+		lockedAspectOf,
+		RATIO_VALUES,
+		RATIOS,
+		ratioOf,
+		fitOf,
+		stageAspectOf,
+		tiltCover,
+		turnedAspect,
+		type CropRatioType,
+		type EditType,
+		type FrameType,
+		type HandleType
+	} from './attachments';
 	import type { GroupType, PhotoType } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import { pictureAspectOf } from './shapes';
 	import { Button, Menu, type MenuOptionType } from '@layerd/ui';
 
 	let {
@@ -61,7 +87,7 @@
 	}: {
 		look: LookState;
 		group: GroupType;
-		/** The photo it opens on. */
+		/** The attachment it opens on. */
 		id: string;
 		mode?: PopupModeType;
 		/** "stage" or "group", for the question before a delete. */
@@ -70,33 +96,72 @@
 		onclose: () => void;
 	} = $props();
 
-	// The room between the photos on the strip; in crop mode the frame stands in from the stage's edge, so a finger can
-	// take hold of a corner or an edge.
+	// Room kept round the picture for the frame's grips; the room between attachments as the picture slides on; how
+	// far the dial's lines are apart, a degree to each.
+	const PAD = 24;
 	const GAP = 24;
-	const INSET = 28;
-	const SLIDE_MS = 300;
+	const SLIDE_MS = 260;
+	const DEG = 6;
+
+	const items = $derived(group.photos);
+
+	// Everything the pop-up changes, for every attachment of the stage, worked on as a copy: the ✓ keeps it, the X
+	// leaves it. Undo and redo step through it. A PDF's pages each have their own edit here.
+	type WorkType = { edit: EditType; pages: EditType[]; words: string; ownLayout: number };
+
+	function copyOf<T>(value: T): T {
+		return value === undefined ? value : JSON.parse(JSON.stringify(value));
+	}
+
+	function workOf(photo: PhotoType): WorkType {
+		const count = photo.kind === 'pdf' ? Math.max(1, photo.pageCount ?? 1) : 0;
+		return {
+			edit: copyOf(editOf(photo)),
+			pages: Array.from({ length: count }, (_, at) => copyOf(editOf(photo, at + 1))),
+			words: photo.description,
+			ownLayout: photo.ownLayout ?? 0
+		};
+	}
+
+	let work = $state<Record<string, WorkType>>(
+		untrack(() => Object.fromEntries(group.photos.map((photo) => [photo.id, workOf(photo)])))
+	);
+	// Each attachment's work as it opened, to tell what was changed.
+	let opened = untrack(() =>
+		Object.fromEntries(Object.entries(work).map(([key, each]) => [key, JSON.stringify(each)]))
+	);
+	let history = $state<string[]>([]);
+	let future = $state<string[]>([]);
+	const isEdited = $derived(
+		Object.entries(work).some(([key, each]) => JSON.stringify(each) !== opened[key])
+	);
 
 	let openId = $state(untrack(() => id));
-	let mode = $state<PopupModeType>(untrack(() => firstMode));
-	// Cropping or typing works on a copy of the photo's crop and description, kept only on Save.
-	let draft = $state<{ crop?: CropType; words: string } | null>(null);
+	let pageAt = $state(0);
+	let isAllPages = $state(true);
+	let tool = $state<'crop' | 'text'>(untrack(() => (firstMode === 'text' ? 'text' : 'crop')));
 	let moreBox = $state<HTMLElement>();
 	let isDetailsOpen = $state(false);
 	let copiedAt = $state(0);
-	let savedAt = $state(0);
 	let stageWidth = $state(0);
 	let stageHeight = $state(0);
 	let offset = $state(0);
 	let isGliding = $state(false);
-	let isStepping = false;
-	let shapes = $state<Record<string, SizeType | undefined>>({});
-	let photoRef = $state<ReturnType<typeof Photo>>();
+	let isTyping = false;
 
-	const photos = $derived(group.photos);
-	const index = $derived(photos.findIndex((photo) => photo.id === openId));
-	const photo = $derived<PhotoType | undefined>(photos[index]);
-	const crop = $derived(draft ? draft.crop : photo?.crop);
-	const percent = $derived(Math.round((crop?.zoom ?? 1) * 100));
+	const index = $derived(items.findIndex((each) => each.id === openId));
+	const photo = $derived<PhotoType | undefined>(items[index]);
+	const isPdf = $derived(photo?.kind === 'pdf');
+	const pageCount = $derived(isPdf ? Math.max(1, photo?.pageCount ?? 1) : 1);
+	const mine = $derived(photo ? work[photo.id] : undefined);
+	// The edit on screen: the PDF page's own, or the attachment's.
+	const current = $derived<EditType>(mine ? (isPdf ? (mine.pages[pageAt] ?? {}) : mine.edit) : {});
+	// The attachment with what is changed so far, for what the stage gives its frame.
+	const placed = $derived(photo && mine ? { kind: photo.kind, ownLayout: mine.ownLayout } : {});
+	const aspect = $derived(photo ? pictureAspectOf(photo, pageAt + 1) : 4 / 3);
+	const locked = $derived(lockedAspectOf(group, placed, current, aspect));
+	const stageAspect = $derived(stageAspectOf(group, placed));
+
 	// #343: the file the Details are about: a photo's own, or a PDF's or a video's (not the picture made of it).
 	const detailsAddress = $derived(photo ? (photo.kind ? (photo.source ?? '') : photo.src) : '');
 	const details = $derived(isDetailsOpen ? fileDetailsOf(detailsAddress) : undefined);
@@ -105,36 +170,355 @@
 	const fields = $derived(details?.hasFieldList ? fieldListOf(detailsAddress) : undefined);
 	const fieldGroups = $derived(toFieldGroups(fields ?? undefined));
 	const fieldCount = $derived(fieldGroups.reduce((count, each) => count + each.fields.length, 0));
-	// The photo open, and while looking the one either side of it, waiting just off the stage.
-	const slides = $derived.by(() => {
-		const wheres = mode === 'view' ? [-1, 0, 1] : [0];
-		return wheres.flatMap((where) => {
-			const each = photos[index + where];
-			return each ? [{ where, photo: each }] : [];
-		});
-	});
 
-	untrack(() => {
-		if (firstMode !== 'view') startDraft();
-	});
-
-	// The pop-up closes once its photo has gone.
+	// The pop-up closes once its attachment has gone.
 	$effect(() => {
 		if (!photo) onclose();
 	});
 
-	// The photo's frame: its own shape, as big as the stage allows.
-	function frameOf(each: PhotoType, isHere: boolean) {
-		const inset = isHere && mode === 'crop' ? INSET : 0;
-		const room = {
-			width: Math.max(0, stageWidth - inset * 2),
-			height: Math.max(0, stageHeight - inset * 2)
-		};
-		const shape = shapes[each.id];
-		if (!shape) return room;
-		const scale = Math.min(room.width / shape.width, room.height / shape.height);
-		return { width: shape.width * scale, height: shape.height * scale };
+	// ---- What is shown. ----
+
+	/** The picture of an attachment, or of a PDF's page (from 1), drawn here at `width` for a PDF's page. */
+	function pictureOf(each: PhotoType, page = 1, width = 1600) {
+		if (each.kind !== 'pdf' || !each.source) return each.src;
+		return pagePictureOf(each.source, page, width) ?? (page === 1 ? each.src : '');
 	}
+
+	function editIn(each: PhotoType, page = 1): EditType {
+		const kept = work[each.id];
+		if (!kept) return editOf(each, page);
+		return each.kind === 'pdf' ? (kept.pages[page - 1] ?? {}) : kept.edit;
+	}
+
+	// The crop: the whole picture as it is turned, as big as the room allows inside the room kept for the grips, the
+	// frame over it, and the picture straightened about the frame's middle and grown so the frame stays covered.
+	const crop = $derived.by(() => {
+		if (!photo) return null;
+		const turned = turnedAspect(aspect, current);
+		const width = Math.max(0, Math.min(stageWidth - PAD * 2, (stageHeight - PAD * 2) * turned));
+		const height = width / turned;
+		const frame = frameOf(current, aspect, locked);
+		const tilt = current.tilt ?? 0;
+		const turns = current.turns ?? 0;
+		const isSideways = turns % 2 !== 0;
+		return {
+			turned,
+			width,
+			height,
+			frame,
+			tilt,
+			turns,
+			grow: tiltCover(tilt, (frame.w * width) / (frame.h * height || 1)),
+			imageWidth: isSideways ? height : width,
+			imageHeight: isSideways ? width : height
+		};
+	});
+
+	// Text: the attachment as it prints, as big as the room allows, its description typed over its foot.
+	const printed = $derived.by(() => {
+		if (!crop) return null;
+		const shape = (crop.frame.w / crop.frame.h) * crop.turned;
+		const width = Math.max(0, Math.min(stageWidth - PAD * 2, (stageHeight - PAD * 2) * shape));
+		return { width, height: width / shape };
+	});
+
+	// ---- Changes, kept for undo. ----
+
+	function remember() {
+		history.push(JSON.stringify(work));
+		future = [];
+	}
+
+	// A change to the edit on screen: to every page of a PDF while All pages is on.
+	function apply(change: (edit: EditType) => void) {
+		if (!mine) return;
+		if (!isPdf) change(mine.edit);
+		else if (isAllPages) for (const page of mine.pages) change(page);
+		else if (mine.pages[pageAt]) change(mine.pages[pageAt]);
+	}
+
+	function change(how: (edit: EditType) => void) {
+		if (!mine) return;
+		remember();
+		apply(how);
+	}
+
+	function undo() {
+		const last = history.pop();
+		if (!last) return;
+		future.push(JSON.stringify(work));
+		work = JSON.parse(last);
+	}
+
+	function redo() {
+		const next = future.pop();
+		if (!next) return;
+		history.push(JSON.stringify(work));
+		work = JSON.parse(next);
+	}
+
+	function rotate() {
+		change((edit) => {
+			edit.turns = ((edit.turns ?? 0) + 1) % 4;
+			edit.frame = undefined;
+		});
+	}
+
+	function flip() {
+		change((edit) => {
+			edit.isFlipped = !edit.isFlipped;
+			if (edit.frame) edit.frame = { ...edit.frame, x: 1 - edit.frame.x - edit.frame.w };
+		});
+	}
+
+	function pickRatio(ratio: CropRatioType) {
+		if (!photo) return;
+		change((edit) => {
+			const next = { ...edit, ratio };
+			edit.ratio = ratio;
+			if (ratio !== 'free')
+				edit.frame = frameOf(next, aspect, lockedAspectOf(group, placed, next, aspect));
+		});
+	}
+
+	// Reset brings back the whole picture, as a change that waits for the ✓.
+	function reset() {
+		change((edit) => {
+			for (const key of Object.keys(edit) as (keyof EditType)[]) delete edit[key];
+		});
+	}
+
+	function setOwnLayout(layout: number) {
+		if (!mine || mine.ownLayout === layout) return;
+		remember();
+		mine.ownLayout = layout;
+	}
+
+	// The ✓: every attachment changed takes its changes, then the pop-up closes. One left as it came is not
+	// touched, so its crop from before #295 stays as it was for the app on dev.app.
+	function save() {
+		for (const each of group.photos) {
+			const done = work[each.id];
+			if (!done || JSON.stringify(done) === opened[each.id]) continue;
+			if (each.kind === 'pdf') {
+				const pages = done.pages.map(cleanEdit);
+				const first = JSON.stringify(pages[0] ?? null);
+				const isSame = pages.every((page) => JSON.stringify(page ?? null) === first);
+				each.edit = isSame ? pages[0] : undefined;
+				each.pageEdits = isSame
+					? undefined
+					: Object.fromEntries(pages.flatMap((page, at) => (page ? [[String(at + 1), page]] : [])));
+			} else each.edit = cleanEdit(done.edit);
+			each.description = done.words;
+			each.ownLayout = (done.ownLayout || undefined) as PhotoType['ownLayout'];
+		}
+		onsave();
+		onclose();
+	}
+
+	// ---- Moving between the stage's attachments: the strip, a swipe, the arrow keys. ----
+
+	function goTo(next: number, page = 0) {
+		const target = items[next];
+		if (!target || isGliding) return;
+		if (next === index) {
+			pageAt = page;
+			return;
+		}
+		const by = next > index ? 1 : -1;
+		isGliding = true;
+		offset = -by * (stageWidth + GAP);
+		setTimeout(() => {
+			isGliding = false;
+			openId = target.id;
+			pageAt = page;
+			offset = by * (stageWidth + GAP);
+			requestAnimationFrame(() =>
+				requestAnimationFrame(() => {
+					isGliding = true;
+					offset = 0;
+					setTimeout(() => (isGliding = false), SLIDE_MS);
+				})
+			);
+		}, SLIDE_MS);
+	}
+
+	function slideBack() {
+		isGliding = true;
+		offset = 0;
+		setTimeout(() => (isGliding = false), SLIDE_MS);
+	}
+
+	function askDelete() {
+		const gone = photo;
+		if (!gone) return;
+		look.confirm({
+			title: `Delete ${ATTACHMENT_NOUNS[gone.kind ?? 'photo']}?`,
+			note: `It leaves the ${word} and the report.`,
+			onyes: () => {
+				const at = group.photos.findIndex((each) => each.id === gone.id);
+				if (at < 0) return;
+				group.photos.splice(at, 1);
+				delete work[gone.id];
+				delete opened[gone.id];
+				const next = group.photos[at] ?? group.photos[at - 1];
+				onsave();
+				if (next) {
+					openId = next.id;
+					pageAt = 0;
+				}
+			}
+		});
+	}
+
+	// A click beside the desktop box closes it, unless a change waits for the ✓.
+	function dim() {
+		if (!isEdited) onclose();
+	}
+
+	// ---- The picture: a grip or the frame sizes or moves the crop; anywhere else swipes to the next one. ----
+
+	const HANDLES: HandleType[] = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
+
+	let hold: {
+		kind: 'frame' | 'swipe';
+		pointerId: number;
+		x: number;
+		y: number;
+		handle?: HandleType;
+		start?: FrameType;
+		k?: number;
+		isMoved: boolean;
+		way: '' | 'side' | 'down';
+		time: number;
+	} | null = null;
+
+	function onstagedown(event: PointerEvent) {
+		if (hold || isGliding || isMoreOpen()) return;
+		if (event.pointerType === 'mouse' && event.button !== 0) return;
+		const target = event.target as HTMLElement;
+		if (target.closest('textarea, button, a')) return;
+		const handle = target.closest<HTMLElement>('[data-handle]')?.dataset.handle as
+			| HandleType
+			| undefined;
+		try {
+			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		} catch {
+			// A pointer already gone cannot be held.
+		}
+		const base = {
+			pointerId: event.pointerId,
+			x: event.clientX,
+			y: event.clientY,
+			isMoved: false,
+			way: '' as const,
+			time: event.timeStamp
+		};
+		if (tool === 'crop' && handle && crop && !(handle === 'move' && isWholeFrame(crop.frame))) {
+			remember();
+			hold = {
+				...base,
+				kind: 'frame',
+				handle,
+				start: { ...crop.frame },
+				k: locked ? locked / crop.turned : undefined
+			};
+			return;
+		}
+		if (items.length > 1) hold = { ...base, kind: 'swipe' };
+	}
+
+	function onstagemove(event: PointerEvent) {
+		if (!hold || event.pointerId !== hold.pointerId) return;
+		const dx = event.clientX - hold.x;
+		const dy = event.clientY - hold.y;
+		if (hold.kind === 'frame' && crop && hold.start && hold.handle) {
+			hold.isMoved = true;
+			const frame = draggedFrame(
+				hold.start,
+				hold.handle,
+				dx / (crop.width || 1),
+				dy / (crop.height || 1),
+				hold.k
+			);
+			apply((edit) => (edit.frame = frame));
+			return;
+		}
+		if (!hold.way) {
+			if (Math.hypot(dx, dy) < 8) return;
+			hold.way = Math.abs(dx) >= Math.abs(dy) ? 'side' : 'down';
+		}
+		if (hold.way !== 'side') return;
+		hold.isMoved = true;
+		const isEnd = (dx > 0 && index === 0) || (dx < 0 && index === items.length - 1);
+		offset = isEnd ? dx * 0.3 : dx;
+	}
+
+	function onstageup(event: PointerEvent) {
+		if (!hold || event.pointerId !== hold.pointerId) return;
+		const done = hold;
+		hold = null;
+		if (done.kind === 'frame') {
+			if (!done.isMoved) history.pop();
+			return;
+		}
+		if (!done.isMoved) return;
+		const speed = offset / Math.max(1, event.timeStamp - done.time);
+		const by = offset < -50 || speed < -0.5 ? 1 : offset > 50 || speed > 0.5 ? -1 : 0;
+		if (by && items[index + by]) goTo(index + by);
+		else slideBack();
+	}
+
+	// ---- The straighten dial: its lines slide under the finger, the mark in the middle stays put. ----
+
+	let dial: { pointerId: number; x: number; tilt: number; isMoved: boolean } | null = null;
+	let isTurning = $state(false);
+
+	function ondialdown(event: PointerEvent) {
+		if (dial) return;
+		event.preventDefault();
+		try {
+			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		} catch {
+			// A pointer already gone cannot be held.
+		}
+		remember();
+		dial = {
+			pointerId: event.pointerId,
+			x: event.clientX,
+			tilt: current.tilt ?? 0,
+			isMoved: false
+		};
+		isTurning = true;
+	}
+
+	function ondialmove(event: PointerEvent) {
+		if (!dial || event.pointerId !== dial.pointerId) return;
+		let tilt = Math.min(45, Math.max(-45, dial.tilt - (event.clientX - dial.x) / DEG));
+		if (Math.abs(tilt) < 0.75) tilt = 0;
+		tilt = Math.round(tilt * 10) / 10;
+		dial.isMoved = true;
+		apply((edit) => (edit.tilt = tilt || undefined));
+	}
+
+	function ondialup(event: PointerEvent) {
+		if (!dial || event.pointerId !== dial.pointerId) return;
+		if (!dial.isMoved) history.pop();
+		dial = null;
+		isTurning = false;
+	}
+
+	// The dial with the keys: a degree a press, ten with Shift.
+	function ondialkey(event: KeyboardEvent) {
+		const by = event.key === 'ArrowLeft' ? 1 : event.key === 'ArrowRight' ? -1 : 0;
+		if (!by) return;
+		event.preventDefault();
+		event.stopPropagation();
+		const tilt = Math.min(45, Math.max(-45, (current.tilt ?? 0) + by * (event.shiftKey ? 10 : 1)));
+		change((edit) => (edit.tilt = tilt || undefined));
+	}
+
+	// ---- Details (#343). ----
 
 	// A file's facts on one line: its size and pixel size, or what was not recorded.
 	function factsOf(facts: FileFactsType) {
@@ -165,154 +549,32 @@
 		return percent > 0 ? `${percent}% smaller` : `${-percent}% bigger`;
 	}
 
-	function startDraft() {
-		if (draft || !photo) return;
-		draft = { crop: photo.crop ? { ...photo.crop } : undefined, words: photo.description };
-	}
-
-	// Crop and Text are two tabs of one edit: moving between them keeps what was done in the other.
-	function choose(next: 'crop' | 'text') {
-		isDetailsOpen = false;
-		startDraft();
-		mode = next;
-	}
-
-	function save() {
-		if (!draft || !photo) return;
-		photo.crop = toCrop(draft.crop);
-		photo.description = draft.words;
-		draft = null;
-		mode = 'view';
-		savedAt = Date.now();
-		onsave();
-	}
-
-	// Reset brings back the whole photo, as a change that waits for Save; from looking, it starts cropping.
-	async function reset() {
-		if (mode !== 'crop') {
-			startDraft();
-			mode = 'crop';
-			await tick();
-		}
-		photoRef?.reset();
-	}
-
-	// Moves on to the next photo (1) or back (-1): the strip slides, then the new photo is the open one. With nowhere
-	// to go, the strip slides back.
-	function stepTo(by: number) {
-		if (isStepping || mode !== 'view') return;
-		const next = by ? photos[index + by] : undefined;
-		isGliding = true;
-		offset = next ? -by * (stageWidth + GAP) : 0;
-		isStepping = Boolean(next);
-		setTimeout(() => {
-			isGliding = false;
-			if (!next) return;
-			isStepping = false;
-			openId = next.id;
-			offset = 0;
-		}, SLIDE_MS);
-	}
-
-	function askDelete() {
-		const gone = photo;
-		if (!gone) return;
-		look.confirm({
-			title: `Delete ${ATTACHMENT_NOUNS[gone.kind ?? 'photo']}?`,
-			note: `It leaves the ${word} and the report.`,
-			onyes: () => {
-				const at = group.photos.findIndex((each) => each.id === gone.id);
-				if (at < 0) return;
-				group.photos.splice(at, 1);
-				const next = group.photos[at] ?? group.photos[at - 1];
-				draft = null;
-				mode = 'view';
-				onsave();
-				if (next) openId = next.id;
-			}
-		});
-	}
-
-	// A click beside the desktop box closes it, unless a change is waiting for Save.
-	function dim() {
-		if (!draft) onclose();
-	}
-
-	// Swiping while looking: past a fifth of the width, or a quick flick, goes on; anything less slides back.
-	let swipe: {
-		pointerId: number;
-		x: number;
-		y: number;
-		way: '' | 'side' | 'down';
-		trail: { time: number; x: number }[];
-	} | null = null;
-
-	function onpointerdown(event: PointerEvent) {
-		if (mode !== 'view' || isStepping || isMoreOpen() || swipe) return;
-		if (event.pointerType === 'mouse' && event.button !== 0) return;
-		if ((event.target as HTMLElement).closest('button, input, textarea')) return;
-		try {
-			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-		} catch {
-			// A pointer already gone cannot be held.
-		}
-		isGliding = false;
-		swipe = {
-			pointerId: event.pointerId,
-			x: event.clientX,
-			y: event.clientY,
-			way: '',
-			trail: [{ time: event.timeStamp, x: event.clientX }]
-		};
-	}
-
-	function onpointermove(event: PointerEvent) {
-		if (!swipe || event.pointerId !== swipe.pointerId) return;
-		const dx = event.clientX - swipe.x;
-		const dy = event.clientY - swipe.y;
-		if (!swipe.way) {
-			if (Math.hypot(dx, dy) < 6) return;
-			swipe.way = Math.abs(dx) >= Math.abs(dy) ? 'side' : 'down';
-		}
-		if (swipe.way !== 'side') return;
-		const isEnd = (dx > 0 && index === 0) || (dx < 0 && index === photos.length - 1);
-		offset = isEnd ? dx * 0.3 : dx;
-		swipe.trail.push({ time: event.timeStamp, x: event.clientX });
-		if (swipe.trail.length > 6) swipe.trail.shift();
-	}
-
-	function onpointerup(event: PointerEvent) {
-		if (!swipe || event.pointerId !== swipe.pointerId) return;
-		const { trail, way } = swipe;
-		swipe = null;
-		if (way !== 'side') return;
-		const first = trail[0];
-		const last = trail[trail.length - 1];
-		const speed = last.time > first.time ? (last.x - first.x) / (last.time - first.time) : 0;
-		let by = 0;
-		if (offset < -stageWidth * 0.2 || (offset < -24 && speed < -0.35)) by = 1;
-		else if (offset > stageWidth * 0.2 || (offset > 24 && speed > 0.35)) by = -1;
-		stepTo(by);
-	}
+	// ---- Keys, the top layer, the description box. ----
 
 	// More's menu, while it is open, has the keys: Escape shuts it (the menu does that itself) and the pop-up stays.
 	function isMoreOpen() {
 		return Boolean(moreBox?.querySelector('[aria-expanded="true"]'));
 	}
 
-	// Escape leaves without saving; the arrow keys move between photos. A question on top (the delete) and More's
-	// open menu keep their own keys.
+	// Escape leaves when nothing waits for the ✓; the arrow keys move between attachments; Ctrl or Cmd with Z undoes,
+	// with Shift too redoes. A question on top (the delete) and More's open menu keep their own keys.
 	function onkeydown(event: KeyboardEvent) {
 		if (look.asking || isMoreOpen()) return;
+		const isInField = (event.target as HTMLElement | null)?.closest?.('input, textarea');
 		if (event.key === 'Escape') {
 			event.preventDefault();
-			onclose();
+			if (!isEdited) onclose();
 			return;
 		}
-		const isTyping = (event.target as HTMLElement | null)?.closest?.('input, textarea');
-		if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !isTyping) {
+		if (isInField) return;
+		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
 			event.preventDefault();
-			stepTo(event.key === 'ArrowLeft' ? -1 : 1);
+			goTo(index + (event.key === 'ArrowLeft' ? -1 : 1));
+		}
+		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
+			event.preventDefault();
+			if (event.shiftKey) redo();
+			else undo();
 		}
 	}
 
@@ -320,11 +582,11 @@
 	// popovers and keeps it on top by its z-index. The page behind does not scroll under it; the Details scroll.
 	const lift: Attachment<HTMLElement> = (node) => {
 		node.showPopover?.();
-		const hold = (event: WheelEvent) => {
+		const stop = (event: WheelEvent) => {
 			if (!(event.target as Element | null)?.closest?.('[data-scroll]')) event.preventDefault();
 		};
-		node.addEventListener('wheel', hold, { passive: false });
-		return () => node.removeEventListener('wheel', hold);
+		node.addEventListener('wheel', stop, { passive: false });
+		return () => node.removeEventListener('wheel', stop);
 	};
 
 	// The description grows with what is typed, and opens with the cursor at its end.
@@ -339,28 +601,85 @@
 		area.setSelectionRange(area.value.length, area.value.length);
 	};
 
-	const TOOLS = [
-		{ id: 'crop', label: 'Crop', icon: 'icon-[mdi--crop]' },
-		{ id: 'text', label: 'Text', icon: 'icon-[mdi--pencil-outline]' },
-		{ id: 'reset', label: 'Reset', icon: 'icon-[mdi--restore]' }
-	] as const;
+	// The strip keeps the attachment open in view.
+	const keepInView: Attachment<HTMLElement> = (node) => {
+		$effect(() => {
+			void openId;
+			void pageAt;
+			void tick().then(() =>
+				node
+					.querySelector('[data-current]')
+					?.scrollIntoView?.({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+			);
+		});
+	};
 
-	// #327: a PDF's pages print whole and a video is not cropped yet, so either has its description alone.
-	const tools = $derived(photo?.kind ? TOOLS.filter((tool) => tool.id === 'text') : TOOLS);
-
-	function pick(tool: (typeof TOOLS)[number]['id']) {
-		if (tool === 'reset') reset();
-		else choose(tool);
+	// A ratio's shape drawn small on its button: 18 pixels on its longer side, dashed for Free.
+	function glyphOf(ratio: string, value?: number) {
+		const shape = value ?? (ratio === 'original' ? (crop?.turned ?? 4 / 3) : RATIO_VALUES[ratio]);
+		if (!shape) return { width: 16, height: 12 };
+		return shape >= 1 ? { width: 18, height: 18 / shape } : { width: 18 * shape, height: 18 };
 	}
 
-	const MORE: MenuOptionType[] = [
+	// What the stage sets the frame to, in words, in place of the ratio buttons.
+	const stageShapeLabel = $derived(
+		fitOf(group) === 'fit'
+			? `${RATIOS.find(({ id: each }) => each === ratioOf(group))?.label}, set by the ${word}’s Ratio`
+			: `Shaped to fill the ${word}’s page`
+	);
+
+	const shownAt = $derived(
+		isPdf && pageCount > 1
+			? `Page ${pageAt + 1} of ${pageCount}`
+			: items.length > 1
+				? `${index + 1} of ${items.length}`
+				: ''
+	);
+
+	const MORE = $derived<MenuOptionType[]>([
+		{
+			id: 'own-1',
+			label: 'Pop out',
+			note: 'On a page of its own',
+			icon: 'icon-[mdi--arrow-expand]'
+		},
+		{
+			id: 'own-2',
+			label: 'Pop out, 2 per page',
+			note: 'Its own pages, 2 to each',
+			icon: 'icon-[mdi--view-agenda-outline]'
+		},
+		{
+			id: 'own-4',
+			label: 'Pop out, 4 per page',
+			note: 'Its own pages, 4 to each',
+			icon: 'icon-[mdi--view-grid-outline]'
+		},
+		...(mine?.ownLayout
+			? [
+					{
+						id: 'own-0',
+						label: `Back with the ${word}`,
+						note: 'On its pages with the others',
+						icon: 'icon-[mdi--arrow-collapse]'
+					}
+				]
+			: []),
 		{ id: 'delete', label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
-	];
-	// Its list opens over More, from More's right edge on a phone and its left edge on a wider screen, as it always has.
+	]);
+
+	function pickMore(choice: string) {
+		if (choice === 'delete') askDelete();
+		else if (choice.startsWith('own-')) setOwnLayout(Number(choice.slice(4)));
+	}
+
+	// Its list opens from More's right edge on a phone and its left edge on a wider screen.
 	const wide = new MediaQuery('min-width: 48rem');
 
+	const optionClass =
+		'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[10.5px] leading-none font-semibold transition md:flex-none md:px-3';
 	const toolClass =
-		'flex w-[76px] flex-col items-center gap-[3px] rounded-[14px] pt-[7px] pb-1.5 text-[11px] font-semibold text-slate-300 transition disabled:opacity-30 md:h-11 md:w-auto md:flex-row md:gap-2 md:rounded-full md:px-[18px] md:py-0 md:text-sm md:enabled:hover:text-white';
+		'flex w-[76px] flex-col items-center gap-[3px] rounded-[14px] pt-[7px] pb-1.5 text-[11px] font-semibold text-slate-300 transition md:h-11 md:w-auto md:flex-row md:gap-2 md:rounded-full md:px-[18px] md:py-0 md:text-sm md:hover:text-white';
 </script>
 
 <svelte:window {onkeydown} />
@@ -383,138 +702,358 @@
 		class="fixed inset-0 flex flex-col bg-[#05070b] md:inset-auto md:top-1/2 md:left-1/2 md:h-[min(812px,calc(100dvh-48px))] md:w-[min(1040px,calc(100vw-48px))] md:-translate-x-1/2 md:-translate-y-1/2 md:overflow-hidden md:rounded-3xl md:shadow-[0_30px_80px_-20px_rgb(0_0_0/0.7)]"
 		role="dialog"
 		aria-modal="true"
-		aria-label="Photo"
+		aria-label="Edit {ATTACHMENT_NOUNS[photo?.kind ?? 'photo']}"
+		data-editor
 		transition:fade={{ duration: 180 }}
 	>
+		<!-- The top: back, or the X once something changed; where it is, or All pages for a PDF; the i, the ⋮, and the
+		     ✓ once something changed. -->
 		<div
-			class="box-content flex h-14 shrink-0 items-center justify-between px-2 pt-[env(safe-area-inset-top)] md:h-16 md:px-2.5 md:pt-0"
+			class="box-content flex h-14 shrink-0 items-center gap-1 px-2 pt-[env(safe-area-inset-top)] md:h-16 md:px-2.5 md:pt-0"
 		>
 			<Button
 				ghost
 				invert
 				lg
-				icon="icon-[mdi--close]"
-				aria-label="Close without saving"
-				title="Close without saving"
+				icon={isEdited ? 'icon-[mdi--close]' : 'icon-[mdi--arrow-left]'}
+				aria-label={isEdited ? 'Close without saving' : 'Back'}
+				title={isEdited ? 'Close without saving' : 'Back'}
+				data-editor-close
 				onclick={onclose}
 			/>
-			{#if draft}
-				<Button
-					primary
-					heavy
-					sm
-					icon="icon-[mdi--check]"
-					label="Save"
-					onclick={save}
+			<div class="flex min-w-0 flex-1 items-center justify-center">
+				{#if isPdf && pageCount > 1}
+					<button
+						type="button"
+						class="flex shrink-0 items-center gap-2 rounded-full bg-white/8 py-1.5 pr-1.5 pl-3 text-xs font-semibold text-slate-200"
+						role="switch"
+						aria-checked={isAllPages}
+						title={isAllPages ? 'A change goes to every page' : 'A change goes to the page picked'}
+						data-all-pages
+						onclick={() => (isAllPages = !isAllPages)}
+						>All pages<span
+							class="relative h-5 w-[34px] rounded-full transition {isAllPages
+								? 'bg-primary'
+								: 'bg-white/25'}"
+							><span
+								class="absolute top-0.5 size-4 rounded-full bg-white shadow transition-all {isAllPages
+									? 'left-4'
+									: 'left-0.5'}"
+							></span></span
+						></button
+					>
+				{:else if shownAt}
+					<p class="truncate text-[13px] font-medium text-slate-300 tabular-nums">{shownAt}</p>
+				{/if}
+			</div>
+			<Button
+				ghost
+				invert
+				md
+				icon="icon-[mdi--information-outline]"
+				iconToggle="icon-[mdi--information]"
+				toggled={isDetailsOpen}
+				aria-label="Details"
+				title="Details"
+				aria-pressed={isDetailsOpen}
+				onclick={() => (isDetailsOpen = !isDetailsOpen)}
+			/>
+			<div bind:this={moreBox}>
+				<Menu
+					label="More"
+					value={mine?.ownLayout ? `own-${mine.ownLayout}` : ''}
+					options={MORE}
+					align={wide.current ? 'left' : 'right'}
+					button={(_, isOpen) => ({
+						ghost: true,
+						invert: true,
+						md: true,
+						icon: 'icon-[mdi--dots-vertical]',
+						title: 'More',
+						toggled: isOpen
+					})}
+					onpick={pickMore}
 				/>
-			{:else}
-				<div class="flex items-center">
-					{#if savedAt}
-						{#key savedAt}
-							<span
-								class="saved flex h-10 items-center gap-1.5 px-2.5 text-[15px] font-semibold text-emerald-400"
-								role="status"><span class="icon-[mdi--check] size-5"></span>Saved</span
-							>
-						{/key}
-					{/if}
+			</div>
+			{#if isEdited}
+				<span in:fade={{ duration: 140 }}>
 					<Button
-						ghost
-						invert
+						primary
+						heavy
 						md
-						icon="icon-[mdi--information-outline]"
-						iconToggle="icon-[mdi--information]"
-						toggled={isDetailsOpen}
-						aria-label="Details"
-						title="Details"
-						aria-pressed={isDetailsOpen}
-						onclick={() => (isDetailsOpen = !isDetailsOpen)}
+						class="rounded-full"
+						icon="icon-[mdi--check]"
+						aria-label="Save"
+						title="Save"
+						data-editor-save
+						onclick={save}
 					/>
-				</div>
+				</span>
 			{/if}
 		</div>
 
-		<!-- The swipe is for a finger or the mouse; the keys and the arrow buttons move between photos too. -->
+		<!-- The picture. The swipe is for a finger or the mouse; the strip and the arrow keys move along too. -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="relative min-h-0 flex-1 touch-none overflow-hidden md:mx-6"
 			bind:clientWidth={stageWidth}
 			bind:clientHeight={stageHeight}
-			{onpointerdown}
-			{onpointermove}
-			{onpointerup}
-			onpointercancel={onpointerup}
+			onpointerdown={onstagedown}
+			onpointermove={onstagemove}
+			onpointerup={onstageup}
+			onpointercancel={onstageup}
+			data-stage
 		>
 			<div
-				class="absolute inset-0 will-change-transform {isGliding
-					? 'transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]'
+				class="absolute inset-0 flex items-center justify-center will-change-transform {isGliding
+					? 'transition-transform duration-[260ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]'
 					: ''}"
 				style:transform="translateX({offset}px)"
 			>
-				{#each slides as slide (slide.photo.id)}
-					{@const isHere = slide.where === 0}
-					{@const frame = frameOf(slide.photo, isHere)}
+				{#if photo && !pictureOf(photo, pageAt + 1)}
+					<!-- A PDF still on its way, or a page not drawn yet. -->
+					<span class="flex flex-col items-center gap-2 text-sm text-slate-400">
+						<span class="{ATTACHMENT_ICONS[photo.kind ?? 'photo']} size-10 text-slate-500"></span>
+						{isPdf ? `Page ${pageAt + 1}` : 'Not ready yet'}
+					</span>
+				{:else if photo && tool === 'crop' && crop && mine}
 					<div
-						class="absolute inset-0 flex justify-center {isHere && mode === 'text'
-							? 'items-start pt-4 md:items-center md:pt-0'
-							: 'items-center'}"
-						style:transform="translateX(calc({slide.where * 100}% + {slide.where * GAP}px))"
+						class="relative shrink-0"
+						style="width: {crop.width}px; height: {crop.height}px"
+						data-crop
 					>
-						<Photo
-							class="shrink-0 transition-opacity {shapes[slide.photo.id] ? '' : 'opacity-0'}"
-							style="width: {frame.width}px; height: {frame.height}px"
-							src={slide.photo.src}
-							alt={slide.photo.description}
-							cropping={isHere && mode === 'crop'}
-							bind:crop={
-								() => (isHere && draft ? draft.crop : slide.photo.crop),
-								(value) => {
-									if (isHere && draft) draft.crop = value;
-								}
-							}
-							bind:shape={shapes[slide.photo.id]}
-							bind:this={
-								() => (isHere ? photoRef : undefined),
-								(ref) => {
-									if (isHere) photoRef = ref;
-								}
-							}
+						<div class="absolute inset-0 overflow-hidden {isPdf ? 'bg-white' : ''}">
+							<div
+								class="absolute top-0 left-0"
+								style="width: {crop.width}px; height: {crop.height}px; transform-origin: {(crop
+									.frame.x +
+									crop.frame.w / 2) *
+									crop.width}px {(crop.frame.y + crop.frame.h / 2) *
+									crop.height}px; transform: rotate({crop.tilt}deg) scale({crop.grow})"
+							>
+								<img
+									src={pictureOf(photo, pageAt + 1)}
+									alt=""
+									draggable="false"
+									class="pointer-events-none absolute block max-w-none select-none"
+									style="left: {(crop.width - crop.imageWidth) / 2}px; top: {(crop.height -
+										crop.imageHeight) /
+										2}px; width: {crop.imageWidth}px; height: {crop.imageHeight}px; transform: scaleX({current.isFlipped
+										? -1
+										: 1}) rotate({-crop.turns * 90}deg)"
+								/>
+							</div>
+							<!-- What the crop leaves out, dimmed. -->
+							<div
+								class="pointer-events-none absolute shadow-[0_0_0_9999px_rgb(5_7_11/0.62)]"
+								style="left: {crop.frame.x * crop.width}px; top: {crop.frame.y *
+									crop.height}px; width: {crop.frame.w * crop.width}px; height: {crop.frame.h *
+									crop.height}px"
+							></div>
+						</div>
+						<!-- The frame stands over the picture's edge, never cut off: its corners and edges stay in view. -->
+						<div
+							class="absolute cursor-move border border-white/90"
+							style="left: {crop.frame.x * crop.width}px; top: {crop.frame.y *
+								crop.height}px; width: {crop.frame.w * crop.width}px; height: {crop.frame.h *
+								crop.height}px"
+							data-handle="move"
 						>
-							{#if isHere && mode === 'text' && draft}
-								<div
-									class="absolute inset-x-0 bottom-0 z-[4] bg-linear-to-t from-black/75 via-black/40 to-transparent px-3.5 pt-9 pb-3"
-								>
-									<textarea
-										rows="1"
-										class="-mx-[7px] -my-[5px] block min-h-7 w-[76%] resize-none overflow-hidden rounded-lg border-[1.5px] border-dashed border-white/75 bg-black/20 px-1.5 py-1 text-[15px] leading-snug font-medium text-white outline-none placeholder:text-white/65"
-										placeholder="Describe this photo"
-										aria-label="Description"
-										bind:value={draft.words}
-										oninput={(event) => fit(event.currentTarget)}
-										onkeydown={(event) => {
-											if (event.key === 'Enter' && !event.shiftKey) {
-												event.preventDefault();
-												save();
-											}
-										}}
-										{@attach focusWords}></textarea>
-								</div>
-							{:else if !(isHere && mode === 'crop') && slide.photo.description}
-								<div
-									class="pointer-events-none absolute inset-x-0 bottom-0 z-[4] bg-linear-to-t from-black/75 via-black/40 to-transparent px-3.5 pt-9 pb-3 text-[15px] leading-snug font-medium"
-								>
-									<span class="block max-w-[76%]">{slide.photo.description}</span>
-								</div>
+							{#each [1, 2] as at (at)}
+								<span
+									class="pointer-events-none absolute inset-y-0 w-px bg-white/45"
+									style="left: {at * 33.333}%"
+								></span>
+								<span
+									class="pointer-events-none absolute inset-x-0 h-px bg-white/45"
+									style="top: {at * 33.333}%"
+								></span>
+							{/each}
+							{#if isTurning}
+								{#each [1, 2, 3, 4, 5, 7, 8, 9, 10, 11] as at (at)}
+									<span
+										class="pointer-events-none absolute inset-y-0 w-px bg-white/20"
+										style="left: {(at * 100) / 12}%"
+									></span>
+									<span
+										class="pointer-events-none absolute inset-x-0 h-px bg-white/20"
+										style="top: {(at * 100) / 12}%"
+									></span>
+								{/each}
 							{/if}
-						</Photo>
+							{#each HANDLES as handle (handle)}
+								<span
+									class="absolute grid size-11 place-items-center {handle.includes('n')
+										? '-top-[22px]'
+										: handle.includes('s')
+											? '-bottom-[22px]'
+											: 'top-1/2 -mt-[22px]'} {handle.includes('w')
+										? '-left-[22px]'
+										: handle.includes('e')
+											? '-right-[22px]'
+											: 'left-1/2 -ml-[22px]'} {handle === 'n' || handle === 's'
+										? 'cursor-ns-resize'
+										: handle === 'e' || handle === 'w'
+											? 'cursor-ew-resize'
+											: handle === 'nw' || handle === 'se'
+												? 'cursor-nwse-resize'
+												: 'cursor-nesw-resize'}"
+									data-handle={handle}
+								>
+									{#if handle.length === 2}
+										<!-- A corner: two short bars. -->
+										<span
+											class="pointer-events-none absolute size-[18px] border-white {handle.includes(
+												'n'
+											)
+												? 'top-[19px] border-t-[3px]'
+												: 'bottom-[19px] border-b-[3px]'} {handle.includes('w')
+												? 'left-[19px] border-l-[3px]'
+												: 'right-[19px] border-r-[3px]'}"
+										></span>
+									{:else}
+										<span
+											class="pointer-events-none rounded-full bg-white {handle === 'n' ||
+											handle === 's'
+												? 'h-[3px] w-6'
+												: 'h-6 w-[3px]'}"
+										></span>
+									{/if}
+								</span>
+							{/each}
+						</div>
 					</div>
-				{/each}
+				{:else if photo && printed && crop && mine}
+					<!-- Text: the attachment as it prints, the description typed over its foot. -->
+					<Picture
+						src={pictureOf(photo, pageAt + 1)}
+						edit={current}
+						frame={crop.frame}
+						{aspect}
+						width={printed.width}
+						height={printed.height}
+						class="shrink-0 rounded-sm {isPdf ? 'bg-white' : 'bg-slate-800'}"
+					>
+						<div
+							class="absolute inset-x-0 bottom-0 z-[4] bg-linear-to-t from-black/75 via-black/40 to-transparent px-3.5 pt-9 pb-3"
+						>
+							<textarea
+								rows="1"
+								class="-mx-[7px] -my-[5px] block min-h-7 w-[76%] resize-none overflow-hidden rounded-lg border-[1.5px] border-dashed border-white/75 bg-black/20 px-1.5 py-1 text-[15px] leading-snug font-medium text-white outline-none placeholder:text-white/65"
+								placeholder="Describe this {ATTACHMENT_NOUNS[photo.kind ?? 'photo']}"
+								aria-label="Description"
+								value={mine.words}
+								onfocus={() => (isTyping = false)}
+								oninput={(event) => {
+									// The first letter typed since the box took focus is one step for undo.
+									if (!isTyping) remember();
+									isTyping = true;
+									mine.words = event.currentTarget.value;
+									fit(event.currentTarget);
+								}}
+								onkeydown={(event) => {
+									if (event.key === 'Enter' && !event.shiftKey) {
+										event.preventDefault();
+										save();
+									}
+								}}
+								{@attach focusWords}></textarea>
+						</div>
+					</Picture>
+				{/if}
 			</div>
 		</div>
 
-		{#if isDetailsOpen && mode === 'view' && photo}
+		<!-- Under the picture: the stage's attachments in a row, a PDF as one box holding its pages side by side
+		     (Justin, 2026-11-27: "the PDF should be a container around the 3 PDF pages"). -->
+		{#if items.length > 1 || pageCount > 1}
+			<div
+				class="flex h-[66px] shrink-0 [scrollbar-width:none] items-center gap-1.5 overflow-x-auto px-3 md:justify-center"
+				data-strip
+				{@attach keepInView}
+			>
+				{#each items as each, at (each.id)}
+					{@const isOpen = at === index}
+					{#if each.kind === 'pdf'}
+						{@const count = Math.max(1, each.pageCount ?? 1)}
+						<div
+							class="flex h-[54px] shrink-0 items-center gap-1 rounded-xl bg-white/[0.07] py-1 pr-1 pl-1 ring-1 transition {isOpen
+								? 'ring-white'
+								: 'ring-white/15'}"
+							role="group"
+							aria-label="PDF, {count} {count === 1 ? 'page' : 'pages'}"
+							data-strip-pdf={at}
+						>
+							<span
+								class="flex h-full w-4 shrink-0 items-center justify-center rounded-md bg-danger text-[7px] font-bold text-white [writing-mode:vertical-rl]"
+								aria-hidden="true">PDF</span
+							>
+							{#each Array.from({ length: count }, (_, page) => page) as page (page)}
+								{@const isHere = isOpen && page === pageAt}
+								<button
+									type="button"
+									class="relative h-[46px] w-[33px] shrink-0 overflow-hidden rounded-[3px] bg-white transition {isHere
+										? 'ring-2 ring-sky-400'
+										: isOpen && isAllPages
+											? 'ring-1 ring-sky-400/60'
+											: isOpen
+												? 'opacity-60 hover:opacity-90'
+												: 'opacity-55 hover:opacity-90'}"
+									aria-label="PDF page {page + 1}"
+									aria-current={isHere}
+									data-current={isHere || undefined}
+									data-strip-page={page + 1}
+									onclick={() => goTo(at, page)}
+								>
+									{#if pictureOf(each, page + 1, 200)}
+										<Picture
+											src={pictureOf(each, page + 1, 200)}
+											edit={editIn(each, page + 1)}
+											aspect={pictureAspectOf(each, page + 1)}
+											fit="fit"
+											class="pointer-events-none size-full"
+										/>
+									{:else}
+										<span class="text-[8px] font-semibold text-slate-400">{page + 1}</span>
+									{/if}
+								</button>
+							{/each}
+						</div>
+					{:else}
+						<button
+							type="button"
+							class="relative size-12 shrink-0 overflow-hidden rounded-lg bg-slate-700 transition {isOpen
+								? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
+								: 'opacity-55 hover:opacity-90'}"
+							aria-label="{ATTACHMENT_NOUNS[each.kind ?? 'photo']} {at + 1}"
+							aria-current={isOpen}
+							data-current={isOpen || undefined}
+							data-go={at}
+							onclick={() => goTo(at)}
+						>
+							{#if each.src}
+								<Picture
+									src={each.src}
+									edit={editIn(each)}
+									class="pointer-events-none size-full"
+								/>
+							{/if}
+							{#if each.kind === 'video'}
+								<span
+									class="absolute top-1/2 left-1/2 grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-900"
+									><span class="icon-[mdi--play] size-3.5"></span></span
+								>
+							{/if}
+						</button>
+					{/if}
+				{/each}
+			</div>
+		{/if}
+
+		{#if isDetailsOpen && photo}
 			<!-- #343: what the file was and became. -->
 			<section
-				class="mx-2.5 mt-2 max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain rounded-2xl bg-white/[0.07] p-3 text-[13px] text-slate-300 md:mx-auto md:max-h-[42vh] md:w-full md:max-w-2xl md:p-4"
+				class="mx-2.5 mt-1 max-h-[45dvh] shrink-0 overflow-y-auto overscroll-contain rounded-2xl bg-white/[0.07] p-3 text-[13px] text-slate-300 md:mx-auto md:max-h-[42vh] md:w-full md:max-w-2xl md:p-4"
 				aria-label="Details"
 				data-scroll
 				transition:fade={{ duration: 150 }}
@@ -625,17 +1164,17 @@
 							{:else if !fieldCount}
 								<p class="mt-1">The original had none.</p>
 							{:else}
-								{#each fieldGroups as group (group.name)}
+								{#each fieldGroups as fieldGroup (fieldGroup.name)}
 									<h3 class="mt-3 mb-1 font-semibold text-white">
-										{group.name}
+										{fieldGroup.name}
 										<span class="font-normal text-slate-400 tabular-nums"
-											>{group.fields.length}</span
+											>{fieldGroup.fields.length}</span
 										>
 									</h3>
 									<dl
 										class="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-3 gap-y-0.5 md:grid-cols-[13rem_minmax(0,1fr)]"
 									>
-										{#each group.fields as field (field.name)}
+										{#each fieldGroup.fields as field (field.name)}
 											<dt class="wrap-anywhere text-slate-400">{field.name}</dt>
 											<dd class="wrap-anywhere text-white">{field.value}</dd>
 										{/each}
@@ -646,123 +1185,189 @@
 					{/if}
 				{/if}
 			</section>
+		{:else if tool === 'crop' && mine}
+			<!-- The crop's choices, all in one row: turn, flip, then the frame's ratio, unless the stage sets its shape. -->
+			<div
+				class="flex h-[58px] shrink-0 items-stretch gap-0.5 px-2 md:justify-center md:gap-1.5"
+				data-options
+			>
+				<button
+					type="button"
+					class="{optionClass} text-slate-300 hover:text-white"
+					data-edit="rotate"
+					onclick={rotate}><span class="icon-[mdi--rotate-left] size-5"></span>Rotate</button
+				>
+				<button
+					type="button"
+					class="{optionClass} {current.isFlipped
+						? 'bg-white/14 text-white'
+						: 'text-slate-300 hover:text-white'}"
+					aria-pressed={Boolean(current.isFlipped)}
+					data-edit="flip"
+					onclick={flip}><span class="icon-[mdi--flip-horizontal] size-5"></span>Flip</button
+				>
+				<span class="mx-0.5 my-2.5 w-px shrink-0 bg-white/15"></span>
+				{#if stageAspect}
+					{@const glyph = glyphOf('', stageAspect)}
+					<p
+						class="flex min-w-0 flex-[6] items-center justify-center gap-2 text-xs text-slate-400 md:flex-none md:px-3"
+						data-stage-shape
+					>
+						<span
+							class="shrink-0 rounded-[2px] border-[1.5px] border-current text-white"
+							style="width: {glyph.width}px; height: {glyph.height}px"
+						></span><span>{stageShapeLabel}</span>
+					</p>
+				{:else}
+					{#each CROP_RATIOS as ratio (ratio.id)}
+						{@const glyph = glyphOf(ratio.id)}
+						{@const isOn = (current.ratio ?? 'free') === ratio.id}
+						<button
+							type="button"
+							class="{optionClass} {isOn
+								? 'bg-white/14 text-white'
+								: 'text-slate-300 hover:text-white'}"
+							aria-pressed={isOn}
+							data-crop-ratio={ratio.id}
+							onclick={() => pickRatio(ratio.id)}
+							><span class="grid h-5 place-items-center"
+								><span
+									class="block rounded-[2px] border-[1.5px] border-current {ratio.id === 'free'
+										? 'border-dashed'
+										: ''}"
+									style="width: {glyph.width * 0.9}px; height: {glyph.height * 0.9}px"
+								></span></span
+							>{ratio.label}</button
+						>
+					{/each}
+				{/if}
+			</div>
 		{/if}
 
-		<div
-			class="relative shrink-0 px-2.5 pt-1 pb-[max(16px,env(safe-area-inset-bottom))] md:px-5 md:pb-5"
-		>
-			<div class="flex h-9 items-center justify-center">
-				{#if mode === 'crop'}
-					<label
-						class="flex flex-1 items-center gap-2.5 px-3.5 text-xs text-slate-300 tabular-nums md:max-w-md"
+		<!-- At the bottom: undo, the straighten dial, redo. Undo and redo show once there is something to step to. -->
+		<div class="flex h-14 shrink-0 items-center gap-2 px-3 md:mx-auto md:w-[560px]">
+			<span class={history.length ? '' : 'invisible'}>
+				<Button
+					ghost
+					invert
+					md
+					icon="icon-[mdi--undo]"
+					aria-label="Undo"
+					title="Undo"
+					data-edit="undo"
+					onclick={undo}
+				/>
+			</span>
+			{#if tool === 'crop'}
+				{@const tilt = current.tilt ?? 0}
+				<div
+					class="relative h-12 min-w-0 flex-1 cursor-ew-resize touch-none select-none"
+					role="slider"
+					tabindex="0"
+					aria-label="Straighten"
+					aria-valuemin={-45}
+					aria-valuemax={45}
+					aria-valuenow={Math.round(tilt)}
+					aria-valuetext="{Math.round(tilt)} degrees"
+					data-dial
+					onpointerdown={ondialdown}
+					onpointermove={ondialmove}
+					onpointerup={ondialup}
+					onpointercancel={ondialup}
+					onkeydown={ondialkey}
+				>
+					<span
+						class="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 text-[11px] font-semibold tabular-nums {tilt
+							? 'text-white'
+							: 'text-slate-400'}">{Math.round(tilt)}°</span
 					>
-						<span>100%</span>
-						<input
-							type="range"
-							min="100"
-							max="500"
-							step="1"
-							value={percent}
-							class="min-w-0 flex-1 touch-pan-x accent-white"
-							aria-label="Zoom"
-							oninput={(event) => photoRef?.zoomTo(Number(event.currentTarget.value) / 100)}
-						/>
-						<b class="min-w-10 text-right text-white">{percent}%</b>
-					</label>
-				{:else if mode === 'view' && photos.length > 1}
-					<div class="flex items-center justify-center gap-4">
-						<span class="hidden md:contents">
-							<Button
-								ghost
-								invert
-								md
-								icon="icon-[mdi--chevron-left]"
-								aria-label="Previous photo"
-								title="Previous photo"
-								disabled={index === 0}
-								onclick={() => stepTo(-1)}
-							/>
-						</span>
-						<Dots
-							at={index}
-							count={photos.length}
-						/>
-						<span class="hidden md:contents">
-							<Button
-								ghost
-								invert
-								md
-								icon="icon-[mdi--chevron-right]"
-								aria-label="Next photo"
-								title="Next photo"
-								disabled={index === photos.length - 1}
-								onclick={() => stepTo(1)}
-							/>
-						</span>
+					<div
+						class="pointer-events-none absolute inset-x-0 bottom-1 h-6 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_22%,black_78%,transparent)]"
+					>
+						<div
+							class="absolute top-0 left-1/2 h-full"
+							style="transform: translateX({-tilt * DEG - 45 * DEG}px)"
+						>
+							{#each Array.from({ length: 91 }, (_, at) => at - 45) as at (at)}
+								<span
+									class="absolute bottom-0 w-px {at % 15 === 0
+										? 'h-5 bg-white'
+										: at % 5 === 0
+											? 'h-3.5 bg-white/70'
+											: 'h-2 bg-white/40'}"
+									style="left: {(at + 45) * DEG}px"
+								></span>
+							{/each}
+						</div>
+						<span
+							class="absolute bottom-0 left-1/2 h-6 w-0.5 -translate-x-1/2 rounded-full bg-sky-400"
+						></span>
 					</div>
-				{/if}
-			</div>
-			<div class="flex justify-around md:justify-center md:gap-2">
-				{#each tools as tool (tool.id)}
-					<button
-						type="button"
-						class="{toolClass} {mode === tool.id ? 'bg-white/14 text-white' : ''}"
-						aria-pressed={tool.id === 'reset' ? undefined : mode === tool.id}
-						disabled={tool.id === 'reset' && isWhole(crop)}
-						onclick={() => pick(tool.id)}
-						><span class="{tool.icon} size-6 md:size-5"></span><span>{tool.label}</span></button
-					>
-				{/each}
-				<!-- #327: a PDF opens whole in the browser; a video plays in the app's player. -->
-				{#if photo?.kind && photo.source}
-					<a
-						class={toolClass}
-						href={photo.kind === 'video'
-							? toVideoLink(location.origin, photo.source) || photo.source
-							: photo.source}
-						target="_blank"
-						rel="noopener"
-						><span
-							class="{photo.kind === 'video'
-								? 'icon-[mdi--play-circle-outline]'
-								: 'icon-[mdi--open-in-new]'} size-6 md:size-5"
-						></span><span>{photo.kind === 'video' ? 'Play' : 'Open'}</span></a
-					>
-				{/if}
-				<div bind:this={moreBox}>
-					<Menu
-						label="More"
-						value=""
-						options={MORE}
-						align={wide.current ? 'left' : 'right'}
-						opens="up"
-						onpick={(choice) => choice === 'delete' && askDelete()}
-					>
-						{#snippet trigger(_, isOpen)}
-							<span class="{toolClass} md:hover:text-white {isOpen ? 'bg-white/14 text-white' : ''}"
-								><span class="icon-[mdi--dots-vertical] size-6 md:size-5"></span><span>More</span
-								></span
-							>
-						{/snippet}
-					</Menu>
 				</div>
-			</div>
+			{:else}
+				<p class="min-w-0 flex-1 text-center text-xs text-slate-400">
+					Type the description over the {isPdf ? 'PDF' : 'picture'}.
+				</p>
+			{/if}
+			<span class={future.length ? '' : 'invisible'}>
+				<Button
+					ghost
+					invert
+					md
+					icon="icon-[mdi--redo]"
+					aria-label="Redo"
+					title="Redo"
+					data-edit="redo"
+					onclick={redo}
+				/>
+			</span>
+		</div>
+
+		<!-- The tools: Crop, Text, Reset while this one is changed, and Open for a PDF or Play for a video (#327). -->
+		<div
+			class="relative flex shrink-0 justify-around px-2.5 pt-1 pb-[max(14px,env(safe-area-inset-bottom))] md:justify-center md:gap-2 md:px-5 md:pb-5"
+		>
+			<button
+				type="button"
+				class="{toolClass} {tool === 'crop' ? 'bg-white/14 text-white' : ''}"
+				aria-pressed={tool === 'crop'}
+				data-tool="crop"
+				onclick={() => (tool = 'crop')}
+				><span class="icon-[mdi--crop] size-6 md:size-5"></span><span>Crop</span></button
+			>
+			<button
+				type="button"
+				class="{toolClass} {tool === 'text' ? 'bg-white/14 text-white' : ''}"
+				aria-pressed={tool === 'text'}
+				data-tool="text"
+				onclick={() => (tool = 'text')}
+				><span class="icon-[mdi--pencil-outline] size-6 md:size-5"></span><span>Text</span></button
+			>
+			{#if hasEdit(current)}
+				<button
+					type="button"
+					class={toolClass}
+					data-tool="reset"
+					in:fade={{ duration: 140 }}
+					onclick={reset}
+					><span class="icon-[mdi--restore] size-6 md:size-5"></span><span>Reset</span></button
+				>
+			{/if}
+			{#if photo?.kind && photo.source}
+				<a
+					class={toolClass}
+					href={photo.kind === 'video'
+						? toVideoLink(location.origin, photo.source) || photo.source
+						: photo.source}
+					target="_blank"
+					rel="noopener"
+					><span
+						class="{photo.kind === 'video'
+							? 'icon-[mdi--play-circle-outline]'
+							: 'icon-[mdi--open-in-new]'} size-6 md:size-5"
+					></span><span>{photo.kind === 'video' ? 'Play' : 'Open'}</span></a
+				>
+			{/if}
 		</div>
 	</div>
 </div>
-
-<style>
-	.saved {
-		animation: saved-fade 1.8s ease forwards;
-	}
-
-	@keyframes saved-fade {
-		0%,
-		65% {
-			opacity: 1;
-		}
-		100% {
-			opacity: 0;
-		}
-	}
-</style>

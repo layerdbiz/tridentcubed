@@ -9,3 +9,22 @@ export type PageLayoutType = (typeof LAYOUTS)[number];
 
 /** A new photo group's, a new Items PDF's, and the database's when a row has none. */
 export const DEFAULT_LAYOUT: PageLayoutType = 4;
+
+/** #295: the shapes a stage's spots keep under Fit; free is each attachment's own. A new stage's is 4:3. */
+export const RATIOS = ['free', '16:9', '9:16', '1:1', '4:3'] as const;
+
+export type RatioType = (typeof RATIOS)[number];
+
+export const DEFAULT_RATIO: RatioType = '4:3';
+
+/** #295: fill, a stage's spots fill the page; fit, they keep its ratio and each picture shows whole. */
+export const FITS = ['fill', 'fit'] as const;
+
+export type FitType = (typeof FITS)[number];
+
+export const DEFAULT_FIT: FitType = 'fill';
+
+/** #295: the shapes the crop frame takes: a stage's ratios, and the picture's own (original). */
+export const CROP_RATIOS = ['free', 'original', '16:9', '9:16', '1:1', '4:3'] as const;
+
+export type CropRatioType = (typeof CROP_RATIOS)[number];

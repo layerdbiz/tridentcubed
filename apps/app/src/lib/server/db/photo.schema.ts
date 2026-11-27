@@ -45,7 +45,15 @@ export const photoGroup = pgTable(
 		/** Photos per report page: 1, 2, 4, 6 or 8. */
 		layout: integer('layout').default(DEFAULT_LAYOUT).notNull(),
 		/** Switched off, it keeps what it holds and leaves the report (#215). */
-		isEnabled: boolean('is_enabled').default(true).notNull()
+		isEnabled: boolean('is_enabled').default(true).notNull(),
+		/** #295: a grid picked on its own, columns by rows ("3x2"); nothing when a per-page button is picked. */
+		grid: words('grid'),
+		/** #295: Auto, every attachment on one page (up to 100), filling it. */
+		isAuto: boolean('is_auto').default(false).notNull(),
+		/** #295: the shape of its spots under Fit: free (each its own), 16:9, 9:16, 1:1 or 4:3. */
+		ratio: text('ratio').default('4:3').notNull(),
+		/** #295: fill, the spots fill the page; fit, they keep the ratio and the picture shows whole. */
+		fit: text('fit').default('fill').notNull()
 	},
 	(table) => [
 		index('photo_group_project_idx').on(table.projectId),
@@ -77,7 +85,15 @@ export const photo = pgTable(
 		/** #327: how many pages the PDF has; 0 for anything else. */
 		pageCount: integer('page_count').default(0).notNull(),
 		/** #327: how long the video runs, in seconds; 0 for anything else. */
-		duration: doublePrecision('duration').default(0).notNull()
+		duration: doublePrecision('duration').default(0).notNull(),
+		/**
+		 * #295: how it is edited for the report, as numbers (glossary "Edit"): quarter turns, a mirror, a straighten in
+		 * degrees, the ratio picked and the frame that prints; a PDF's pages edited one by one under `pages`. Nothing for
+		 * none. The file never changes.
+		 */
+		edit: jsonb('edit').$type<Record<string, unknown>>(),
+		/** #295: popped out of its stage's pages onto its own, this many to a page; 0 stays in the stage's pages. */
+		ownLayout: integer('own_layout').default(0).notNull()
 	},
 	(table) => [index('photo_project_idx').on(table.projectId), organizationPolicy('photo')]
 ).enableRLS();

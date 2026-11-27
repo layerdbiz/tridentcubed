@@ -62,7 +62,22 @@
 		Textarea,
 		toInitialsPicture
 	} from '@layerd/ui';
-	import Photo from '#lib/components/photo/photo.svelte';
+	import Picture from '#lib/components/photo/picture.svelte';
+	import {
+		editOf,
+		fitOf,
+		GRID_MOST,
+		gridOf,
+		isPresetGrid,
+		PRESETS,
+		RATIO_VALUES,
+		RATIOS,
+		ratioOf,
+		toPageGrid,
+		toPageGridText,
+		toStageGrid,
+		type PageGridType
+	} from './attachments';
 	import Group from './group.svelte';
 	import { faceOf, logoOf } from './marks';
 	import TransportLegs from './variants/transport-legs.svelte';
@@ -74,7 +89,12 @@
 		toTypeLabel
 	} from '#lib/files/files.schema.js';
 	import { fileDetailsOf, startUpload, type Upload } from '#lib/files/files.state.svelte.js';
-	import { DEFAULT_LAYOUT, LAYOUTS, type PageLayoutType } from '#lib/report/report.constants.js';
+	import {
+		DEFAULT_LAYOUT,
+		FITS,
+		LAYOUTS,
+		type PageLayoutType
+	} from '#lib/report/report.constants.js';
 	import { GRID_LIMIT, INTRODUCTION_LIMIT } from '#lib/rows/rows.schema.js';
 	import { pageCountOf } from '#lib/pdf/pdf.state.svelte.js';
 	import ImageField from './image-field.svelte';
@@ -580,6 +600,50 @@
 		};
 	}
 
+	// #295: a stage's Per page (a button's count, Auto, or any grid up to 4 by 4 from the picker), Fill or Fit, and
+	// under Fit its Ratio. Each pick is saved at once, like any change.
+	const PER_PAGE = [...LAYOUTS, 'auto'] as const;
+	type PerPageType = (typeof PER_PAGE)[number];
+	const GRID_CELLS = Array.from({ length: GRID_MOST * GRID_MOST }, (_, at) =>
+		toPageGridText({ columns: (at % GRID_MOST) + 1, rows: Math.floor(at / GRID_MOST) + 1 })
+	);
+	const RATIO_IDS = RATIOS.map(({ id }) => id);
+	// Whose grid picker is open, and the grid the pointer is on in it.
+	let gridFor = $state('');
+	let gridAt = $state<PageGridType>({ columns: 0, rows: 0 });
+
+	// The per-page button a stage has picked: none while it has a grid of its own.
+	function perPageOf(group: PanelType['groups'][number]): PerPageType | undefined {
+		if (group.isAuto) return 'auto';
+		return isPresetGrid(gridOf(group)) ? group.layout : undefined;
+	}
+
+	function pickPerPage(group: PanelType['groups'][number], next: PerPageType) {
+		gridFor = '';
+		if (next === 'auto') group.isAuto = true;
+		else Object.assign(group, { layout: next, grid: undefined, isAuto: false });
+		save();
+	}
+
+	function pickGrid(group: PanelType['groups'][number], text: string) {
+		const grid = toPageGrid(text);
+		if (!grid) return;
+		Object.assign(group, toStageGrid(grid), { isAuto: false });
+		gridFor = '';
+		save();
+	}
+
+	function toggleGridPicker(group: PanelType['groups'][number]) {
+		gridFor = gridFor === group.id ? '' : group.id;
+		gridAt = gridOf(group);
+	}
+
+	// A ratio's shape drawn small on its button: 14 pixels on its longer side, dashed for Free.
+	function glyphOf(id: string) {
+		const value = RATIO_VALUES[id] ?? 4 / 3;
+		return value >= 1 ? { width: 14, height: 14 / value } : { width: 14 * value, height: 14 };
+	}
+
 	const labelClass = 'mb-1 flex items-center gap-1 text-xs font-medium text-slate-500';
 </script>
 
@@ -861,6 +925,193 @@
 			{/snippet}
 		</Radio>
 	</div>
+{/snippet}
+
+<!-- #295 (Justin, 2026-11-25 and 2026-11-27): a stage's Per page, its buttons drawing their own grid, then Auto and
+     the grid picker, with Fill or Fit on its label's line; under Fit, the Ratio every spot keeps. Fill fills the page
+     with the spots whatever their shape. -->
+{#snippet stageLayout(group: PanelType['groups'][number])}
+	{@const grid = gridOf(group)}
+	{@const fit = fitOf(group)}
+	{@const ratio = ratioOf(group)}
+	{@const isCustom = !group.isAuto && !isPresetGrid(grid)}
+	{@const isPicking = gridFor === group.id}
+	<div class="has-help">
+		<div class="mb-1 flex items-center justify-between gap-2">
+			<p class="{labelClass} mb-0">
+				<span id="{uid}-{group.id}-layout">Per page</span>
+				{#if look.helpOf('group.layout')}<Help
+						label="Per page"
+						text={look.helpOf('group.layout')}
+					/>{/if}
+			</p>
+			<Radio
+				class="flex rounded-full bg-slate-900/[0.05] p-0.5 text-[11px] font-semibold"
+				label="Fill or Fit"
+				options={FITS}
+				value={fit}
+				onpick={(next) => {
+					group.fit = next;
+					save();
+				}}
+			>
+				{#snippet option({ value, isOn, props })}
+					<button
+						{...props}
+						type="button"
+						class="rounded-full px-2.5 py-0.5 transition {isOn
+							? 'bg-white text-primary shadow-sm'
+							: 'text-slate-500 hover:text-slate-700'}"
+						data-fit={value}>{value === 'fill' ? 'Fill' : 'Fit'}</button
+					>
+				{/snippet}
+			</Radio>
+		</div>
+		<div class="flex gap-1">
+			<Radio
+				class="flex min-w-0 flex-[6] gap-1"
+				aria-labelledby="{uid}-{group.id}-layout"
+				options={PER_PAGE}
+				value={perPageOf(group)}
+				onpick={(next) => pickPerPage(group, next)}
+			>
+				{#snippet option({ value, isOn, props })}
+					{@const cells = value === 'auto' ? undefined : PRESETS[value]}
+					<button
+						{...props}
+						type="button"
+						class="flex min-w-0 items-center justify-center gap-1 rounded-xl py-2 text-xs font-semibold transition {value ===
+						'auto'
+							? 'flex-[1.5]'
+							: 'flex-1'} {isOn
+							? 'bg-primary text-white shadow-md shadow-primary/25'
+							: 'bg-white text-slate-500 hover:text-primary'}"
+						data-per={value}
+					>
+						{#if cells}
+							<!-- The page in miniature. -->
+							<span
+								class="grid h-4 w-3 shrink-0 gap-px"
+								style="grid-template-columns: repeat({cells.columns}, 1fr); grid-template-rows: repeat({cells.rows}, 1fr)"
+								aria-hidden="true"
+							>
+								{#each Array.from({ length: cells.columns * cells.rows }, (_, at) => at) as cell (cell)}
+									<span class="rounded-[1px] bg-current"></span>
+								{/each}
+							</span>{value}
+						{:else}
+							<!-- A page filled to its edges. -->
+							<span
+								class="grid h-4 w-3 shrink-0 grid-cols-6 grid-rows-3 gap-px"
+								aria-hidden="true"
+							>
+								<span class="col-span-3 rounded-[1px] bg-current"></span>
+								<span class="col-span-3 rounded-[1px] bg-current"></span>
+								<span class="col-span-2 rounded-[1px] bg-current"></span>
+								<span class="col-span-2 rounded-[1px] bg-current"></span>
+								<span class="col-span-2 rounded-[1px] bg-current"></span>
+								<span class="col-span-6 rounded-[1px] bg-current"></span>
+							</span>Auto
+						{/if}
+					</button>
+				{/snippet}
+			</Radio>
+			<Button
+				unstyled
+				class="flex min-w-0 flex-1 items-center justify-center gap-0.5 rounded-xl py-2 text-xs font-semibold transition {isCustom
+					? 'bg-primary text-white shadow-md shadow-primary/25'
+					: isPicking
+						? 'bg-primary/10 text-primary'
+						: 'bg-white text-slate-500 hover:text-primary'}"
+				icon="icon-[mdi--grid]"
+				label={isCustom ? `${grid.columns}×${grid.rows}` : undefined}
+				aria-label="More per page"
+				aria-expanded={isPicking}
+				data-per="grid"
+				onclick={() => toggleGridPicker(group)}
+			/>
+		</div>
+		{#if isPicking}
+			<!-- Any grid up to 4 by 4: the cells light up to the one pointed at, and a tap picks it. -->
+			<div
+				class="mt-2 ml-auto w-[208px] rounded-2xl bg-white p-3 shadow-[0_18px_40px_-12px_rgb(15_23_42/0.35)] ring-1 ring-slate-900/5"
+				data-grid-picker
+			>
+				<p class="mb-2 text-center text-xs font-semibold text-slate-700 tabular-nums">
+					{gridAt.columns} × {gridAt.rows} · {gridAt.columns * gridAt.rows} per page
+				</p>
+				<Radio
+					class="grid grid-cols-4 gap-1.5"
+					label="Columns and rows"
+					options={GRID_CELLS}
+					value={group.isAuto ? undefined : toPageGridText(grid)}
+					onpick={(text) => pickGrid(group, text)}
+				>
+					{#snippet option({ value, props })}
+						{@const cell = toPageGrid(value)}
+						<button
+							{...props}
+							type="button"
+							class="aspect-[3/4] rounded-md transition {cell &&
+							cell.columns <= gridAt.columns &&
+							cell.rows <= gridAt.rows
+								? 'bg-primary'
+								: 'bg-slate-900/[0.07] hover:bg-slate-900/15'}"
+							aria-label="{cell?.columns} columns, {cell?.rows} rows"
+							data-cell={value}
+							onpointerenter={() => {
+								if (cell) gridAt = cell;
+							}}
+							onfocus={() => {
+								if (cell) gridAt = cell;
+							}}
+						></button>
+					{/snippet}
+				</Radio>
+			</div>
+		{/if}
+	</div>
+	{#if fit === 'fit'}
+		<div class="has-help">
+			<p class={labelClass}>
+				<span id="{uid}-{group.id}-ratio">Ratio</span>
+				{#if look.helpOf('group.ratio')}<Help
+						label="Ratio"
+						text={look.helpOf('group.ratio')}
+					/>{/if}
+			</p>
+			<Radio
+				class="flex gap-1"
+				aria-labelledby="{uid}-{group.id}-ratio"
+				options={RATIO_IDS}
+				value={ratio}
+				onpick={(next) => {
+					group.ratio = next;
+					save();
+				}}
+			>
+				{#snippet option({ value, isOn, props })}
+					{@const glyph = glyphOf(value)}
+					<button
+						{...props}
+						type="button"
+						class="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition {isOn
+							? 'bg-primary text-white shadow-md shadow-primary/25'
+							: 'bg-white text-slate-500 hover:text-primary'}"
+						data-ratio={value}
+					>
+						<span
+							class="shrink-0 rounded-[2px] border-[1.5px] border-current {value === 'free'
+								? 'border-dashed'
+								: ''}"
+							style="width: {glyph.width}px; height: {glyph.height}px"
+							aria-hidden="true"
+						></span>{RATIOS.find(({ id }) => id === value)?.label}
+					</button>
+				{/snippet}
+			</Radio>
+		</div>
+	{/if}
 {/snippet}
 
 <fieldset
@@ -1524,16 +1775,7 @@
 							rows={2}
 							help={look.helpOf('group.description')}
 						/>
-						{@render perPage(
-							'Photos per Page',
-							`${uid}-${group.id}-layout`,
-							'group.layout',
-							group.layout,
-							(layout) => {
-								group.layout = layout;
-								save();
-							}
-						)}
+						{@render stageLayout(group)}
 						<div
 							class="grid grid-cols-3 gap-2"
 							{@attach sortable(
@@ -1589,10 +1831,11 @@
 												>
 											</span>
 										{:else}
-											<Photo
+											<!-- #295: the tile as it is edited: turned, flipped, straightened and cropped. -->
+											<Picture
 												src={photo.src}
 												alt={photo.description}
-												crop={photo.crop}
+												edit={editOf(photo)}
 												class="pointer-events-none size-full {upload ? 'opacity-60' : ''}"
 												onerror={() => {
 													if (upload) upload.hasPreview = false;
@@ -1687,16 +1930,12 @@
 											value=""
 											align={photoIndex % 3 === 0 ? 'left' : 'right'}
 											options={[
-												// #327: a PDF's pages always print whole; a video is not cropped yet either.
-												...(photo.kind
-													? []
-													: [
-															{
-																id: 'crop',
-																label: 'Crop',
-																icon: 'icon-[mdi--crop]'
-															}
-														]),
+												// #295: every attachment is edited the same way, a PDF's pages and a video's picture too.
+												{
+													id: 'crop',
+													label: 'Crop',
+													icon: 'icon-[mdi--crop]'
+												},
 												{
 													id: 'describe',
 													label: 'Edit description',

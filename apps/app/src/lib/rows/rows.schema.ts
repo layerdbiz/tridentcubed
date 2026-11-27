@@ -18,7 +18,7 @@
 // The order of `TABLES` is the order a batch's puts are applied in: a parent comes before its children.
 // The rules of who may change what are not here: they live in the one permission check (`#lib/server/permission.ts`).
 import * as v from 'valibot';
-import { LAYOUTS } from '#lib/report/report.constants.js';
+import { CROP_RATIOS, FITS, LAYOUTS, RATIOS } from '#lib/report/report.constants.js';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
 /** The most an item list read from a spreadsheet may take in its panel's row, as JSON (#242): about 2,000 rows. */
@@ -79,6 +79,17 @@ export type TableSpecType = {
 	scope: 'organization' | 'project';
 	isNamed?: boolean;
 	reads?: readonly string[];
+};
+
+// #295: one edit of an attachment for the report: quarter turns, a mirror, a straighten in degrees, the ratio picked
+// for its frame and the frame itself, in parts of the picture.
+const PART = v.pipe(v.number(), v.minValue(0), v.maxValue(1));
+const EDIT = {
+	turns: v.optional(v.picklist([1, 2, 3])),
+	isFlipped: v.optional(v.literal(true)),
+	tilt: v.optional(v.pipe(v.number(), v.minValue(-45), v.maxValue(45))),
+	ratio: v.optional(v.picklist(CROP_RATIOS)),
+	frame: v.optional(v.object({ h: PART, w: PART, x: PART, y: PART }))
 };
 
 export const TABLES = {
@@ -304,7 +315,13 @@ export const TABLES = {
 			title: TEXT,
 			description: TEXT,
 			layout: v.picklist(LAYOUTS),
-			isEnabled: v.boolean()
+			isEnabled: v.boolean(),
+			// #295: a grid picked on its own, columns by rows ("3x2"), nothing for a per-page button's; Auto; the shape
+			// of the spots under Fit; and whether the spots fill the page (fill) or keep that shape (fit).
+			grid: v.pipe(v.string(), v.regex(/^(?:[1-9]x[1-9])?$/)),
+			isAuto: v.boolean(),
+			ratio: v.picklist(RATIOS),
+			fit: v.picklist(FITS)
 		}
 	},
 	photo: {
@@ -331,7 +348,14 @@ export const TABLES = {
 					y: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
 					zoom: v.pipe(v.number(), v.minValue(1), v.maxValue(5))
 				})
-			)
+			),
+			// #295: how it is edited for the report, nothing for none (look/attachments.ts); a PDF's pages edited one by
+			// one under `pages`, by their numbers. Kept in jsonb's own key order, as the crop is.
+			edit: v.nullable(
+				v.object({ ...EDIT, pages: v.optional(v.record(v.string(), v.object(EDIT))) })
+			),
+			// #295: popped out onto pages of its own, this many to a page; 0 stays in its stage's pages.
+			ownLayout: v.picklist([0, ...LAYOUTS])
 		}
 	},
 	// #188: the trip's stops, the Items panel's rows and attachments, and the Time Log's days and entries. Stops load

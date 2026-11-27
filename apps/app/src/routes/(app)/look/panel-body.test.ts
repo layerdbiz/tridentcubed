@@ -398,17 +398,26 @@ describe('the photo panels and the Time Log on the library’s inputs', () => {
 		expect(look.saved).toHaveBeenCalled();
 	});
 
-	// #382: the library's pick-one group, so a screen reader hears which is picked and the arrow keys move.
-	it('draws Photos per Page as a pick-one group named by its label, and saves a pick', async () => {
+	// #382: the library's pick-one group, so a screen reader hears which is picked and the arrow keys move. #295: Per
+	// page ends on Auto, and the grid button beside it picks any grid up to 4 by 4.
+	it('draws Per page as a pick-one group named by its label, and saves a pick', async () => {
 		const { panel, look } = showPanel('photos', (panel) => (panel.groups = [{ ...GROUP }]));
-		const group = screen.getByRole('radiogroup', { name: 'Photos per Page' });
+		const group = screen.getByRole('radiogroup', { name: 'Per page' });
 		const choices = within(group).getAllByRole('radio');
 
-		expect(choices.map((choice) => choice.textContent?.trim())).toEqual(['1', '2', '4', '6', '8']);
+		expect(choices.map((choice) => choice.textContent?.trim())).toEqual([
+			'1',
+			'2',
+			'4',
+			'6',
+			'8',
+			'Auto'
+		]);
 		expect(choices.map((choice) => choice.getAttribute('aria-checked'))).toEqual([
 			'false',
 			'false',
 			'true',
+			'false',
 			'false',
 			'false'
 		]);
@@ -418,7 +427,38 @@ describe('the photo panels and the Time Log on the library’s inputs', () => {
 		expect(look.saved).toHaveBeenCalled();
 
 		await fireEvent.keyDown(choices[4], { key: 'ArrowRight' });
-		expect(panel.groups[0].layout).toBe(1);
+		expect(panel.groups[0].isAuto).toBe(true);
+	});
+
+	it('picks a grid of its own, and goes back to a button that has the same', async () => {
+		const { panel } = showPanel('photos', (panel) => (panel.groups = [{ ...GROUP }]));
+
+		await fireEvent.click(screen.getByRole('button', { name: 'More per page' }));
+		await fireEvent.click(screen.getByRole('radio', { name: '3 columns, 2 rows' }));
+		expect(panel.groups[0]).toMatchObject({ grid: { columns: 3, rows: 2 }, isAuto: false });
+		expect(screen.getByRole('button', { name: 'More per page' }).textContent).toContain('3×2');
+
+		await fireEvent.click(screen.getByRole('button', { name: 'More per page' }));
+		await fireEvent.click(screen.getByRole('radio', { name: '2 columns, 3 rows' }));
+		expect(panel.groups[0]).toMatchObject({ layout: 6, grid: undefined });
+	});
+
+	it('shows the Ratio only under Fit, where the spots keep it', async () => {
+		const { panel } = showPanel('photos', (panel) => (panel.groups = [{ ...GROUP }]));
+		expect(screen.queryByRole('radiogroup', { name: 'Ratio' })).toBeNull();
+
+		await fireEvent.click(screen.getByRole('radio', { name: 'Fit' }));
+		expect(panel.groups[0].fit).toBe('fit');
+		const ratios = within(screen.getByRole('radiogroup', { name: 'Ratio' })).getAllByRole('radio');
+		expect(ratios.map((ratio) => ratio.textContent?.trim())).toEqual([
+			'Free',
+			'16:9',
+			'9:16',
+			'1:1',
+			'4:3'
+		]);
+		await fireEvent.click(ratios[3]);
+		expect(panel.groups[0].ratio).toBe('1:1');
 	});
 });
 

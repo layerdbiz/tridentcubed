@@ -5,7 +5,13 @@
 import type { CropType } from '#lib/components/photo/photo.types.js';
 import { toAttachmentType } from '#lib/files/files.schema.js';
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
-import { DEFAULT_LAYOUT, type PageLayoutType } from '#lib/report/report.constants.js';
+import {
+	DEFAULT_LAYOUT,
+	type FitType,
+	type PageLayoutType,
+	type RatioType
+} from '#lib/report/report.constants.js';
+import type { EditType, PageGridType } from './attachments';
 import { toDuration } from '#lib/presence/presence.utils.js';
 import { ORGANIZATION, type OrganizationType } from '#lib/start/organization.js';
 import { cityStateOf } from './location';
@@ -89,6 +95,12 @@ export type PhotoType = {
 	pageCount?: number;
 	/** #327: how long the video runs, in seconds. */
 	duration?: number;
+	/** #295: how it is edited for the report (glossary "Edit"); none prints it as it is. It replaces `crop`. */
+	edit?: EditType;
+	/** #295: a PDF whose pages were edited one by one: each page's own edit, by its number from 1. */
+	pageEdits?: Record<string, EditType>;
+	/** #295: popped out onto pages of its own, this many to a page; none stays in its stage's pages. */
+	ownLayout?: PageLayoutType;
 };
 // One row of the Items panel: how many and what (Justin's run 9 note 24), the way the sample reports list cargo
 // ("2x transformers and 27x accessory crates"). A manifest's extra columns may come later.
@@ -131,6 +143,11 @@ export type GroupType = {
 	layout: PageLayoutType;
 	isEnabled: boolean;
 	photos: PhotoType[];
+	/** #295: a grid picked on its own in place of `layout`'s; Auto; the shape under Fit; Fill or Fit (attachments.ts). */
+	grid?: PageGridType;
+	isAuto?: boolean;
+	ratio?: RatioType;
+	fit?: FitType;
 };
 
 // One stop of the Transport panel, added like a photo group: a place on the trip and what moved the items there.

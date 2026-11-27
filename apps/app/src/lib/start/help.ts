@@ -180,6 +180,11 @@ export const HELP: readonly HelpType[] = [
 		label: 'Photos per Page',
 		text: 'How many of these photos print on one report page: fewer means bigger photos.'
 	},
+	{
+		key: 'group.ratio',
+		label: 'Ratio',
+		text: 'The shape every attachment keeps on the page under Fit. Free keeps each one’s own shape.'
+	},
 
 	// A customer's page.
 	{
