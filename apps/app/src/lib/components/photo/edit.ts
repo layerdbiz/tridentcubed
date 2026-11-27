@@ -24,6 +24,14 @@ export type EditType = {
 	frame?: FrameType;
 };
 
+/** Each ratio's shape, its width over its height. */
+export const RATIO_VALUES: Record<string, number> = {
+	'16:9': 16 / 9,
+	'9:16': 9 / 16,
+	'1:1': 1,
+	'4:3': 4 / 3
+};
+
 const WHOLE_FRAME: FrameType = { x: 0, y: 0, w: 1, h: 1 };
 /** The smallest the crop frame gets, in parts of the picture. */
 const LEAST = 0.08;
@@ -93,6 +101,16 @@ export function frameOf(edit: EditType, pictureAspect: number, locked?: number):
 	const cx = frame.x + frame.w / 2;
 	const cy = frame.y + frame.h / 2;
 	return { x: clamp(cx - w / 2, 0, 1 - w), y: clamp(cy - h / 2, 0, 1 - h), w, h };
+}
+
+/**
+ * The shape an edit's frame keeps, its width over its height: the one picked for the picture (Original is its own
+ * shape once turned), else `kept`, the one its place sets. None is free.
+ */
+export function keptAspectOf(edit: EditType, pictureAspect: number, kept?: number) {
+	if (edit.ratio === 'original') return turnedAspect(pictureAspect, edit);
+	if (edit.ratio) return RATIO_VALUES[edit.ratio];
+	return kept;
 }
 
 /** The shape a spot's picture has once cropped, its width over its height. */

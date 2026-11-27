@@ -642,7 +642,10 @@ CREATE TABLE "signature" (
 	"deleted_at" timestamp with time zone,
 	"team_id" uuid NOT NULL,
 	"photo" text,
-	"banner" text
+	"banner" text,
+	"photo_edit" jsonb,
+	"photo_link" text,
+	"banners" jsonb
 );
 
 --> statement-breakpoint

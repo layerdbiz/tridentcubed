@@ -8,11 +8,15 @@
 // one they picked or uploaded, none if they said so, else the Sheet's, else the Trident Cubed map (`DEFAULT_BANNER`).
 // Every picture, the website's icons too, is copied to the app's public signature address before a signature shows
 // it (#lib/server/signature.ts), so a pasted signature never points at Google Drive or at a page that redirects.
+import { cleanEdit, type EditType } from '#lib/components/photo/edit.js';
 import {
+	BANNER_WIDTH,
 	COMPANY_LOGO,
 	DEFAULT_BANNER,
 	DEFAULT_PHOTO,
 	DRIVE,
+	MAX_LINK,
+	SIGNATURE_API,
 	UPLOAD,
 	UPLOAD_BANNER_LINK,
 	WEBSITE_ICONS
@@ -21,7 +25,9 @@ import type {
 	ChoiceType,
 	MailboxType,
 	PictureSourceType,
-	SheetDetailsType,
+	SignatureBannerType,
+	SignaturePartsType,
+	SignaturePhotoType,
 	SignatureType
 } from './signature.types';
 
@@ -85,19 +91,35 @@ export type SignatureRecordType = {
 	link: string;
 };
 
-/** What a person saved for their signature: a photo, a banner ('' for none), or nothing to follow the defaults. */
-export type SavedPicksType = { photo?: string | null; banner?: string | null };
-
-/** The pictures a signature shows, before they are copied: its photo, and its banner with where it goes. */
-export type SignatureLookType = {
-	photo: PictureSourceType;
-	banner?: { picture: PictureSourceType; href: string; alt: string };
+/**
+ * What a person saved for their signature; each left empty (null) follows the Sheet and the defaults. `banner` is
+ * the one banner picked before a signature had several ('' for none), read while `banners` is empty.
+ */
+export type SavedPicksType = {
+	photo?: string | null;
+	photoEdit?: EditType | null;
+	photoLink?: string | null;
+	banner?: string | null;
+	banners?: SignatureBannerType[] | null;
 };
 
-/** The addresses a signature's pictures were copied to. */
+/** A banner as the signature shows it, before it is copied: its picture, where it goes and what it is called. */
+export type LookBannerType = { picture: PictureSourceType; href: string; alt: string };
+
+/** The pictures a signature shows, before they are copied: its photo with where it goes, and its banners in order. */
+export type SignatureLookType = {
+	photo: PictureSourceType;
+	photoLink: string;
+	banners: LookBannerType[];
+};
+
+/** A picture copied to the signature address: where it is, and its size in pixels. */
+export type MadePictureType = { address: string; width: number; height: number };
+
+/** The addresses a signature's pictures were copied to: a banner not made is left out of its place. */
 export type MadeLookType = {
 	photo?: string;
-	banner?: string;
+	banners?: (MadePictureType | undefined)[];
 	icons: Partial<Record<keyof typeof WEBSITE_ICONS, string>>;
 };
 
@@ -297,12 +319,8 @@ export function toPhotoChoices(
 	return toUnique(choices);
 }
 
-/** The banners anyone can pick: their upload, and every banner in the Email Banners folder. */
-export function toBannerChoices(sheets: SheetsType, saved?: string | null): ChoiceType[] {
-	const choices: ChoiceType[] = [];
-	if (saved?.startsWith(UPLOAD)) {
-		choices.push({ source: saved, label: 'Your upload', preview: '', link: UPLOAD_BANNER_LINK });
-	}
+/** The company's banners anyone can add: every banner in the Email Banners folder, or the Trident Cubed map. */
+export function toBannerChoices(sheets: SheetsType): ChoiceType[] {
 	const banners = sheets.banners.length
 		? sheets.banners
 		: [
@@ -312,15 +330,14 @@ export function toBannerChoices(sheets: SheetsType, saved?: string | null): Choi
 					src: `${DRIVE}${DEFAULT_BANNER.file}`
 				}
 			];
-	for (const banner of banners) {
-		choices.push({
+	return toUnique(
+		banners.map((banner) => ({
 			source: banner.src,
 			label: toLabel(banner.banner),
 			preview: toPreview(banner.src, 600),
 			link: banner.href
-		});
-	}
-	return toUnique(choices);
+		}))
+	);
 }
 
 /** The photo a person's signature shows: their pick, else their website photo, Profile Images photo or the logo. */
@@ -361,32 +378,77 @@ function toVersion(source: string, sheets: SheetsType) {
 function toPicture(
 	source: string,
 	kind: PictureSourceType['kind'],
-	sheets: SheetsType
+	sheets: SheetsType,
+	edit?: EditType
 ): PictureSourceType {
 	const version = toVersion(source, sheets);
-	return version ? { source, kind, version } : { source, kind };
+	const kept = edit && cleanEdit(edit);
+	return { source, kind, ...(version ? { version } : {}), ...(kept ? { edit: kept } : {}) };
 }
 
-// A banner as the signature shows it, found among the choices for where it goes and what it is called.
-function toBanner(source: string, sheets: SheetsType): SignatureLookType['banner'] {
-	if (!source) return undefined;
-	const choice = toBannerChoices(sheets, source).find((each) => each.source === source);
+/** Where a tap on a person's photo takes a reader when they set nowhere: their Team record's link, else the Sheet's. */
+export function toPhotoLink(record: SignatureRecordType, sheets: SheetsType) {
+	return record.link || findRow(record, sheets)?.href || '';
+}
+
+/**
+ * The photo a person's signature shows: the one they picked or uploaded with its edit, else the Sheet's and the
+ * defaults', and where a tap on it goes (theirs, else their link).
+ */
+export function toPersonPhoto(
+	record: SignatureRecordType,
+	sheets: SheetsType,
+	saved: SavedPicksType = {}
+): SignaturePhotoType {
+	const edit = saved.photo ? cleanEdit(saved.photoEdit ?? {}) : undefined;
 	return {
-		picture: toPicture(source, 'banner', sheets),
-		href: choice?.link || UPLOAD_BANNER_LINK,
-		alt: choice?.label ?? 'Trident Cubed'
+		source: toPhotoSource(record, sheets, saved.photo),
+		...(edit ? { edit } : {}),
+		link: saved.photoLink ?? toPhotoLink(record, sheets)
 	};
 }
 
-/** The pictures a person's signature shows, from their picks, the Sheet and the defaults. */
+/**
+ * The banners under a person's signature, in order: the ones they saved, else the one they picked before there could
+ * be several, else the Sheet's, else the Trident Cubed map. Each goes where its Sheet row says, an upload to the
+ * website.
+ */
+export function toPersonBanners(
+	record: SignatureRecordType,
+	sheets: SheetsType,
+	saved: SavedPicksType = {}
+): SignatureBannerType[] {
+	if (saved.banners) return saved.banners;
+	const source = toBannerSource(record, sheets, saved.banner);
+	if (!source) return [];
+	const choice = toBannerChoices(sheets).find((each) => each.source === source);
+	return [{ id: 'sheet', source, link: choice?.link || UPLOAD_BANNER_LINK }];
+}
+
+// A banner's name: the company banner's, else what an upload is.
+function toBannerLabel(source: string, sheets: SheetsType) {
+	return toBannerChoices(sheets).find((each) => each.source === source)?.label;
+}
+
+function toLookBanner(banner: SignatureBannerType, sheets: SheetsType): LookBannerType {
+	return {
+		picture: toPicture(banner.source, 'banner', sheets, banner.edit),
+		href: banner.link,
+		alt: toBannerLabel(banner.source, sheets) ?? 'Trident Cubed'
+	};
+}
+
+/** The pictures a person's signature shows, from what they saved, the Sheet and the defaults. */
 export function toPersonLook(
 	record: SignatureRecordType,
 	sheets: SheetsType,
 	saved: SavedPicksType = {}
 ): SignatureLookType {
+	const photo = toPersonPhoto(record, sheets, saved);
 	return {
-		photo: toPicture(toPhotoSource(record, sheets, saved.photo), 'photo', sheets),
-		banner: toBanner(toBannerSource(record, sheets, saved.banner), sheets)
+		photo: toPicture(photo.source, 'photo', sheets, photo.edit),
+		photoLink: photo.link,
+		banners: toPersonBanners(record, sheets, saved).map((banner) => toLookBanner(banner, sheets))
 	};
 }
 
@@ -397,8 +459,78 @@ export function toMailboxLook(mailbox: SheetMailboxType, sheets: SheetsType): Si
 		: undefined;
 	return {
 		photo: toPicture(mailbox.src || COMPANY_LOGO, 'photo', sheets),
-		banner: banner ? toBanner(banner.src, sheets) : undefined
+		photoLink: mailbox.href,
+		banners: banner
+			? [toLookBanner({ id: 'sheet', source: banner.src, link: banner.href }, sheets)]
+			: []
 	};
+}
+
+/**
+ * The big picture the screen's editor opens: Google Drive's at `width` pixels, an upload from the app (to the signed
+ * in only), a website one as it is.
+ */
+export function toOriginal(source: string, width = 1600) {
+	if (source.startsWith(UPLOAD)) return `${SIGNATURE_API}?upload=${source.slice(UPLOAD.length)}`;
+	return toPreview(source, width);
+}
+
+/**
+ * A person's signature's photo and banners as the screen edits them, each with its name and pictures, and the
+ * photos to pick from and the company's banners to add.
+ */
+export function toPersonParts(
+	record: SignatureRecordType,
+	sheets: SheetsType,
+	saved: SavedPicksType = {}
+): SignaturePartsType {
+	const photos = toPhotoChoices(record, sheets, saved.photo);
+	const photo = toPersonPhoto(record, sheets, saved);
+	return {
+		photo: {
+			...photo,
+			label: photos.find((each) => each.source === photo.source)?.label ?? 'Photo',
+			preview: toOriginal(photo.source, 480),
+			original: toOriginal(photo.source),
+			isPicked: Boolean(saved.photo)
+		},
+		banners: toPersonBanners(record, sheets, saved).map((banner) => ({
+			...banner,
+			label: toBannerLabel(banner.source, sheets) ?? 'Your upload',
+			preview: toOriginal(banner.source, 1200),
+			original: toOriginal(banner.source)
+		})),
+		photos,
+		companyBanners: toBannerChoices(sheets)
+	};
+}
+
+/**
+ * A link as it is kept: an address as typed, an email address as a mail link, anything else on the web; '' for none.
+ * Nothing for one that is not an address.
+ */
+export function toLink(typed: string) {
+	const text = typed.trim();
+	if (!text) return '';
+	const link = /^(https?:|mailto:|tel:)/i.test(text)
+		? text
+		: /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(text)
+			? `mailto:${text}`
+			: `https://${text}`;
+	if (link.length > MAX_LINK || /\s/.test(link)) return undefined;
+	try {
+		const url = new URL(link);
+		if (/^https?:$/.test(url.protocol) && !url.hostname.includes('.')) return undefined;
+		return link;
+	} catch {
+		return undefined;
+	}
+}
+
+/** The size a banner shows at in the signature: as wide as the signature at most, never wider than it was made. */
+export function toShownSize(made: { width: number; height: number }) {
+	const width = Math.min(BANNER_WIDTH, made.width);
+	return { width, height: Math.round((width * made.height) / made.width) };
 }
 
 /** The website's icons and logos every signature shows, to copy like any picture. */
@@ -422,19 +554,23 @@ export function toSharedAddresses(group: string, own: string) {
 	return kept.join(', ');
 }
 
-// The parts every signature shares: its pictures at the addresses they were copied to, and the social links.
+// The parts every signature shares: its pictures at the addresses they were copied to, where its photo goes, and the
+// social links. A banner shows at its own shape, as wide as the signature at most.
 function toPictureParts(
 	look: SignatureLookType,
 	made: MadeLookType,
 	sheets: SheetsType
-): Pick<SignatureType, 'src' | 'banner' | 'socialLinks' | 'icons' | 'logoImage'> {
+): Pick<SignatureType, 'src' | 'href' | 'banners' | 'socialLinks' | 'icons' | 'logoImage'> {
 	const { logo, ...icons } = made.icons;
 	return {
 		src: made.photo || COMPANY_LOGO,
-		banner:
-			look.banner && made.banner
-				? { href: look.banner.href, src: made.banner, alt: look.banner.alt }
-				: undefined,
+		href: look.photoLink,
+		banners: look.banners.flatMap((banner, index) => {
+			const picture = made.banners?.[index];
+			return picture
+				? [{ href: banner.href, src: picture.address, alt: banner.alt, ...toShownSize(picture) }]
+				: [];
+		}),
 		socialLinks: sheets.social,
 		icons,
 		...(logo ? { logoImage: logo } : {})
@@ -451,53 +587,28 @@ export function toPersonSignature(
 	look: SignatureLookType,
 	made: MadeLookType
 ): SignatureType {
-	const row = findRow(record, sheets);
 	return {
 		id: record.id,
 		type: 'person',
-		...toDetails(record, toSheetDetails(record, sheets)),
-		href: record.link || row?.href || '',
+		...toDetails(record, findRow(record, sheets)),
 		slug: record.id,
 		...toPictureParts(look, made, sheets)
 	};
 }
 
-/** What a person's Sheet row gives their signature where their Team record is empty: nothing for one not on it. */
-export function toSheetDetails(record: SignatureRecordType, sheets: SheetsType): SheetDetailsType {
-	const row = findRow(record, sheets);
-	return {
-		title: row?.title ?? '',
-		phone: row?.phone ?? '',
-		email: row?.email ?? '',
-		group: row?.group ?? ''
-	};
-}
-
 type DetailsType = Pick<SignatureRecordType, 'name' | 'title' | 'phone' | 'email'>;
 
-// The words a person's signature shows: the Team record's, the Sheet's where it is empty, and the shared addresses
-// under them, never their own.
-function toDetails(record: DetailsType, sheet: SheetDetailsType) {
-	const email = record.email || sheet.email;
+// The words a person's signature shows: the Team record's, their Sheet row's where it is empty, and the shared
+// addresses under them, never their own.
+function toDetails(record: DetailsType, row: SheetPersonType | undefined) {
+	const email = record.email || row?.email || '';
 	return {
 		name: record.name,
-		title: record.title || sheet.title,
-		phone: record.phone || sheet.phone,
+		title: record.title || row?.title || '',
+		phone: record.phone || row?.phone || '',
 		email,
-		group: toSharedAddresses(sheet.group, email)
+		group: toSharedAddresses(row?.group ?? '', email)
 	};
-}
-
-/**
- * A person's signature with their Team record's details as they are typed on the screen, the same way the server
- * makes them; its pictures stay the ones the server copied.
- */
-export function toLiveSignature(
-	signature: SignatureType,
-	record: DetailsType,
-	sheet: SheetDetailsType
-): SignatureType {
-	return { ...signature, ...toDetails(record, sheet) };
 }
 
 /** A shared mailbox's signature, from its Sheet row, with its pictures where they were copied to. */
@@ -515,7 +626,6 @@ export function toMailboxSignature(
 		phone: mailbox.phone,
 		email: mailbox.email,
 		group: '',
-		href: mailbox.href,
 		slug: mailbox.slug,
 		...toPictureParts(look, made, sheets)
 	};

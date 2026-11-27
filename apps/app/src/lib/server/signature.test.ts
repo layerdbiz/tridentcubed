@@ -1,7 +1,8 @@
 // Email signatures (#354) on the in-process database and a local file store: who may open and change which
-// signature, a person's from their Team record with the Sheets filling in the rest, the photo and banner they pick or
-// upload, and every picture copied once as a small PNG to the app's public signature address, a photo in its circle.
-// The Sheets, Google Drive and the website are answered by a stand-in fetch.
+// signature, a person's from their Team record with the Sheets filling in the rest, the photo and banners they pick,
+// upload, edit and link, and every picture copied once as a small PNG to the app's public signature address, a photo
+// in its circle, edited as the screen's editor left it. The Sheets, Google Drive and the website are answered by a
+// stand-in fetch.
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,9 +15,11 @@ import type { ActorType } from './db/claims';
 import { createClaims } from './db/claims';
 import { team } from './db/schema';
 import {
+	editPicture,
 	makePicture,
-	pickSignature,
 	readSignature,
+	readUpload,
+	saveSignature,
 	type SignatureRequestType,
 	toPictureName,
 	uploadSignature
@@ -174,15 +177,13 @@ describe('a person’s own email signature', () => {
 			group: 'operations@tridentcubed.com',
 			socialLinks: { linkedin: 'https://www.linkedin.com/company/example' }
 		});
-		// What the Sheet gives, so the screen shows the record's details as they are typed.
-		expect(answer.sheet?.group).toContain('operations@tridentcubed.com');
 		expect(answer.mailboxes).toEqual([]);
 	});
 
 	it('starts with their Profile Images photo, not their profile picture, drawn in a circle', async () => {
 		const answer = allowed(await readSignature(server, member, {}, request));
 
-		expect(answer.choices?.photo).toBe('drive:1TynequaPhoto');
+		expect(answer.parts?.photo.source).toBe('drive:1TynequaPhoto');
 		expect(answer.signature.src).toMatch(/^http:\/\/localhost:5174\/signature\/[0-9a-f]{24}\.png$/);
 		const { meta, alphaAt } = await readMade(answer.signature.src);
 		expect(meta).toMatchObject({ format: 'png', width: 224, height: 224 });
@@ -194,17 +195,25 @@ describe('a person’s own email signature', () => {
 	it('keeps a website signature photo in the circle it was drawn in', async () => {
 		const answer = allowed(await readSignature(server, admin, {}, request));
 
-		expect(answer.choices?.photo).toBe(WEBSITE_PHOTO);
+		expect(answer.parts?.photo.source).toBe(WEBSITE_PHOTO);
 		const { meta } = await readMade(answer.signature.src);
 		expect(meta).toMatchObject({ format: 'png', width: 224, height: 263 });
 	});
 
 	it('copies the banner small and every website icon, so the signature points at the website for none', async () => {
 		const answer = allowed(await readSignature(server, member, {}, request));
-		const { banner, icons, logoImage } = answer.signature;
+		const { banners, icons, logoImage } = answer.signature;
 
-		expect(banner).toMatchObject({ href: 'https://tridentcubed.com', alt: 'Map' });
-		expect((await readMade(banner?.src)).meta).toMatchObject({ width: 1200, height: 350 });
+		expect(banners).toEqual([
+			{
+				href: 'https://tridentcubed.com',
+				src: expect.stringMatching(/\/signature\//),
+				alt: 'Map',
+				width: 600,
+				height: 175
+			}
+		]);
+		expect((await readMade(banners?.[0].src)).meta).toMatchObject({ width: 1200, height: 350 });
 		expect(Object.keys(icons ?? {}).sort()).toEqual(
 			Object.keys(WEBSITE_ICONS)
 				.filter((name) => name !== 'logo')
@@ -228,6 +237,10 @@ describe('a person’s own email signature', () => {
 		expect(toPictureName({ source: 'drive:1A', kind: 'photo', version: '11/27/2026' })).not.toBe(
 			first
 		);
+		expect(toPictureName({ source: 'drive:1A', kind: 'photo', edit: { turns: 1 } })).not.toBe(
+			first
+		);
+		expect(toPictureName({ source: 'drive:1A', kind: 'photo', edit: {} })).toBe(first);
 	});
 
 	it('makes an icon as it is, never larger', async () => {
@@ -239,64 +252,220 @@ describe('a person’s own email signature', () => {
 	});
 });
 
-describe('picking a signature’s photo and banner', () => {
-	it('shows the one picked, and none when they pick no banner', async () => {
-		const expo = allowed(
-			await pickSignature(server, member, { banner: 'drive:1ExpoBanner' }, request)
-		);
-		expect(expo.choices?.banner).toBe('drive:1ExpoBanner');
-		expect(expo.signature.banner).toMatchObject({ href: 'https://expo.example', alt: 'Expo' });
+describe('a picture as the editor leaves it', () => {
+	// Four colours, one to each quarter: red top left, green top right, blue bottom left, white bottom right.
+	let quarters: Buffer;
+	const RED = [255, 0, 0];
+	const GREEN = [0, 255, 0];
+	const BLUE = [0, 0, 255];
+	const WHITE = [255, 255, 255];
 
-		const none = allowed(await pickSignature(server, member, { banner: '' }, request));
-		expect(none.choices?.banner).toBe('');
-		expect(none.signature.banner).toBeUndefined();
-
-		const back = allowed(await pickSignature(server, member, { banner: null }, request));
-		expect(back.choices?.banner).toBe('drive:1MapBanner');
+	beforeAll(async () => {
+		const square = (colour: string) =>
+			sharp({ create: { width: 100, height: 100, channels: 3, background: colour } })
+				.png()
+				.toBuffer();
+		quarters = await sharp({
+			create: { width: 200, height: 200, channels: 3, background: '#000000' }
+		})
+			.composite([
+				{ input: await square('#ff0000'), left: 0, top: 0 },
+				{ input: await square('#00ff00'), left: 100, top: 0 },
+				{ input: await square('#0000ff'), left: 0, top: 100 },
+				{ input: await square('#ffffff'), left: 100, top: 100 }
+			])
+			.png()
+			.toBuffer();
 	});
 
-	it('takes only a photo or banner offered', async () => {
-		expect(await pickSignature(server, member, { photo: 'drive:1SomeoneElse' }, request)).toEqual({
-			isAllowed: false,
-			reason: 'That photo is not one to pick.'
-		});
+	async function colourAt(bytes: Buffer, x: number, y: number) {
+		const { data, info } = await sharp(bytes).raw().toBuffer({ resolveWithObject: true });
+		const at =
+			(Math.round(y * (info.height - 1)) * info.width + Math.round(x * (info.width - 1))) *
+			info.channels;
+		return {
+			colour: [data[at], data[at + 1], data[at + 2]],
+			width: info.width,
+			height: info.height
+		};
+	}
+
+	it('is cut to its frame', async () => {
+		const cut = await editPicture(quarters, { frame: { x: 0.5, y: 0, w: 0.5, h: 0.5 } });
+
+		expect(await colourAt(cut, 0.5, 0.5)).toEqual({ colour: GREEN, width: 100, height: 100 });
+	});
+
+	it('is turned to the left a quarter at a time, then mirrored, then cut', async () => {
+		// Turned once to the left, green is top left and white top right; mirrored, white is top left and blue
+		// bottom left.
+		expect((await colourAt(await editPicture(quarters, { turns: 1 }), 0.1, 0.1)).colour).toEqual(
+			GREEN
+		);
 		expect(
-			await pickSignature(server, member, { banner: 'https://example.com/a.png' }, request)
-		).toEqual({
-			isAllowed: false,
-			reason: 'That banner is not one to pick.'
+			(await colourAt(await editPicture(quarters, { turns: 1, isFlipped: true }), 0.1, 0.1)).colour
+		).toEqual(WHITE);
+		const cut = await editPicture(quarters, {
+			turns: 1,
+			isFlipped: true,
+			frame: { x: 0, y: 0.5, w: 0.5, h: 0.5 }
 		});
+		expect((await colourAt(cut, 0.5, 0.5)).colour).toEqual(BLUE);
+	});
+
+	it('is straightened about its frame’s middle and grown so the frame stays covered', async () => {
+		const cut = await editPicture(quarters, { tilt: 20, frame: { x: 0, y: 0.5, w: 0.5, h: 0.5 } });
+		const { width, height, colour } = await colourAt(cut, 0.5, 0.5);
+
+		expect(colour).toEqual(BLUE);
+		expect(width).toBeLessThan(100);
+		expect(width).toBe(height);
+		// Grown to cover the frame, no corner sees through to the picture's outside.
+		const { data, info } = await sharp(cut)
+			.ensureAlpha()
+			.raw()
+			.toBuffer({ resolveWithObject: true });
+		expect(data[3]).toBe(255);
+		expect(data[(info.width * info.height - 1) * 4 + 3]).toBe(255);
+	});
+
+	it('keeps a photo square when the edit picks no shape, and cut where the frame was', async () => {
+		const wide = await sharp({
+			create: { width: 400, height: 200, channels: 3, background: '#0000ff' }
+		})
+			.composite([
+				{
+					input: await sharp({
+						create: { width: 200, height: 200, channels: 3, background: '#ff0000' }
+					})
+						.png()
+						.toBuffer(),
+					left: 200,
+					top: 0
+				}
+			])
+			.png()
+			.toBuffer();
+		const photo = await makePicture(wide, 'photo', { frame: { x: 0.5, y: 0, w: 0.5, h: 1 } });
+		const { data, info } = await sharp(photo).raw().toBuffer({ resolveWithObject: true });
+
+		expect(info).toMatchObject({ width: 224, height: 224 });
+		const middle = (112 * 224 + 112) * info.channels;
+		expect([data[middle], data[middle + 1], data[middle + 2]]).toEqual(RED);
+	});
+});
+
+describe('saving a signature’s photo and banners', () => {
+	it('keeps the photo picked, its edit and its link, and back to the start with none', async () => {
+		const edit = { turns: 1 };
+		const answer = allowed(
+			await saveSignature(
+				server,
+				member,
+				{ photo: { source: 'drive:1LogoPhoto', edit, link: 'tridentcubed.com/team' } },
+				request
+			)
+		);
+
+		expect(answer.parts?.photo).toMatchObject({
+			source: 'drive:1LogoPhoto',
+			edit,
+			link: 'https://tridentcubed.com/team',
+			isPicked: true
+		});
+		expect(answer.signature.href).toBe('https://tridentcubed.com/team');
+		expect(answer.signature.src).toBe(
+			`${ORIGIN}/signature/${toPictureName({ source: 'drive:1LogoPhoto', kind: 'photo', edit })}`
+		);
+
+		const back = allowed(await saveSignature(server, member, { photo: null }, request));
+		expect(back.parts?.photo).toMatchObject({ source: 'drive:1TynequaPhoto', isPicked: false });
+		expect(back.parts?.photo.edit).toBeUndefined();
+	});
+
+	it('keeps the banners in their order with their links and edits, none when there are none', async () => {
+		const banners = [
+			{ id: 'expo', source: 'drive:1ExpoBanner', link: 'https://expo.example/stand' },
+			{ id: 'map', source: 'drive:1MapBanner', link: '', edit: { turns: 2 } }
+		];
+		const answer = allowed(await saveSignature(server, member, { banners }, request));
+
+		expect(
+			answer.parts?.banners.map(({ id, source, link, edit }) => ({ id, source, link, edit }))
+		).toEqual([{ ...banners[0], edit: undefined }, banners[1]]);
+		expect(answer.signature.banners?.map((each) => [each.href, each.alt])).toEqual([
+			['https://expo.example/stand', 'Expo'],
+			['', 'Map']
+		]);
+
+		const none = allowed(await saveSignature(server, member, { banners: [] }, request));
+		expect(none.signature.banners).toEqual([]);
+
+		const back = allowed(await saveSignature(server, member, { banners: null }, request));
+		expect(back.parts?.banners.map((each) => each.source)).toEqual(['drive:1MapBanner']);
+	});
+
+	it('takes only a photo or banner offered, and a link that is an address', async () => {
+		expect(
+			await saveSignature(
+				server,
+				member,
+				{ photo: { source: 'drive:1SomeoneElse', link: '' } },
+				request
+			)
+		).toEqual({ isAllowed: false, reason: 'That photo is not one to pick.' });
+		expect(
+			await saveSignature(
+				server,
+				member,
+				{ banners: [{ id: 'a', source: 'https://example.com/a.png', link: '' }] },
+				request
+			)
+		).toEqual({ isAllowed: false, reason: 'That banner is not one to pick.' });
+		expect(
+			await saveSignature(
+				server,
+				member,
+				{ banners: [{ id: 'a', source: 'drive:1MapBanner', link: 'not a link' }] },
+				request
+			)
+		).toEqual({ isAllowed: false, reason: 'That banner link is not an address.' });
 	});
 
 	it('shows the company logo, copied, when the picked photo cannot be read', async () => {
 		const answer = allowed(
-			await pickSignature(server, member, { photo: 'drive:1GonePhoto' }, request)
+			await saveSignature(
+				server,
+				member,
+				{ photo: { source: 'drive:1GonePhoto', link: '' } },
+				request
+			)
 		);
 
 		expect(answer.signature.src).toBe(
 			`${ORIGIN}/signature/${toPictureName({ source: COMPANY_LOGO, kind: 'photo' })}`
 		);
-		await pickSignature(server, member, { photo: null }, request);
+		await saveSignature(server, member, { photo: null }, request);
 	});
 
 	it('is the person’s own, or an Admin’s for anyone', async () => {
 		expect(
-			await pickSignature(server, member, { person: adminRecord, banner: '' }, request)
+			await saveSignature(server, member, { person: adminRecord, banners: [] }, request)
 		).toEqual({
 			isAllowed: false,
 			reason: 'Only an Admin can open someone else’s email signature.'
 		});
 		const answer = allowed(
-			await pickSignature(
+			await saveSignature(
 				server,
 				admin,
-				{ person: memberRecord, photo: 'drive:1LogoPhoto' },
+				{ person: memberRecord, photo: { source: 'drive:1LogoPhoto', link: '' } },
 				request
 			)
 		);
 		expect(answer.signature.id).toBe(memberRecord);
-		expect(answer.choices?.photo).toBe('drive:1LogoPhoto');
-		await pickSignature(server, admin, { person: memberRecord, photo: null }, request);
+		expect(answer.parts?.photo.source).toBe('drive:1LogoPhoto');
+		await saveSignature(server, admin, { person: memberRecord, photo: null }, request);
 	});
 });
 
@@ -311,20 +480,26 @@ describe('uploading a signature’s photo or banner', () => {
 			await uploadSignature(server, member, { kind: 'photo', type: 'image/jpeg', bytes }, request)
 		);
 
-		expect(answer.choices?.photo).toMatch(/^upload:[0-9a-f]{24}\.jpg$/);
-		expect(answer.choices?.photos[0]).toMatchObject({
-			source: answer.choices?.photo,
+		const source = answer.parts?.photo.source ?? '';
+		expect(source).toMatch(/^upload:[0-9a-f]{24}\.jpg$/);
+		expect(answer.parts?.photos[0]).toMatchObject({
+			source,
 			label: 'Your upload',
 			preview: answer.signature.src
 		});
 		const { meta, alphaAt } = await readMade(answer.signature.src);
 		expect(meta).toMatchObject({ width: 224, height: 224 });
 		expect(alphaAt(0, 0)).toBe(0);
-		const file = answer.choices?.photo.slice('upload:'.length);
+		const file = source.slice('upload:'.length);
 		expect(await store.read(`signatures/uploads/${file}`)).toEqual(bytes);
+		// The editor opens it as it came, from the app.
+		expect(answer.parts?.photo.original).toBe(`/api/signature?upload=${file}`);
+		expect(await readUpload(store, file)).toEqual({ bytes, type: 'image/jpeg' });
+		expect(await readUpload(store, '../secret.jpg')).toBeUndefined();
+		await saveSignature(server, member, { photo: null }, request);
 	});
 
-	it('takes a banner the same way, linking to the website', async () => {
+	it('takes a banner the same way, under the others, linking to the website', async () => {
 		const answer = allowed(
 			await uploadSignature(
 				server,
@@ -334,12 +509,15 @@ describe('uploading a signature’s photo or banner', () => {
 			)
 		);
 
-		expect(answer.choices?.banner).toMatch(/^upload:[0-9a-f]{24}\.png$/);
-		expect(answer.signature.banner).toMatchObject({
+		expect(answer.parts?.banners.map((each) => each.source)).toEqual([
+			'drive:1MapBanner',
+			expect.stringMatching(/^upload:[0-9a-f]{24}\.png$/)
+		]);
+		expect(answer.signature.banners?.[1]).toMatchObject({
 			href: 'https://tridentcubed.com',
-			alt: 'Your upload'
+			alt: 'Trident Cubed'
 		});
-		await pickSignature(server, member, { banner: null }, request);
+		await saveSignature(server, member, { banners: null }, request);
 	});
 
 	it('refuses what is not a picture, and anyone else’s signature', async () => {
@@ -400,7 +578,7 @@ describe('someone else’s and the shared mailboxes’ signatures', () => {
 			name: 'Operations',
 			src: `${ORIGIN}/signature/${toPictureName({ source: COMPANY_LOGO, kind: 'photo' })}`
 		});
-		expect(mailbox.choices).toBeUndefined();
+		expect(mailbox.parts).toBeUndefined();
 	});
 
 	it('say so when the record or mailbox is not there', async () => {

@@ -21,7 +21,12 @@ import {
 	type RatioType
 } from '#lib/report/report.constants.js';
 
-import { turnedAspect, type EditType, type FrameType } from '#lib/components/photo/edit.js';
+import {
+	keptAspectOf,
+	RATIO_VALUES,
+	type EditType,
+	type FrameType
+} from '#lib/components/photo/edit.js';
 
 export type { CropRatioType, FitType, RatioType };
 export * from '#lib/components/photo/edit.js';
@@ -62,13 +67,6 @@ export const CROP_RATIOS: { id: CropRatioType; label: string }[] = [
 	{ id: 'original', label: 'Original' },
 	...RATIOS.slice(1)
 ];
-/** Each ratio's shape, its width over its height. */
-export const RATIO_VALUES: Record<string, number> = {
-	'16:9': 16 / 9,
-	'9:16': 9 / 16,
-	'1:1': 1,
-	'4:3': 4 / 3
-};
 /** The most Auto puts on one page. */
 export const AUTO_MOST = 100;
 /** The most columns or rows the grid picker offers. */
@@ -261,8 +259,7 @@ export function lockedAspectOf(
 	edit: EditType,
 	pictureAspect: number
 ): number | undefined {
-	if (edit.ratio === 'original') return turnedAspect(pictureAspect, edit);
-	if (edit.ratio) return RATIO_VALUES[edit.ratio];
+	if (edit.ratio) return keptAspectOf(edit, pictureAspect);
 	if (photo.kind === 'pdf' || photo.ownLayout) return undefined;
 	if (fitOf(stage) === 'fit' && ratioOf(stage) !== 'free') return RATIO_VALUES[ratioOf(stage)];
 	if (fitOf(stage) === 'fill' && !stage.isAuto) return cellAspectOf(gridOf(stage));

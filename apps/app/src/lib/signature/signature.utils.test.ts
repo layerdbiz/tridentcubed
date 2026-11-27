@@ -1,6 +1,6 @@
 // Email signatures (#354): a person's signature from their Team record, with the signature Sheets filling in what the
-// app does not hold yet; the photo and banner a person can pick, which they show and what they start with; and the
-// pictures that are copied to the app's public signature address.
+// app does not hold yet; the photo and banners a person can pick, edit and link, which they show and what they start
+// with; and the pictures that are copied to the app's public signature address.
 import { describe, expect, it } from 'vite-plus/test';
 import {
 	COMPANY_LOGO,
@@ -18,16 +18,20 @@ import {
 	toDriveFile,
 	toFetchAddress,
 	toIconPictures,
-	toLiveSignature,
+	toLink,
 	toMailboxLook,
 	toMailboxSignature,
+	toOriginal,
+	toPersonBanners,
 	toPersonLook,
+	toPersonParts,
+	toPersonPhoto,
 	toPersonSignature,
 	toPhotoChoices,
 	toPhotoSource,
 	toPreview,
 	toSharedAddresses,
-	toSheetDetails,
+	toShownSize,
 	toSheets
 } from './signature.utils';
 
@@ -126,9 +130,10 @@ const grace: SignatureRecordType = {
 };
 const stranger: SignatureRecordType = { ...ada, name: 'New Person', email: 'new@example.com' };
 
+const BANNER = 'https://next.app.example/signature/bbb.png';
 const MADE: MadeLookType = {
 	photo: 'https://next.app.example/signature/aaa.png',
-	banner: 'https://next.app.example/signature/bbb.png',
+	banners: [{ address: BANNER, width: 1200, height: 350 }],
 	icons: {
 		phone: 'https://next.app.example/signature/ccc.png',
 		logo: 'https://next.app.example/signature/ddd.png'
@@ -243,17 +248,44 @@ describe('the photo a signature shows', () => {
 		expect(toPhotoSource(stranger, sheets)).toBe(`drive:${DEFAULT_PHOTO.file}`);
 	});
 
-	it('is a photo kind, carrying when its Google Drive file last changed', () => {
-		expect(toPersonLook(ada, sheets, { photo: 'drive:1AdaLinkedInPhoto' }).photo).toEqual({
-			source: 'drive:1AdaLinkedInPhoto',
-			kind: 'photo',
-			version: '10/20/2026'
-		});
+	it('is a photo kind, carrying when its Google Drive file last changed and how it was edited', () => {
+		const edit = { turns: 1, frame: { x: 0.1, y: 0.2, w: 0.5, h: 0.5 } };
+
+		expect(
+			toPersonLook(ada, sheets, { photo: 'drive:1AdaLinkedInPhoto', photoEdit: edit }).photo
+		).toEqual({ source: 'drive:1AdaLinkedInPhoto', kind: 'photo', version: '10/20/2026', edit });
+		expect(toPersonLook(ada, sheets, { photoEdit: edit }).photo.edit).toBeUndefined();
+	});
+
+	it('takes a reader to the link given, else the Team record’s, else the Sheet’s', () => {
+		expect(toPersonPhoto(ada, sheets).link).toBe('https://www.linkedin.com/in/sheet');
+		expect(toPersonPhoto({ ...ada, link: 'https://ada.example' }, sheets).link).toBe(
+			'https://ada.example'
+		);
+		expect(toPersonPhoto(ada, sheets, { photoLink: '' }).link).toBe('');
+		expect(
+			toPersonSignature(ada, sheets, toPersonLook(ada, sheets, { photoLink: '' }), MADE).href
+		).toBe('');
 	});
 });
 
-describe('the banner a signature shows', () => {
-	it('is the one picked, none when they said so, else the Sheet’s, else the Trident Cubed map', () => {
+describe('the links a signature’s photo and banners take', () => {
+	it('keep an address as typed, an email as a mail link, anything else on the web', () => {
+		expect(toLink(' https://x.example/a ')).toBe('https://x.example/a');
+		expect(toLink('tridentcubed.com/expo')).toBe('https://tridentcubed.com/expo');
+		expect(toLink('ops@tridentcubed.com')).toBe('mailto:ops@tridentcubed.com');
+		expect(toLink('')).toBe('');
+	});
+
+	it('refuse what is not an address', () => {
+		expect(toLink('not a link')).toBeUndefined();
+		expect(toLink('nowhere')).toBeUndefined();
+		expect(toLink(`https://x.example/${'a'.repeat(2100)}`)).toBeUndefined();
+	});
+});
+
+describe('the banners a signature shows', () => {
+	it('start with the one picked, none when they said so, else the Sheet’s, else the Trident Cubed map', () => {
 		expect(toBannerSource(ada, sheets, `drive:${MAP}`)).toBe(`drive:${MAP}`);
 		expect(toBannerSource(ada, sheets, '')).toBe('');
 		expect(toBannerSource(ada, sheets)).toBe(`drive:${DRIVE_ID}`);
@@ -261,28 +293,47 @@ describe('the banner a signature shows', () => {
 		expect(
 			toBannerSource(stranger, toSheets({ people: [], mailboxes: [], banners: [], social: [] }))
 		).toBe(`drive:${DEFAULT_BANNER.file}`);
+		expect(toPersonBanners(ada, sheets)).toEqual([
+			{ id: 'sheet', source: `drive:${DRIVE_ID}`, link: 'https://breakbulk.example' }
+		]);
+		expect(toPersonBanners(ada, sheets, { banner: '' })).toEqual([]);
 	});
 
-	it('takes a reader where its Sheet row says, and an upload to the website', () => {
-		expect(toPersonLook(ada, sheets).banner).toEqual({
-			picture: { source: `drive:${DRIVE_ID}`, kind: 'banner' },
-			href: 'https://breakbulk.example',
-			alt: 'Breakbulk'
-		});
-		expect(
-			toPersonLook(ada, sheets, { banner: 'upload:0123456789abcdef01234567.png' }).banner
-		).toMatchObject({ href: UPLOAD_BANNER_LINK, alt: 'Your upload' });
-		expect(toPersonLook(ada, sheets, { banner: '' }).banner).toBeUndefined();
-	});
+	it('are the ones saved once there are, in their order, each with its edit and link', () => {
+		const saved = [
+			{ id: 'b', source: 'upload:0123456789abcdef01234567.png', link: UPLOAD_BANNER_LINK },
+			{ id: 'a', source: `drive:${MAP}`, link: 'https://expo.example', edit: { turns: 2 } }
+		];
+		const look = toPersonLook(ada, sheets, { banner: '', banners: saved });
 
-	it('is picked from every banner in the folder, an upload first', () => {
-		expect(toBannerChoices(sheets, 'upload:0123456789abcdef01234567.png')).toEqual([
+		expect(toPersonBanners(ada, sheets, { banner: '', banners: saved })).toBe(saved);
+		expect(look.banners).toEqual([
 			{
-				source: 'upload:0123456789abcdef01234567.png',
-				label: 'Your upload',
-				preview: '',
-				link: UPLOAD_BANNER_LINK
+				picture: { source: saved[0].source, kind: 'banner' },
+				href: UPLOAD_BANNER_LINK,
+				alt: 'Trident Cubed'
 			},
+			{
+				picture: {
+					source: `drive:${MAP}`,
+					kind: 'banner',
+					version: '7/30/2026',
+					edit: { turns: 2 }
+				},
+				href: 'https://expo.example',
+				alt: 'Trident cubed map'
+			}
+		]);
+		expect(toPersonLook(ada, sheets, { banners: [] }).banners).toEqual([]);
+	});
+
+	it('show at their own shape, as wide as the signature at most', () => {
+		expect(toShownSize({ width: 1200, height: 350 })).toEqual({ width: 600, height: 175 });
+		expect(toShownSize({ width: 400, height: 100 })).toEqual({ width: 400, height: 100 });
+	});
+
+	it('are added from every banner in the folder', () => {
+		expect(toBannerChoices(sheets)).toEqual([
 			{
 				source: `drive:${DRIVE_ID}`,
 				label: 'Breakbulk',
@@ -296,6 +347,39 @@ describe('the banner a signature shows', () => {
 				link: 'https://tridentcubed.com'
 			}
 		]);
+	});
+});
+
+describe('what the screen edits', () => {
+	it('is the photo and banners with their names and pictures, the editor opening the big ones', () => {
+		const upload = 'upload:0123456789abcdef01234567.png';
+		const parts = toPersonParts(ada, sheets, {
+			photo: 'drive:1AdaLinkedInPhoto',
+			banners: [{ id: 'b', source: upload, link: '' }]
+		});
+
+		expect(parts.photo).toEqual({
+			source: 'drive:1AdaLinkedInPhoto',
+			link: 'https://www.linkedin.com/in/sheet',
+			label: 'Ada lovelace linkedin updated',
+			preview: 'https://lh3.googleusercontent.com/d/1AdaLinkedInPhoto=w480',
+			original: 'https://lh3.googleusercontent.com/d/1AdaLinkedInPhoto=w1600',
+			isPicked: true
+		});
+		expect(parts.banners).toEqual([
+			{
+				id: 'b',
+				source: upload,
+				link: '',
+				label: 'Your upload',
+				preview: '/api/signature?upload=0123456789abcdef01234567.png',
+				original: '/api/signature?upload=0123456789abcdef01234567.png'
+			}
+		]);
+		expect(parts.companyBanners).toEqual(toBannerChoices(sheets));
+		expect(toOriginal('https://tridentcubed.com/emails/ada.png')).toBe(
+			'https://tridentcubed.com/emails/ada.png'
+		);
 	});
 });
 
@@ -314,7 +398,15 @@ describe('a person’s signature', () => {
 			src: MADE.photo,
 			slug: ada.id,
 			socialLinks: sheets.social,
-			banner: { href: 'https://breakbulk.example', src: MADE.banner, alt: 'Breakbulk' }
+			banners: [
+				{
+					href: 'https://breakbulk.example',
+					src: BANNER,
+					alt: 'Breakbulk',
+					width: 600,
+					height: 175
+				}
+			]
 		});
 	});
 
@@ -338,41 +430,7 @@ describe('a person’s signature', () => {
 	it('shows the company logo when no photo was made, and no banner when none was', () => {
 		expect(
 			toPersonSignature(stranger, sheets, toPersonLook(stranger, sheets), { icons: {} })
-		).toMatchObject({ src: COMPANY_LOGO, group: '', href: '', banner: undefined });
-	});
-});
-
-describe('a person’s signature as their Team record is typed', () => {
-	it('follows the record at once, the Sheet still filling in what it leaves empty', () => {
-		const signature = toPersonSignature(ada, sheets, toPersonLook(ada, sheets), MADE);
-		const typed = { name: 'Ada King', title: '', phone: '+1 555 0199', email: 'ada@example.com' };
-
-		expect(toLiveSignature(signature, typed, toSheetDetails(ada, sheets))).toEqual({
-			...signature,
-			name: 'Ada King',
-			title: 'Sheet Title',
-			phone: '+1 555 0199',
-			email: 'ada@example.com',
-			group: 'ops@example.com, sales@example.com'
-		});
-	});
-
-	it('keeps an email typed to a shared address out of the shared addresses under it', () => {
-		const signature = toPersonSignature(ada, sheets, toPersonLook(ada, sheets), MADE);
-		const typed = { ...ada, email: 'OPS@example.com' };
-
-		expect(toLiveSignature(signature, typed, toSheetDetails(ada, sheets)).group).toBe(
-			'ada@example.com, sales@example.com'
-		);
-	});
-
-	it('has nothing from the Sheet for someone not on it', () => {
-		expect(toSheetDetails(stranger, sheets)).toEqual({
-			title: '',
-			phone: '',
-			email: '',
-			group: ''
-		});
+		).toMatchObject({ src: COMPANY_LOGO, group: '', href: '', banners: [] });
 	});
 });
 
@@ -385,14 +443,17 @@ describe('a shared mailbox’s signature', () => {
 			source: 'https://tridentcubed.com/branding/logo.png',
 			kind: 'photo'
 		});
-		expect(look.banner?.picture).toEqual({ source: `drive:${DRIVE_ID}`, kind: 'banner' });
+		expect(look.banners.map((each) => each.picture)).toEqual([
+			{ source: `drive:${DRIVE_ID}`, kind: 'banner' }
+		]);
 		expect(toMailboxSignature(sales, sheets, look, MADE)).toMatchObject({
 			id: 'sales',
 			type: 'group',
 			name: 'Sales',
 			email: 'sales@example.com',
 			group: '',
-			banner: { src: MADE.banner, alt: 'Breakbulk' }
+			href: 'https://example.com',
+			banners: [{ src: BANNER, alt: 'Breakbulk' }]
 		});
 	});
 
@@ -400,7 +461,11 @@ describe('a shared mailbox’s signature', () => {
 		const ops = sheets.mailboxes[0];
 		const look = toMailboxLook(ops, sheets);
 
-		expect(look).toEqual({ photo: { source: COMPANY_LOGO, kind: 'photo' }, banner: undefined });
-		expect(toMailboxSignature(ops, sheets, look, MADE).banner).toBeUndefined();
+		expect(look).toEqual({
+			photo: { source: COMPANY_LOGO, kind: 'photo' },
+			photoLink: '',
+			banners: []
+		});
+		expect(toMailboxSignature(ops, sheets, look, MADE).banners).toEqual([]);
 	});
 });
