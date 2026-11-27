@@ -4,7 +4,8 @@
 	// of the phone's dashboard. Whoever uses it draws the picture (`picture`, told whether the menu is open). Install
 	// App (#203) is there only while the app is not installed; a tap installs where the browser offered that, and
 	// otherwise opens the how-to. Activity (#306) is there for an Admin only, the one who may open it. What's New
-	// (#363) shows every release, with the app's version under it. Email Signature (#354) is everyone's own.
+	// (#363) shows every release, with the app's version under it. Email Signature (#354) is everyone's own. Settings
+	// (#403) holds them all on one page, and the Activity Log and what rings the bell; the rest stay here too.
 	import type { Snippet } from 'svelte';
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import HowTo from '#lib/install/how-to.svelte';
@@ -30,6 +31,7 @@
 	} = $props();
 
 	const ACCOUNT = [
+		{ id: 'account', label: 'Settings', icon: 'icon-[mdi--cog-outline]' },
 		{ id: 'profile', label: 'Profile', icon: 'icon-[mdi--account-circle-outline]' },
 		{ id: 'organization', label: 'Organization', icon: 'icon-[mdi--domain]' },
 		{ id: 'activity', label: 'Activity Log', icon: 'icon-[mdi--timeline-clock-outline]' },
@@ -63,7 +65,8 @@
 		if (id === 'logout') return void logOut();
 		if (id === 'install') return void installApp();
 		if (id === 'whats-new') return whatsNew.openAll();
-		if (id === 'organization') look.openSettings();
+		if (id === 'account') look.openAccount();
+		else if (id === 'organization') look.openSettings();
 		else if (id === 'activity') look.openActivity();
 		else if (id === 'signature') look.openSignature();
 		else if (look.me) look.openRecord('team', look.me.name, 'page');

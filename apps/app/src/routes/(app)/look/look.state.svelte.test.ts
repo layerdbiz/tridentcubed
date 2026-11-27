@@ -62,6 +62,25 @@ describe('a new app', () => {
 		expect(look.isFrozen).toBe(false);
 	});
 
+	it('opens Settings at a part, and a page opened from Settings goes back to it (#403)', () => {
+		const look = fresh();
+		look.openAccount('notifications');
+		expect(look.screen).toBe('account');
+		expect(look.accountSection).toBe('notifications');
+
+		look.openFromAccount(() => look.openSettings());
+		expect(look.screen).toBe('settings');
+		look.home();
+		expect(look.screen).toBe('account');
+		look.home();
+		expect(look.screen).toBe('dashboard');
+
+		// Opened from the menu on the picture, the same page goes back to the dashboard.
+		look.openSettings();
+		look.home();
+		expect(look.screen).toBe('dashboard');
+	});
+
 	it('makes a project from the + sheet and opens it on Edit with empty panels', () => {
 		const look = fresh();
 		look.create(draftPanel(look.organization.name, 'Capt. Cezary Poninski'));

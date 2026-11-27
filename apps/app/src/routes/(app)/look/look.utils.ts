@@ -16,7 +16,8 @@ const SCREENS: ScreenType[] = [
 	'record',
 	'settings',
 	'activity',
-	'signature'
+	'signature',
+	'account'
 ];
 
 // Puts the address's place on screen. Anything it names that is not there (an old link, a deleted project or

@@ -23,6 +23,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { fade, fly, scale } from 'svelte/transition';
 	import AccountMenu from './account-menu.svelte';
+	import AccountPage from './account-page.svelte';
 	import ActivityPage from './activity-page.svelte';
 	import SignaturePage from './signature-page.svelte';
 	import DashboardList from './dashboard-list.svelte';
@@ -371,6 +372,10 @@
 					{look}
 					{notifications}
 					onclose={() => (isBellOpen = false)}
+					onsettings={() => {
+						isBellOpen = false;
+						look.openAccount('notifications');
+					}}
 				/>
 			</Popover>
 		{/if}
@@ -659,6 +664,20 @@
 		</div>
 	{/if}
 
+	{#if look.screen === 'account'}
+		<!-- Settings (#403): anyone's own, opened from the menu on their profile picture or the bell's cog, sliding in
+		     like the Organization. -->
+		<div
+			class="fixed inset-0 z-50"
+			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
+		>
+			<AccountPage
+				{look}
+				{isWide}
+			/>
+		</div>
+	{/if}
+
 	{#if look.screen === 'signature'}
 		<!-- Email Signature (#354): anyone's own, opened from the menu on their profile picture, sliding in like the
 		     Activity. -->
@@ -730,10 +749,12 @@
 	{/if}
 
 	<!-- The Organization has Page and Edit on the bar too. While photos are selected (#402), the Selection bar takes
-	     its place. -->
+	     its place. Settings (#403) has its own way back and its own menu, so the bar steps aside there. -->
 	<div
-		class="transition-opacity duration-150 {isSelecting ? 'pointer-events-none opacity-0' : ''}"
-		inert={isSelecting}
+		class="transition-opacity duration-150 {isSelecting || look.screen === 'account'
+			? 'pointer-events-none opacity-0'
+			: ''}"
+		inert={isSelecting || look.screen === 'account'}
 	>
 		<BarC
 			{look}
@@ -781,6 +802,11 @@
 				onclose={(hasOpened) => {
 					isBellPage = false;
 					if (hasOpened) drawer = 0;
+				}}
+				onsettings={() => {
+					isBellPage = false;
+					drawer = 0;
+					look.openAccount('notifications');
 				}}
 			/>
 		</div>
