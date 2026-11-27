@@ -6,12 +6,12 @@
 	// line (Justin, 2026-11-27: "a linear gradient scroll, to where it fades to nothing"). `fade` names the edges: `y`
 	// for the top and the bottom, `x` for the left and the right, `all`, or a list of them. Each edge fades only as
 	// far as there is more to see past it: at the very top the top shows whole, and the fade grows with the first
-	// `depth` pixels scrolled (the app's rule since 2026-11-16, fade.ts); at the very end the end shows whole. With no
-	// `fade` it is a plain scrolling box.
+	// `depth` pixels scrolled (the app's rule since 2026-11-16; every list in the app fades through here); at the very
+	// end the end shows whole. With no `fade` it is a plain scrolling box.
 	//
 	// It is the base component, and its look is set from outside (Justin, 2026-11-26): the box takes `class`, `size`
 	// and everything else given, its colours included. The fade is a mask, so whatever lies behind shows through it.
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { Component, type ComponentProps, type ComponentReturn } from '@layerd/ui';
 
@@ -55,7 +55,10 @@
 					: ''
 	);
 
-	// How far each named edge fades now: how much more there is to see past it, up to `depth`.
+	// How far each edge fades now, in whole pixels: how much more there is to see past it, up to `depth`. Drawn as
+	// the box's own style, so a style handed in from outside, one that changes too, sits beside it and never wipes it.
+	const shown = $state({ top: 0, bottom: 0, left: 0, right: 0 });
+
 	const follow: Attachment<HTMLElement> = (node) => {
 		const named = edges;
 		const deep = depth;
@@ -66,12 +69,12 @@
 				left: node.scrollLeft,
 				right: node.scrollWidth - node.clientWidth - node.scrollLeft
 			};
-			for (const edge of ['top', 'bottom', 'left', 'right'] as const) {
-				const size = named.includes(edge) ? Math.min(Math.max(past[edge], 0), deep) : 0;
-				node.style.setProperty(`--scroller-${edge}`, `${Math.round(size)}px`);
-			}
+			for (const edge of ['top', 'bottom', 'left', 'right'] as const)
+				shown[edge] = named.includes(edge)
+					? Math.round(Math.min(Math.max(past[edge], 0), deep))
+					: 0;
 		}
-		measure();
+		untrack(measure);
 		if (named.length === 0) return;
 		node.addEventListener('scroll', measure, { passive: true });
 		// What it holds may grow or shrink (a section opens, a list arrives): the end may move.
@@ -92,6 +95,10 @@
 			{...root}
 			class="scroller {overflow} {mask} {root.class}"
 			data-fade={edges.join(' ') || undefined}
+			style:--scroller-top="{shown.top}px"
+			style:--scroller-bottom="{shown.bottom}px"
+			style:--scroller-left="{shown.left}px"
+			style:--scroller-right="{shown.right}px"
 			{@attach follow}
 		>
 			{@render children?.()}

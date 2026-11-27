@@ -4,11 +4,11 @@
 	// with nothing found left out. Before anything is typed, Recents, then each page's latest (search.ts). Each row is
 	// the thing's own avatar (a logo, a face, initials), its name with the typed words marked, a line under it, and on
 	// the right a project's status or how many projects a record is on. No filter chips, no key hints, no Esc or Enter
-	// labels: a close X at the top right, and the list fades at its top and bottom as every list does (fade.ts).
+	// labels: a close X at the top right, and the list fades at its top and bottom as every list does (the library Scroller).
 	// Arrow keys still move, Enter opens and Escape closes. It is the library Dialog's tall kind: near the full screen
 	// on a phone, a 36rem box from md up, the search field staying put while the results scroll.
-	import { Avatar, Button, Chip, Dialog } from '@layerd/ui';
-	import { FADE, fadeTop } from './fade';
+	import { Avatar, Button, Chip, Dialog, Scroller } from '@layerd/ui';
+	import type { Attachment } from 'svelte/attachments';
 	import { PAGE_ICONS, STATUS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { logoOf } from './marks';
@@ -26,6 +26,9 @@
 	let query = $state('');
 	let active = $state(0);
 	let list: HTMLElement | undefined = $state();
+	const keepList: Attachment<HTMLElement> = (node) => {
+		list = node;
+	};
 	const groups = $derived(searchOf(look, query));
 	// Every row in the order shown, so the arrow keys run on from one group into the next.
 	const rows = $derived(groups.flatMap((group) => group.rows));
@@ -88,13 +91,13 @@
 			/>
 		</div>
 	{/snippet}
-	<div
+	<Scroller
+		fade="y"
 		id="search-results"
-		class="h-full overflow-y-auto overscroll-contain pt-2 pb-10 {FADE}"
+		class="h-full overscroll-contain pt-2 pb-10"
 		role="listbox"
 		aria-label="Search results"
-		bind:this={list}
-		{@attach fadeTop}
+		{@attach keepList}
 	>
 		{#each groups as group, number (group.title)}
 			<p
@@ -155,7 +158,7 @@
 				{query.trim() ? `Nothing found for “${query.trim()}”.` : 'Nothing here yet.'}
 			</p>
 		{/each}
-	</div>
+	</Scroller>
 </Dialog>
 
 <!-- The typed words, marked where they were found. -->

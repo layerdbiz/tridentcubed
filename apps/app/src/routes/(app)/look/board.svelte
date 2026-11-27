@@ -7,10 +7,9 @@
 	// label, transport by Sea, Air, Rail and Road, facilities by kind. Something with two labels shows in both columns.
 	// Columns run to the bottom of the screen and each scrolls on its own, fading out under the floating bar. A mouse
 	// drags the board sideways from any part of a column but its cards; a finger swipes it.
-	import { Badge } from '@layerd/ui';
+	import { Badge, Scroller } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { FADE, fadeTop } from './fade';
 	import type { ColumnType } from './records.data';
 
 	let {
@@ -80,9 +79,9 @@
 					class="ml-auto h-auto min-w-6 px-2 py-0.5 text-[11px] text-white {column.tone.bg}"
 				/>
 			</p>
-			<div
-				class="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-y-contain pb-28 {FADE}"
-				{@attach fadeTop}
+			<Scroller
+				fade="y"
+				class="min-h-0 flex-1 space-y-2 overscroll-y-contain pb-28"
 			>
 				{#each column.items as item (keyOf(item))}
 					<div
@@ -94,7 +93,7 @@
 				{:else}
 					<p class="px-2 py-4 text-center text-xs text-slate-400">Nothing here</p>
 				{/each}
-			</div>
+			</Scroller>
 		</div>
 	{/each}
 </div>
