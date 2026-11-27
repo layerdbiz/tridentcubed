@@ -5,6 +5,8 @@
 	// card shows (state, customer, title, percent, where the trip runs, the team); and in the sheet below, the rest to
 	// read: its numbers, its details, the team, the trip stop by stop and each panel's progress. A panel opens on Edit.
 	import { Avatar, ListRow, ProgressBar, Stack } from '@layerd/ui';
+	import { countsOf } from './counts';
+	import FileCounts from './file-counts.svelte';
 	import { cityStateOf } from './location';
 	import { pinOfRecord, pinsAt } from './chart.data';
 	import {
@@ -151,6 +153,12 @@
 						max={4}
 					/>
 				</span>
+				<!-- #350: how many photos, videos, PDFs and spreadsheets the project holds. -->
+				<FileCounts
+					count={countsOf(look.workspaces[project.id] ?? [])}
+					{isLight}
+					isBig
+				/>
 			</div>
 		</div>
 		<ProgressBar

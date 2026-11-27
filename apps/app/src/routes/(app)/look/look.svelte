@@ -94,10 +94,13 @@
 
 	// The Cards view shows each project's photos, and those are among the rows a project loads as it opens. So
 	// while the cards are on screen, every project not loaded yet is loaded, three at a time, saying nothing if one
-	// does not come (Justin, 2026-11-17: after a reload, "all I see is a bunch of no photos yet").
+	// does not come (Justin, 2026-11-17: after a reload, "all I see is a bunch of no photos yet"). #350: every list of
+	// projects shows how many photos, videos, PDFs and spreadsheets each holds, counted from those rows too, so the
+	// list, the board and a record's own projects load them as the cards do.
 	let isFilling = false;
 	$effect(() => {
-		if (look.screen !== 'dashboard' || look.dataset !== 'projects' || look.view !== 'cards') return;
+		const isProjects = look.screen === 'dashboard' && look.dataset === 'projects';
+		if (!isProjects && look.screen !== 'record') return;
 		const ids = look.projects
 			.filter((project) => !look.isLoaded(project.id))
 			.map((each) => each.id);

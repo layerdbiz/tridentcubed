@@ -23,6 +23,8 @@
 	import RecordMark from './record-mark.svelte';
 	import RecordRow from './record-row.svelte';
 	import Chips from './chips.svelte';
+	import { countsOf } from './counts';
+	import FileCounts from './file-counts.svelte';
 	import {
 		columnsOf,
 		hasLabel,
@@ -169,6 +171,7 @@
 								<th class="py-3">Labels</th>
 								<th class="py-3">Route</th>
 								<th class="py-3">Team</th>
+								<th class="py-3">Files</th>
 								<th class="w-52 py-3">Progress</th>
 							{:else}
 								<th class="py-3">Labels</th>
@@ -216,6 +219,10 @@
 											items={facesOf(project.team, { isMuted: isArchived })}
 											size={30}
 										/></td
+									>
+									<!-- #350: how many photos, videos, PDFs and spreadsheets it holds. -->
+									<td class="py-3 {CELL_PADDING} pr-4"
+										><FileCounts count={countsOf(look.workspaces[project.id] ?? [])} /></td
 									>
 									<td class="py-3 {CELL_PADDING} pr-4"
 										><ProjectProgress

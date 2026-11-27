@@ -14,8 +14,12 @@
 	// file keeps what is the app's own: the icon, the name and its tally, the meta and the in-the-report switch.
 	// 2026-11-26 (Justin): a library piece's look is set from outside, so the panel groups' look is given here: the
 	// faint box, the grey chevron and the red Delete: red words and bin on no box, the type picked on #384.
+	// #350 (Justin, 2026-11-27): a photo group gives its `files`, how many photos, PDFs and videos it holds, and they
+	// show under its name as coloured icons and numbers, in place of the words at its right ("3 photos, 1 PDF").
 	import type { Snippet } from 'svelte';
 	import { Accordion, Avatar, Switch } from '@layerd/ui';
+	import { totalOf, type CountType } from './counts';
+	import FileCounts from './file-counts.svelte';
 	import { FOLD_LOOK } from './fold';
 	import { toTally } from './tally';
 
@@ -30,6 +34,7 @@
 	let {
 		title,
 		meta = '',
+		files,
 		values,
 		icon = '',
 		number,
@@ -49,6 +54,8 @@
 	}: {
 		title: string;
 		meta?: string;
+		// A photo group's photos, PDFs and videos, counted (counts.ts).
+		files?: CountType;
 		// What counts toward the section being complete: each one that holds something is one done.
 		values?: unknown[];
 		icon?: string;
@@ -119,6 +126,8 @@
 					>Left out of the report</span
 				>
 			{:else if values}<span class="block truncate text-xs text-slate-500">{toTally(values)}</span
+				>{/if}
+			{#if files && totalOf(files)}<span class="mt-0.5 flex"><FileCounts count={files} /></span
 				>{/if}
 		</span>
 		{#if meta}<span class="shrink-0 text-xs text-slate-400">{meta}</span>{/if}
