@@ -13,7 +13,7 @@
 		phone: string;
 		email: string; // Primary email
 		group: string; // Secondary email (company/group email)
-		href: string; // LinkedIn URL
+		href: string; // Where a tap on the photo goes (LinkedIn); '' for nowhere
 		src: string; // Headshot image URL
 		slug: string;
 		logoImage?: string;
@@ -40,6 +40,18 @@
 			src: string;
 			alt: string;
 		};
+		/**
+		 * The banners under the signature, in order, in place of `banner` (#354): each a link that opens in a new
+		 * window, drawn at its own shape and at the size given (CSS pixels, at most the signature's 600), since Outlook
+		 * for Windows draws a picture at the size its tag says and ignores the rest of its styles.
+		 */
+		banners?: {
+			href: string;
+			src: string;
+			alt: string;
+			width?: number;
+			height?: number;
+		}[];
 	}
 
 	export interface EmailProps extends ComponentProps {
@@ -95,14 +107,41 @@
 			facebook: toText(data.socialLinks?.facebook || 'https://www.facebook.com/TridentCubed'),
 			whatsapp: toText(data.socialLinks?.whatsapp || 'https://wa.me/15705751179')
 		},
-		banner: data.banner
-			? {
-					href: toText(data.banner.href),
-					src: toText(data.banner.src),
-					alt: toText(data.banner.alt)
-				}
-			: undefined
+		banners: toBanners(data).map((banner) => ({
+			href: toText(banner.href),
+			src: toText(banner.src),
+			alt: toText(banner.alt),
+			width: toSize(banner.width),
+			height: toSize(banner.height)
+		}))
 	});
+
+	// The banners in order: the list, or the one banner a website signature has.
+	function toBanners(signature: EmailSignatureData): NonNullable<EmailSignatureData['banners']> {
+		return signature.banners ?? (signature.banner ? [signature.banner] : []);
+	}
+
+	// A size in whole pixels, or none for one not given.
+	function toSize(value: number | undefined) {
+		return value && Number.isFinite(value) ? Math.max(1, Math.round(value)) : 0;
+	}
+
+	// One banner: a link round its picture, at its size when it has one, else the signature's whole width.
+	function bannerOf(banner: (typeof template.banners)[number]) {
+		const size = banner.width
+			? `width="${banner.width}"${banner.height ? ` height="${banner.height}"` : ''} `
+			: '';
+		const width = banner.width
+			? `width:${banner.width}px; max-width:100%;`
+			: 'width:100%; max-width:100%;';
+		const picture = `<img src="${banner.src}" alt="${banner.alt}" ${size}style="display:block; border:0; outline:none; ${width} height:auto;" />`;
+		return `
+		<tr>
+			<td style="padding:0 0 8px; line-height:0; font-size:0;">
+				${banner.href ? `<a href="${banner.href}" target="_blank" rel="noopener" style="text-decoration:none; display:block; line-height:0;">${picture}</a>` : picture}
+			</td>
+		</tr>`;
+	}
 
 	// Generate clean HTML string for email clients
 	function getHTML(): string {
@@ -121,9 +160,15 @@
 
 				<!-- PHOTO -->
 				<td style="vertical-align:top; padding-right:10px;">
-					<a href="${t.linkedinUrl}" target="_blank" rel="noopener" style="text-decoration:none; width:112px; height:132px; display:block;">
+					${
+						t.linkedinUrl
+							? `<a href="${t.linkedinUrl}" target="_blank" rel="noopener" style="text-decoration:none; width:112px; height:132px; display:block;">
 						<img src="${t.profileImage}" alt="${t.name}" width="112" style="width:112px; display:block; border:0; outline:none; text-align:center; margin:0 auto;" />
-					</a>
+					</a>`
+							: `<div style="width:112px; height:132px; display:block;">
+						<img src="${t.profileImage}" alt="${t.name}" width="112" style="width:112px; display:block; border:0; outline:none; text-align:center; margin:0 auto;" />
+					</div>`
+					}
 				</td>
 
 				<!-- CONTACT -->
@@ -235,18 +280,11 @@
 		</table>
 	</div>
 
-	<!-- BANNER IMAGE -->
+	<!-- BANNER IMAGES -->
 	${
-		t.banner
+		t.banners.length
 			? `
-	<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="mso-table-lspace:0; mso-table-rspace:0; margin:20px auto;">
-		<tr>
-			<td style="padding:0; line-height:0; font-size:0;">
-				<a href="${t.banner.href}" target="_blank" rel="noopener" style="text-decoration:none; display:block; line-height:0;">
-					<img src="${t.banner.src}" alt="${t.banner.alt}" style="display:block; border:0; outline:none; width:100%; max-width:100%; height:auto;" />
-				</a>
-			</td>
-		</tr>
+	<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="mso-table-lspace:0; mso-table-rspace:0; margin:20px auto 12px;">${t.banners.map(bannerOf).join('')}
 	</table>`
 			: ''
 	}
