@@ -75,7 +75,10 @@ they shipped.
   gh api -X POST R/actions/workflows/task-manager.yml/dispatches
   -f ref=dev -f 'inputs[start]=<n>'
 - Every PR body still carries Closes #<n> for each ticket it finishes, so
-  the issue closes when the work reaches main and the PR links to it.
+  the PR links to it. Tickets land on next through their own PR, merged at
+  once, and task-manager sees no merge into dev for them: the close-issues
+  workflow closes each one when next reaches dev (AGENTS.md, "Where work
+  lands").
 - A card the workflow cannot see (no numbered branch, closed by hand,
   dragged by hand): dispatch board-status with the issues and the column.
   It runs on a GitHub runner, where the Projects API is reachable:

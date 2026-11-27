@@ -6,11 +6,21 @@ Oneezy skills and any other skill where they disagree.
 ### Where work lands
 - **`next` is the integration branch**, live at next.app.tridentcubed.com
   with the dev data (#341). A fresh cloud checkout sits on `main`, whose
-  rules are older: cut each branch from an up-to-date `origin/next`, merge
-  it back into `next` when done, push, and delete the branch. All of that is
-  Justin's standing yes; go ahead without asking. Work on `next` may add to
-  the database but never rename or remove anything, since dev.app reads the
-  same data.
+  rules are older: cut each branch from an up-to-date `origin/next`, named
+  `<type>/<n>-<slug>` for its ticket, and push it when you start: that
+  puts the ticket In Progress on the board (task-manager reads the number
+  from the branch, since GitHub ignores `Closes` on a pull request into
+  anything but `main`). A cloud thread pushes there too, not only to its
+  `claude/...` branch. When done, open a pull request into `next` with
+  `Closes #<n>` in its body, and merge it at once
+  with a merge commit titled as before (`🔀 merge(<scope>): ... (#<n>) onto
+  next`): `gh api -X PUT repos/layerdbiz/tridentcubed/pulls/<pr>/merge -f
+  merge_method=merge -f commit_title=...`. next runs no checks, so nothing
+  waits, and delete-merged-branch removes the branch. If the merge is
+  refused, merge `origin/next` into the branch, push and merge again. All
+  of that is Justin's standing yes; go ahead without asking. Work on `next`
+  may add to the database but never rename or remove anything, since
+  dev.app reads the same data.
 - **`dev`** takes `next` only on Justin's explicit word, after he has
   checked the work on next.app. That merge is when the checks run. It is a
   fast-forward, `git push origin origin/next:dev`, never a squash: the
@@ -23,8 +33,13 @@ Oneezy skills and any other skill where they disagree.
   made-up data only. Like `next`, it runs no GitHub checks.
 - **Long-lived**: `main`, `dev`, `next` and `play` stay forever; never
   delete them.
-- **Issues close by hand.** GitHub closes an issue from `Closes #<n>` only
-  on `main`, so close each issue yourself once its work reaches `dev`.
+- **Tickets close when their work reaches `dev`.** On every push to `dev`,
+  `.github/workflows/close-issues.yml` closes the tickets of each pull
+  request into `next` that the push brings: the one its branch is named for
+  and any its body closes. A round that leaves its ticket unfinished names
+  no number in its branch and says `Refs #<n>`, not `Closes`. Work that
+  reached `next` without a pull request closes nothing: close its ticket by
+  hand when it reaches `dev`.
 
 ### Starting work
 Use Matt Pocock's skills. At the start of new work, run `/ask-matt` (user-only:
@@ -80,8 +95,8 @@ only), then the skill syncs it here. Never ask Justin to review or merge a
 skills change, and never put skill copies in this repo; this repo keeps its
 own Working rules above. Pushing needs
 `oneezy/skills` among this project's repositories; when a push is refused,
-say so and stop, and Justin adds the repo or runs the add from his AI
-Workflow project. The one skill still committed here,
+say so and stop, and Justin adds the repo or runs the add from his Tools
+project. The one skill still committed here,
 `.claude/skills/resolving-merge-conflicts`, is not in the library yet and
 stays until it moves there.
 
