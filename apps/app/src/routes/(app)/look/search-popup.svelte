@@ -2,33 +2,25 @@
 	// The menu's search (#345), opened from the search icon beside the logo in the menu, or Ctrl K (⌘ K on a Mac). Round
 	// 2 (Justin, 2026-11-26, with a picture): a plain search that fills in as you type, in one group per page, a page
 	// with nothing found left out. Before anything is typed, Recents, then each page's latest (search.ts). Each row is
-	// the thing's own avatar (a logo, a face, initials), its name with the typed words marked, a line under it, and on
-	// the right a project's status or how many projects a record is on. No filter chips, no key hints, no Esc or Enter
+	// the thing's own avatar (a logo, a face, initials), its name, a line under it, and on the right a project's status
+	// or how many projects a record is on. Round 3 (Justin, 2026-11-27): no yellow on the typed words. No filter chips, no key hints, no Esc or Enter
 	// labels: a close X at the top right, and the list fades at its top and bottom as every list does (the library Scroller).
-	// Arrow keys still move, Enter opens and Escape closes. It is the library Dialog's tall kind: near the full screen
-	// on a phone, a 36rem box from md up, the search field staying put while the results scroll.
-	import { Avatar, Button, Chip, Dialog, Scroller } from '@layerd/ui';
-	import type { Attachment } from 'svelte/attachments';
+	// Arrow keys still move, Enter opens and Escape closes. It is the library Dialog's full kind, as What's New is
+	// (Justin, 2026-11-27): the whole screen on a phone, with no grab handle and nothing of the page behind it showing,
+	// a 36rem box from md up, the search field staying put while the results scroll.
+	import { Avatar, Button, Chip, Dialog } from '@layerd/ui';
 	import { PAGE_ICONS, STATUS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { logoOf } from './marks';
 	import RecordMark from './record-mark.svelte';
 	import { openItem } from './records.data';
-	import { marksOf, searchOf, type SearchRowType } from './search';
+	import { searchOf, type SearchRowType } from './search';
 
 	let { look, onclose }: { look: LookState; onclose: () => void } = $props();
-
-	// A line too long for its row fades out at its end rather than ending in "…", which would take a found word's mark
-	// when the cut falls inside it.
-	const CUT =
-		'overflow-hidden whitespace-nowrap [mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]';
 
 	let query = $state('');
 	let active = $state(0);
 	let list: HTMLElement | undefined = $state();
-	const keepList: Attachment<HTMLElement> = (node) => {
-		list = node;
-	};
 	const groups = $derived(searchOf(look, query));
 	// Every row in the order shown, so the arrow keys run on from one group into the next.
 	const rows = $derived(groups.flatMap((group) => group.rows));
@@ -61,11 +53,14 @@
 
 <Dialog
 	label="Search"
-	variant="tall"
+	variant="full"
+	fade="y"
 	{onclose}
 >
 	{#snippet header()}
-		<div class="-mx-5 flex shrink-0 items-center gap-3 border-b border-slate-100 pr-3 pb-3 pl-5">
+		<div
+			class="-mx-5 flex shrink-0 items-center gap-3 border-b border-slate-100 pt-3 pr-3 pb-3 pl-5 md:pt-0"
+		>
 			<span class="icon-[mdi--magnify] size-7 shrink-0 text-primary"></span>
 			<!-- svelte-ignore a11y_autofocus -->
 			<input
@@ -91,13 +86,12 @@
 			/>
 		</div>
 	{/snippet}
-	<Scroller
-		fade="y"
+	<div
 		id="search-results"
-		class="h-full overscroll-contain pt-2 pb-10"
+		class="pt-2 pb-10"
 		role="listbox"
 		aria-label="Search results"
-		{@attach keepList}
+		bind:this={list}
 	>
 		{#each groups as group, number (group.title)}
 			<p
@@ -136,10 +130,8 @@
 						/>
 					{/if}
 					<span class="min-w-0 flex-1">
-						<span class="block {CUT} text-[15px] text-slate-900">{@render marked(row.name)}</span>
-						{#if row.line}<span class="block {CUT} text-sm text-slate-500"
-								>{@render marked(row.line)}</span
-							>{/if}
+						<span class="block truncate text-[15px] text-slate-900">{row.name}</span>
+						{#if row.line}<span class="block truncate text-sm text-slate-500">{row.line}</span>{/if}
 					</span>
 					{#if row.project}
 						<Chip
@@ -158,12 +150,5 @@
 				{query.trim() ? `Nothing found for “${query.trim()}”.` : 'Nothing here yet.'}
 			</p>
 		{/each}
-	</Scroller>
+	</div>
 </Dialog>
-
-<!-- The typed words, marked where they were found. -->
-{#snippet marked(text: string)}
-	{#each marksOf(text, query) as part, index (index)}{#if part.isFound}<mark
-				class="rounded-sm bg-amber-200/70 text-inherit">{part.text}</mark
-			>{:else}{part.text}{/if}{/each}
-{/snippet}

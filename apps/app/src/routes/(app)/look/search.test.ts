@@ -9,7 +9,7 @@ import {
 	type TransportType
 } from './look.data';
 import { LookState } from './look.state.svelte';
-import { marksOf, searchOf } from './search';
+import { searchOf } from './search';
 
 function addCustomer(look: LookState, name: string, city = '', kind = '') {
 	const draft = draftOf('customers') as ClientType;
@@ -140,25 +140,5 @@ describe('the menu’s search, before anything is typed', () => {
 			['Customers', ...[12, 11, 10, 9, 8, 7, 6, 5, 4, 3].map((n) => `Customer ${n}`)],
 			['Facilities', 'Barbours Cut']
 		]);
-	});
-});
-
-describe('what a row marks as found', () => {
-	it('marks every typed word where it shows, whatever its capitals and accents', () => {
-		expect(marksOf('Gulfway Freight', 'gulf FR')).toEqual([
-			{ text: 'Gulf', isFound: true },
-			{ text: 'way ', isFound: false },
-			{ text: 'Fr', isFound: true },
-			{ text: 'eight', isFound: false }
-		]);
-		expect(marksOf('São Paulo', 'sao')).toEqual([
-			{ text: 'São', isFound: true },
-			{ text: ' Paulo', isFound: false }
-		]);
-	});
-
-	it('marks nothing when nothing is typed or found', () => {
-		expect(marksOf('KOGA', '')).toEqual([{ text: 'KOGA', isFound: false }]);
-		expect(marksOf('KOGA', 'zebra')).toEqual([{ text: 'KOGA', isFound: false }]);
 	});
 });
