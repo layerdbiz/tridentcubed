@@ -14,7 +14,8 @@
 		look,
 		notifications,
 		hasBack = false,
-		onclose
+		onclose,
+		onsettings
 	}: {
 		look: LookState;
 		notifications: NotificationsState;
@@ -22,6 +23,8 @@
 		hasBack?: boolean;
 		// Told when they close: by the back arrow, or by a line opening what it is about (`hasOpened`).
 		onclose: (hasOpened?: boolean) => void;
+		// The cog: what rings the bell, on Settings.
+		onsettings?: () => void;
 	} = $props();
 
 	// The library Button in the type picked on #386, as the shell's.
@@ -47,6 +50,14 @@
 				class="ml-1 rounded-full bg-danger/10 px-2 py-0.5 text-xs font-semibold text-danger"
 				>{notifications.count} new</span
 			>{/if}
+		{#if onsettings}<Button
+				{...ROUND}
+				icon="icon-[mdi--cog-outline]"
+				aria-label="Notification settings"
+				title="Notification settings"
+				class="ml-auto"
+				onclick={onsettings}
+			/>{/if}
 	</header>
 	<div class="min-h-0 flex-1 px-2 pb-3 {hasBack ? 'overflow-y-auto overscroll-y-contain' : ''}">
 		{#if !notifications.isRead}

@@ -108,6 +108,13 @@ describe('the address', () => {
 		expect(reload(look, toAddress(look, new URL(HOME))).screen).toBe('signature');
 	});
 
+	it('lands a reload on Settings, for anyone (#403)', () => {
+		const look = new LookState();
+		look.role = 'team';
+		look.openAccount();
+		expect(reload(look, toAddress(look, new URL(HOME))).screen).toBe('account');
+	});
+
 	it('lands an Admin’s reload on the Activity, and anyone else’s on the dashboard (#306)', () => {
 		const admin = new LookState();
 		admin.role = 'admin';

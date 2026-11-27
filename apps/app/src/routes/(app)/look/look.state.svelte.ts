@@ -57,7 +57,11 @@ export type ScreenType =
 	| 'record'
 	| 'settings'
 	| 'activity'
-	| 'signature';
+	| 'signature'
+	| 'account';
+
+/** The parts of Settings (#403) shown inside it; the rest open their own pages. */
+export type AccountSectionType = 'activity' | 'notifications';
 export type ViewType = 'table' | 'cards' | 'board';
 // A project has Edit (its panels, once called Panels) and Preview; a record has Page (how it reads) and Edit.
 export type TabType = 'page' | 'edit' | 'preview';
@@ -208,6 +212,8 @@ export function themeOf(status: StatusType) {
 
 export class LookState {
 	screen = $state<ScreenType>('dashboard');
+	// The part of Settings (#403) a desktop shows beside its menu, and a phone opens on its own; none is its menu.
+	accountSection = $state<AccountSectionType | ''>('');
 	view = $state<ViewType>('table');
 	filter = $state('All');
 	dataset = $state<DatasetType>('projects');
@@ -233,6 +239,8 @@ export class LookState {
 	#afterAdd: ((name: string) => void) | undefined;
 	// The project a record was opened from by a dropdown's pencil; back returns there.
 	#backTo: { projectId: string; tab: TabType; panelId: string } | undefined;
+	// A page opened from Settings (#403) goes back to Settings.
+	#isFromAccount = false;
 	navSection = $state<string>('projects');
 	// The menu's panels (#212): which are open, the same in the sidebar and the phone's drawer, and remembered on
 	// the device (menu-panels.ts).
@@ -500,6 +508,23 @@ export class LookState {
 		this.screen = 'signature';
 	}
 
+	// Settings (#403; Justin, 2026-11-27): everything that is the person's own, opened from the menu on their picture
+	// or the Notifications' gear, at one of its parts or at its menu.
+	openAccount(section: AccountSectionType | '' = '') {
+		if (this.screen === 'workspace') this.#keepProject();
+		this.#isFromAccount = false;
+		this.tab = 'page';
+		this.tabProgress = 0;
+		this.accountSection = section;
+		this.screen = 'account';
+	}
+
+	// A page Settings opens (Profile, Organization, Activity Log, Email Signature), whose back comes back to Settings.
+	openFromAccount(open: () => void) {
+		open();
+		if (this.screen !== 'account' && this.screen !== 'dashboard') this.#isFromAccount = true;
+	}
+
 	// The organization's new name follows it into every project's Organization drop-down.
 	nameOrganization(name: string) {
 		const before = this.organization.name;
@@ -515,6 +540,13 @@ export class LookState {
 	}
 
 	home() {
+		if (this.#isFromAccount) {
+			this.#isFromAccount = false;
+			if (this.screen !== 'workspace' && this.screen !== 'dashboard') {
+				this.screen = 'account';
+				return;
+			}
+		}
 		const back = this.#backTo;
 		this.#backTo = undefined;
 		if (this.screen === 'record' && back) {
