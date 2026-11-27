@@ -201,7 +201,9 @@ the why is in ADR 0002, 0003 and 0005.
 - **The first release is made (Justin, 2026-11-27).** `IS_RELEASING` in
   `releases.utils.ts` is on: the push that brought next into dev made
   v1.0.0. Each later push to dev with a feature or a fix makes the next
-  version, and dev still takes next only on Justin's word.
+  version, and dev still takes next only on Justin's word. On next and
+  dev What's New opens by itself the moment a new version is out
+  (`POP_UP_BRANCHES`, Justin, 2026-11-27).
 - **v1.0.0 is one list (Justin, 2026-11-27).** The first release is told in
   its own words, `src/lib/releases/first-release.ts`: what the app does
   today, features only, each once, in everyday words, in place of every day
