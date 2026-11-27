@@ -13,11 +13,12 @@ import {
 	RELEASE_BRANCHES,
 	REPOSITORY_URL,
 	isNewer,
+	isPrerelease,
 	planRelease,
 	toNextPrerelease,
 	toPrereleaseBase,
 	toPrereleaseVersion,
-	toReleaseUrl,
+	toReleaseRef,
 	toTag,
 	toTagVersion,
 	type CommitType,
@@ -54,35 +55,36 @@ export function readyRepository(head = 'HEAD') {
 	}
 }
 
-/** A release tag: its version and the commit it marks. */
-export type TagType = { version: string; commit: string };
+/** A release tag: its version, the commit it marks and, read from git, when it was made (ISO). */
+export type TagType = { version: string; commit: string; date?: string };
 
 /** A prerelease tag: its version, the release it leads to, its number and the commit it marks. */
 export type PrereleaseTagType = TagType & PrereleaseType;
 
-// Every v* tag as its name and the commit it marks.
+// Every v* tag as its name, the commit it marks and when it was made: the release workflow's annotated tags are dated
+// the moment the push reached the branch.
 function readTagNames() {
 	const out = git(
 		'for-each-ref',
 		'refs/tags/v*',
-		`--format=%(refname:short)${FIELD}%(objectname)${FIELD}%(*objectname)`
+		`--format=%(refname:short)${FIELD}%(objectname)${FIELD}%(*objectname)${FIELD}%(creatordate:iso-strict)`
 	);
 	return out
 		.split('\n')
 		.filter(Boolean)
 		.map((line) => {
-			const [name, object, peeled] = line.split(FIELD);
+			const [name, object, peeled, date] = line.split(FIELD);
 			// An annotated tag names its commit as the peeled object; a light one is the commit.
-			return { name, commit: peeled || object };
+			return { name, commit: peeled || object, date };
 		});
 }
 
 /** The release tags, oldest version first. Prereleases and any other tag are left out. */
 export function readTags(): TagType[] {
 	const tags: TagType[] = [];
-	for (const { name, commit } of readTagNames()) {
+	for (const { name, commit, date } of readTagNames()) {
 		const version = toTagVersion(name);
-		if (version) tags.push({ version, commit });
+		if (version) tags.push({ version, commit, date });
 	}
 	return tags.sort((a, b) => (isNewer(a.version, b.version) ? 1 : -1));
 }
@@ -194,10 +196,10 @@ export function readReleaseState(
 			for (const each of held) versions.set(each, tag.version);
 		}
 	}
-	const releases: ReleaseRefType[] = [...prereleases, ...tags].map((tag) => ({
-		version: tag.version,
-		url: toReleaseUrl(tag.version)
-	}));
+	const releases: ReleaseRefType[] = [
+		...prereleases.map((tag) => toReleaseRef(tag.version)),
+		...tags.map((tag) => toReleaseRef(tag.version, tag.date))
+	];
 
 	// The build's own version: on dev the release being made from it, or the last; on next its prerelease tag, or the
 	// prerelease the workflow is about to tag it with.
@@ -222,7 +224,9 @@ export function readReleaseState(
 		for (const each of readCommitIds(commit, ...(made.length ? ['--not', ...made] : []))) {
 			versions.set(each, version);
 		}
-		releases.push({ version, url: toReleaseUrl(version) });
+		releases.push(
+			toReleaseRef(version, isPrerelease(version) ? undefined : new Date().toISOString())
+		);
 	}
 
 	return {

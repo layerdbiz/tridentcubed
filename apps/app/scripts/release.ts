@@ -46,6 +46,7 @@ import {
 	PRERELEASE_BRANCH,
 	isPrerelease,
 	toReleaseChanges,
+	toReleaseRef,
 	toTag
 } from '../src/lib/releases/releases.utils.ts';
 
@@ -116,9 +117,15 @@ const isTagged = [...tags, ...readPrereleaseTags()].some(
 	(tag) => tag.commit === head && tag.version === version
 );
 
-// The release's own commits, What's New's days made of them, and the rest of its features and fixes. Dev's first
-// release is its own one list instead, with nothing behind the scenes (Justin, 2026-11-27).
-const isFirst = !last && !isPrerelease(version);
+// The release's own commits, What's New's sections made of them, and the rest of its features and fixes. A release
+// made on dev is one section, dated the day it reached dev: its tag's day, or today for the one being made (Justin,
+// 2026-11-27); a prerelease's are its days. Dev's first release is its own one list, with nothing behind the scenes.
+const isRelease = !isPrerelease(version);
+const isFirst = !last && isRelease;
+const date = isRelease
+	? (tags.find((tag) => tag.commit === head && tag.version === version)?.date ??
+		new Date().toISOString())
+	: undefined;
 const range = toReleaseRange(head, last);
 const held = new Set(readCommitIds(...range));
 const { chain, landed } = readLanded(head);
@@ -127,8 +134,13 @@ const batches = toHistory(
 	chain,
 	landed
 		.filter((each) => each.commit && held.has(each.commit))
-		.map((each) => (isFirst ? { ...each, release: version } : each)),
-	{ plain: PLAIN, hidden: HIDDEN_TICKETS, first: FIRST_FEATURES }
+		.map((each) => (isRelease ? { ...each, release: version } : each)),
+	{
+		plain: PLAIN,
+		hidden: HIDDEN_TICKETS,
+		first: FIRST_FEATURES,
+		releases: isRelease ? [toReleaseRef(version, date)] : []
+	}
 ).batches;
 const others = isFirst
 	? []

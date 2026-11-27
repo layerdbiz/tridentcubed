@@ -212,6 +212,12 @@ the why is in ADR 0002, 0003 and 0005.
   releases; next.app keeps its next versions, each commit staying in the
   prerelease that brought it. Releases after it list their commits'
   `What's New:` lines as usual.
+- **A dev release is one section, dated the day it reached dev (Justin,
+  2026-11-27).** However many days its work took on next, a release made
+  on dev is one What's New section and one `## <date>` in its GitHub notes,
+  dated by its tag (the workflow tags it the moment the push lands), or
+  today for the one being made. next.app keeps a section per prerelease
+  and per day.
 - **What's New always opens on its glow (Justin, 2026-11-27).** It is a
   full library `Dialog` (`variant="full"`): on a phone it fills the whole
   screen, with no grab handle, and its list fades out under the head and

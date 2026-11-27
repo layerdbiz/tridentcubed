@@ -36,8 +36,12 @@ export type ReleaseType = {
 	changes: ReleaseChangeType[];
 };
 
-/** A release as What's New names it: its version and where its notes are. */
-export type ReleaseRefType = { version: string; url: string };
+/**
+ * A release as What's New names it: its version and where its notes are. A release made on dev also carries `date`,
+ * when it reached dev (its tag's, or now for the one being made), the day its one section is dated (Justin,
+ * 2026-11-27); next's prereleases carry none, their sections dated by their days.
+ */
+export type ReleaseRefType = { version: string; url: string; date?: string };
 
 /** A commit as `git log` gives it. */
 export type CommitType = { subject: string; body?: string };
@@ -179,6 +183,11 @@ export function toTag(version: string) {
 /** The release's page on GitHub: its notes. */
 export function toReleaseUrl(version: string) {
 	return `${REPOSITORY_URL}/releases/tag/${toTag(version)}`;
+}
+
+/** A release as What's New names it, with `date` when it reached dev, for a release made there. */
+export function toReleaseRef(version: string, date?: string): ReleaseRefType {
+	return { version, url: toReleaseUrl(version), ...(date ? { date } : {}) };
 }
 
 /** A prerelease: its version, the release it leads to and its number on the way, 1.2.0-next.3: 1.2.0 and 3. */

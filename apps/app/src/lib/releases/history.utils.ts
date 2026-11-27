@@ -12,6 +12,7 @@
 import {
 	FIRST_VERSION,
 	TEAM_TIME_ZONE,
+	isPrerelease,
 	toReleaseChanges,
 	type ChangeKindType,
 	type CommitType,
@@ -46,7 +47,7 @@ export type HistoryChangeType = ReleaseChangeType & {
 
 /** One day of work: its date on the team's clock, its changes and the release that brought them. */
 export type HistoryBatchType = {
-	/** The day, 2026-11-27: the batch's title. */
+	/** The day, 2026-11-27: the batch's title. A release made on dev is dated the day it reached dev. */
 	day: string;
 	/** When its first change landed (ISO). */
 	from: string;
@@ -137,18 +138,23 @@ export function toDay(at: string, timeZone = TEAM_TIME_ZONE) {
 }
 
 /**
- * The changes, oldest first, folded into days, oldest first. A release also ends one (#400), next's prereleases too
- * (Justin, 2026-11-27): a day never holds the changes of two releases, or of a release and what is not released yet,
- * so each section is one release's day and names it.
+ * The changes, oldest first, folded into sections, oldest first. A release made on dev is one section, however many
+ * days its work took (Justin, 2026-11-27: "I only care whenever they land into the dev app"); next's prereleases and
+ * what is not released yet are folded into days. A release also ends a section (#400), next's prereleases too: a
+ * section never holds the changes of two releases, or of a release and what is not released yet, so it names its one
+ * release.
  */
 export function toBatches(changes: HistoryChangeType[], timeZone = TEAM_TIME_ZONE) {
 	const batches: HistoryBatchType[] = [];
 	for (const change of changes) {
 		const day = toDay(change.at, timeZone);
 		const batch = batches.at(-1);
-		if (batch && batch.day === day && batch.changes[0].release === change.release) {
+		const release = batch?.changes[0].release;
+		const isWhole = release !== undefined && !isPrerelease(release);
+		if (batch && release === change.release && (isWhole || batch.day === day)) {
 			batch.changes.push(change);
 			batch.to = change.at;
+			batch.day = day;
 		} else batches.push({ day, from: change.at, to: change.at, changes: [change] });
 	}
 	return batches;
@@ -193,7 +199,20 @@ function toFirstBatch(landed: LandedType[], lines: string[], timeZone: string): 
 	};
 }
 
-/** The days with the release that brought them, newest first, and each day's changes newest first. */
+/** A section with the release that brought it: dated the day that release reached dev, where it carries that day. */
+function toReleased(
+	batch: HistoryBatchType,
+	release: ReleaseRefType | undefined,
+	timeZone: string
+) {
+	if (!release) return batch;
+	return { ...batch, release, ...(release.date ? { day: toDay(release.date, timeZone) } : {}) };
+}
+
+/**
+ * The sections with the release that brought them, newest first, and each section's changes newest first: a release
+ * made on dev is one section dated the day it reached dev, next's prereleases a section a day.
+ */
 export function toHistory(
 	head: string,
 	chain: string[],
@@ -211,13 +230,13 @@ export function toHistory(
 	const firsts = first ? landed.filter((each) => each.release === FIRST_VERSION) : [];
 	const rest = firsts.length > 0 ? landed.filter((each) => each.release !== FIRST_VERSION) : landed;
 	const batches = toBatches(toHistoryChanges(rest, plain, hidden), timeZone).map((batch) => {
-		// Every change of a day is of one release.
+		// Every change of a section is of one release.
 		const release = releases.find((each) => each.version === batch.changes.at(-1)?.release);
-		return { ...batch, ...(release ? { release } : {}), changes: batch.changes.toReversed() };
+		return { ...toReleased(batch, release, timeZone), changes: batch.changes.toReversed() };
 	});
 	if (first && firsts.length > 0) {
 		const release = releases.find((each) => each.version === FIRST_VERSION);
-		batches.unshift({ ...toFirstBatch(firsts, first, timeZone), ...(release ? { release } : {}) });
+		batches.unshift(toReleased(toFirstBatch(firsts, first, timeZone), release, timeZone));
 	}
 	return { head, chain, batches: batches.reverse(), ...(version ? { version } : {}) };
 }
