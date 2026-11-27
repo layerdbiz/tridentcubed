@@ -3,10 +3,12 @@
 	// then the one list the Activity Log wears (activity-list.svelte), one by one, newest first, with no sorting or
 	// filters. Only what is about the person signed in, and What's New's days. A line is light blue until it is
 	// tapped; a tap opens what it is about and closes the Notifications. On a phone they fill the screen with a back
-	// arrow; on a desktop they hang from the bell.
-	import { Button } from '@layerd/ui';
+	// arrow; on a desktop they hang from the bell, half the screen tall at most (Justin, 2026-11-27: the box ran all
+	// the way down the page). The heading stays put while the list scrolls in the library Scroller, fading at its top
+	// and bottom like every list, under the day headings that stick to its top on a desktop as on a phone.
+	import { Button, Scroller } from '@layerd/ui';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
-	import ActivityList from './activity-list.svelte';
+	import ActivityList, { HEADING_HEIGHT } from './activity-list.svelte';
 	import type { LookState } from './look.state.svelte';
 	import type { NotificationsState } from './bell.svelte';
 
@@ -31,9 +33,9 @@
 	const ROUND = { secondary: true, ghost: true, md: true };
 </script>
 
-<div class="flex min-h-0 flex-col {hasBack ? 'h-full' : ''}">
+<div class="flex min-h-0 flex-col {hasBack ? 'h-full' : 'max-h-[50dvh]'}">
 	<header
-		class="sticky top-0 z-20 flex shrink-0 items-center gap-1 bg-white px-2 {hasBack
+		class="flex shrink-0 items-center gap-1 px-2 {hasBack
 			? 'pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-2'
 			: 'pt-2 pb-1 pl-3'}"
 	>
@@ -59,7 +61,11 @@
 				onclick={onsettings}
 			/>{/if}
 	</header>
-	<div class="min-h-0 flex-1 px-2 pb-3 {hasBack ? 'overflow-y-auto overscroll-y-contain' : ''}">
+	<Scroller
+		fade="y"
+		inset={{ top: HEADING_HEIGHT }}
+		class="min-h-0 flex-1 overscroll-y-contain px-2 pb-3"
+	>
 		{#if !notifications.isRead}
 			<p class="px-3 py-10 text-center text-sm text-slate-500">Loading…</p>
 		{:else if notifications.hasFailed && !notifications.events.length}
@@ -86,5 +92,5 @@
 				}}
 			/>
 		{/if}
-	</div>
+	</Scroller>
 </div>

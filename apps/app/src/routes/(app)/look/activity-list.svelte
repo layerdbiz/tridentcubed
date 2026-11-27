@@ -4,6 +4,12 @@
 >
 	export type ActivityTabType = 'all' | 'projects' | 'users';
 
+	/**
+	 * How tall a heading (Today, Yesterday...) is, in pixels: it sticks to the top of the box that scrolls the list, so
+	 * that box's top fade (the library Scroller's `inset`) starts under it and the heading shows whole.
+	 */
+	export const HEADING_HEIGHT = 32;
+
 	/** A new version's line in the bell: What's New's day, its first things in words, and whether it is unseen. */
 	export type ReleaseLineType = {
 		id: string;
@@ -644,10 +650,11 @@
 	</div>
 {/snippet}
 
-<!-- A soft heading: Today, Yesterday, Last 7 days, Earlier. -->
+<!-- A soft heading: Today, Yesterday, Last 7 days, Earlier. It sticks to the top of what scrolls the list, its
+     height HEADING_HEIGHT. -->
 {#snippet heading(label: string)}
 	<li
-		class="sticky top-0 z-10 bg-white/95 px-2 pt-3 pb-1 text-xs font-semibold text-slate-400 backdrop-blur-sm"
+		class="sticky top-0 z-10 h-8 bg-white px-2 pt-3 pb-1 text-xs leading-4 font-semibold text-slate-400"
 	>
 		{label}
 	</li>
