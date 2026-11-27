@@ -81,6 +81,19 @@ describe('Scroller', () => {
 		expect(fades(box)).toEqual(['0px', '56px', '0px', '56px']);
 	});
 
+	it('keeps its fades when a style handed to it changes', async () => {
+		const { rerender } = render(Scroller, {
+			props: { children: list, fade: 'y', style: 'padding-left: 20px' }
+		});
+		const box = scrollerOf();
+		measure(box, { top: 20 });
+		await fireEvent.scroll(box);
+
+		await rerender({ style: 'padding-left: 40px' });
+		expect(box.style.paddingLeft).toBe('40px');
+		expect(fades(box)).toEqual(['20px', '56px', '0px', '0px']);
+	});
+
 	it('takes the class it is given', () => {
 		render(Scroller, { props: { children: list, class: 'max-h-80 px-5' } });
 

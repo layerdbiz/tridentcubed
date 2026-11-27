@@ -13,10 +13,9 @@
 	// 2026-11-18): Recent is "Recents", a panel that slides open and shut (menu-panel.svelte), with Online under it.
 	// #346 (Justin, 2026-11-25): Pinned sits above them, what this person pinned from a ⋮ menu (pins.ts). #345: the search icon at
 	// the far right of the logo opens the search pop-up (`onsearch`, search-popup.svelte; a section row until 2026-11-26).
-	import { Avatar, Button } from '@layerd/ui';
+	import { Avatar, Button, Scroller } from '@layerd/ui';
 	import type { Snippet } from 'svelte';
 	import AccountMenu from './account-menu.svelte';
-	import { FADE, fadeTop } from './fade';
 	import { DATASETS, NAV, type DatasetType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { faceOf } from './marks';
@@ -123,9 +122,9 @@
 		{/each}
 	</nav>
 
-	<div
-		class="mt-4 w-full flex-1 overflow-y-auto px-3 pb-6 {FADE}"
-		{@attach fadeTop}
+	<Scroller
+		fade="y"
+		class="mt-4 w-full flex-1 px-3 pb-6"
 	>
 		<MenuPanel
 			title="Pinned"
@@ -176,7 +175,7 @@
 				onpick={onnavigate}
 			/>
 		</MenuPanel>
-	</div>
+	</Scroller>
 
 	<div class="flex w-full items-center gap-1 px-3 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
 		<div class="min-w-0 flex-1">

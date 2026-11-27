@@ -10,11 +10,10 @@
 	// map, white on a dark fade, with no card behind it. `isDarkMap` is Map B, the dark map. The sheet below holds
 	// only up-and-down scrolling, so a sideways swipe on it reaches the tabs.
 	import type { Snippet } from 'svelte';
-	import { Tabs } from '@layerd/ui';
+	import { Scroller, Tabs } from '@layerd/ui';
 	import Back from './back.svelte';
 	import type { PinType } from './chart.data';
 	import Dots from './dots.svelte';
-	import { FADE, fadeTop } from './fade';
 	import { Slides } from './slides.svelte';
 	import Split from './split.svelte';
 	import WorldMap from './world-map.svelte';
@@ -234,11 +233,11 @@
 			</div>
 		</div>
 	{/snippet}
-	<div
-		class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+96px)] {FADE}"
+	<Scroller
+		fade="y"
+		class="min-h-0 flex-1 overscroll-y-contain px-4 pt-1 pb-[calc(env(safe-area-inset-bottom)+96px)]"
 		style="padding-left: {left + 16}px"
-		{@attach fadeTop}
 	>
 		<div class="max-w-3xl">{@render children()}</div>
-	</div>
+	</Scroller>
 </Split>

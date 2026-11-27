@@ -8,9 +8,8 @@
 	// and fade out at the bottom of the sheet.
 	import { flip } from 'svelte/animate';
 	import Board from './board.svelte';
-	import { Stack } from '@layerd/ui';
+	import { Scroller, Stack } from '@layerd/ui';
 	import { facesOf, logoOf } from './marks';
-	import { FADE, fadeTop } from './fade';
 	import { DATASETS, type DatasetType, type ProjectType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
@@ -92,12 +91,19 @@
 		</h2>
 	</div>
 
-	<div
-		class={view === 'board'
-			? 'min-h-0 flex-1'
-			: `min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain pb-28 ${FADE}`}
-		{@attach fadeTop}
-	>
+	<!-- The board's columns scroll on their own; the rows and cards scroll here, fading at the top and bottom. -->
+	{#if view === 'board'}
+		<div class="min-h-0 flex-1">{@render body()}</div>
+	{:else}
+		<Scroller
+			fade="y"
+			class="min-h-0 flex-1 touch-pan-y overscroll-contain pb-28"
+		>
+			{@render body()}
+		</Scroller>
+	{/if}
+
+	{#snippet body()}
 		{#if total === 0}
 			<div class="flex flex-col items-center gap-2 py-16 text-slate-400">
 				<span class="icon-[mdi--sail-boat] size-14"></span>
@@ -327,5 +333,5 @@
 				{/if}
 			</ul>
 		{/if}
-	</div>
+	{/snippet}
 </div>
