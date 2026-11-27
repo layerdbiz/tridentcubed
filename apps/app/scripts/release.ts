@@ -22,8 +22,13 @@ import { appendFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { FIRST_FEATURES } from '../src/lib/releases/first-release.ts';
 import { readLanded } from '../src/lib/releases/history.server.ts';
-import { toHistory, toPlainLines, toReleaseNotes } from '../src/lib/releases/history.utils.ts';
-import { PLAIN } from '../src/lib/releases/notes.ts';
+import {
+	isHidden,
+	toHistory,
+	toPlainLines,
+	toReleaseNotes
+} from '../src/lib/releases/history.utils.ts';
+import { HIDDEN_TICKETS, PLAIN } from '../src/lib/releases/notes.ts';
 import {
 	git,
 	isHeld,
@@ -123,13 +128,13 @@ const batches = toHistory(
 	landed
 		.filter((each) => each.commit && held.has(each.commit))
 		.map((each) => (isFirst ? { ...each, release: version } : each)),
-	{ plain: PLAIN, first: FIRST_FEATURES }
+	{ plain: PLAIN, hidden: HIDDEN_TICKETS, first: FIRST_FEATURES }
 ).batches;
 const others = isFirst
 	? []
 	: toReleaseChanges(
 			readCommits(...range).filter((commit) => toPlainLines(commit, PLAIN).length === 0)
-		);
+		).filter((change) => !isHidden(change, HIDDEN_TICKETS));
 // Where it was made from, so a release from next reads as next's, and the first one's welcome.
 const summary = [
 	isPrerelease(version) ? 'Made from **next**, for next.app.tridentcubed.com.' : '',

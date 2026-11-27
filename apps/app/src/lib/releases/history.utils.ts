@@ -89,13 +89,28 @@ export function toPlainLines(commit: CommitType, plain: PlainType = {}) {
 	return plain[change.text] ? [plain[change.text]] : [];
 }
 
-/** The changes people notice among the landed commits, oldest first, a line met twice kept once (its first). */
-export function toHistoryChanges(landed: LandedType[], plain: PlainType = {}): HistoryChangeType[] {
+/**
+ * Whether a change is of a ticket hidden for now (notes.ts `HIDDEN_TICKETS`): its work is on the branch but switched off for now, so
+ * neither What's New nor a release's notes tell of it.
+ */
+export function isHidden(change: Pick<ReleaseChangeType, 'tickets'>, hidden: number[] = []) {
+	return change.tickets.some((ticket) => hidden.includes(ticket));
+}
+
+/**
+ * The changes people notice among the landed commits, oldest first, a line met twice kept once (its first); none of
+ * a ticket hidden for now.
+ */
+export function toHistoryChanges(
+	landed: LandedType[],
+	plain: PlainType = {},
+	hidden: number[] = []
+): HistoryChangeType[] {
 	const seen = new Set<string>();
 	const changes: HistoryChangeType[] = [];
 	for (const commit of landed) {
 		const [change] = toReleaseChanges([commit]);
-		if (!change) continue;
+		if (!change || isHidden(change, hidden)) continue;
 		for (const text of toPlainLines(commit, plain)) {
 			if (seen.has(text)) continue;
 			seen.add(text);
@@ -146,6 +161,8 @@ export type HistoryOptionsType = {
 	version?: string;
 	/** Plain words for the commits made before the `What's New:` rule (notes.ts). */
 	plain?: PlainType;
+	/** The tickets hidden for now, their work switched off (notes.ts). */
+	hidden?: number[];
 	/** The clock the days are told on: the team's. */
 	timeZone?: string;
 	/**
@@ -181,12 +198,19 @@ export function toHistory(
 	head: string,
 	chain: string[],
 	landed: LandedType[],
-	{ releases = [], version, plain = {}, timeZone = TEAM_TIME_ZONE, first }: HistoryOptionsType = {}
+	{
+		releases = [],
+		version,
+		plain = {},
+		hidden = [],
+		timeZone = TEAM_TIME_ZONE,
+		first
+	}: HistoryOptionsType = {}
 ): HistoryType {
 	// The first release's changes, told in its own words when there are some: they come before everything else.
 	const firsts = first ? landed.filter((each) => each.release === FIRST_VERSION) : [];
 	const rest = firsts.length > 0 ? landed.filter((each) => each.release !== FIRST_VERSION) : landed;
-	const batches = toBatches(toHistoryChanges(rest, plain), timeZone).map((batch) => {
+	const batches = toBatches(toHistoryChanges(rest, plain, hidden), timeZone).map((batch) => {
 		// Every change of a day is of one release.
 		const release = releases.find((each) => each.version === batch.changes.at(-1)?.release);
 		return { ...batch, ...(release ? { release } : {}), changes: batch.changes.toReversed() };

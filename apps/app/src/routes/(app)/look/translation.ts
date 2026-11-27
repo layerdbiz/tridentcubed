@@ -11,7 +11,23 @@
 // person who saves reads each English first; names and words written in capitals keep their spelling; and the
 // Spanish is always kept. The English belongs to the text as typed: once the Spanish is changed, that text prints as
 // typed until it is given English again, and the old English stays behind, unused.
+//
+// Not yet on dev.app or the live app (Justin, 2026-11-27: "I don't want you to include the translate to English
+// feature yet"): only next.app, for his testing, and a build on a computer offer the sheet and print the English
+// (`IS_TRANSLATING`). The English saved there stays in the database, which dev.app shares, unprinted.
+import { BUILD_BRANCH } from '#lib/releases/releases.constants.js';
 import type { PanelType, TranslationType } from './look.data';
+
+/** The branches whose app offers Translate to English and prints its English; add `dev` to turn it on there. */
+export const TRANSLATE_BRANCHES = ['next'];
+
+/** Whether a build from this branch offers Translate to English: a build on a computer, with no branch, does. */
+export function isTranslating(branch: string) {
+	return !branch || TRANSLATE_BRANCHES.includes(branch);
+}
+
+/** Whether this build offers Translate to English and prints the English saved. */
+export const IS_TRANSLATING = isTranslating(BUILD_BRANCH);
 
 /** A text typed in the project that prints on its report, once however often it is typed, and where it is. */
 export type TypedTextType = { source: string; where: string[] };

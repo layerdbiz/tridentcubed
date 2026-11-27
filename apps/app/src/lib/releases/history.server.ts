@@ -4,7 +4,7 @@
 // first; the repository is public, so no key is needed. Without git, or without a network, What's New is empty and
 // says so; the build goes on. The first release shows as its own one list (first-release.ts).
 import { FIRST_FEATURES } from './first-release.ts';
-import { PLAIN } from './notes.ts';
+import { HIDDEN_TICKETS, PLAIN } from './notes.ts';
 import { SHORT, toHistory, type HistoryType, type LandedType } from './history.utils.ts';
 import { FIELD, RECORD, git, readReleaseState, readyRepository } from './releases.server.ts';
 
@@ -65,6 +65,7 @@ export function readHistoryOf(head = 'HEAD'): HistoryType {
 	});
 	return toHistory(commit, chain, released, {
 		plain: PLAIN,
+		hidden: HIDDEN_TICKETS,
 		releases: state.releases,
 		version: state.label,
 		first: FIRST_FEATURES
