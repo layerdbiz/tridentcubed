@@ -203,8 +203,11 @@ the why is in ADR 0002, 0003 and 0005.
   released yet". Turning it on, in the push that brings next into dev,
   makes v1.0.0, its notes listing everything up to it, the same as What's
   New.
-- **What's New always opens on its glow (Justin, 2026-11-27).** Its head is
-  the library `Glow` from edge to edge, ending on the library's wave
+- **What's New always opens on its glow (Justin, 2026-11-27).** It is a
+  full library `Dialog` (`variant="full"`): on a phone it fills the whole
+  screen, with no grab handle, and its list fades out under the head and
+  above the button as it scrolls (`fade="y"`, the library `Scroller`). Its
+  head is the library `Glow` from edge to edge, ending on the library's wave
   `Divider`, which takes its own room under padded words and hangs a pixel
   past the glow's edge so no line shows; the X is at the top right. It
   names the release in view: as the list scrolls down it moves from

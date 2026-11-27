@@ -307,8 +307,12 @@ A few avatars overlapping, the first in front and each of the others tucked behi
 _Avoid_: avatar group, face pile
 
 **Dialog**:
-The box that opens over the page and shuts the rest until it closes: a sheet rising from the bottom on a phone, which a pull down closes, and a centred box from tablet width. Escape and a tap outside close it too, and the focus goes into it and back to what opened it. The help ?'s kind leaves the focus in the input being typed in (#375).
+The box that opens over the page and shuts the rest until it closes: a sheet rising from the bottom on a phone, which a pull down closes, and a centred box from tablet width. Escape and a tap outside close it too, and the focus goes into it and back to what opened it. The help ?'s kind leaves the focus in the input being typed in (#375). A full one fills a phone's whole screen with no grab handle, and closes on its own X (What's New, 2026-11-27).
 _Avoid_: popup, bottom sheet (as a component of its own), drawer
+
+**Scroller**:
+A box whose content scrolls and fades out at the edges it is told, top and bottom, left and right, instead of stopping at a hard line. Each edge fades only as far as there is more to see past it, so the very top and the very end show whole (Justin, 2026-11-27).
+_Avoid_: scroll area, fade (alone: a fade is the edge, the Scroller the box), mask
 
 **Popover**:
 A box of anything that hangs from a button and leaves the page live, such as the bell's Notifications: a tap of its button opens it, and a second tap, Escape or a tap outside closes it. It opens under its button, or over it when there is more room there, lined up with the button's left or right edge, and moves back from the edge of the screen so it is never cut off (#405). A Menu is the same kind of box holding a list of choices.
