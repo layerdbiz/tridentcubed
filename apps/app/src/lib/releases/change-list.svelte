@@ -1,7 +1,9 @@
 <script lang="ts">
 	// A day's changes in What's New (#363, #399): each kind under its heading with a rule, the way Discord's changelog
 	// sets its sections (Justin's screenshot, 2026-11-26), Features, then Fixes, and only those two (Justin,
-	// 2026-11-27). A change that landed after the last press on What's New's button (`seenAt`) says New.
+	// 2026-11-27). Each bullet sits in a column as wide as its heading's icon, centred on the first line, so the icons,
+	// the bullets and the words line up. A change that landed after the last press on What's New's button (`seenAt`)
+	// says New.
 	import { Chip } from '@layerd/ui';
 	import type { HistoryChangeType } from './history.utils';
 	import type { ChangeKindType } from './releases.utils';
@@ -44,13 +46,13 @@
 		{#each section.changes as change (change.text)}
 			{@const isNew = seenAt >= 0 && change.landed > seenAt}
 			<li class="text-[15px] leading-snug text-slate-700">
-				<p class="flex gap-2.5">
+				<p class="flex gap-3">
 					<span
-						class="mt-[0.45em] size-1.5 shrink-0 rounded-full {isNew
-							? 'bg-emerald-500'
-							: 'bg-slate-400'}"
+						class="flex h-[1lh] w-4 shrink-0 items-center justify-center"
 						aria-hidden="true"
-					></span>
+						><span class="size-1.5 rounded-full {isNew ? 'bg-emerald-500' : 'bg-slate-400'}"
+						></span></span
+					>
 					<span class="min-w-0 flex-1"
 						>{change.text}{#if isNew}<Chip
 								label="New"
@@ -59,7 +61,7 @@
 					>
 				</p>
 				{#if change.pictures?.length}
-					<div class="mt-2 grid gap-2 pl-4">
+					<div class="mt-2 grid gap-2 pl-7">
 						{#each change.pictures as picture (picture)}
 							<img
 								class="w-full rounded-xl border border-slate-200"

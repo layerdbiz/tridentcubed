@@ -112,7 +112,7 @@ describe("What's New with releases", () => {
 		expect(day.nextElementSibling?.textContent?.trim()).toBe('v1.1.0 · 1 feature');
 	});
 
-	it('keeps the plain head, with the version, once everything is seen', async () => {
+	it('opens on the glow every time: once everything is seen it says What’s New, not New release', async () => {
 		whatsNew.close();
 		vi.stubGlobal(
 			'fetch',
@@ -120,10 +120,14 @@ describe("What's New with releases", () => {
 		);
 		whatsNew.seen = 'c'.repeat(40);
 
-		const { findByText, queryByText } = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		const { findByRole, findByText, queryByText } = render(WhatsNew, {
+			props: { save: { state: 'saved' } }
+		});
 		whatsNew.openAll();
 
-		expect(await findByText(/^v1\.1\.0 · Every update/)).toBeTruthy();
+		const heading = await findByRole('heading', { name: 'v1.1.0' });
+		expect(heading.closest('.glow')).not.toBeNull();
+		expect(await findByText('Every update, newest first')).toBeTruthy();
 		expect(queryByText('New release')).toBeNull();
 	});
 });

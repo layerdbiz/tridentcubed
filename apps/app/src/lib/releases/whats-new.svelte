@@ -3,8 +3,8 @@
 	// each day of work under its date in bold (history.utils.ts), newest first, each a section of the library Accordion
 	// in the look the page hands it (`fold`). A day shows the release that brought it and how many features and fixes it
 	// holds; open, those changes in everyday words and the link to that release's notes on GitHub. The head names the
-	// newest version; opened on a new release, it is a glow of that release's own colours from edge to edge, "New
-	// release" and the version, ending on the library's wave. With no release yet the days are the same, with no
+	// newest version on a glow of its own colours from edge to edge, ending on the library's wave, every time it opens
+	// (Justin, 2026-11-27); on something new it says "New release". With no release yet the days are the same, with no
 	// version. What landed since this device last pressed the button says New, and its days start open with the newest.
 	//
 	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and on the branches in
@@ -25,7 +25,6 @@
 	import { whatsNew } from './releases.state.svelte';
 	import { toReleaseGlow, toTag } from './releases.utils';
 	import { toBatchCounts, type HistoryBatchType } from './history.utils';
-	import WindowHead from './window-head.svelte';
 
 	let {
 		save,
@@ -46,10 +45,11 @@
 	const batches = $derived(whatsNew.history?.batches ?? []);
 	const freshCount = $derived(whatsNew.fresh.length);
 	const version = $derived(whatsNew.history?.version ?? '');
-	// A new release, newer than what this person last saw (Justin, 2026-11-27): the window opens on a glow of its own
-	// colours with the version, in place of the plain head. The glow fills the sheet to its edges, over the sheet's
-	// own grab handle (it draws its own), and its wave is the sheet's colour rising into it.
-	const isRelease = $derived(Boolean(version) && (whatsNew.isNewer || freshCount > 0));
+	// The head is the version on a glow of its own colours every time (Justin, 2026-11-27). It fills the sheet to its
+	// edges, over the sheet's own grab handle (it draws its own), and its wave is the sheet's colour rising into it.
+	// On something this person has not seen, it says New release.
+	const isFresh = $derived(whatsNew.isNewer || freshCount > 0);
+	const badge = $derived(isFresh ? 'New release' : version ? "What's New" : '');
 	const glow = $derived(toReleaseGlow(version));
 	const note = $derived(
 		freshCount === 1
@@ -129,55 +129,51 @@
 		onclose={dismiss}
 	>
 		{#snippet header()}
-			{#if isRelease}
-				<header class="relative -mx-5 -mt-[2.125rem] shrink-0 md:-mt-5">
-					<Glow
-						color={glow.color}
-						blend={glow.blend}
-						class="rounded-t-[28px] text-center"
-					>
-						<span
-							class="mx-auto mt-3 block h-1.5 w-10 rounded-full bg-on-shade/30 md:hidden"
-							aria-hidden="true"
-						></span>
-						<div class="px-12 pt-5 md:pt-8">
+			<header class="relative -mx-5 -mt-[2.125rem] shrink-0 md:-mt-5">
+				<Glow
+					color={glow.color}
+					blend={glow.blend}
+					class="rounded-t-[28px] text-center"
+				>
+					<span
+						class="mx-auto mt-3 block h-1.5 w-10 rounded-full bg-on-shade/30 md:hidden"
+						aria-hidden="true"
+					></span>
+					<!-- Room under the words, so they never sit on the wave. -->
+					<div class="px-12 pt-5 pb-7 md:pt-8 md:pb-9">
+						{#if badge}
 							<p
-								class="inline-flex items-center gap-1.5 rounded-full bg-on-shade/10 px-3 py-1 text-[11px] font-bold tracking-[0.18em] uppercase ring-1 ring-on-shade/20"
+								class="mb-3 inline-flex items-center gap-1.5 rounded-full bg-on-shade/10 px-3 py-1 text-[11px] font-bold tracking-[0.18em] uppercase ring-1 ring-on-shade/20"
 							>
-								<span class="icon-[mdi--star-four-points] size-3.5"></span>New release
+								<span class="icon-[mdi--star-four-points] size-3.5"></span>{badge}
 							</p>
-							<h2
-								class="mt-3 bg-linear-to-r from-on-shade from-40% to-(--glow-c) bg-clip-text text-4xl leading-tight font-black tracking-tight text-transparent"
-							>
-								{version}
-							</h2>
-							<p class="mt-1 text-sm text-on-shade/75">What's New · {note}</p>
-						</div>
-						<!-- Down a pixel past the glow's edge, so no line of the dark shows under the wave. -->
-						<Divider
-							shape="waves"
-							color="text-surface"
-							bleed={false}
-							height="64px"
-							class="-mb-px"
-						/>
-					</Glow>
-					<Button
-						ghost
-						md
-						icon="icon-[mdi--close]"
-						aria-label="Close"
-						class="absolute! top-4 left-3 text-on-shade! hover:bg-on-shade/10!"
-						onclick={dismiss}
+						{/if}
+						<h2
+							class="bg-linear-to-r from-on-shade from-40% to-(--glow-c) bg-clip-text text-4xl leading-tight font-black tracking-tight text-transparent"
+						>
+							{version || "What's New"}
+						</h2>
+						<p class="mt-1 text-sm text-on-shade/75">{isFresh ? `What's New · ${note}` : note}</p>
+					</div>
+					<!-- The wave takes its own room under the words, and hangs a pixel past the glow's edge (negative margin),
+					     so no thin line of the dark shows under it. -->
+					<Divider
+						shape="waves"
+						color="text-surface"
+						bleed={false}
+						height="64px"
+						class="-mb-px"
 					/>
-				</header>
-			{:else}
-				<WindowHead
-					title="What's New"
-					note={version ? `${version} · ${note}` : note}
-					onclose={dismiss}
+				</Glow>
+				<Button
+					ghost
+					md
+					icon="icon-[mdi--close]"
+					aria-label="Close"
+					class="absolute! top-4 left-3 text-on-shade! hover:bg-on-shade/10!"
+					onclick={dismiss}
 				/>
-			{/if}
+			</header>
 		{/snippet}
 
 		<div class="pt-4 pb-6">

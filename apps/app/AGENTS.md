@@ -204,10 +204,12 @@ the why is in ADR 0002, 0003 and 0005.
   released yet". Turning it on, in the push that brings next into dev,
   makes v1.0.0, its notes listing everything up to it, the same as What's
   New.
-- **A new release opens on its glow.** When What's New opens on something
-  the person has not seen, its head is the library `Glow` in that
-  release's own pair of theme colours (`toReleaseGlow`), "New release" and
-  the version; with nothing new, it is the plain head.
+- **What's New always opens on its glow (Justin, 2026-11-27).** Its head is
+  the library `Glow` in the version's own pair of theme colours
+  (`toReleaseGlow`) with the version, from edge to edge, ending on the
+  library's wave `Divider`, which takes its own room under the words and
+  hangs a pixel past the glow's edge so no line shows. On something the
+  person has not seen it also says "New release".
 - **What's New is plain (Justin, 2026-11-27).** It lists each day under
   its date in bold (`2026-11-27`, the team's clock), and in it only
   Features and Fixes people notice, in everyday words. A release also ends
