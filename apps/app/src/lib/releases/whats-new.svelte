@@ -3,8 +3,9 @@
 	// took, folded into batches of work (history.utils.ts) like the Activity's Grouped view, newest first, each a section
 	// of the library Accordion in the look the page hands it (`fold`). A batch shows its title, the release that brought
 	// it, its day and how many new features, improvements and fixes it holds; open, its words, the changes, each kind
-	// under its heading, and the link to that release's notes on GitHub. The head names the newest version. With no
-	// release yet the batches are the same, with no version. What landed since this device last pressed the button says
+	// under its heading, and the link to that release's notes on GitHub. The head names the newest version; opened on
+	// a new release, it is a glow of that release's own colours, "New release" and the version (Justin, 2026-11-27).
+	// With no release yet the batches are the same, with no version. What landed since this device last pressed the button says
 	// New, and its batches start open with the newest.
 	//
 	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and on the branches in
@@ -16,14 +17,14 @@
 	import { onMount, untrack } from 'svelte';
 	import { updated } from '$app/state';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
-	import { Accordion, Button, Chip, Dialog, type AccordionProps } from '@layerd/ui';
+	import { Accordion, Button, Chip, Dialog, Glow, type AccordionProps } from '@layerd/ui';
 	import { UpdateState } from '../update/update.state.svelte';
 	import { noteReload, takeLastResort } from '../update/rescue';
 	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
 	import ChangeList from './change-list.svelte';
 	import { CHECK_EVERY, HAS_POP_UP } from './releases.constants';
 	import { whatsNew } from './releases.state.svelte';
-	import { toTag } from './releases.utils';
+	import { toReleaseGlow, toTag } from './releases.utils';
 	import { toBatchCounts, toBatchTitle, toBatchWhen, type HistoryBatchType } from './history.utils';
 	import WindowHead from './window-head.svelte';
 
@@ -46,6 +47,10 @@
 	const batches = $derived(whatsNew.history?.batches ?? []);
 	const freshCount = $derived(whatsNew.fresh.length);
 	const version = $derived(whatsNew.history?.version ?? '');
+	// A new release, newer than what this person last saw (Justin, 2026-11-27): the window opens on a glow of its own
+	// colours with the version, in place of the plain head.
+	const isRelease = $derived(Boolean(version) && (whatsNew.isNewer || freshCount > 0));
+	const glow = $derived(toReleaseGlow(version));
 	const note = $derived(
 		freshCount === 1
 			? '1 new since you last looked'
@@ -124,11 +129,41 @@
 		onclose={dismiss}
 	>
 		{#snippet header()}
-			<WindowHead
-				title="What's New"
-				note={version ? `${version} · ${note}` : note}
-				onclose={dismiss}
-			/>
+			{#if isRelease}
+				<header class="relative -mx-1 mb-1 shrink-0">
+					<Glow
+						color={glow.color}
+						blend={glow.blend}
+						class="rounded-[22px] px-12 pt-6 pb-7 text-center"
+					>
+						<p
+							class="inline-flex items-center gap-1.5 rounded-full bg-on-shade/10 px-3 py-1 text-[11px] font-bold tracking-[0.18em] uppercase ring-1 ring-on-shade/20"
+						>
+							<span class="icon-[mdi--star-four-points] size-3.5"></span>New release
+						</p>
+						<h2
+							class="mt-3 bg-linear-to-r from-on-shade from-40% to-(--glow-c) bg-clip-text text-4xl leading-tight font-black tracking-tight text-transparent"
+						>
+							{version}
+						</h2>
+						<p class="mt-1 text-sm text-on-shade/75">What's New · {note}</p>
+					</Glow>
+					<Button
+						ghost
+						md
+						icon="icon-[mdi--close]"
+						aria-label="Close"
+						class="absolute! top-2 left-2 text-on-shade! hover:bg-on-shade/10!"
+						onclick={dismiss}
+					/>
+				</header>
+			{:else}
+				<WindowHead
+					title="What's New"
+					note={version ? `${version} · ${note}` : note}
+					onclose={dismiss}
+				/>
+			{/if}
 		{/snippet}
 
 		<div class="pt-4 pb-6">

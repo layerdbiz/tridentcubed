@@ -9,6 +9,7 @@
 import {
 	TEAM_TIME_ZONE,
 	isAppChange,
+	isPrerelease,
 	toReleaseChanges,
 	type ChangeKindType,
 	type ReleaseChangeType,
@@ -100,9 +101,15 @@ export function toHistoryChanges(landed: LandedType[]): HistoryChangeType[] {
 	return changes;
 }
 
+// The release a change is in, for cutting batches: a prerelease is not one, so next's pushes, each its own
+// prerelease, fold together by time as before.
+function toCut(change: HistoryChangeType) {
+	return change.release && !isPrerelease(change.release) ? change.release : undefined;
+}
+
 /**
  * The changes, oldest first, folded into batches, oldest first. A release ends a batch (#400): a batch never holds
- * the changes of two releases, or of a release and what is not released yet.
+ * the changes of two releases, or of a release and what is not released yet. A prerelease does not end one.
  */
 export function toBatches(changes: HistoryChangeType[], settings = BATCHES): HistoryBatchType[] {
 	const runs: HistoryChangeType[][] = [];
@@ -111,7 +118,7 @@ export function toBatches(changes: HistoryChangeType[], settings = BATCHES): His
 		const time = Date.parse(change.at);
 		const isNear =
 			run &&
-			run[0].release === change.release &&
+			toCut(run[0]) === toCut(change) &&
 			time - Date.parse(run.at(-1)!.at) <= settings.gapHours * HOUR &&
 			time - Date.parse(run[0].at) <= settings.longestHours * HOUR;
 		if (isNear) run.push(change);
@@ -123,8 +130,7 @@ export function toBatches(changes: HistoryChangeType[], settings = BATCHES): His
 	for (const [index, run] of runs.entries()) {
 		const batch = [...waiting, ...run];
 		const next = runs[index + 1];
-		if (batch.length < settings.fewest && next && next[0].release === run[0].release)
-			waiting = batch;
+		if (batch.length < settings.fewest && next && toCut(next[0]) === toCut(run[0])) waiting = batch;
 		else {
 			joined.push(batch);
 			waiting = [];
@@ -176,7 +182,8 @@ export function toHistory(
 			(each) =>
 				Date.parse(each.at) >= Date.parse(batch.from) && Date.parse(each.at) <= Date.parse(batch.to)
 		);
-		const release = releases.find((each) => each.version === batch.changes[0].release);
+		// A batch is its newest change's release: on next, the latest prerelease in it.
+		const release = releases.find((each) => each.version === batch.changes.at(-1)?.release);
 		const newestFirst: HistoryBatchType = {
 			...batch,
 			...(release ? { release } : {}),

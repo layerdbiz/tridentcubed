@@ -3,9 +3,10 @@
 // release carries its notes), so a build reads it from git: Vercel's copy has no tags and a short history, so
 // `readyRepository` fetches both from the public repository first; no key is needed.
 //
-// What it works out goes through the plain rule in releases.utils.ts, so the release workflow (scripts/release.ts)
-// and every build agree on the version without asking each other: a build on dev in the minute before its tag
-// exists already says the version the workflow is about to give it.
+// Releases are made from dev; every push to next is a prerelease of the one to come, v1.0.0-next.4, with a tag of
+// its own (Justin, 2026-11-27). What it works out goes through the plain rule in releases.utils.ts, so the release
+// workflow (scripts/release.ts) and every build agree on the version without asking each other: a build in the
+// minute before its tag exists already says the version the workflow is about to give it.
 import { execFileSync } from 'node:child_process';
 import {
 	IS_RELEASING,
@@ -13,10 +14,14 @@ import {
 	REPOSITORY_URL,
 	isNewer,
 	planRelease,
+	toNextPrerelease,
+	toPrereleaseBase,
+	toPrereleaseVersion,
 	toReleaseUrl,
+	toTag,
 	toTagVersion,
-	toVersionLabel,
 	type CommitType,
+	type PrereleaseType,
 	type ReleaseRefType,
 	type ReleaseType
 } from './releases.utils.ts';
@@ -52,21 +57,46 @@ export function readyRepository(head = 'HEAD') {
 /** A release tag: its version and the commit it marks. */
 export type TagType = { version: string; commit: string };
 
-/** The release tags, oldest version first. Any other tag is left out. */
-export function readTags(): TagType[] {
+/** A prerelease tag: its version, the release it leads to, its number and the commit it marks. */
+export type PrereleaseTagType = TagType & PrereleaseType;
+
+// Every v* tag as its name and the commit it marks.
+function readTagNames() {
 	const out = git(
 		'for-each-ref',
 		'refs/tags/v*',
 		`--format=%(refname:short)${FIELD}%(objectname)${FIELD}%(*objectname)`
 	);
+	return out
+		.split('\n')
+		.filter(Boolean)
+		.map((line) => {
+			const [name, object, peeled] = line.split(FIELD);
+			// An annotated tag names its commit as the peeled object; a light one is the commit.
+			return { name, commit: peeled || object };
+		});
+}
+
+/** The release tags, oldest version first. Prereleases and any other tag are left out. */
+export function readTags(): TagType[] {
 	const tags: TagType[] = [];
-	for (const line of out.split('\n').filter(Boolean)) {
-		const [name, object, peeled] = line.split(FIELD);
+	for (const { name, commit } of readTagNames()) {
 		const version = toTagVersion(name);
-		// An annotated tag names its commit as the peeled object; a light one is the commit.
-		if (version) tags.push({ version, commit: peeled || object });
+		if (version) tags.push({ version, commit });
 	}
 	return tags.sort((a, b) => (isNewer(a.version, b.version) ? 1 : -1));
+}
+
+/** The prerelease tags (v1.0.0-next.3), oldest first: by the release they lead to, then by number. */
+export function readPrereleaseTags(): PrereleaseTagType[] {
+	const tags: PrereleaseTagType[] = [];
+	for (const { name, commit } of readTagNames()) {
+		const prerelease = toPrereleaseVersion(name);
+		if (prerelease) tags.push({ ...prerelease, commit });
+	}
+	return tags.sort((a, b) =>
+		a.base === b.base ? a.number - b.number : isNewer(a.base, b.base) ? 1 : -1
+	);
 }
 
 /** The commits in `range` (git log's words), oldest first, merges left out. */
@@ -92,9 +122,11 @@ function count(...range: string[]) {
 	return Number(git('rev-list', '--count', ...range));
 }
 
-// Whether `head` holds every change of `tag`: its own commit, or every commit of it bar merges (dev's merge of next
-// is then the release, next holding all it brought).
-function isHeld(tag: TagType, head: string) {
+/**
+ * Whether `head` holds every change of `tag`: its own commit, or every commit of it bar merges (dev's merge of next
+ * is then the release, next holding all it brought).
+ */
+export function isHeld(tag: TagType, head: string) {
 	return count('--no-merges', tag.commit, '--not', head) === 0;
 }
 
@@ -103,9 +135,16 @@ export type ReleaseStateType = {
 	last?: TagType;
 	/** The release the build's commits since `last` make, if any: on dev, the one being made now. */
 	planned?: ReleaseType;
+	/** The build's version without its v: 1.2.0 on dev, 1.3.0-next.4 on next; none while nothing is released on dev. */
+	version?: string;
+	/** Whether `version` is a prerelease still to be tagged: the one the next workflow is about to make. */
+	isNew: boolean;
 	/** The build's version as people read it: v1.2.0, v1.3.0-next.4, or empty. */
 	label: string;
-	/** Every release the build knows, oldest first: the published ones and, on dev, the one being made. */
+	/**
+	 * Every release the build knows, oldest first: the published ones, on next its prereleases too, and the one being
+	 * made from the build.
+	 */
 	releases: ReleaseRefType[];
 	/** The version of the first release that held a commit (its full name), if any. */
 	versionOf: (commit: string) => string | undefined;
@@ -138,42 +177,58 @@ export function readReleaseState(
 	const tags = readTags();
 	const last = tags.toReversed().find((tag) => isHeld(tag, commit));
 	const isReleaseBranch = RELEASE_BRANCHES.includes(branch);
-	const planned =
-		last || isOn
-			? planRelease(last?.version, readCommits(...toReleaseRange(commit, last)))
-			: undefined;
-	const ahead = last ? count(commit, '--not', last.commit) : count(commit);
+	const commits = readCommits(...toReleaseRange(commit, last));
+	const planned = last || isOn ? planRelease(last?.version, commits) : undefined;
+	// Prereleases are next's own: dev and main name only releases.
+	const prereleases = isReleaseBranch ? [] : readPrereleaseTags();
 
-	// Which release first held each commit: each tag in turn, less what the tags before it held.
+	// Which release first held each commit: each prerelease in turn, then each release over them, less what the ones
+	// before it held. A commit a release holds is that release's, whichever prerelease brought it first.
 	const versions = new Map<string, string>();
-	for (const [index, tag] of tags.entries()) {
-		const before = tags.slice(0, index).map((each) => each.commit);
-		const held = readCommitIds(tag.commit, ...(before.length ? ['--not', ...before] : []));
-		for (const each of held) versions.set(each, tag.version);
+	for (const group of [prereleases, tags]) {
+		for (const [index, tag] of group.entries()) {
+			const before = group.slice(0, index).map((each) => each.commit);
+			const held = readCommitIds(tag.commit, ...(before.length ? ['--not', ...before] : []));
+			for (const each of held) versions.set(each, tag.version);
+		}
 	}
-	const releases: ReleaseRefType[] = tags.map((tag) => ({
+	const releases: ReleaseRefType[] = [...prereleases, ...tags].map((tag) => ({
 		version: tag.version,
 		url: toReleaseUrl(tag.version)
 	}));
-	// On dev, what no tag holds yet is the release being made from it now.
-	if (planned && isReleaseBranch) {
-		const unreleased = readCommitIds(
-			commit,
-			...(tags.length ? ['--not', ...tags.map((tag) => tag.commit)] : [])
-		);
-		for (const each of unreleased) versions.set(each, planned.version);
-		releases.push({ version: planned.version, url: toReleaseUrl(planned.version) });
+
+	// The build's own version: on dev the release being made from it, or the last; on next its prerelease tag, or the
+	// prerelease the workflow is about to tag it with.
+	let version: string | undefined;
+	let isNew = false;
+	if (isReleaseBranch) {
+		version = planned?.version ?? last?.version;
+		isNew = Boolean(planned);
+	} else {
+		const own = prereleases.find((tag) => tag.commit === commit);
+		version = own?.version ?? (last?.commit === commit ? last.version : undefined);
+		if (!version) {
+			const base = toPrereleaseBase(last?.version, commits);
+			const numbers = prereleases.filter((tag) => tag.base === base).map((tag) => tag.number);
+			version = toNextPrerelease(base, numbers);
+			isNew = true;
+		}
+	}
+	// What no tag holds yet is the release or prerelease being made from the build now.
+	if (version && isNew) {
+		const made = [...prereleases, ...tags].map((tag) => tag.commit);
+		for (const each of readCommitIds(commit, ...(made.length ? ['--not', ...made] : []))) {
+			versions.set(each, version);
+		}
+		releases.push({ version, url: toReleaseUrl(version) });
 	}
 
 	return {
 		last,
 		planned,
-		label: toVersionLabel({
-			last: last?.version,
-			planned: planned?.version,
-			isReleaseBranch,
-			ahead
-		}),
+		version,
+		isNew,
+		label: version ? toTag(version) : '',
 		releases,
 		versionOf: (each) => versions.get(each)
 	};

@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
-import { readReleaseState, readTags } from './releases.server';
+import { readPrereleaseTags, readReleaseState, readTags } from './releases.server';
 
 let repository = '';
 const saved = { ...process.env };
@@ -42,13 +42,55 @@ afterEach(() => {
 });
 
 describe('the releases a build knows', () => {
-	it('knows none, and says no version, while releases are not made yet', () => {
+	it('knows none on dev, and says no version, while releases are not made yet', () => {
 		commit('✨ feat(app): one (#1)');
 
 		const state = readReleaseState('HEAD', { branch: 'dev', isOn: false });
 
 		expect(state).toMatchObject({ label: '', releases: [] });
 		expect(state.planned).toBeUndefined();
+	});
+
+	it('counts every push to next as the next prerelease, before any release, and tells it apart once tagged', () => {
+		const one = commit('✨ feat(app): one (#1)');
+		const first = readReleaseState('HEAD', { branch: 'next' });
+
+		expect(first).toMatchObject({ label: 'v1.0.0-next.1', isNew: true });
+		expect(first.versionOf(one)).toBe('1.0.0-next.1');
+
+		tag('1.0.0-next.1');
+		expect(readReleaseState('HEAD', { branch: 'next' })).toMatchObject({
+			label: 'v1.0.0-next.1',
+			isNew: false
+		});
+
+		const two = commit('📝 docs(repo): a note');
+		const second = readReleaseState('HEAD', { branch: 'next' });
+
+		expect(second).toMatchObject({ label: 'v1.0.0-next.2', isNew: true });
+		expect([one, two].map((each) => second.versionOf(each))).toEqual([
+			'1.0.0-next.1',
+			'1.0.0-next.2'
+		]);
+		expect(second.releases.map((release) => release.version)).toEqual([
+			'1.0.0-next.1',
+			'1.0.0-next.2'
+		]);
+		// dev knows only releases.
+		expect(readReleaseState('HEAD', { branch: 'dev', isOn: false }).label).toBe('');
+	});
+
+	it("starts next's count again after a release, toward the one after it", () => {
+		commit('✨ feat(app): one');
+		tag('1.0.0-next.1');
+		tag('1.0.0');
+		const after = commit('🐛 fix(app): after the release');
+
+		const next = readReleaseState('HEAD', { branch: 'next' });
+
+		expect(readPrereleaseTags().map((each) => each.version)).toEqual(['1.0.0-next.1']);
+		expect(next.label).toBe('v1.0.1-next.1');
+		expect(next.versionOf(after)).toBe('1.0.1-next.1');
 	});
 
 	it('makes v1.0.0 of everything on dev once they are turned on, and calls next a build before it', () => {
@@ -64,8 +106,7 @@ describe('the releases a build knows', () => {
 		expect(dev.releases).toEqual([
 			{ version: '1.0.0', url: 'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.0.0' }
 		]);
-		expect(next.label).toBe('v1.0.0-next.2');
-		expect(next.versionOf(one)).toBeUndefined();
+		expect(next.label).toBe('v1.0.0-next.1');
 	});
 
 	it('reads each tag as the release that first held its commits, and plans the next one', () => {
@@ -87,7 +128,7 @@ describe('the releases a build knows', () => {
 			'1.1.0'
 		]);
 		expect(next.label).toBe('v1.1.0-next.1');
-		expect(next.versionOf(three)).toBeUndefined();
+		expect(next.versionOf(three)).toBe('1.1.0-next.1');
 	});
 
 	it('is the last release itself when nothing since is a feature or a fix', () => {

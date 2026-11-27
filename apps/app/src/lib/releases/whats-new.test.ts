@@ -71,12 +71,14 @@ describe("What's New when a new version is out", () => {
 });
 
 describe("What's New with releases", () => {
-	it('names the version above the list, and links a released batch to its notes on GitHub', async () => {
+	it('opens a new release on its glow with the version, and links a released batch to its notes', async () => {
 		vi.stubGlobal(
 			'fetch',
 			vi.fn(async () => Response.json(RELEASED))
 		);
 
+		// Last seen on the commit before the release's change.
+		whatsNew.seen = 'b'.repeat(40);
 		const { findByRole, findByText } = render(WhatsNew, { props: { save: { state: 'saved' } } });
 		whatsNew.openAll();
 
@@ -84,6 +86,24 @@ describe("What's New with releases", () => {
 		expect(link.getAttribute('href')).toBe(
 			'https://github.com/layerdbiz/tridentcubed/releases/tag/v1.1.0'
 		);
-		expect(await findByText(/^v1\.1\.0 · \S/)).toBeTruthy();
+		// Something landed since the commit last seen: the head is the release's glow.
+		const heading = await findByRole('heading', { name: 'v1.1.0' });
+		expect(heading.closest('.glow')).not.toBeNull();
+		expect(await findByText('New release')).toBeTruthy();
+	});
+
+	it('keeps the plain head, with the version, once everything is seen', async () => {
+		whatsNew.close();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => Response.json(RELEASED))
+		);
+		whatsNew.seen = 'c'.repeat(40);
+
+		const { findByText, queryByText } = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		whatsNew.openAll();
+
+		expect(await findByText(/^v1\.1\.0 · Every update/)).toBeTruthy();
+		expect(queryByText('New release')).toBeNull();
 	});
 });

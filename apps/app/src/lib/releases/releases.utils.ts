@@ -53,6 +53,12 @@ export const IS_RELEASING = false;
 /** The branches a release is made from (dev) or promoted to (main): a build there is the version being released. */
 export const RELEASE_BRANCHES = ['dev', 'main'];
 
+/**
+ * The branch whose every push is a prerelease of the release to come (Justin, 2026-11-27): v1.0.0-next.1, -next.2,
+ * each with its tag and a GitHub pre-release, before the first release and after it.
+ */
+export const PRERELEASE_BRANCH = 'next';
+
 /** Where the releases are published. */
 export const REPOSITORY_URL = 'https://github.com/layerdbiz/tridentcubed';
 
@@ -76,6 +82,8 @@ const TICKETS = /\s*\((#\d+(?:,\s*#\d+)*)\)/g;
 const NUMBER = /#(\d+)/g;
 // A release's tag: `v1.2.3`, nothing after it.
 const TAG = /^v(\d+\.\d+\.\d+)$/;
+// A prerelease's tag: `v1.2.3-next.4`.
+const PRERELEASE_TAG = /^v(\d+\.\d+\.\d+)-next\.(\d+)$/;
 
 type ParsedType = { change?: ReleaseChangeType; isBreaking: boolean };
 
@@ -174,26 +182,56 @@ export function toReleaseUrl(version: string) {
 	return `${REPOSITORY_URL}/releases/tag/${toTag(version)}`;
 }
 
-export type VersionLabelOptionsType = {
-	/** The newest release the build holds all of. */
-	last?: string;
-	/** The release the build's changes since `last` make, if any. */
-	planned?: string;
-	/** Whether the build is on a branch releases are made from (RELEASE_BRANCHES). */
-	isReleaseBranch: boolean;
-	/** How many commits the build holds that `last` does not. */
-	ahead: number;
-};
+/** A prerelease: its version, the release it leads to and its number on the way, 1.2.0-next.3: 1.2.0 and 3. */
+export type PrereleaseType = { version: string; base: string; number: number };
+
+/** A prerelease tag's version, `v1.2.0-next.3` → 1.2.0-next.3, 1.2.0, 3; nothing for any other tag. */
+export function toPrereleaseVersion(tag: string): PrereleaseType | undefined {
+	const match = PRERELEASE_TAG.exec(tag.trim());
+	if (!match) return undefined;
+	return { version: `${match[1]}-next.${match[2]}`, base: match[1], number: Number(match[2]) };
+}
+
+/** Whether a version is a prerelease, 1.2.0-next.3, rather than a release. */
+export function isPrerelease(version: string) {
+	return version.includes('-');
+}
 
 /**
- * The app's version as people read it. On dev a build with something new is the release being made from it right
- * now, so it carries that version even in the minute before its tag exists. Anywhere else, next above all, it is the
- * release still to come, marked as a build before it: v1.2.0-next.12, the 12 counting the commits since the last
- * release. Empty while nothing is released and releases are not made yet.
+ * The release a prerelease leads to: the first release while there is none, else the one the commits since the last
+ * make, or the next fix when none of them is a feature or a fix, since every push to next is a prerelease.
  */
-export function toVersionLabel({ last, planned, isReleaseBranch, ahead }: VersionLabelOptionsType) {
-	if (!planned) return last ? toTag(last) : '';
-	return isReleaseBranch ? toTag(planned) : `${toTag(planned)}-next.${ahead}`;
+export function toPrereleaseBase(last: string | undefined, commits: CommitType[]) {
+	if (!last) return FIRST_VERSION;
+	return planRelease(last, commits)?.version ?? bump(last, 'patch');
+}
+
+/** The prerelease after the ones of `base` already made, `numbers`: 1.0.0-next.4 after next.3; next.1 first. */
+export function toNextPrerelease(base: string, numbers: number[]) {
+	return `${base}-next.${Math.max(0, ...numbers) + 1}`;
+}
+
+// The theme's colours a release's glow is made of, in pairs that sit well together on the dark.
+const GLOWS: {
+	color: 'primary' | 'accent' | 'danger';
+	blend: 'primary' | 'accent' | 'danger' | 'warning';
+}[] = [
+	{ color: 'primary', blend: 'danger' },
+	{ color: 'danger', blend: 'warning' },
+	{ color: 'accent', blend: 'primary' },
+	{ color: 'primary', blend: 'accent' },
+	{ color: 'danger', blend: 'primary' },
+	{ color: 'accent', blend: 'warning' }
+];
+
+/**
+ * The colours of a release's glow at the top of What's New (Justin, 2026-11-27: each release its own colour): one of
+ * the theme's pairs, picked by the version, so the same release always looks the same and the next one differs.
+ */
+export function toReleaseGlow(version: string) {
+	let hash = 0;
+	for (const character of version) hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+	return GLOWS[hash % GLOWS.length];
 }
 
 // The areas whose changes people meet in the app: the app itself and the library it is drawn with.
