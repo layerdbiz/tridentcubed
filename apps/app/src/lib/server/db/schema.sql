@@ -628,6 +628,20 @@ CREATE TABLE "activity_event" (
 --> statement-breakpoint
 ALTER TABLE "activity_event" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
+CREATE TABLE "signature" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" uuid NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone,
+	"team_id" uuid NOT NULL,
+	"photo" text,
+	"banner" text
+);
+
+--> statement-breakpoint
+ALTER TABLE "signature" ENABLE ROW LEVEL SECURITY;
+--> statement-breakpoint
 ALTER TABLE "session" ADD CONSTRAINT "session_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
 ALTER TABLE "sign_in" ADD CONSTRAINT "sign_in_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
@@ -766,6 +780,10 @@ ALTER TABLE "seen" ADD CONSTRAINT "seen_user_id_user_id_fk" FOREIGN KEY ("user_i
 --> statement-breakpoint
 ALTER TABLE "activity_event" ADD CONSTRAINT "activity_event_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 --> statement-breakpoint
+ALTER TABLE "signature" ADD CONSTRAINT "signature_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
+ALTER TABLE "signature" ADD CONSTRAINT "signature_team_id_team_id_fk" FOREIGN KEY ("team_id") REFERENCES "public"."team"("id") ON DELETE cascade ON UPDATE no action;
+--> statement-breakpoint
 CREATE INDEX "session_userId_idx" ON "session" USING btree ("user_id");
 --> statement-breakpoint
 CREATE INDEX "sign_in_user_idx" ON "sign_in" USING btree ("user_id","created_at");
@@ -844,6 +862,8 @@ CREATE INDEX "activity_event_at_idx" ON "activity_event" USING btree ("created_a
 --> statement-breakpoint
 CREATE INDEX "activity_event_user_idx" ON "activity_event" USING btree ("user_id","kind","created_at");
 --> statement-breakpoint
+CREATE UNIQUE INDEX "signature_team_idx" ON "signature" USING btree ("organization_id","team_id");
+--> statement-breakpoint
 CREATE POLICY "user is the acting user" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (id = app.user_id());
 --> statement-breakpoint
 CREATE POLICY "user is in the acting organization" ON "user" AS PERMISSIVE FOR SELECT TO "trident_app" USING (exists (select 1 from public.member m where m.user_id = "user".id and m.organization_id = app.organization_id()));
@@ -921,3 +941,5 @@ CREATE POLICY "activity_event is read by an Admin" ON "activity_event" AS PERMIS
 CREATE POLICY "activity_event of the acting user" ON "activity_event" AS PERMISSIVE FOR SELECT TO "trident_app" USING ("activity_event".user_id = app.user_id() and "activity_event".organization_id = app.organization_id());
 --> statement-breakpoint
 CREATE POLICY "activity_event is added by the acting user" ON "activity_event" AS PERMISSIVE FOR INSERT TO "trident_app" WITH CHECK ("activity_event".user_id = app.user_id() and "activity_event".organization_id = app.organization_id() and "activity_event".kind in ('open', 'download'));
+--> statement-breakpoint
+CREATE POLICY "signature in the acting organization" ON "signature" AS PERMISSIVE FOR ALL TO "trident_app" USING (organization_id = app.organization_id()) WITH CHECK (organization_id = app.organization_id());

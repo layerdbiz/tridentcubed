@@ -17,6 +17,19 @@
 		src: string; // Headshot image URL
 		slug: string;
 		logoImage?: string;
+		/**
+		 * Where each icon is loaded from, when not the website's own: the app copies them to an address mail apps keep
+		 * for a year (#354).
+		 */
+		icons?: {
+			phone?: string;
+			email?: string;
+			globe?: string;
+			linkedin?: string;
+			facebook?: string;
+			whatsapp?: string;
+			bbb?: string;
+		};
 		socialLinks?: {
 			linkedin?: string;
 			facebook?: string;
@@ -51,10 +64,15 @@
 			.map((e) => e.trim())
 			.filter((e) => e.length > 0), // Split all group emails and filter empty
 		logoImage: data.logoImage || 'https://tridentcubed.com/branding/logo-dark-horizontal.png',
-		emailFooterLogo: 'https://tridentcubed.com/emails/email-footer-logo.png',
-		emailFooterLinkedin: 'https://tridentcubed.com/emails/email-footer-linkedin.png',
-		emailFooterFacebook: 'https://tridentcubed.com/emails/email-footer-facebook.png',
-		emailFooterWhatsapp: 'https://tridentcubed.com/emails/email-footer-whatsapp.png',
+		icons: {
+			phone: data.icons?.phone || 'https://tridentcubed.com/emails/icon-phone.png',
+			email: data.icons?.email || 'https://tridentcubed.com/emails/icon-email.png',
+			globe: data.icons?.globe || 'https://tridentcubed.com/emails/icon-globe.png',
+			linkedin: data.icons?.linkedin || 'https://tridentcubed.com/emails/icon-linkedin.png',
+			facebook: data.icons?.facebook || 'https://tridentcubed.com/emails/icon-facebook.png',
+			whatsapp: data.icons?.whatsapp || 'https://tridentcubed.com/emails/icon-whatsapp.png',
+			bbb: data.icons?.bbb || 'https://tridentcubed.com/emails/bbb-logo.png'
+		},
 		socialLinks: {
 			linkedin:
 				data.socialLinks?.linkedin || 'https://www.linkedin.com/company/trident-cubed-solutions',
@@ -107,7 +125,7 @@
 								<tr>
 									<td height="16" style="vertical-align:middle; padding-right:6px;">
 										<a href="tel:${t.phone}" style="text-decoration:none;">
-											<img src="https://tridentcubed.com/emails/icon-phone.png" alt="Phone" width="16" height="16" style="display:block; border:0; outline:none; width:16px; height:16px;" />
+											<img src="${t.icons.phone}" alt="Phone" width="16" height="16" style="display:block; border:0; outline:none; width:16px; height:16px;" />
 										</a>
 									</td>
 									<td style="vertical-align:middle;">
@@ -118,7 +136,7 @@
 								<tr>
 									<td style="vertical-align:middle; padding-right:6px;">
 										<a href="mailto:${t.email}" style="text-decoration:none;">
-											<img src="https://tridentcubed.com/emails/icon-email.png" alt="Email" width="16" height="16" style="display:block; border:0; outline:none; width:16px; height:16px;" />
+											<img src="${t.icons.email}" alt="Email" width="16" height="16" style="display:block; border:0; outline:none; width:16px; height:16px;" />
 										</a>
 									</td>
 									<td style="vertical-align:middle;">
@@ -131,7 +149,7 @@
 										(groupEmail) => `<tr>
 									<td style="vertical-align:middle; padding-right:6px;">
 										<a href="mailto:${groupEmail}" style="text-decoration:none;">
-											<img src="https://tridentcubed.com/emails/icon-globe.png" alt="Company Email" width="16" height="16" style="display:block; border:0; outline:none; width:16px; height:16px;" />
+											<img src="${t.icons.globe}" alt="Company Email" width="16" height="16" style="display:block; border:0; outline:none; width:16px; height:16px;" />
 										</a>
 									</td>
 									<td style="vertical-align:middle;">
@@ -175,19 +193,19 @@
 								<tr>
 									<td style="width:20px;">
 										<a style="text-decoration:none; display:block;" href="${t.socialLinks.linkedin}" target="_blank" rel="noopener">
-											<img width="20" height="20" style="border:0; outline:none; display:block;" src="https://tridentcubed.com/emails/icon-linkedin.png" alt="LinkedIn" />
+											<img width="20" height="20" style="border:0; outline:none; display:block;" src="${t.icons.linkedin}" alt="LinkedIn" />
 										</a>
 									</td>
 									<td style="width:6px;">&nbsp;</td>
 									<td style="width:20px;">
 										<a style="text-decoration:none; display:block;" href="${t.socialLinks.facebook}" target="_blank" rel="noopener">
-											<img width="20" height="20" style="border:0; outline:none; display:block;" src="https://tridentcubed.com/emails/icon-facebook.png" alt="Facebook" />
+											<img width="20" height="20" style="border:0; outline:none; display:block;" src="${t.icons.facebook}" alt="Facebook" />
 										</a>
 									</td>
 									<td style="width:6px;">&nbsp;</td>
 									<td style="width:20px;">
 										<a style="text-decoration:none; display:block;" href="${t.socialLinks.whatsapp}" target="_blank" rel="noopener">
-											<img width="20" height="20" style="border:0; outline:none; display:block;" src="https://tridentcubed.com/emails/icon-whatsapp.png" alt="WhatsApp" />
+											<img width="20" height="20" style="border:0; outline:none; display:block;" src="${t.icons.whatsapp}" alt="WhatsApp" />
 										</a>
 									</td>
 								</tr>
@@ -239,7 +257,7 @@
 				<!-- BBB -->
 				<td align="center" valign="top" style="vertical-align:top;">
 					<a style="text-decoration:none; display:block;" href="https://www.bbb.org/us/tx/houston/profile/transportation/trident-cubed-solutions-llc-0915-90069161" target="_blank" rel="noopener">
-						<img width="20" style="border:0; outline:none; display:block; opacity: 0.65" src="https://tridentcubed.com/emails/bbb-logo.png" alt="Better Business Bureau" />
+						<img width="20" style="border:0; outline:none; display:block; opacity: 0.65" src="${t.icons.bbb}" alt="Better Business Bureau" />
 					</a>
 				</td>
 

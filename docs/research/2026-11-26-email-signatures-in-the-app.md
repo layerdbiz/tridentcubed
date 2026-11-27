@@ -4,6 +4,8 @@ Observed November 26, 2026. Research for "Decide how email signatures move into 
 
 **Built on `next`, November 27, 2026.** Justin asked for it to be built rather than planned. The app now has Email Signature in the menu on the profile picture: everyone sees their own, an Admin picks anyone or a shared mailbox, and Copy copies it for Outlook. It follows section 4 except in one place: the pictures are answered by the app itself, at `<app address>/signature/<name>.png`, not by the website, since the website cannot read the app's file store. Each is made once as a PNG and named by what it was made from, so it never changes under a sent email. The shared addresses under a person, the banners, the social links and the shared mailboxes still come from the Sheets until the app holds them.
 
+**Second round, November 27, 2026.** Justin asked for the signature's photo to be its own, never the profile picture, and always a circle; for each person to pick or upload their photo and their banner, starting from good defaults in Google Drive; and for the pictures to stop running up Vercel. What was built is in section 6.
+
 ## Short answer
 
 1. **The app already holds nearly every detail a person's signature needs.** 17 of the 19 people with a signature have a Team record, with name, job title, phone, email, LinkedIn link and location filled in. What the app does not have yet: the shared company addresses listed under a person (18 of 19 show one to three), the banner, the company's three social links, and the 7 shared mailboxes' own signatures.
@@ -74,3 +76,19 @@ Written only once Justin has answered; listed so the session can end with them.
 2. Permanent public picture addresses for signatures, PNG or JPEG, on tridentcubed.com.
 3. Shared addresses, banners, social links and the shared mailboxes' signatures in the app.
 4. Retire the website's signature pages and the signature Sheets.
+
+## 6. Photos, banners and Vercel use (November 27, 2026)
+
+**What the pictures cost.** Over the 30 days to November 27, 2026, the website project answered about 1.29 million requests, and about 1.06 million of them (82%) were signature pictures under `/emails`, `/team` and `/branding`, about 8.6 GB sent. One banner alone, 1.1 MB, was 6.2 GB of it. Three things multiplied the count: every picture answers `cache-control: public, max-age=0, must-revalidate`, so a mail app asks again each time an email is opened; `tridentcubed.com` answers every picture with a 308 redirect to `www.tridentcubed.com`, two requests per picture; and each signature holds about ten pictures (photo, three contact icons, footer logo, three social icons, banner, BBB logo). On the current Pro plan these requests fall within its included use, but they are most of what the website is asked for.
+
+**What the app does now.**
+
+1. Every picture a signature shows, the website's icons and logos too, is copied once into the files bucket and answered at `<app address>/signature/<name>.png`: one request, no redirect, `public, max-age=31536000, immutable`, and answered from Vercel's cache after the first (checked on next.app: `x-vercel-cache: HIT`). Mail apps that keep pictures keep these for a year, and the name changes whenever the picture does.
+2. Each is made small at twice its shown size, photos and banners in 256 colours, which look the same at that size: a photo 224 px (about 25 KB, where the website's are 170 to 240 KB), a banner 1200 px wide (the 1.1 MB banner becomes 86 KB), icons as they are.
+3. The photo is drawn in a 224 px circle with clear corners. A website signature photo already drawn in its circle (clear corners) keeps its shape.
+4. Each person picks their photo and banner on the Email Signature screen, or uploads one; an Admin can for anyone. The picks live in the new `signature` table (one row per Team record, added, nothing moved). The photos offered are their upload, their website signature photo, their photos in the Profile Images folder (by the name the Sheet gives or their first and last names in the file name), and the Trident logo on white or dark. The banners offered are every banner in the Email Banners folder, their upload, or none.
+5. Defaults with no pick: the photo on their website signature, else their Profile Images photo, else the Trident logo on white (`profile-500x500.png`); the banner their Sheet row names, else the Trident Cubed map (`trident-cubed-map.png`).
+
+**The website's own pictures.** Signatures already pasted from the website keep pointing at `tridentcubed.com`. `apps/site/vercel.json` now lets mail apps keep `/emails/*` and `/team/*-email.png` for 30 days and `/branding/*.png` for 7, once that reaches the live website. The redirect stays until the domain setting changes.
+
+**Further, if needed.** Putting Cloudflare's cache in front of the picture address (the DNS is already on Cloudflare) would take almost every picture request off Vercel; it needs a DNS name and a project domain, so it waits for Justin.
