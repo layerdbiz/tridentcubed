@@ -164,12 +164,13 @@
 		onclose={dismiss}
 	>
 		{#snippet header()}
-			<!-- On a phone the glow fills the screen's top, under the status bar too, its words below it. -->
+			<!-- On a phone the glow fills the screen's top, under the status bar too, its words below it, with no light
+			     edge along the top of the screen; the box from tablet width keeps it. -->
 			<header class="relative -mx-5 -mt-[env(safe-area-inset-top)] shrink-0 md:-mt-5">
 				<Glow
 					color={glow.color}
 					blend={glow.blend}
-					class="text-center md:rounded-t-[28px]"
+					class="text-center max-md:shadow-none md:rounded-t-[28px]"
 				>
 					<!-- Room under the words, so they never sit on the wave. The words change with the release in view. -->
 					<div class="px-12 pt-[calc(env(safe-area-inset-top)+1.75rem)] pb-10 md:pt-8 md:pb-14">
