@@ -136,6 +136,25 @@
 	// The picture open in the editor, and whether it opened looking, cropping or typing.
 	let opened = $state<{ id: string; mode: PopupModeType }>();
 
+	// A copied link to the editor names its attachment in the address (Justin, 2026-11-28: "if I copy and paste a
+	// photo editor panel URL into another window, I want that to open up the photo editor panel"): once this group
+	// holds it, the editor opens on it. A panel is drawn twice, for the phone and the desk, and only the copy on
+	// screen opens it, once it has settled.
+	const SETTLE = 300;
+	let grid = $state<HTMLElement>();
+	$effect(() => {
+		const asked = look.editingId;
+		const shown = grid;
+		if (!asked || opened || !shown) return;
+		const photo = group.photos.find((each) => each.id === asked);
+		if (!photo || !canOpen(photo)) return;
+		const timer = setTimeout(() => {
+			if (look.editingId !== asked || opened || !shown.getClientRects().length) return;
+			opened = { id: asked, mode: 'view' };
+		}, SETTLE);
+		return () => clearTimeout(timer);
+	});
+
 	function move(from: number, to: number) {
 		if (onmove) return onmove(from, to);
 		const [photo] = group.photos.splice(from, 1);
@@ -193,6 +212,10 @@
 	class={className}
 	{...rest}
 	{@attach sortable(sortKey, move, zones, selecting?.pick)}
+	{@attach (node) => {
+		grid = node;
+		return () => (grid = undefined);
+	}}
 >
 	{#snippet tile(photo, index)}
 		{@const isSelecting = Boolean(selecting?.isOn)}

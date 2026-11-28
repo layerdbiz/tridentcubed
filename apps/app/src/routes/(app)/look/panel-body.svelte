@@ -374,6 +374,16 @@
 	let openDays = $state<string[]>([panel.days[0]?.id ?? '']);
 	let openGroups = $state<string[]>([panel.groups[0]?.id ?? '']);
 
+	// A copied link to the photo editor names its attachment (look.editingId, Justin, 2026-11-28): the group holding it
+	// opens, so its photo panel is drawn and opens the editor on it.
+	$effect(() => {
+		const asked = look.editingId;
+		if (!asked) return;
+		const holder = panel.groups.find((group) => group.photos.some((photo) => photo.id === asked));
+		if (holder && !untrack(() => openGroups).includes(holder.id))
+			untrack(() => (openGroups = [...openGroups, holder.id]));
+	});
+
 	function toggle(list: string[], id: string) {
 		return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
 	}
@@ -962,7 +972,7 @@
 						'auto'
 							? 'px-2.5'
 							: 'w-7'} {isOn
-							? 'bg-white text-primary shadow-sm'
+							? 'bg-primary text-white shadow-sm shadow-primary/25'
 							: 'text-slate-500 hover:text-slate-700'}"
 						aria-label={DIRECTION_NAMES[value]}
 						title="{DIRECTION_NAMES[value]}: {DIRECTION_HINTS[value]}"
@@ -987,7 +997,7 @@
 						{...props}
 						type="button"
 						class="h-[22px] rounded-full px-2.5 transition {isOn
-							? 'bg-white text-primary shadow-sm'
+							? 'bg-primary text-white shadow-sm shadow-primary/25'
 							: 'text-slate-500 hover:text-slate-700'}"
 						data-fit={value}>{value === 'fill' ? 'Fill' : 'Fit'}</button
 					>
