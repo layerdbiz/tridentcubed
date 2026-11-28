@@ -8,6 +8,7 @@ import {
 	hasEdit,
 	lockedAspectOf,
 	stagePagesOf,
+	perPageLabelOf,
 	placeOf,
 	toPageGrid,
 	toStageGrid,
@@ -70,7 +71,7 @@ describe('placeOf: Fit keeps the Ratio', () => {
 			500,
 			700
 		);
-		expect(spots[0]).toMatchObject({ w: 500, h: 250 });
+		expect(spots[0].w / spots[0].h).toBeCloseTo(2);
 		expect(spots[1].w / spots[1].h).toBeCloseTo(0.5);
 	});
 });
@@ -232,5 +233,103 @@ describe('a picked grid', () => {
 	it('is read back from its text', () => {
 		expect(toPageGrid('3x2')).toEqual({ columns: 3, rows: 2 });
 		expect(toPageGrid('')).toBeUndefined();
+	});
+});
+
+// Justin, 2026-11-28: "a directional control, which would let you select if it was either left to right or top to
+// bottom", Horizontal, Vertical or Auto beside Fill and Fit; Auto turns each page whichever way crops the least.
+describe('placeOf: Direction', () => {
+	const box = (spots: { x: number; y: number; w: number; h: number }[]) =>
+		spots.map(({ x, y, w, h }) => [x, y, w, h].map((each) => Math.round(each)));
+	const pagesOf = (stage: StageLayoutType & { photos: { id: string }[] }, aspect: number) =>
+		stagePagesOf(stage).map((page) => placeOf(page, stage, () => aspect, 500, 700));
+
+	it('runs two to a page side by side when Horizontal, one over the other when Vertical', () => {
+		const stage = { layout: 2, fit: 'fill' as const, photos: photos(2) };
+		expect(box(placed({ ...stage, direction: 'horizontal' }))).toEqual([
+			[0, 0, 244, 700],
+			[256, 0, 244, 700]
+		]);
+		expect(box(placed({ ...stage, direction: 'vertical' }))).toEqual([
+			[0, 0, 500, 344],
+			[0, 356, 500, 344]
+		]);
+	});
+
+	it('fills a page down each column first when Vertical', () => {
+		const spots = placed({ layout: 4, fit: 'fill', direction: 'vertical', photos: photos(4) });
+		expect(box(spots).map(([x, y]) => [x, y])).toEqual([
+			[0, 0],
+			[0, 356],
+			[256, 0],
+			[256, 356]
+		]);
+	});
+
+	it('lays six to a page three across when Horizontal, three down when Vertical', () => {
+		const across = placed({ layout: 6, fit: 'fill', direction: 'horizontal', photos: photos(6) });
+		const down = placed({ layout: 6, fit: 'fill', direction: 'vertical', photos: photos(6) });
+		expect(new Set(across.map(({ x }) => Math.round(x))).size).toBe(3);
+		expect(new Set(down.map(({ x }) => Math.round(x))).size).toBe(2);
+	});
+
+	it('keeps a picked grid as picked, either way, and only changes its order', () => {
+		const grid = { columns: 3, rows: 2 };
+		const across = placed({
+			layout: 6,
+			grid,
+			fit: 'fill',
+			direction: 'horizontal',
+			photos: photos(6)
+		});
+		const down = placed({ layout: 6, grid, fit: 'fill', direction: 'vertical', photos: photos(6) });
+		expect(new Set(down.map(({ x }) => Math.round(x))).size).toBe(3);
+		expect(box([across[1]])).toEqual(box([down[2]]));
+	});
+
+	it('under Auto, stacks the last two landscape photos of a page and sets portrait ones side by side', () => {
+		// Six at four to a page: the second page holds two (Justin's 16:9 photos, 2026-11-28).
+		const stage = {
+			layout: 4,
+			fit: 'fill' as const,
+			direction: 'auto' as const,
+			photos: photos(6)
+		};
+		const [, landscape] = pagesOf(stage, 16 / 9);
+		expect(box(landscape)).toEqual([
+			[0, 0, 500, 344],
+			[0, 356, 500, 344]
+		]);
+		const [, portrait] = pagesOf(stage, 9 / 16);
+		expect(box(portrait)).toEqual([
+			[0, 0, 244, 700],
+			[256, 0, 244, 700]
+		]);
+	});
+
+	it('under Auto and Fit, turns the page the way the pictures come out biggest', () => {
+		const stage = {
+			layout: 2,
+			fit: 'fit' as const,
+			ratio: 'free' as const,
+			direction: 'auto' as const
+		};
+		const [landscape] = pagesOf({ ...stage, photos: photos(2) }, 16 / 9);
+		expect(landscape[0].x).toBe(landscape[1].x);
+		const [portrait] = pagesOf({ ...stage, photos: photos(2) }, 9 / 16);
+		expect(portrait[0].y).toBe(portrait[1].y);
+	});
+
+	it('starts the crop frame in the shape of the page’s cells under Fill, and in the photo’s own under Auto', () => {
+		const fill = { layout: 2, fit: 'fill' as const };
+		expect(lockedAspectOf({ ...fill, direction: 'horizontal' }, {}, {}, 1)).toBeCloseTo(
+			251.5 / 573
+		);
+		expect(lockedAspectOf({ ...fill, direction: 'vertical' }, {}, {}, 1)).toBeCloseTo(515 / 280.5);
+		expect(lockedAspectOf({ ...fill, direction: 'auto' }, {}, {}, 1)).toBeUndefined();
+	});
+
+	it('calls every one on one page All', () => {
+		expect(perPageLabelOf({ layout: 4, isAuto: true })).toBe('All');
 	});
 });

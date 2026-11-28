@@ -63,10 +63,12 @@
 		toInitialsPicture
 	} from '@layerd/ui';
 	import {
+		directionOf,
 		fitOf,
 		GRID_MOST,
 		gridOf,
 		isPresetGrid,
+		laidGridOf,
 		PRESETS,
 		RATIO_VALUES,
 		RATIOS,
@@ -88,6 +90,7 @@
 	import { startUpload, type Upload } from '#lib/files/files.state.svelte.js';
 	import {
 		DEFAULT_LAYOUT,
+		DIRECTIONS,
 		FITS,
 		LAYOUTS,
 		type PageLayoutType
@@ -600,14 +603,26 @@
 		};
 	}
 
-	// #295: a stage's Per page (a button's count, Auto, or any grid up to 4 by 4 from the picker), Fill or Fit, and
-	// under Fit its Ratio. Each pick is saved at once, like any change.
+	// #295: a stage's Per page (a button's count, All, or any grid up to 4 by 4 from the picker), its Direction, Fill
+	// or Fit, and under Fit its Ratio. Each pick is saved at once, like any change.
 	const PER_PAGE = [...LAYOUTS, 'auto'] as const;
 	type PerPageType = (typeof PER_PAGE)[number];
 	const GRID_CELLS = Array.from({ length: GRID_MOST * GRID_MOST }, (_, at) =>
 		toPageGridText({ columns: (at % GRID_MOST) + 1, rows: Math.floor(at / GRID_MOST) + 1 })
 	);
 	const RATIO_IDS = RATIOS.map(({ id }) => id);
+	// Direction (Justin, 2026-11-28): across, down, or each page whichever way crops the least.
+	const DIRECTION_NAMES = { horizontal: 'Horizontal', vertical: 'Vertical', auto: 'Auto' } as const;
+	const DIRECTION_ICONS = {
+		horizontal: 'icon-[mdi--arrow-left-right]',
+		vertical: 'icon-[mdi--arrow-up-down]',
+		auto: ''
+	} as const;
+	const DIRECTION_HINTS = {
+		horizontal: 'Across, then down',
+		vertical: 'Down, then across',
+		auto: 'Each page whichever way crops the photos least'
+	} as const;
 	// Whose grid picker is open, and the grid the pointer is on in it.
 	let gridFor = $state('');
 	let gridAt = $state<PageGridType>({ columns: 0, rows: 0 });
@@ -927,8 +942,9 @@
 	</div>
 {/snippet}
 
-<!-- #295 (Justin, 2026-11-25 and 2026-11-27): a stage's Per page, its buttons drawing their own grid, then Auto and
-     the grid picker, with Fill or Fit on its label's line; under Fit, the Ratio every spot keeps. Fill fills the page
+<!-- #295 (Justin, 2026-11-25, 2026-11-27 and 2026-11-28): a stage's Per page, its buttons drawing their own grid the
+     way its Direction lays it, then All (every one on one page) and the grid picker, with the Direction (Horizontal,
+     Vertical, Auto) and Fill or Fit on its label's line; under Fit, the Ratio every spot keeps. Fill fills the page
      with the spots whatever their shape. -->
 {#snippet stageLayout(group: PanelType['groups'][number])}
 	{@const grid = gridOf(group)}
@@ -946,6 +962,34 @@
 					/>{/if}
 			</p>
 			<Radio
+				class="ml-auto flex rounded-full bg-slate-900/[0.05] p-0.5 text-[11px] font-semibold"
+				label="Direction"
+				options={DIRECTIONS}
+				value={directionOf(group)}
+				onpick={(next) => {
+					group.direction = next;
+					save();
+				}}
+			>
+				{#snippet option({ value, isOn, props })}
+					<button
+						{...props}
+						type="button"
+						class="flex h-[22px] items-center justify-center rounded-full transition {value ===
+						'auto'
+							? 'px-2.5'
+							: 'w-7'} {isOn
+							? 'bg-white text-primary shadow-sm'
+							: 'text-slate-500 hover:text-slate-700'}"
+						aria-label={DIRECTION_NAMES[value]}
+						title="{DIRECTION_NAMES[value]}: {DIRECTION_HINTS[value]}"
+						data-direction={value}
+						>{#if DIRECTION_ICONS[value]}<span class="{DIRECTION_ICONS[value]} size-3.5"
+							></span>{:else}{DIRECTION_NAMES[value]}{/if}</button
+					>
+				{/snippet}
+			</Radio>
+			<Radio
 				class="flex rounded-full bg-slate-900/[0.05] p-0.5 text-[11px] font-semibold"
 				label="Fill or Fit"
 				options={FITS}
@@ -959,7 +1003,7 @@
 					<button
 						{...props}
 						type="button"
-						class="rounded-full px-2.5 py-0.5 transition {isOn
+						class="h-[22px] rounded-full px-2.5 transition {isOn
 							? 'bg-white text-primary shadow-sm'
 							: 'text-slate-500 hover:text-slate-700'}"
 						data-fit={value}>{value === 'fill' ? 'Fill' : 'Fit'}</button
@@ -976,7 +1020,10 @@
 				onpick={(next) => pickPerPage(group, next)}
 			>
 				{#snippet option({ value, isOn, props })}
-					{@const cells = value === 'auto' ? undefined : PRESETS[value]}
+					{@const cells =
+						value === 'auto'
+							? undefined
+							: (laidGridOf({ ...group, layout: value, grid: undefined }) ?? PRESETS[value])}
 					<button
 						{...props}
 						type="button"
@@ -1011,7 +1058,7 @@
 								<span class="col-span-2 rounded-[1px] bg-current"></span>
 								<span class="col-span-2 rounded-[1px] bg-current"></span>
 								<span class="col-span-6 rounded-[1px] bg-current"></span>
-							</span>Auto
+							</span>All
 						{/if}
 					</button>
 				{/snippet}

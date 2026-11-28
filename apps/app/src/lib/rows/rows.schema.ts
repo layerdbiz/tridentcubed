@@ -18,7 +18,7 @@
 // The order of `TABLES` is the order a batch's puts are applied in: a parent comes before its children.
 // The rules of who may change what are not here: they live in the one permission check (`#lib/server/permission.ts`).
 import * as v from 'valibot';
-import { CROP_RATIOS, FITS, LAYOUTS, RATIOS } from '#lib/report/report.constants.js';
+import { CROP_RATIOS, DIRECTIONS, FITS, LAYOUTS, RATIOS } from '#lib/report/report.constants.js';
 
 const TEXT = v.pipe(v.string(), v.maxLength(20_000));
 /** The most an item list read from a spreadsheet may take in its panel's row, as JSON (#242): about 2,000 rows. */
@@ -317,11 +317,13 @@ export const TABLES = {
 			layout: v.picklist(LAYOUTS),
 			isEnabled: v.boolean(),
 			// #295: a grid picked on its own, columns by rows ("3x2"), nothing for a per-page button's; Auto; the shape
-			// of the spots under Fit; and whether the spots fill the page (fill) or keep that shape (fit).
+			// of the spots under Fit; whether the spots fill the page (fill) or keep that shape (fit); and which way
+			// they run (horizontal, vertical or auto).
 			grid: v.pipe(v.string(), v.regex(/^(?:[1-9]x[1-9])?$/)),
 			isAuto: v.boolean(),
 			ratio: v.picklist(RATIOS),
-			fit: v.picklist(FITS)
+			fit: v.picklist(FITS),
+			direction: v.picklist(DIRECTIONS)
 		}
 	},
 	photo: {

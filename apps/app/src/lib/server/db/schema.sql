@@ -477,7 +477,8 @@ CREATE TABLE "photo_group" (
 	"grid" text DEFAULT '' NOT NULL,
 	"is_auto" boolean DEFAULT false NOT NULL,
 	"ratio" text DEFAULT '4:3' NOT NULL,
-	"fit" text DEFAULT 'fill' NOT NULL
+	"fit" text DEFAULT 'fill' NOT NULL,
+	"direction" text DEFAULT 'auto' NOT NULL
 );
 
 --> statement-breakpoint
