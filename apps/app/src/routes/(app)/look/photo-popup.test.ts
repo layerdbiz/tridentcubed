@@ -1,9 +1,10 @@
 // The photo pop-up's More (#376): the library's menu, holding a red Delete. Delete still asks first, and only a yes
 // takes the photo out of its group. Escape with the menu open shuts the menu and leaves the pop-up open.
 // Its Details (#343): when and where the photo was taken, and every metadata field the original had, to copy out.
-// Its editor (#295): a back arrow until something changes, then the X and the ✓; undo and redo; Pop out; a PDF as
-// one box of its pages on the strip, a change going to every page or to the one picked.
-import { fireEvent, render, screen, within } from '@testing-library/svelte';
+// Its editor (#295): a back arrow until something changes, then the X and the ✓; undo and redo; Pop out; Original
+// back to the whole picture; a PDF on the strip as its pages stacked (All pages on) or the page on screen alone (off),
+// a change going to every page or to that one; Open in the ⋮.
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import type { GroupType } from './look.data';
 import type { LookState } from './look.state.svelte';
@@ -41,6 +42,15 @@ vi.mock('#lib/pdf/pdf.state.svelte.js', () => ({
 	pageShapeOf: () => undefined,
 	pageCountOf: () => undefined
 }));
+
+const PDF = {
+	id: 'p',
+	src: '/p.webp',
+	description: '',
+	kind: 'pdf',
+	source: '/files/plan',
+	pageCount: 3
+};
 
 type QuestionType = { title: string; note?: string; onyes: () => void };
 
@@ -208,31 +218,49 @@ describe("the photo pop-up's editor", () => {
 		expect(group.photos.map((photo) => photo.ownLayout)).toEqual([2, undefined]);
 	});
 
-	it('holds a PDF’s pages in one box on the strip, and with All pages off changes the page picked only', async () => {
-		const pdf = {
-			id: 'p',
-			src: '/p.webp',
-			description: '',
-			kind: 'pdf',
-			source: '/files/plan',
-			pageCount: 3
-		};
-		const { group } = show([{ id: 'a', src: '/a.webp', description: '' }, pdf], 'p');
-		const box = screen.getByRole('group', { name: 'PDF, 3 pages' });
-		const pages = within(box).getAllByRole('button');
-		expect(pages.map((page) => page.getAttribute('aria-label'))).toEqual([
-			'PDF page 1',
-			'PDF page 2',
-			'PDF page 3'
-		]);
+	it('crops to the whole picture again on Original', async () => {
+		const { group } = show();
+		await fireEvent.click(screen.getByRole('button', { name: '16:9' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Original' }));
+		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-		await fireEvent.click(pages[1]);
+		expect(group.photos[0].edit).toEqual({ ratio: 'original' });
+	});
+
+	it('stacks a PDF’s pages on the strip with All pages on, and a tap on one under brings it on top', async () => {
+		show([{ id: 'a', src: '/a.webp', description: '' }, PDF], 'p');
+		const stack = screen.getByRole('group', { name: 'PDF, 3 pages' });
+		const onTop = () =>
+			within(stack)
+				.getAllByRole('button')
+				.find((page) => page.getAttribute('aria-current') === 'true')
+				?.getAttribute('aria-label');
+		expect(onTop()).toBe('PDF page 1');
+
+		await fireEvent.click(within(stack).getByRole('button', { name: 'PDF page 3' }));
+		expect(onTop()).toBe('PDF page 3');
+	});
+
+	it('shows a PDF’s page on screen alone with All pages off, steps through its pages, and changes that page only', async () => {
+		const { group } = show([PDF, { id: 'a', src: '/a.webp', description: '' }], 'p');
 		await fireEvent.click(screen.getByRole('switch', { name: /All pages/ }));
+		expect(screen.getByRole('button', { name: 'PDF page 1 of 3' })).toBeTruthy();
+		expect(screen.queryByRole('group', { name: /PDF/ })).toBeNull();
+
+		await fireEvent.keyDown(window, { key: 'ArrowRight' });
+		await waitFor(() => screen.getByRole('button', { name: 'PDF page 2 of 3' }), { timeout: 3000 });
 		await fireEvent.click(screen.getByRole('button', { name: 'Rotate' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-		const [, saved] = group.photos;
+		const [saved] = group.photos;
 		expect(saved.edit).toBeUndefined();
 		expect(saved.pageEdits).toEqual({ '2': { turns: 1 } });
+	});
+
+	it('keeps Open for a PDF in the ⋮, out of the tools', async () => {
+		show([PDF], 'p');
+		expect(screen.queryByRole('link', { name: /Open/ })).toBeNull();
+		const more = await openMore();
+		expect(within(more).getByRole('option', { name: /Open the PDF/ })).toBeTruthy();
 	});
 });

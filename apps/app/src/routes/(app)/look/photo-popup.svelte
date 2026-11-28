@@ -11,16 +11,19 @@
 	// the window over the dimmed app from tablet width up, the same tools in both.
 	// #295 (Justin, 2026-11-25, round 5 of the prototype, and 2026-11-27): it opens on the crop, the whole picture with
 	// its frame over it, the frame's corners and edges in view. Dragging a corner or an edge grows or shrinks the frame
-	// from its middle (edit.ts `draggedFrame`); dragging inside it moves it. Under the picture: the stage's attachments
-	// on a strip, a PDF as one box holding its pages side by side; then the crop's choices in one row with nothing to
-	// scroll (Rotate, Flip, and the frame's ratio: Free, Original, 16:9, 9:16, 1:1, 4:3, or the shape the stage sets);
-	// the straighten dial at the bottom, undo and redo either side of it once there is something to step to; and the
-	// tools: Crop, Text, Reset once this one is changed, Open for a PDF and Play for a video. At the top a back arrow
-	// until something changes, then the X (leave without saving) and the ✓ (keep every change and close). A PDF of
-	// more than one page has All pages at the top: on, a change goes to every page; off, to the page picked on the
-	// strip. The ⋮ holds Pop out (on pages of its own, 1, 2 or 4 to a page) and Delete, which asks first and moves on
-	// to the next one. Nothing is made of the picture: what is changed is kept as numbers (edit.ts), and the report
-	// draws the picture with them.
+	// from its middle (edit.ts `draggedFrame`); dragging inside it moves it. At the top, in its true middle, Rotate and
+	// Flip, then All pages for a PDF of more than one page (on, a change goes to every page; off, to the page on
+	// screen), else where it is; a back arrow on the left until something changes, then the X (leave without saving);
+	// on the right the i, the ⋮ and, once something changes, the ✓ (keep every change and close). Under the picture
+	// the stage's attachments on a strip. A PDF there, with All pages on, is its pages stacked as selected photos are,
+	// the page on screen on top in blue, a tap on another bringing it up; with All pages off it is the page on screen
+	// alone, and a swipe or an arrow key goes through its pages one by one before the next attachment. Then the
+	// frame's shapes in one row: the stage's when it sets one, Free, Original (the whole picture), 16:9, 9:16, 1:1,
+	// 4:3; the straighten dial, undo and redo either side of it once there is something to step to; and the tools,
+	// Crop and Text in the middle, Reset beside them once this one is changed. The ⋮ holds Open the PDF or Play the
+	// video, Pop out (on pages of its own, 1, 2 or 4 to a page) and Delete, which asks first and moves on to the next
+	// one. Nothing is made of the picture: what is changed is kept as numbers (edit.ts), and the report draws the
+	// picture with them.
 	// #354 (Justin, 2026-11-27): the Email Signature's photo and banners open here too, "that same photo editor", with
 	// only what a picture alone needs (`isPictureOnly`): no Text, no Pop out and no Details, Delete still in the ⋮. A
 	// signature's photo shows its circle over the crop (`isRound`).
@@ -55,6 +58,7 @@
 	import { toLengthLabel, toVideoLink } from '#lib/video/video.utils.js';
 	import {
 		CROP_RATIOS,
+		centredFrame,
 		cleanEdit,
 		draggedFrame,
 		editOf,
@@ -77,7 +81,7 @@
 	import type { GroupType, PhotoType } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { pictureAspectOf } from './shapes';
-	import { Button, Menu, type MenuOptionType } from '@layerd/ui';
+	import { Badge, Button, Menu, type MenuOptionType } from '@layerd/ui';
 
 	let {
 		look,
@@ -288,15 +292,25 @@
 
 	// A shape picked for this attachment wins over the stage's; none goes back to the stage's (Justin, 2026-11-27:
 	// "I don't ever want to be locked in"). Where the stage sets no shape, Free is where every picture starts, so it is
-	// kept as none. The frame takes the new shape around the same middle; Free leaves it as it is, free to drag.
+	// kept as none. Original shows the whole picture again (Justin, 2026-11-27: "if you click original, it would make
+	// the crop bounds the full width and height of the image"); any other shape takes the biggest frame of it around
+	// the frame's middle; Free leaves the frame as it is, free to drag.
 	function pickRatio(ratio: CropRatioType | undefined) {
 		if (!photo) return;
 		const kept = !stageAspect && ratio === 'free' ? undefined : ratio;
 		change((edit) => {
 			if (kept) edit.ratio = kept;
 			else delete edit.ratio;
+			if (kept === 'original') {
+				delete edit.frame;
+				return;
+			}
 			const shape = lockedAspectOf(group, placed, { ...edit }, aspect);
-			if (shape) edit.frame = frameOf({ ...edit }, aspect, shape);
+			if (shape)
+				edit.frame = centredFrame(
+					shape / turnedAspect(aspect, edit),
+					frameOf({ ...edit }, aspect, shape)
+				);
 		});
 	}
 
@@ -337,14 +351,20 @@
 
 	// ---- Moving between the stage's attachments: the strip, a swipe, the arrow keys. ----
 
-	function goTo(next: number, page = 0) {
+	// The pages under the one on top of a PDF's stack on the strip: the next two after it, from the start again.
+	function underOf(top: number, count: number) {
+		return [1, 2].filter((step) => step < count).map((step) => (top + step) % count);
+	}
+
+	// A tap on the strip changes the page on screen at once; a swipe or an arrow key slides to it.
+	function goTo(next: number, page = 0, isSwiped = false) {
 		const target = items[next];
 		if (!target || isGliding) return;
-		if (next === index) {
+		if (next === index && (page === pageAt || !isSwiped)) {
 			pageAt = page;
 			return;
 		}
-		const by = next > index ? 1 : -1;
+		const by = next > index || (next === index && page > pageAt) ? 1 : -1;
 		isGliding = true;
 		offset = -by * (stageWidth + GAP);
 		setTimeout(() => {
@@ -360,6 +380,19 @@
 				})
 			);
 		}, SLIDE_MS);
+	}
+
+	// The attachment, or the PDF's page, one along (`by` 1) or one back (-1): with All pages off a PDF's pages come one
+	// by one first (Justin, 2026-11-27), and one stepped back into is met at its last page. None at either end.
+	function stepOf(by: 1 | -1) {
+		if (isPdf && !isAllPages) {
+			const page = pageAt + by;
+			if (page >= 0 && page < pageCount) return { at: index, page };
+		}
+		const next = items[index + by];
+		if (!next) return undefined;
+		const isPaged = by < 0 && next.kind === 'pdf' && !isAllPages;
+		return { at: index + by, page: isPaged ? Math.max(1, next.pageCount ?? 1) - 1 : 0 };
 	}
 
 	function slideBack() {
@@ -444,7 +477,7 @@
 			};
 			return;
 		}
-		if (items.length > 1) hold = { ...base, kind: 'swipe' };
+		if (stepOf(1) || stepOf(-1)) hold = { ...base, kind: 'swipe' };
 	}
 
 	function onstagemove(event: PointerEvent) {
@@ -469,7 +502,7 @@
 		}
 		if (hold.way !== 'side') return;
 		hold.isMoved = true;
-		const isEnd = (dx > 0 && index === 0) || (dx < 0 && index === items.length - 1);
+		const isEnd = !stepOf(dx > 0 ? -1 : 1);
 		offset = isEnd ? dx * 0.3 : dx;
 	}
 
@@ -484,7 +517,8 @@
 		if (!done.isMoved) return;
 		const speed = offset / Math.max(1, event.timeStamp - done.time);
 		const by = offset < -50 || speed < -0.5 ? 1 : offset > 50 || speed > 0.5 ? -1 : 0;
-		if (by && items[index + by]) goTo(index + by);
+		const step = by ? stepOf(by) : undefined;
+		if (step) goTo(step.at, step.page, true);
 		else slideBack();
 	}
 
@@ -588,7 +622,8 @@
 		if (isInField) return;
 		if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
 			event.preventDefault();
-			goTo(index + (event.key === 'ArrowLeft' ? -1 : 1));
+			const step = stepOf(event.key === 'ArrowLeft' ? -1 : 1);
+			if (step) goTo(step.at, step.page, true);
 		}
 		if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'z') {
 			event.preventDefault();
@@ -656,6 +691,15 @@
 				: ''
 	);
 
+	// What Open or Play in the ⋮ opens: the PDF, or the video played in the app.
+	const openLink = $derived(
+		photo?.kind && photo.source
+			? photo.kind === 'video'
+				? toVideoLink(location.origin, photo.source) || photo.source
+				: photo.source
+			: ''
+	);
+
 	const DELETE: MenuOptionType = {
 		id: 'delete',
 		label: 'Delete',
@@ -694,18 +738,29 @@
 								}
 							]
 						: []),
+					// The PDF or the video itself, in a new tab (#327), kept here out of the way of the tools.
+					...(openLink
+						? [
+								photo?.kind === 'video'
+									? { id: 'open', label: 'Play the video', icon: 'icon-[mdi--play-circle-outline]' }
+									: { id: 'open', label: 'Open the PDF', icon: 'icon-[mdi--open-in-new]' }
+							]
+						: []),
 					DELETE
 				]
 	);
 
 	function pickMore(choice: string) {
 		if (choice === 'delete') askDelete();
+		else if (choice === 'open' && openLink) window.open(openLink, '_blank', 'noopener');
 		else if (choice.startsWith('own-')) setOwnLayout(Number(choice.slice(4)));
 	}
 
 	// Its list opens from More's right edge on a phone and its left edge on a wider screen.
 	const wide = new MediaQuery('min-width: 48rem');
 
+	const topClass =
+		'flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition hover:bg-white/10';
 	const optionClass =
 		'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1.5 text-[10.5px] leading-none font-semibold transition md:flex-none md:px-3';
 	const toolClass =
@@ -736,29 +791,54 @@
 		data-editor
 		transition:fade={{ duration: 180 }}
 	>
-		<!-- The top: back, or the X once something changed; where it is, or All pages for a PDF; the i, the ⋮, and the
-		     ✓ once something changed. -->
+		<!-- The top, its middle truly in the middle whatever is on either side (Justin, 2026-11-27): back, or the X once
+		     something changed; Rotate and Flip, then All pages for a PDF or where it is; the i, the ⋮, and the ✓ once
+		     something changed. On a phone the middle has a row of its own under the rest. -->
 		<div
-			class="box-content flex h-14 shrink-0 items-center gap-1 px-2 pt-[env(safe-area-inset-top)] md:h-16 md:px-2.5 md:pt-0"
+			class="box-content grid shrink-0 grid-cols-[1fr_auto] items-center gap-x-1 px-2 pt-[env(safe-area-inset-top)] pb-1 md:h-16 md:grid-cols-[1fr_auto_1fr] md:px-2.5 md:pt-0 md:pb-0"
 		>
-			<Button
-				ghost
-				invert
-				lg
-				icon={isEdited ? 'icon-[mdi--close]' : 'icon-[mdi--arrow-left]'}
-				aria-label={isEdited ? 'Close without saving' : 'Back'}
-				title={isEdited ? 'Close without saving' : 'Back'}
-				data-editor-close
-				onclick={onclose}
-			/>
-			<div class="flex min-w-0 flex-1 items-center justify-center">
+			<div class="flex h-14 items-center justify-self-start md:h-auto">
+				<Button
+					ghost
+					invert
+					lg
+					icon={isEdited ? 'icon-[mdi--close]' : 'icon-[mdi--arrow-left]'}
+					aria-label={isEdited ? 'Close without saving' : 'Back'}
+					title={isEdited ? 'Close without saving' : 'Back'}
+					data-editor-close
+					onclick={onclose}
+				/>
+			</div>
+			<div
+				class="col-span-2 row-start-2 flex min-w-0 items-center justify-center gap-1.5 md:col-span-1 md:col-start-2 md:row-start-1"
+				data-editor-middle
+			>
+				{#if mine}
+					<button
+						type="button"
+						class="{topClass} bg-white/8 text-slate-200 hover:text-white"
+						data-edit="rotate"
+						onclick={rotate}><span class="icon-[mdi--rotate-left] size-[18px]"></span>Rotate</button
+					>
+					<button
+						type="button"
+						class="{topClass} {current.isFlipped
+							? 'bg-white/22 text-white'
+							: 'bg-white/8 text-slate-200 hover:text-white'}"
+						aria-pressed={Boolean(current.isFlipped)}
+						data-edit="flip"
+						onclick={flip}><span class="icon-[mdi--flip-horizontal] size-[18px]"></span>Flip</button
+					>
+				{/if}
 				{#if isPdf && pageCount > 1}
 					<button
 						type="button"
 						class="flex shrink-0 items-center gap-2 rounded-full bg-white/8 py-1.5 pr-1.5 pl-3 text-xs font-semibold text-slate-200"
 						role="switch"
 						aria-checked={isAllPages}
-						title={isAllPages ? 'A change goes to every page' : 'A change goes to the page picked'}
+						title={isAllPages
+							? 'A change goes to every page'
+							: 'A change goes to the page on screen'}
 						data-all-pages
 						onclick={() => (isAllPages = !isAllPages)}
 						>All pages<span
@@ -773,55 +853,59 @@
 						></button
 					>
 				{:else if shownAt}
-					<p class="truncate text-[13px] font-medium text-slate-300 tabular-nums">{shownAt}</p>
+					<p class="truncate px-1.5 text-[13px] font-medium text-slate-300 tabular-nums">
+						{shownAt}
+					</p>
 				{/if}
 			</div>
-			{#if !isPictureOnly}
-				<Button
-					ghost
-					invert
-					md
-					icon="icon-[mdi--information-outline]"
-					iconToggle="icon-[mdi--information]"
-					toggled={isDetailsOpen}
-					aria-label="Details"
-					title="Details"
-					aria-pressed={isDetailsOpen}
-					onclick={() => (isDetailsOpen = !isDetailsOpen)}
-				/>
-			{/if}
-			<div bind:this={moreBox}>
-				<Menu
-					label="More"
-					value={mine?.ownLayout ? `own-${mine.ownLayout}` : ''}
-					options={MORE}
-					align={wide.current ? 'left' : 'right'}
-					button={(_, isOpen) => ({
-						ghost: true,
-						invert: true,
-						md: true,
-						icon: 'icon-[mdi--dots-vertical]',
-						title: 'More',
-						toggled: isOpen
-					})}
-					onpick={pickMore}
-				/>
-			</div>
-			{#if isEdited}
-				<span in:fade={{ duration: 140 }}>
+			<div class="col-start-2 row-start-1 flex items-center gap-1 justify-self-end md:col-start-3">
+				{#if !isPictureOnly}
 					<Button
-						primary
-						heavy
+						ghost
+						invert
 						md
-						class="rounded-full"
-						icon="icon-[mdi--check]"
-						aria-label="Save"
-						title="Save"
-						data-editor-save
-						onclick={save}
+						icon="icon-[mdi--information-outline]"
+						iconToggle="icon-[mdi--information]"
+						toggled={isDetailsOpen}
+						aria-label="Details"
+						title="Details"
+						aria-pressed={isDetailsOpen}
+						onclick={() => (isDetailsOpen = !isDetailsOpen)}
 					/>
-				</span>
-			{/if}
+				{/if}
+				<div bind:this={moreBox}>
+					<Menu
+						label="More"
+						value={mine?.ownLayout ? `own-${mine.ownLayout}` : ''}
+						options={MORE}
+						align={wide.current ? 'left' : 'right'}
+						button={(_, isOpen) => ({
+							ghost: true,
+							invert: true,
+							md: true,
+							icon: 'icon-[mdi--dots-vertical]',
+							title: 'More',
+							toggled: isOpen
+						})}
+						onpick={pickMore}
+					/>
+				</div>
+				{#if isEdited}
+					<span in:fade={{ duration: 140 }}>
+						<Button
+							primary
+							heavy
+							md
+							class="rounded-full"
+							icon="icon-[mdi--check]"
+							aria-label="Save"
+							title="Save"
+							data-editor-save
+							onclick={save}
+						/>
+					</span>
+				{/if}
+			</div>
 		</div>
 
 		<!-- The picture. The swipe is for a finger or the mouse; the strip and the arrow keys move along too. -->
@@ -1001,8 +1085,24 @@
 			</div>
 		</div>
 
-		<!-- Under the picture: the stage's attachments in a row, a PDF as one box holding its pages side by side
-		     (Justin, 2026-11-27: "the PDF should be a container around the 3 PDF pages"). -->
+		{#snippet pageThumb(each: PhotoType, page: number)}
+			{#if pictureOf(each, page + 1, 200)}
+				<Picture
+					src={pictureOf(each, page + 1, 200)}
+					edit={editIn(each, page + 1)}
+					aspect={pictureAspectOf(each, page + 1)}
+					fit="fit"
+					class="pointer-events-none size-full"
+				/>
+			{:else}
+				<span class="grid size-full place-items-center text-[8px] font-semibold text-slate-400"
+					>{page + 1}</span
+				>
+			{/if}
+		{/snippet}
+
+		<!-- Under the picture: the stage's attachments in a row, a PDF in line with them (Justin, 2026-11-27): its pages
+		     stacked with All pages on, the page on screen alone with it off. -->
 		{#if items.length > 1 || pageCount > 1}
 			<div
 				class="flex h-[66px] shrink-0 [scrollbar-width:none] items-center gap-1.5 overflow-x-auto px-3 md:justify-center"
@@ -1013,49 +1113,65 @@
 					{@const isOpen = at === index}
 					{#if each.kind === 'pdf'}
 						{@const count = Math.max(1, each.pageCount ?? 1)}
-						<div
-							class="flex h-[54px] shrink-0 items-center gap-1 rounded-xl bg-white/[0.07] py-1 pr-1 pl-1 ring-1 transition {isOpen
-								? 'ring-white'
-								: 'ring-white/15'}"
-							role="group"
-							aria-label="PDF, {count} {count === 1 ? 'page' : 'pages'}"
-							data-strip-pdf={at}
-						>
-							<span
-								class="flex h-full w-4 shrink-0 items-center justify-center rounded-md bg-danger text-[7px] font-bold text-white [writing-mode:vertical-rl]"
-								aria-hidden="true">PDF</span
+						{@const top = isOpen ? pageAt : 0}
+						{#if isAllPages && count > 1}
+							<!-- All pages on: its pages stacked as selected photos are (#402), the page on screen on top in
+							     blue, the next ones under it a little up and to the right; a tap on one brings it up. -->
+							<div
+								class="relative h-12 w-[52px] shrink-0 rounded-lg transition {isOpen
+									? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
+									: ''}"
+								role="group"
+								aria-label="PDF, {count} pages"
+								data-strip-pdf={at}
 							>
-							{#each Array.from({ length: count }, (_, page) => page) as page (page)}
-								{@const isHere = isOpen && page === pageAt}
+								{#each underOf(top, count).toReversed() as page (page)}
+									{@const step = (page - top + count) % count}
+									<button
+										type="button"
+										class="absolute bottom-0.5 left-0.5 h-[40px] w-[29px] overflow-hidden rounded-[3px] bg-white shadow-md"
+										style="transform: translate({step * 7}px, {-step * 3}px) rotate({step * 5}deg)"
+										aria-label="PDF page {page + 1}"
+										data-strip-page={page + 1}
+										onclick={() => goTo(at, page)}>{@render pageThumb(each, page)}</button
+									>
+								{/each}
 								<button
 									type="button"
-									class="relative h-[46px] w-[33px] shrink-0 overflow-hidden rounded-[3px] bg-white transition {isHere
+									class="absolute bottom-0.5 left-0.5 h-[40px] w-[29px] overflow-hidden rounded-[3px] bg-white shadow-md {isOpen
 										? 'ring-2 ring-sky-400'
-										: isOpen && isAllPages
-											? 'ring-1 ring-sky-400/60'
-											: isOpen
-												? 'opacity-60 hover:opacity-90'
-												: 'opacity-55 hover:opacity-90'}"
-									aria-label="PDF page {page + 1}"
-									aria-current={isHere}
-									data-current={isHere || undefined}
-									data-strip-page={page + 1}
-									onclick={() => goTo(at, page)}
+										: ''}"
+									aria-label="PDF page {top + 1}"
+									aria-current={isOpen}
+									data-current={isOpen || undefined}
+									data-strip-page={top + 1}
+									onclick={() => goTo(at, top)}>{@render pageThumb(each, top)}</button
 								>
-									{#if pictureOf(each, page + 1, 200)}
-										<Picture
-											src={pictureOf(each, page + 1, 200)}
-											edit={editIn(each, page + 1)}
-											aspect={pictureAspectOf(each, page + 1)}
-											fit="fit"
-											class="pointer-events-none size-full"
-										/>
-									{:else}
-										<span class="text-[8px] font-semibold text-slate-400">{page + 1}</span>
-									{/if}
-								</button>
-							{/each}
-						</div>
+								<Badge
+									{count}
+									xs
+									class="pointer-events-none absolute -top-1.5 -right-1.5 z-[1] ring-2 ring-[#05070b]"
+								/>
+							</div>
+						{:else}
+							<!-- All pages off: the page on screen alone, and a swipe goes through the rest (Justin, 2026-11-27). -->
+							<button
+								type="button"
+								class="relative h-12 w-[34px] shrink-0 overflow-hidden rounded-[4px] bg-white transition {isOpen
+									? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
+									: 'opacity-55 hover:opacity-90'}"
+								aria-label="PDF page {top + 1} of {count}"
+								aria-current={isOpen}
+								data-current={isOpen || undefined}
+								data-strip-pdf={at}
+								data-strip-page={top + 1}
+								onclick={() => goTo(at, top)}
+								>{@render pageThumb(each, top)}{#if count > 1}<span
+										class="absolute right-0.5 bottom-0.5 rounded-[3px] bg-black/70 px-0.5 text-[8px] leading-tight font-semibold text-white tabular-nums"
+										>{top + 1}/{count}</span
+									>{/if}</button
+							>
+						{/if}
 					{:else}
 						<button
 							type="button"
@@ -1223,28 +1339,12 @@
 				{/if}
 			</section>
 		{:else if tool === 'crop' && mine}
-			<!-- The crop's choices, all in one row: turn, flip, then the frame's shape: the stage's first when it sets one,
-			     where the frame starts, then every other, any of them picked for this attachment alone. -->
+			<!-- The frame's shapes, all in one row: the stage's first when it sets one, where the frame starts, then every
+			     other, any of them picked for this attachment alone. -->
 			<div
 				class="flex h-[58px] shrink-0 items-stretch gap-0.5 px-2 md:justify-center md:gap-1.5"
 				data-options
 			>
-				<button
-					type="button"
-					class="{optionClass} text-slate-300 hover:text-white"
-					data-edit="rotate"
-					onclick={rotate}><span class="icon-[mdi--rotate-left] size-5"></span>Rotate</button
-				>
-				<button
-					type="button"
-					class="{optionClass} {current.isFlipped
-						? 'bg-white/14 text-white'
-						: 'text-slate-300 hover:text-white'}"
-					aria-pressed={Boolean(current.isFlipped)}
-					data-edit="flip"
-					onclick={flip}><span class="icon-[mdi--flip-horizontal] size-5"></span>Flip</button
-				>
-				<span class="mx-0.5 my-2.5 w-px shrink-0 bg-white/15"></span>
 				{#if stageAspect}
 					{@const glyph = glyphOf('', stageAspect)}
 					{@const isOn = !current.ratio}
@@ -1370,54 +1470,46 @@
 			</span>
 		</div>
 
-		<!-- The tools: Crop, Text, Reset while this one is changed, and Open for a PDF or Play for a video (#327). -->
+		<!-- The tools: Crop and Text in the middle, and Reset beside them while this one is changed, without moving them
+		     (Justin, 2026-11-27). Open and Play are in the ⋮. -->
 		<div
-			class="relative flex shrink-0 justify-around px-2.5 pt-1 pb-[max(14px,env(safe-area-inset-bottom))] md:justify-center md:gap-2 md:px-5 md:pb-5"
+			class="grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2.5 pt-1 pb-[max(14px,env(safe-area-inset-bottom))] md:px-5 md:pb-5"
+			data-tools
 		>
-			<button
-				type="button"
-				class="{toolClass} {tool === 'crop' ? 'bg-white/14 text-white' : ''}"
-				aria-pressed={tool === 'crop'}
-				data-tool="crop"
-				onclick={() => (tool = 'crop')}
-				><span class="icon-[mdi--crop] size-6 md:size-5"></span><span>Crop</span></button
-			>
-			{#if !isPictureOnly}
+			<span></span>
+			<div class="flex gap-2 md:gap-2">
 				<button
 					type="button"
-					class="{toolClass} {tool === 'text' ? 'bg-white/14 text-white' : ''}"
-					aria-pressed={tool === 'text'}
-					data-tool="text"
-					onclick={() => (tool = 'text')}
-					><span class="icon-[mdi--pencil-outline] size-6 md:size-5"></span><span>Text</span
-					></button
+					class="{toolClass} {tool === 'crop' ? 'bg-white/14 text-white' : ''}"
+					aria-pressed={tool === 'crop'}
+					data-tool="crop"
+					onclick={() => (tool = 'crop')}
+					><span class="icon-[mdi--crop] size-6 md:size-5"></span><span>Crop</span></button
 				>
-			{/if}
-			{#if hasEdit(current)}
-				<button
-					type="button"
-					class={toolClass}
-					data-tool="reset"
-					in:fade={{ duration: 140 }}
-					onclick={reset}
-					><span class="icon-[mdi--restore] size-6 md:size-5"></span><span>Reset</span></button
-				>
-			{/if}
-			{#if photo?.kind && photo.source}
-				<a
-					class={toolClass}
-					href={photo.kind === 'video'
-						? toVideoLink(location.origin, photo.source) || photo.source
-						: photo.source}
-					target="_blank"
-					rel="noopener"
-					><span
-						class="{photo.kind === 'video'
-							? 'icon-[mdi--play-circle-outline]'
-							: 'icon-[mdi--open-in-new]'} size-6 md:size-5"
-					></span><span>{photo.kind === 'video' ? 'Play' : 'Open'}</span></a
-				>
-			{/if}
+				{#if !isPictureOnly}
+					<button
+						type="button"
+						class="{toolClass} {tool === 'text' ? 'bg-white/14 text-white' : ''}"
+						aria-pressed={tool === 'text'}
+						data-tool="text"
+						onclick={() => (tool = 'text')}
+						><span class="icon-[mdi--pencil-outline] size-6 md:size-5"></span><span>Text</span
+						></button
+					>
+				{/if}
+			</div>
+			<div class="justify-self-start">
+				{#if hasEdit(current)}
+					<button
+						type="button"
+						class={toolClass}
+						data-tool="reset"
+						in:fade={{ duration: 140 }}
+						onclick={reset}
+						><span class="icon-[mdi--restore] size-6 md:size-5"></span><span>Reset</span></button
+					>
+				{/if}
+			</div>
 		</div>
 	</div>
 </div>
