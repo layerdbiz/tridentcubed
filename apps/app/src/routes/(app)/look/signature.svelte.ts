@@ -1,53 +1,78 @@
 // A Team member's Email Signature (#354), as their Team page edits and previews it (Justin, 2026-11-28: "I want to
 // include the email signature into the main edit page of the team member"): the signature the server makes for
-// them, its photo and banners as they are being changed, what is on its way and why a change was refused, and the
-// photo editor open on one of them. One per Team page; its Edit (signature-edit.svelte) and its Preview
-// (signature-canvas.svelte) read the same one. The server is the one place that says who may see and change whose
-// (`checkSignature`): a person their own, an Admin anyone's.
+// them, its photo, its one banner and its group emails as they are being changed, what is on its way and why a change
+// was refused. One per Team page; its Edit (signature-edit.svelte) and its Preview (signature-canvas.svelte) read the
+// same one. The server is the one place that says who may see and change whose (`checkSignature`): a person their
+// own, an Admin anyone's.
+// Round 8 (Justin, 2026-11-28): the photo and the banner are each picked from a photo panel (photo-panel.svelte), the
+// project's own, holding the built-in pictures and the person's uploads: dragged to reorder, held to select several,
+// tapped to crop in the photo editor. Each panel is kept here as the editor's group, its pictures named by their
+// source, and saved whole with the one picked from it.
 import { toFittedSize } from '#lib/files/files.utils.js';
-import { MAX_BANNERS, SIGNATURE_API, UPLOAD_SIDE } from '#lib/signature/signature.constants.js';
+import { SIGNATURE_API, UPLOAD_SIDE } from '#lib/signature/signature.constants.js';
 import type {
+	PanelShownType,
 	SignatureAnswerType,
 	SignaturePartsType,
 	SignatureSaveType
 } from '#lib/signature/signature.types.js';
 import { toLink } from '#lib/signature/signature.utils.js';
-import type { EditType } from './attachments';
-import type { GroupType, PhotoType } from './look.data';
-import type { LookState } from './look.state.svelte';
-import type { PopupModeType } from './photo-popup.svelte';
+import type { GroupType } from './look.data';
+import type { SelectionSourceType } from './selection.svelte';
 
-export type SignaturePartType = 'photo' | 'banners';
-type PartsType = Pick<SignaturePartsType, 'photo' | 'banners'>;
+export type SignaturePartType = 'photo' | 'banner' | 'groups';
+type PanelKindType = 'photo' | 'banner';
 
-/** The photo editor open on the signature's photo or one of its banners, with the others beside it. */
-export type SignatureEditingType = {
-	what: SignaturePartType;
-	group: GroupType;
-	id: string;
-	mode: PopupModeType;
+/** The signature's parts as the screen changes them: the photo and banner picked, their panels, the group emails. */
+type DraftType = {
+	photo: SignaturePartsType['photo'];
+	banner?: SignaturePartsType['banner'];
+	photos: GroupType;
+	banners: GroupType;
+	groupEmails: string[];
 };
 
-const BANNERS = 'signature-banners';
-
-// The photo and banners of an answer, copied so the screen can change them at once.
-function draftOf(parts: PartsType): PartsType {
-	return { photo: { ...parts.photo }, banners: parts.banners.map((banner) => ({ ...banner })) };
+// A panel as the photo editor's group: square for the photo, whose circle is drawn over it, each banner in its own
+// shape.
+function toPanelGroup(id: string, list: PanelShownType[], ratio: GroupType['ratio']): GroupType {
+	return {
+		id,
+		title: '',
+		description: '',
+		layout: 1,
+		isEnabled: true,
+		fit: 'fit',
+		ratio,
+		photos: list.map((each) => ({
+			id: each.source,
+			src: each.preview,
+			description: each.label,
+			edit: each.edit
+		}))
+	};
 }
 
-// The photo editor's group for the signature's photo or its banners: whole, in its own shape, or square.
-function toGroup(id: string, photos: PhotoType[], ratio: GroupType['ratio']): GroupType {
-	return { id, title: '', description: '', layout: 1, isEnabled: true, photos, fit: 'fit', ratio };
+// The parts of an answer, copied so the screen can change them at once.
+function draftOf(parts: SignaturePartsType): DraftType {
+	return {
+		photo: { ...parts.photo },
+		banner: parts.banner && { ...parts.banner },
+		photos: toPanelGroup('signature-photos', parts.photos, '1:1'),
+		banners: toPanelGroup('signature-banners', parts.banners, 'free'),
+		groupEmails: [...parts.groupEmails]
+	};
 }
 
-/** A tile's picture for a part: the small one, with its edit drawn over it. */
-export function tileOf(id: string, part: { preview: string; edit?: EditType }): PhotoType {
-	return { id, src: part.preview, description: '', edit: part.edit };
+// A panel's pictures as they are saved: each by its source, with its edit.
+function toList(group: GroupType) {
+	return group.photos.map((photo) =>
+		photo.edit ? { source: photo.id, edit: photo.edit } : { source: photo.id }
+	);
 }
 
 // A picture shrunk on the device before it goes, its long side at most `UPLOAD_SIDE`: a JPEG, or a PNG for a banner
 // that came as one. One the browser cannot draw goes as it is, for the server to try.
-async function shrink(file: File, kind: 'photo' | 'banner'): Promise<Blob> {
+async function shrink(file: File, kind: PanelKindType): Promise<Blob> {
 	try {
 		const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
 		const { width, height } = toFittedSize(bitmap.width, bitmap.height, UPLOAD_SIDE);
@@ -68,23 +93,21 @@ async function shrink(file: File, kind: 'photo' | 'banner'): Promise<Blob> {
 export class SignatureState {
 	/** Whose: their Team record's id, or '' for no one's. */
 	readonly #person: () => string;
-	readonly #look: LookState;
 	// The answer for the person asked for; none when it could not load.
 	#loaded = $state<{ person: string; answer?: SignatureAnswerType }>();
 	// The answer after a save or an upload, for the person it was made for.
 	#changed = $state<{ person: string; answer: SignatureAnswerType }>();
 	// Only the last thing sent is shown when it answers, so a change made while another was on its way is never lost.
 	#sent = 0;
-	#moved: ReturnType<typeof setTimeout> | undefined;
 
-	/** What is on its way to the server: the photo or the banners. */
+	/** What is on its way to the server: the photo, the banner or the group emails. */
 	busy = $state<SignaturePartType | ''>('');
+	/** Uploads on their way to a panel. */
+	uploading = $state<PanelKindType | ''>('');
 	/** Why the last change did not save. */
 	problem = $state('');
-	/** The photo and banners as they are being edited: the last answer's, changed here at once. */
-	draft = $state<PartsType>();
-	/** The photo editor, open on the photo or a banner. */
-	editing = $state<SignatureEditingType>();
+	/** The parts as they are being edited: the last answer's, changed here at once. */
+	draft = $state<DraftType>();
 	/** The library Email drawn out of sight, which writes the signature's HTML. */
 	email = $state<{ getHTML: () => string }>();
 
@@ -100,8 +123,7 @@ export class SignatureState {
 	/** The signature's HTML, for the Preview to show and copy. */
 	readonly html = $derived(this.signature && this.email ? this.email.getHTML() : '');
 
-	constructor(look: LookState, person: () => string) {
-		this.#look = look;
+	constructor(person: () => string) {
 		this.#person = person;
 		$effect(() => {
 			const asked = this.#asked();
@@ -160,8 +182,15 @@ export class SignatureState {
 		}
 	}
 
-	/** Saves the photo or the banners as they are now, for the signature shown. */
-	save(what: SignaturePartType) {
+	/** What a panel's picture is: its name, and whether it is the person's upload, theirs to delete. */
+	shownOf(kind: PanelKindType, source: string) {
+		return (kind === 'photo' ? this.parts?.photos : this.parts?.banners)?.find(
+			(each) => each.source === source
+		);
+	}
+
+	/** Saves a part as it is now, for the signature shown: the photo or the banner with its panel, or the group emails. */
+	save(what: SignaturePartType, extra: Partial<SignatureSaveType> = {}) {
 		const draft = this.draft;
 		const person = this.signature?.id;
 		if (!draft || !person) return;
@@ -170,152 +199,150 @@ export class SignatureState {
 		if (what === 'photo') {
 			const { source, edit, link } = draft.photo;
 			body.photo = { source, ...(edit ? { edit } : {}), link };
-		} else
-			body.banners = draft.banners.map(({ id, source, edit, link }) => ({
-				id,
-				source,
-				...(edit ? { edit } : {}),
-				link
-			}));
-		void this.#send(JSON.stringify(body), '', 'application/json');
+			body.photos = toList(draft.photos);
+		} else if (what === 'banner') {
+			const banner = draft.banner;
+			body.banner = banner
+				? {
+						id: banner.id,
+						source: banner.source,
+						...(banner.edit ? { edit: banner.edit } : {}),
+						link: banner.link
+					}
+				: null;
+			body.banners = toList(draft.banners);
+		} else body.groupEmails = draft.groupEmails;
+		void this.#send(JSON.stringify({ ...body, ...extra }), '', 'application/json');
 	}
 
-	/** Back to the photo the Sheet and the defaults give. */
-	resetPhoto() {
-		const person = this.signature?.id;
-		if (!person) return;
-		this.busy = 'photo';
-		void this.#send(JSON.stringify({ person, photo: null }), '', 'application/json');
-	}
-
+	/** The photo picked from its panel, with the edit its tile has. */
 	pickPhoto(source: string) {
 		const draft = this.draft;
 		if (!draft || source === draft.photo.source) return;
-		const choice = this.parts?.photos.find((each) => each.source === source);
+		const tile = draft.photos.photos.find((each) => each.id === source);
+		const shown = this.shownOf('photo', source);
+		if (!tile || !shown) return;
 		draft.photo = {
 			...draft.photo,
 			source,
-			edit: undefined,
-			label: choice?.label ?? draft.photo.label,
-			preview: choice?.preview || draft.photo.preview,
-			original: choice?.preview || draft.photo.original
+			edit: tile.edit,
+			label: shown.label,
+			preview: shown.preview,
+			original: shown.original
 		};
 		this.save('photo');
 	}
 
-	/** A company banner tapped goes under the signature's banners, or comes off them when it is already there. */
-	toggleBanner(source: string) {
+	/** The one banner picked from its panel, with the edit its tile has and the link it starts with. */
+	pickBanner(source: string) {
 		const draft = this.draft;
-		if (!draft) return;
-		const at = draft.banners.findIndex((each) => each.source === source);
-		if (at >= 0) {
-			draft.banners.splice(at, 1);
-			return this.save('banners');
-		}
-		if (draft.banners.length >= MAX_BANNERS) {
-			this.problem = `A signature takes ${MAX_BANNERS} banners at most. Delete one first.`;
-			return;
-		}
-		const choice = this.parts?.companyBanners.find((each) => each.source === source);
-		if (!choice) return;
-		draft.banners.push({
+		if (!draft || source === draft.banner?.source) return;
+		const tile = draft.banners.photos.find((each) => each.id === source);
+		const shown = this.shownOf('banner', source);
+		if (!tile || !shown) return;
+		draft.banner = {
 			id: crypto.randomUUID(),
 			source,
-			link: choice.link ?? '',
-			label: choice.label,
-			preview: choice.preview,
-			original: choice.preview
-		});
-		this.save('banners');
+			edit: tile.edit,
+			link: shown.link ?? '',
+			label: shown.label,
+			preview: shown.preview,
+			original: shown.original
+		};
+		this.save('banner');
 	}
 
-	/** A banner dragged gives way as it goes; the order is saved once it has been let go a moment. */
-	moveBanner(from: number, to: number) {
+	/**
+	 * A panel changed in place (a move, a delete, an edit in the photo editor): the picture in use takes its tile's
+	 * edit, or, deleted, the signature goes back to the one it starts with; then the panel is saved with it.
+	 */
+	savePanel(kind: PanelKindType) {
 		const draft = this.draft;
-		if (!draft) return false;
-		const [banner] = draft.banners.splice(from, 1);
-		draft.banners.splice(to, 0, banner);
-		clearTimeout(this.#moved);
-		this.#moved = setTimeout(() => this.save('banners'), 700);
+		if (!draft) return;
+		if (kind === 'photo') {
+			const tile = draft.photos.photos.find((each) => each.id === draft.photo.source);
+			if (!tile) return this.save('photo', { photo: null });
+			draft.photo.edit = tile.edit;
+			return this.save('photo');
+		}
+		const banner = draft.banner;
+		const tile = banner && draft.banners.photos.find((each) => each.id === banner.source);
+		if (banner && !tile) {
+			draft.banner = undefined;
+			return this.save('banner', { banner: null });
+		}
+		if (banner && tile) banner.edit = tile.edit;
+		this.save('banner');
 	}
 
-	deleteBanner(id: string) {
-		this.#look.confirm({
-			title: 'Delete banner?',
-			note: 'It leaves the signature.',
-			onyes: () => {
-				if (!this.draft) return;
-				this.draft.banners = this.draft.banners.filter((each) => each.id !== id);
-				this.save('banners');
+	/** What a panel's selection is (#402): its pictures, Delete for the uploads, and a drag to a new place. */
+	sourceOf(kind: PanelKindType): SelectionSourceType {
+		const group = () => (kind === 'photo' ? this.draft?.photos : this.draft?.banners);
+		return {
+			photos: () => group()?.photos ?? [],
+			noun: kind,
+			word: 'signature',
+			canDelete: (photo) => Boolean(this.shownOf(kind, photo.id)?.isOwn),
+			ondelete: (ids) => {
+				const shown = group();
+				if (!shown) return;
+				shown.photos = shown.photos.filter((photo) => !ids.includes(photo.id));
+				this.savePanel(kind);
+			},
+			onmove: (ids, to) => {
+				const shown = group();
+				if (!shown) return;
+				const moving = shown.photos.filter((photo) => ids.includes(photo.id));
+				const at = to ?? shown.photos.length;
+				const before = shown.photos.slice(0, at).filter((photo) => !ids.includes(photo.id));
+				const after = shown.photos.slice(at).filter((photo) => !ids.includes(photo.id));
+				shown.photos = [...before, ...moving, ...after];
+				this.savePanel(kind);
 			}
-		});
+		};
+	}
+
+	/** The group emails under the signature, picked or taken off. */
+	setGroups(emails: string[]) {
+		if (!this.draft) return;
+		this.draft.groupEmails = emails;
+		this.save('groups');
+	}
+
+	/** An Admin's new group email: offered to everyone from now on, and under this signature at once. */
+	addGroup(email: string, name: string) {
+		if (!this.draft) return;
+		const typed = email.trim();
+		if (!this.draft.groupEmails.includes(typed)) this.draft.groupEmails.push(typed);
+		this.save('groups', { addGroup: { email: typed, name: name.trim() } });
 	}
 
 	/** A link is kept as it is left: an address as typed, an email as a mail link, anything else on the web. */
-	setLink(what: SignaturePartType, typed: string, apply: (link: string) => void) {
+	setLink(what: PanelKindType, typed: string) {
 		const link = toLink(typed);
 		if (link === undefined) {
 			this.problem = 'That link is not an address. Check it and try again.';
 			return;
 		}
-		apply(link);
+		const draft = this.draft;
+		if (!draft) return;
+		if (what === 'photo') draft.photo.link = link;
+		else if (draft.banner) draft.banner.link = link;
 		this.save(what);
 	}
 
-	/** Photos and banners from the device, one after the other: a photo takes the photo's place, a banner goes under. */
-	async upload(kind: 'photo' | 'banner', files: File[]) {
+	/** Photos or banners from the device, one after the other: each joins its panel and is the one in use. */
+	async upload(kind: PanelKindType, files: File[]) {
 		const person = this.signature?.id;
 		const pictures = files.filter((file) => file.type.startsWith('image/'));
 		if (!person || !pictures.length) return;
-		for (const file of kind === 'photo' ? pictures.slice(0, 1) : pictures) {
-			this.busy = kind === 'photo' ? 'photo' : 'banners';
+		this.uploading = kind;
+		for (const file of pictures) {
 			const blob = await shrink(file, kind);
 			const query = `?${new URLSearchParams({ kind, person })}`;
 			await this.#send(blob, query, blob.type || file.type);
 			if (this.problem) break;
 		}
-	}
-
-	/** The photo editor on the photo: kept square, its circle drawn over it. */
-	openPhoto(mode: PopupModeType = 'crop') {
-		if (!this.draft) return;
-		const { original, edit } = this.draft.photo;
-		const photo = { id: 'photo', src: original, description: '', edit };
-		this.editing = {
-			what: 'photo',
-			id: 'photo',
-			mode,
-			group: toGroup('signature-photo', [photo], '1:1')
-		};
-	}
-
-	/** The photo editor on a banner, the others beside it: each starts whole, in its own shape. */
-	openBanner(id: string, mode: PopupModeType = 'crop') {
-		if (!this.draft) return;
-		const photos = this.draft.banners.map((banner) => ({
-			id: banner.id,
-			src: banner.original,
-			description: '',
-			edit: banner.edit
-		}));
-		this.editing = { what: 'banners', id, mode, group: toGroup(BANNERS, photos, 'free') };
-	}
-
-	/** The editor's ✓, or a delete in it: the edits go to the photo or the banners and are saved. */
-	saveEditing() {
-		const editing = this.editing;
-		const draft = this.draft;
-		if (!editing || !draft) return;
-		const kept = editing.group.photos;
-		if (editing.what === 'photo') {
-			if (!kept.length) return this.resetPhoto();
-			draft.photo.edit = kept[0].edit;
-			return this.save('photo');
-		}
-		draft.banners = kept.flatMap((photo) => {
-			const banner = draft.banners.find((each) => each.id === photo.id);
-			return banner ? [{ ...banner, edit: photo.edit }] : [];
-		});
-		this.save('banners');
+		this.uploading = '';
 	}
 }

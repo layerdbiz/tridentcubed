@@ -310,8 +310,15 @@ export function organizationSectionsOf(organization: WordingType): SectionType[]
 	];
 }
 
-/** The photo and banners of a Team member's Email Signature, as its Edit holds them (signature.svelte.ts). */
-type SignatureInputsType = { photo: { source: string; link: string }; banners: unknown[] };
+/**
+ * The photo, banner and group emails of a Team member's Email Signature, as its Edit holds them
+ * (signature.svelte.ts).
+ */
+type SignatureInputsType = {
+	photo: { source: string; link: string };
+	banner?: { source: string; link: string };
+	groupEmails: string[];
+};
 
 /** A Team member's panel on their Edit: what it is called, its icon, and the sections it holds. */
 export type TeamPanelType = { id: string; name: string; icon: string; sections: SectionType[] };
@@ -319,7 +326,7 @@ export type TeamPanelType = { id: string; name: string; icon: string; sections: 
 /**
  * A Team member's Edit, panel by panel, as a project's is (Justin, 2026-11-28: "I want the exact same page setup that
  * we have in the project edit panels for the team member edit panels"): Profile, with their Details and how to reach
- * them, and their Email Signature, with its Photo and Banners, when the signed-in person may see it (`signature`
+ * them, and their Email Signature, with its Photo, its Banner and its Group email, when the signed-in person may see it (`signature`
  * given, once it has loaded). Every input counts once, done when it holds something; their Photo counts once it is
  * their own, not the initials drawn in its place. Their percent is every input of these panels, counted the one way
  * (metricsFrom).
@@ -368,7 +375,14 @@ export function teamPanelsOf(
 						{ label: 'Photo link', value: signature.photo.link }
 					]
 				},
-				{ id: 'signature-banners', inputs: [{ label: 'Banners', value: signature.banners }] }
+				{
+					id: 'signature-banners',
+					inputs: [
+						{ label: 'Banner', value: signature.banner?.source },
+						{ label: 'Banner link', value: signature.banner?.link }
+					]
+				},
+				{ id: 'signature-groups', inputs: [{ label: 'Group email', value: signature.groupEmails }] }
 			]
 		});
 	return panels;

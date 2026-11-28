@@ -162,6 +162,7 @@
 								inputmode="numeric"
 								autocomplete="one-time-code"
 								maxlength={7}
+								help="The 6 digits in the email we just sent. It works once, for a few minutes."
 								error={submitCode.fields.code.issues()?.[0]?.message}
 								input={{
 									...submitCode.fields.code.as('text'),
@@ -210,6 +211,7 @@
 								type="email"
 								inputmode="email"
 								autocomplete="username"
+								help="The address you use at work. We email it a 6-digit code to sign you in, with no password."
 								error={submitEmail.fields.email.issues()?.[0]?.message}
 								input={{ ...submitEmail.fields.email.as('email'), autofocus: true }}
 							/>

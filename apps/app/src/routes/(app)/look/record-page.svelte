@@ -56,7 +56,7 @@
 	// A Team member's Email Signature, when it may be shown: its Edit and its Preview read the one state.
 	const hasSignature = $derived(look.isSignatureOpen);
 	// svelte-ignore state_referenced_locally
-	const signature = new SignatureState(look, () => (hasSignature ? (record.member?.id ?? '') : ''));
+	const signature = new SignatureState(() => (hasSignature ? (record.member?.id ?? '') : ''));
 	const tabs = $derived(look.recordTabs);
 	// A Team member's panels and how complete their profile is: the Email Signature's counts once it has loaded.
 	const panels = $derived(

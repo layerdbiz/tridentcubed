@@ -9,6 +9,7 @@
 	import { fade } from 'svelte/transition';
 	import { groupWordOf } from './look.data';
 	import type { LookState } from './look.state.svelte';
+	import type { SelectionSourceType } from './selection.svelte';
 	import { countLabelOf, deletePhotos, describePhotos, movePhotos } from './photos';
 	import { countsOfPhotos } from './counts';
 	import FileCounts from './file-counts.svelte';
@@ -16,8 +17,18 @@
 	let { look, isWide, left }: { look: LookState; isWide: boolean; left: string } = $props();
 
 	const selection = $derived(look.selection);
-	const photos = $derived(selection.photosIn(look.panels));
-	const label = $derived(countLabelOf(photos));
+	// 2026-11-28: a selection outside a project's panels (an Email Signature's photos or banners) is its source's.
+	const source = $derived(selection.source);
+	const photos = $derived(
+		source
+			? source.photos().filter((photo) => selection.has(photo.id))
+			: selection.photosIn(look.panels)
+	);
+	const label = $derived(
+		source
+			? `${photos.length} ${source.noun}${photos.length === 1 ? '' : 's'}`
+			: countLabelOf(photos)
+	);
 	const described = $derived(photos.filter((photo) => photo.description.trim()));
 	const isShown = $derived(look.isSelecting && photos.length > 0);
 	let words = $state('');
@@ -47,7 +58,28 @@
 		look.saved();
 	}
 
+	// A source's own: only what it can delete goes, the pictures that are always there stay.
+	function removeFrom(from: SelectionSourceType) {
+		const gone = photos.filter((photo) => from.canDelete(photo));
+		const kept = photos.length - gone.length;
+		if (!gone.length) {
+			look.say(`Built-in ${from.noun}s cannot be deleted`);
+			return;
+		}
+		const what = `${gone.length} ${from.noun}${gone.length === 1 ? '' : 's'}`;
+		look.confirm({
+			title: `Delete ${what}?`,
+			note: `${gone.length === 1 ? 'It leaves' : 'They leave'} the ${from.word}.${kept ? ` The built-in ${kept === 1 ? 'one stays' : 'ones stay'}.` : ''}`,
+			onyes: () => {
+				from.ondelete(gone.map((photo) => photo.id));
+				look.say(`${what} deleted`);
+				selection.end();
+			}
+		});
+	}
+
 	function remove() {
+		if (source) return removeFrom(source);
 		const ids = [...selection.ids];
 		const what = label;
 		look.confirm({
@@ -132,22 +164,24 @@
 	>
 		<SelectionBar
 			count={photos.length}
-			actions={[
-				{
-					label: 'One description for all',
-					icon: 'icon-[mdi--text-box-edit-outline]',
-					onclick: describe
-				},
-				{ label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', onclick: remove },
-				{
-					label: 'Move to…',
-					icon: 'icon-[mdi--folder-move-outline]',
-					onclick: () => {
-						search = '';
-						selection.sheet = 'move';
-					}
-				}
-			]}
+			actions={source
+				? [{ label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', onclick: remove }]
+				: [
+						{
+							label: 'One description for all',
+							icon: 'icon-[mdi--text-box-edit-outline]',
+							onclick: describe
+						},
+						{ label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', onclick: remove },
+						{
+							label: 'Move to…',
+							icon: 'icon-[mdi--folder-move-outline]',
+							onclick: () => {
+								search = '';
+								selection.sheet = 'move';
+							}
+						}
+					]}
 			onclose={() => selection.end()}
 		/>
 	</div>
@@ -221,6 +255,7 @@
 					spellcheck
 					rows={3}
 					bind:value={words}
+					help={look.helpOf('selection.description')}
 				/>
 			</div>
 			<Button
@@ -247,6 +282,7 @@
 				icon="icon-[mdi--magnify]"
 				autocomplete="off"
 				bind:value={search}
+				help={look.helpOf('selection.search')}
 			/>
 		</div>
 		<div class="-mx-2 mt-2 max-h-[min(360px,50vh)] overflow-y-auto overscroll-contain">

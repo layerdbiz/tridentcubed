@@ -97,6 +97,7 @@
 		deleteNote = undefined,
 		isPictureOnly = false,
 		isRound = false,
+		canDelete = () => true,
 		onsave,
 		onclose
 	}: {
@@ -115,6 +116,8 @@
 		isPictureOnly?: boolean;
 		/** It shows in a circle: the circle is drawn over the crop. */
 		isRound?: boolean;
+		/** Whether one can be deleted: a picture that is always there (a signature's built-in photo) cannot. */
+		canDelete?: (photo: PhotoType) => boolean;
 		onsave: () => void;
 		onclose: () => void;
 	} = $props();
@@ -717,9 +720,10 @@
 		icon: 'icon-[mdi--trash-can-outline]',
 		isDanger: true
 	};
+	const deletes = $derived(photo && canDelete(photo) ? [DELETE] : []);
 	const MORE = $derived<MenuOptionType[]>(
 		isPictureOnly
-			? [DELETE]
+			? deletes
 			: [
 					{
 						id: 'own-1',
@@ -757,7 +761,7 @@
 									: { id: 'open', label: 'Open the PDF', icon: 'icon-[mdi--open-in-new]' }
 							]
 						: []),
-					DELETE
+					...deletes
 				]
 	);
 
@@ -882,7 +886,10 @@
 						onclick={() => (isDetailsOpen = !isDetailsOpen)}
 					/>
 				{/if}
-				<div bind:this={moreBox}>
+				<div
+					bind:this={moreBox}
+					class={MORE.length ? '' : 'hidden'}
+				>
 					<Menu
 						label="More"
 						value={mine?.ownLayout ? `own-${mine.ownLayout}` : ''}

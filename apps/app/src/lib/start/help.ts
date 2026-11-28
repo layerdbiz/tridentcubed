@@ -153,6 +153,11 @@ export const HELP: readonly HelpType[] = [
 		label: 'Activity',
 		text: 'What happened at that time, in a few words.'
 	},
+	{
+		key: 'log.paste',
+		label: 'Time Log',
+		text: 'Paste the notes of the day, or choose their file. A line with a time becomes an entry and a line with a date starts a new day. You check them all before they are added.'
+	},
 
 	// The photo panels (Operations, Damages and the ones added).
 	{
@@ -184,6 +189,16 @@ export const HELP: readonly HelpType[] = [
 		key: 'group.ratio',
 		label: 'Ratio',
 		text: 'The shape every attachment keeps on the page under Fit. Free keeps each one’s own shape.'
+	},
+	{
+		key: 'selection.description',
+		label: 'Description',
+		text: 'One description for every photo you selected. It takes the place of what each one had and prints with each photo in the report.'
+	},
+	{
+		key: 'selection.search',
+		label: 'Search',
+		text: 'Type part of a panel or group name to find the place to move the photos to.'
 	},
 
 	// A customer's page.
@@ -298,6 +313,43 @@ export const HELP: readonly HelpType[] = [
 		key: 'team.location',
 		label: 'Location',
 		text: 'Where they are based. Start typing their address and pick it, so their pin sits in the right place. Only their city and state ever show.'
+	},
+
+	// A Team record's Email Signature.
+	{
+		key: 'signature.photo',
+		label: 'Photo',
+		text: 'The picture in the circle beside your name in the email. Pick a Trident logo, your profile picture, your email photo or one you uploaded above.'
+	},
+	{
+		key: 'signature.photoLink',
+		label: 'Photo link',
+		text: 'Where a tap on your photo in the email goes, such as your LinkedIn page. Leave it empty for none.'
+	},
+	{
+		key: 'signature.banner',
+		label: 'Banner',
+		text: 'The one picture under your signature, such as a trade show the company is at. Pick a company banner or one you uploaded above.'
+	},
+	{
+		key: 'signature.bannerLink',
+		label: 'Banner link',
+		text: 'Where a tap on the banner goes, such as the show’s page. It starts as the banner’s own link.'
+	},
+	{
+		key: 'signature.groupEmails',
+		label: 'Group email',
+		text: 'The shared inboxes printed at the bottom of your signature, such as sales or operations. Pick any of them. An Admin adds a new one with +.'
+	},
+	{
+		key: 'signature.groupEmail',
+		label: 'Email',
+		text: 'The shared inbox’s address, such as sales@tridentcubed.com. Everyone can then pick it for their signature.'
+	},
+	{
+		key: 'signature.groupName',
+		label: 'Name',
+		text: 'What the group is called in the list, such as Sales. Left empty, the address shows.'
 	},
 
 	// A Transport Mode's page.
@@ -524,5 +576,12 @@ export const HELP: readonly HelpType[] = [
 		key: 'organization.signoff',
 		label: 'Sign-off',
 		text: 'The words before the team lead’s name at the end of the report, such as Kind regards.'
+	},
+
+	// Translating a report (#360).
+	{
+		key: 'translate.english',
+		label: 'English',
+		text: 'The English the report prints in place of the words above it. Fix any word the translator got wrong.'
 	}
 ];

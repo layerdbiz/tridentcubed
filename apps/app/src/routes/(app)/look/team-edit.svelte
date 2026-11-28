@@ -40,7 +40,8 @@
 		details: 'Details',
 		contact: 'Contact',
 		'signature-photo': 'Photo',
-		'signature-banners': 'Banners'
+		'signature-banners': 'Banner',
+		'signature-groups': 'Group email'
 	};
 
 	let openId = $state('profile');

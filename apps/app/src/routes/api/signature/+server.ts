@@ -1,8 +1,9 @@
 // Email signatures for the screen (#354). GET: one signature, the signed-in User's own, or for an Admin anyone's on
 // the Team page or a shared mailbox's (`?person=<id>`, `?mailbox=<slug>`), with a person's photo and banners to edit;
 // or a picture uploaded for one, as it came, for the editor (`?upload=<file>`). POST with JSON: keeps the photo and
-// banners as edited (`{ person?, photo?, banners? }`, each whole, with its edit and link). POST with a picture
-// (`?kind=photo|banner&person=<id>`): keeps an uploaded photo, or a banner under the others. Each answers the
+// the one banner as edited, the photo and banner panels' order and edits, and the group emails (`{ person?, photo?,
+// banner?, photos?, banners?, groupEmails?, addGroup? }`, each whole). POST with a picture
+// (`?kind=photo|banner&person=<id>`): keeps an uploaded photo or banner at the end of its panel, as the one in use. Each answers the
 // signature as it is now. The work, who may ask and how its pictures are made are in #lib/server/signature.ts. The
 // sign-in guard refuses a signed-out visitor or a Guest before this runs; this checks again itself, as a remote
 // function would.
@@ -17,7 +18,7 @@ import {
 	uploadSignature,
 	UPLOAD_TYPES
 } from '#lib/server/signature.js';
-import { MAX_BANNERS, MAX_LINK, MAX_UPLOAD_BYTES } from '#lib/signature/signature.constants.js';
+import { MAX_LINK, MAX_UPLOAD_BYTES } from '#lib/signature/signature.constants.js';
 import type { RequestHandler } from './$types';
 
 // Its own Vercel function: sharp loads only here, with time for a cold start and a few pictures made at once.
@@ -55,25 +56,39 @@ const EDIT = v.optional(
 
 const LINK = v.pipe(v.string(), v.maxLength(MAX_LINK));
 
+// A panel's pictures in their order, each with its edit: as many as are offered and uploaded, at most.
+const LIST = v.optional(
+	v.pipe(
+		v.array(v.object({ source: v.pipe(SOURCE, v.minLength(1)), edit: EDIT })),
+		v.maxLength(200)
+	)
+);
+
 const SAVE = v.object({
 	person: PERSON,
 	photo: v.optional(
 		v.nullable(v.object({ source: v.pipe(SOURCE, v.minLength(1)), edit: EDIT, link: LINK }))
 	),
-	banners: v.optional(
+	banner: v.optional(
 		v.nullable(
-			v.pipe(
-				v.array(
-					v.object({
-						id: v.pipe(v.string(), v.regex(/^[\w-]{1,64}$/)),
-						source: v.pipe(SOURCE, v.minLength(1)),
-						edit: EDIT,
-						link: LINK
-					})
-				),
-				v.maxLength(MAX_BANNERS)
-			)
+			v.object({
+				id: v.pipe(v.string(), v.regex(/^[\w-]{1,64}$/)),
+				source: v.pipe(SOURCE, v.minLength(1)),
+				edit: EDIT,
+				link: LINK
+			})
 		)
+	),
+	photos: LIST,
+	banners: LIST,
+	groupEmails: v.optional(
+		v.nullable(v.pipe(v.array(v.pipe(v.string(), v.maxLength(320))), v.maxLength(50)))
+	),
+	addGroup: v.optional(
+		v.object({
+			email: v.pipe(v.string(), v.maxLength(320)),
+			name: v.pipe(v.string(), v.maxLength(120))
+		})
 	)
 });
 
@@ -130,7 +145,7 @@ export const POST: RequestHandler = async ({ url, request, locals }) => {
 
 	if (type === 'application/json') {
 		const saved = v.safeParse(SAVE, await request.json().catch(() => undefined));
-		if (!saved.success) return refuse('Say which photo or banners.', 400);
+		if (!saved.success) return refuse('Say which photo, banner or group emails.', 400);
 		const answer = await saveSignature(parts.server, parts.actor, saved.output, asking);
 		return json(answer, { headers: NO_STORE });
 	}

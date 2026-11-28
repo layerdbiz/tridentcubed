@@ -29,6 +29,7 @@
 	let {
 		days,
 		year,
+		help,
 		onadd,
 		onclose
 	}: {
@@ -36,6 +37,8 @@
 		days: DayType[];
 		/** The year a date written without one is in. */
 		year: number;
+		/** What the box's help ? says. */
+		help: string;
 		/** The chosen entries, as fixed, to add. */
 		onadd: (rows: ImportRowType[]) => void;
 		onclose: () => void;
@@ -109,6 +112,7 @@
 			<Textarea
 				label="Time Log"
 				bind:value={text}
+				{help}
 				rows={10}
 				autocapitalize="sentences"
 				spellcheck

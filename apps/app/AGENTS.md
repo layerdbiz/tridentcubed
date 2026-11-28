@@ -64,10 +64,10 @@ src/lib/signature/             Email Signature (#354): signature.utils.ts (a sig
                                work is lib/server/signature.ts (who may open which, the pictures made with
                                sharp), asked at routes/api/signature (its own Vercel function);
                                routes/signature/[file] answers a signature's pictures to anyone, since every
-                               reader's mail app loads them signed out; the screen is
-                               routes/(app)/look/signature-page.svelte (Page, Edit and Preview, as a
-                               project's), its Preview signature-canvas.svelte (the report's canvas, Copy
-                               in the zoom bar)
+                               reader's mail app loads them signed out; the screen is the Team member's
+                               own record: its Edit holds routes/(app)/look/signature-edit.svelte (the photo
+                               and banner panels, photo-panel.svelte, and the group emails), its Preview
+                               signature-canvas.svelte (the report's canvas, Copy in the zoom bar)
 src/lib/start/files.ts         the starting files' built addresses, for routes/start and the signature pictures
 src/lib/<feature>/             code two or more routes share: <feature>.remote.ts, .types.ts, .schema.ts
 src/lib/components/<name>/     app-only components (business-shaped, so not @layerd/ui)
@@ -172,6 +172,22 @@ the why is in ADR 0002, 0003 and 0005.
   Postgres. Vercel builds never migrate the Supabase database. A trigger,
   which drizzle-kit cannot write, goes in `db/triggers.ts`: the in-process
   Postgres runs it, and each Supabase database is given the same SQL by hand.
+
+## Help ? on every input
+
+- **Every input a person types or picks in shows a help ? (Justin,
+  2026-11-28: "anytime that we have data that can be entered in by a user,
+  there has to be a help icon next to it").** On a library `Input`,
+  `Textarea` or `Select` it is `help={look.helpOf('<where>.<input>')}`, with
+  the first draft of its text in `src/lib/start/help.ts`; before sign-in,
+  where there is no look, the text itself. A new key's row is also added to
+  each database's `help_text` (the seed only fills a new one), and the SQL
+  goes with the change, or the ? stays hidden. The help check
+  (`packages/tools/src/checks/help.ts`, before every commit and in
+  `pnpm check`) stops a library one without `help`. It cannot see a plain
+  `<input>`, a Radio or Switch row, or a field built from other pieces: give
+  those a `Help` beside their label (panel-body's Ratio), and a review asks
+  for it.
 
 ## Releases and What's New
 

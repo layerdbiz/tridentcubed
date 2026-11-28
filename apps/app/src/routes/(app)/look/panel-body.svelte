@@ -122,10 +122,7 @@
 		type PhotoType
 	} from './look.data';
 	import type { LookState } from './look.state.svelte';
-	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
-	import PhotoAdd from './photo-add.svelte';
-	import PhotoGrid from './photo-grid.svelte';
-	import PhotoTile from './photo-tile.svelte';
+	import PhotoPanel from './photo-panel.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { countsOfPhotos } from './counts';
 	import {
@@ -471,17 +468,6 @@
 		save();
 	}
 
-	// The photo open in the pop-up (#312): its group, which photo, and whether it opens looking, cropping or typing.
-	let opened = $state<{ group: PanelType['groups'][number]; id: string; mode: PopupModeType }>();
-
-	function openPhoto(
-		group: PanelType['groups'][number],
-		photo: PhotoType,
-		mode: PopupModeType = 'view'
-	) {
-		opened = { group, id: photo.id, mode };
-	}
-
 	function sortEntries(index: number) {
 		panel.days[index].entries.sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
 		save();
@@ -537,10 +523,7 @@
 	}
 
 	// Photos from the library or the camera: each goes to storage on its own (photos.ts, #189).
-	function pickPhotos(event: Event, group: PanelType['groups'][number]) {
-		const input = event.currentTarget as HTMLInputElement;
-		const files = [...(input.files ?? [])];
-		input.value = '';
+	function pickPhotos(files: File[], group: PanelType['groups'][number]) {
 		if (addPhotos(panel, files, { group, projectId: look.projectId, toast: createPhotoToast }))
 			save();
 	}
@@ -1724,6 +1707,7 @@
 			<LogImport
 				days={panel.days}
 				year={logYear}
+				help={look.helpOf('log.paste')}
 				onadd={addImported}
 				onclose={() => (isImporting = false)}
 			/>
@@ -1823,92 +1807,50 @@
 							help={look.helpOf('group.description')}
 						/>
 						{@render stageLayout(group)}
-						<PhotoGrid
-							photos={group.photos}
+						<PhotoPanel
+							{look}
+							{group}
 							sortKey="photos-{group.id}"
+							{word}
+							accept={ATTACHMENT_ACCEPT}
+							hasCamera
+							uploadInput={MARKED_LABELS.photos}
+							onfiles={(files) => pickPhotos(files, group)}
+							canOpen={(photo) => {
+								// Nothing to show in the pop-up until the server has converted it (#294).
+								const upload = uploadOf(photo);
+								return !upload || upload.hasPreview;
+							}}
+							upload={uploadOf}
 							cell={(photo) => ({
 								class: uploadOf(photo)?.isFailed ? 'ring-2 ring-danger' : '',
 								'data-photo-panel': panel.id,
 								'data-photo-id': photo.id
 							})}
-							{@attach sortable(
-								`photos-${group.id}`,
-								(from, to) => move(group.photos, from, to),
-								{
-									name: PHOTO_ZONE,
-									items: 'photos-',
-									ondrop: (from, id, to) => dropPhoto(group, from, id, to)
+							zones={{
+								name: PHOTO_ZONE,
+								items: 'photos-',
+								ondrop: (from, id, to) => dropPhoto(group, from, id, to)
+							}}
+							selecting={{
+								// Read when a tile draws, so a panel with no photos never asks.
+								get isOn() {
+									return isSelecting;
 								},
-								pickOf(group)
-							)}
-						>
-							{#snippet tile(photo, photoIndex)}
-								{@const upload = uploadOf(photo)}
-								<PhotoTile
-									{photo}
-									index={photoIndex}
-									sortKey="photos-{group.id}"
-									{upload}
-									{isSelecting}
-									isPicked={isSelecting && selection.has(photo.id)}
-									align={photoIndex % 3 === 0 ? 'left' : 'right'}
-									options={[
-										// #295: every attachment is edited the same way, a PDF's pages and a video's picture too.
-										{
-											id: 'crop',
-											label: 'Crop',
-											icon: 'icon-[mdi--crop]'
-										},
-										{
-											id: 'describe',
-											label: 'Edit description',
-											icon: 'icon-[mdi--pencil-outline]'
-										},
-										{
-											id: 'delete',
-											label: 'Delete',
-											icon: 'icon-[mdi--trash-can-outline]',
-											isDanger: true
-										}
-									]}
-									onopen={(event) => {
-										// #402: while selecting, or with Ctrl, Cmd or Shift, a click selects instead of opening.
-										if (selection.tap(panel, photo.id, event)) return;
-										// Nothing to show in the pop-up until the server has converted it (#294).
-										if (!upload || upload.hasPreview) openPhoto(group, photo);
-									}}
-									onpick={(id) =>
-										id === 'delete'
-											? remove(
-													group.photos,
-													photo,
-													`Delete ${ATTACHMENT_NOUNS[photo.kind ?? 'photo']}?`,
-													`It leaves the ${word} and the report.`
-												)
-											: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
-								/>
-							{/snippet}
-							{#snippet adds(shape)}
-								<!-- Lit while its file input has the focus: where an entry of the empty-inputs list for Photos lands. -->
-								<PhotoAdd
-									icon="icon-[mdi--image-plus-outline]"
-									label="Upload"
-									accept={ATTACHMENT_ACCEPT}
-									multiple
-									class={shape}
-									data-input={MARKED_LABELS.photos}
-									onchange={(event) => pickPhotos(event, group)}
-								/>
-								<PhotoAdd
-									icon="icon-[mdi--camera-outline]"
-									label="Camera"
-									accept="image/*,video/*"
-									capture="environment"
-									class={shape}
-									onchange={(event) => pickPhotos(event, group)}
-								/>
-							{/snippet}
-						</PhotoGrid>
+								has: (id) => selection.has(id),
+								tap: (photo, event) => selection.tap(panel, photo.id, event),
+								pick: pickOf(group)
+							}}
+							onmove={(from, to) => move(group.photos, from, to)}
+							ondelete={(photo) =>
+								remove(
+									group.photos,
+									photo,
+									`Delete ${ATTACHMENT_NOUNS[photo.kind ?? 'photo']}?`,
+									`It leaves the ${word} and the report.`
+								)}
+							onsave={save}
+						/>
 						{#snippet actions()}
 							<Button
 								primary
@@ -1941,15 +1883,3 @@
 		/>
 	{/if}
 </fieldset>
-
-{#if opened}
-	<PhotoPopup
-		{look}
-		group={opened.group}
-		id={opened.id}
-		mode={opened.mode}
-		{word}
-		onsave={save}
-		onclose={() => (opened = undefined)}
-	/>
-{/if}

@@ -8,9 +8,14 @@
 // only while `banners` is empty, and never written again. Who may change whose is the one permission check
 // (`checkSignature`): a person their own, an Admin anyone's. Row Level Security keeps the table to the acting
 // organization.
+// Round 8 (Justin, 2026-11-28: one banner at a time, and the project's photo panel for the photos and the banners):
+// `banners` holds the one banner shown (older rows may hold more; only the first shows). `photo_list` and
+// `banner_list` are the photo and banner panels as the person left them: the built-in pictures and their uploads, in
+// order, each with its edit (null: the built-in ones in their first order). `group_emails` are the shared addresses
+// shown under the signature (null: the Sheet's). All three added, nothing renamed, so dev.app reads the rows as before.
 import { jsonb, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 import type { EditType } from '#lib/components/photo/edit.js';
-import type { SignatureBannerType } from '#lib/signature/signature.types.js';
+import type { PanelPictureType, SignatureBannerType } from '#lib/signature/signature.types.js';
 import { organizationPolicy } from './policy';
 import { rowColumns } from './rows';
 import { team } from './team.schema';
@@ -27,7 +32,10 @@ export const signature = pgTable(
 		banner: text('banner'),
 		photoEdit: jsonb('photo_edit').$type<EditType>(),
 		photoLink: text('photo_link'),
-		banners: jsonb('banners').$type<SignatureBannerType[]>()
+		banners: jsonb('banners').$type<SignatureBannerType[]>(),
+		photoList: jsonb('photo_list').$type<PanelPictureType[]>(),
+		bannerList: jsonb('banner_list').$type<PanelPictureType[]>(),
+		groupEmails: jsonb('group_emails').$type<string[]>()
 	},
 	(table) => [
 		uniqueIndex('signature_team_idx').on(table.organizationId, table.teamId),

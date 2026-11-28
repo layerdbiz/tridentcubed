@@ -383,26 +383,42 @@ describe('saving a signature’s photo and banners', () => {
 		expect(back.parts?.photo.edit).toBeUndefined();
 	});
 
-	it('keeps the banners in their order with their links and edits, none when there are none', async () => {
-		const banners = [
-			{ id: 'expo', source: 'drive:1ExpoBanner', link: 'https://expo.example/stand' },
-			{ id: 'map', source: 'drive:1MapBanner', link: '', edit: { turns: 2 } }
-		];
-		const answer = allowed(await saveSignature(server, member, { banners }, request));
+	it('keeps ONE banner with its link and edit, its panel in the order left, the Sheet’s again with none', async () => {
+		const banner = {
+			id: 'expo',
+			source: 'drive:1ExpoBanner',
+			link: 'https://expo.example/stand',
+			edit: { turns: 2 }
+		};
+		const answer = allowed(await saveSignature(server, member, { banner }, request));
 
-		expect(
-			answer.parts?.banners.map(({ id, source, link, edit }) => ({ id, source, link, edit }))
-		).toEqual([{ ...banners[0], edit: undefined }, banners[1]]);
+		expect(answer.parts?.banner).toMatchObject(banner);
 		expect(answer.signature.banners?.map((each) => [each.href, each.alt])).toEqual([
-			['https://expo.example/stand', 'Expo'],
-			['', 'Map']
+			['https://expo.example/stand', 'Expo']
 		]);
 
-		const none = allowed(await saveSignature(server, member, { banners: [] }, request));
-		expect(none.signature.banners).toEqual([]);
+		const moved = allowed(
+			await saveSignature(
+				server,
+				member,
+				{
+					banners: [
+						{ source: 'drive:1ExpoBanner' },
+						{ source: 'drive:1MapBanner', edit: { isFlipped: true } }
+					]
+				},
+				request
+			)
+		);
+		expect(moved.parts?.banners.map(({ source, edit }) => ({ source, edit }))).toEqual([
+			{ source: 'drive:1ExpoBanner', edit: undefined },
+			{ source: 'drive:1MapBanner', edit: { isFlipped: true } }
+		]);
+		expect(moved.parts?.banner?.source).toBe('drive:1ExpoBanner');
 
-		const back = allowed(await saveSignature(server, member, { banners: null }, request));
-		expect(back.parts?.banners.map((each) => each.source)).toEqual(['drive:1MapBanner']);
+		const back = allowed(await saveSignature(server, member, { banner: null }, request));
+		expect(back.parts?.banner?.source).toBe('drive:1MapBanner');
+		expect(back.signature.banners).toHaveLength(1);
 	});
 
 	it('takes only a photo or banner offered, and a link that is an address', async () => {
@@ -418,7 +434,7 @@ describe('saving a signature’s photo and banners', () => {
 			await saveSignature(
 				server,
 				member,
-				{ banners: [{ id: 'a', source: 'https://example.com/a.png', link: '' }] },
+				{ banner: { id: 'a', source: 'https://example.com/a.png', link: '' } },
 				request
 			)
 		).toEqual({ isAllowed: false, reason: 'That banner is not one to pick.' });
@@ -426,10 +442,72 @@ describe('saving a signature’s photo and banners', () => {
 			await saveSignature(
 				server,
 				member,
-				{ banners: [{ id: 'a', source: 'drive:1MapBanner', link: 'not a link' }] },
+				{ banners: [{ source: 'https://example.com/a.png' }] },
+				request
+			)
+		).toEqual({ isAllowed: false, reason: 'That banner is not one to pick.' });
+		expect(
+			await saveSignature(
+				server,
+				member,
+				{ banner: { id: 'a', source: 'drive:1MapBanner', link: 'not a link' } },
 				request
 			)
 		).toEqual({ isAllowed: false, reason: 'That banner link is not an address.' });
+	});
+
+	it('shows the group emails picked, offers an Admin’s new one to everyone, and only an Admin adds one', async () => {
+		const answer = allowed(
+			await saveSignature(server, member, { groupEmails: ['OPERATIONS@tridentcubed.com'] }, request)
+		);
+		expect(answer.parts?.groupEmails).toEqual(['operations@tridentcubed.com']);
+		expect(answer.signature.group).toBe('operations@tridentcubed.com');
+
+		expect(
+			await saveSignature(server, member, { groupEmails: ['made-up@example.com'] }, request)
+		).toEqual({ isAllowed: false, reason: 'That group email is not one to pick.' });
+		expect(
+			await saveSignature(
+				server,
+				member,
+				{ addGroup: { email: 'sales@example.com', name: 'Sales' } },
+				request
+			)
+		).toEqual({ isAllowed: false, reason: 'Only an Admin adds a group email.' });
+		expect(
+			await saveSignature(server, admin, { addGroup: { email: 'not one', name: '' } }, request)
+		).toEqual({ isAllowed: false, reason: 'That is not an email address.' });
+
+		const added = allowed(
+			await saveSignature(
+				server,
+				admin,
+				{ addGroup: { email: 'sales@example.com', name: 'Sales' } },
+				request
+			)
+		);
+		expect(added.parts?.groups.at(-1)).toEqual({ email: 'sales@example.com', name: 'Sales' });
+		// Added once, whoever adds it again.
+		const again = allowed(
+			await saveSignature(
+				server,
+				admin,
+				{ addGroup: { email: 'SALES@example.com', name: '' } },
+				request
+			)
+		);
+		expect(
+			again.parts?.groups.filter((each) => each.email.toLowerCase() === 'sales@example.com')
+		).toHaveLength(1);
+
+		const picked = allowed(
+			await saveSignature(server, member, { groupEmails: ['sales@example.com'] }, request)
+		);
+		expect(picked.signature.group).toBe('sales@example.com');
+		const none = allowed(await saveSignature(server, member, { groupEmails: [] }, request));
+		expect(none.signature.group).toBeFalsy();
+		const back = allowed(await saveSignature(server, member, { groupEmails: null }, request));
+		expect(back.parts?.groupEmails).toEqual(['operations@tridentcubed.com']);
 	});
 
 	it('shows the company logo, copied, when the picked photo cannot be read', async () => {
@@ -482,10 +560,10 @@ describe('uploading a signature’s photo or banner', () => {
 
 		const source = answer.parts?.photo.source ?? '';
 		expect(source).toMatch(/^upload:[0-9a-f]{24}\.jpg$/);
-		expect(answer.parts?.photos[0]).toMatchObject({
+		expect(answer.parts?.photos.at(-1)).toMatchObject({
 			source,
 			label: 'Your upload',
-			preview: answer.signature.src
+			isOwn: true
 		});
 		const { meta, alphaAt } = await readMade(answer.signature.src);
 		expect(meta).toMatchObject({ width: 224, height: 224 });
@@ -509,15 +587,20 @@ describe('uploading a signature’s photo or banner', () => {
 			)
 		);
 
+		const upload = expect.stringMatching(/^upload:[0-9a-f]{24}\.png$/);
+		// At the end of the panel, after the company banners in the order they were left.
 		expect(answer.parts?.banners.map((each) => each.source)).toEqual([
+			'drive:1ExpoBanner',
 			'drive:1MapBanner',
-			expect.stringMatching(/^upload:[0-9a-f]{24}\.png$/)
+			upload
 		]);
-		expect(answer.signature.banners?.[1]).toMatchObject({
+		expect(answer.parts?.banner?.source).toEqual(upload);
+		expect(answer.signature.banners).toHaveLength(1);
+		expect(answer.signature.banners?.[0]).toMatchObject({
 			href: 'https://tridentcubed.com',
 			alt: 'Trident Cubed'
 		});
-		await saveSignature(server, member, { banners: null }, request);
+		await saveSignature(server, member, { banner: null }, request);
 	});
 
 	it('refuses what is not a picture, and anyone else’s signature', async () => {

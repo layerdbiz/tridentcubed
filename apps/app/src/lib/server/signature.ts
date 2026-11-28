@@ -26,10 +26,11 @@ import {
 import {
 	CIRCLE_SIZE,
 	COMPANY_LOGO,
-	MAX_BANNERS,
 	MAX_UPLOAD_BYTES,
+	MAX_UPLOADS,
 	PICTURE_SIZES,
 	PICTURE_VERSION,
+	PROFILE,
 	SHEETS,
 	SIGNATURE_FOLDER,
 	SIGNATURE_PICTURES,
@@ -39,7 +40,8 @@ import {
 	UPLOAD_FOLDER
 } from '#lib/signature/signature.constants.js';
 import type {
-	ChoiceType,
+	GroupEmailType,
+	PanelPictureType,
 	PictureSourceType,
 	SignatureAnswerType,
 	SignatureAskType,
@@ -55,30 +57,57 @@ import {
 	type SavedPicksType,
 	type SheetsType,
 	type SignatureLookType,
-	toBannerChoices,
+	toBannerPanel,
+	toEmailKey,
 	toFetchAddress,
+	toGroupChoices,
+	toGroupEmails,
 	toIconPictures,
 	toLink,
 	toMailboxLook,
 	toMailboxSignature,
-	toPersonBanners,
+	toPersonBanner,
 	toPersonLook,
 	toPersonParts,
 	toPersonPhoto,
 	toPersonSignature,
-	toPhotoChoices,
 	toPhotoLink,
+	toPhotoPanel,
 	toSheets
 } from '#lib/signature/signature.utils.js';
+import { toStartFile } from '#lib/start/files.js';
 import type { ActorType, ClaimsType } from './db/claims';
-import { signature as signatures, team } from './db/schema';
+import { groupEmail, signature as signatures, team } from './db/schema';
+import { readFile } from './files';
 import { checkSignature } from './permission';
 import type { FileStoreType } from './store';
 
 type SignatureServerType = { claims: ClaimsType; store: FileStoreType };
 
-/** What reading a signature needs from its request: where the app is, and a way to fetch. */
-export type SignatureRequestType = { origin: string; fetch: typeof fetch };
+/**
+ * What reading a signature needs from its request: where the app is, a way to fetch, and a way to read one of the
+ * app's own files (`/files/<id>`) as the person asking, for a profile picture picked as the photo.
+ */
+export type SignatureRequestType = {
+	origin: string;
+	fetch: typeof fetch;
+	readFile?: (id: string) => Promise<Uint8Array | undefined>;
+};
+
+// The request, able to read the app's own files as `actor`.
+function withFiles(
+	server: SignatureServerType,
+	actor: ActorType,
+	request: SignatureRequestType
+): SignatureRequestType {
+	return {
+		...request,
+		readFile: async (id) => {
+			const found = await readFile(server.claims, actor, id);
+			return found ? server.store.read(found.path) : undefined;
+		}
+	};
+}
 
 // The Sheets change rarely and are read whole, so one read serves every signature for a few minutes; a failed read
 // is tried again sooner.
@@ -256,11 +285,32 @@ export function toPngSize(bytes: Uint8Array) {
 	return { width: view.getUint32(16), height: view.getUint32(20) };
 }
 
+// A profile picture's bytes: one of the app's own files as the person asking, a starting file as the build named it,
+// a sign-in picture from its address.
+async function readProfile(address: string, request: SignatureRequestType) {
+	const file = address.match(/^\/files\/([0-9a-f-]{36})$/)?.[1];
+	if (file) return request.readFile?.(file);
+	if (address.startsWith('/start/')) {
+		const url = toStartFile(address);
+		if (!url) return undefined;
+		const response = await request.fetch(new URL(url, request.origin), {
+			signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+		});
+		return response.ok ? new Uint8Array(await response.arrayBuffer()) : undefined;
+	}
+	return undefined;
+}
+
 // The bytes of a picture a signature shows: an upload from the file store, anything else from its address.
 async function readSource(store: FileStoreType, source: string, request: SignatureRequestType) {
 	if (source.startsWith(UPLOAD)) {
 		const file = source.slice(UPLOAD.length);
 		return UPLOAD_FILE.test(file) ? store.read(`${UPLOAD_FOLDER}/${file}`) : undefined;
+	}
+	if (source.startsWith(PROFILE)) {
+		const address = source.slice(PROFILE.length);
+		if (!address.startsWith('https:')) return readProfile(address, request);
+		source = address;
 	}
 	const url = new URL(toFetchAddress(source), request.origin);
 	if (url.protocol !== 'https:' && url.origin !== request.origin) return undefined;
@@ -345,7 +395,8 @@ const RECORD_COLUMNS = {
 	title: team.title,
 	phone: team.phone,
 	email: team.email,
-	link: team.link
+	link: team.link,
+	photo: team.photo
 };
 
 // The Team record asked for, or the User's own; for an Admin with none of their own, the first on the Team page.
@@ -382,7 +433,10 @@ async function readPicks(claims: ClaimsType, actor: ActorType, teamId: string) {
 				photoEdit: signatures.photoEdit,
 				photoLink: signatures.photoLink,
 				banner: signatures.banner,
-				banners: signatures.banners
+				banners: signatures.banners,
+				photoList: signatures.photoList,
+				bannerList: signatures.bannerList,
+				groupEmails: signatures.groupEmails
 			})
 			.from(signatures)
 			.where(and(eq(signatures.teamId, teamId), isNull(signatures.deletedAt)))
@@ -390,26 +444,18 @@ async function readPicks(claims: ClaimsType, actor: ActorType, teamId: string) {
 	return (row ?? {}) as SavedPicksType;
 }
 
-// An upload's picker picture is its own signature picture, made when it was uploaded.
-async function toShownChoices(
-	store: FileStoreType,
-	choices: ChoiceType[],
-	kind: SignatureKindType,
-	request: SignatureRequestType
-) {
-	return Promise.all(
-		choices.map(async (choice) =>
-			choice.preview
-				? choice
-				: {
-						...choice,
-						preview: (await toPictureAddress(store, { source: choice.source, kind }, request)) ?? ''
-					}
-		)
+// The group emails an Admin added in the app, for everyone to pick.
+async function readGroups(claims: ClaimsType, actor: ActorType): Promise<GroupEmailType[]> {
+	return claims.run(actor, (tx) =>
+		tx
+			.select({ email: groupEmail.email, name: groupEmail.name })
+			.from(groupEmail)
+			.where(isNull(groupEmail.deletedAt))
+			.orderBy(asc(groupEmail.createdAt))
 	);
 }
 
-// A person's signature, with its photo and banners to edit.
+// A person's signature, with its photo, banner and group emails to edit.
 async function answerPerson(
 	server: SignatureServerType,
 	actor: ActorType,
@@ -417,16 +463,15 @@ async function answerPerson(
 	sheets: SheetsType,
 	request: SignatureRequestType
 ) {
-	const picks = await readPicks(server.claims, actor, record.id);
-	const look = toPersonLook(record, sheets, picks);
-	const parts = toPersonParts(record, sheets, picks);
-	const [made, photos] = await Promise.all([
-		makeLook(server.store, look, request),
-		toShownChoices(server.store, parts.photos, 'photo', request)
+	const [picks, added] = await Promise.all([
+		readPicks(server.claims, actor, record.id),
+		readGroups(server.claims, actor)
 	]);
+	const look = toPersonLook(record, sheets, picks);
+	const made = await makeLook(server.store, look, withFiles(server, actor, request));
 	return {
-		signature: toPersonSignature(record, sheets, look, made),
-		parts: { ...parts, photos }
+		signature: toPersonSignature(record, sheets, look, made, picks),
+		parts: toPersonParts(record, sheets, picks, added)
 	};
 }
 
@@ -501,7 +546,10 @@ async function writePicks(
 			photo: picks.photo,
 			photoEdit: picks.photoEdit,
 			photoLink: picks.photoLink,
-			banners: picks.banners
+			banners: picks.banners,
+			photoList: picks.photoList,
+			bannerList: picks.bannerList,
+			groupEmails: picks.groupEmails
 		}).filter(([, value]) => value !== undefined)
 	);
 	await claims.run(actor, (tx) =>
@@ -530,17 +578,29 @@ function toSavedPhoto(
 	};
 }
 
-function sameBanners(left: SignatureBannerType[], right: SignatureBannerType[]) {
-	const plain = (list: SignatureBannerType[]) =>
-		JSON.stringify(list.map(({ source, edit, link }) => ({ source, edit: edit ?? null, link })));
+function sameBanner(left: SignatureBannerType, right: SignatureBannerType) {
+	const plain = ({ source, edit, link }: SignatureBannerType) =>
+		JSON.stringify({ source, edit: edit ?? null, link });
 	return plain(left) === plain(right);
 }
 
+// A panel's new order and edits, when every picture is one already in it (a deleted upload is left out).
+function toSavedList(given: PanelPictureType[], panel: PanelPictureType[]) {
+	const known = new Set(panel.map((each) => each.source));
+	if (given.some((each) => !known.has(each.source))) return undefined;
+	return given.map(({ source, edit }) => {
+		const clean = cleanEdit(edit ?? {});
+		return clean ? { source, edit: clean } : { source };
+	});
+}
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
- * Keeps the photo and banners saved for a person's signature (the User's own with no `person`), each given whole: a
- * photo one of its choices, banners the company's or ones already under it (an upload comes through
- * `uploadSignature`), each link an address. `null` follows the Sheet and the defaults again. Answers the signature as
- * it is now.
+ * Keeps what is saved for a person's signature (the User's own with no `person`), each part given whole: the photo
+ * and the one banner, each a picture of its panel with an address for its link; the panels' order and edits, every
+ * picture one already there; the group emails, each one offered. `null` follows the Sheet and the defaults again.
+ * An Admin's new group email is added for everyone first. Answers the signature as it is now.
  */
 export async function saveSignature(
 	server: SignatureServerType,
@@ -556,10 +616,21 @@ export async function saveSignature(
 	const saved = await readPicks(server.claims, actor, record.id);
 	const picks: SavedPicksType = {};
 
+	if (save.photos) {
+		const list = toSavedList(save.photos, toPhotoPanel(record, sheets, saved));
+		if (!list) return { isAllowed: false, reason: 'That photo is not one to pick.' };
+		picks.photoList = list;
+	}
+	if (save.banners) {
+		const list = toSavedList(save.banners, toBannerPanel(record, sheets, saved));
+		if (!list) return { isAllowed: false, reason: 'That banner is not one to pick.' };
+		picks.bannerList = list;
+	}
+
 	if (save.photo !== undefined) {
 		if (save.photo) {
-			const photos = toPhotoChoices(record, sheets, saved.photo).map((each) => each.source);
-			if (!photos.includes(save.photo.source)) {
+			const photos = picks.photoList ?? toPhotoPanel(record, sheets, saved);
+			if (!photos.some((each) => each.source === save.photo?.source)) {
 				return { isAllowed: false, reason: 'That photo is not one to pick.' };
 			}
 			const link = toLink(save.photo.link);
@@ -574,30 +645,62 @@ export async function saveSignature(
 		);
 	}
 
-	if (save.banners !== undefined) {
-		if (save.banners) {
-			if (save.banners.length > MAX_BANNERS) {
-				return { isAllowed: false, reason: `A signature takes ${MAX_BANNERS} banners at most.` };
+	if (save.banner !== undefined) {
+		if (save.banner) {
+			const banners = picks.bannerList ?? toBannerPanel(record, sheets, saved);
+			if (!banners.some((each) => each.source === save.banner?.source)) {
+				return { isAllowed: false, reason: 'That banner is not one to pick.' };
 			}
-			const offered = new Set([
-				...toBannerChoices(sheets).map((each) => each.source),
-				...toPersonBanners(record, sheets, saved).map((each) => each.source)
-			]);
-			const banners: SignatureBannerType[] = [];
-			for (const banner of save.banners) {
-				if (!offered.has(banner.source)) {
-					return { isAllowed: false, reason: 'That banner is not one to pick.' };
-				}
-				const link = toLink(banner.link);
-				if (link === undefined) {
-					return { isAllowed: false, reason: 'That banner link is not an address.' };
-				}
-				const edit = cleanEdit(banner.edit ?? {});
-				banners.push({ id: banner.id, source: banner.source, ...(edit ? { edit } : {}), link });
+			const link = toLink(save.banner.link);
+			if (link === undefined) {
+				return { isAllowed: false, reason: 'That banner link is not an address.' };
 			}
-			const defaults = toPersonBanners(record, sheets, { banner: saved.banner });
-			picks.banners = sameBanners(banners, defaults) ? null : banners;
+			const edit = cleanEdit(save.banner.edit ?? {});
+			const banner = {
+				id: save.banner.id,
+				source: save.banner.source,
+				...(edit ? { edit } : {}),
+				link
+			};
+			const defaults = toPersonBanner(record, sheets, { banner: saved.banner });
+			picks.banners = defaults && sameBanner(banner, defaults) ? null : [banner];
 		} else picks.banners = null;
+	}
+
+	let added: GroupEmailType[] | undefined;
+	if (save.addGroup) {
+		if (!isAdmin) return { isAllowed: false, reason: 'Only an Admin adds a group email.' };
+		const email = save.addGroup.email.trim();
+		if (!EMAIL.test(email)) return { isAllowed: false, reason: 'That is not an email address.' };
+		added = await readGroups(server.claims, actor);
+		const isKnown = toGroupChoices(sheets, added).some(
+			(each) => toEmailKey(each.email) === toEmailKey(email)
+		);
+		const organizationId = actor.organizationId;
+		if (!isKnown && organizationId) {
+			const name = save.addGroup.name.trim() || email;
+			await server.claims.run(actor, (tx) =>
+				tx
+					.insert(groupEmail)
+					.values({ id: randomUUID(), organizationId, email, name })
+					.onConflictDoNothing()
+			);
+			added = [...added, { email, name }];
+		}
+	}
+
+	if (save.groupEmails !== undefined) {
+		if (save.groupEmails) {
+			const offered = toGroupChoices(sheets, added ?? (await readGroups(server.claims, actor)));
+			const emails: string[] = [];
+			for (const email of save.groupEmails) {
+				const group = offered.find((each) => toEmailKey(each.email) === toEmailKey(email));
+				if (!group) return { isAllowed: false, reason: 'That group email is not one to pick.' };
+				if (!emails.includes(group.email)) emails.push(group.email);
+			}
+			const defaults = toGroupEmails(record, sheets, {});
+			picks.groupEmails = JSON.stringify(emails) === JSON.stringify(defaults) ? null : emails;
+		} else picks.groupEmails = null;
 	}
 
 	await writePicks(server.claims, actor, record.id, picks);
@@ -643,19 +746,28 @@ export async function uploadSignature(
 	await server.store.write(path, picture, 'image/png');
 	made.set(path, toPngSize(picture) ?? { width: 0, height: 0 });
 
-	// A photo takes the signature's photo's place, keeping its link; a banner goes under the others.
+	// It joins the end of its panel and is the one in use: a photo keeping its link, a banner going to the website
+	// until it is given a link of its own.
 	const { record } = found;
-	const saved = await readPicks(server.claims, actor, record.id);
+	const [saved, sheets] = await Promise.all([
+		readPicks(server.claims, actor, record.id),
+		readSheets(request.fetch)
+	]);
+	const panel = (upload.kind === 'photo' ? toPhotoPanel : toBannerPanel)(record, sheets, saved);
+	if (panel.filter((each) => each.isOwn).length >= MAX_UPLOADS) {
+		return { isAllowed: false, reason: `Up to ${MAX_UPLOADS} uploads. Delete one first.` };
+	}
+	const list = panel.map(({ source, edit }) => (edit ? { source, edit } : { source }));
+	if (!list.some((each) => each.source === source)) list.push({ source });
 	if (upload.kind === 'photo') {
-		await writePicks(server.claims, actor, record.id, { photo: source, photoEdit: null });
+		await writePicks(server.claims, actor, record.id, {
+			photo: source,
+			photoEdit: null,
+			photoList: list
+		});
 	} else {
-		const sheets = await readSheets(request.fetch);
-		const banners = toPersonBanners(record, sheets, saved);
-		if (banners.length >= MAX_BANNERS) {
-			return { isAllowed: false, reason: `A signature takes ${MAX_BANNERS} banners at most.` };
-		}
 		const banner = { id: randomUUID(), source, link: UPLOAD_BANNER_LINK };
-		await writePicks(server.claims, actor, record.id, { banners: [...banners, banner] });
+		await writePicks(server.claims, actor, record.id, { banners: [banner], bannerList: list });
 	}
 	return readSignature(server, actor, { person: record.id }, request);
 }
