@@ -9,7 +9,8 @@
 // other commit stays out of What's New. A change lands when the branch takes it: its own commit on the branch, or the
 // merge that brought it. The same days, written out, are a GitHub release's notes (#157). A release on dev is told in
 // its own words instead (highlights.ts, Justin, 2026-11-28): each feature under a short title with its highlights,
-// then the fixes, in place of every line of its work; next.app keeps its lines and shows the release to come on top.
+// then the fixes, in place of every line of its work; next.app keeps its lines, and beside them its release notes: the
+// release to come, as Coming to dev, then each release on dev, as dev.app tells them (Justin, 2026-11-28).
 import type { HighlightsType } from './highlights.ts';
 import {
 	TEAM_TIME_ZONE,
@@ -59,19 +60,25 @@ export type HistoryBatchType = {
 	to: string;
 	/** The release that brought it, with the link to its notes (#400); none while it is not released. */
 	release?: ReleaseRefType;
-	/** The highlights of the release to come, shown on next.app before it reaches dev: Coming to dev. */
+	/** The highlights of the release to come, in next.app's release notes before it reaches dev: Coming to dev. */
 	isUpcoming?: boolean;
 	changes: HistoryChangeType[];
 };
 
 /**
  * Everything a build knows of its branch: its commit, the branch's commits (short), the days, newest first, and its
- * version as people read it (#400), empty while nothing is released.
+ * version as people read it (#400), empty while nothing is released. On next, its release notes too.
  */
 export type HistoryType = {
 	head: string;
 	chain: string[];
 	batches: HistoryBatchType[];
+	/**
+	 * next.app's release notes, beside every change (Justin, 2026-11-28): the release to come once its highlights are
+	 * written, then each release on dev told in its highlights, newest first, as dev.app shows them. None on dev, whose
+	 * list already is its release notes, or where nothing is written.
+	 */
+	notes?: HistoryBatchType[];
 	version?: string;
 };
 
@@ -182,7 +189,7 @@ export type HistoryOptionsType = {
 	 * features and fixes in place of their lines.
 	 */
 	highlights?: Record<string, HighlightsType>;
-	/** The release next leads to: its highlights, once written, show on top as Coming to dev. */
+	/** On next, the release its versions lead to: its highlights, once written, top its release notes as Coming to dev. */
 	upcoming?: string;
 };
 
@@ -229,6 +236,45 @@ function toHighlightBatch(
 	};
 }
 
+/**
+ * next.app's release notes (Justin, 2026-11-28): the release to come once its highlights are written, as Coming to
+ * dev, dated with the newest change, then each release on dev with its highlights, newest first, each dated the day it
+ * reached dev. None of them counts as new: what is new is in every change.
+ */
+function toNotes(
+	newest: LandedType,
+	releases: ReleaseRefType[],
+	highlights: Record<string, HighlightsType>,
+	upcoming: string,
+	timeZone: string
+) {
+	const notes: HistoryBatchType[] = [];
+	const coming = highlights[upcoming];
+	if (coming) {
+		notes.push({
+			day: toDay(newest.at, timeZone),
+			from: newest.at,
+			to: newest.at,
+			release: toReleaseRef(upcoming),
+			isUpcoming: true,
+			changes: toHighlightChanges(coming, newest.at, -1, upcoming)
+		});
+	}
+	for (const release of releases.toReversed()) {
+		const told = highlights[release.version];
+		if (!told || isPrerelease(release.version) || release.version === upcoming) continue;
+		const at = release.date ?? newest.at;
+		notes.push({
+			day: toDay(at, timeZone),
+			from: at,
+			to: at,
+			release,
+			changes: toHighlightChanges(told, at, -1, release.version)
+		});
+	}
+	return notes;
+}
+
 /** Whether a release on dev is being made without its highlights (highlights.ts); a prerelease needs none. */
 export function isMissingHighlights(version: string, highlights: Record<string, HighlightsType>) {
 	return !isPrerelease(version) && !highlights[version];
@@ -247,7 +293,7 @@ function toReleased(
 /**
  * The sections with the release that brought them, newest first, and each section's changes newest first: a release
  * made on dev is one section dated the day it reached dev, told in its highlights where they are written, next's
- * prereleases a section a day, and on top, on next, the highlights of the release to come.
+ * prereleases a section a day; and on next, beside them, its release notes.
  */
 export function toHistory(
 	head: string,
@@ -290,20 +336,15 @@ export function toHistory(
 				timeZone
 			)
 		);
-	// The release to come, on next.app, once its highlights are written: on top, never counted as new.
-	const coming = upcoming ? highlights[upcoming] : undefined;
 	const newest = landed.at(-1);
-	if (coming && newest) {
-		batches.push({
-			day: toDay(newest.at, timeZone),
-			from: newest.at,
-			to: newest.at,
-			release: toReleaseRef(upcoming!),
-			isUpcoming: true,
-			changes: toHighlightChanges(coming, newest.at, -1, upcoming!)
-		});
-	}
-	return { head, chain, batches: batches.reverse(), ...(version ? { version } : {}) };
+	const notes = upcoming && newest ? toNotes(newest, releases, highlights, upcoming, timeZone) : [];
+	return {
+		head,
+		chain,
+		batches: batches.reverse(),
+		...(notes.length > 0 ? { notes } : {}),
+		...(version ? { version } : {})
+	};
 }
 
 /**

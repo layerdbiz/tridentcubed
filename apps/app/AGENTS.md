@@ -231,18 +231,26 @@ the why is in ADR 0002, 0003 and 0005.
   feature a short bold title in the dark text with one to three short
   highlights on light green bullets, then Fixes the same way on blue.
   dev.app's What's New and the release's GitHub notes show them in place of
-  the lines. Before next moves to dev, on his word, write them:
-  1. `node apps/app/scripts/release.ts --branch dev --head origin/next
-     --dry-run` names the version the move makes (the base of next's
-     versions: `v1.2.0-next.19` leads to `1.2.0`); every `What's New:` line
-     since the last release is `git log v<last>..origin/next`.
-  2. Fold the lines into the features as they are now: rounds of work on
-     one thing become that one thing, and what was tried and replaced is
-     left out. A fix is only for a problem people on dev.app had; one made
-     and mended on next never reached them.
-  3. Land them on next like any change. next.app then shows them on top of
-     What's New as "Coming to dev", exactly as dev.app will; Justin reads
-     them there and says yes or what to change, then next moves to dev.
+  the lines. They are written as the work lands, not at the end:
+  1. **Every change updates them in the same pull request (Justin,
+     2026-11-28: "in the same breath").** A change people on dev.app will
+     notice writes its `What's New:` lines, then folds itself into the
+     highlights of the version next leads to: the base of next's version
+     (`v1.2.0-next.19` leads to `1.2.0`; `node apps/app/scripts/release.ts
+     --branch dev --head origin/next --dry-run` names it). Fold it into the
+     feature it belongs to as that feature is now, or add a feature; what
+     was tried and replaced goes. A fix is only for a problem people on
+     dev.app had; one made and mended on next never reached them. A change
+     seen only on next.app leaves them alone. A released version's
+     highlights change only on Justin's word.
+  2. **next.app shows them as they stand.** Its What's New has two tabs:
+     Release notes, with them on top as "Coming to dev", exactly as dev.app
+     will show them, then each release on dev; and Every change, every
+     line. Justin reads Coming to dev there.
+  3. **Before next moves to dev, on his word,** check them against every
+     `What's New:` line since the last release (`git log
+     v<last>..origin/next`); if they miss something, land the fix on next
+     and have him read Coming to dev again. Then next moves to dev.
   A release without its highlights is not made: dev's build stops (dev.app
   stays on the version before) and so does the release workflow, each
   naming the missing version. A prerelease needs none.
@@ -263,7 +271,9 @@ the why is in ADR 0002, 0003 and 0005.
   v1.0.0-next.6 to next.5, next.4 and on, each in its own pair of theme
   colours (`toReleaseGlow`), the light easing from one to the next. The
   newest says "New release" when it holds something the person has not
-  seen, else "Latest release"; older ones "Earlier release". Every section
+  seen, else "Latest release"; older ones "Earlier release". next.app's
+  Release notes say "Coming to dev", then "On dev now" and "Earlier
+  release". Every section
   is open, and every line looks alike: nothing is marked new line by line.
 - **What's New is plain (Justin, 2026-11-27).** It lists each day under
   its date in bold (`2026-11-27`, the team's clock), and in it only

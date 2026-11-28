@@ -59,16 +59,6 @@ describe("the bell's new versions (#403)", () => {
 		]);
 	});
 
-	it('leaves out the release to come, which What’s New shows as Coming to dev', () => {
-		const lines = toReleaseLines(
-			whatsNewOf([
-				{ ...batch('2026-11-28', '2026-11-28T10:40:00Z', '1.2.0', -1), isUpcoming: true },
-				batch('2026-11-28', '2026-11-28T10:40:00Z', '1.2.0-next.19', 3)
-			])
-		);
-		expect(lines.map((line) => line.title)).toEqual(['v1.2.0-next.19']);
-	});
-
 	it('names what is not released yet by its day', () => {
 		const [line] = toReleaseLines(whatsNewOf([batch('2026-11-27', '2026-11-27T10:40:00Z')]));
 		expect(line.title).toBe('2026-11-27');

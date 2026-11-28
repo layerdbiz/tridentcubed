@@ -1,12 +1,13 @@
 // Each release on dev told in its own words (Justin, 2026-11-28): next.app lists every commit's What's New line, which
 // is what he wants as the developer, but people on dev.app want "what the feature is, what it can do": each feature
 // under a short bold title with a few highlights under it, then the fixes the same way. dev.app's What's New and the
-// release's notes on GitHub show these in place of the lines (history.utils.ts), and next.app shows the next one at
-// its top, as Coming to dev, so it is read there first.
+// release's notes on GitHub show these in place of the lines (history.utils.ts), and next.app's Release notes show the
+// next one at their top, as Coming to dev, so it is read there first.
 //
-// They are written before next moves to dev, from every What's New line since the last release, for the version that
-// move makes (the base of next's versions: v1.2.0-next.19 leads to 1.2.0). Rounds of work on one thing fold into the
-// thing as it is now, and what was tried and replaced is left out. A fix is only for a problem people on dev.app had:
+// They are written as the work lands (Justin, 2026-11-28: "in the same breath"): a change people on dev.app will notice
+// folds itself in here, in the same pull request as its What's New lines, for the version next leads to (the base of
+// next's versions: v1.2.0-next.19 leads to 1.2.0). Rounds of work on one thing fold into the thing as it is now, and
+// what was tried and replaced is left out. A fix is only for a problem people on dev.app had:
 // one made and mended on next never reached them. A release on dev is not made without them: dev's build and the
 // release workflow stop and say so (apps/app/AGENTS.md, "Releases and What's New").
 
@@ -99,9 +100,9 @@ export const HIGHLIGHTS: Record<string, HighlightsType> = {
 			{
 				title: 'Your email signature on your Team page',
 				points: [
-					'Your email signature lives on your Team page, with Page, Edit and Preview like a project.',
-					'Add several banners, each with its own link, from every company banner, and crop and turn the photo and banners in the photo editor.',
-					'Copy it from the zoom bar on its preview, ready for Outlook.'
+					'Your email signature lives on your Team page, with Page, Edit and Preview like a project, and copies from its preview ready for Outlook.',
+					"Pick its photo, banner and link in one Signature section, and add your team's group emails, like Operations or Engineering.",
+					"Its photos and banners work like a project's: tap one to crop or turn it, or drag them into order."
 				]
 			},
 			{
@@ -129,10 +130,20 @@ export const HIGHLIGHTS: Record<string, HighlightsType> = {
 			{
 				title: 'Photo pages that fit their photos',
 				points: [
-					'Photo pages run Horizontal, Vertical or Auto, and Auto turns each page so its photos are cut the least.',
-					'Rotate and Flip sit at the top of the photo editor, and Original shows the whole picture.',
-					"A PDF's pages stack in the photo editor: tap one to bring it to the front, or swipe through them one by one."
+					'Photo pages run Horizontal, Vertical or Auto, and Auto turns each page so its photos are cut the least.'
 				]
+			},
+			{
+				title: 'A clearer photo editor',
+				points: [
+					'Rotate and Flip sit at the top, Original shows the whole picture, and arrows step from photo to photo.',
+					"A PDF's pages stack: tap one to bring it to the front, or swipe through them one by one.",
+					'The crop corners stand clear of the photo, what you pick shows in bright blue, and a cropped or turned photo carries a small mark.'
+				]
+			},
+			{
+				title: 'A ? on every box',
+				points: ['Every box you type in has a ? that says what goes in it.']
 			},
 			{
 				title: 'Smoother What’s New and edit panels',
