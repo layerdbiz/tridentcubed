@@ -439,18 +439,15 @@ describe("a Team member's panels", () => {
 		expect(toTally(valuesOf(withPhoto.sections, 'details'))).toBe('4 of 5 complete');
 	});
 
-	it('adds the Email Signature, its Photo, its one Banner and its Group email, once it is given', () => {
+	it('adds the Email Signature, its Photo, its one Banner and its Group email in one section, once it is given', () => {
 		const panels = teamPanelsOf(member, {
 			photo: { source: 'drive:abc', link: '' },
 			banner: { source: 'drive:banner', link: 'https://tridentcubed.com' },
 			groupEmails: []
 		});
 		expect(panels.map((panel) => panel.name)).toEqual(['Profile', 'Email Signature']);
-		expect(panels[1].sections.map((section) => section.id)).toEqual([
-			'signature-photo',
-			'signature-banners',
-			'signature-groups'
-		]);
+		expect(panels[1].sections.map((section) => section.id)).toEqual(['signature-details']);
+		expect(toTally(valuesOf(panels[1].sections, 'signature-details'))).toBe('3 of 5 complete');
 		expect(metricsFrom(panels[1].sections)).toEqual({
 			done: 3,
 			total: 5,

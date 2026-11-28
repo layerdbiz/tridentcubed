@@ -29,7 +29,8 @@
 	// It changes the group's photos in place (a move, a delete, an edit in the editor) and calls `onsave`. What comes
 	// in through Upload or Camera is the caller's (`onfiles`), since where files go differs, and so is what selecting
 	// several does (`selecting`). A picture that is always there (a signature's built-in photos) has no Delete
-	// (`canDelete`); the one a signature uses wears a green check (`isChosen`).
+	// (`canDelete`); the one a signature uses wears a green border (`isChosen`), on the grey frame a round picture sits
+	// in (`isFramed`).
 	import type { HTMLAttributes } from 'svelte/elements';
 	import type { MenuOptionType } from '@layerd/ui';
 	import type { GroupType } from './look.data';
@@ -53,6 +54,7 @@
 		ratio = '1:1',
 		columns = 3,
 		isRound = false,
+		isFramed = false,
 		isPictureOnly = false,
 		hasBadge = true,
 		tapMode = 'view',
@@ -92,6 +94,8 @@
 		columns?: number;
 		/** Each shows in a circle: a signature's photo. */
 		isRound?: boolean;
+		/** Each round picture sits in a grey square frame, which shows the tile's size and wears its border. */
+		isFramed?: boolean;
 		/** Only the picture is edited: no description, no pop-out and no Details. */
 		isPictureOnly?: boolean;
 		/** What kind of attachment each is, in its corner. */
@@ -114,7 +118,7 @@
 		canDelete?: (photo: PhotoType) => boolean;
 		/** Whether a tap opens it yet: an upload with nothing to show waits. */
 		canOpen?: (photo: PhotoType) => boolean;
-		/** The picture in use, where one of them is: a green check on it. */
+		/** The picture in use, where one of them is: a green border on its tile. */
 		isChosen?: (photo: PhotoType) => boolean;
 		/** Being made, with no upload of its own to show it. */
 		isBusy?: (photo: PhotoType) => boolean;
@@ -228,6 +232,8 @@
 			{isSelecting}
 			isPicked={isSelecting && Boolean(selecting?.has(photo.id))}
 			{isRound}
+			{isFramed}
+			isChosen={isChosen?.(photo)}
 			{hasBadge}
 			hasNote={!isPictureOnly}
 			align={index % columns === 0 ? 'left' : 'right'}
@@ -242,21 +248,6 @@
 					? remove(photo)
 					: (opened = { id: photo.id, mode: id === 'crop' ? 'crop' : 'text' })}
 		/>
-		{#if isChosen?.(photo)}
-			<!-- The one in use: a green check over its corner, and a green ring round it. -->
-			<span
-				class="pointer-events-none absolute inset-0 {isRound
-					? 'rounded-full'
-					: 'rounded-xl'} inset-ring-3 inset-ring-success"
-			></span>
-			<span
-				class="pointer-events-none absolute top-1 left-1 flex size-6 items-center justify-center rounded-full bg-white shadow"
-				title="In use"
-				><span class="icon-[mdi--check-circle] size-6 text-success"></span><span class="sr-only"
-					>In use</span
-				></span
-			>
-		{/if}
 	{/snippet}
 	{#snippet adds(shape)}
 		<!-- Lit while its file input has the focus: where an entry of the empty-inputs list lands. -->

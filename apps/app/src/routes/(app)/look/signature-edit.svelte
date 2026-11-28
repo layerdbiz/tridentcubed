@@ -1,33 +1,39 @@
 <script lang="ts">
-	// A Team member's Email Signature on their Edit (#354): the Photo, Banners and Group email sections of the Email
-	// Signature panel (team-edit.svelte), each saying how much of it is filled in, as a Project panel's sections do.
-	// Round 8 (Justin, 2026-11-28): the photo and the banner each come from the photo panel a Project panel's photo
-	// groups use (photo-panel.svelte), every picture a square tile: tapped to crop in the photo editor, dragged to
-	// reorder, held to select several, with Upload at the end. The photo panel holds the built-in photos, always there
-	// (the Trident logos, the profile picture, the email photo, the Profile Images photos), and the person's uploads; the
-	// banner panel every company banner and theirs. Under each panel, the drop-down that picks the one the signature
-	// shows ("That's the only way that you should be able to select a company banner"), ONE banner with ONE link, and
-	// its link; the one in use wears a green check in its panel. Then the group emails shown under the signature, from
-	// the Sheet's shared mailboxes and the ones an Admin adds here. Every input has its help ? (Justin: "Every input that
-	// we have ... there has to be a help icon next to it"). The photo is the signature's own, always a circle in the
-	// email, and a tap on it there goes to its link.
+	// A Team member's Email Signature on their Edit (#354): the Signature, Photos and Banners sections of the Email
+	// Signature panel (team-edit.svelte), as a Project panel's sections are.
+	// Round 9 (Justin, 2026-11-28): the Signature section holds everything the signature shows, picked from drop-downs:
+	// its Photo and Photo link, its ONE Banner and Banner link ("That's the only way that you should be able to select
+	// a company banner"), and the group emails printed under it, from the Sheet's shared mailboxes and the ones an
+	// Admin adds here. Under it, the Photos and the Banners, each the photo panel a Project panel's photo groups use
+	// (photo-panel.svelte): tapped to crop in the photo editor, dragged to reorder, held to select several, with Upload
+	// at the end. The Photos hold the built-in photos, always there (the Trident logos, the profile picture, the email
+	// photo, the Profile Images photos), each round in a grey square frame, and the person's uploads; the Banners every
+	// company banner and theirs. The one in use wears a green border. Every input has its help ? (Justin: "Every input
+	// that we have ... there has to be a help icon next to it"). The photo is the signature's own, always a circle in
+	// the email, and a tap on it there goes to its link.
 	import { Button, Dialog, Input, Select } from '@layerd/ui';
 	import Group from './group.svelte';
 	import type { LookState } from './look.state.svelte';
 	import type { GroupType, PhotoType } from './look.data';
 	import PhotoPanel, { type PanelSelectingType } from './photo-panel.svelte';
+	import { toCountLabel } from './look.utils';
 	import type { SignatureState } from './signature.svelte';
 	import { valuesOf, type SectionType } from './tally';
 
 	let {
 		look,
 		signature,
-		sections
+		sections,
+		open,
+		ontoggle
 	}: {
 		look: LookState;
 		signature: SignatureState;
 		/** What its sections hold, for the lines under their names (tally.ts, `teamPanelsOf`). */
 		sections: SectionType[];
+		/** The sections open, which the empty-inputs list opens too (team-edit.svelte). */
+		open: string[];
+		ontoggle: (id: string) => void;
 	} = $props();
 
 	type KindType = 'photo' | 'banner';
@@ -42,12 +48,6 @@
 		autocapitalize: 'off',
 		spellcheck: false
 	} as const;
-
-	// Only the first starts open, as a Project panel's sections do (Justin, 2026-11-16).
-	let open = $state<string[]>(['photo']);
-	function toggle(id: string) {
-		open = open.includes(id) ? open.filter((item) => item !== id) : [...open, id];
-	}
 
 	let root = $state<HTMLDivElement>();
 	const selection = $derived(look.selection);
@@ -132,6 +132,7 @@
 		noun={kind}
 		deleteNote="It leaves the signature’s {kind === 'photo' ? 'photos' : 'banners'}."
 		isRound={kind === 'photo'}
+		isFramed={kind === 'photo'}
 		isPictureOnly
 		hasBadge={false}
 		tapMode="crop"
@@ -174,83 +175,85 @@
 		bind:this={root}
 	>
 		<Group
-			title="Photo"
-			section="signature-photo"
-			values={valuesOf(sections, 'signature-photo')}
+			title="Signature"
+			section="signature-details"
+			values={valuesOf(sections, 'signature-details')}
+			icon="icon-[mdi--signature-freehand]"
+			isOpen={open.includes('signature-details')}
+			ontoggle={() => ontoggle('signature-details')}
+		>
+			<div class="space-y-4">
+				<Select
+					label="Photo"
+					icon="icon-[mdi--account-circle-outline]"
+					options={optionsOf('photo', draft.photos.photos)}
+					value={draft.photo.source}
+					help={look.helpOf('signature.photo')}
+					onpick={(source) => signature.pickPhoto(source)}
+				/>
+				<Input
+					label="Photo link"
+					{...LINK}
+					value={draft.photo.link}
+					help={look.helpOf('signature.photoLink')}
+					onchange={(event: Event) =>
+						signature.setLink('photo', (event.target as HTMLInputElement).value)}
+				/>
+				<Select
+					label="Banner"
+					icon="icon-[mdi--image-outline]"
+					options={optionsOf('banner', draft.banners.photos)}
+					value={draft.banner?.source ?? ''}
+					help={look.helpOf('signature.banner')}
+					onpick={(source) => signature.pickBanner(source)}
+				/>
+				{#if draft.banner}
+					<Input
+						label="Banner link"
+						{...LINK}
+						value={draft.banner.link}
+						help={look.helpOf('signature.bannerLink')}
+						onchange={(event: Event) =>
+							signature.setLink('banner', (event.target as HTMLInputElement).value)}
+					/>
+				{/if}
+				<Select
+					label="Group email"
+					icon="icon-[mdi--email-multiple-outline]"
+					options={parts.groups.map((group) => ({
+						value: group.email,
+						label: group.name,
+						note: group.email
+					}))}
+					multiple
+					many="group emails"
+					value={draft.groupEmails}
+					help={look.helpOf('signature.groupEmails')}
+					addLabel="Group email"
+					onadd={look.isAdmin ? () => (adding = { email: '', name: '' }) : undefined}
+					onpick={toggleGroup}
+				/>
+			</div>
+		</Group>
+		<Group
+			title="Photos"
+			section="signature-photos"
+			meta={toCountLabel(draft.photos.photos.length, 'photo')}
 			icon="icon-[mdi--account-circle-outline]"
-			isOpen={open.includes('photo')}
-			ontoggle={() => toggle('photo')}
+			isOpen={open.includes('signature-photos')}
+			ontoggle={() => ontoggle('signature-photos')}
 		>
 			{@render panel('photo', draft.photos)}
-			<Select
-				label="Photo"
-				icon="icon-[mdi--account-circle-outline]"
-				options={optionsOf('photo', draft.photos.photos)}
-				value={draft.photo.source}
-				help={look.helpOf('signature.photo')}
-				onpick={(source) => signature.pickPhoto(source)}
-			/>
-			<Input
-				label="Photo link"
-				{...LINK}
-				value={draft.photo.link}
-				help={look.helpOf('signature.photoLink')}
-				onchange={(event: Event) =>
-					signature.setLink('photo', (event.target as HTMLInputElement).value)}
-			/>
 		</Group>
 		<Group
-			title="Banner"
+			title="Banners"
 			section="signature-banners"
-			values={valuesOf(sections, 'signature-banners')}
+			meta={toCountLabel(draft.banners.photos.length, 'banner')}
 			icon="icon-[mdi--image-outline]"
-			isOpen={open.includes('banner')}
-			ontoggle={() => toggle('banner')}
+			isOpen={open.includes('signature-banners')}
+			ontoggle={() => ontoggle('signature-banners')}
 		>
 			{@render panel('banner', draft.banners)}
-			<Select
-				label="Banner"
-				icon="icon-[mdi--image-outline]"
-				options={optionsOf('banner', draft.banners.photos)}
-				value={draft.banner?.source ?? ''}
-				help={look.helpOf('signature.banner')}
-				onpick={(source) => signature.pickBanner(source)}
-			/>
-			{#if draft.banner}
-				<Input
-					label="Banner link"
-					{...LINK}
-					value={draft.banner.link}
-					help={look.helpOf('signature.bannerLink')}
-					onchange={(event: Event) =>
-						signature.setLink('banner', (event.target as HTMLInputElement).value)}
-				/>
-			{/if}
-		</Group>
-		<Group
-			title="Group email"
-			section="signature-groups"
-			values={valuesOf(sections, 'signature-groups')}
-			icon="icon-[mdi--email-multiple-outline]"
-			isOpen={open.includes('groups')}
-			ontoggle={() => toggle('groups')}
-		>
-			<Select
-				label="Group email"
-				icon="icon-[mdi--email-multiple-outline]"
-				options={parts.groups.map((group) => ({
-					value: group.email,
-					label: group.name,
-					note: group.email
-				}))}
-				multiple
-				many="group emails"
-				value={draft.groupEmails}
-				help={look.helpOf('signature.groupEmails')}
-				addLabel="Group email"
-				onadd={look.isAdmin ? () => (adding = { email: '', name: '' }) : undefined}
-				onpick={toggleGroup}
-			/>
 		</Group>
 	</div>
 {/if}

@@ -326,8 +326,10 @@ export type TeamPanelType = { id: string; name: string; icon: string; sections: 
 /**
  * A Team member's Edit, panel by panel, as a project's is (Justin, 2026-11-28: "I want the exact same page setup that
  * we have in the project edit panels for the team member edit panels"): Profile, with their Details and how to reach
- * them, and their Email Signature, with its Photo, its Banner and its Group email, when the signed-in person may see it (`signature`
- * given, once it has loaded). Every input counts once, done when it holds something; their Photo counts once it is
+ * them, and their Email Signature, when the signed-in person may see it (`signature` given, once it has loaded),
+ * whose one Signature section holds what the email shows: its Photo and Photo link, its Banner and Banner link, and
+ * its Group email (Justin, 2026-11-28: "There should be the signature section panel ... That's where you would put
+ * all of your data"). Its Photos and Banners sections are the pictures to pick from, with nothing to fill in. Every input counts once, done when it holds something; their Photo counts once it is
  * their own, not the initials drawn in its place. Their percent is every input of these panels, counted the one way
  * (metricsFrom).
  */
@@ -369,20 +371,15 @@ export function teamPanelsOf(
 			icon: 'icon-[mdi--email-outline]',
 			sections: [
 				{
-					id: 'signature-photo',
+					id: 'signature-details',
 					inputs: [
 						{ label: 'Photo', value: signature.photo.source },
-						{ label: 'Photo link', value: signature.photo.link }
-					]
-				},
-				{
-					id: 'signature-banners',
-					inputs: [
+						{ label: 'Photo link', value: signature.photo.link },
 						{ label: 'Banner', value: signature.banner?.source },
-						{ label: 'Banner link', value: signature.banner?.link }
+						{ label: 'Banner link', value: signature.banner?.link },
+						{ label: 'Group email', value: signature.groupEmails }
 					]
-				},
-				{ id: 'signature-groups', inputs: [{ label: 'Group email', value: signature.groupEmails }] }
+				}
 			]
 		});
 	return panels;
