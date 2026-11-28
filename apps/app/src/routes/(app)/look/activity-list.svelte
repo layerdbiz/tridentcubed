@@ -19,6 +19,8 @@
 		at: string;
 		/** "v1.2.0", or the day ("2026-11-27") while no release has ended it. */
 		title: string;
+		/** Its section in What's New, by when its first change landed: a tap opens What's New there. */
+		from: string;
 		/** The day's things: "Pin anything to your menu · Search from the menu". */
 		words: string;
 		isNew: boolean;
@@ -194,8 +196,9 @@
 	let person = $state('');
 	let project = $state('');
 	let time = $state<ActivityTimeType>('any');
-	// The groups shut by a tap on their heading; every group opens open.
+	// The groups shut by a tap on their heading; every group opens open, but a day's new versions, which open on a tap.
 	const shut = new SvelteSet<string>();
+	const opened = new SvelteSet<string>();
 
 	// The time every "3 hours ago" is read at, kept to the minute while the list is open.
 	let now = $state(Date.now());
@@ -214,27 +217,35 @@
 		)
 	);
 	const view = $derived(isFull ? tab : 'all');
-	// One by one, with the bell's new versions among the lines, newest first.
-	type FlatType = {
+	// The bell's new versions, one line for each day's (Justin, 2026-11-28: "those should also be grouped together"):
+	// a day with one is its line; a day with more is one line that opens on them all.
+	type ReleaseItemType = {
 		id: string;
 		at: string;
-		event?: ActivityEventType;
 		release?: ReleaseLineType;
+		releases?: ReleaseLineType[];
 	};
+	const releaseItems = $derived<ReleaseItemType[]>(
+		byBucket(releases, (release) => release.at, now).map(({ label, items }) =>
+			items.length === 1
+				? { id: items[0].id, at: items[0].at, release: items[0] }
+				: { id: `releases-${label}`, at: items[0].at, releases: items }
+		)
+	);
+	// One by one, with the bell's new versions among the lines, newest first.
+	type FlatType = ReleaseItemType & { event?: ActivityEventType };
 	const flat = $derived<FlatType[]>(
-		[
-			...shown.map((event) => ({ id: event.id, at: event.at, event })),
-			...releases.map((release) => ({ id: release.id, at: release.at, release }))
-		].toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at))
+		[...shown.map((event) => ({ id: event.id, at: event.at, event })), ...releaseItems].toSorted(
+			(a, b) => Date.parse(b.at) - Date.parse(a.at)
+		)
 	);
 	const runs = $derived(toRuns(shown));
 	// Grouped, with the bell's new versions among the groups, newest first.
-	type GroupedType = { id: string; at: string; run?: ActivityRunType; release?: ReleaseLineType };
+	type GroupedType = ReleaseItemType & { run?: ActivityRunType };
 	const grouped = $derived<GroupedType[]>(
-		[
-			...runs.map((run) => ({ id: run.id, at: run.to, run })),
-			...releases.map((release) => ({ id: release.id, at: release.at, release }))
-		].toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at))
+		[...runs.map((run) => ({ id: run.id, at: run.to, run })), ...releaseItems].toSorted(
+			(a, b) => Date.parse(b.at) - Date.parse(a.at)
+		)
 	);
 	const projects = $derived(toProjectGroups(shown));
 	const people = $derived(toPeopleGroups(shown));
@@ -578,16 +589,18 @@
 {/snippet}
 
 <!-- A new version: the app's picture with a rocket, "v1.2.0 release notes", how long ago and its first things. -->
+{#snippet releasePicture()}<Avatar
+		src={ICON_192}
+		alt="Trident Cubed"
+		size={40}
+		badgeIcon={RELEASE_MARK.icon}
+		badgeTint={RELEASE_MARK.badge}
+		badgeLabel={RELEASE_MARK.label}
+		badgeScale={0.45}
+	/>{/snippet}
+
 {#snippet releaseLine(release: ReleaseLineType)}
-	{#snippet picture()}<Avatar
-			src={ICON_192}
-			alt="Trident Cubed"
-			size={40}
-			badgeIcon={RELEASE_MARK.icon}
-			badgeTint={RELEASE_MARK.badge}
-			badgeLabel={RELEASE_MARK.label}
-			badgeScale={0.45}
-		/>{/snippet}
+	{#snippet picture()}{@render releasePicture()}{/snippet}
 	{#snippet first()}{@render bold(release.title)} release notes{/snippet}
 	<li class="py-[3px]">
 		{@render row(picture, first, agoOf(release.at), release.words, {
@@ -595,6 +608,86 @@
 			onclick: () => onrelease?.(release)
 		})}
 	</li>
+{/snippet}
+
+<!-- A day's new versions: one version's line, or one line for them all that opens on each, under the app's picture,
+     each a small rocket on the grey line that drops from it. -->
+{#snippet releaseItem(item: ReleaseItemType)}
+	{#if item.release}
+		{@render releaseLine(item.release)}
+	{:else if item.releases}
+		{@const list = item.releases}
+		{@const isOpen = opened.has(item.id)}
+		{@const titles = list.map((release) => release.title)}
+		{#snippet picture()}{@render releasePicture()}{/snippet}
+		{#snippet first()}{@render bold(`${list.length} new versions`)}{/snippet}
+		<li class="py-[3px]">
+			{@render row(
+				picture,
+				first,
+				agoOf(item.at),
+				titles.length > 2
+					? `${titles.slice(0, 2).join(', ')} and ${titles.length - 2} more`
+					: titles.join(' and '),
+				{
+					fresh: list.filter((release) => release.isNew).length,
+					isOpen,
+					onclick: () => (isOpen ? opened.delete(item.id) : opened.add(item.id))
+				}
+			)}
+			{#if isOpen}
+				<div class="relative -mt-2 mb-1 pt-2">
+					<span
+						class="absolute top-0 bottom-6 left-[27px] w-0.5 rounded-full bg-slate-300"
+						aria-hidden="true"
+					></span>
+					<ul>
+						{#each list as release (release.id)}
+							{@const ago = agoOf(release.at)}
+							<li class="py-[3px]">
+								<button
+									type="button"
+									class="relative flex w-full min-w-0 items-center text-left"
+									onclick={() => onrelease?.(release)}
+								>
+									<span class="relative ml-2 flex w-10 shrink-0 justify-center">
+										<span
+											class="flex size-7 items-center justify-center rounded-full bg-white ring-2 ring-white"
+											role="img"
+											aria-label={RELEASE_MARK.label}
+											><span
+												class="flex size-7 items-center justify-center rounded-full bg-primary/15"
+												><span class="{RELEASE_MARK.icon} size-4 text-primary"></span></span
+											></span
+										>
+									</span>
+									<span
+										class="ml-1 flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 transition {release.isNew
+											? 'bg-primary/[0.06]'
+											: 'hover:bg-slate-900/[0.03]'}"
+									>
+										<span class="min-w-0 flex-1">
+											<span class="block truncate text-[13px] leading-5 text-slate-600"
+												>{@render bold(release.title)} release notes</span
+											>
+											<span class="block truncate text-xs leading-5 text-slate-400"
+												><span class="font-medium {ago.tone}">{ago.words}</span
+												>{#if release.words}{' · '}{release.words}{/if}</span
+											>
+										</span>
+										{#if release.isNew}<span
+												class="size-2 shrink-0 rounded-full bg-primary"
+												aria-label="New"
+											></span>{/if}
+									</span>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+		</li>
+	{/if}
 {/snippet}
 
 <!-- A group's lines, under its big picture: each one's small icon on the grey line that drops from it. With `hasFace`
@@ -763,9 +856,7 @@
 				{#each byBucket(flat, (item) => item.at, now) as bucket (bucket.label)}
 					{@render heading(bucket.label)}
 					{#each bucket.items as item (item.id)}
-						{#if item.release}{@render releaseLine(item.release)}{:else if item.event}{@render line(
-								item.event
-							)}{/if}
+						{#if item.event}{@render line(item.event)}{:else}{@render releaseItem(item)}{/if}
 					{/each}
 				{/each}
 			</ul>
@@ -775,10 +866,11 @@
 			<ul>
 				{#each byBucket(grouped, (item) => item.at, now) as bucket (bucket.label)}
 					{@render heading(bucket.label)}
-					{#each bucket.items as { id, run, release } (id)}
-						{#if release}
-							{@render releaseLine(release)}
-						{:else if run?.events.length === 1}
+					{#each bucket.items as item (item.id)}
+						{@const run = item.run}
+						{#if !run}
+							{@render releaseItem(item)}
+						{:else if run.events.length === 1}
 							{@render line(run.events[0])}
 						{:else if run}
 							{@const isOpen = !shut.has(run.id)}

@@ -56,9 +56,29 @@
 	// edges, and its wave is the sheet's colour rising into it. The list fades out under it and above the button as it
 	// scrolls (the library Scroller, through the Dialog's `fade`).
 	const isFresh = $derived(whatsNew.isNewer || freshCount > 0);
+	// The section it opens at: the newest, or the release tapped in the bell (Justin, 2026-11-28), open and in view.
+	const startAt = $derived(
+		Math.max(
+			0,
+			batches.findIndex((batch) => batch.from === whatsNew.openOn)
+		)
+	);
 	let shownAt = $state(0);
-	// The open section, newest first: the newest each time What's New opens, then the one a tap opened; -1 with none.
+	// The open section, newest first: the one it opens at each time What's New opens, then the one a tap opened; -1
+	// with none.
 	let openAt = $state(0);
+	$effect(() => {
+		if (!whatsNew.isOpen) return;
+		const at = untrack(() => startAt);
+		openAt = at;
+		shownAt = at;
+	});
+
+	/** The section it opened at, when it is not the first: brought to the top of the list once drawn. */
+	function bringIntoView(section: HTMLElement) {
+		const frame = requestAnimationFrame(() => section.scrollIntoView({ block: 'start' }));
+		return () => cancelAnimationFrame(frame);
+	}
 	const shown = $derived(batches[shownAt] ?? batches[0]);
 	const shownVersion = $derived(
 		shown?.release ? toTag(shown.release.version) : shown === batches[0] ? version : ''
@@ -243,13 +263,13 @@
 					{@attach followScroll}
 				>
 					{#each batches as batch, at (batch.from)}
-						<li>
+						<li {@attach at === startAt && at > 0 ? bringIntoView : undefined}>
 							<!-- A section a tap opens stands at the top as the first does with nothing scrolled: the list's
 							     own room above it, nothing of the one before it showing. -->
 							<Accordion
 								{...fold}
 								class="{fold.class ?? ''} scroll-mt-4"
-								open={at === 0}
+								open={at === startAt}
 								group="whats-new"
 								snap
 								ontoggle={(isOpen) => follow(at, isOpen)}

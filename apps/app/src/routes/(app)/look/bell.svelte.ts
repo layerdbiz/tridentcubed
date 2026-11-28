@@ -13,7 +13,7 @@ import { markSeen, unseenOf } from './seen';
 /** How often the bell reads again while the app is open. */
 export const NOTIFICATIONS_EVERY_MS = 3 * 60_000;
 
-/** How many of What's New's days the bell shows. */
+/** How many of What's New's days the bell shows, with every version each of them released. */
 const RELEASE_DAYS = 3;
 
 /**
@@ -24,19 +24,24 @@ const RELEASE_DAYS = 3;
 export function toReleaseLines(whatsNew: WhatsNewState): ReleaseLineType[] {
 	const history = whatsNew.history;
 	if (!history) return [];
-	return history.batches.slice(0, RELEASE_DAYS).map((batch) => {
-		const words = batch.changes.map((change) => change.text);
-		return {
-			id: `release-${batch.release?.version ?? batch.day}-${batch.to}`,
-			at: batch.to,
-			title: batch.release ? toTag(batch.release.version) : batch.day,
-			words:
-				words.length > 2
-					? `${words.slice(0, 2).join(' · ')} and ${words.length - 2} more`
-					: words.join(' · '),
-			isNew: whatsNew.seenAt >= 0 && batch.changes.some((change) => change.landed > whatsNew.seenAt)
-		};
-	});
+	const days = [...new Set(history.batches.map((batch) => batch.day))].slice(0, RELEASE_DAYS);
+	return history.batches
+		.filter((batch) => days.includes(batch.day))
+		.map((batch) => {
+			const words = batch.changes.map((change) => change.text);
+			return {
+				id: `release-${batch.release?.version ?? batch.day}-${batch.to}`,
+				at: batch.to,
+				from: batch.from,
+				title: batch.release ? toTag(batch.release.version) : batch.day,
+				words:
+					words.length > 2
+						? `${words.slice(0, 2).join(' · ')} and ${words.length - 2} more`
+						: words.join(' · '),
+				isNew:
+					whatsNew.seenAt >= 0 && batch.changes.some((change) => change.landed > whatsNew.seenAt)
+			};
+		});
 }
 
 export class NotificationsState {

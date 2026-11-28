@@ -106,9 +106,9 @@
 					notifications.see(event.id);
 					onclose(true);
 				}}
-				onrelease={() => {
+				onrelease={(release) => {
 					onclose(true);
-					whatsNew.openAll();
+					whatsNew.openAt(release.from);
 				}}
 			/>
 		{/if}
