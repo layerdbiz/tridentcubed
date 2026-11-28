@@ -3,9 +3,9 @@
 	// have in the project edit panels for the team member edit panels ... It should use the exact same UI, bit by
 	// bit"): their panels in the cards a project's panels are drawn in (panel-card.svelte), each with its icon in its
 	// progress ring, "N of M complete", its percent and state, and the lock of a panel that is always there; open, the
-	// sections a Project panel has (group.svelte), only the first open to start with. Profile holds their Details and
-	// how to reach them, the same fields the + sheet asks for (record-fields.svelte); the Email Signature, for them or
-	// an Admin, its Photo and Banners (signature-edit.svelte). What each counts is tally.ts's (`teamPanelsOf`), which
+	// sections a Project panel has (group.svelte), only each panel's first open to start with. Profile holds their
+	// Details and how to reach them, the same fields the + sheet asks for (record-fields.svelte); the Email Signature,
+	// for them or an Admin, its Signature, Photos and Banners (signature-edit.svelte). What each counts is tally.ts's (`teamPanelsOf`), which
 	// the header's percent reads too. A tap on a percent lists what is still empty in the app's toast, as a project's
 	// does, and an entry opens its panel and section and puts the focus on it. One panel is open at a time, Profile to start with.
 	import { untrack } from 'svelte';
@@ -38,14 +38,11 @@
 	const SETTLE = 260;
 	const SECTIONS: Record<string, string> = {
 		details: 'Details',
-		contact: 'Contact',
-		'signature-photo': 'Photo',
-		'signature-banners': 'Banner',
-		'signature-groups': 'Group email'
+		contact: 'Contact'
 	};
 
 	let openId = $state('profile');
-	let openSections = $state<string[]>(['details']);
+	let openSections = $state<string[]>(['details', 'signature-details']);
 	let root = $state<HTMLDivElement>();
 
 	const emptyPanel = $derived(panels.find((panel) => panel.id === emptyFor));
@@ -147,6 +144,8 @@
 						{look}
 						{signature}
 						sections={panel.sections}
+						open={openSections}
+						ontoggle={(id) => (openSections = toggle(openSections, id))}
 					/>
 				{/if}
 			</div>

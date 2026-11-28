@@ -5,7 +5,9 @@
 	// holds what can be done to it. It shows its edit (turned, flipped, straightened and cropped), what kind of
 	// attachment it is, its description's icon, whether it is selected, and an upload on its way, converting or failed.
 	// The caller's box round it gives its place in a sortable list and its shape: square in a photo group, a circle
-	// (`isRound`) for a signature's photo, a banner's own shape.
+	// (`isRound`) for a signature's photo, a banner's own shape. A circle can sit in a square frame (`isFramed`, Justin,
+	// 2026-11-28: "give these a light background color ... so we could see the actual size of it"), padded so its ⋮
+	// stays clear of the picture. The picture in use (`isChosen`) wears a green border, on the frame where there is one.
 	import { Menu, type MenuOptionType } from '@layerd/ui';
 	import Picture from '#lib/components/photo/picture.svelte';
 	import {
@@ -31,6 +33,8 @@
 		isRound = false,
 		hasBadge = true,
 		hasNote = true,
+		isFramed = false,
+		isChosen = false,
 		options,
 		align = 'right',
 		onopen,
@@ -53,6 +57,10 @@
 		hasBadge?: boolean;
 		/** Its description's icon, where it has one: not on a picture with no description to edit. */
 		hasNote?: boolean;
+		/** A round picture in a grey square frame, padded clear of its ⋮. */
+		isFramed?: boolean;
+		/** The picture in use, where one of a panel's is: a green border. */
+		isChosen?: boolean;
 		/** Its ⋮. */
 		options: MenuOptionType[];
 		align?: 'left' | 'right';
@@ -60,13 +68,16 @@
 		onpick: (id: string) => void;
 	} = $props();
 
-	const shape = $derived(isRound ? 'rounded-full' : 'rounded-xl');
+	// The tile's own outline: the frame's square where it has one, else the picture's.
+	const shape = $derived(isRound && !isFramed ? 'rounded-full' : 'rounded-xl');
 </script>
 
 <button
 	type="button"
-	class="relative block size-full overflow-hidden {shape} bg-slate-100 select-none [-webkit-touch-callout:none]"
-	aria-label="{isSelecting ? 'Select' : 'Open'} photo {index + 1}"
+	class="relative block size-full overflow-hidden {shape} {isFramed
+		? 'bg-slate-900/[0.06] p-4'
+		: 'bg-slate-100'} select-none [-webkit-touch-callout:none]"
+	aria-label="{isSelecting ? 'Select' : 'Open'} photo {index + 1}{isChosen ? ', in use' : ''}"
 	aria-pressed={isSelecting ? isPicked : undefined}
 	data-grip={sortKey}
 	onclick={onopen}
@@ -84,20 +95,26 @@
 		</span>
 	{:else}
 		<!-- #295: the tile as it is edited: turned, flipped, straightened and cropped. -->
-		<Picture
-			src={photo.src}
-			alt={photo.description}
-			edit={editOf(photo)}
-			class="pointer-events-none size-full {upload || isBusy ? 'opacity-60' : ''}"
-			onerror={() => {
-				if (upload) upload.hasPreview = false;
-			}}
-		/>
+		<span
+			class="pointer-events-none block size-full overflow-hidden {isFramed ? 'rounded-full' : ''}"
+		>
+			<Picture
+				src={photo.src}
+				alt={photo.description}
+				edit={editOf(photo)}
+				class="pointer-events-none size-full {upload || isBusy ? 'opacity-60' : ''}"
+				onerror={() => {
+					if (upload) upload.hasPreview = false;
+				}}
+			/>
+		</span>
 	{/if}
-	<!-- A soft shade in the corner, so the white ⋮ reads on a pale photo too (run 19). -->
-	<span
-		class="pointer-events-none absolute top-0 right-0 size-12 bg-[radial-gradient(circle_at_top_right,rgb(0_0_0/0.45),transparent_70%)]"
-	></span>
+	{#if !isFramed}
+		<!-- A soft shade in the corner, so the white ⋮ reads on a pale photo too (run 19). -->
+		<span
+			class="pointer-events-none absolute top-0 right-0 size-12 bg-[radial-gradient(circle_at_top_right,rgb(0_0_0/0.45),transparent_70%)]"
+		></span>
+	{/if}
 	{#if photo.description && hasNote}
 		<span
 			class="absolute bottom-1 left-1 icon-[mdi--text-box] size-5 text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
@@ -138,6 +155,11 @@
 			class="pointer-events-none absolute inset-0 {shape} inset-ring-3 inset-ring-primary"
 			data-picked
 		></span>
+	{:else if isChosen}
+		<span
+			class="pointer-events-none absolute inset-0 {shape} inset-ring-3 inset-ring-success"
+			data-chosen
+		></span>
 	{/if}
 </button>
 <!-- #189: on its way to storage, a small mark; a failed upload says so and retries in place. #294: while
@@ -169,7 +191,11 @@
 {/if}
 <!-- #402: while its panel is selecting, a photo's ⋮ goes: the Selection bar acts on them all. -->
 <div
-	class="absolute {isRound ? 'top-0 right-0' : 'top-1 right-1'} {isSelecting ? 'hidden' : ''}"
+	class="absolute {isFramed
+		? 'top-0.5 right-0.5'
+		: isRound
+			? 'top-0 right-0'
+			: 'top-1 right-1'} {isSelecting ? 'hidden' : ''}"
 	data-no-drag
 >
 	<Menu
@@ -181,16 +207,23 @@
 	>
 		{#snippet trigger()}
 			<!-- A circle leaves the corner empty, so its ⋮ sits on a dark dot of its own. -->
-			<span
-				class="flex size-7 items-center justify-center text-white {isRound
-					? 'rounded-full bg-black/55 shadow'
-					: ''}"
-				><span
-					class="icon-[mdi--dots-vertical] {isRound
-						? 'size-5'
-						: 'size-6 drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]'}"
-				></span></span
-			>
+			<!-- In a frame, the ⋮ is grey on the grey, in the corner the circle leaves empty. -->
+			{#if isFramed}
+				<span class="flex size-7 items-center justify-center text-slate-500"
+					><span class="icon-[mdi--dots-vertical] size-5"></span></span
+				>
+			{:else}
+				<span
+					class="flex size-7 items-center justify-center text-white {isRound
+						? 'rounded-full bg-black/55 shadow'
+						: ''}"
+					><span
+						class="icon-[mdi--dots-vertical] {isRound
+							? 'size-5'
+							: 'size-6 drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]'}"
+					></span></span
+				>
+			{/if}
 		{/snippet}
 	</Menu>
 </div>
