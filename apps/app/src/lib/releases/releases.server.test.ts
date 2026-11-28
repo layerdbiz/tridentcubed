@@ -20,6 +20,11 @@ function commit(subject: string) {
 	return run('rev-parse', 'HEAD');
 }
 
+// A date as one moment, whichever way git wrote it.
+function toMoment(date: string | undefined) {
+	return date ? new Date(date).toISOString() : '';
+}
+
 function tag(version: string, at = 'HEAD') {
 	run('tag', '--annotate', `v${version}`, '--message', `v${version}`, at);
 }
@@ -125,12 +130,13 @@ describe('the releases a build knows', () => {
 		const dev = readReleaseState('HEAD', { branch: 'dev' });
 		const next = readReleaseState('HEAD', { branch: 'next' });
 
-		expect(readTags()[0].date).toBe('2026-11-30T15:00:00+00:00');
+		// git writes UTC as +00:00 or as Z, by its version: the moment is what counts.
+		expect(toMoment(readTags()[0].date)).toBe('2026-11-30T15:00:00.000Z');
 		expect(dev.releases.map((each) => [each.version, Boolean(each.date)])).toEqual([
 			['1.0.0', true],
 			['1.1.0', true]
 		]);
-		expect(dev.releases[0].date).toBe('2026-11-30T15:00:00+00:00');
+		expect(toMoment(dev.releases[0].date)).toBe('2026-11-30T15:00:00.000Z');
 		expect(next.releases.map((each) => [each.version, Boolean(each.date)])).toEqual([
 			['1.0.0-next.1', false],
 			['1.0.0', true],
