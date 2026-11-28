@@ -63,10 +63,12 @@ top, after below.
 ## Agent skills
 
 ### Skills library
-Every skill comes from Justin's library `oneezy/skills`, linked into
-`~/.claude/skills` by skills-sync; this repo holds no copies of library
-skills. A cloud session (`CLAUDE_CODE_REMOTE=true`) gets the library from
-the environment's setup script or this repo's SessionStart hook. If a skill
+Every skill comes from Justin's library, edited only in oneezy/tools
+`packages/skills` (see Adding or changing a skill). Installs read its
+release mirror `oneezy/skills`, linked into `~/.claude/skills` by
+skills-sync; this repo holds no copies of library skills. A cloud session
+(`CLAUDE_CODE_REMOTE=true`) gets the library from the environment's setup
+script or this repo's SessionStart hook. If a skill
 Justin asks for is not in your skill list, run this first, then carry on:
 
 ```
@@ -85,18 +87,19 @@ skills marked `disable-model-invocation` (`/wayfinder`, `/grill-me`,
 `~/.claude/skills/<name>/SKILL.md` and follow it, with the rest of the
 message as its arguments.
 
-### Adding a skill
-To add a skill, Justin just asks ("add <owner/repo> skills", or a link to
-one skill) and `/oneezy-skills` does the rest: it writes the change in a
-fresh clone of `oneezy/skills` and pushes a `land/add-<id>` branch; a
-GitHub workflow there checks it, merges it into `dev` and `main` and cuts
-the next release with no review (Justin approved that for `oneezy/skills`
-only), then the skill syncs it here. Never ask Justin to review or merge a
+### Adding or changing a skill
+To add or change a skill or a global rule, Justin just asks ("add
+<owner/repo> skills", or a link to one skill) and `/oneezy-skills` does the
+rest. The change is made only in oneezy/tools `packages/skills`, through a
+pull request into tools `dev` (tools ADR-0021); a release of
+`oneezy/skills` then carries it, and skills-sync brings it here. Where a
+loaded skill still names `oneezy/skills` or a `land/*` branch for the
+change, follow this section instead. Never ask Justin to review or merge a
 skills change, and never put skill copies in this repo; this repo keeps its
-own Working rules above. Pushing needs
-`oneezy/skills` among this project's repositories; when a push is refused,
-say so and stop, and Justin adds the repo or runs the add from his Tools
-project. The one skill still committed here,
+own Working rules above. Opening that pull request needs `oneezy/tools`
+among this project's repositories; when a push is refused, say so and stop,
+and Justin adds the repo or makes the change from his Tools project. The
+one skill still committed here,
 `.claude/skills/resolving-merge-conflicts`, is not in the library yet and
 stays until it moves there.
 
