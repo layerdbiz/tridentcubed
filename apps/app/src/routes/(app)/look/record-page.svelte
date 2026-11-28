@@ -10,24 +10,30 @@
 	// a Team member whose Email Signature the signed-in person may see (their own, or anyone's for an Admin) has its
 	// Photo and Banners on Edit, under their details, and a third tab, Preview, the signature on the report's canvas
 	// with Copy in the zoom bar.
+	// 2026-11-28 (Justin: "I want the exact same page setup that we have in the project edit panels for the team member
+	// edit panels"): a Team member's Edit is their panels, drawn as a project's are (team-edit.svelte), under the bar a
+	// project's Edit has, with how complete their profile is (project-bar.svelte on a desktop, the page header's
+	// percent and bar on a phone). A tap on that percent lists everything still empty.
 	import { Email } from '@layerd/ui';
 	import { cityStateOf } from './location';
 	import { pinOfRecord, pinsAt } from './chart.data';
 	import Back from './back.svelte';
 	import Chips from './chips.svelte';
 	import { DATASETS } from './look.data';
-	import type { LookState } from './look.state.svelte';
+	import { metricsFrom, type LookState } from './look.state.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import PageHeader from './page-header.svelte';
 	import SaveCloud from './save-cloud.svelte';
 	import PageView from './page-view.svelte';
+	import ProjectBar from './project-bar.svelte';
 	import RecordForm from './record-form.svelte';
 	import RecordMark from './record-mark.svelte';
 	import RecordView from './record-view.svelte';
 	import { customerOf, photosOf, type RecordType } from './records.data';
 	import SignatureCanvas from './signature-canvas.svelte';
-	import SignatureEdit from './signature-edit.svelte';
 	import { SignatureState } from './signature.svelte';
+	import { teamPanelsOf } from './tally';
+	import TeamEdit from './team-edit.svelte';
 	import { ROLE_LABELS } from './team.data';
 
 	let { look, record, isWide }: { look: LookState; record: RecordType; isWide: boolean } = $props();
@@ -50,6 +56,18 @@
 	// svelte-ignore state_referenced_locally
 	const signature = new SignatureState(look, () => (hasSignature ? (record.member?.id ?? '') : ''));
 	const tabs = $derived(look.recordTabs);
+	// A Team member's panels and how complete their profile is: the Email Signature's counts once it has loaded.
+	const panels = $derived(
+		record.member ? teamPanelsOf(record.member, hasSignature ? signature.draft : undefined) : []
+	);
+	const profile = $derived(metricsFrom(panels.flatMap((panel) => panel.sections)));
+	// Whose empty inputs the toast lists (team-edit.svelte): a panel's, or `all` from the header's percent.
+	let emptyFor = $state('');
+
+	function showEmpty() {
+		if (profile.percent >= 100) return look.say('Everything in this profile is filled in');
+		emptyFor = 'all';
+	}
 
 	let swiper: HTMLDivElement | undefined = $state();
 	let isLanded = false;
@@ -97,29 +115,51 @@
 </script>
 
 {#snippet header()}
-	<div class="flex items-center gap-2">
-		<Back
-			label="Back to {DATASETS[record.page].label}"
-			class="shrink-0"
-			onclick={() => look.home()}
-		/>
-		<RecordMark
-			{record}
-			size={36}
-			hasBadge={false}
-		/>
-		<span class="min-w-0 flex-1">
-			<span class="block truncate font-semibold text-slate-900">{record.key}</span>
-			<span class="block truncate text-xs text-slate-500">{DATASETS[record.page].one}</span>
-		</span>
-		<!-- The save cloud is up here, not in the bar. -->
-		<SaveCloud {look} />
-		<MoreMenu
+	{#if record.member}
+		<ProjectBar
 			{look}
+			title={record.key}
+			kind={DATASETS[record.page].one}
+			percent={profile.percent}
+			status={profile.status}
+			whose="this profile"
 			page={record.page}
 			id={record.key}
-		/>
-	</div>
+			onprogress={showEmpty}
+		>
+			{#snippet mark()}
+				<RecordMark
+					{record}
+					size={36}
+					hasBadge={false}
+				/>
+			{/snippet}
+		</ProjectBar>
+	{:else}
+		<div class="flex items-center gap-2">
+			<Back
+				label="Back to {DATASETS[record.page].label}"
+				class="shrink-0"
+				onclick={() => look.home()}
+			/>
+			<RecordMark
+				{record}
+				size={36}
+				hasBadge={false}
+			/>
+			<span class="min-w-0 flex-1">
+				<span class="block truncate font-semibold text-slate-900">{record.key}</span>
+				<span class="block truncate text-xs text-slate-500">{DATASETS[record.page].one}</span>
+			</span>
+			<!-- The save cloud is up here, not in the bar. -->
+			<SaveCloud {look} />
+			<MoreMenu
+				{look}
+				page={record.page}
+				id={record.key}
+			/>
+		</div>
+	{/if}
 {/snippet}
 
 <!-- Drawn out of sight: the library Email writes the signature's HTML, which Preview shows and copies. -->
@@ -133,20 +173,25 @@
 {/if}
 
 {#snippet form()}
-	<RecordForm
-		{look}
-		{record}
-	>
-		{#if hasSignature}
-			<section class="space-y-3 pt-2">
-				<h3 class="px-1 text-sm font-semibold text-slate-900">Email Signature</h3>
-				<SignatureEdit
-					{look}
-					{signature}
-				/>
-			</section>
-		{/if}
-	</RecordForm>
+	{#if record.member}
+		<RecordForm
+			{look}
+			{record}
+		>
+			<TeamEdit
+				{look}
+				{record}
+				{panels}
+				{signature}
+				bind:emptyFor
+			/>
+		</RecordForm>
+	{:else}
+		<RecordForm
+			{look}
+			{record}
+		/>
+	{/if}
 {/snippet}
 
 <!-- Preview: the Email Signature on the canvas, or why there is none yet. -->
@@ -269,6 +314,10 @@
 				id={record.key}
 				title={record.key}
 				kind={DATASETS[record.page].one}
+				progress={record.member ? profile.percent : undefined}
+				status={record.member ? profile.status : undefined}
+				whose="this profile"
+				onprogress={record.member ? showEmpty : undefined}
 				reveal={look.tabProgress}
 				isLight={isPhoto}
 				hasCloud

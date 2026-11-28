@@ -25,6 +25,7 @@ import {
 	PAGES,
 	registerCustomer,
 	registerPerson,
+	STATUS,
 	type ClientType,
 	type DatasetType,
 	type FacilityType,
@@ -46,7 +47,15 @@ import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
 import { lookOf } from './look.constants';
 import { contactsOf, type PageType } from './records.data';
 import { Selection } from './selection.svelte';
-import { emptyOf, hasRequired, sectionsOf, tallyOf, toPercent, type EmptyType } from './tally';
+import {
+	emptyOf,
+	hasRequired,
+	sectionsOf,
+	tallyOf,
+	toPercent,
+	type EmptyType,
+	type SectionType
+} from './tally';
 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import type { TeamMemberType } from './team.data';
@@ -79,11 +88,19 @@ function sectionsIn(panel: PanelType, look: LookState) {
 // A panel's count is its sections' counts added up: every input counts once, done when it holds something. A
 // panel with no input yet (no rows, no days) has one thing to do.
 export function metricsOf(panel: PanelType, look: LookState): MetricsType {
-	const inputs = sectionsIn(panel, look).flatMap((section) => section.inputs);
-	const tally = tallyOf(inputs.map((input) => input.value));
-	const total = Math.max(1, tally.total);
+	const metrics = metricsFrom(sectionsIn(panel, look));
 	// A panel switched off is not planned: it reads like any other panel, with nothing of its total done, 0% (#225).
-	if (!panel.isEnabled) return { done: 0, total, percent: 0, status: 'Not planned' };
+	if (!panel.isEnabled) return { ...metrics, done: 0, percent: 0, status: 'Not planned' };
+	return metrics;
+}
+
+/**
+ * The count, percent and state of any sections' inputs (tally.ts): a project's panel, or a Team member's panel and
+ * their whole profile (2026-11-28), counted the one way.
+ */
+export function metricsFrom(sections: SectionType[]): MetricsType {
+	const tally = tallyOf(sections.flatMap((section) => section.inputs.map((input) => input.value)));
+	const total = Math.max(1, tally.total);
 	const percent = toPercent(tally.done, total);
 	const status: PanelStatusType =
 		percent >= 100 ? 'Complete' : percent === 0 ? 'To do' : 'In progress';
@@ -177,6 +194,15 @@ const KEEP = 'trident-v1-app';
 // refuses them (#186).
 export const FROZEN: StatusType[] = ['Sent', 'Complete', 'Archived'];
 
+/** The colours of a percent's state and bar: a project's status (Draft, Sent) or a panel's (In progress). */
+export function progressToneOf(status: StatusType | PanelStatusType) {
+	if (status in STATUS) {
+		const { tone, bar } = STATUS[status as StatusType];
+		return { text: tone, bar };
+	}
+	return toneOf(status as PanelStatusType);
+}
+
 export function toneOf(status: PanelStatusType) {
 	if (status === 'Complete')
 		return { bar: 'bg-success', text: 'text-success', ring: 'stroke-success' };
@@ -255,6 +281,12 @@ export class LookState {
 	emptyFor = $state<{ projectId: string; panelId?: string }>();
 	// The input an entry of that list opens, until the panel showing it has put the focus on it (panel-body.svelte).
 	reaching = $state<EmptyInputType>();
+	// A record's own list of what is still empty, in that same toast: a Team member's Edit (team-edit.svelte).
+	recordEmpties = $state<{
+		note: string;
+		items: { label: string; onclick: () => void }[];
+		onclose: () => void;
+	}>();
 	workspaces = $state<Record<string, PanelType[]>>({});
 	transports = $state<TransportType[]>([]);
 	facilities = $state<FacilityType[]>([]);
