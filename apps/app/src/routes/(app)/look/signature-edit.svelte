@@ -1,7 +1,7 @@
 <script lang="ts">
 	// A Team member's Email Signature on their Edit (#354; Justin, 2026-11-28: "I want to include the email signature
-	// into the main edit page of the team member"): its photo and its banners, under their details, as a Project
-	// panel's photo groups. The photo is the signature's own, never the profile picture above it, always a circle,
+	// into the main edit page of the team member"): its photo and its banners, the two sections of the Email Signature
+	// panel (team-edit.svelte), as a Project panel's photo groups, each saying how much of it is filled in. The photo is the signature's own, never the profile picture above it, always a circle,
 	// and a tap on it in an email goes to its link; it opens in the project's photo editor. Banners show whole, in
 	// their own shape (photo-grid.svelte's `original`), as the email draws them: dragged to reorder, edited, deleted,
 	// each with the link it opens in a new window. Every company banner shows under them for anyone to tap on or off.
@@ -16,8 +16,18 @@
 	import PhotoTile from './photo-tile.svelte';
 	import { tileOf, type SignaturePartType, type SignatureState } from './signature.svelte';
 	import { sortable } from './sortable';
+	import { valuesOf, type SectionType } from './tally';
 
-	let { look, signature }: { look: LookState; signature: SignatureState } = $props();
+	let {
+		look,
+		signature,
+		sections
+	}: {
+		look: LookState;
+		signature: SignatureState;
+		/** What its Photo and Banners hold, for the lines under their names (tally.ts, `teamPanelsOf`). */
+		sections: SectionType[];
+	} = $props();
 
 	const BANNERS = 'signature-banners';
 	const COMPANY = 'signature-company-banners';
@@ -29,8 +39,8 @@
 		spellcheck: false
 	} as const;
 
-	// Both start open, there being only these.
-	let open = $state<SignaturePartType[]>(['photo', 'banners']);
+	// Only the first starts open, as a Project panel's sections do (Justin, 2026-11-16).
+	let open = $state<SignaturePartType[]>(['photo']);
 	function toggle(id: SignaturePartType) {
 		open = open.includes(id) ? open.filter((item) => item !== id) : [...open, id];
 	}
@@ -88,7 +98,8 @@
 	>
 		<Group
 			title="Photo"
-			meta={draft.photo.label}
+			section="signature-photo"
+			values={valuesOf(sections, 'signature-photo')}
 			image={draft.photo.preview || undefined}
 			icon="icon-[mdi--account-circle-outline]"
 			isOpen={open.includes('photo')}
@@ -181,6 +192,8 @@
 	>
 		<Group
 			title="Banners"
+			section="signature-banners"
+			values={valuesOf(sections, 'signature-banners')}
 			meta={draft.banners.length
 				? `${draft.banners.length} ${draft.banners.length === 1 ? 'banner' : 'banners'}`
 				: 'None'}

@@ -10,8 +10,8 @@
 	// percent a button: a project's lists its empty inputs (#305).
 	import type { Snippet } from 'svelte';
 	import { ProgressBar } from '@layerd/ui';
-	import { DATASETS, STATUS, type DatasetType, type StatusType } from './look.data';
-	import type { LookState } from './look.state.svelte';
+	import { DATASETS, type DatasetType, type PanelStatusType, type StatusType } from './look.data';
+	import { progressToneOf, type LookState } from './look.state.svelte';
 	import Back from './back.svelte';
 	import MoreMenu from './more-menu.svelte';
 	import Percent from './percent.svelte';
@@ -25,6 +25,7 @@
 		kind = '',
 		progress,
 		status,
+		whose = 'this project',
 		reveal = 1,
 		isLight = false,
 		hasCloud = false,
@@ -41,9 +42,11 @@
 		title: string;
 		// A second line under the name: "Customer", "Facility".
 		kind?: string;
-		// A project's percent and state; left out, the header has no progress.
+		// A project's percent and state, or a Team member's profile's (2026-11-28); left out, the header has no progress.
 		progress?: number;
-		status?: StatusType;
+		status?: StatusType | PanelStatusType;
+		/** Whose percent, in words: "this project", "Profile". */
+		whose?: string;
 		reveal?: number;
 		isLight?: boolean;
 		hasCloud?: boolean;
@@ -57,7 +60,7 @@
 
 	const shown = $derived(Math.min(1, Math.max(0, reveal)));
 	const isBar = $derived(shown >= 0.5);
-	const tone = $derived(status ? STATUS[status] : undefined);
+	const tone = $derived(status ? progressToneOf(status) : undefined);
 	const ghost = $derived(
 		isLight && !isBar
 			? 'text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]'
@@ -100,9 +103,9 @@
 					<Percent
 						percent={progress}
 						status={status ?? ''}
-						whose="this project"
-						tone={tone.tone}
-						title="{progress}% of this project is done"
+						{whose}
+						tone={tone.text}
+						title="{progress}% of {whose} is done"
 						onclick={onprogress}
 					/>
 				{/if}
@@ -110,7 +113,7 @@
 			{#if progress !== undefined && tone}
 				<ProgressBar
 					value={progress}
-					label="Project progress"
+					label="{whose === 'this project' ? 'Project' : whose} progress"
 					track="bg-slate-900/[0.07]"
 					fill={tone.bar}
 					class="mt-1.5"

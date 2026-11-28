@@ -15,6 +15,7 @@ import { legsOf } from './legs';
 import { LINK_LABEL, toLink } from './link';
 import { isPdfAttachment, type OrganizationType, type PanelType } from './look.data';
 import { isStored } from './mapper.photos';
+import { labelsOf, type TeamMemberType } from './team.data';
 
 export type TallyType = { done: number; total: number };
 /** One input. An optional one counts like the rest; it only never holds a status back (`hasRequired`). */
@@ -92,9 +93,9 @@ export function emptyOf(sections: SectionType[]): EmptyType[] {
 	return empty;
 }
 
-/** What the list of them is headed: "3 empty inputs in the Project panel", or "in this project". */
-export function toEmptyNote(count: number, panelName?: string) {
-	const where = panelName ? `the ${panelName} panel` : 'this project';
+/** What the list of them is headed: "3 empty inputs in the Project panel", or "in this project" (`whole`). */
+export function toEmptyNote(count: number, panelName?: string, whole = 'this project') {
+	const where = panelName ? `the ${panelName} panel` : whole;
 	return `${count} empty ${count === 1 ? 'input' : 'inputs'} in ${where}`;
 }
 
@@ -307,4 +308,68 @@ export function organizationSectionsOf(organization: WordingType): SectionType[]
 			]
 		}
 	];
+}
+
+/** The photo and banners of a Team member's Email Signature, as its Edit holds them (signature.svelte.ts). */
+type SignatureInputsType = { photo: { source: string; link: string }; banners: unknown[] };
+
+/** A Team member's panel on their Edit: what it is called, its icon, and the sections it holds. */
+export type TeamPanelType = { id: string; name: string; icon: string; sections: SectionType[] };
+
+/**
+ * A Team member's Edit, panel by panel, as a project's is (Justin, 2026-11-28: "I want the exact same page setup that
+ * we have in the project edit panels for the team member edit panels"): Profile, with their Details and how to reach
+ * them, and their Email Signature, with its Photo and Banners, when the signed-in person may see it (`signature`
+ * given, once it has loaded). Every input counts once, done when it holds something; their Photo counts once it is
+ * their own, not the initials drawn in its place. Their percent is every input of these panels, counted the one way
+ * (metricsFrom).
+ */
+export function teamPanelsOf(
+	member: TeamMemberType,
+	signature?: SignatureInputsType
+): TeamPanelType[] {
+	const panels: TeamPanelType[] = [
+		{
+			id: 'profile',
+			name: 'Profile',
+			icon: 'icon-[mdi--account-outline]',
+			sections: [
+				{
+					id: 'details',
+					inputs: [
+						{ label: 'Photo', value: member.photo },
+						{ label: 'Name', value: member.name },
+						{ label: 'Role', value: member.role },
+						{ label: 'Title', value: member.title },
+						{ label: 'Labels', value: labelsOf(member) }
+					]
+				},
+				{
+					id: 'contact',
+					inputs: [
+						{ label: 'Phone', value: member.phone },
+						{ label: 'Email', value: member.email },
+						{ label: 'Location', value: member.location }
+					]
+				}
+			]
+		}
+	];
+	if (signature)
+		panels.push({
+			id: 'signature',
+			name: 'Email Signature',
+			icon: 'icon-[mdi--email-outline]',
+			sections: [
+				{
+					id: 'signature-photo',
+					inputs: [
+						{ label: 'Photo', value: signature.photo.source },
+						{ label: 'Photo link', value: signature.photo.link }
+					]
+				},
+				{ id: 'signature-banners', inputs: [{ label: 'Banners', value: signature.banners }] }
+			]
+		});
+	return panels;
 }
