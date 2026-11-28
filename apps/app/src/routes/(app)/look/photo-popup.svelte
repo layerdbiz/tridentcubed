@@ -10,11 +10,12 @@
 	// #312: an attachment opened from its stage in an edit panel: the whole screen on a phone, a box in the middle of
 	// the window over the dimmed app from tablet width up, the same tools in both.
 	// #295 (Justin, 2026-11-25, round 5 of the prototype, and 2026-11-27): it opens on the crop, the whole picture with
-	// its frame over it, the frame's corners and edges in view. Dragging a corner or an edge grows or shrinks the frame
-	// from its middle (edit.ts `draggedFrame`); dragging inside it moves it. At the top, in its true middle, Rotate and
-	// Flip, then All pages for a PDF of more than one page (on, a change goes to every page; off, to the page on
-	// screen); right under the picture, always in the same spot, where it is among the stage's ("2 of 6"); a back arrow
-	// on the left until something changes, then the X (leave without saving);
+	// its frame over it, the frame's corners in view as white brackets a little way out, its grid only while it is
+	// dragged (2026-11-28). Dragging a corner or an edge grows or shrinks the frame from its middle (edit.ts
+	// `draggedFrame`); dragging inside it moves it. At the top, in its true middle, Rotate and Flip, then All pages for
+	// a PDF of more than one page (on, a change goes to every page; off, to the page on screen); right under the
+	// picture, always in the same spot, where it is among the stage's ("2 of 6"), back and next on each side of it; a
+	// back arrow on the left until something changes, then the X (leave without saving);
 	// on the right the i, the ⋮ and, once something changes, the ✓ (keep every change and close). With All pages on,
 	// the picture is the PDF's pages stacked as selected photos are (#402), the page on screen on top in blue and the
 	// next ones peeking out under it, a tap on one bringing it up (Justin, 2026-11-28: "make the display of it do the
@@ -457,6 +458,9 @@
 		way: '' | 'side' | 'down';
 		time: number;
 	} | null = null;
+	// The frame's grid lines show only while the frame is dragged (Justin, 2026-11-28: "That's the only time we
+	// should show the grid lines"), as Google Photos does.
+	let isFraming = $state(false);
 
 	function onstagedown(event: PointerEvent) {
 		if (hold || isGliding || isMoreOpen()) return;
@@ -499,6 +503,7 @@
 		const dy = event.clientY - hold.y;
 		if (hold.kind === 'frame' && crop && hold.start && hold.handle) {
 			hold.isMoved = true;
+			isFraming = true;
 			const frame = draggedFrame(
 				hold.start,
 				hold.handle,
@@ -524,6 +529,7 @@
 		const done = hold;
 		hold = null;
 		if (done.kind === 'frame') {
+			isFraming = false;
 			if (!done.isMoved) history.pop();
 			return;
 		}
@@ -705,6 +711,19 @@
 				: ''
 	);
 
+	// The arrows on each side of it: where each goes, none at either end.
+	const back = $derived(stepOf(-1));
+	const on = $derived(stepOf(1));
+
+	// The address names the attachment on screen, so a copied link opens the editor on it (Justin, 2026-11-28), and
+	// forgets it once the editor shuts.
+	$effect(() => {
+		if (photo) look.editingId = photo.id;
+	});
+	$effect(() => () => {
+		look.editingId = '';
+	});
+
 	// What Open or Play in the ⋮ opens: the PDF, or the video played in the app.
 	const openLink = $derived(
 		photo?.kind && photo.source
@@ -774,6 +793,10 @@
 	// Its list opens from More's right edge on a phone and its left edge on a wider screen.
 	const wide = new MediaQuery('min-width: 48rem');
 
+	// What is picked, a shape, a tool or Flip, shows by its icon in bright blue, its word white, on no grey (Justin,
+	// 2026-11-28: "make the icon blue, like a bright blue like that color, with the white text").
+	const PICKED = 'text-primary-400';
+
 	// Rotate and Flip at the top look as they did under the strip, the icon over its word (Justin, 2026-11-27: "just
 	// like this at the top. And not buttons").
 	const topClass =
@@ -840,11 +863,13 @@
 					<button
 						type="button"
 						class="{topClass} {current.isFlipped
-							? 'bg-white/14 text-white'
+							? 'text-white'
 							: 'text-slate-300 hover:text-white'}"
 						aria-pressed={Boolean(current.isFlipped)}
 						data-edit="flip"
-						onclick={flip}><span class="icon-[mdi--flip-horizontal] size-5"></span>Flip</button
+						onclick={flip}
+						><span class="icon-[mdi--flip-horizontal] size-5 {current.isFlipped ? PICKED : ''}"
+						></span>Flip</button
 					>
 				{/if}
 				{#if isPdf && pageCount > 1}
@@ -1017,9 +1042,13 @@
 									crop.height}px"
 							></div>
 						</div>
-						<!-- The frame stands over the picture's edge, never cut off: its corners and edges stay in view. -->
+						<!-- The frame stands over the picture's edge, never cut off: its corners stay in view, white brackets a little
+						     way out from the picture with black between (Justin, 2026-11-28, as Google Photos draws them). Its edges
+						     still take hold, unseen; its outline and grid show only while it is dragged or the picture turned. -->
 						<div
-							class="absolute cursor-move border border-white/90"
+							class="absolute cursor-move {isFraming || isTurning
+								? 'outline outline-white/70'
+								: ''}"
 							style="left: {crop.frame.x * crop.width}px; top: {crop.frame.y *
 								crop.height}px; width: {crop.frame.w * crop.width}px; height: {crop.frame.h *
 								crop.height}px"
@@ -1030,16 +1059,20 @@
 									class="pointer-events-none absolute inset-0 rounded-full border-2 border-white/85"
 								></span>
 							{/if}
-							{#each [1, 2] as at (at)}
-								<span
-									class="pointer-events-none absolute inset-y-0 w-px bg-white/45"
-									style="left: {at * 33.333}%"
-								></span>
-								<span
-									class="pointer-events-none absolute inset-x-0 h-px bg-white/45"
-									style="top: {at * 33.333}%"
-								></span>
-							{/each}
+							{#if isFraming || isTurning}
+								{#each [1, 2] as at (at)}
+									<span
+										class="pointer-events-none absolute inset-y-0 w-px bg-white/45"
+										style="left: {at * 33.333}%"
+										data-grid-line
+									></span>
+									<span
+										class="pointer-events-none absolute inset-x-0 h-px bg-white/45"
+										style="top: {at * 33.333}%"
+										data-grid-line
+									></span>
+								{/each}
+							{/if}
 							{#if isTurning}
 								{#each [1, 2, 3, 4, 5, 7, 8, 9, 10, 11] as at (at)}
 									<span
@@ -1072,22 +1105,15 @@
 									data-handle={handle}
 								>
 									{#if handle.length === 2}
-										<!-- A corner: two short bars. -->
+										<!-- A corner: two short bars, 6px out from the picture's corner. -->
 										<span
-											class="pointer-events-none absolute size-[18px] border-white {handle.includes(
+											class="pointer-events-none absolute size-[26px] border-white {handle.includes(
 												'n'
 											)
-												? 'top-[19px] border-t-[3px]'
-												: 'bottom-[19px] border-b-[3px]'} {handle.includes('w')
-												? 'left-[19px] border-l-[3px]'
-												: 'right-[19px] border-r-[3px]'}"
-										></span>
-									{:else}
-										<span
-											class="pointer-events-none rounded-full bg-white {handle === 'n' ||
-											handle === 's'
-												? 'h-[3px] w-6'
-												: 'h-6 w-[3px]'}"
+												? 'top-[13px] border-t-[3px]'
+												: 'bottom-[13px] border-b-[3px]'} {handle.includes('w')
+												? 'left-[13px] border-l-[3px]'
+												: 'right-[13px] border-r-[3px]'}"
 										></span>
 									{/if}
 								</span>
@@ -1138,13 +1164,41 @@
 		</div>
 
 		<!-- Right under the picture, where it is among the stage's attachments ("2 of 6"), always in the same spot however
-		     big the picture (Justin, 2026-11-28). -->
-		<p
-			class="h-7 shrink-0 text-center text-[13px] leading-7 font-medium text-slate-300 tabular-nums"
-			data-shown-at
+		     big the picture (Justin, 2026-11-28), back and next on each side of it, each dimmed where there is none
+		     (Justin, 2026-11-28: "1 of 9" with its arrows). The words keep one width, so the arrows never move. -->
+		<div
+			class="flex h-9 shrink-0 items-center justify-center gap-1 {shownAt ? '' : 'invisible'}"
+			data-stepper
 		>
-			{shownAt}
-		</p>
+			<Button
+				ghost
+				invert
+				sm
+				class="disabled:opacity-35"
+				icon="icon-[mdi--chevron-left]"
+				aria-label="Previous"
+				title="Previous"
+				disabled={!back}
+				onclick={() => back && goTo(back.at, back.page, true)}
+			/>
+			<p
+				class="w-28 text-center text-[13px] font-medium text-slate-300 tabular-nums"
+				data-shown-at
+			>
+				{shownAt}
+			</p>
+			<Button
+				ghost
+				invert
+				sm
+				class="disabled:opacity-35"
+				icon="icon-[mdi--chevron-right]"
+				aria-label="Next"
+				title="Next"
+				disabled={!on}
+				onclick={() => on && goTo(on.at, on.page, true)}
+			/>
+		</div>
 
 		{#snippet pageThumb(each: PhotoType, page: number)}
 			{#if pictureOf(each, page + 1, 200)}
@@ -1403,14 +1457,12 @@
 					{@const isOn = !current.ratio}
 					<button
 						type="button"
-						class="{optionClass} {isOn
-							? 'bg-white/14 text-white'
-							: 'text-slate-300 hover:text-white'}"
+						class="{optionClass} {isOn ? 'text-white' : 'text-slate-300 hover:text-white'}"
 						aria-pressed={isOn}
 						title={stageShapeLabel}
 						data-crop-ratio="stage"
 						onclick={() => pickRatio(undefined)}
-						><span class="grid h-5 place-items-center"
+						><span class="grid h-5 place-items-center {isOn ? PICKED : ''}"
 							><span
 								class="block rounded-[2px] border-[1.5px] border-current"
 								style="width: {glyph.width * 0.9}px; height: {glyph.height * 0.9}px"
@@ -1425,13 +1477,11 @@
 						: (current.ratio ?? 'free') === ratio.id}
 					<button
 						type="button"
-						class="{optionClass} {isOn
-							? 'bg-white/14 text-white'
-							: 'text-slate-300 hover:text-white'}"
+						class="{optionClass} {isOn ? 'text-white' : 'text-slate-300 hover:text-white'}"
 						aria-pressed={isOn}
 						data-crop-ratio={ratio.id}
 						onclick={() => pickRatio(ratio.id)}
-						><span class="grid h-5 place-items-center"
+						><span class="grid h-5 place-items-center {isOn ? PICKED : ''}"
 							><span
 								class="block rounded-[2px] border-[1.5px] border-current {ratio.id === 'free'
 									? 'border-dashed'
@@ -1532,21 +1582,22 @@
 		>
 			<button
 				type="button"
-				class="{toolClass} {tool === 'crop' ? 'bg-white/14 text-white' : ''}"
+				class="{toolClass} {tool === 'crop' ? 'text-white' : ''}"
 				aria-pressed={tool === 'crop'}
 				data-tool="crop"
 				onclick={() => (tool = 'crop')}
-				><span class="icon-[mdi--crop] size-6 md:size-5"></span><span>Crop</span></button
+				><span class="icon-[mdi--crop] size-6 md:size-5 {tool === 'crop' ? PICKED : ''}"
+				></span><span>Crop</span></button
 			>
 			{#if !isPictureOnly}
 				<button
 					type="button"
-					class="{toolClass} {tool === 'text' ? 'bg-white/14 text-white' : ''}"
+					class="{toolClass} {tool === 'text' ? 'text-white' : ''}"
 					aria-pressed={tool === 'text'}
 					data-tool="text"
 					onclick={() => (tool = 'text')}
-					><span class="icon-[mdi--pencil-outline] size-6 md:size-5"></span><span>Text</span
-					></button
+					><span class="icon-[mdi--pencil-outline] size-6 md:size-5 {tool === 'text' ? PICKED : ''}"
+					></span><span>Text</span></button
 				>
 			{/if}
 			<button

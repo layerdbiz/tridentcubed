@@ -2,8 +2,9 @@
 	// A photo's tile in an edit panel (#312, #327, #402), moved out of the Project panel's photo groups so every place
 	// that edits a photo shows the same one (Justin, 2026-11-27, of the Email Signature: "this photo panel here, it
 	// should be the same thing that we have in the project edit panels"). A tap opens it in the photo editor; its ⋮
-	// holds what can be done to it. It shows its edit (turned, flipped, straightened and cropped), what kind of
-	// attachment it is, its description's icon, whether it is selected, and an upload on its way, converting or failed.
+	// holds what can be done to it. It shows its edit (turned, flipped, straightened and cropped) with a mark that says
+	// so, what kind of attachment it is, its description's icon, whether it is selected, and an upload on its way,
+	// converting or failed.
 	// The caller's box round it gives its place in a sortable list and its shape: square in a photo group, a circle
 	// (`isRound`) for a signature's photo, a banner's own shape. A circle can sit in a square frame (`isFramed`, Justin,
 	// 2026-11-28: "give these a light background color ... so we could see the actual size of it"), padded so its ⋮
@@ -18,6 +19,7 @@
 	} from '#lib/files/files.schema.js';
 	import { fileDetailsOf } from '#lib/files/files.state.svelte.js';
 	import { toLengthLabel } from '#lib/video/video.utils.js';
+	import { toEditWords } from '#lib/components/photo/edit.js';
 	import { editOf } from './attachments';
 	import type { PhotoType } from './look.data';
 	import type { uploadOf } from './photos';
@@ -70,6 +72,16 @@
 
 	// The tile's own outline: the frame's square where it has one, else the picture's.
 	const shape = $derived(isRound && !isFramed ? 'rounded-full' : 'rounded-xl');
+
+	// What was done to its picture, for its mark, a PDF's pages each counting (Justin, 2026-11-28: "so you can see if
+	// an edit has been made on it, like if it's been cropped").
+	const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
+	const edited = $derived([
+		...new Set([editOf(photo), ...Object.values(photo.pageEdits ?? {})].flatMap(toEditWords))
+	]);
+	const editedLabel = $derived(
+		edited.length ? `Edited: ${LIST.format(edited.map((word) => word.toLowerCase()))}` : ''
+	);
 </script>
 
 <button
@@ -114,6 +126,15 @@
 		<span
 			class="pointer-events-none absolute top-0 right-0 size-12 bg-[radial-gradient(circle_at_top_right,rgb(0_0_0/0.45),transparent_70%)]"
 		></span>
+	{/if}
+	<!-- Its picture was edited: a small mark in the top left, saying how. -->
+	{#if editedLabel}
+		<span
+			class="pointer-events-none absolute top-1 left-1 flex size-6 items-center justify-center rounded-full bg-black/65 text-white"
+			title={editedLabel}
+			aria-label={editedLabel}
+			data-edited><span class="icon-[mdi--crop-rotate] size-3.5"></span></span
+		>
 	{/if}
 	{#if photo.description && hasNote}
 		<span

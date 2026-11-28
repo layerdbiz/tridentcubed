@@ -1,5 +1,7 @@
 // The address follows what is on screen (#161, kept in V1 by #180): the screen, its tab and view, the open project,
-// panel or record, the report page a link asked for, and the dashboard's page, range and chart ride in the
+// panel or record, the attachment open in the photo editor (Justin, 2026-11-28: "if I copy and paste a photo editor
+// panel URL into another window, I want that to open up the photo editor panel"), the report page a link asked
+// for, and the dashboard's page, range and chart ride in the
 // address's search, so a reload, the back button or a shared link lands on the same place. look.svelte reads it at start and on back or forward, and writes it.
 import { toPageNumber } from '#lib/report/report.utils.js';
 import type { ChartKindType, RangeType } from './chart.data';
@@ -47,6 +49,8 @@ export function openAddress(look: LookState, params: AddressType) {
 		if (PAGES.slice(1).includes(page) && look.has(page, key)) look.openRecord(page, key, look.tab);
 		else look.screen = 'dashboard';
 	}
+	// The attachment open in the photo editor: its group opens it again once it is drawn (photo-panel.svelte).
+	look.editingId = params.get('photo') ?? '';
 	if (params.has('range')) look.range = params.get('range') as RangeType;
 	if (params.has('chart')) look.chart = params.get('chart') as ChartKindType;
 }
@@ -77,6 +81,8 @@ export function toAddress(look: LookState, from: URL) {
 	if (look.screen === 'record' && look.record)
 		url.searchParams.set('record', `${look.record.page}:${look.record.key}`);
 	else url.searchParams.delete('record');
+	if (look.editingId) url.searchParams.set('photo', look.editingId);
+	else url.searchParams.delete('photo');
 	if (look.screen === 'workspace' && look.pageAsked)
 		url.searchParams.set('page', String(look.pageAsked));
 	else url.searchParams.delete('page');

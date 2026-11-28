@@ -41,6 +41,18 @@ describe('the address', () => {
 		expect(next.panelId).toBe(timelog);
 	});
 
+	it('reopens the photo editor on the same attachment, and forgets it once the editor shuts', () => {
+		const look = withProject();
+		look.editingId = 'photo-7';
+		const address = toAddress(look, new URL(HOME));
+		expect(address.searchParams.get('photo')).toBe('photo-7');
+		expect(reload(look, address).editingId).toBe('photo-7');
+		look.editingId = '';
+		const shut = toAddress(look, address);
+		expect(shut.searchParams.has('photo')).toBe(false);
+		expect(reload(look, shut).editingId).toBe('');
+	});
+
 	it('lands a reload on the same record and tab', () => {
 		const look = new LookState();
 		look.customers = ['KOGA'];
