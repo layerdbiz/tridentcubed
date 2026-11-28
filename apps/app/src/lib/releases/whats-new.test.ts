@@ -212,34 +212,126 @@ describe("What's New telling a release in its highlights", () => {
 		expect(point.closest('li')?.querySelector('.bg-success-300')).not.toBeNull();
 		expect(await findByText('Unpin it there too.')).toBeTruthy();
 	});
+});
 
-	it('shows the release to come as Coming to dev, with no link to notes not yet made', async () => {
+describe("What's New on next.app, as release notes or every change", () => {
+	const coming = {
+		day: '2026-11-28',
+		from: '2026-11-28T15:00:00Z',
+		to: '2026-11-28T15:00:00Z',
+		release: { version: '1.2.0', url: toReleaseUrl('1.2.0') },
+		isUpcoming: true,
+		changes: [
+			{
+				kind: 'feature' as const,
+				text: 'Search',
+				points: ['Search from the menu.'],
+				tickets: [],
+				at: '2026-11-28T15:00:00Z',
+				landed: -1
+			}
+		]
+	};
+	const onDev = {
+		day: '2026-11-26',
+		from: '2026-11-26T20:00:00Z',
+		to: '2026-11-26T20:00:00Z',
+		release: { version: '1.1.0', url: toReleaseUrl('1.1.0'), date: '2026-11-26T20:00:00Z' },
+		changes: [
+			{
+				kind: 'feature' as const,
+				text: 'Pins',
+				points: ['Pin anything to the menu.'],
+				tickets: [],
+				at: '2026-11-26T20:00:00Z',
+				landed: -1
+			}
+		]
+	};
+	const NEXT: HistoryType = { ...RELEASED, version: 'v1.2.0-next.3', notes: [coming, onDev] };
+
+	afterEach(() => localStorage.clear());
+
+	it('opens on the release notes: Coming to dev, with no link to notes not yet made, then each release on dev', async () => {
 		whatsNew.close();
-		const coming = {
-			...TOLD.batches[0],
-			release: { version: '1.2.0', url: toReleaseUrl('1.2.0') },
-			isUpcoming: true,
-			changes: TOLD.batches[0].changes.map((change) => ({ ...change, landed: -1 }))
-		};
 		vi.stubGlobal(
 			'fetch',
-			vi.fn(async () =>
-				Response.json({
-					...RELEASED,
-					version: 'v1.2.0-next.3',
-					batches: [coming, ...RELEASED.batches]
-				})
-			)
+			vi.fn(async () => Response.json(NEXT))
 		);
 		whatsNew.seen = 'c'.repeat(40);
 
-		const { findByText, findAllByText, queryByRole } = render(WhatsNew, {
+		const { findByRole, findAllByText, findByText, queryByRole, queryByText } = render(WhatsNew, {
 			props: { save: { state: 'saved' } }
 		});
 		whatsNew.openAll();
 
+		expect((await findByRole('tab', { name: 'Release notes' })).getAttribute('aria-selected')).toBe(
+			'true'
+		);
 		expect((await findAllByText('Coming to dev')).length).toBeGreaterThan(0);
-		expect(await findByText('Pins')).toBeTruthy();
+		expect(await findByText('Search')).toBeTruthy();
 		expect(queryByRole('link', { name: /v1\.2\.0 release notes/ })).toBeNull();
+		expect(queryByText('Pin anything')).toBeNull();
+
+		await fireEvent.click((await findByText('v1.1.0')).closest('[aria-expanded]')!);
+		expect(await findByText('Pin anything to the menu.')).toBeTruthy();
+		expect(await findByRole('link', { name: /v1\.1\.0 release notes/ })).toBeTruthy();
+	});
+
+	it('shows every change on a tap, and opens on it the next time', async () => {
+		whatsNew.close();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => Response.json(NEXT))
+		);
+		whatsNew.seen = 'c'.repeat(40);
+
+		const first = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		whatsNew.openAll();
+		await fireEvent.click(await first.findByRole('tab', { name: 'Every change' }));
+
+		expect(await first.findByText('Pin anything')).toBeTruthy();
+		expect(first.queryByText('Search')).toBeNull();
+		first.unmount();
+
+		whatsNew.close();
+		const again = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		whatsNew.openAll();
+		expect(
+			(await again.findByRole('tab', { name: 'Every change' })).getAttribute('aria-selected')
+		).toBe('true');
+		expect(await again.findByText('Pin anything')).toBeTruthy();
+	});
+
+	it('opens on every change when a version is tapped in the bell', async () => {
+		whatsNew.close();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => Response.json(NEXT))
+		);
+		whatsNew.seen = 'c'.repeat(40);
+
+		const { findByRole, findByText } = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		whatsNew.openAt(RELEASED.batches[0].from);
+
+		expect((await findByRole('tab', { name: 'Every change' })).getAttribute('aria-selected')).toBe(
+			'true'
+		);
+		expect(await findByText('Pin anything')).toBeTruthy();
+	});
+
+	it('shows no tabs on dev.app, whose list is its release notes', async () => {
+		whatsNew.close();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => Response.json(RELEASED))
+		);
+		whatsNew.seen = 'c'.repeat(40);
+
+		const { findByText, queryByRole } = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		whatsNew.openAll();
+
+		expect(await findByText('Pin anything')).toBeTruthy();
+		expect(queryByRole('tablist')).toBeNull();
 	});
 });

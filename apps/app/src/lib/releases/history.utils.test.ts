@@ -295,41 +295,75 @@ describe("What's New's history", () => {
 		).toEqual(['One']);
 	});
 
-	it('shows the highlights of the release to come on top, as Coming to dev, never counted as new', () => {
+	it('gives next.app its release notes: the release to come, then each release on dev, as dev.app tells them', () => {
 		const landed = [
 			{ ...feature('2026-11-26T15:00:00Z', 'One', 0), release: '1.2.0-next.1' },
 			{ ...feature('2026-11-27T15:00:00Z', 'Two', 1), release: '1.2.0-next.2' }
 		];
 		const history = toHistory('abc', ['a', 'b'], landed, {
-			releases: ['1.2.0-next.1', '1.2.0-next.2'].map((version) => ({
-				version,
-				url: `https://example.com/v${version}`
-			})),
+			releases: [
+				...['1.2.0-next.1', '1.2.0-next.2'].map((version) => ({
+					version,
+					url: `https://example.com/v${version}`
+				})),
+				{ version: '1.0.0', url: 'https://example.com/v1.0.0', date: '2026-11-20T15:00:00Z' },
+				{ version: '1.1.0', url: 'https://example.com/v1.1.0', date: '2026-11-24T15:00:00Z' }
+			],
 			highlights: {
+				'1.0.0': { features: [{ title: 'Sign in', points: ['With Google.'] }], fixes: [] },
+				'1.1.0': { features: [], fixes: [{ title: 'Pins', points: ['A pin shows once.'] }] },
 				'1.2.0': { features: [{ title: 'Search', points: ['From the menu.'] }], fixes: [] }
 			},
 			upcoming: '1.2.0'
 		});
 
 		expect(
-			history.batches.map((batch) => [
+			history.notes?.map((batch) => [
 				batch.isUpcoming ?? false,
+				batch.day,
 				batch.release?.version,
 				batch.changes.map((change) => change.text)
 			])
 		).toEqual([
-			[true, '1.2.0', ['Search']],
-			[false, '1.2.0-next.2', ['Two']],
-			[false, '1.2.0-next.1', ['One']]
+			[true, '2026-11-27', '1.2.0', ['Search']],
+			[false, '2026-11-24', '1.1.0', ['Pins']],
+			[false, '2026-11-20', '1.0.0', ['Sign in']]
 		]);
-		expect(history.batches[0].changes[0].landed).toBe(-1);
+		// Every change is the list as it is, with nothing to come in it; none of the notes counts as new.
+		expect(history.batches.map((batch) => batch.release?.version)).toEqual([
+			'1.2.0-next.2',
+			'1.2.0-next.1'
+		]);
+		expect(history.notes?.flatMap((batch) => batch.changes.map((change) => change.landed))).toEqual(
+			[-1, -1, -1]
+		);
 		expect(toNewSince(history, 'a')).toHaveLength(1);
 	});
 
-	it('shows nothing to come while its highlights are not written', () => {
+	it('gives next.app its releases on dev while the release to come is not written', () => {
+		const landed = [{ ...feature('2026-11-26T15:00:00Z', 'One', 0), release: '1.2.0-next.1' }];
+		const history = toHistory('abc', ['a'], landed, {
+			releases: [
+				{ version: '1.1.0', url: 'https://example.com/v1.1.0', date: '2026-11-24T15:00:00Z' }
+			],
+			highlights: { '1.1.0': { features: [{ title: 'Pins', points: [] }], fixes: [] } },
+			upcoming: '1.2.0'
+		});
+
+		expect(
+			history.notes?.map((batch) => [batch.isUpcoming ?? false, batch.release?.version])
+		).toEqual([[false, '1.1.0']]);
+	});
+
+	it('gives no release notes where nothing is written, and none on dev, whose list is its notes', () => {
 		const landed = [{ ...feature('2026-11-26T15:00:00Z', 'One', 0), release: '1.2.0-next.1' }];
 
-		expect(toHistory('abc', ['a'], landed, { upcoming: '1.2.0' }).batches).toHaveLength(1);
+		expect(toHistory('abc', ['a'], landed, { upcoming: '1.2.0' }).notes).toBeUndefined();
+		expect(
+			toHistory('abc', ['a'], [{ ...landed[0], release: '1.1.0' }], {
+				highlights: { '1.1.0': { features: [{ title: 'Pins', points: [] }], fixes: [] } }
+			}).notes
+		).toBeUndefined();
 	});
 
 	it('knows a release made without its highlights, and never asks them of a prerelease', () => {

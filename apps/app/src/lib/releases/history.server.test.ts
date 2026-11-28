@@ -77,30 +77,44 @@ describe("a build's history", () => {
 		expect(() => readHistoryOf('HEAD', HIGHLIGHTS)).toThrow(/v1\.2\.0 has no highlights/);
 	});
 
-	it('shows the release to come on top of next.app once its highlights are written', () => {
+	it('gives next.app its release notes, the release to come on top, beside every change', () => {
 		process.env.VERCEL_GIT_COMMIT_REF = 'next';
 
 		const history = readHistoryOf('HEAD', HIGHLIGHTS);
 
 		expect(history.version).toBe('v1.1.0-next.1');
 		expect(
-			history.batches.map((batch) => [
+			history.notes?.map((batch) => [
 				batch.isUpcoming ?? false,
 				batch.release?.version,
 				batch.changes.map((change) => change.text)
 			])
 		).toEqual([
 			[true, '1.1.0', ['Search']],
-			[false, '1.1.0-next.1', ['Search from the menu.']],
 			[false, '1.0.0', ['Sign in']]
+		]);
+		expect(
+			history.batches.map((batch) => [
+				batch.release?.version,
+				batch.changes.map((change) => change.text)
+			])
+		).toEqual([
+			['1.1.0-next.1', ['Search from the menu.']],
+			['1.0.0', ['Sign in']]
 		]);
 	});
 
-	it('shows next.app its own versions alone while the next highlights are not written', () => {
+	it('gives next.app only its releases on dev while the next highlights are not written', () => {
 		process.env.VERCEL_GIT_COMMIT_REF = 'next';
 
 		const history = readHistoryOf('HEAD', { '1.0.0': HIGHLIGHTS['1.0.0'] });
 
-		expect(history.batches.map((batch) => batch.isUpcoming ?? false)).toEqual([false, false]);
+		expect(history.notes?.map((batch) => batch.isUpcoming ?? false)).toEqual([false]);
+	});
+
+	it('gives dev.app no release notes beside its list, which tells its releases already', () => {
+		process.env.VERCEL_GIT_COMMIT_REF = 'dev';
+
+		expect(readHistoryOf('HEAD', HIGHLIGHTS).notes).toBeUndefined();
 	});
 });

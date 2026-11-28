@@ -10,8 +10,11 @@
 	// wave: v1.0.0-next.6 at the top, and as the list scrolls down, next.5, next.4 and on, the colours moving with it. On
 	// the newest release, when it holds something this person has not seen, it says New release. With no release yet the
 	// sections are the same, with no version. A release on dev shows its highlights (highlights.ts), each feature under a
-	// short bold title (change-list.svelte); on next.app the release to come shows on top as Coming to dev once they are
-	// written (Justin, 2026-11-28), so they are read there before next moves to dev, with no link to notes not yet made.
+	// short bold title (change-list.svelte). next.app shows two lists on two tabs (Justin, 2026-11-28): Release notes, as
+	// dev.app will tell them, the release to come on top as Coming to dev once its highlights are written, so they are
+	// read there before next moves to dev, with no link to notes not yet made, then each release on dev; and Every change,
+	// every line of the work. It opens on the one last picked on this device, Release notes the first time, and on Every
+	// change for a version tapped in the bell. dev.app has one list, its release notes, and no tabs.
 	//
 	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and the moment a new version
 	// is out, the one way the app offers it (Justin, 2026-11-27: no "New version, tap to update" note anywhere). With a
@@ -24,7 +27,7 @@
 	import { fly } from 'svelte/transition';
 	import { updated } from '$app/state';
 	import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
-	import { Accordion, Button, Dialog, Divider, Glow, type AccordionProps } from '@layerd/ui';
+	import { Accordion, Button, Dialog, Divider, Glow, Tabs, type AccordionProps } from '@layerd/ui';
 	import { UpdateState } from '../update/update.state.svelte';
 	import { noteReload, takeLastResort } from '../update/rescue';
 	import { downloadWorker, forgetWorker, takeOver } from '../update/update.utils';
@@ -48,6 +51,33 @@
 		fold?: Partial<AccordionProps>;
 	} = $props();
 
+	/** next.app's two lists: its release notes, or every change. */
+	type ViewType = 'notes' | 'changes';
+	const VIEWS: ViewType[] = ['notes', 'changes'];
+	const VIEW_LABELS: Record<ViewType, string> = {
+		notes: 'Release notes',
+		changes: 'Every change'
+	};
+	// The tab last picked, in the browser's storage, so per device; a private window or blocked storage starts on
+	// Release notes.
+	const VIEW = 'trident.whats-new.view';
+
+	function readView(): ViewType {
+		try {
+			return localStorage.getItem(VIEW) === 'changes' ? 'changes' : 'notes';
+		} catch {
+			return 'notes';
+		}
+	}
+
+	function writeView(next: ViewType) {
+		try {
+			localStorage.setItem(VIEW, next);
+		} catch {
+			// Not kept.
+		}
+	}
+
 	const update = new UpdateState({
 		isNew: () => whatsNew.isNewer,
 		save: () => save.state,
@@ -55,7 +85,12 @@
 		reload
 	});
 	const step = $derived(update.step);
-	const batches = $derived(whatsNew.history?.batches ?? []);
+	// next.app's two lists, on two tabs; dev.app has every change alone, which is its release notes.
+	const notes = $derived(whatsNew.history?.notes ?? []);
+	const hasViews = $derived(notes.length > 0);
+	let view = $state<ViewType>(readView());
+	const isNotes = $derived(hasViews && view === 'notes');
+	const batches = $derived(isNotes ? notes : (whatsNew.history?.batches ?? []));
 	const freshCount = $derived(whatsNew.fresh.length);
 	const version = $derived(whatsNew.history?.version ?? '');
 	// The head is the release in view on a glow of its own colours, every time it opens (Justin, 2026-11-27). On a phone
@@ -76,10 +111,24 @@
 	let openAt = $state(0);
 	$effect(() => {
 		if (!whatsNew.isOpen) return;
-		const at = untrack(() => startAt);
+		const at = untrack(() => {
+			// A version tapped in the bell is one of every change.
+			if (whatsNew.openOn) view = 'changes';
+			return startAt;
+		});
 		openAt = at;
 		shownAt = at;
 	});
+
+	/** A tab picked: its list, from its top, its newest open; the pick kept for the next time on this device. */
+	function pick(next: ViewType) {
+		view = next;
+		writeView(next);
+		whatsNew.openOn = '';
+		openAt = 0;
+		shownAt = 0;
+		toTop();
+	}
 
 	/** The section it opened at, when it is not the first: brought to the top of the list once drawn. */
 	function bringIntoView(section: HTMLElement) {
@@ -95,11 +144,15 @@
 			? ''
 			: shown?.isUpcoming
 				? 'Coming to dev'
-				: shownVersion !== version
-					? 'Earlier release'
-					: isFresh
-						? 'New release'
-						: 'Latest release'
+				: isNotes
+					? shown === notes.find((each) => !each.isUpcoming)
+						? 'On dev now'
+						: 'Earlier release'
+					: shownVersion !== version
+						? 'Earlier release'
+						: isFresh
+							? 'New release'
+							: 'Latest release'
 	);
 	const glow = $derived(toReleaseGlow(shownVersion || version));
 	const note = $derived(
@@ -113,8 +166,10 @@
 	// A section names the head once its top is this far down the scroll; at the scroll's end the open one names it while
 	// on screen, else the last.
 	const LINE = 64;
-	// What the scroll is read again with, after a tap opens a section: the one following the scroll there is.
+	// What the scroll is read again with, after a tap opens a section, and brought back to its top with, after a tab is
+	// picked: the ones following the scroll there is.
 	let reread = () => {};
+	let toTop = () => {};
 
 	/** Follows the scroll the list sits in, so the head names the section in view. */
 	function followScroll(list: HTMLElement) {
@@ -137,10 +192,12 @@
 		}
 		scroller.addEventListener('scroll', wait, { passive: true });
 		reread = wait;
+		toTop = () => scroller.scrollTo({ top: 0 });
 		return () => {
 			scroller.removeEventListener('scroll', wait);
 			cancelAnimationFrame(frame);
 			reread = () => {};
+			toTop = () => {};
 		};
 	}
 
@@ -259,6 +316,27 @@
 						class="-mb-px"
 					/>
 				</Glow>
+				{#if hasViews}
+					<div class="px-5 pt-1">
+						<Tabs
+							class="grid grid-cols-2 rounded-full bg-slate-900/[0.05] p-1"
+							label="Show"
+							options={VIEWS}
+							value={isNotes ? 'notes' : 'changes'}
+							onpick={pick}
+						>
+							{#snippet option({ value: item, isOn, props })}
+								<button
+									{...props}
+									type="button"
+									class="flex h-9 items-center justify-center rounded-full text-sm font-semibold transition {isOn
+										? 'bg-white text-slate-900 shadow-sm'
+										: 'text-slate-500'}">{VIEW_LABELS[item]}</button
+								>
+							{/snippet}
+						</Tabs>
+					</div>
+				{/if}
 				<Button
 					ghost
 					md
@@ -272,65 +350,68 @@
 
 		<div class="pt-4 pb-6">
 			{#if batches.length}
-				<ul
-					class="space-y-2"
-					{@attach followScroll}
-				>
-					{#each batches as batch, at (batch.isUpcoming ? 'upcoming' : batch.from)}
-						<li {@attach at === startAt && at > 0 ? bringIntoView : undefined}>
-							<!-- A section a tap opens stands at the top as the first does with nothing scrolled: the list's
+				<!-- A new list for each tab, its sections drawn afresh. -->
+				{#key isNotes}
+					<ul
+						class="space-y-2"
+						{@attach followScroll}
+					>
+						{#each batches as batch, at (batch.isUpcoming ? 'upcoming' : batch.from)}
+							<li {@attach at === startAt && at > 0 ? bringIntoView : undefined}>
+								<!-- A section a tap opens stands at the top as the first does with nothing scrolled: the list's
 							     own room above it, nothing of the one before it showing. -->
-							<Accordion
-								{...fold}
-								class="{fold.class ?? ''} scroll-mt-4"
-								open={at === startAt}
-								group="whats-new"
-								snap
-								ontoggle={(isOpen) => follow(at, isOpen)}
-							>
-								{#snippet head()}
-									<span class="min-w-0 flex-1">
-										<span
-											class="block text-[15px] leading-snug font-bold text-slate-800 tabular-nums"
-											>{toTitle(batch)}</span
-										>
-										<span
-											class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs leading-snug text-slate-500"
-										>
-											{#if batch.release}<span
-													class="font-semibold whitespace-nowrap text-slate-600"
-													>{toTag(batch.release.version)}</span
-												>{/if}
-											{#each toBatchTallies(batch) as tally (tally.kind)}
-												<span class="inline-flex items-center gap-1.5 whitespace-nowrap">
-													<span
-														class="size-2 shrink-0 rounded-full {KIND_COLORS[tally.kind].dot}"
-														aria-hidden="true"
-													></span>{tally.text}
-												</span>
-											{/each}
+								<Accordion
+									{...fold}
+									class="{fold.class ?? ''} scroll-mt-4"
+									open={at === startAt}
+									group="whats-new"
+									snap
+									ontoggle={(isOpen) => follow(at, isOpen)}
+								>
+									{#snippet head()}
+										<span class="min-w-0 flex-1">
+											<span
+												class="block text-[15px] leading-snug font-bold text-slate-800 tabular-nums"
+												>{toTitle(batch)}</span
+											>
+											<span
+												class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs leading-snug text-slate-500"
+											>
+												{#if batch.release}<span
+														class="font-semibold whitespace-nowrap text-slate-600"
+														>{toTag(batch.release.version)}</span
+													>{/if}
+												{#each toBatchTallies(batch) as tally (tally.kind)}
+													<span class="inline-flex items-center gap-1.5 whitespace-nowrap">
+														<span
+															class="size-2 shrink-0 rounded-full {KIND_COLORS[tally.kind].dot}"
+															aria-hidden="true"
+														></span>{tally.text}
+													</span>
+												{/each}
+											</span>
 										</span>
-									</span>
-								{/snippet}
-								<div>
-									<ChangeList changes={batch.changes} />
-								</div>
-								{#if batch.release && !batch.isUpcoming}
-									<Button
-										secondary
-										ghost
-										sm
-										href={batch.release.url}
-										external
-										icon="icon-[mdi--github]"
-										label="{toTag(batch.release.version)} release notes"
-										class="mt-3 -ml-2"
-									/>
-								{/if}
-							</Accordion>
-						</li>
-					{/each}
-				</ul>
+									{/snippet}
+									<div>
+										<ChangeList changes={batch.changes} />
+									</div>
+									{#if batch.release && !batch.isUpcoming}
+										<Button
+											secondary
+											ghost
+											sm
+											href={batch.release.url}
+											external
+											icon="icon-[mdi--github]"
+											label="{toTag(batch.release.version)} release notes"
+											class="mt-3 -ml-2"
+										/>
+									{/if}
+								</Accordion>
+							</li>
+						{/each}
+					</ul>
+				{/key}
 			{:else if whatsNew.hasFailed}
 				<p class="py-10 text-center text-[15px] leading-relaxed text-slate-500">
 					What's New could not be read just now. Try again in a moment.
