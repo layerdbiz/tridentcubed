@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { createPanels, draftPanel, type PanelType, type ProjectType } from './look.data';
+import { metricsFrom } from './look.state.svelte';
+import type { TeamMemberType } from './team.data';
 import {
 	emptyOf,
 	hasRequired,
 	organizationSectionsOf,
 	sectionsOf,
 	tallyOf,
+	teamPanelsOf,
 	toEmptyNote,
 	toPercent,
 	toTally,
@@ -374,6 +377,7 @@ describe('the empty inputs that keep a panel under 100% (#305)', () => {
 		expect(toEmptyNote(1, 'Items')).toBe('1 empty input in the Items panel');
 		expect(toEmptyNote(3, 'Project')).toBe('3 empty inputs in the Project panel');
 		expect(toEmptyNote(12)).toBe('12 empty inputs in this project');
+		expect(toEmptyNote(2, undefined, 'this profile')).toBe('2 empty inputs in this profile');
 	});
 
 	it('names nothing once every input holds something', () => {
@@ -399,5 +403,54 @@ describe('the inputs the Settings sections hold', () => {
 		});
 		expect(sections.map((section) => section.inputs.length)).toEqual([7, 4, 2]);
 		expect(toTally(valuesOf(sections, 'disclaimer'))).toBe('2 of 4 complete');
+	});
+});
+
+describe("a Team member's panels", () => {
+	const member: TeamMemberType = {
+		rank: 1,
+		name: 'Rosa Diaz',
+		title: '',
+		label: 'Surveyor',
+		role: 'team',
+		phone: '+1 555 0100',
+		email: 'r.diaz@example.com',
+		location: '',
+		href: ''
+	};
+
+	it('counts their Details and Contact in Profile, their Photo only once it is their own', () => {
+		const [profile, ...rest] = teamPanelsOf(member);
+		expect(rest).toEqual([]);
+		expect(profile.sections.map((section) => section.id)).toEqual(['details', 'contact']);
+		expect(toTally(valuesOf(profile.sections, 'details'))).toBe('3 of 5 complete');
+		expect(emptyOf(profile.sections).map((input) => input.label)).toEqual([
+			'Photo',
+			'Title',
+			'Location'
+		]);
+		expect(metricsFrom(profile.sections)).toEqual({
+			done: 5,
+			total: 8,
+			percent: 63,
+			status: 'In progress'
+		});
+		const [withPhoto] = teamPanelsOf({ ...member, photo: '/start/team/rosa.jpg' });
+		expect(toTally(valuesOf(withPhoto.sections, 'details'))).toBe('4 of 5 complete');
+	});
+
+	it('adds the Email Signature, its Photo, link and Banners, once it is given', () => {
+		const panels = teamPanelsOf(member, {
+			photo: { source: 'drive:abc', link: '' },
+			banners: [{}]
+		});
+		expect(panels.map((panel) => panel.name)).toEqual(['Profile', 'Email Signature']);
+		expect(metricsFrom(panels[1].sections)).toEqual({
+			done: 2,
+			total: 3,
+			percent: 67,
+			status: 'In progress'
+		});
+		expect(metricsFrom(panels.flatMap((panel) => panel.sections)).total).toBe(11);
 	});
 });

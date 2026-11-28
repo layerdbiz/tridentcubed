@@ -18,7 +18,7 @@
 	}: {
 		look: LookState;
 		record: RecordType;
-		/** What follows the fields, before Delete: a Team member's Email Signature (#354). */
+		/** What stands in place of the fields, before Delete: a Team member's panels (team-edit.svelte, 2026-11-28). */
 		children?: Snippet;
 	} = $props();
 
@@ -42,7 +42,9 @@
 </script>
 
 <div class="space-y-4">
-	{#if value}
+	{#if children}
+		{@render children()}
+	{:else if value}
 		<RecordFields
 			{look}
 			page={record.page}
@@ -51,8 +53,6 @@
 			onname={(name) => look.rename(record.page, record.key, name)}
 		/>
 	{/if}
-
-	{@render children?.()}
 
 	<Button
 		danger

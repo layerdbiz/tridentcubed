@@ -32,6 +32,7 @@
 		value,
 		set,
 		isNew = false,
+		section = undefined,
 		onname
 	}: {
 		look: LookState;
@@ -40,6 +41,9 @@
 		set: (change: Record<string, unknown>) => void;
 		// A record not made yet: its name is typed like any field, and nothing falls back to a stock picture.
 		isNew?: boolean;
+		// One section of a Team member's Profile panel, drawn bare in its group (team-edit.svelte, 2026-11-28): their
+		// Details or how to reach them. Left out, the whole form in its card, as the + sheet shows it.
+		section?: 'details' | 'contact';
 		// A record that exists is renamed when the name field is left; false puts the old name back.
 		onname?: (name: string) => boolean;
 	} = $props();
@@ -62,6 +66,9 @@
 	const transport = $derived(page === 'transport' ? (value as TransportType) : undefined);
 	const facility = $derived(page === 'facilities' ? (value as FacilityType) : undefined);
 	const contacts = $derived(customer?.contacts ?? []);
+	// What a Team member's Profile panel section shows: everything when no section is asked for.
+	const hasDetails = $derived(section !== 'contact');
+	const hasContact = $derived(section !== 'details');
 	// The Short Code the app makes from the name (a Generated value), shown until someone types over it; none before
 	// the name is typed.
 	const madeCode = $derived(customer?.name.trim() ? toCode(customer.name) : '');
@@ -176,7 +183,7 @@
 {/snippet}
 
 <div class="space-y-4">
-	<div class={CARD}>
+	<div class={section ? 'space-y-4' : CARD}>
 		{#if customer}
 			<ImageField
 				label="Logo"
@@ -188,7 +195,7 @@
 				hint="Shows on its rows and cards, and in the footer of every report page."
 				onpick={(url) => set({ icon: url, logo: url })}
 			/>
-		{:else if member}
+		{:else if member && hasDetails}
 			<ImageField
 				label="Photo"
 				shape="face"
@@ -200,7 +207,9 @@
 				onpick={(url) => set({ photo: url })}
 			/>
 		{/if}
-		{#if isNew}
+		{#if !hasDetails}
+			<!-- How to reach a Team member: their Phone, Email and Location, below. -->
+		{:else if isNew}
 			<!-- A new record's name is typed like any field; the form opens on it. -->
 			<div {@attach focusName}>
 				<Input
@@ -282,33 +291,39 @@
 				onpick={(url) => set({ photo: url })}
 			/>
 		{:else if member}
-			<Select
-				label="Role"
-				options={ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role] }))}
-				value={member.role}
-				icon="icon-[mdi--shield-account-outline]"
-				disabled={!look.isAdmin}
-				required
-				help={look.helpOf('team.role')}
-				onpick={(role) => set({ role })}
-			/>
-			{@render text('Title', 'team.title', member.title, (title) => set({ title }))}
-			<Select
-				label="Labels"
-				options={[...new Set([...TEAM_LABELS, ...labelsOf(member)])].map((label) => ({
-					value: label,
-					label
-				}))}
-				multiple
-				value={labelsOf(member)}
-				many="labels"
-				icon="icon-[mdi--tag-outline]"
-				help={look.helpOf('team.labels')}
-				onpick={(label) => set({ label: toggle(labelsOf(member), label).join(', ') })}
-			/>
-			{@render text('Phone', 'team.phone', member.phone, (phone) => set({ phone }), 'tel')}
-			{@render text('Email', 'team.email', member.email, (email) => set({ email }), 'email')}
-			{@render place('Location', 'team.location', member.location, (location) => set({ location }))}
+			{#if hasDetails}
+				<Select
+					label="Role"
+					options={ROLES.map((role) => ({ value: role, label: ROLE_LABELS[role] }))}
+					value={member.role}
+					icon="icon-[mdi--shield-account-outline]"
+					disabled={!look.isAdmin}
+					required
+					help={look.helpOf('team.role')}
+					onpick={(role) => set({ role })}
+				/>
+				{@render text('Title', 'team.title', member.title, (title) => set({ title }))}
+				<Select
+					label="Labels"
+					options={[...new Set([...TEAM_LABELS, ...labelsOf(member)])].map((label) => ({
+						value: label,
+						label
+					}))}
+					multiple
+					value={labelsOf(member)}
+					many="labels"
+					icon="icon-[mdi--tag-outline]"
+					help={look.helpOf('team.labels')}
+					onpick={(label) => set({ label: toggle(labelsOf(member), label).join(', ') })}
+				/>
+			{/if}
+			{#if hasContact}
+				{@render text('Phone', 'team.phone', member.phone, (phone) => set({ phone }), 'tel')}
+				{@render text('Email', 'team.email', member.email, (email) => set({ email }), 'email')}
+				{@render place('Location', 'team.location', member.location, (location) =>
+					set({ location })
+				)}
+			{/if}
 		{:else if transport}
 			<Select
 				label="Transport Mode"

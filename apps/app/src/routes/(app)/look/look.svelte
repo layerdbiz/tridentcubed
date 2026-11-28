@@ -227,10 +227,19 @@
 			label="Upload photos"
 		/>
 	{/each}
-	<Toast
-		text={toEmptyNote(empties.length, emptyPanel)}
-		items={empties.map((input) => ({ label: input.text, onclick: () => look.openInput(input) }))}
-		onclose={() => look.closeEmpty()}
-	/>
+	{#if look.recordEmpties}
+		<!-- A Team member's, from their Edit (team-edit.svelte). -->
+		<Toast
+			text={look.recordEmpties.note}
+			items={look.recordEmpties.items}
+			onclose={look.recordEmpties.onclose}
+		/>
+	{:else}
+		<Toast
+			text={toEmptyNote(empties.length, emptyPanel)}
+			items={empties.map((input) => ({ label: input.text, onclick: () => look.openInput(input) }))}
+			onclose={() => look.closeEmpty()}
+		/>
+	{/if}
 	<Toast text={look.toast} />
 </div>
