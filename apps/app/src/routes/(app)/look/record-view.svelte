@@ -4,8 +4,8 @@
 	// Page's picture (record-page.svelte) and this is the sheet under it: its numbers; for a team
 	// member their phone and email, for a transport its particulars (empty until typed in on Edit, or later filled by a
 	// tracking service); then its projects, as the same rows the Projects page lists.
-	// A team member's has their Email Signature, a page of theirs (#354; Justin, 2026-11-28: "a sub-page for a team
-	// member"), for them and for an Admin.
+	// A team member's points to their Email Signature (#354), for them and for an Admin: changed on Edit, under their
+	// details, and shown and copied on Preview (Justin, 2026-11-28).
 	import { Avatar, ListRow, Stack } from '@layerd/ui';
 	import { DATASETS, PARTICULARS } from './look.data';
 	import type { LookState } from './look.state.svelte';
@@ -87,12 +87,8 @@
 				: []
 	);
 	const people = $derived(everyone.filter((person) => person.name || person.lines.length));
-	// Whose Email Signature this page opens: a Team member's own, or anyone's for an Admin (the server's one check).
-	const signatureOf = $derived(
-		record.member?.id && (look.isAdmin || record.member.id === look.me?.id)
-			? record.member.id
-			: undefined
-	);
+	// Whether this is a Team member whose Email Signature may be shown: their own, or anyone's for an Admin.
+	const hasSignature = $derived(record.page === 'team' && look.isSignatureOpen);
 </script>
 
 {#snippet row(line: LineType)}
@@ -132,7 +128,7 @@
 		</section>
 	{/if}
 
-	{#if signatureOf}
+	{#if hasSignature}
 		<section>
 			<h3 class={HEADING}>Email</h3>
 			<div class="overflow-hidden {CARD}">
@@ -141,8 +137,8 @@
 					type="button"
 					class="gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-100"
 					label="Email Signature"
-					note="Its photo and banners, and Copy for Outlook"
-					onclick={() => look.openSignature(signatureOf)}
+					note="On Preview, with Copy for Outlook"
+					onclick={() => (look.tab = 'preview')}
 				>
 					{#snippet start()}<span
 							class="icon-[mdi--card-account-mail-outline] size-5 shrink-0 text-primary"

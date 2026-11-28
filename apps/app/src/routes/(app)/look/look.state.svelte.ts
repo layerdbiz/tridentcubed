@@ -51,14 +51,7 @@ import { emptyOf, hasRequired, sectionsOf, tallyOf, toPercent, type EmptyType } 
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import type { TeamMemberType } from './team.data';
 
-export type ScreenType =
-	| 'dashboard'
-	| 'workspace'
-	| 'record'
-	| 'settings'
-	| 'activity'
-	| 'signature'
-	| 'account';
+export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings' | 'activity' | 'account';
 
 /** The parts of Settings (#403) shown inside it; the rest open their own pages. */
 export type AccountSectionType = 'activity' | 'notifications';
@@ -254,8 +247,6 @@ export class LookState {
 	slide = $state(0);
 	// The record on show: which page it belongs to and its name.
 	record = $state<{ page: PageType; key: string }>();
-	/** Whose Email Signature is on show (#354): a Team member's id, or `mailbox:<slug>`; '' for the person's own. */
-	signatureFor = $state('');
 	// The first tab 0, the second 1, and in between while a finger swipes from one to the other.
 	tabProgress = $state(0);
 	isSaving = $state(false);
@@ -398,8 +389,6 @@ export class LookState {
 	get place(): DatasetType {
 		if (this.screen === 'workspace') return 'projects';
 		if (this.screen === 'record' && this.record) return this.record.page;
-		// A Team member's Email Signature is a page of theirs (#354).
-		if (this.screen === 'signature') return 'team';
 		return this.dataset;
 	}
 
@@ -457,9 +446,10 @@ export class LookState {
 	openRecord(page: PageType, key: string, tab: TabType = 'page') {
 		if (this.screen === 'workspace') this.#keepProject();
 		this.record = { page, key };
-		this.tab = tab === 'preview' ? 'page' : tab;
-		this.tabProgress = this.tab === 'page' ? 0 : 1;
 		this.screen = 'record';
+		const tabs = this.recordTabs;
+		this.tab = tabs.includes(tab) ? tab : 'page';
+		this.tabProgress = tabs.indexOf(this.tab);
 	}
 
 	// The look a part of the app shows (look.constants.ts): the one Justin settled on in the prototype.
@@ -504,16 +494,27 @@ export class LookState {
 		this.screen = 'activity';
 	}
 
-	// Email Signature (#354): a page of a Team member's (Justin, 2026-11-28: "this email signatures page should not be
-	// its own standalone page ... a sub-page for a team member"), opened from their Team page or, for one's own, the
-	// menu on one's profile picture. Anyone has their own; an Admin anyone's, or a shared mailbox's. Back goes to
-	// the Team member's page.
-	openSignature(who = '') {
-		if (this.screen === 'workspace') this.#keepProject();
-		this.signatureFor = who;
-		this.tab = 'page';
-		this.tabProgress = 0;
-		this.screen = 'signature';
+	// Email Signature (#354): one's own, on one's Team page, at its Preview (Justin, 2026-11-28: "I want to include
+	// the email signature into the main edit page of the team member").
+	openSignature() {
+		const me = this.me;
+		if (!me) return this.say('Your Team record is not here yet');
+		this.openRecord('team', me.name, 'preview');
+	}
+
+	/**
+	 * Whether the record open is a Team member whose Email Signature the signed-in person may see (#354): their own,
+	 * or anyone's for an Admin, as the server allows. Its page then has a Preview, the signature.
+	 */
+	get isSignatureOpen() {
+		if (this.screen !== 'record' || this.record?.page !== 'team') return false;
+		const member = this.members.find((each) => each.name === this.record?.key);
+		return Boolean(member?.id && (this.isAdmin || member.id === this.me?.id));
+	}
+
+	/** The open record's tabs: Page and Edit, and a Team member's Preview of their Email Signature (#354). */
+	get recordTabs(): TabType[] {
+		return this.isSignatureOpen ? PROJECT_TABS : ['page', 'edit'];
 	}
 
 	// Settings (#403; Justin, 2026-11-27): everything that is the person's own, opened from the menu on their picture
@@ -562,19 +563,9 @@ export class LookState {
 			this.panelId = back.panelId;
 			return;
 		}
-		if (this.screen === 'signature') return this.#leaveSignature();
 		if (this.screen === 'workspace') this.#keepProject();
 		this.screen = 'dashboard';
 		this.navSection = this.dataset;
-	}
-
-	// Back from an Email Signature: to its Team member's page, or a shared mailbox's to the Team page.
-	#leaveSignature() {
-		const id = this.signatureFor || this.me?.id;
-		const member = this.members.find((each) => each.id && each.id === id);
-		if (member) return this.openRecord('team', member.name);
-		this.screen = 'dashboard';
-		this.pick('team');
 	}
 
 	// Mark sent remembers the state before, and Unsend goes back to it.

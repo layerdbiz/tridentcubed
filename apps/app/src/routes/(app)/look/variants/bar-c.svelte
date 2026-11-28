@@ -54,15 +54,7 @@
 	const ORGANIZATION = { name: 'Organization', icon: 'icon-[mdi--domain]' };
 	// The Activity (#306) is one view, so it has no tabs.
 	const ACTIVITY = { name: 'Activity Log', icon: 'icon-[mdi--timeline-clock-outline]' };
-	// Email Signature (#354) has a project's Page, Edit and Preview (Justin, 2026-11-27). It is a page of a Team
-	// member's, so the bar names where it is, Team › Email, with the Team icon, and both go back to their page
-	// (Justin, 2026-11-28: "change that to the team icon, since it's part of the team member page, and then you
-	// would have a breadcrumb").
-	const SIGNATURE = { name: 'Email', icon: PAGE_ICONS.team, crumb: DATASETS.team.label };
-	let inside = $state<{ name: string; icon: string; crumb?: string }>({
-		name: DATASETS[PAGES[0]].label,
-		icon: PAGE_ICONS[PAGES[0]]
-	});
+	let inside = $state({ name: DATASETS[PAGES[0]].label, icon: PAGE_ICONS[PAGES[0]] });
 	const leadIcon = $derived(isInside ? inside.icon : PAGE_ICONS[lead]);
 	const isLeadOn = $derived(isInside || look.navSection === lead);
 	// The tabs of the last thing opened, so they do not change while they slide away.
@@ -97,15 +89,16 @@
 	});
 
 	$effect(() => {
-		if (look.screen === 'record' || look.screen === 'settings') tabs = RECORD;
-		else if (look.screen === 'workspace' || look.screen === 'signature') tabs = PROJECT;
+		// A Team member's page has a Preview too, their Email Signature (#354).
+		if (look.screen === 'record') tabs = look.recordTabs;
+		else if (look.screen === 'settings') tabs = RECORD;
+		else if (look.screen === 'workspace') tabs = PROJECT;
 		else if (look.screen === 'activity') tabs = [];
 	});
 
 	$effect(() => {
 		if (look.screen === 'settings') inside = ORGANIZATION;
 		else if (look.screen === 'activity') inside = ACTIVITY;
-		else if (look.screen === 'signature') inside = SIGNATURE;
 		else if (isInside) inside = { name: DATASETS[home].label, icon: PAGE_ICONS[home] };
 	});
 
@@ -215,12 +208,6 @@
 					aria-label="Back to {DATASETS[lead].label}"
 					onclick={() => go(lead)}
 				>
-					{#if inside.crumb}<span class="shrink-0 text-[13px] font-medium text-white/60"
-							>{inside.crumb}</span
-						><span
-							class="icon-[mdi--chevron-right] size-4 shrink-0 text-white/40"
-							aria-hidden="true"
-						></span>{/if}
 					<span class="truncate text-[13px] font-semibold">{inside.name}</span>
 				</button>
 				<Tabs
