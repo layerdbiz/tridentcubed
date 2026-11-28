@@ -28,6 +28,7 @@ export * from "./base/helpers/text.ts";
 export * from "./base/helpers/total.svelte.ts";
 
 /* UTILS */
+export * from "./utils/glide.ts";
 export * from "./utils/pick.ts";
 export * from "./utils/trackevent.ts";
 

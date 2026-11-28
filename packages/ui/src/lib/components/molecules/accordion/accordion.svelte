@@ -4,50 +4,6 @@
 >
 	// The sections open in each group, by its name: opening one shuts the others (`group`).
 	const GROUPS = new Map<string, Set<() => void>>();
-
-	// How long a section that snaps takes to glide to the top. Its neighbours shutting and itself opening slide inside
-	// it, so the whole change is one move (Justin, 2026-11-27: no close, then a jump).
-	const GLIDE = 320;
-
-	// The box a section scrolls in: the nearest that scrolls up and down, else the page.
-	function toScroller(node: HTMLElement): HTMLElement {
-		for (let each = node.parentElement; each; each = each.parentElement) {
-			if (/auto|scroll/.test(getComputedStyle(each).overflowY)) return each;
-		}
-		return (document.scrollingElement ?? document.documentElement) as HTMLElement;
-	}
-
-	// Glides a section from where it stands to the top of the box it scrolls in, less its own scroll margin, in one
-	// eased move: each frame the box scrolls so the section stands where the ease puts it, whatever the slides around
-	// it do to the layout meanwhile. With reduced motion it stands at the top at once and stays there while they slide.
-	// A wheel or a touch on the box stops it.
-	function glide(section: HTMLElement): void {
-		const box = toScroller(section);
-		const isPage = box === document.scrollingElement;
-		const edge = () => (isPage ? 0 : box.getBoundingClientRect().top);
-		const from = section.getBoundingClientRect().top - edge();
-		const to = Number.parseFloat(getComputedStyle(section).scrollMarginTop) || 0;
-		const isStill = matchMedia('(prefers-reduced-motion: reduce)').matches;
-		const start = performance.now();
-		let frame = 0;
-		function stop(): void {
-			cancelAnimationFrame(frame);
-			box.removeEventListener('wheel', stop);
-			box.removeEventListener('touchstart', stop);
-		}
-		function step(): void {
-			const now = performance.now();
-			const progress = isStill ? 1 : Math.min((now - start) / GLIDE, 1);
-			const wanted = from + (to - from) * (1 - (1 - progress) ** 3);
-			const at = section.getBoundingClientRect().top - edge();
-			box.scrollTo({ top: box.scrollTop + at - wanted, behavior: 'instant' });
-			if (now - start < GLIDE) frame = requestAnimationFrame(step);
-			else stop();
-		}
-		box.addEventListener('wheel', stop, { passive: true });
-		box.addEventListener('touchstart', stop, { passive: true });
-		frame = requestAnimationFrame(step);
-	}
 </script>
 
 <script lang="ts">
@@ -65,8 +21,9 @@
 	// the far right. Sections given the same `group` open one at a time, as `<details name>` do: opening one, by a press
 	// or from outside, shuts the others, each telling its `ontoggle`. With `snap`, a section a press opens glides to the
 	// top of the area it scrolls in while it slides open and its group's open one slides shut, all one move (Justin,
-	// 2026-11-27), so what it holds is in view from its header; its owner leaves room above it with a `scroll-mt-*`
-	// class. Opened from outside, or by its group, it stays where it is.
+	// 2026-11-27; the library's `glide`), so what it holds is in view from its header; it stops under the area's
+	// `scroll-padding-top` and its own `scroll-mt-*`, which its owner sets. Opened from outside, or by its group, it
+	// stays where it is.
 	//
 	// Its look is set from outside (Justin, 2026-11-26), like the Button's: it is the base component, so `color`,
 	// `appearance`, `size` and their shorthands (`lite`, `neutral`, `sm`) and `class` all land on its box; with none it
@@ -80,6 +37,7 @@
 		Button,
 		Component,
 		Icon,
+		glide,
 		type ButtonProps,
 		type ComponentProps,
 		type ComponentRenderArgs,

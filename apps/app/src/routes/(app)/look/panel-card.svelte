@@ -14,10 +14,15 @@
 	// complete, everything the app draws in its blue turns green (Justin, 2026-11-16: "all those colors need to update
 	// as the status changes for every icon, not just some"). The theme's colours are read where they are used
 	// (@theme inline), so it is the theme's own variable that is set here.
+	// #412 (Justin, 2026-11-28: "apply it to the edit panels"): a panel a tap on its header opens glides to the top of
+	// the list it scrolls in while the open one slides shut, one smooth move with no jump (the library's `glide`, as
+	// What's New's sections do), so its header and what it holds start at the top. A tap that shuts it, or a panel
+	// opened from elsewhere (the report, a list of empty inputs), leaves the list where it is. The list says where
+	// the top is with its `scroll-padding-top`, under a header that sits over it.
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { slide } from 'svelte/transition';
-	import { ProgressBar } from '@layerd/ui';
+	import { glide, ProgressBar } from '@layerd/ui';
 	import { toneOf, type MetricsType } from './look.state.svelte';
 	import Percent from './percent.svelte';
 	import ProgressRing from './progress-ring.svelte';
@@ -67,6 +72,14 @@
 		children: Snippet;
 	} & Omit<HTMLAttributes<HTMLDivElement>, 'children'> = $props();
 
+	let card = $state<HTMLElement>();
+
+	function toggle() {
+		const isOpening = !isOpen;
+		ontoggle();
+		if (isOpening && card) glide(card);
+	}
+
 	const tone = $derived(toneOf(metrics.status));
 	const recolour = $derived(
 		metrics.status === 'Complete' ? '[--theme-color-primary:var(--theme-color-success)]' : ''
@@ -92,6 +105,7 @@
 {/snippet}
 
 <div
+	bind:this={card}
 	class="relative transition-shadow duration-300 {shell} {isEnabled
 		? ''
 		: 'opacity-75'} {className}"
@@ -113,7 +127,7 @@
 			type="button"
 			class="flex min-w-0 flex-1 items-center gap-3 text-left"
 			aria-expanded={isOpen}
-			onclick={ontoggle}
+			onclick={toggle}
 		>
 			{#if style === 'ring'}
 				<ProgressRing
