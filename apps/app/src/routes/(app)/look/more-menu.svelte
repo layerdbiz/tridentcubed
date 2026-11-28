@@ -7,9 +7,12 @@
 	// Run 18: a project also offers Mark Complete and Change Status, which opens every status (status-sheet.svelte).
 	// #346: anything saved offers Pin, which puts it in the menu's Pinned list (pins.ts), and Unpin once it is there.
 	// #360: a project still being worked on offers Translate to English (translate-sheet.svelte).
+	// #403 (Justin, 2026-11-28): anything saved offers View Activity, its own Activity Log in a window
+	// (activity-sheet.svelte).
 	import { DATASETS, type DatasetType } from './look.data';
 	import { FROZEN, type LookState } from './look.state.svelte';
-	import { isPinnable, isPinned, togglePin } from './pins';
+	import type { ActivityTableType } from '#lib/activity/activity.types.js';
+	import { isPinnable, isPinned, recordIdOf, togglePin } from './pins';
 	import { IS_TRANSLATING } from './translation';
 	import { Menu, type MenuOptionType } from '@layerd/ui';
 
@@ -31,6 +34,15 @@
 		onact?: () => void;
 	} = $props();
 
+	// The table each page's things are kept in.
+	const TABLE_OF_PAGE: Record<DatasetType, ActivityTableType> = {
+		projects: 'project',
+		customers: 'customer',
+		team: 'team',
+		transport: 'transport',
+		facilities: 'facility'
+	};
+
 	const project = $derived(
 		page === 'projects' ? look.projects.find((item) => item.id === id) : undefined
 	);
@@ -38,6 +50,7 @@
 	// Its page's own word, both words capitalised: "Edit Transport Mode" (run 16).
 	const one = $derived(DATASETS[page].one);
 	const isPinnedNow = $derived(isPinned(look, page, id));
+	const recordId = $derived(recordIdOf(look, page, id));
 
 	const options = $derived<MenuOptionType[]>([
 		...(isOpenable
@@ -73,6 +86,9 @@
 						: [{ id: 'translate', label: 'Translate to English', icon: 'icon-[mdi--translate]' }])
 				]
 			: [{ id: 'edit', label: `Edit ${one}`, icon: 'icon-[mdi--pencil-outline]' }]),
+		...(recordId
+			? [{ id: 'activity', label: 'View Activity', icon: 'icon-[mdi--timeline-clock-outline]' }]
+			: []),
 		{ id: 'delete', label: 'Delete', icon: 'icon-[mdi--trash-can-outline]', isDanger: true }
 	]);
 
@@ -83,6 +99,10 @@
 			return togglePin(look, page, id);
 		}
 		if (choice !== 'delete') onact?.();
+		if (choice === 'activity' && recordId) {
+			look.activityOf = { about: { table: TABLE_OF_PAGE[page], rowId: recordId }, name };
+			return;
+		}
 		if (page !== 'projects') {
 			if (choice === 'open') look.openRecord(page, id, 'page');
 			if (choice === 'edit') look.openRecord(page, id, 'edit');

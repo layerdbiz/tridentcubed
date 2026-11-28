@@ -148,22 +148,19 @@ describe('the address', () => {
 		expect(reload(look, toAddress(look, new URL(HOME))).screen).toBe('account');
 	});
 
-	it('lands an Admin’s reload on the Activity, and anyone else’s on the dashboard (#306)', () => {
-		const admin = new LookState();
-		admin.role = 'admin';
-		admin.openActivity();
-		const address = toAddress(admin, new URL(HOME));
-		const next = new LookState();
-		next.role = 'admin';
-		openAddress(next, address.searchParams);
-		expect(next.screen).toBe('activity');
-
-		const team = new LookState();
-		team.role = 'team';
-		openAddress(team, address.searchParams);
-		expect(team.screen).toBe('dashboard');
-		team.openActivity();
-		expect(team.screen).toBe('dashboard');
+	// Everyone has an Activity Log since #403 (Justin, 2026-11-28), each of only what they are privy to.
+	it('lands anyone’s reload on the Activity Log (#306, #403)', () => {
+		for (const role of ['admin', 'team'] as const) {
+			const look = new LookState();
+			look.role = role;
+			look.openActivity();
+			expect(look.screen).toBe('activity');
+			const address = toAddress(look, new URL(HOME));
+			const next = new LookState();
+			next.role = role;
+			openAddress(next, address.searchParams);
+			expect(next.screen).toBe('activity');
+		}
 	});
 
 	it('opens the dashboard for a project or record that is not there', () => {

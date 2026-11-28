@@ -19,6 +19,7 @@
 	import SaveSheet from './save-sheet.svelte';
 	import Shell from './shell.svelte';
 	import StatusSheet from './status-sheet.svelte';
+	import ActivitySheet from './activity-sheet.svelte';
 	import TranslateSheet from './translate-sheet.svelte';
 	import { IS_TRANSLATING } from './translation';
 	import { openAddress, placeOf, toAddress } from './look.utils';
@@ -201,6 +202,7 @@
 <div class="look font-sans text-slate-900 [color-scheme:light]">
 	<Shell {look} />
 	<StatusSheet {look} />
+	<ActivitySheet {look} />
 	{#if IS_TRANSLATING && look.translateFor && look.workspaces[look.translateFor]}
 		<TranslateSheet
 			{look}

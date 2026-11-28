@@ -4,6 +4,9 @@
 >
 	export type ActivityTabType = 'all' | 'projects' | 'users';
 
+	// The Log's three sorts.
+	const TABS: ActivityTabType[] = ['all', 'projects', 'users'];
+
 	/**
 	 * How tall a heading (Today, Yesterday...) is, in pixels: it sticks to the top of the box that scrolls the list, so
 	 * that box's top fade (the library Scroller's `inset`) starts under it and the heading shows whole.
@@ -70,6 +73,7 @@
 		look,
 		events,
 		isFull = false,
+		tabs = TABS,
 		tab = $bindable('all'),
 		isGrouped = $bindable(true),
 		unread = undefined,
@@ -81,6 +85,8 @@
 		events: ActivityEventType[];
 		// The Log's: the three sorts, Group and the filters. The bell has none.
 		isFull?: boolean;
+		// The sorts it offers: all three, or, for one project's or record's own Log, All and Users, with no project filter.
+		tabs?: ActivityTabType[];
 		tab?: ActivityTabType;
 		isGrouped?: boolean;
 		// The ids of the rows not seen yet: light blue, with a dot.
@@ -177,7 +183,6 @@
 		offline: 'text-slate-500'
 	};
 
-	const TABS: ActivityTabType[] = ['all', 'projects', 'users'];
 	const TAB_LABELS: Record<ActivityTabType, string> = {
 		all: 'All',
 		projects: 'Projects',
@@ -801,7 +806,7 @@
 					<Tabs
 						class="flex w-full rounded-full bg-slate-900/[0.05] p-1"
 						label="Sort by"
-						options={TABS}
+						options={tabs}
 						bind:value={tab}
 					>
 						{#snippet option({ value: item, isOn, props })}
@@ -827,13 +832,15 @@
 			</div>
 			<div class="flex flex-wrap items-center gap-1.5">
 				{@render filter('Anyone', person, personOptions, (id) => (person = id), Boolean(person))}
-				{@render filter(
-					'Any project',
-					project,
-					projectOptions,
-					(id) => (project = id),
-					Boolean(project)
-				)}
+				{#if tabs.includes('projects')}
+					{@render filter(
+						'Any project',
+						project,
+						projectOptions,
+						(id) => (project = id),
+						Boolean(project)
+					)}
+				{/if}
 				{@render filter(
 					'Any time',
 					time,

@@ -7,7 +7,8 @@
 //   Archived status, and deleting a project that is not their own Draft.
 // - A Manager may also change the organization, its details and its disclaimer points (#184, #303); Team may not.
 // - Only an Admin changes the Help text of the inputs (#299).
-// - Only an Admin sees the Activity (#306): who signed in, and every change (`checkActivity`).
+// - An Admin sees the whole Activity (#306): who signed in, and every change; anyone else on the staff sees only what
+//   is theirs (#403, `checkActivity`).
 // - The email domain, which decides who joins as staff, is set in the database only.
 // - An Admin (and the Super admin) may do all of it.
 // - Nobody demotes or removes the Super admin or the organization's last Admin.
@@ -70,7 +71,6 @@ const REASONS = {
 	help: 'Only an Admin can change the help text.',
 	pin: 'A pin is only its owner’s.',
 	seen: 'What someone has seen is only theirs.',
-	activity: 'Only an Admin can see the Activity.',
 	signature: 'Only an Admin can open someone else’s email signature.',
 	mailbox: 'Only an Admin can open a shared mailbox’s email signature.',
 	role: 'Only an Admin can change a Team role.',
@@ -214,10 +214,19 @@ export function checkPermission(actor: ActorType, change: ChangeType): VerdictTy
 	return { isAllowed: true };
 }
 
-/** Whether `actor` may see the Activity (#306): an Admin, the Super admin among them. */
-export function checkActivity(actor: ActorType): VerdictType {
+/** How much of the Activity someone may see: the whole organization's (`isWhole`), or only what is theirs. */
+export type ActivityVerdictType =
+	| { isAllowed: true; isWhole: boolean }
+	| { isAllowed: false; reason: string };
+
+/**
+ * Whether `actor` may see the Activity, and how much (#306; #403, Justin, 2026-11-28: "the activity log should only
+ * show activity that they are privy to"): an Admin, the Super admin among them, the whole organization's; anyone else
+ * on the staff only what is theirs.
+ */
+export function checkActivity(actor: ActorType): ActivityVerdictType {
 	if (!actor.organizationId) return { isAllowed: false, reason: REASONS.guest };
-	return isAdmin(actor) ? { isAllowed: true } : { isAllowed: false, reason: REASONS.activity };
+	return { isAllowed: true, isWhole: isAdmin(actor) };
 }
 
 /** Whether `actor` may read the bell's Notifications (#403): anyone in an organization reads their own. */

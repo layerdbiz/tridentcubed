@@ -4,20 +4,30 @@
 	// ones before the oldest shown through the same query; how it stays up to date while open is the live updates
 	// research's to decide (#282). It opens on All, grouped (#306: grouped first). What others did since the person
 	// last opened it is light blue for this visit; on the first visit, nothing is. The lines they tapped in the bell
-	// are seen already.
+	// are seen already. With `about` it is one project's or record's own, from its ⋮ menu's View Activity (Justin,
+	// 2026-11-28): sorted All or by Users, and it leaves what is light blue in the whole Log as it was.
 	import { Button } from '@layerd/ui';
 	import { untrack } from 'svelte';
 	import { fetchActivity } from '#lib/activity/activity.remote.js';
-	import type { ActivityEventType } from '#lib/activity/activity.types.js';
+	import type { ActivityAboutType, ActivityEventType } from '#lib/activity/activity.types.js';
 	import ActivityList, { type ActivityTabType } from './activity-list.svelte';
 	import type { LookState } from './look.state.svelte';
 	import { logSeenAt, markLogSeen } from './seen';
 
-	let { look }: { look: LookState } = $props();
+	let {
+		look,
+		about,
+		ontap
+	}: {
+		look: LookState;
+		about?: ActivityAboutType;
+		// Told of a tap on a row, before it opens what the row is about: View Activity's window closes.
+		ontap?: () => void;
+	} = $props();
 
-	const since = untrack(() => logSeenAt(look));
+	const since = untrack(() => (about ? '' : logSeenAt(look)));
 	const tapped = untrack(() => new Set(look.seen.map((each) => each.line)));
-	untrack(() => markLogSeen(look));
+	untrack(() => !about && markLogSeen(look));
 	function unreadOf(events: ActivityEventType[]) {
 		if (!since) return new Set<string>();
 		return new Set(
@@ -41,7 +51,7 @@
 
 	// Read once as it opens. A query already asked for on an earlier visit is asked again, so it is never stale.
 	async function load() {
-		const query = fetchActivity();
+		const query = fetchActivity(untrack(() => (about ? { about } : undefined)));
 		await query.refresh();
 		const found = await query;
 		if (found.isAllowed) olderBefore = found.olderBefore;
@@ -54,7 +64,7 @@
 		isLoadingOlder = true;
 		hasOlderFailed = false;
 		try {
-			const page = await fetchActivity({ before: olderBefore });
+			const page = await fetchActivity({ before: olderBefore, ...(about ? { about } : {}) });
 			if (page.isAllowed) {
 				older.push(...page.events);
 				olderBefore = page.olderBefore;
@@ -84,6 +94,8 @@
 			events={[...found.events, ...older]}
 			unread={unreadOf([...found.events, ...older])}
 			isFull
+			tabs={about ? ['all', 'users'] : undefined}
+			{ontap}
 			bind:tab
 			bind:isGrouped
 		/>

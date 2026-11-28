@@ -556,26 +556,199 @@ describe('the Activity', () => {
 		]);
 	});
 
-	it('is an Admin’s only: a Manager, a Team member and a Guest are told why', async () => {
+	it('is not a Guest’s: they are told why', async () => {
 		const test = await createTestSignIn();
+		const guest = (await test.signIn('sam@elsewhere.example')).actor;
+
+		expect(await readActivity(test.claims, guest)).toEqual({
+			isAllowed: false,
+			reason: 'You are waiting for access. An Admin of the organization can let you in.'
+		});
+	});
+
+	// Justin, 2026-11-28: "the activity log should only show activity that they are privy to".
+	it('shows anyone but an Admin only what they are privy to: their projects, what was done to them, their own doing', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
 		await test.db.insert(schema.accessGrant).values({
 			email: 'lee.park@tridentcubed.com',
 			organizationId: TRIDENT_CUBED.id,
 			role: 'manager'
 		});
-		const manager = (await test.signIn('lee.park@tridentcubed.com')).actor;
-		const team = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
-		const guest = (await test.signIn('sam@elsewhere.example')).actor;
-
-		for (const actor of [manager, team])
-			expect(await readActivity(test.claims, actor)).toEqual({
-				isAllowed: false,
-				reason: 'Only an Admin can see the Activity.'
-			});
-		expect(await readActivity(test.claims, guest)).toEqual({
-			isAllowed: false,
-			reason: 'You are waiting for access. An Admin of the organization can let you in.'
+		const lee = (await test.signIn('lee.park@tridentcubed.com')).actor;
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const [tomTeam] = await test.db
+			.select({ id: schema.team.id })
+			.from(schema.team)
+			.where(eq(schema.team.userId, tom.userId));
+		const ours = crypto.randomUUID();
+		const theirs = crypto.randomUUID();
+		await save(
+			test,
+			ana,
+			{ table: 'project', id: ours, operation: 'put', values: { title: 'Hull survey' } },
+			{
+				table: 'project_team',
+				id: crypto.randomUUID(),
+				operation: 'put',
+				values: { projectId: ours, teamId: tomTeam.id, position: 0 }
+			}
+		);
+		await save(test, ana, {
+			table: 'project',
+			id: theirs,
+			operation: 'put',
+			values: { title: 'Crane lift' }
 		});
+		await save(test, ana, {
+			table: 'customer',
+			id: crypto.randomUUID(),
+			operation: 'put',
+			values: { name: 'Harbor Lines' }
+		});
+		await save(test, tom, {
+			table: 'project',
+			id: ours,
+			operation: 'put',
+			values: { subtitle: 'His own' }
+		});
+		await save(test, tom, {
+			table: 'facility',
+			id: crypto.randomUUID(),
+			operation: 'put',
+			values: { name: 'North Yard', kind: 'Port' }
+		});
+		await save(test, ana, {
+			table: 'team',
+			id: tomTeam.id,
+			operation: 'put',
+			values: { title: 'Surveyor' }
+		});
+		await recordProjectActivity(test.claims, tom, { kind: 'open', projectId: ours });
+		await recordProjectActivity(test.claims, ana, { kind: 'open', projectId: ours });
+
+		for (const actor of [tom, lee]) {
+			const result = await readAs(test, actor);
+			expect(result.people).toEqual([]);
+			expect(result.events.some((event) => event.kind === 'signIn')).toBe(false);
+		}
+		const { events } = await readAs(test, tom);
+		expect(
+			events.map(toLine).map(({ kind, who, thing, name }) => ({ kind, who, thing, name }))
+		).toEqual([
+			{ kind: 'open', who: 'Tom Diaz', thing: undefined, name: undefined },
+			{ kind: 'change', who: 'Ana Reyes', thing: 'Team', name: 'Tom Diaz' },
+			{ kind: 'add', who: 'Tom Diaz', thing: 'Facility', name: 'North Yard' },
+			{ kind: 'change', who: 'Tom Diaz', thing: 'project', name: 'Hull survey' },
+			// Putting Tom on it came in the same save, so it is counted on the project's own line.
+			{ kind: 'add', who: 'Ana Reyes', thing: 'project', name: 'Hull survey' }
+		]);
+	});
+
+	// Justin, 2026-11-28: View Activity on every ⋮ menu, for "that entire project or whatever it is".
+	it('reads one project’s own Activity: everything inside it and its openings, nothing else', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const hull = crypto.randomUUID();
+		const crane = crypto.randomUUID();
+		await save(
+			test,
+			ana,
+			{ table: 'project', id: hull, operation: 'put', values: { title: 'Hull survey' } },
+			{ table: 'project', id: crane, operation: 'put', values: { title: 'Crane lift' } }
+		);
+		await save(test, tom, {
+			table: 'panel',
+			id: crypto.randomUUID(),
+			operation: 'put',
+			values: { projectId: hull, kind: 'photos', key: 'damages', name: 'Damages' }
+		});
+		await save(test, tom, {
+			table: 'project',
+			id: crane,
+			operation: 'put',
+			values: { subtitle: 'Elsewhere' }
+		});
+		await recordProjectActivity(test.claims, ana, { kind: 'open', projectId: hull });
+		await recordProjectActivity(test.claims, tom, { kind: 'download', projectId: hull });
+		await recordProjectActivity(test.claims, tom, { kind: 'open', projectId: crane });
+
+		const about = { table: 'project', rowId: hull } as const;
+		function linesOf(result: Awaited<ReturnType<typeof readActivity>>) {
+			if (!result.isAllowed) throw new Error(result.reason);
+			expect(result.people).toEqual([]);
+			return result.events.map(toLine).map(({ kind, who, thing }) => ({ kind, who, thing }));
+		}
+		expect(linesOf(await readActivity(test.claims, ana, { about }))).toEqual([
+			{ kind: 'download', who: 'Tom Diaz', thing: undefined },
+			{ kind: 'open', who: 'Ana Reyes', thing: undefined },
+			{ kind: 'add', who: 'Tom Diaz', thing: 'panel' },
+			{ kind: 'add', who: 'Ana Reyes', thing: 'project' }
+		]);
+		// Anyone else sees the same project's changes, and of its openings only their own.
+		expect(linesOf(await readActivity(test.claims, tom, { about }))).toEqual([
+			{ kind: 'download', who: 'Tom Diaz', thing: undefined },
+			{ kind: 'add', who: 'Tom Diaz', thing: 'panel' },
+			{ kind: 'add', who: 'Ana Reyes', thing: 'project' }
+		]);
+	});
+
+	it('reads one record’s own Activity: a customer with its contacts, a Team member with their places on projects', async () => {
+		const test = await createTestSignIn();
+		await grantAdmin(test, 'ana.reyes@tridentcubed.com');
+		const ana = (await test.signIn('ana.reyes@tridentcubed.com')).actor;
+		const tom = (await test.signIn('tom.diaz@tridentcubed.com')).actor;
+		const [tomTeam] = await test.db
+			.select({ id: schema.team.id })
+			.from(schema.team)
+			.where(eq(schema.team.userId, tom.userId));
+		const harbor = crypto.randomUUID();
+		const project = crypto.randomUUID();
+		await save(test, ana, {
+			table: 'customer',
+			id: harbor,
+			operation: 'put',
+			values: { name: 'Harbor Lines' }
+		});
+		await save(test, ana, {
+			table: 'customer',
+			id: crypto.randomUUID(),
+			operation: 'put',
+			values: { name: 'Bay Freight' }
+		});
+		await save(test, tom, {
+			table: 'contact',
+			id: crypto.randomUUID(),
+			operation: 'put',
+			values: { customerId: harbor, name: 'Kim Lee' }
+		});
+		await save(
+			test,
+			ana,
+			{ table: 'project', id: project, operation: 'put', values: { title: 'Hull survey' } },
+			{
+				table: 'project_team',
+				id: crypto.randomUUID(),
+				operation: 'put',
+				values: { projectId: project, teamId: tomTeam.id, position: 0 }
+			}
+		);
+
+		async function linesOf(about: { table: 'customer' | 'team'; rowId: string }) {
+			const result = await readActivity(test.claims, tom, { about });
+			if (!result.isAllowed) throw new Error(result.reason);
+			return result.events.map(toLine).map(({ kind, thing, name }) => ({ kind, thing, name }));
+		}
+		expect(await linesOf({ table: 'customer', rowId: harbor })).toEqual([
+			{ kind: 'add', thing: 'contact', name: 'Kim Lee' },
+			{ kind: 'add', thing: 'customer', name: 'Harbor Lines' }
+		]);
+		expect(await linesOf({ table: 'team', rowId: tomTeam.id })).toEqual([
+			{ kind: 'add', thing: 'Team Assigned', name: undefined }
+		]);
 	});
 
 	it('reads older entries before the oldest shown, page by page: none twice, none lost, a save never split', async () => {

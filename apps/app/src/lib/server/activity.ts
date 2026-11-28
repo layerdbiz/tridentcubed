@@ -26,6 +26,7 @@ import {
 	sql
 } from 'drizzle-orm';
 import type {
+	ActivityAboutType,
 	ActivityEventType,
 	ActivityResultType,
 	ChangeEventType,
@@ -380,49 +381,163 @@ export type ActivityPageType = {
 	limit?: number;
 	/** An ISO time: only what happened before it. */
 	before?: string;
+	/** One project's or record's own Activity, from its ⋮ menu's View Activity, rather than the organization's. */
+	about?: ActivityAboutType;
 };
 
+// The id of the project a change's row is, or is inside, as text.
+const PROJECT_OF_ROW = sql`case when ${change.tableName} = 'project' then ${change.rowId}::text
+	else ${ROW} ->> 'projectId' end`;
+
+// The SQL list of `ids`, for `in (...)`.
+function toList(ids: string[]) {
+	return sql.join(
+		ids.map((id) => sql`${id}`),
+		sql`, `
+	);
+}
+
+// What one read of the Activity covers: which changes, which sign-ins and which of the rest (sign-outs, codes,
+// openings, downloads), none when left out, and whether it is the whole organization's, which lists its people.
+type ScopeType = { changes: SQL; signIns?: SQL; events?: SQL; isWhole?: boolean };
+
+// The projects `actor` is on, as the bell reads them (#403): on its Team Assigned, its Team Lead, or who started it,
+// and their own Team records.
+async function readMine(tx: TransactionType, actor: ActorType) {
+	const mine = (
+		await tx
+			.select({ id: team.id })
+			.from(team)
+			.where(and(eq(team.userId, actor.userId), isNull(team.deletedAt)))
+	).map((row) => row.id);
+	const assigned = mine.length
+		? await tx
+				.select({ id: projectTeam.projectId })
+				.from(projectTeam)
+				.where(and(inArray(projectTeam.teamId, mine), isNull(projectTeam.deletedAt)))
+		: [];
+	const own = await tx
+		.select({ id: project.id })
+		.from(project)
+		.where(
+			or(
+				eq(project.createdBy, actor.userId),
+				mine.length ? inArray(project.teamLeadId, mine) : undefined
+			)
+		);
+	return { mine, projectIds: [...new Set([...assigned, ...own].map((row) => row.id))] };
+}
+
+// The changes about what `mine` and `projectIds` name: every change in those projects, and what was done to those
+// Team records: changed, put on or taken off a project's Team Assigned.
+function aboutMine(mine: string[], projectIds: string[]) {
+	return or(
+		projectIds.length ? sql`${PROJECT_OF_ROW} in (${toList(projectIds)})` : undefined,
+		mine.length ? and(eq(change.tableName, 'team'), inArray(change.rowId, mine)) : undefined,
+		mine.length
+			? and(eq(change.tableName, 'project_team'), sql`${ROW} ->> 'teamId' in (${toList(mine)})`)
+			: undefined
+	);
+}
+
+// The changes one project or record's Activity holds: a project's, everything inside it; a customer's, its contacts
+// too; a Team member's, their places on projects too; a Transport Mode's or a Facility's, its own.
+function aboutOne({ table, rowId }: ActivityAboutType): SQL {
+	const own = and(eq(change.tableName, table), eq(change.rowId, rowId)) as SQL;
+	if (table === 'project') return sql`${PROJECT_OF_ROW} = ${rowId}`;
+	if (table === 'customer')
+		return or(
+			own,
+			and(eq(change.tableName, 'contact'), sql`${ROW} ->> 'customerId' = ${rowId}`)
+		) as SQL;
+	if (table === 'team')
+		return or(
+			own,
+			and(eq(change.tableName, 'project_team'), sql`${ROW} ->> 'teamId' = ${rowId}`)
+		) as SQL;
+	return own;
+}
+
+// The openings and PDF downloads of the Activity: what the database lets `actor` read of them (an Admin's, everyone's;
+// anyone else's, their own).
+const OPENED = inArray(activityEvent.kind, ['open', 'download']);
+
+// What `actor` reads of the Activity (#403, Justin, 2026-11-28): an Admin the whole organization's; anyone else what
+// they are privy to, as their bell has it but in full: every change in the projects they are on, theirs too, what was
+// done to them, whatever else they did, and their own openings and downloads. A project's or a record's own Activity
+// holds what is about it, and a project's its openings and downloads, for anyone who can see it.
+async function readScope(
+	tx: TransactionType,
+	actor: ActorType,
+	isWhole: boolean,
+	about?: ActivityAboutType
+): Promise<ScopeType> {
+	if (about)
+		return {
+			changes: aboutOne(about),
+			...(about.table === 'project'
+				? { events: and(OPENED, eq(activityEvent.projectId, about.rowId)) }
+				: {})
+		};
+	if (isWhole) return { changes: sql`true`, signIns: sql`true`, events: sql`true`, isWhole };
+	const { mine, projectIds } = await readMine(tx, actor);
+	return {
+		changes: or(eq(change.userId, actor.userId), aboutMine(mine, projectIds)) as SQL,
+		events: and(OPENED, eq(activityEvent.userId, actor.userId))
+	};
+}
+
 /**
- * The Activity as `actor` may see it: their organization's newest sign-ins and changes (or the next ones `before` the
- * oldest shown), newest first, and when each of its people last signed in, latest first. Only an Admin may (the one
- * permission check).
+ * The Activity as `actor` may see it (the one permission check): newest first, the newest sign-ins and changes (or the
+ * next ones `before` the oldest shown), and, for an Admin's whole organization, when each of its people last signed
+ * in, latest first. Anyone else on the staff reads what they are privy to (`readScope`); `about` narrows it to one
+ * project's or record's own.
  */
 export async function readActivity(
 	claims: ClaimsType,
 	actor: ActorType,
-	{ limit = ACTIVITY_LIMIT, before }: ActivityPageType = {}
+	{ limit = ACTIVITY_LIMIT, before, about }: ActivityPageType = {}
 ): Promise<ActivityResultType> {
 	const verdict = checkActivity(actor);
 	if (!verdict.isAllowed) return verdict;
 	return claims.run(actor, async (tx) => {
+		const scope = await readScope(tx, actor, verdict.isWhole, about);
+		const none: PageType<never> = { rows: [] };
 		const changePage = await readPage(
-			(where, most) => readChanges(tx, where, most),
+			(where, most) => readChanges(tx, and(where, scope.changes) as SQL, most),
 			CHANGE_AT,
 			before,
 			limit
 		);
-		const signInPage = await readPage(
-			(where, most) => readSignIns(tx, where, most),
-			SIGN_IN_AT,
-			before,
-			limit
-		);
-		const eventPage = await readPage(
-			(where, most) => readEvents(tx, where, most),
-			EVENT_AT,
-			before,
-			limit
-		);
+		const { signIns: signInsOf, events: eventsOf } = scope;
+		const signInPage = signInsOf
+			? await readPage(
+					(where, most) => readSignIns(tx, and(where, signInsOf) as SQL, most),
+					SIGN_IN_AT,
+					before,
+					limit
+				)
+			: none;
+		const eventPage = eventsOf
+			? await readPage(
+					(where, most) => readEvents(tx, and(where, eventsOf) as SQL, most),
+					EVENT_AT,
+					before,
+					limit
+				)
+			: none;
 		const changes = changePage.rows;
 		const signIns = signInPage.rows;
-		const latest = await tx
-			.selectDistinctOn([signIn.userId], {
-				userId: signIn.userId,
-				at: signIn.createdAt,
-				userAgent: signIn.userAgent
-			})
-			.from(signIn)
-			.orderBy(signIn.userId, desc(signIn.createdAt), desc(signIn.id));
+		const latest = scope.isWhole
+			? await tx
+					.selectDistinctOn([signIn.userId], {
+						userId: signIn.userId,
+						at: signIn.createdAt,
+						userAgent: signIn.userAgent
+					})
+					.from(signIn)
+					.orderBy(signIn.userId, desc(signIn.createdAt), desc(signIn.id))
+			: [];
 		const users = await tx
 			.select({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt })
 			.from(user);
@@ -483,7 +598,7 @@ export async function readActivity(
 		];
 
 		const lastOf = new Map(latest.map((row) => [row.userId, row]));
-		const people = users.map((each): LastSignInType => {
+		const people = (scope.isWhole ? users : []).map((each): LastSignInType => {
 			const last = lastOf.get(each.id);
 			return {
 				userId: each.id,
@@ -517,18 +632,6 @@ export async function readActivity(
 /** How many lines the bell's Notifications read: the newest. */
 export const NOTIFICATIONS_LIMIT = 50;
 
-// The id of the project a change's row is, or is inside, as text.
-const PROJECT_OF_ROW = sql`case when ${change.tableName} = 'project' then ${change.rowId}::text
-	else ${ROW} ->> 'projectId' end`;
-
-// The SQL list of `ids`, for `in (...)`.
-function toList(ids: string[]) {
-	return sql.join(
-		ids.map((id) => sql`${id}`),
-		sql`, `
-	);
-}
-
 /**
  * The bell's Notifications (#403, Justin, 2026-11-27: only what is about you): the newest changes someone else made in
  * the projects `actor` is on (on its Team Assigned, its Team Lead, or who started it), and what was done to them: put
@@ -543,35 +646,8 @@ export async function readNotifications(
 	const verdict = checkNotifications(actor);
 	if (!verdict.isAllowed) return verdict;
 	return claims.run(actor, async (tx) => {
-		const mine = (
-			await tx
-				.select({ id: team.id })
-				.from(team)
-				.where(and(eq(team.userId, actor.userId), isNull(team.deletedAt)))
-		).map((row) => row.id);
-		const assigned = mine.length
-			? await tx
-					.select({ id: projectTeam.projectId })
-					.from(projectTeam)
-					.where(and(inArray(projectTeam.teamId, mine), isNull(projectTeam.deletedAt)))
-			: [];
-		const own = await tx
-			.select({ id: project.id })
-			.from(project)
-			.where(
-				or(
-					eq(project.createdBy, actor.userId),
-					mine.length ? inArray(project.teamLeadId, mine) : undefined
-				)
-			);
-		const projectIds = [...new Set([...assigned, ...own].map((row) => row.id))];
-		const about = or(
-			projectIds.length ? sql`${PROJECT_OF_ROW} in (${toList(projectIds)})` : undefined,
-			mine.length ? and(eq(change.tableName, 'team'), inArray(change.rowId, mine)) : undefined,
-			mine.length
-				? and(eq(change.tableName, 'project_team'), sql`${ROW} ->> 'teamId' in (${toList(mine)})`)
-				: undefined
-		);
+		const { mine, projectIds } = await readMine(tx, actor);
+		const about = aboutMine(mine, projectIds);
 		if (!about) return { isAllowed: true, events: [] };
 		const rows = await readChanges(
 			tx,

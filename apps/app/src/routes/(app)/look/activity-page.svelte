@@ -1,7 +1,8 @@
 <script lang="ts">
 	// The Activity Log (#306; #403, Justin, 2026-11-27): the organization's running list of what happens in the app,
-	// newest first: sign-ins and sign-outs, projects opened, PDFs downloaded and every change in the history. An Admin
-	// opens it from the menu on their profile picture or from Settings. It is built like the Organization's Page: a
+	// newest first: sign-ins and sign-outs, projects opened, PDFs downloaded and every change in the history, for an
+	// Admin; for anyone else only what they are privy to (#403, 2026-11-28). It opens from the menu on the profile
+	// picture or from Settings. It is built like the Organization's Page: a
 	// dark top with a white sheet under it and the one page header. The list and how it loads are activity-log.svelte,
 	// which Settings holds too, in the look Justin picked on the prototype.
 	import ActivityLog from './activity-log.svelte';
