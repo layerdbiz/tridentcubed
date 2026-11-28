@@ -26,14 +26,34 @@ export type SignatureBannerType = { id: string; source: string; edit?: EditType;
 export type ShownPartType = { label: string; preview: string; original: string };
 
 /**
- * A person's signature's photo and banners as the screen edits them, with the photos to pick from and the company's
- * banners to add. `isPicked` says the photo was picked or uploaded, not the one the Sheet and the defaults give.
+ * One picture of a signature's photo or banner panel (Justin, 2026-11-28: "the same photo panel that is in the
+ * project edit panels"), in its place: what it is made from and how it is edited. Its source is its id.
+ */
+export type PanelPictureType = { source: string; edit?: EditType };
+
+/**
+ * A panel's picture as the screen shows it: whether it is one the person uploaded, theirs to delete (the built-in
+ * ones are always there), and for a banner where it takes a reader to start with.
+ */
+export type PanelShownType = PanelPictureType & ShownPartType & { isOwn: boolean; link?: string };
+
+/** A shared address someone can show under their signature: the Sheet's shared mailboxes and those an Admin added. */
+export type GroupEmailType = { email: string; name: string };
+
+/**
+ * A person's signature's photo, banner and group emails as the screen edits them (Justin, 2026-11-28): the photo and
+ * the ONE banner it shows, each picked from its panel of pictures (`photos`, `banners`: the built-in ones and the
+ * person's uploads, in their order, each with its edit), and the shared addresses shown under it (`groupEmails`), out
+ * of every one there is (`groups`). `isPicked` says the photo was picked or uploaded, not the one the Sheet and the
+ * defaults give.
  */
 export type SignaturePartsType = {
 	photo: SignaturePhotoType & ShownPartType & { isPicked: boolean };
-	banners: (SignatureBannerType & ShownPartType)[];
-	photos: ChoiceType[];
-	companyBanners: ChoiceType[];
+	banner?: SignatureBannerType & ShownPartType;
+	photos: PanelShownType[];
+	banners: PanelShownType[];
+	groups: GroupEmailType[];
+	groupEmails: string[];
 };
 
 /** One signature, with the shared mailboxes for an Admin and, for a person's, its photo and banners to edit; or why not. */
@@ -50,13 +70,19 @@ export type SignatureAnswerType =
 export type SignatureAskType = { person?: string; mailbox?: string };
 
 /**
- * What is saved for a person's signature (theirs with no `person`): its photo and its banners, in order, each given
- * whole; `null` goes back to what the Sheet and the defaults give, and one left out stays as it is.
+ * What is saved for a person's signature (theirs with no `person`), each part given whole, one left out stays as it
+ * is: its photo and its one banner, each with its edit and link; the order and edits of its photo and banner panels;
+ * its group emails. `null` goes back to what the Sheet and the defaults give. `addGroup` is an Admin's new group email,
+ * offered to everyone from then on.
  */
 export type SignatureSaveType = {
 	person?: string;
 	photo?: SignaturePhotoType | null;
-	banners?: SignatureBannerType[] | null;
+	banner?: SignatureBannerType | null;
+	photos?: PanelPictureType[];
+	banners?: PanelPictureType[];
+	groupEmails?: string[] | null;
+	addGroup?: GroupEmailType;
 };
 
 /** What a signature picture is: a photo (always a circle), a banner, or one of the website's icons and logos. */

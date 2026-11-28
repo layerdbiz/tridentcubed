@@ -134,6 +134,7 @@
 			autocapitalize="sentences"
 			spellcheck
 			bind:value={item.english}
+			help={look.helpOf('translate.english')}
 		/>
 		{#if isFromTranslator(item)}
 			<p

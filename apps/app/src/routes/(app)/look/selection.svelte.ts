@@ -4,7 +4,29 @@
 // Selection bar (selection.svelte): one description for all, Delete and Move to…; a dragged selection drops into any
 // stage of any photo panel (sortable.ts), in the order it had. PDFs and videos in a group (#327) are selected the
 // same way. One per LookState, so it outlives the panels' redraws.
-import type { PanelType } from './look.data';
+// 2026-11-28 (Justin: "Whenever I hold it down, it would multi-select"): any photo panel selects the same way
+// (photo-panel.svelte); one outside a project's panels, an Email Signature's photos or banners, gives its own
+// `source`, which says what its pictures are and what Delete and a drag do to them.
+import type { PanelType, PhotoType } from './look.data';
+
+/** Where photos are selected: a project's panel, or any place with its pictures in groups. */
+export type SelectedPlaceType = Pick<PanelType, 'id'> & { groups?: { photos: { id: string }[] }[] };
+
+/** Photos selected outside a project's panels (an Email Signature's): what they are, and what Delete and a drag do. */
+export type SelectionSourceType = {
+	/** The place's pictures, in their order. */
+	photos: () => PhotoType[];
+	/** What one is called: "photo", "banner". */
+	noun: string;
+	/** What they are part of: "signature". */
+	word: string;
+	/** Whether Delete takes one: a picture that is always there stays. */
+	canDelete: (photo: PhotoType) => boolean;
+	/** Delete, asked first, of the ones it takes. */
+	ondelete: (ids: string[]) => void;
+	/** The selection let go in its own list, at this place (none: its end). */
+	onmove: (ids: string[], to: number | undefined) => void;
+};
 
 /** The keys held with a click: what tells a tap from a Ctrl, Cmd or Shift click. */
 export type ClickKeysType = Pick<MouseEvent, 'shiftKey' | 'ctrlKey' | 'metaKey'>;
@@ -22,6 +44,8 @@ export class Selection {
 	 * once the selection ends, to show where the photos went, until a panel's header is tapped. */
 	alsoOpen = $state('');
 	sheet = $state<SelectionSheetType>('');
+	/** What the selection is of when it is not a project's panel's. */
+	source = $state.raw<SelectionSourceType>();
 	/** Until when a click is the end of a drag or a hold, not a tap anywhere else (sortable.ts sets it). */
 	quietUntil = 0;
 	// The photo a Shift-click counts from.
@@ -41,21 +65,21 @@ export class Selection {
 	}
 
 	/** A photo held still and let go: it starts a selection; while its panel is selecting it is a slow tap. */
-	hold(panelId: string, id: string) {
-		this.#toggle(panelId, id);
+	hold(panelId: string, id: string, source?: SelectionSourceType) {
+		this.#toggle(panelId, id, source);
 	}
 
 	/**
 	 * What a click on a photo does to the selection. True when it was taken as selecting, so the photo does not open:
 	 * a Shift-click, a Ctrl or Cmd click, or any tap while its panel is selecting.
 	 */
-	tap(panel: PanelType, id: string, keys: ClickKeysType) {
+	tap(panel: SelectedPlaceType, id: string, keys: ClickKeysType, source?: SelectionSourceType) {
 		if (keys.shiftKey) {
-			this.#range(panel, id);
+			this.#range(panel, id, source);
 			return true;
 		}
 		if (keys.ctrlKey || keys.metaKey || this.isIn(panel.id)) {
-			this.#toggle(panel.id, id);
+			this.#toggle(panel.id, id, source);
 			return true;
 		}
 		return false;
@@ -65,6 +89,7 @@ export class Selection {
 		this.panelId = '';
 		this.ids = [];
 		this.sheet = '';
+		this.source = undefined;
 		this.#anchor = '';
 	}
 
@@ -73,15 +98,16 @@ export class Selection {
 		return panels.flatMap((panel) => photosOf(panel)).filter((photo) => this.has(photo.id));
 	}
 
-	#start(panelId: string, id: string) {
+	#start(panelId: string, id: string, source?: SelectionSourceType) {
 		this.panelId = panelId;
 		this.ids = [id];
+		this.source = source;
 		this.#anchor = id;
 	}
 
 	// On and off in its own panel; in another panel it starts a new selection there.
-	#toggle(panelId: string, id: string) {
-		if (!this.isIn(panelId)) return this.#start(panelId, id);
+	#toggle(panelId: string, id: string, source?: SelectionSourceType) {
+		if (!this.isIn(panelId)) return this.#start(panelId, id, source);
 		this.ids = this.has(id) ? this.ids.filter((each) => each !== id) : [...this.ids, id];
 		// Shift counts from the last one picked that is still selected.
 		this.#anchor = this.ids.at(-1) ?? '';
@@ -89,14 +115,15 @@ export class Selection {
 	}
 
 	// Every photo of the panel from the last one picked to this one, in the panel's order.
-	#range(panel: PanelType, id: string) {
+	#range(panel: SelectedPlaceType, id: string, source?: SelectionSourceType) {
 		const order = photosOf(panel).map((photo) => photo.id);
-		if (!this.isIn(panel.id) || !order.includes(this.#anchor)) return this.#start(panel.id, id);
+		if (!this.isIn(panel.id) || !order.includes(this.#anchor))
+			return this.#start(panel.id, id, source);
 		const [from, to] = [order.indexOf(this.#anchor), order.indexOf(id)].toSorted((a, b) => a - b);
 		this.ids = [...new Set([...this.ids, ...order.slice(from, to + 1)])];
 	}
 }
 
-function photosOf(panel: PanelType) {
+function photosOf<T extends { id: string }>(panel: { groups?: { photos: T[] }[] }): T[] {
 	return (panel.groups ?? []).flatMap((group) => group.photos);
 }

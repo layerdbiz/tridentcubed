@@ -42,8 +42,8 @@ export const PICTURE_VERSION = 3;
 /** How wide a banner shows in a signature at most: the signature's own width, as mail apps draw it. */
 export const BANNER_WIDTH = 600;
 
-/** How many banners a signature takes. */
-export const MAX_BANNERS = 10;
+/** How many pictures a person can upload to a signature's photo or banner panel. */
+export const MAX_UPLOADS = 20;
 
 /** The longest link a photo or banner takes. */
 export const MAX_LINK = 2048;
@@ -68,6 +68,13 @@ export const WEBSITE_ICONS = {
 
 /** How a picture in Google Drive is named in a choice: its file id after this. */
 export const DRIVE = 'drive:';
+
+/**
+ * How a person's profile picture in the app is named as a signature photo choice (Justin, 2026-11-28: "my avatar
+ * that's linked with my profile"): its address in the app after this (`/start/team/...`, `/files/<id>`, or a sign-in
+ * picture's).
+ */
+export const PROFILE = 'profile:';
 
 /** How an uploaded picture is named in a choice: its file name in `UPLOAD_FOLDER` after this. */
 export const UPLOAD = 'upload:';

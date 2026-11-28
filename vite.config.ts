@@ -39,7 +39,10 @@ export default defineConfig({
 			'vp check --fix --deny-warnings --no-error-on-unmatched-pattern',
 		// The look check (Justin, 2026-11-26): a library component off the base component, or naming palette
 		// colours, stops the commit (packages/tools/src/checks/look.ts, CODING_STANDARDS.md).
-		'packages/ui/src/lib/components/**/*.svelte': 'node packages/tools/bin/look.js'
+		'packages/ui/src/lib/components/**/*.svelte': 'node packages/tools/bin/look.js',
+		// The help check (Justin, 2026-11-28): an app Input, Textarea or Select with no help ? stops the commit
+		// (packages/tools/src/checks/help.ts, apps/app/AGENTS.md).
+		'apps/app/src/**/*.svelte': 'node packages/tools/bin/help.js'
 	},
 	// The root's half of `pnpm dev`: the barrels watcher, run beside each app's dev server under
 	// `vp run --parallel` (packages/tools, the workspace launcher; invariant 5). The apps' tasks

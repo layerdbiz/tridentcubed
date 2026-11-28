@@ -6,6 +6,10 @@
 // different from their avatar profile"): the one they picked or uploaded, else their photo on the website's
 // signature, else their photo in the Profile Images folder, else the Trident logo (`DEFAULT_PHOTO`). The banner is the
 // one they picked or uploaded, none if they said so, else the Sheet's, else the Trident Cubed map (`DEFAULT_BANNER`).
+// Round 8 (Justin, 2026-11-28): a signature shows ONE banner; the photo and the banner are each picked from a panel of
+// pictures, the built-in ones always there (the Trident logos, their profile picture, their email photo, their
+// Profile Images photos; every company banner) and their own uploads, in the order they left them, each with its
+// edit. The shared addresses under it are the group emails they pick, else their Sheet row's.
 // Every picture, the website's icons too, is copied to the app's public signature address before a signature shows
 // it (#lib/server/signature.ts), so a pasted signature never points at Google Drive or at a page that redirects.
 import { cleanEdit, type EditType } from '#lib/components/photo/edit.js';
@@ -16,6 +20,7 @@ import {
 	DEFAULT_PHOTO,
 	DRIVE,
 	MAX_LINK,
+	PROFILE,
 	SIGNATURE_API,
 	UPLOAD,
 	UPLOAD_BANNER_LINK,
@@ -23,7 +28,10 @@ import {
 } from './signature.constants';
 import type {
 	ChoiceType,
+	GroupEmailType,
 	MailboxType,
+	PanelPictureType,
+	PanelShownType,
 	PictureSourceType,
 	SignatureBannerType,
 	SignaturePartsType,
@@ -81,7 +89,10 @@ export const NO_SHEETS: SheetsType = {
 	social: {}
 };
 
-/** The Team record's details a signature uses. Its `photo` is the app's profile picture, which it does not use. */
+/**
+ * The Team record's details a signature uses. Its `photo` is the app's profile picture: one of the photos the
+ * signature's can be, never the one it starts with.
+ */
 export type SignatureRecordType = {
 	id: string;
 	name: string;
@@ -89,6 +100,7 @@ export type SignatureRecordType = {
 	phone: string;
 	email: string;
 	link: string;
+	photo?: string | null;
 };
 
 /**
@@ -101,6 +113,9 @@ export type SavedPicksType = {
 	photoLink?: string | null;
 	banner?: string | null;
 	banners?: SignatureBannerType[] | null;
+	photoList?: PanelPictureType[] | null;
+	bannerList?: PanelPictureType[] | null;
+	groupEmails?: string[] | null;
 };
 
 /** A banner as the signature shows it, before it is copied: its picture, where it goes and what it is called. */
@@ -169,8 +184,9 @@ export function toFetchAddress(source: string) {
 	return source.startsWith(DRIVE) ? toDriveAddress(source.slice(DRIVE.length), 2000) : source;
 }
 
-/** A small picture for the picker: Google Drive's at `width` pixels, a website one as it is. */
+/** A small picture for the picker: Google Drive's at `width` pixels, a profile picture at its app address, a website one as it is. */
 export function toPreview(source: string, width: number) {
+	if (source.startsWith(PROFILE)) return source.slice(PROFILE.length);
 	return source.startsWith(DRIVE) ? toDriveAddress(source.slice(DRIVE.length), width) : source;
 }
 
@@ -272,10 +288,10 @@ export function isTheirPhoto(file: string, name: string, named?: string) {
 	return fileWords.has(words[0]) && fileWords.has(words[words.length - 1]);
 }
 
-// The Trident logo photos everyone can pick, from the Profile Images folder.
+// The Trident logo photos everyone can pick, from the Profile Images folder: dark first, as Justin listed them.
 const LOGO_PHOTOS = [
-	{ name: DEFAULT_PHOTO.name, label: 'Trident logo' },
-	{ name: 'profile-dark-500x500.png', label: 'Trident logo, dark' }
+	{ name: 'profile-dark-500x500.png', label: 'Trident logo, dark' },
+	{ name: DEFAULT_PHOTO.name, label: 'Trident logo' }
 ];
 
 function toLabel(file: string) {
@@ -283,38 +299,54 @@ function toLabel(file: string) {
 	return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+// A Profile Images photo's name without the person's: "LinkedIn photo", "Profile photo".
+function toPhotoLabel(file: string, name: string) {
+	const own = new Set(toNameWords(name));
+	const words = toNameWords(file).filter((word) => !own.has(word));
+	if (words.includes('linkedin')) return 'LinkedIn photo';
+	const rest = words.filter((word) => word !== 'profile' && word !== 'png');
+	return rest.length ? `${toLabel(rest.join(' '))} photo` : 'Profile photo';
+}
+
 function findRow(record: SignatureRecordType, sheets: SheetsType) {
 	return sheets.people.find((each) => toEmailKey(each.email) === toEmailKey(record.email));
 }
 
-function toUnique(choices: ChoiceType[]) {
+function toUnique<T extends { source: string }>(choices: T[]) {
 	const seen = new Set<string>();
 	return choices.filter((choice) => !seen.has(choice.source) && seen.add(choice.source));
 }
 
-/** The photos a person can pick: their upload, their website photo, their Profile Images photos and the logos. */
-export function toPhotoChoices(
-	record: SignatureRecordType,
-	sheets: SheetsType,
-	saved?: string | null
-): ChoiceType[] {
+/**
+ * The built-in photos a person can pick, always there (Justin, 2026-11-28: "the dark trident logo, the light trident
+ * logo, my avatar that's linked with my profile, and also the custom email photo"): the Trident logos, their profile
+ * picture in the app, their photo on the website's signature, and their photos in the Profile Images folder.
+ */
+export function toPhotoChoices(record: SignatureRecordType, sheets: SheetsType): ChoiceType[] {
 	const row = findRow(record, sheets);
 	const choices: ChoiceType[] = [];
-	if (saved?.startsWith(UPLOAD)) choices.push({ source: saved, label: 'Your upload', preview: '' });
-	if (row && isOwnPhoto(row.src)) {
-		choices.push({ source: row.src, label: 'Website photo', preview: toPreview(row.src, 240) });
-	}
-	for (const profile of sheets.profiles) {
-		if (!isTheirPhoto(profile.name, record.name, row?.profile)) continue;
-		const source = `${DRIVE}${profile.file}`;
-		choices.push({ source, label: toLabel(profile.name), preview: toPreview(source, 240) });
-	}
 	for (const logo of LOGO_PHOTOS) {
 		const profile = sheets.profiles.find((each) => each.name === logo.name);
 		const file = profile?.file ?? (logo.name === DEFAULT_PHOTO.name ? DEFAULT_PHOTO.file : '');
 		if (!file) continue;
 		const source = `${DRIVE}${file}`;
-		choices.push({ source, label: logo.label, preview: toPreview(source, 240) });
+		choices.push({ source, label: logo.label, preview: toPreview(source, 480) });
+	}
+	if (record.photo) {
+		const source = `${PROFILE}${record.photo}`;
+		choices.push({ source, label: 'Profile picture', preview: toPreview(source, 480) });
+	}
+	if (row && isOwnPhoto(row.src)) {
+		choices.push({ source: row.src, label: 'Email photo', preview: toPreview(row.src, 480) });
+	}
+	for (const profile of sheets.profiles) {
+		if (!isTheirPhoto(profile.name, record.name, row?.profile)) continue;
+		const source = `${DRIVE}${profile.file}`;
+		choices.push({
+			source,
+			label: toPhotoLabel(profile.name, record.name),
+			preview: toPreview(source, 480)
+		});
 	}
 	return toUnique(choices);
 }
@@ -409,20 +441,21 @@ export function toPersonPhoto(
 }
 
 /**
- * The banners under a person's signature, in order: the ones they saved, else the one they picked before there could
- * be several, else the Sheet's, else the Trident Cubed map. Each goes where its Sheet row says, an upload to the
- * website.
+ * The ONE banner under a person's signature (Justin, 2026-11-28: "I only want to allow the email signature to have one
+ * banner image at a time and one link at a time"): the one they saved (the first, where an older row saved several;
+ * none for an empty list), else the one they picked before there could be several, else the Sheet's, else the
+ * Trident Cubed map. It goes where its Sheet row says, an upload to the website, until they give it a link.
  */
-export function toPersonBanners(
+export function toPersonBanner(
 	record: SignatureRecordType,
 	sheets: SheetsType,
 	saved: SavedPicksType = {}
-): SignatureBannerType[] {
-	if (saved.banners) return saved.banners;
+): SignatureBannerType | undefined {
+	if (saved.banners) return saved.banners[0];
 	const source = toBannerSource(record, sheets, saved.banner);
-	if (!source) return [];
+	if (!source) return undefined;
 	const choice = toBannerChoices(sheets).find((each) => each.source === source);
-	return [{ id: 'sheet', source, link: choice?.link || UPLOAD_BANNER_LINK }];
+	return { id: 'sheet', source, link: choice?.link || UPLOAD_BANNER_LINK };
 }
 
 // A banner's name: the company banner's, else what an upload is.
@@ -448,7 +481,9 @@ export function toPersonLook(
 	return {
 		photo: toPicture(photo.source, 'photo', sheets, photo.edit),
 		photoLink: photo.link,
-		banners: toPersonBanners(record, sheets, saved).map((banner) => toLookBanner(banner, sheets))
+		banners: [toPersonBanner(record, sheets, saved)].flatMap((banner) =>
+			banner ? [toLookBanner(banner, sheets)] : []
+		)
 	};
 }
 
@@ -475,17 +510,134 @@ export function toOriginal(source: string, width = 1600) {
 	return toPreview(source, width);
 }
 
+// A panel as it was left (`list`), with every built-in picture there, added at its end when it is new, and the
+// uploads still in it; one no longer offered goes, unless it is the one in use (`used`).
+function toPanelList(
+	list: PanelPictureType[] | null | undefined,
+	builtIns: ChoiceType[],
+	used: string[],
+	start: () => PanelPictureType[]
+): PanelPictureType[] {
+	const offered = new Set(builtIns.map((each) => each.source));
+	const kept = (list ?? start()).filter(
+		(each) =>
+			offered.has(each.source) || each.source.startsWith(UPLOAD) || used.includes(each.source)
+	);
+	for (const choice of builtIns) {
+		if (!kept.some((each) => each.source === choice.source)) kept.push({ source: choice.source });
+	}
+	for (const source of used) {
+		if (source && !kept.some((each) => each.source === source)) kept.push({ source });
+	}
+	return toUnique(kept).map(({ source, edit }) => {
+		const clean = edit && cleanEdit(edit);
+		return clean ? { source, edit: clean } : { source };
+	});
+}
+
 /**
- * A person's signature's photo and banners as the screen edits them, each with its name and pictures, and the
- * photos to pick from and the company's banners to add.
+ * A person's photo panel (Justin, 2026-11-28: "There needs to be photos built in that are always available"): every
+ * built-in photo and their uploads, in the order they left them, each with its edit. Before they ever moved one, the
+ * built-in ones in their first order, then the upload they had picked, the photo's edit on the photo it was made on.
+ */
+export function toPhotoPanel(
+	record: SignatureRecordType,
+	sheets: SheetsType,
+	saved: SavedPicksType = {}
+): PanelShownType[] {
+	const builtIns = toPhotoChoices(record, sheets);
+	const used = toPhotoSource(record, sheets, saved.photo);
+	const list = toPanelList(saved.photoList, builtIns, [used], () => {
+		const first: PanelPictureType[] = builtIns.map((each) => ({ source: each.source }));
+		if (saved.photo?.startsWith(UPLOAD)) first.push({ source: saved.photo });
+		const edit = saved.photo && saved.photoEdit ? cleanEdit(saved.photoEdit) : undefined;
+		const item = first.find((each) => each.source === saved.photo);
+		if (item && edit) item.edit = edit;
+		return first;
+	});
+	return list.map((each) => ({
+		...each,
+		label: builtIns.find((choice) => choice.source === each.source)?.label ?? 'Your upload',
+		preview: toOriginal(each.source, 800),
+		original: toOriginal(each.source),
+		isOwn: each.source.startsWith(UPLOAD)
+	}));
+}
+
+/**
+ * A person's banner panel: every company banner and their uploads, in the order they left them, each with its edit and
+ * the link it starts with. Before they ever moved one, the company's in the folder's order, then the uploads they had.
+ */
+export function toBannerPanel(
+	record: SignatureRecordType,
+	sheets: SheetsType,
+	saved: SavedPicksType = {}
+): PanelShownType[] {
+	const builtIns = toBannerChoices(sheets);
+	const used = toPersonBanner(record, sheets, saved);
+	const list = toPanelList(saved.bannerList, builtIns, used ? [used.source] : [], () => [
+		...builtIns.map((each) => ({ source: each.source })),
+		...(saved.banners ?? [])
+			.filter((each) => each.source.startsWith(UPLOAD))
+			.map(({ source, edit }) => ({ source, edit }))
+	]);
+	return list.map((each) => {
+		const choice = builtIns.find((item) => item.source === each.source);
+		return {
+			...each,
+			label: choice?.label ?? 'Your upload',
+			preview: toOriginal(each.source, 1200),
+			original: toOriginal(each.source),
+			link: choice?.link || UPLOAD_BANNER_LINK,
+			isOwn: each.source.startsWith(UPLOAD)
+		};
+	});
+}
+
+/**
+ * Every group email someone can show under their signature: the shared mailboxes the signature Sheet lists, then the
+ * ones an Admin added in the app, each address once.
+ */
+export function toGroupChoices(sheets: SheetsType, added: GroupEmailType[] = []): GroupEmailType[] {
+	const seen = new Set<string>();
+	const groups: GroupEmailType[] = [];
+	for (const group of [...sheets.mailboxes.map(({ email, name }) => ({ email, name })), ...added]) {
+		const key = toEmailKey(group.email);
+		if (!key || seen.has(key)) continue;
+		seen.add(key);
+		groups.push({ email: group.email.trim(), name: group.name.trim() || group.email.trim() });
+	}
+	return groups;
+}
+
+/** The group emails under a person's signature: the ones they picked, else their Sheet row's. */
+export function toGroupEmails(
+	record: SignatureRecordType,
+	sheets: SheetsType,
+	saved: SavedPicksType = {}
+): string[] {
+	if (saved.groupEmails) return saved.groupEmails;
+	const group = findRow(record, sheets)?.group ?? '';
+	return group
+		.split(',')
+		.map((each) => each.trim())
+		.filter(Boolean);
+}
+
+/**
+ * A person's signature's photo, banner and group emails as the screen edits them: the photo and the one banner it
+ * shows, each with its name and pictures, their panels of pictures to pick from, and the group emails.
  */
 export function toPersonParts(
 	record: SignatureRecordType,
 	sheets: SheetsType,
-	saved: SavedPicksType = {}
+	saved: SavedPicksType = {},
+	added: GroupEmailType[] = []
 ): SignaturePartsType {
-	const photos = toPhotoChoices(record, sheets, saved.photo);
+	const photos = toPhotoPanel(record, sheets, saved);
+	const banners = toBannerPanel(record, sheets, saved);
 	const photo = toPersonPhoto(record, sheets, saved);
+	const banner = toPersonBanner(record, sheets, saved);
 	return {
 		photo: {
 			...photo,
@@ -494,14 +646,20 @@ export function toPersonParts(
 			original: toOriginal(photo.source),
 			isPicked: Boolean(saved.photo)
 		},
-		banners: toPersonBanners(record, sheets, saved).map((banner) => ({
-			...banner,
-			label: toBannerLabel(banner.source, sheets) ?? 'Your upload',
-			preview: toOriginal(banner.source, 1200),
-			original: toOriginal(banner.source)
-		})),
+		...(banner
+			? {
+					banner: {
+						...banner,
+						label: banners.find((each) => each.source === banner.source)?.label ?? 'Your upload',
+						preview: toOriginal(banner.source, 1200),
+						original: toOriginal(banner.source)
+					}
+				}
+			: {}),
 		photos,
-		companyBanners: toBannerChoices(sheets)
+		banners,
+		groups: toGroupChoices(sheets, added),
+		groupEmails: toGroupEmails(record, sheets, saved)
 	};
 }
 
@@ -585,12 +743,13 @@ export function toPersonSignature(
 	record: SignatureRecordType,
 	sheets: SheetsType,
 	look: SignatureLookType,
-	made: MadeLookType
+	made: MadeLookType,
+	saved: SavedPicksType = {}
 ): SignatureType {
 	return {
 		id: record.id,
 		type: 'person',
-		...toDetails(record, findRow(record, sheets)),
+		...toDetails(record, findRow(record, sheets), toGroupEmails(record, sheets, saved)),
 		slug: record.id,
 		...toPictureParts(look, made, sheets)
 	};
@@ -600,14 +759,14 @@ type DetailsType = Pick<SignatureRecordType, 'name' | 'title' | 'phone' | 'email
 
 // The words a person's signature shows: the Team record's, their Sheet row's where it is empty, and the shared
 // addresses under them, never their own.
-function toDetails(record: DetailsType, row: SheetPersonType | undefined) {
+function toDetails(record: DetailsType, row: SheetPersonType | undefined, groups: string[]) {
 	const email = record.email || row?.email || '';
 	return {
 		name: record.name,
 		title: record.title || row?.title || '',
 		phone: record.phone || row?.phone || '',
 		email,
-		group: toSharedAddresses(row?.group ?? '', email)
+		group: toSharedAddresses(groups.join(','), email)
 	};
 }
 

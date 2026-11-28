@@ -22,12 +22,16 @@ import {
 	toMailboxLook,
 	toMailboxSignature,
 	toOriginal,
-	toPersonBanners,
+	toBannerPanel,
+	toGroupChoices,
+	toGroupEmails,
+	toPersonBanner,
 	toPersonLook,
 	toPersonParts,
 	toPersonPhoto,
 	toPersonSignature,
 	toPhotoChoices,
+	toPhotoPanel,
 	toPhotoSource,
 	toPreview,
 	toSharedAddresses,
@@ -197,36 +201,40 @@ describe('the photos a person picks from', () => {
 		expect(isTheirPhoto('sneha.png', 'Sneha')).toBe(false);
 	});
 
-	it('are their upload, their website photo, their Profile Images photos, then the Trident logo', () => {
-		expect(toPhotoChoices(ada, sheets, 'upload:0123456789abcdef01234567.jpg')).toEqual([
-			{ source: 'upload:0123456789abcdef01234567.jpg', label: 'Your upload', preview: '' },
+	it('are the Trident logo, their profile picture, their email photo, then their Profile Images photos', () => {
+		expect(toPhotoChoices({ ...ada, photo: '/start/team/ada.webp' }, sheets)).toEqual([
+			{
+				source: `drive:${LOGO}`,
+				label: 'Trident logo',
+				preview: `https://lh3.googleusercontent.com/d/${LOGO}=w480`
+			},
+			{
+				source: 'profile:/start/team/ada.webp',
+				label: 'Profile picture',
+				preview: '/start/team/ada.webp'
+			},
 			{
 				source: 'https://tridentcubed.com/emails/ada.png',
-				label: 'Website photo',
+				label: 'Email photo',
 				preview: 'https://tridentcubed.com/emails/ada.png'
 			},
 			{
 				source: 'drive:1AdaLinkedInPhoto',
-				label: 'Ada lovelace linkedin updated',
-				preview: 'https://lh3.googleusercontent.com/d/1AdaLinkedInPhoto=w240'
+				label: 'LinkedIn photo',
+				preview: 'https://lh3.googleusercontent.com/d/1AdaLinkedInPhoto=w480'
 			},
 			{
 				source: `drive:${ADA_PHOTO}`,
-				label: 'Ada at sea',
-				preview: `https://lh3.googleusercontent.com/d/${ADA_PHOTO}=w240`
-			},
-			{
-				source: `drive:${LOGO}`,
-				label: 'Trident logo',
-				preview: `https://lh3.googleusercontent.com/d/${LOGO}=w240`
+				label: 'At sea photo',
+				preview: `https://lh3.googleusercontent.com/d/${ADA_PHOTO}=w480`
 			}
 		]);
 	});
 
 	it('leave out a website signature that shows the company logo, and still offer the logo with no Sheet', () => {
 		expect(toPhotoChoices(grace, sheets).map((each) => each.source)).toEqual([
-			'drive:1GracePhoto',
-			`drive:${LOGO}`
+			`drive:${LOGO}`,
+			'drive:1GracePhoto'
 		]);
 		expect(
 			toPhotoChoices(stranger, toSheets({ people: [], mailboxes: [], banners: [], social: [] }))
@@ -234,9 +242,41 @@ describe('the photos a person picks from', () => {
 			{
 				source: `drive:${DEFAULT_PHOTO.file}`,
 				label: 'Trident logo',
-				preview: `https://lh3.googleusercontent.com/d/${DEFAULT_PHOTO.file}=w240`
+				preview: `https://lh3.googleusercontent.com/d/${DEFAULT_PHOTO.file}=w480`
 			}
 		]);
+	});
+
+	it('sit in a panel with their uploads, in the order left, each with its edit, new built-in ones at the end', () => {
+		const upload = 'upload:0123456789abcdef01234567.jpg';
+		const first = toPhotoPanel(ada, sheets, { photo: upload, photoEdit: { turns: 1 } });
+		expect(first.map(({ source, edit, isOwn }) => ({ source, edit, isOwn }))).toEqual([
+			{ source: `drive:${LOGO}`, edit: undefined, isOwn: false },
+			{ source: 'https://tridentcubed.com/emails/ada.png', edit: undefined, isOwn: false },
+			{ source: 'drive:1AdaLinkedInPhoto', edit: undefined, isOwn: false },
+			{ source: `drive:${ADA_PHOTO}`, edit: undefined, isOwn: false },
+			{ source: upload, edit: { turns: 1 }, isOwn: true }
+		]);
+		expect(first.at(-1)).toMatchObject({
+			label: 'Your upload',
+			preview: '/api/signature?upload=0123456789abcdef01234567.jpg'
+		});
+
+		const moved = toPhotoPanel(ada, sheets, {
+			photoList: [
+				{ source: upload },
+				{ source: 'drive:1AdaLinkedInPhoto', edit: { isFlipped: true } },
+				{ source: 'drive:gone-from-the-folder' }
+			]
+		});
+		expect(moved.map((each) => each.source)).toEqual([
+			upload,
+			'drive:1AdaLinkedInPhoto',
+			`drive:${LOGO}`,
+			'https://tridentcubed.com/emails/ada.png',
+			`drive:${ADA_PHOTO}`
+		]);
+		expect(moved[1].edit).toEqual({ isFlipped: true });
 	});
 });
 
@@ -293,26 +333,23 @@ describe('the banners a signature shows', () => {
 		expect(
 			toBannerSource(stranger, toSheets({ people: [], mailboxes: [], banners: [], social: [] }))
 		).toBe(`drive:${DEFAULT_BANNER.file}`);
-		expect(toPersonBanners(ada, sheets)).toEqual([
-			{ id: 'sheet', source: `drive:${DRIVE_ID}`, link: 'https://breakbulk.example' }
-		]);
-		expect(toPersonBanners(ada, sheets, { banner: '' })).toEqual([]);
+		expect(toPersonBanner(ada, sheets)).toEqual({
+			id: 'sheet',
+			source: `drive:${DRIVE_ID}`,
+			link: 'https://breakbulk.example'
+		});
+		expect(toPersonBanner(ada, sheets, { banner: '' })).toBeUndefined();
 	});
 
-	it('are the ones saved once there are, in their order, each with its edit and link', () => {
+	it('is ONE: the first saved, with its edit and link, none for an empty list', () => {
 		const saved = [
-			{ id: 'b', source: 'upload:0123456789abcdef01234567.png', link: UPLOAD_BANNER_LINK },
-			{ id: 'a', source: `drive:${MAP}`, link: 'https://expo.example', edit: { turns: 2 } }
+			{ id: 'a', source: `drive:${MAP}`, link: 'https://expo.example', edit: { turns: 2 } },
+			{ id: 'b', source: 'upload:0123456789abcdef01234567.png', link: UPLOAD_BANNER_LINK }
 		];
 		const look = toPersonLook(ada, sheets, { banner: '', banners: saved });
 
-		expect(toPersonBanners(ada, sheets, { banner: '', banners: saved })).toBe(saved);
+		expect(toPersonBanner(ada, sheets, { banner: '', banners: saved })).toBe(saved[0]);
 		expect(look.banners).toEqual([
-			{
-				picture: { source: saved[0].source, kind: 'banner' },
-				href: UPLOAD_BANNER_LINK,
-				alt: 'Trident Cubed'
-			},
 			{
 				picture: {
 					source: `drive:${MAP}`,
@@ -325,6 +362,18 @@ describe('the banners a signature shows', () => {
 			}
 		]);
 		expect(toPersonLook(ada, sheets, { banners: [] }).banners).toEqual([]);
+	});
+
+	it('is picked from a panel of every company banner and their uploads, each with the link it starts with', () => {
+		const upload = 'upload:0123456789abcdef01234567.png';
+		const panel = toBannerPanel(ada, sheets, {
+			banners: [{ id: 'b', source: upload, link: 'https://mine.example' }]
+		});
+		expect(panel.map(({ source, link, isOwn }) => ({ source, link, isOwn }))).toEqual([
+			{ source: `drive:${DRIVE_ID}`, link: 'https://breakbulk.example', isOwn: false },
+			{ source: `drive:${MAP}`, link: 'https://tridentcubed.com', isOwn: false },
+			{ source: upload, link: UPLOAD_BANNER_LINK, isOwn: true }
+		]);
 	});
 
 	it('show at their own shape, as wide as the signature at most', () => {
@@ -351,35 +400,72 @@ describe('the banners a signature shows', () => {
 });
 
 describe('what the screen edits', () => {
-	it('is the photo and banners with their names and pictures, the editor opening the big ones', () => {
+	it('is the photo and the one banner with their names and pictures, their panels and the group emails', () => {
 		const upload = 'upload:0123456789abcdef01234567.png';
-		const parts = toPersonParts(ada, sheets, {
-			photo: 'drive:1AdaLinkedInPhoto',
-			banners: [{ id: 'b', source: upload, link: '' }]
-		});
+		const parts = toPersonParts(
+			ada,
+			sheets,
+			{
+				photo: 'drive:1AdaLinkedInPhoto',
+				banners: [{ id: 'b', source: upload, link: '' }],
+				groupEmails: ['sales@example.com']
+			},
+			[{ email: 'engineering@example.com', name: 'Engineering' }]
+		);
 
 		expect(parts.photo).toEqual({
 			source: 'drive:1AdaLinkedInPhoto',
 			link: 'https://www.linkedin.com/in/sheet',
-			label: 'Ada lovelace linkedin updated',
+			label: 'LinkedIn photo',
 			preview: 'https://lh3.googleusercontent.com/d/1AdaLinkedInPhoto=w480',
 			original: 'https://lh3.googleusercontent.com/d/1AdaLinkedInPhoto=w1600',
 			isPicked: true
 		});
-		expect(parts.banners).toEqual([
-			{
-				id: 'b',
-				source: upload,
-				link: '',
-				label: 'Your upload',
-				preview: '/api/signature?upload=0123456789abcdef01234567.png',
-				original: '/api/signature?upload=0123456789abcdef01234567.png'
-			}
+		expect(parts.banner).toEqual({
+			id: 'b',
+			source: upload,
+			link: '',
+			label: 'Your upload',
+			preview: '/api/signature?upload=0123456789abcdef01234567.png',
+			original: '/api/signature?upload=0123456789abcdef01234567.png'
+		});
+		expect(parts.photos).toEqual(toPhotoPanel(ada, sheets, { photo: 'drive:1AdaLinkedInPhoto' }));
+		expect(parts.banners.map((each) => each.source)).toEqual([
+			`drive:${DRIVE_ID}`,
+			`drive:${MAP}`,
+			upload
 		]);
-		expect(parts.companyBanners).toEqual(toBannerChoices(sheets));
+		expect(parts.groups).toEqual([
+			{ email: 'ops@example.com', name: 'Operations' },
+			{ email: 'sales@example.com', name: 'Sales' },
+			{ email: 'engineering@example.com', name: 'Engineering' }
+		]);
+		expect(parts.groupEmails).toEqual(['sales@example.com']);
 		expect(toOriginal('https://tridentcubed.com/emails/ada.png')).toBe(
 			'https://tridentcubed.com/emails/ada.png'
 		);
+	});
+
+	it('offers every group email once, the Sheet’s then the app’s, and starts from the Sheet row’s', () => {
+		expect(
+			toGroupChoices(sheets, [
+				{ email: 'SALES@example.com', name: 'Again' },
+				{ email: ' ', name: 'Empty' },
+				{ email: 'hr@example.com', name: '' }
+			])
+		).toEqual([
+			{ email: 'ops@example.com', name: 'Operations' },
+			{ email: 'sales@example.com', name: 'Sales' },
+			{ email: 'hr@example.com', name: 'hr@example.com' }
+		]);
+		expect(toGroupEmails(ada, sheets)).toEqual([
+			'ops@example.com',
+			'ada@example.com',
+			'ops@example.com',
+			'sales@example.com'
+		]);
+		expect(toGroupEmails(ada, sheets, { groupEmails: [] })).toEqual([]);
+		expect(toGroupEmails(stranger, sheets)).toEqual([]);
 	});
 });
 
@@ -420,10 +506,19 @@ describe('a person’s signature', () => {
 		);
 	});
 
-	it('lists each shared address once, never their own', () => {
+	it('lists each shared address once, never their own, the group emails they picked over the Sheet’s', () => {
 		const signature = toPersonSignature(ada, sheets, toPersonLook(ada, sheets), { icons: {} });
 
 		expect(signature.group).toBe('ops@example.com, sales@example.com');
+		expect(
+			toPersonSignature(
+				ada,
+				sheets,
+				toPersonLook(ada, sheets),
+				{ icons: {} },
+				{ groupEmails: ['hr@x.com'] }
+			).group
+		).toBe('hr@x.com');
 		expect(toSharedAddresses(' a@x.com ,, A@x.com, me@x.com ', 'ME@x.com')).toBe('a@x.com');
 	});
 

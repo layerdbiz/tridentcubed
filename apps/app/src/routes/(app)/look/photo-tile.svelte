@@ -30,6 +30,7 @@
 		isPicked = false,
 		isRound = false,
 		hasBadge = true,
+		hasNote = true,
 		options,
 		align = 'right',
 		onopen,
@@ -50,6 +51,8 @@
 		isRound?: boolean;
 		/** What kind of attachment it is, in its corner. */
 		hasBadge?: boolean;
+		/** Its description's icon, where it has one: not on a picture with no description to edit. */
+		hasNote?: boolean;
 		/** Its ⋮. */
 		options: MenuOptionType[];
 		align?: 'left' | 'right';
@@ -95,7 +98,7 @@
 	<span
 		class="pointer-events-none absolute top-0 right-0 size-12 bg-[radial-gradient(circle_at_top_right,rgb(0_0_0/0.45),transparent_70%)]"
 	></span>
-	{#if photo.description}
+	{#if photo.description && hasNote}
 		<span
 			class="absolute bottom-1 left-1 icon-[mdi--text-box] size-5 text-white drop-shadow-[0_1px_2px_rgb(0_0_0/0.7)]"
 			title="Has a description"

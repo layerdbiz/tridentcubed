@@ -415,6 +415,8 @@ export class LookState {
 
 	/** Whether photos are being selected where the Selection bar shows: a project's Edit tab (#402). */
 	get isSelecting() {
+		// A selection outside a project's panels (an Email Signature's) is on wherever its photo panel is.
+		if (this.selection.source) return this.selection.isOn;
 		return this.selection.isOn && this.screen === 'workspace' && this.tab === 'edit';
 	}
 
