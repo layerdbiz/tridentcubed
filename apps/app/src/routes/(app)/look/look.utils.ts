@@ -30,8 +30,6 @@ export function openAddress(look: LookState, params: AddressType) {
 	const screen = params.get('screen') as ScreenType;
 	look.screen = SCREENS.includes(screen) ? screen : 'dashboard';
 	if (look.screen === 'workspace' && !hasProject) look.screen = 'dashboard';
-	// The Activity is an Admin's only (#306).
-	if (look.screen === 'activity' && !look.isAdmin) look.screen = 'dashboard';
 	// A report link (the QR code on a report page, #216) names the page of the Preview to open at.
 	look.pageAsked = look.screen === 'workspace' ? toPageNumber(params.get('page')) : 0;
 	const panel = params.get('panel');

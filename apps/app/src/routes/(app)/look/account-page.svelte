@@ -2,7 +2,7 @@
 	// Settings (#403; Justin, 2026-11-27: "a full-blown settings type page that houses activity log, profile,
 	// organization", like Discord's or the Claude and ChatGPT desktop apps'; the hub he picked for its first version):
 	// everything that is the person's own rather than a project's, in three groups. You: Profile, Notifications and
-	// Email Signature. Organization: the Organization and, for an Admin, the Activity Log. App: What's New and
+	// Email Signature. Organization: the Organization and the Activity Log. App: What's New and
 	// Install App. Then Log Out and the version.
 	//
 	// A desktop shows the groups down the left and the Activity Log or what the bell shows on the right; a phone shows
@@ -41,9 +41,7 @@
 			label: 'Organization',
 			items: [
 				{ id: 'organization', label: 'Organization', icon: 'icon-[mdi--domain]' },
-				...(look.isAdmin
-					? [{ id: 'activity', label: 'Activity Log', icon: 'icon-[mdi--timeline-clock-outline]' }]
-					: [])
+				{ id: 'activity', label: 'Activity Log', icon: 'icon-[mdi--timeline-clock-outline]' }
 			]
 		},
 		{
@@ -62,21 +60,25 @@
 		}
 	]);
 
-	const TITLES: Record<AccountSectionType, [string, string]> = {
-		activity: ['Activity Log', 'Everything everyone does, newest first.'],
+	const titles = $derived<Record<AccountSectionType, [string, string]>>({
+		activity: [
+			'Activity Log',
+			look.isAdmin
+				? 'Everything everyone does, newest first.'
+				: 'Everything in your projects and your own doing, newest first.'
+		],
 		notifications: ['Notifications', 'What rings your bell. Your own doing never does.']
-	};
+	});
 
 	const me = $derived(look.me);
 	const name = $derived(me?.name ?? look.organization.name);
 	const role = $derived(look.isSuperAdmin ? 'Super admin' : me?.role ? ROLE_LABELS[me.role] : '');
-	// The part open on a phone ('' is the menu). The Activity Log is an Admin's only (#306).
-	const part = $derived(
-		look.accountSection === 'activity' && !look.isAdmin ? '' : look.accountSection
-	);
-	// A desktop always shows a part beside the menu: an Admin's Activity Log, anyone else's Notifications.
+	// The part open on a phone ('' is the menu).
+	const part = $derived(look.accountSection);
+	// A desktop always shows a part beside the menu: the Activity Log, until Notifications is picked. Everyone has an
+	// Activity Log (#403, Justin, 2026-11-28): an Admin's is everyone's, anyone else's what they are privy to.
 	const shown = $derived<AccountSectionType>(
-		look.isAdmin && look.accountSection !== 'notifications' ? 'activity' : 'notifications'
+		look.accountSection === 'notifications' ? 'notifications' : 'activity'
 	);
 
 	let isHowToOpen = $state(false);
@@ -207,7 +209,7 @@
 				onclick={() => (part ? (look.accountSection = '') : look.home())}
 			/>
 			<h1 class="min-w-0 flex-1 truncate text-lg font-semibold text-slate-900">
-				{part ? TITLES[part][0] : 'Settings'}
+				{part ? titles[part][0] : 'Settings'}
 			</h1>
 		</header>
 		{#if part === 'activity'}
@@ -225,7 +227,7 @@
 				class="min-h-0 flex-1 overscroll-y-contain px-4 pb-10"
 			>
 				{#if part}
-					<p class="px-1 pb-3 text-sm text-slate-500">{TITLES[part][1]}</p>
+					<p class="px-1 pb-3 text-sm text-slate-500">{titles[part][1]}</p>
 					{@render section(part)}
 				{:else}
 					{#snippet face()}<Avatar
@@ -342,8 +344,8 @@
 				class="min-h-0 flex-1 overscroll-y-contain"
 			>
 				<div class="mx-auto w-full max-w-3xl px-10 pt-8 pb-16">
-					<h2 class="text-2xl font-semibold text-slate-900">{TITLES[shown][0]}</h2>
-					<p class="mt-1 mb-6 text-sm text-slate-500">{TITLES[shown][1]}</p>
+					<h2 class="text-2xl font-semibold text-slate-900">{titles[shown][0]}</h2>
+					<p class="mt-1 mb-6 text-sm text-slate-500">{titles[shown][1]}</p>
 					{@render section(shown)}
 				</div>
 			</Scroller>

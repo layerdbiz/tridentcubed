@@ -3,10 +3,11 @@
 	// then the one list the Activity Log wears (activity-list.svelte), one by one, newest first, with no sorting or
 	// filters. Only what is about the person signed in, and What's New's days. A line is light blue until it is
 	// tapped; a tap opens what it is about and closes the Notifications. Group folds one person's back-to-back work
-	// into one line, as in the Activity Log, which an Admin opens from the top right (Justin, 2026-11-27). On a phone they fill the screen with a back
-	// arrow; on a desktop they hang from the bell, half the screen tall at most (Justin, 2026-11-27: the box ran all
-	// the way down the page). The heading stays put while the list scrolls in the library Scroller, fading at its top
-	// and bottom like every list, under the day headings that stick to its top on a desktop as on a phone.
+	// into one line, as in the Activity Log, which opens from the top right (Justin, 2026-11-27; for everyone since
+	// 2026-11-28, each seeing only what they are privy to). On a phone they fill the screen with a back arrow; on a
+	// desktop they hang from the bell, half the screen tall at most (Justin, 2026-11-27: the box ran all the way down
+	// the page). The heading stays put while the list scrolls in the library Scroller, fading at its top and bottom
+	// like every list, under the day headings that stick to its top on a desktop as on a phone.
 	import { Button, Scroller } from '@layerd/ui';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
 	import ActivityList, { HEADING, HEADING_HEIGHT } from './activity-list.svelte';
@@ -26,7 +27,7 @@
 		hasBack?: boolean;
 		// Told when they close: by the back arrow, or by a line opening what it is about (`hasOpened`).
 		onclose: (hasOpened?: boolean) => void;
-		// "Activity Log", an Admin's: every line of everyone's, in Settings (Justin, 2026-11-27: in the cog's place).
+		// "Activity Log": the full Log in Settings (Justin, 2026-11-27: in the cog's place), everyone's for an Admin.
 		onall?: () => void;
 	} = $props();
 
@@ -69,7 +70,7 @@
 			class="ml-auto shrink-0"
 			onclick={() => (notifications.isGrouped = !notifications.isGrouped)}
 		/>
-		{#if onall && look.isAdmin}<Button
+		{#if onall}<Button
 				primary
 				ghost
 				sm
@@ -106,9 +107,9 @@
 					notifications.see(event.id);
 					onclose(true);
 				}}
-				onrelease={() => {
+				onrelease={(release) => {
 					onclose(true);
-					whatsNew.openAll();
+					whatsNew.openAt(release.from);
 				}}
 			/>
 		{/if}

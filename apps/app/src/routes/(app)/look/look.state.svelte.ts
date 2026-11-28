@@ -41,6 +41,7 @@ import type { PlaceType } from './map.data';
 import { readMenuPanels, writeMenuPanels, type MenuPanelsType } from './menu-panels';
 import type { PinType } from './pins';
 import type { SeenType } from './seen';
+import type { ActivityAboutType } from '#lib/activity/activity.types.js';
 import type { RowType } from '#lib/rows/rows.schema.js';
 import { toStableId } from '#lib/rows/rows.utils.js';
 import type { SaveStatusType } from '#lib/rows/rows.state.svelte.js';
@@ -247,6 +248,8 @@ export class LookState {
 	pageAsked = $state(0);
 	// The project whose status is being changed in the Change Status sheet, by id.
 	statusFor = $state<string>();
+	// The project or record whose own Activity Log is open, from its ⋮ menu's View Activity (#403), and its name.
+	activityOf = $state<{ about: ActivityAboutType; name: string }>();
 	// The project whose texts are being put into English in the Translate to English sheet (#360), by id.
 	translateFor = $state<string>();
 	// What the + is adding, or nothing while its sheet is shut.
@@ -517,9 +520,9 @@ export class LookState {
 		this.screen = 'settings';
 	}
 
-	// The Activity (#306): an Admin's own screen, opened from the menu on their profile picture.
+	// The Activity Log (#306): its own screen, opened from the menu on the profile picture; an Admin's is everyone's,
+	// anyone else's only what they are privy to (#403).
 	openActivity() {
-		if (!this.isAdmin) return;
 		if (this.screen === 'workspace') this.#keepProject();
 		this.tab = 'page';
 		this.tabProgress = 0;

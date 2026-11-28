@@ -137,6 +137,15 @@ export type ActivityType = {
 	olderBefore?: string;
 };
 
+/** The tables a ⋮ menu's View Activity opens an Activity Log of: a project, or one of the records (#403). */
+export type ActivityTableType = 'project' | 'customer' | 'team' | 'transport' | 'facility';
+
+/**
+ * What one Activity Log is about (#403, Justin, 2026-11-28): a project, with everything inside it, or one record, with
+ * its own rows (a customer's contacts, a Team member's places on projects).
+ */
+export type ActivityAboutType = { table: ActivityTableType; rowId: string };
+
 /** What the Activity's read answers: the Activity, or why this User may not see it. */
 export type ActivityResultType =
 	| ({ isAllowed: true } & ActivityType)

@@ -41,6 +41,8 @@ export class WhatsNewState {
 	/** The history was asked for and could not be read. */
 	hasFailed = $state(false);
 	isOpen = $state(false);
+	/** The section it opens at, by when its first change landed (`from`); '' for the newest. */
+	openOn = $state('');
 	/** The commit this device last pressed the button on. */
 	seen = $state('');
 
@@ -72,10 +74,10 @@ export class WhatsNewState {
 		// A first visit, or a press on a commit this branch does not hold: nothing counts as new until the next one.
 		if (!this.seen || toLanded(history, this.seen) < 0) {
 			this.#see(own || history.head);
-			this.isOpen = this.isNewer;
+			this.#openByItself(this.isNewer);
 			return;
 		}
-		if (this.fresh.length > 0 || this.isNewer) this.isOpen = true;
+		this.#openByItself(this.fresh.length > 0 || this.isNewer);
 	}
 
 	/**
@@ -89,11 +91,20 @@ export class WhatsNewState {
 		const head = this.history?.head;
 		if (!head || head === before) return;
 		const isWorthOpening = this.fresh.length > 0 || this.isNewer;
-		if (isWorthOpening && this.#closedOn !== head) this.isOpen = true;
+		if (isWorthOpening && this.#closedOn !== head) this.#openByItself(true);
 	}
 
-	/** From the profile menu: the whole history, read again. */
+	/** From the profile menu: the whole history, read again, at the newest. */
 	openAll() {
+		this.openAt('');
+	}
+
+	/**
+	 * From a release tapped in the bell (Justin, 2026-11-28): the whole history, read again, at that section, open,
+	 * even when it is not the newest. `from` is when its first change landed.
+	 */
+	openAt(from: string) {
+		this.openOn = from;
 		this.isOpen = true;
 		void this.#read();
 	}
@@ -125,6 +136,13 @@ export class WhatsNewState {
 		this.#closedOn = head ?? '';
 		if (!this.isNewer) this.isOpen = false;
 		return this.isNewer;
+	}
+
+	// Opening by itself, on what is new: at the newest, wherever a tap last opened it.
+	#openByItself(isWorthOpening: boolean) {
+		if (!isWorthOpening) return;
+		this.openOn = '';
+		this.isOpen = true;
 	}
 
 	#see(commit: string) {

@@ -21,8 +21,8 @@ function liveOf(look: LookState, page: DatasetType): NamedType[] {
 	return look.facilities;
 }
 
-// The id of what `key` names on its page: a project's own id, or a record's name.
-function recordIdOf(look: LookState, page: DatasetType, key: string) {
+/** The id of what `key` names on its page: a project's own id, or a record's name; none while it is not saved. */
+export function recordIdOf(look: LookState, page: DatasetType, key: string) {
 	if (page === 'projects') return key;
 	return liveOf(look, page).find((record) => record.name === key)?.id;
 }

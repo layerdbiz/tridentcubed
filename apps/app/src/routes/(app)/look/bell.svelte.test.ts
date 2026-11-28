@@ -34,6 +34,29 @@ describe("the bell's new versions (#403)", () => {
 			'v1.0.0-next.5',
 			'v1.0.0-next.4'
 		]);
+		// A tap opens What's New at its own section.
+		expect(lines[1].from).toBe('2026-11-27T09:20:00Z');
+	});
+
+	// Justin, 2026-11-28: a day's versions fold into one line that shows them all, so a busy day keeps every one.
+	it('keeps every version of the three newest days', () => {
+		const lines = toReleaseLines(
+			whatsNewOf([
+				batch('2026-11-27', '2026-11-27T10:40:00Z', '1.0.0-next.6'),
+				batch('2026-11-27', '2026-11-27T09:20:00Z', '1.0.0-next.5'),
+				batch('2026-11-27', '2026-11-27T08:00:00Z', '1.0.0-next.4'),
+				batch('2026-11-26', '2026-11-26T08:00:00Z', '1.0.0-next.3'),
+				batch('2026-11-25', '2026-11-25T08:00:00Z', '1.0.0-next.2'),
+				batch('2026-11-24', '2026-11-24T08:00:00Z', '1.0.0-next.1')
+			])
+		);
+		expect(lines.map((line) => line.title)).toEqual([
+			'v1.0.0-next.6',
+			'v1.0.0-next.5',
+			'v1.0.0-next.4',
+			'v1.0.0-next.3',
+			'v1.0.0-next.2'
+		]);
 	});
 
 	it('names what is not released yet by its day', () => {

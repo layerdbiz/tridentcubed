@@ -3,9 +3,10 @@
 	// for the two places a profile picture opens it (Justin, 2026-11-16): the bottom of the sidebar and the top right
 	// of the phone's dashboard. Whoever uses it draws the picture (`picture`, told whether the menu is open). Install
 	// App (#203) is there only while the app is not installed; a tap installs where the browser offered that, and
-	// otherwise opens the how-to. Activity (#306) is there for an Admin only, the one who may open it. What's New
-	// (#363) shows every release, with the app's version under it. Email Signature (#354) opens one's own Team page at its Preview. Settings
-	// (#403) holds them all on one page, and the Activity Log and what rings the bell; the rest stay here too.
+	// otherwise opens the how-to. The Activity Log (#306) is everyone's since #403, each of only what they are privy
+	// to. What's New (#363) shows every release, with the app's version under it. Email Signature (#354) opens one's
+	// own Team page at its Preview. Settings (#403) holds them all on one page, and the Activity Log and what rings
+	// the bell; the rest stay here too.
 	import type { Snippet } from 'svelte';
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import HowTo from '#lib/install/how-to.svelte';
@@ -40,12 +41,7 @@
 		{ id: 'whats-new', label: "What's New", note: VERSION_LABEL, icon: 'icon-[mdi--gift-outline]' },
 		{ id: 'logout', label: 'Log Out', icon: 'icon-[mdi--logout]', isDanger: true }
 	];
-	const options = $derived(
-		ACCOUNT.filter(
-			(option) =>
-				(option.id !== 'install' || install.isShown) && (option.id !== 'activity' || look.isAdmin)
-		)
-	);
+	const options = $derived(ACCOUNT.filter((option) => option.id !== 'install' || install.isShown));
 
 	// Each menu opens its own how-to: the sidebar's and the phone dashboard's can both be on the page.
 	let isHowToOpen = $state(false);

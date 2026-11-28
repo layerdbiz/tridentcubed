@@ -148,6 +148,22 @@ describe("What's New", () => {
 		expect(whatsNew.hasFailed).toBe(true);
 	});
 
+	// Justin, 2026-11-28: a release tapped in the bell opens What's New at that release, open, even an older one; the
+	// profile menu still opens it at the newest.
+	it('opens at the section asked for, and at the newest from the menu', async () => {
+		const { whatsNew } = createApp({ own: 1, seen: 1 });
+		await whatsNew.start();
+
+		whatsNew.openAt('2026-11-24T00:00:00.000Z');
+		expect(whatsNew.isOpen).toBe(true);
+		expect(whatsNew.openOn).toBe('2026-11-24T00:00:00.000Z');
+
+		whatsNew.close();
+		whatsNew.openAll();
+		expect(whatsNew.isOpen).toBe(true);
+		expect(whatsNew.openOn).toBe('');
+	});
+
 	// Justin, 2026-11-26: nobody ever stays on an old version (#401).
 	it('opens on opening the app on an older version even with everything seen, offering the reload', async () => {
 		const { whatsNew } = createApp({ own: 1, newest: 2, seen: 2 });
