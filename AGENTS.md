@@ -35,8 +35,8 @@ Oneezy skills and any other skill where they disagree.
   delete them.
 - **Tickets close when their work reaches `dev`.** On every push to `dev`,
   `.github/workflows/close-issues.yml` closes the tickets of each pull
-  request into `next` that the push brings: the one its branch is named for
-  and any its body closes. A round that leaves its ticket unfinished names
+  request into `next` that the push brings, the one its branch is named for
+  and any its body closes, and moves them to Done on the board. A round that leaves its ticket unfinished names
   no number in its branch and says `Refs #<n>`, not `Closes`. Work that
   reached `next` without a pull request closes nothing: close its ticket by
   hand when it reaches `dev`.
