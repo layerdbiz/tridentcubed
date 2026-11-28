@@ -50,6 +50,8 @@ export function openAddress(look: LookState, params: AddressType) {
 		if (PAGES.slice(1).includes(page) && look.has(page, key)) look.openRecord(page, key, look.tab);
 		else look.screen = 'dashboard';
 	}
+	// ?screen=signature&who=<Team member's id> opens their Email Signature (#354); with no `who`, one's own.
+	if (look.screen === 'signature') look.signatureFor = params.get('who') ?? '';
 	if (params.has('range')) look.range = params.get('range') as RangeType;
 	if (params.has('chart')) look.chart = params.get('chart') as ChartKindType;
 }
@@ -60,6 +62,7 @@ export function placeOf(params: AddressType) {
 	const screen = params.get('screen') ?? 'dashboard';
 	if (screen === 'workspace') return `${screen}:${params.get('project') ?? ''}`;
 	if (screen === 'record') return `${screen}:${params.get('record') ?? ''}`;
+	if (screen === 'signature') return `${screen}:${params.get('who') ?? ''}`;
 	return screen;
 }
 
@@ -80,6 +83,9 @@ export function toAddress(look: LookState, from: URL) {
 	if (look.screen === 'record' && look.record)
 		url.searchParams.set('record', `${look.record.page}:${look.record.key}`);
 	else url.searchParams.delete('record');
+	if (look.screen === 'signature' && look.signatureFor)
+		url.searchParams.set('who', look.signatureFor);
+	else url.searchParams.delete('who');
 	if (look.screen === 'workspace' && look.pageAsked)
 		url.searchParams.set('page', String(look.pageAsked));
 	else url.searchParams.delete('page');

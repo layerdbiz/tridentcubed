@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { toReportAddress } from '#lib/report/report.utils.js';
-import { draftPanel } from './look.data';
+import { draftOf, draftPanel } from './look.data';
 import { LookState } from './look.state.svelte';
 import { openAddress, placeOf, toAddress } from './look.utils';
+import type { TeamMemberType } from './team.data';
 
 const HOME = 'https://dev.app.tridentcubed.com/';
 
@@ -106,6 +107,34 @@ describe('the address', () => {
 		look.role = 'team';
 		look.openSignature();
 		expect(reload(look, toAddress(look, new URL(HOME))).screen).toBe('signature');
+	});
+
+	it('lands a reload on the same Team member’s Email Signature, and goes back to their Team page (#354)', () => {
+		const look = new LookState();
+		look.role = 'admin';
+		const id = crypto.randomUUID();
+		look.members = [{ ...(draftOf('team') as TeamMemberType), id, name: 'Rosa M. Vega' }];
+		look.openSignature(id);
+		const address = toAddress(look, new URL(HOME));
+		expect(address.searchParams.get('who')).toBe(id);
+		const next = new LookState();
+		next.members = look.members;
+		openAddress(next, address.searchParams);
+		expect(next.screen).toBe('signature');
+		expect(next.signatureFor).toBe(id);
+		expect(next.place).toBe('team');
+		next.home();
+		expect(next.screen).toBe('record');
+		expect(next.record).toEqual({ page: 'team', key: 'Rosa M. Vega' });
+	});
+
+	it('goes back from a shared mailbox’s Email Signature to the Team page (#354)', () => {
+		const look = new LookState();
+		look.role = 'admin';
+		look.openSignature('mailbox:projectgroup');
+		look.home();
+		expect(look.screen).toBe('dashboard');
+		expect(look.dataset).toBe('team');
 	});
 
 	it('lands a reload on Settings, for anyone (#403)', () => {
