@@ -173,3 +173,73 @@ describe("What's New with releases", () => {
 		await vi.waitFor(() => expect(queryByText('Pin anything')).toBeNull());
 	});
 });
+
+describe("What's New telling a release in its highlights", () => {
+	const TOLD: HistoryType = {
+		...RELEASED,
+		batches: [
+			{
+				...RELEASED.batches[0],
+				changes: [
+					{
+						kind: 'feature',
+						text: 'Pins',
+						points: ['Pin anything to the menu.', 'Unpin it there too.'],
+						tickets: [],
+						at: '2026-11-26T15:00:00Z',
+						landed: 2
+					}
+				]
+			}
+		]
+	};
+
+	it('shows each feature under a short bold title in the dark text, its highlights on light green bullets', async () => {
+		whatsNew.close();
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () => Response.json(TOLD))
+		);
+		whatsNew.seen = 'c'.repeat(40);
+
+		const { findByText } = render(WhatsNew, { props: { save: { state: 'saved' } } });
+		whatsNew.openAll();
+
+		const title = await findByText('Pins');
+		expect(title.className).toContain('font-bold');
+		expect(title.className).toContain('text-slate-900');
+		const point = await findByText('Pin anything to the menu.');
+		expect(point.closest('li')?.querySelector('.bg-success-300')).not.toBeNull();
+		expect(await findByText('Unpin it there too.')).toBeTruthy();
+	});
+
+	it('shows the release to come as Coming to dev, with no link to notes not yet made', async () => {
+		whatsNew.close();
+		const coming = {
+			...TOLD.batches[0],
+			release: { version: '1.2.0', url: toReleaseUrl('1.2.0') },
+			isUpcoming: true,
+			changes: TOLD.batches[0].changes.map((change) => ({ ...change, landed: -1 }))
+		};
+		vi.stubGlobal(
+			'fetch',
+			vi.fn(async () =>
+				Response.json({
+					...RELEASED,
+					version: 'v1.2.0-next.3',
+					batches: [coming, ...RELEASED.batches]
+				})
+			)
+		);
+		whatsNew.seen = 'c'.repeat(40);
+
+		const { findByText, findAllByText, queryByRole } = render(WhatsNew, {
+			props: { save: { state: 'saved' } }
+		});
+		whatsNew.openAll();
+
+		expect((await findAllByText('Coming to dev')).length).toBeGreaterThan(0);
+		expect(await findByText('Pins')).toBeTruthy();
+		expect(queryByRole('link', { name: /v1\.2\.0 release notes/ })).toBeNull();
+	});
+});

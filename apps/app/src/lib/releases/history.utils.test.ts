@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
 	isHidden,
+	isMissingHighlights,
 	toBatchCounts,
 	toBatchTallies,
 	toBatches,
@@ -188,7 +189,7 @@ describe("What's New's history", () => {
 		];
 		const history = toHistory('abc', ['a', 'b', 'c'], landed, {
 			releases,
-			first: ['Sign in.']
+			highlights: { '1.0.0': { features: [{ title: 'Sign in.', points: [] }], fixes: [] } }
 		});
 
 		expect(
@@ -230,50 +231,113 @@ describe("What's New's history", () => {
 		expect(history.batches[1].changes.map((change) => change.text)).toEqual(['Two']);
 	});
 
-	it('tells the first release in its own words: one list of features, in place of its days', () => {
+	it('tells a release that has highlights in them: titled features and fixes, in place of its lines', () => {
 		const landed = [
 			{ ...feature('2026-11-25T15:00:00Z', 'One', 0), release: '1.0.0' },
-			{ ...feature('2026-11-26T15:00:00Z', 'Two', 1), release: '1.0.0' },
+			{ ...feature('2026-11-26T15:00:00Z', 'Two', 1), release: '1.1.0' },
 			{
 				subject: '🐛 fix(app): three',
 				body: "What's New: Three.",
 				at: '2026-11-26T16:00:00Z',
 				landed: 2,
-				release: '1.0.0'
+				release: '1.1.0'
 			},
-			{ ...feature('2026-11-28T15:00:00Z', 'Four', 3), release: '1.1.0' }
+			{ ...feature('2026-11-28T15:00:00Z', 'Four', 3), release: '1.2.0' }
 		];
-		const releases = ['1.0.0', '1.1.0'].map((version) => ({
+		const releases = ['1.0.0', '1.1.0', '1.2.0'].map((version) => ({
 			version,
 			url: `https://example.com/v${version}`
 		}));
 		const history = toHistory('abc', ['a', 'b', 'c', 'd'], landed, {
 			releases,
-			first: ['Sign in.', 'Search.']
+			highlights: {
+				'1.1.0': {
+					features: [
+						{ title: 'Sign in', points: ['With Google.', 'With a code.'] },
+						{ title: 'Search', points: ['From the menu.'] }
+					],
+					fixes: [{ title: 'Pins', points: ['A pin shows once.'] }]
+				}
+			}
 		});
 
 		expect(
 			history.batches.map((batch) => [
 				batch.day,
 				batch.release?.version,
-				batch.changes.map((change) => `${change.kind} ${change.text}`)
+				batch.changes.map((change) => [change.kind, change.text, change.points ?? []])
 			])
 		).toEqual([
-			['2026-11-28', '1.1.0', ['feature Four']],
-			['2026-11-26', '1.0.0', ['feature Sign in.', 'feature Search.']]
+			['2026-11-28', '1.2.0', [['feature', 'Four', []]]],
+			[
+				'2026-11-26',
+				'1.1.0',
+				[
+					['feature', 'Sign in', ['With Google.', 'With a code.']],
+					['feature', 'Search', ['From the menu.']],
+					['fix', 'Pins', ['A pin shows once.']]
+				]
+			],
+			['2026-11-25', '1.0.0', [['feature', 'One', []]]]
 		]);
-		// Everything the first release brought counts as landing with its last change.
-		expect(history.batches[1].changes.map((change) => change.landed)).toEqual([2, 2]);
+		// Everything the release brought counts as landing with its last change.
+		expect(history.batches[1].changes.map((change) => change.landed)).toEqual([2, 2, 2]);
+		expect(toBatchCounts(history.batches[1])).toEqual(['2 features', '1 fix']);
 	});
 
-	it('lists every day as it is where the first release has not been made', () => {
+	it("lists next's prereleases as they are, the highlights of the release they lead to aside", () => {
 		const landed = [{ ...feature('2026-11-26T15:00:00Z', 'One', 0), release: '1.0.0-next.1' }];
 
 		expect(
-			toHistory('abc', ['a'], landed, { first: ['Sign in.'] }).batches[0].changes.map(
-				(change) => change.text
-			)
+			toHistory('abc', ['a'], landed, {
+				highlights: { '1.0.0': { features: [{ title: 'Sign in', points: [] }], fixes: [] } }
+			}).batches[0].changes.map((change) => change.text)
 		).toEqual(['One']);
+	});
+
+	it('shows the highlights of the release to come on top, as Coming to dev, never counted as new', () => {
+		const landed = [
+			{ ...feature('2026-11-26T15:00:00Z', 'One', 0), release: '1.2.0-next.1' },
+			{ ...feature('2026-11-27T15:00:00Z', 'Two', 1), release: '1.2.0-next.2' }
+		];
+		const history = toHistory('abc', ['a', 'b'], landed, {
+			releases: ['1.2.0-next.1', '1.2.0-next.2'].map((version) => ({
+				version,
+				url: `https://example.com/v${version}`
+			})),
+			highlights: {
+				'1.2.0': { features: [{ title: 'Search', points: ['From the menu.'] }], fixes: [] }
+			},
+			upcoming: '1.2.0'
+		});
+
+		expect(
+			history.batches.map((batch) => [
+				batch.isUpcoming ?? false,
+				batch.release?.version,
+				batch.changes.map((change) => change.text)
+			])
+		).toEqual([
+			[true, '1.2.0', ['Search']],
+			[false, '1.2.0-next.2', ['Two']],
+			[false, '1.2.0-next.1', ['One']]
+		]);
+		expect(history.batches[0].changes[0].landed).toBe(-1);
+		expect(toNewSince(history, 'a')).toHaveLength(1);
+	});
+
+	it('shows nothing to come while its highlights are not written', () => {
+		const landed = [{ ...feature('2026-11-26T15:00:00Z', 'One', 0), release: '1.2.0-next.1' }];
+
+		expect(toHistory('abc', ['a'], landed, { upcoming: '1.2.0' }).batches).toHaveLength(1);
+	});
+
+	it('knows a release made without its highlights, and never asks them of a prerelease', () => {
+		const highlights = { '1.1.0': { features: [], fixes: [] } };
+
+		expect(isMissingHighlights('1.2.0', highlights)).toBe(true);
+		expect(isMissingHighlights('1.1.0', highlights)).toBe(false);
+		expect(isMissingHighlights('1.2.0-next.4', highlights)).toBe(false);
 	});
 
 	it('has no version, and days with no release, while nothing is released', () => {
@@ -394,6 +458,40 @@ describe('the release notes on GitHub', () => {
 			'- site: Call the right number (#177)',
 			'</details>\n'
 		]);
+	});
+
+	it('give a titled feature its title in bold and its highlights under it', () => {
+		const notes = toReleaseNotes({
+			batches: [
+				{
+					...DAY,
+					changes: [
+						{
+							kind: 'feature',
+							text: 'Pins',
+							points: ['Pin anything to the menu.', 'Unpin it there too.'],
+							tickets: [],
+							at: '',
+							landed: 3
+						}
+					]
+				}
+			],
+			others: []
+		});
+
+		expect(notes).toBe(
+			[
+				'## 2026-11-26',
+				'',
+				'### ✨ Features',
+				'',
+				'- **Pins**',
+				'  - Pin anything to the menu.',
+				'  - Unpin it there too.',
+				''
+			].join('\n')
+		);
 	});
 
 	it('still say something when a release holds nothing to list', () => {

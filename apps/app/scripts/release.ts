@@ -3,8 +3,9 @@
 // newest one and applies the release rule (src/lib/releases/releases.utils.ts); on next every push is the next
 // prerelease of the release to come, v1.0.0-next.4 (Justin, 2026-11-27). It writes the notes the GitHub release
 // shows: What's New's days, each under its date, with their features and fixes in plain words, then, folded away,
-// the rest. Next's first prerelease lists everything up to it, the same as What's New; dev's first release, v1.0.0,
-// is its own one list of what the app does (src/lib/releases/first-release.ts), features only. The workflow tags the
+// the rest. Next's first prerelease lists everything up to it, the same as What's New. A release on dev is told in
+// its highlights (src/lib/releases/highlights.ts): each feature under a short title with its highlights, then the
+// fixes; with none written for it, nothing is made and the run fails, saying so (Justin, 2026-11-28). The workflow tags the
 // commit and publishes the release; this script never writes to git. Plain Node, no packages, so the workflow
 // needs no install.
 //
@@ -20,10 +21,11 @@
 // GitHub release that failed to publish is made the second time.
 import { appendFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { FIRST_FEATURES } from '../src/lib/releases/first-release.ts';
+import { HIGHLIGHTS } from '../src/lib/releases/highlights.ts';
 import { readLanded } from '../src/lib/releases/history.server.ts';
 import {
 	isHidden,
+	isMissingHighlights,
 	toHistory,
 	toPlainLines,
 	toReleaseNotes
@@ -113,13 +115,20 @@ if (values.branch === PRERELEASE_BRANCH) {
 	);
 	process.exit(0);
 }
+// A release on dev is told in its highlights: without them it is not made (a dry run only says so).
+if (isMissingHighlights(version, HIGHLIGHTS)) {
+	say(
+		`${toTag(version)} has no highlights: write them in apps/app/src/lib/releases/highlights.ts on next, then move next to dev again.`
+	);
+	if (!values['dry-run']) process.exit(1);
+}
 const isTagged = [...tags, ...readPrereleaseTags()].some(
 	(tag) => tag.commit === head && tag.version === version
 );
 
 // The release's own commits, What's New's sections made of them, and the rest of its features and fixes. A release
 // made on dev is one section, dated the day it reached dev: its tag's day, or today for the one being made (Justin,
-// 2026-11-27); a prerelease's are its days. Dev's first release is its own one list, with nothing behind the scenes.
+// 2026-11-27), told in its highlights; a prerelease's are its days. Dev's first release has nothing behind the scenes.
 const isRelease = !isPrerelease(version);
 const isFirst = !last && isRelease;
 const date = isRelease
@@ -138,7 +147,7 @@ const batches = toHistory(
 	{
 		plain: PLAIN,
 		hidden: HIDDEN_TICKETS,
-		first: FIRST_FEATURES,
+		highlights: HIGHLIGHTS,
 		releases: isRelease ? [toReleaseRef(version, date)] : []
 	}
 ).batches;
