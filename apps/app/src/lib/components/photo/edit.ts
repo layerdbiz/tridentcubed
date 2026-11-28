@@ -52,6 +52,20 @@ export function hasEdit(edit?: EditType) {
 	);
 }
 
+/**
+ * What an edit did to the picture, in words, for the mark on its tile (Justin, 2026-11-28: "so you can see if an
+ * edit has been made on it, like if it's been cropped"). A shape picked with the whole picture left in is no change.
+ */
+export function toEditWords(edit?: EditType) {
+	if (!edit) return [];
+	return [
+		!isWholeFrame(edit.frame) && 'Cropped',
+		edit.turns && 'Turned',
+		edit.isFlipped && 'Flipped',
+		edit.tilt && 'Straightened'
+	].filter((word): word is string => Boolean(word));
+}
+
 /** An edit with nothing left at its starting value, rounded so it keeps small; none when nothing is changed. */
 export function cleanEdit(edit: EditType): EditType | undefined {
 	const kept: EditType = {};

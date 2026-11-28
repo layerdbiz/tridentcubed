@@ -274,6 +274,42 @@ describe("the photo pop-up's editor", () => {
 		expect(document.querySelector('[data-shown-at]')?.textContent?.trim()).toBe('2 of 2');
 	});
 
+	it('steps back and on with the arrows on each side of where it is, each off where there is none', async () => {
+		show(undefined, 'a');
+		const back = () => screen.getByRole('button', { name: 'Previous' }) as HTMLButtonElement;
+		const on = () => screen.getByRole('button', { name: 'Next' }) as HTMLButtonElement;
+		expect(back().disabled).toBe(true);
+		expect(on().disabled).toBe(false);
+
+		await fireEvent.click(on());
+		await waitFor(
+			() => expect(document.querySelector('[data-shown-at]')?.textContent?.trim()).toBe('2 of 2'),
+			{ timeout: 3000 }
+		);
+		expect(on().disabled).toBe(true);
+		expect(back().disabled).toBe(false);
+	});
+
+	it('names the attachment on screen for the address, so a copied link opens it again', async () => {
+		const { look } = show(undefined, 'a');
+		expect(look.editingId).toBe('a');
+		await fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+		await waitFor(() => expect(look.editingId).toBe('b'), { timeout: 3000 });
+	});
+
+	it('draws the frame’s grid lines only while the frame is being dragged', async () => {
+		show(undefined, 'a');
+		const grid = () => document.querySelectorAll('[data-grid-line]').length;
+		expect(grid()).toBe(0);
+		const stage = document.querySelector('[data-stage]') as HTMLElement;
+		const corner = document.querySelector('[data-handle="se"]') as HTMLElement;
+		await fireEvent.pointerDown(corner, { pointerId: 1, clientX: 100, clientY: 100, button: 0 });
+		await fireEvent.pointerMove(stage, { pointerId: 1, clientX: 80, clientY: 80 });
+		expect(grid()).toBeGreaterThan(0);
+		await fireEvent.pointerUp(stage, { pointerId: 1, clientX: 80, clientY: 80 });
+		expect(grid()).toBe(0);
+	});
+
 	it('keeps Reset among the tools all the time, dimmed until something changes', async () => {
 		show([{ id: 'a', src: '/a.webp', description: '' }], 'a');
 		const reset = screen.getByRole('button', { name: 'Reset' }) as HTMLButtonElement;
