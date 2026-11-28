@@ -19,8 +19,12 @@
 	// #305: the percent and state are a button of their own beside the one that opens the panel: a tap on them lists
 	// the panel's empty inputs in a toast (LookState.showEmpty). A panel switched off counts for nothing, so its
 	// percent lists nothing.
+	// #412 (Justin, 2026-11-28: "apply it to the edit panels"): a panel a tap opens glides to the top of the list it
+	// scrolls in while the open one slides shut, one smooth move (the library's `glide`, as What's New's sections do),
+	// so its header and what it holds start at the top. Opened from elsewhere (the report, a list of empty inputs), it
+	// stays where it is.
 	import { slide } from 'svelte/transition';
-	import { ProgressBar, Switch } from '@layerd/ui';
+	import { glide, ProgressBar, Switch } from '@layerd/ui';
 	import { STATUS, type PanelType } from './look.data';
 	import { metricsOf, toneOf, type LookState } from './look.state.svelte';
 	import PanelBody from './panel-body.svelte';
@@ -94,10 +98,14 @@
 		look.saved();
 	}
 
+	let card = $state<HTMLElement>();
+
 	function toggleOpen() {
 		const wasAlso = look.selection.alsoOpen === panel.id;
+		const isOpening = !isOpen;
 		look.selection.alsoOpen = '';
 		if (!wasAlso) look.panelId = isOpen ? '' : panel.id;
+		if (isOpening && card) glide(card);
 	}
 
 	function toggleEnabled() {
@@ -145,6 +153,7 @@
 {/snippet}
 
 <div
+	bind:this={card}
 	class="relative transition-shadow duration-300 {shell} {panel.isEnabled
 		? ''
 		: 'opacity-75'} {isOver

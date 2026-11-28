@@ -168,9 +168,10 @@
 				onphoto={(value) => (isPhoto = value)}
 			/>
 		</div>
+		<!-- A panel that glides to the top (#412) stops under the header, where the first one starts. -->
 		<div
 			class="w-full shrink-0 snap-start overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom)+76px)]"
-			style="padding-top: {top + 12}px"
+			style="padding-top: {top + 12}px; scroll-padding-top: {top + 12}px"
 		>
 			<PanelList
 				{look}
