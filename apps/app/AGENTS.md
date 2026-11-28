@@ -208,14 +208,28 @@ the why is in ADR 0002, 0003 and 0005.
   by itself the moment a new version is out, and when the app is opened on
   something new; its button reloads onto the newest version. There is no
   "New version, tap to update" note on any branch.
-- **v1.0.0 is one list (Justin, 2026-11-27).** The first release is told in
-  its own words, `src/lib/releases/first-release.ts`: what the app does
-  today, features only, each once, in everyday words, in place of every day
-  of work before it. dev.app's What's New and the v1.0.0 GitHub notes show
-  that one list, with nothing behind the scenes. dev and main name only
-  releases; next.app keeps its next versions, each commit staying in the
-  prerelease that brought it. Releases after it list their commits'
-  `What's New:` lines as usual.
+- **A dev release is told in its highlights (Justin, 2026-11-28).**
+  next.app lists every commit's `What's New:` line, his view as the
+  developer. People on dev.app get each release in its own words instead,
+  `src/lib/releases/highlights.ts`, keyed by version: under Features, each
+  feature a short bold title in the dark text with one to three short
+  highlights on light green bullets, then Fixes the same way on blue.
+  dev.app's What's New and the release's GitHub notes show them in place of
+  the lines. Before next moves to dev, on his word, write them:
+  1. `node apps/app/scripts/release.ts --branch dev --head origin/next
+     --dry-run` names the version the move makes (the base of next's
+     versions: `v1.2.0-next.19` leads to `1.2.0`); every `What's New:` line
+     since the last release is `git log v<last>..origin/next`.
+  2. Fold the lines into the features as they are now: rounds of work on
+     one thing become that one thing, and what was tried and replaced is
+     left out. A fix is only for a problem people on dev.app had; one made
+     and mended on next never reached them.
+  3. Land them on next like any change. next.app then shows them on top of
+     What's New as "Coming to dev", exactly as dev.app will; Justin reads
+     them there and says yes or what to change, then next moves to dev.
+  A release without its highlights is not made: dev's build stops (dev.app
+  stays on the version before) and so does the release workflow, each
+  naming the missing version. A prerelease needs none.
 - **A dev release is one section, dated the day it reached dev (Justin,
   2026-11-27).** However many days its work took on next, a release made
   on dev is one What's New section and one `## <date>` in its GitHub notes,

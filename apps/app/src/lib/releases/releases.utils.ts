@@ -48,8 +48,8 @@ export type CommitType = { subject: string; body?: string };
 
 /**
  * Whether releases are made (#157). On since Justin's word on 2026-11-27: the push that brought next into dev made
- * FIRST_VERSION, its notes the one list in first-release.ts, and every push to dev after it with a feature or a fix
- * makes the next version. Once the first tag exists, this is no longer read.
+ * FIRST_VERSION, and every push to dev after it with a feature or a fix makes the next version, each told in its
+ * highlights (highlights.ts). Once the first tag exists, this is no longer read.
  */
 export const IS_RELEASING = true;
 

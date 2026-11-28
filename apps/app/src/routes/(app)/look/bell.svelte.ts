@@ -24,8 +24,10 @@ const RELEASE_DAYS = 3;
 export function toReleaseLines(whatsNew: WhatsNewState): ReleaseLineType[] {
 	const history = whatsNew.history;
 	if (!history) return [];
-	const days = [...new Set(history.batches.map((batch) => batch.day))].slice(0, RELEASE_DAYS);
-	return history.batches
+	// The release to come (Coming to dev, on next.app) is not out yet: What's New shows it, the bell does not.
+	const batches = history.batches.filter((batch) => !batch.isUpcoming);
+	const days = [...new Set(batches.map((batch) => batch.day))].slice(0, RELEASE_DAYS);
+	return batches
 		.filter((batch) => days.includes(batch.day))
 		.map((batch) => {
 			const words = batch.changes.map((change) => change.text);

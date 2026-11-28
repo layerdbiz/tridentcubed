@@ -9,7 +9,9 @@
 	// and the link to the release's notes on GitHub. The head is the release in view on a glow of its own colours from edge to edge, ending on the library's
 	// wave: v1.0.0-next.6 at the top, and as the list scrolls down, next.5, next.4 and on, the colours moving with it. On
 	// the newest release, when it holds something this person has not seen, it says New release. With no release yet the
-	// sections are the same, with no version.
+	// sections are the same, with no version. A release on dev shows its highlights (highlights.ts), each feature under a
+	// short bold title (change-list.svelte); on next.app the release to come shows on top as Coming to dev once they are
+	// written (Justin, 2026-11-28), so they are read there before next moves to dev, with no link to notes not yet made.
 	//
 	// It opens by itself (releases.state.svelte.ts): on opening the app on something new, and the moment a new version
 	// is out, the one way the app offers it (Justin, 2026-11-27: no "New version, tap to update" note anywhere). With a
@@ -30,7 +32,12 @@
 	import { CHECK_EVERY, KIND_COLORS } from './releases.constants';
 	import { whatsNew } from './releases.state.svelte';
 	import { toReleaseGlow, toTag } from './releases.utils';
-	import { toBatchCounts, toBatchTallies, toSectionInView } from './history.utils';
+	import {
+		toBatchCounts,
+		toBatchTallies,
+		toSectionInView,
+		type HistoryBatchType
+	} from './history.utils';
 
 	let {
 		save,
@@ -86,16 +93,23 @@
 	const badge = $derived(
 		!shownVersion
 			? ''
-			: shownVersion !== version
-				? 'Earlier release'
-				: isFresh
-					? 'New release'
-					: 'Latest release'
+			: shown?.isUpcoming
+				? 'Coming to dev'
+				: shownVersion !== version
+					? 'Earlier release'
+					: isFresh
+						? 'New release'
+						: 'Latest release'
 	);
 	const glow = $derived(toReleaseGlow(shownVersion || version));
 	const note = $derived(
-		shown ? [shown.day, ...toBatchCounts(shown)].join(' · ') : 'Every update, newest first'
+		shown ? [toTitle(shown), ...toBatchCounts(shown)].join(' · ') : 'Every update, newest first'
 	);
+
+	/** A section's title: its day, or Coming to dev for the release to come. */
+	function toTitle(batch: HistoryBatchType) {
+		return batch.isUpcoming ? 'Coming to dev' : batch.day;
+	}
 	// A section names the head once its top is this far down the scroll; at the scroll's end the open one names it while
 	// on screen, else the last.
 	const LINE = 64;
@@ -262,7 +276,7 @@
 					class="space-y-2"
 					{@attach followScroll}
 				>
-					{#each batches as batch, at (batch.from)}
+					{#each batches as batch, at (batch.isUpcoming ? 'upcoming' : batch.from)}
 						<li {@attach at === startAt && at > 0 ? bringIntoView : undefined}>
 							<!-- A section a tap opens stands at the top as the first does with nothing scrolled: the list's
 							     own room above it, nothing of the one before it showing. -->
@@ -278,7 +292,7 @@
 									<span class="min-w-0 flex-1">
 										<span
 											class="block text-[15px] leading-snug font-bold text-slate-800 tabular-nums"
-											>{batch.day}</span
+											>{toTitle(batch)}</span
 										>
 										<span
 											class="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs leading-snug text-slate-500"
@@ -301,7 +315,7 @@
 								<div>
 									<ChangeList changes={batch.changes} />
 								</div>
-								{#if batch.release}
+								{#if batch.release && !batch.isUpcoming}
 									<Button
 										secondary
 										ghost
