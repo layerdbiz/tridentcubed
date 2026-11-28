@@ -50,6 +50,8 @@
 	const isShared = $derived(look.variant('header') !== 'A');
 	let isPhoto = $state(false);
 	let top = $state(0);
+	// How tall the Edit tab's own header is, with Header A: a panel that glides to the top stops under it (#412).
+	let headerHeight = $state(0);
 
 	// A Team member's Email Signature, when it may be shown: its Edit and its Preview read the one state.
 	const hasSignature = $derived(look.isSignatureOpen);
@@ -339,13 +341,16 @@
 			{onscroll}
 		>
 			<div class="h-full w-full shrink-0 snap-start">{@render page(0)}</div>
+			<!-- A panel that glides to the top (#412) stops under the header, where the first one starts. -->
 			<div
 				class="h-full w-full shrink-0 snap-start overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+96px)]"
 				style:padding-top={isShared ? `${top}px` : undefined}
+				style:scroll-padding-top="{(isShared ? top : headerHeight) + 12}px"
 			>
 				{#if !isShared}
 					<header
 						class="sticky top-0 z-20 bg-white/75 pt-[env(safe-area-inset-top)] backdrop-blur-xl backdrop-saturate-150"
+						bind:clientHeight={headerHeight}
 					>
 						<div class="px-1.5 py-2">{@render header()}</div>
 					</header>
