@@ -2,8 +2,9 @@
 // takes the photo out of its group. Escape with the menu open shuts the menu and leaves the pop-up open.
 // Its Details (#343): when and where the photo was taken, and every metadata field the original had, to copy out.
 // Its editor (#295): a back arrow until something changes, then the X and the ✓; undo and redo; Pop out; Original
-// back to the whole picture; a PDF with All pages on as its pages stacked in the picture and side by side on the
-// strip, with it off the page on screen alone; a change going to every page or to that one; Open in the ⋮.
+// back to the whole picture; a PDF with All pages on as its pages stacked in the picture and the page on screen
+// alone on the strip, with it off its pages side by side there; a change going to every page or to that one; Open in
+// the ⋮.
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import type { GroupType } from './look.data';
@@ -227,39 +228,39 @@ describe("the photo pop-up's editor", () => {
 		expect(group.photos[0].edit).toEqual({ ratio: 'original' });
 	});
 
-	it('stacks a PDF’s pages in the picture with All pages on, side by side on the strip, and a tap on one under brings it on top', async () => {
+	it('stacks a PDF’s pages in the picture with All pages on, the page on screen alone on the strip, and a tap on one under brings it on top', async () => {
 		show([{ id: 'a', src: '/a.webp', description: '' }, PDF], 'p');
+		const under = () =>
+			screen
+				.queryAllByRole('button', { name: /^Bring page/ })
+				.map((page) => page.getAttribute('aria-label'));
+		expect(screen.getByRole('button', { name: 'PDF page 1 of 3' })).toBeTruthy();
+		expect(screen.queryByRole('group', { name: /PDF/ })).toBeNull();
+		expect(under()).toEqual(['Bring page 3 on top', 'Bring page 2 on top']);
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Bring page 3 on top' }));
+		expect(screen.getByRole('button', { name: 'PDF page 3 of 3' })).toBeTruthy();
+		expect(under()).toEqual(['Bring page 2 on top', 'Bring page 1 on top']);
+	});
+
+	it('lays a PDF’s pages side by side on the strip with All pages off, steps through them, and changes that page only', async () => {
+		const { group } = show([PDF, { id: 'a', src: '/a.webp', description: '' }], 'p');
+		await fireEvent.click(screen.getByRole('switch', { name: /All pages/ }));
 		const strip = screen.getByRole('group', { name: 'PDF, 3 pages' });
 		const onScreen = () =>
 			within(strip)
 				.getAllByRole('button')
 				.find((page) => page.getAttribute('aria-current') === 'true')
 				?.getAttribute('aria-label');
-		const under = () =>
-			screen
-				.queryAllByRole('button', { name: /^Bring page/ })
-				.map((page) => page.getAttribute('aria-label'));
 		expect(within(strip).getAllByRole('button')).toHaveLength(3);
 		expect(onScreen()).toBe('PDF page 1');
-		expect(under()).toEqual(['Bring page 3 on top', 'Bring page 2 on top']);
-
-		await fireEvent.click(screen.getByRole('button', { name: 'Bring page 3 on top' }));
-		expect(onScreen()).toBe('PDF page 3');
-		expect(under()).toEqual(['Bring page 2 on top', 'Bring page 1 on top']);
-
-		await fireEvent.click(within(strip).getByRole('button', { name: 'PDF page 2' }));
-		expect(onScreen()).toBe('PDF page 2');
-	});
-
-	it('shows a PDF’s page on screen alone with All pages off, steps through its pages, and changes that page only', async () => {
-		const { group } = show([PDF, { id: 'a', src: '/a.webp', description: '' }], 'p');
-		await fireEvent.click(screen.getByRole('switch', { name: /All pages/ }));
-		expect(screen.getByRole('button', { name: 'PDF page 1 of 3' })).toBeTruthy();
-		expect(screen.queryByRole('group', { name: /PDF/ })).toBeNull();
 		expect(screen.queryByRole('button', { name: /^Bring page/ })).toBeNull();
 
+		await fireEvent.click(within(strip).getByRole('button', { name: 'PDF page 3' }));
+		expect(onScreen()).toBe('PDF page 3');
+		await fireEvent.click(within(strip).getByRole('button', { name: 'PDF page 1' }));
 		await fireEvent.keyDown(window, { key: 'ArrowRight' });
-		await waitFor(() => screen.getByRole('button', { name: 'PDF page 2 of 3' }), { timeout: 3000 });
+		await waitFor(() => expect(onScreen()).toBe('PDF page 2'), { timeout: 3000 });
 		await fireEvent.click(screen.getByRole('button', { name: 'Rotate' }));
 		await fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
