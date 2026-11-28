@@ -6,6 +6,11 @@
 	// rest in the sheet below. On a desktop the Edit form sits in the floating column on the left and the Page fills
 	// the rest. Run 24 (Justin, 2026-11-11): with Header B the phone's top is page-header.svelte, the one a project
 	// uses, over both tabs: a bare back arrow and ⋮ on the Page, and the bar with the name from Edit on.
+	// #354 (Justin, 2026-11-28: "I want to include the email signature into the main edit page of the team member"):
+	// a Team member whose Email Signature the signed-in person may see (their own, or anyone's for an Admin) has its
+	// Photo and Banners on Edit, under their details, and a third tab, Preview, the signature on the report's canvas
+	// with Copy in the zoom bar.
+	import { Email } from '@layerd/ui';
 	import { cityStateOf } from './location';
 	import { pinOfRecord, pinsAt } from './chart.data';
 	import Back from './back.svelte';
@@ -20,6 +25,9 @@
 	import RecordMark from './record-mark.svelte';
 	import RecordView from './record-view.svelte';
 	import { customerOf, photosOf, type RecordType } from './records.data';
+	import SignatureCanvas from './signature-canvas.svelte';
+	import SignatureEdit from './signature-edit.svelte';
+	import { SignatureState } from './signature.svelte';
 	import { ROLE_LABELS } from './team.data';
 
 	let { look, record, isWide }: { look: LookState; record: RecordType; isWide: boolean } = $props();
@@ -37,25 +45,55 @@
 	let isPhoto = $state(false);
 	let top = $state(0);
 
+	// A Team member's Email Signature, when it may be shown: its Edit and its Preview read the one state.
+	const hasSignature = $derived(look.isSignatureOpen);
+	// svelte-ignore state_referenced_locally
+	const signature = new SignatureState(look, () => (hasSignature ? (record.member?.id ?? '') : ''));
+	const tabs = $derived(look.recordTabs);
+
 	let swiper: HTMLDivElement | undefined = $state();
 	let isLanded = false;
 
 	function onscroll() {
 		if (!swiper?.clientWidth) return;
 		look.tabProgress = swiper.scrollLeft / swiper.clientWidth;
-		look.tab = look.tabProgress > 0.5 ? 'edit' : 'page';
+		look.tab = tabs[Math.round(look.tabProgress)] ?? 'page';
 	}
 
-	// The bar's Page and Edit: the panes slide to the one picked; the first time they are simply there.
+	// The bar's tabs: the panes slide to the one picked; the first time they are simply there.
 	$effect(() => {
 		if (!swiper) return;
-		const left = look.tab === 'edit' ? swiper.clientWidth : 0;
+		const left = Math.max(0, tabs.indexOf(look.tab)) * swiper.clientWidth;
 		if (!isLanded) {
 			isLanded = true;
 			swiper.scrollLeft = left;
 		} else if (Math.abs(swiper.scrollLeft - left) > swiper.clientWidth / 2)
 			swiper.scrollTo({ left, behavior: 'smooth' });
 	});
+
+	// On Preview the canvas takes every drag, so a strip on the left edge swipes back to Edit, as on a project.
+	let edge: { x: number; left: number } | undefined;
+
+	function edgeDown(event: PointerEvent) {
+		if (!swiper) return;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		edge = { x: event.clientX, left: swiper.scrollLeft };
+		swiper.style.scrollSnapType = 'none';
+	}
+
+	function edgeMove(event: PointerEvent) {
+		if (!edge || !swiper) return;
+		swiper.scrollLeft = edge.left - Math.max(0, event.clientX - edge.x);
+	}
+
+	function edgeUp(event: PointerEvent) {
+		if (!edge || !swiper) return;
+		const isBack = event.clientX - edge.x > swiper.clientWidth * 0.2;
+		edge = undefined;
+		swiper.style.scrollSnapType = '';
+		look.tab = isBack ? 'edit' : 'preview';
+		swiper.scrollTo({ left: tabs.indexOf(look.tab) * swiper.clientWidth, behavior: 'smooth' });
+	}
 </script>
 
 {#snippet header()}
@@ -82,6 +120,60 @@
 			id={record.key}
 		/>
 	</div>
+{/snippet}
+
+<!-- Drawn out of sight: the library Email writes the signature's HTML, which Preview shows and copies. -->
+{#if signature.signature}
+	<div class="hidden">
+		<Email
+			data={signature.signature}
+			onMount={(instance) => (signature.email = instance)}
+		/>
+	</div>
+{/if}
+
+{#snippet form()}
+	<RecordForm
+		{look}
+		{record}
+	>
+		{#if hasSignature}
+			<section class="space-y-3 pt-2">
+				<h3 class="px-1 text-sm font-semibold text-slate-900">Email Signature</h3>
+				<SignatureEdit
+					{look}
+					{signature}
+				/>
+			</section>
+		{/if}
+	</RecordForm>
+{/snippet}
+
+<!-- Preview: the Email Signature on the canvas, or why there is none yet. -->
+{#snippet preview(top: number)}
+	{#if signature.html}
+		<SignatureCanvas
+			{look}
+			html={signature.html}
+			{top}
+		/>
+	{:else}
+		<div class="flex h-full items-center justify-center bg-slate-100 px-6 text-center">
+			{#if signature.isLoading}
+				<span
+					class="icon-[svg-spinners--ring-resize] size-8 text-slate-400"
+					role="status"
+					aria-label="Loading the email signature"
+				></span>
+			{:else}
+				<p class="text-sm text-slate-500">
+					{signature.found && !signature.found.isAllowed
+						? signature.found.reason
+						: 'The email signature could not load. Check the connection and open it again.'}
+				</p>
+			{/if}
+		</div>
+	{/if}
 {/snippet}
 
 {#snippet page(left: number)}
@@ -156,19 +248,16 @@
 	</PageView>
 {/snippet}
 
-{#if isWide && look.tab !== 'edit'}
+{#if isWide && look.tab === 'preview' && hasSignature}
+	<div class="fixed inset-0">{@render preview(0)}</div>
+{:else if isWide && look.tab !== 'edit'}
 	<!-- A desktop's Page: the record as it reads, alone (Justin, 2026-11-16: Page and Edit are two views). -->
 	<div class="fixed inset-0 bg-slate-100">{@render page(0)}</div>
 {:else if isWide}
 	<div class="fixed inset-0 bg-slate-100">{@render page(444)}</div>
 	<aside class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}">
 		<div class="pt-4 pr-3 pb-4 pl-4">{@render header()}</div>
-		<div class="flex-1 overflow-y-auto px-4 pb-4">
-			<RecordForm
-				{look}
-				{record}
-			/>
-		</div>
+		<div class="flex-1 overflow-y-auto px-4 pb-4">{@render form()}</div>
 	</aside>
 {:else}
 	<!-- Clipped, not hidden: a clipped box can never be slid sideways by the browser. -->
@@ -212,13 +301,22 @@
 						<div class="px-1.5 py-2">{@render header()}</div>
 					</header>
 				{/if}
-				<div class="px-4 pt-3">
-					<RecordForm
-						{look}
-						{record}
-					/>
-				</div>
+				<div class="px-4 pt-3">{@render form()}</div>
 			</div>
+			{#if hasSignature}
+				<div class="relative h-full w-full shrink-0 snap-start">
+					{@render preview(top)}
+					<div
+						class="absolute bottom-0 left-0 z-10 w-6 touch-none"
+						style="top: {top}px"
+						aria-hidden="true"
+						onpointerdown={edgeDown}
+						onpointermove={edgeMove}
+						onpointerup={edgeUp}
+						onpointercancel={edgeUp}
+					></div>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}

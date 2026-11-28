@@ -51,17 +51,27 @@
 	let isCopied = $state(false);
 	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
-	// The frame's own page: nothing round the signature, as in a message.
+	// The frame's own page: nothing round the signature, as in a message. It never scrolls: the frame is as tall as
+	// the signature (Justin, 2026-11-28: a phone showed "a vertical scrolling bar, and that just doesn't look good").
 	const page = $derived(
-		`<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;background:#fff;font-family:Arial,sans-serif}</style></head><body>${html}</body></html>`
+		`<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;overflow:hidden;background:#fff;font-family:Arial,sans-serif}</style></head><body>${html}</body></html>`
 	);
 
-	// A frame's page is loaded once its pictures are, so it is measured then.
+	// A frame's page is loaded once its pictures are, so it is measured then, and again whenever it grows or shrinks
+	// after (a picture or a font come late on a phone).
+	let watcher: ResizeObserver | undefined;
 	function measure() {
 		const document = frame?.contentDocument;
+		const view = frame?.contentWindow as (Window & typeof globalThis) | null | undefined;
 		if (!document?.body) return;
-		drawn = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+		const read = () =>
+			(drawn = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));
+		read();
+		watcher?.disconnect();
+		watcher = view?.ResizeObserver ? new view.ResizeObserver(read) : undefined;
+		watcher?.observe(document.body);
 	}
+	$effect(() => () => watcher?.disconnect());
 
 	// A frame hidden under the code is not laid out, so it is measured again as it comes back.
 	$effect(() => {
@@ -171,6 +181,7 @@
 					style="height: {drawn || 240}px"
 					title="Email Signature"
 					tabindex="-1"
+					scrolling="no"
 					srcdoc={page}
 					onload={measure}
 				></iframe>

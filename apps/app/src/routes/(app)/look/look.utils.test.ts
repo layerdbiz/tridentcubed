@@ -102,39 +102,43 @@ describe('the address', () => {
 		expect(reload(look, toAddress(look, new URL(HOME))).screen).toBe('settings');
 	});
 
-	it('lands a reload on Email Signature, for anyone (#354)', () => {
+	// Two Team members: the signed-in person, a Member, and someone else.
+	function team(role: LookState['role']) {
 		const look = new LookState();
-		look.role = 'team';
+		look.role = role;
+		look.userId = 'user-rosa';
+		look.members = [
+			{ ...(draftOf('team') as TeamMemberType), id: crypto.randomUUID(), name: 'Rosa M. Vega' },
+			{ ...(draftOf('team') as TeamMemberType), id: crypto.randomUUID(), name: 'Tom Reyes' }
+		];
+		look.members[0].userId = 'user-rosa';
+		return look;
+	}
+
+	it('opens one’s own Email Signature at the Preview of one’s Team page, and a reload stays there (#354)', () => {
+		const look = team('team');
 		look.openSignature();
-		expect(reload(look, toAddress(look, new URL(HOME))).screen).toBe('signature');
-	});
+		expect(look.screen).toBe('record');
+		expect(look.record).toEqual({ page: 'team', key: 'Rosa M. Vega' });
+		expect(look.tab).toBe('preview');
+		expect(look.tabProgress).toBe(2);
 
-	it('lands a reload on the same Team member’s Email Signature, and goes back to their Team page (#354)', () => {
-		const look = new LookState();
-		look.role = 'admin';
-		const id = crypto.randomUUID();
-		look.members = [{ ...(draftOf('team') as TeamMemberType), id, name: 'Rosa M. Vega' }];
-		look.openSignature(id);
-		const address = toAddress(look, new URL(HOME));
-		expect(address.searchParams.get('who')).toBe(id);
-		const next = new LookState();
-		next.members = look.members;
-		openAddress(next, address.searchParams);
-		expect(next.screen).toBe('signature');
-		expect(next.signatureFor).toBe(id);
-		expect(next.place).toBe('team');
-		next.home();
-		expect(next.screen).toBe('record');
+		const next = team('team');
+		openAddress(next, toAddress(look, new URL(HOME)).searchParams);
 		expect(next.record).toEqual({ page: 'team', key: 'Rosa M. Vega' });
+		expect(next.tab).toBe('preview');
 	});
 
-	it('goes back from a shared mailbox’s Email Signature to the Team page (#354)', () => {
-		const look = new LookState();
-		look.role = 'admin';
-		look.openSignature('mailbox:projectgroup');
-		look.home();
-		expect(look.screen).toBe('dashboard');
-		expect(look.dataset).toBe('team');
+	it('gives another Team member’s page a Preview for an Admin only (#354)', () => {
+		const admin = team('admin');
+		admin.openRecord('team', 'Tom Reyes', 'preview');
+		expect(admin.recordTabs).toEqual(['page', 'edit', 'preview']);
+		expect(admin.tab).toBe('preview');
+
+		const member = team('team');
+		member.openRecord('team', 'Tom Reyes', 'preview');
+		expect(member.recordTabs).toEqual(['page', 'edit']);
+		expect(member.tab).toBe('page');
 	});
 
 	it('lands a reload on Settings, for anyone (#403)', () => {

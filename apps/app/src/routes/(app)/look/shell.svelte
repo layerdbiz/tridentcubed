@@ -25,7 +25,6 @@
 	import AccountMenu from './account-menu.svelte';
 	import AccountPage from './account-page.svelte';
 	import ActivityPage from './activity-page.svelte';
-	import SignaturePage from './signature-page.svelte';
 	import DashboardList from './dashboard-list.svelte';
 	import HeroChart from './hero-chart.svelte';
 	import AddSheet from './add-sheet.svelte';
@@ -672,20 +671,6 @@
 			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
 		>
 			<AccountPage
-				{look}
-				{isWide}
-			/>
-		</div>
-	{/if}
-
-	{#if look.screen === 'signature'}
-		<!-- Email Signature (#354): anyone's own, opened from the menu on their profile picture, sliding in like the
-		     Organization, with a project's Page, Edit and Preview. -->
-		<div
-			class="fixed inset-0 z-50"
-			transition:fly={{ x: '100%', opacity: 1, duration: 320, easing: cubicOut }}
-		>
-			<SignaturePage
 				{look}
 				{isWide}
 			/>

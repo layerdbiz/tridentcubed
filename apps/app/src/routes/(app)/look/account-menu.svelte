@@ -4,7 +4,7 @@
 	// of the phone's dashboard. Whoever uses it draws the picture (`picture`, told whether the menu is open). Install
 	// App (#203) is there only while the app is not installed; a tap installs where the browser offered that, and
 	// otherwise opens the how-to. Activity (#306) is there for an Admin only, the one who may open it. What's New
-	// (#363) shows every release, with the app's version under it. Email Signature (#354) is everyone's own. Settings
+	// (#363) shows every release, with the app's version under it. Email Signature (#354) opens one's own Team page at its Preview. Settings
 	// (#403) holds them all on one page, and the Activity Log and what rings the bell; the rest stay here too.
 	import type { Snippet } from 'svelte';
 	import { signOut } from '#lib/auth/auth.remote.js';

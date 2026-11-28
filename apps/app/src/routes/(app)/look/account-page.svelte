@@ -6,8 +6,9 @@
 	// Install App. Then Log Out and the version.
 	//
 	// A desktop shows the groups down the left and the Activity Log or what the bell shows on the right; a phone shows
-	// the groups as rows, and those two open on a page of their own with a back arrow. Profile, the Organization and
-	// Email Signature open the pages they have always had, whose back comes back here; What's New opens its window.
+	// the groups as rows, and those two open on a page of their own with a back arrow. Profile and the Organization open
+	// the pages they have always had, and Email Signature one's Team page at its Preview (#354), whose back comes back
+	// here; What's New opens its window.
 	import { Avatar, Button, Chip, ListRow, Scroller } from '@layerd/ui';
 	import { signOut } from '#lib/auth/auth.remote.js';
 	import HowTo from '#lib/install/how-to.svelte';
