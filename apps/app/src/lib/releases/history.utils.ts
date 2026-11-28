@@ -7,13 +7,15 @@
 // (releases.utils.ts reads the title), but it shows only with its plain words: a line `What's New: <words>` in its
 // message, one per thing people will notice, or, for the commits made before that rule, the words in notes.ts. Every
 // other commit stays out of What's New. A change lands when the branch takes it: its own commit on the branch, or the
-// merge that brought it. The same days, written out, are a GitHub release's notes (#157). The first release, v1.0.0,
-// is told in its own words instead (first-release.ts): one list of what the app does, each feature once.
+// merge that brought it. The same days, written out, are a GitHub release's notes (#157). A release on dev is told in
+// its own words instead (highlights.ts, Justin, 2026-11-28): each feature under a short title with its highlights,
+// then the fixes, in place of every line of its work; next.app keeps its lines and shows the release to come on top.
+import type { HighlightsType } from './highlights.ts';
 import {
-	FIRST_VERSION,
 	TEAM_TIME_ZONE,
 	isPrerelease,
 	toReleaseChanges,
+	toReleaseRef,
 	type ChangeKindType,
 	type CommitType,
 	type ReleaseChangeType,
@@ -35,8 +37,10 @@ export type LandedType = {
 	release?: string;
 };
 
-/** One thing What's New lists: a feature or a fix, in plain words. */
+/** One thing What's New lists: a feature or a fix, in plain words, or a release's titled one with its highlights. */
 export type HistoryChangeType = ReleaseChangeType & {
+	/** A titled feature or fix's highlights (highlights.ts): `text` is then its title. */
+	points?: string[];
 	/** When it landed (ISO). */
 	at: string;
 	/** Which of the branch's commits brought it, oldest 0. */
@@ -55,6 +59,8 @@ export type HistoryBatchType = {
 	to: string;
 	/** The release that brought it, with the link to its notes (#400); none while it is not released. */
 	release?: ReleaseRefType;
+	/** The highlights of the release to come, shown on next.app before it reaches dev: Coming to dev. */
+	isUpcoming?: boolean;
 	changes: HistoryChangeType[];
 };
 
@@ -172,31 +178,60 @@ export type HistoryOptionsType = {
 	/** The clock the days are told on: the team's. */
 	timeZone?: string;
 	/**
-	 * The first release's own words (first-release.ts): its changes, the ones `release` names FIRST_VERSION, show as
-	 * this one list of features in place of their days.
+	 * Each release's own words (highlights.ts): the changes of a release on dev that has them show as its titled
+	 * features and fixes in place of their lines.
 	 */
-	first?: string[];
+	highlights?: Record<string, HighlightsType>;
+	/** The release next leads to: its highlights, once written, show on top as Coming to dev. */
+	upcoming?: string;
 };
 
+/** A release's highlights as its changes, the features then the fixes, in the order written. */
+function toHighlightChanges(
+	highlights: HighlightsType,
+	at: string,
+	landed: number,
+	release: string
+): HistoryChangeType[] {
+	const kinds = [
+		['feature', highlights.features],
+		['fix', highlights.fixes]
+	] as const;
+	return kinds.flatMap(([kind, items]) =>
+		items.map((item) => ({
+			kind,
+			text: item.title,
+			points: item.points,
+			tickets: [],
+			at,
+			landed,
+			release
+		}))
+	);
+}
+
 /**
- * The first release as one section (Justin, 2026-11-27): its own list of features, in the order written, dated the
- * day its last change landed.
+ * A release told in its own words as one section (Justin, 2026-11-28): its highlights, dated the day its last change
+ * landed, everything it brought counted as landing with that change.
  */
-function toFirstBatch(landed: LandedType[], lines: string[], timeZone: string): HistoryBatchType {
+function toHighlightBatch(
+	landed: LandedType[],
+	highlights: HighlightsType,
+	release: string,
+	timeZone: string
+): HistoryBatchType {
 	const last = landed.at(-1)!;
 	return {
 		day: toDay(last.at, timeZone),
 		from: landed[0].at,
 		to: last.at,
-		changes: lines.map((text) => ({
-			kind: 'feature',
-			text,
-			tickets: [],
-			at: last.at,
-			landed: last.landed,
-			release: FIRST_VERSION
-		}))
+		changes: toHighlightChanges(highlights, last.at, last.landed, release)
 	};
+}
+
+/** Whether a release on dev is being made without its highlights (highlights.ts); a prerelease needs none. */
+export function isMissingHighlights(version: string, highlights: Record<string, HighlightsType>) {
+	return !isPrerelease(version) && !highlights[version];
 }
 
 /** A section with the release that brought it: dated the day that release reached dev, where it carries that day. */
@@ -211,7 +246,8 @@ function toReleased(
 
 /**
  * The sections with the release that brought them, newest first, and each section's changes newest first: a release
- * made on dev is one section dated the day it reached dev, next's prereleases a section a day.
+ * made on dev is one section dated the day it reached dev, told in its highlights where they are written, next's
+ * prereleases a section a day, and on top, on next, the highlights of the release to come.
  */
 export function toHistory(
 	head: string,
@@ -223,20 +259,49 @@ export function toHistory(
 		plain = {},
 		hidden = [],
 		timeZone = TEAM_TIME_ZONE,
-		first
+		highlights = {},
+		upcoming
 	}: HistoryOptionsType = {}
 ): HistoryType {
-	// The first release's changes, told in its own words when there are some: they come before everything else.
-	const firsts = first ? landed.filter((each) => each.release === FIRST_VERSION) : [];
-	const rest = firsts.length > 0 ? landed.filter((each) => each.release !== FIRST_VERSION) : landed;
-	const batches = toBatches(toHistoryChanges(rest, plain, hidden), timeZone).map((batch) => {
-		// Every change of a section is of one release.
-		const release = releases.find((each) => each.version === batch.changes.at(-1)?.release);
-		return { ...toReleased(batch, release, timeZone), changes: batch.changes.toReversed() };
-	});
-	if (first && firsts.length > 0) {
-		const release = releases.find((each) => each.version === FIRST_VERSION);
-		batches.unshift(toReleased(toFirstBatch(firsts, first, timeZone), release, timeZone));
+	// A release on dev with its highlights is told in them, in place of its lines.
+	const isTold = (each: LandedType) =>
+		each.release !== undefined && !isPrerelease(each.release) && each.release in highlights;
+	const sections = toBatches(
+		toHistoryChanges(
+			landed.filter((each) => !isTold(each)),
+			plain,
+			hidden
+		),
+		timeZone
+	).map((batch) => ({ ...batch, changes: batch.changes.toReversed() }));
+	for (const told of new Set(landed.filter(isTold).map((each) => each.release!))) {
+		const own = landed.filter((each) => each.release === told);
+		sections.push(toHighlightBatch(own, highlights[told], told, timeZone));
+	}
+	// Oldest first, by the last change each holds, then each with the release that brought it.
+	const last = (batch: HistoryBatchType) =>
+		Math.max(...batch.changes.map((change) => change.landed));
+	const batches = sections
+		.toSorted((a, b) => last(a) - last(b))
+		.map((batch) =>
+			toReleased(
+				batch,
+				releases.find((each) => each.version === batch.changes[0]?.release),
+				timeZone
+			)
+		);
+	// The release to come, on next.app, once its highlights are written: on top, never counted as new.
+	const coming = upcoming ? highlights[upcoming] : undefined;
+	const newest = landed.at(-1);
+	if (coming && newest) {
+		batches.push({
+			day: toDay(newest.at, timeZone),
+			from: newest.at,
+			to: newest.at,
+			release: toReleaseRef(upcoming!),
+			isUpcoming: true,
+			changes: toHighlightChanges(coming, newest.at, -1, upcoming!)
+		});
 	}
 	return { head, chain, batches: batches.reverse(), ...(version ? { version } : {}) };
 }
@@ -297,9 +362,15 @@ const SECTIONS: { kind: ChangeKindType; heading: string }[] = [
 	{ kind: 'fix', heading: '### 🐛 Fixes' }
 ];
 
-function toLine(change: { text: string; tickets: number[]; area?: string }, hasArea = false) {
+function toLine(
+	change: { text: string; tickets: number[]; area?: string; points?: string[] },
+	hasArea = false
+) {
 	const tickets = change.tickets.map((ticket) => `#${ticket}`).join(', ');
 	const area = hasArea && change.area ? `${change.area}: ` : '';
+	// A titled feature or fix: its title in bold, its highlights under it.
+	if (change.points)
+		return [`- **${change.text}**`, ...change.points.map((point) => `  - ${point}`)].join('\n');
 	return `- ${area}${change.text}${tickets ? ` (${tickets})` : ''}`;
 }
 
