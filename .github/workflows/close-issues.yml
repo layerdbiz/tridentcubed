@@ -1,0 +1,66 @@
+# Closes each ticket when its work reaches dev. Every ticket lands on next through a pull request of its own
+# (AGENTS.md, "Where work lands"), and next moves into dev in one push, so no pull request ever merges into dev.
+# GitHub closes an issue from a pull request only when it merges into the default branch, main, and task-manager only
+# when it merges into dev, so neither one closes these.
+#
+# On every push to dev this finds the pull requests into next that the push brings onto dev (their merge commit is in
+# dev now and was not before), and closes the tickets each one finishes, read the same two ways as before
+# (.github/scripts/closes.sh): its branch, <type>/<n>-<slug>, and the "Closes #<n>" lines of its body. Each ticket
+# it closes gets a comment naming the pull request. Work that reached next without a pull request closes nothing.
+name: close-issues
+
+on:
+  push:
+    branches: [dev]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      BEFORE: ${{ github.event.before }}
+      AFTER: ${{ github.event.after }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.after }}
+          fetch-depth: 0
+
+      - name: Close the tickets this push finishes
+        run: |
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "dev was created or rewritten ($BEFORE): nothing to compare, nothing closed"
+            exit 0
+          fi
+          # Every merged pull request into next, a page at a time (100 a page), newest first.
+          page=1
+          while :; do
+            gh api "repos/$REPO/pulls?state=closed&base=next&sort=updated&direction=desc&per_page=100&page=$page" > page.json
+            [ "$(jq length page.json)" -gt 0 ] || break
+            jq -r '.[] | select(.merged_at) | [.number, .merge_commit_sha, .head.ref] | @tsv' page.json >> merged.tsv
+            page=$((page + 1))
+          done
+          touch merged.tsv
+          while IFS="$(printf '\t')" read -r pr sha branch; do
+            # In dev now, and not before this push.
+            git merge-base --is-ancestor "$sha" "$AFTER" 2>/dev/null || continue
+            ! git merge-base --is-ancestor "$sha" "$BEFORE" 2>/dev/null || continue
+            gh api "repos/$REPO/pulls/$pr" --jq '.body // ""' </dev/null | sh .github/scripts/closes.sh "$branch" |
+            while read -r n; do
+              state=$(gh api "repos/$REPO/issues/$n" --jq 'if .pull_request then "pull request" else .state end' </dev/null) ||
+                { echo "#$n: not found"; continue; }
+              if [ "$state" != "open" ]; then
+                echo "#$n: $state, left alone"
+                continue
+              fi
+              gh api -X POST "repos/$REPO/issues/$n/comments" -f body="Reached dev with #$pr." </dev/null >/dev/null
+              gh api -X PATCH "repos/$REPO/issues/$n" -f state=closed -f state_reason=completed </dev/null >/dev/null
+              echo "#$n: closed (#$pr)"
+            done
+          done < merged.tsv
