@@ -13,7 +13,8 @@
 	// its frame over it, the frame's corners and edges in view. Dragging a corner or an edge grows or shrinks the frame
 	// from its middle (edit.ts `draggedFrame`); dragging inside it moves it. At the top, in its true middle, Rotate and
 	// Flip, then All pages for a PDF of more than one page (on, a change goes to every page; off, to the page on
-	// screen), else where it is; a back arrow on the left until something changes, then the X (leave without saving);
+	// screen); right under the picture, always in the same spot, where it is among the stage's ("2 of 6"); a back arrow
+	// on the left until something changes, then the X (leave without saving);
 	// on the right the i, the ⋮ and, once something changes, the ✓ (keep every change and close). With All pages on,
 	// the picture is the PDF's pages stacked as selected photos are (#402), the page on screen on top in blue and the
 	// next ones peeking out under it, a tap on one bringing it up (Justin, 2026-11-28: "make the display of it do the
@@ -692,11 +693,12 @@
 			: `Shaped to fill the ${word}’s page`
 	);
 
+	// Where this one is among the stage's attachments, under the picture (a PDF alone: which page).
 	const shownAt = $derived(
-		isPdf && pageCount > 1
-			? `Page ${pageAt + 1} of ${pageCount}`
-			: items.length > 1
-				? `${index + 1} of ${items.length}`
+		items.length > 1
+			? `${index + 1} of ${items.length}`
+			: isPdf && pageCount > 1
+				? `Page ${pageAt + 1} of ${pageCount}`
 				: ''
 	);
 
@@ -863,10 +865,6 @@
 							></span></span
 						></button
 					>
-				{:else if shownAt}
-					<p class="truncate px-1.5 text-[13px] font-medium text-slate-300 tabular-nums">
-						{shownAt}
-					</p>
 				{/if}
 			</div>
 			<div class="col-start-2 row-start-1 flex items-center gap-1 justify-self-end md:col-start-3">
@@ -1132,6 +1130,15 @@
 			</div>
 		</div>
 
+		<!-- Right under the picture, where it is among the stage's attachments ("2 of 6"), always in the same spot however
+		     big the picture (Justin, 2026-11-28). -->
+		<p
+			class="h-7 shrink-0 text-center text-[13px] leading-7 font-medium text-slate-300 tabular-nums"
+			data-shown-at
+		>
+			{shownAt}
+		</p>
+
 		{#snippet pageThumb(each: PhotoType, page: number)}
 			{#if pictureOf(each, page + 1, 200)}
 				<Picture
@@ -1154,7 +1161,7 @@
 		     have the all pages turned off, then I want to show the second thumbnail view"). -->
 		{#if items.length > 1 || pageCount > 1}
 			<div
-				class="flex h-[66px] shrink-0 [scrollbar-width:none] items-center overflow-x-auto px-3"
+				class="mt-1 mb-2 flex h-[66px] shrink-0 [scrollbar-width:none] items-center overflow-x-auto px-3"
 				data-strip
 				{@attach keepInView}
 			>
@@ -1381,7 +1388,7 @@
 			<!-- The frame's shapes, all in one row: the stage's first when it sets one, where the frame starts, then every
 			     other, any of them picked for this attachment alone. -->
 			<div
-				class="flex h-[58px] shrink-0 items-stretch gap-0.5 px-2 md:justify-center md:gap-1.5"
+				class="mb-2 flex h-[58px] shrink-0 items-stretch gap-0.5 px-2 md:justify-center md:gap-1.5"
 				data-options
 			>
 				{#if stageAspect}
