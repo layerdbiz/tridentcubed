@@ -4,12 +4,10 @@
 // release's notes on GitHub show these in place of the lines (history.utils.ts), and next.app's Release notes show the
 // next one at their top, as Coming to dev, so it is read there first.
 //
-// They are written as the work lands (Justin, 2026-11-28: "in the same breath"): a change people on dev.app will notice
-// folds itself in here, in the same pull request as its What's New lines, for the version next leads to (the base of
-// next's versions: v1.2.0-next.19 leads to 1.2.0). Rounds of work on one thing fold into the thing as it is now, and
-// what was tried and replaced is left out. A fix is only for a problem people on dev.app had:
-// one made and mended on next never reached them. A release on dev is not made without them: dev's build and the
-// release workflow stop and say so (apps/app/AGENTS.md, "Releases and What's New").
+// They are plain and they are kept up: every change people on dev.app will notice rewrites the coming version here, in
+// the same pull request as its What's New lines, so it reads as the features are now. How to write them is
+// apps/app/AGENTS.md's "A dev release is told in its highlights"; highlights.test.ts holds their shape. A release on dev
+// is not made without them: dev's build and the release workflow stop and say so.
 
 /** A feature or a fix as a release tells it: a short title and its highlights, each a short sentence. */
 export type HighlightType = { title: string; points: string[] };
@@ -23,64 +21,65 @@ export const HIGHLIGHTS: Record<string, HighlightsType> = {
 	'1.0.0': {
 		features: [
 			{
-				title: 'Sign in and work together',
+				title: 'Easy sign-in',
 				points: [
-					'Sign in with Google or a code sent to your email.',
-					'Everything you do is saved for the whole team.',
-					"Install the app on your phone's home screen."
+					'Sign in with Google, or with a code sent to your email.',
+					"Add the app to your phone's home screen, and it opens like any other app.",
+					'Everything you change is saved right away for the whole team.'
 				]
 			},
 			{
-				title: 'Projects, customers and the team',
+				title: 'Projects, customers and team',
 				points: [
-					'Projects, customers, the team, transport and facilities each have a page, on a map and as a list, cards or a board.',
-					"A project's status moves along with the work.",
-					'Keep a phone number and email for people at other companies; anyone without a picture shows their initials.'
+					'Projects, customers, team members, transport and facilities each have their own page.',
+					'See them on a map, in a list, as cards or on a board.',
+					"A project's status changes by itself as the work moves along."
 				]
 			},
 			{
-				title: 'Reports that build themselves',
+				title: 'Project reports',
 				points: [
-					'Each project builds its report as you fill it in: the cover with the trip, the contents, the time log, the operations stages, the photos and the item list.',
-					'Download a report as a PDF or present it one page at a time, and scan its QR codes to open a page.',
-					'Import a time log by pasting text or adding a file.'
+					'Each project builds its report as you fill it in: the cover, time log, work stages, photos and item list.',
+					'Paste in a time log instead of typing it.',
+					'Download the report as a PDF, or show it one page at a time.'
 				]
 			},
 			{
 				title: 'Photos and files',
 				points: [
-					'Attach photos, videos, PDFs and other files to a project, and see at a glance how many of each it holds.',
-					'Arrange photos in groups, drag them from one group to another, select several at once and choose how many go on a page.',
-					'Turn, flip, straighten and crop any photo, PDF page or video picture, describe it, and see its details down to when and where it was taken.'
+					'Add photos, videos, PDFs and other files to a project.',
+					'Sort photos into groups, and drag them where you want them.',
+					'Crop, turn or straighten a photo, and write a note under it.'
 				]
 			},
 			{
-				title: 'Help as you go',
+				title: 'Built-in help',
 				points: [
-					'Every field has a ? that explains it.',
-					'A tap on a percent shows which fields are still empty.'
+					'Tap the ? next to a box to see what goes in it.',
+					'Tap a percent to see which boxes are still empty.'
 				]
 			},
 			{
-				title: 'Find things fast',
+				title: 'Search and pins',
 				points: [
-					'Search everything from the menu, and pin what you use most to it.',
-					"The menu shows your recent items and who's online, for how long and on what device."
+					'Search for anything from the menu.',
+					'Pin the things you use most to the menu.',
+					"See what you opened last, and who's online right now."
 				]
 			},
 			{
-				title: 'Stay in the loop',
+				title: 'Notifications',
 				points: [
-					'The bell tells you when someone changes your projects or adds you to one.',
-					'The Activity Log shows who did what and when, sorted and filtered your way.',
+					"The bell tells you when someone changes a project you're on, or adds you to one.",
+					'The Activity Log shows who did what, and when.',
 					"What's New shows what each update brings."
 				]
 			},
 			{
-				title: 'Settings and your email signature',
+				title: 'Settings',
 				points: [
-					'Settings holds your profile, your notifications and the organization.',
-					'Your email signature is ready to copy into Outlook.'
+					'Settings holds your profile, your notifications and the company details.',
+					'Copy your email signature from there into Outlook.'
 				]
 			}
 		],
@@ -89,8 +88,8 @@ export const HIGHLIGHTS: Record<string, HighlightsType> = {
 	'1.1.0': {
 		features: [
 			{
-				title: "What's New opens by itself",
-				points: ["What's New opens whenever an update arrives, so you always see what changed."]
+				title: "What's New pops up",
+				points: ["When the app updates, What's New opens by itself and shows what changed."]
 			}
 		],
 		fixes: []
@@ -98,73 +97,71 @@ export const HIGHLIGHTS: Record<string, HighlightsType> = {
 	'1.2.0': {
 		features: [
 			{
-				title: 'Your email signature on your Team page',
+				title: 'Email signatures in the app',
 				points: [
-					'Your email signature lives on your Team page, with Page, Edit and Preview like a project, and copies from its preview ready for Outlook.',
-					"Pick its photo, banner and link in one Signature section, and add your team's group emails, like Operations or Engineering.",
-					"Its photos and banners work like a project's: tap one to crop or turn it, or drag them into order."
+					'Your email signature now lives on your Team page. Check how it looks, then copy it into Outlook.',
+					'Pick your photo, banner and link, and add group emails like Operations or Engineering.',
+					'Team members: please set up your signature here soon. The old Google Sheet is going away.'
 				]
 			},
 			{
-				title: 'Team pages that work like projects',
+				title: 'Team member pages',
 				points: [
-					"A team member's Edit has Profile and Email Signature panels, laid out like a project's.",
-					'How complete the profile is shows at the top.'
+					'Team member pages work like project pages, with Page, Edit and Preview.',
+					'The top of the page shows how complete a profile is.'
 				]
 			},
 			{
-				title: 'Activity for everyone',
+				title: 'Activity Log for everyone',
 				points: [
-					'Everyone has an Activity Log in Settings, showing what happened in the projects they are on, with its sorts and filters always at the top.',
-					'View Activity in any ⋮ menu shows everything that happened to a project, customer, team member, transport mode or facility, on the whole screen of a phone.',
-					"Group gathers each person's back-to-back work into one panel, even across days; opening one closes the others and slides it to the top."
+					"Everyone can open the Activity Log in Settings, for the projects they're on. Its buttons stay at the top as you scroll.",
+					'Tap ⋮ and then View Activity on anything to see its history. On a phone it fills the screen.',
+					"Turn on Group to put each person's changes in a row into one panel. Open one to see what they did."
 				]
 			},
 			{
-				title: 'Tidier notifications',
+				title: 'Cleaner notifications',
 				points: [
-					'Group your notifications by person, and open the Activity Log straight from them.',
-					"A day's new versions fold into one line, and a tap on a version opens What's New right at it.",
-					'On a computer the notifications take half the screen, and their day headings stay at the top as you scroll.'
+					'Group your notifications by person.',
+					"A day's app updates show as one line. Tap it to see what changed.",
+					'On a computer, notifications open in a wider panel.'
 				]
 			},
 			{
-				title: 'Photo pages that fit their photos',
+				title: 'Better photo editor',
 				points: [
-					'Photo pages run Horizontal, Vertical or Auto, and Auto turns each page so its photos are cut the least.'
+					'Turn, flip and crop are easier to find, and arrows take you to the next photo.',
+					'Flip through the pages of a PDF right in the editor.',
+					'Photos you have changed show a small mark.'
 				]
 			},
 			{
-				title: 'A clearer photo editor',
+				title: 'Photo pages that fit',
 				points: [
-					'Rotate and Flip sit at the top, Original shows the whole picture, and arrows step from photo to photo.',
-					"A PDF's pages stack: tap one to bring it to the front, or swipe through them one by one.",
-					'The crop corners stand clear of the photo, what you pick shows in bright blue, and a cropped or turned photo carries a small mark.'
+					'Photo pages in a report can be wide or tall.',
+					'Or pick Auto, and the app turns each page so less of each photo is cut off.'
 				]
 			},
 			{
-				title: 'A ? on every box',
-				points: ['Every box you type in has a ? that says what goes in it.']
+				title: 'Help on every box',
+				points: ['Every box you type in now has a ? that tells you what goes in it.']
 			},
 			{
-				title: 'Smoother What’s New and edit panels',
+				title: "Smoother What's New",
 				points: [
-					'Each update in What’s New is told like this: its features under short titles, with their highlights.',
-					'What’s New opens on the newest update, and opening another closes the rest and slides it to the top in one smooth move.',
-					'Edit panels slide smoothly to the top when you open one.'
+					"What's New shows each update as a short list of features, like this one.",
+					"Opening a section in What's New, or a panel in Edit, slides it smoothly to the top."
 				]
 			}
 		],
 		fixes: [
 			{
-				title: 'PDF pages on the report',
-				points: [
-					'A PDF page you crop or turn in the photo editor shows on the report, not a blank space.'
-				]
+				title: 'PDF pages in reports',
+				points: ['A PDF page you crop or turn now shows in the report, not a blank space.']
 			},
 			{
-				title: 'Photo editor buttons stay put',
-				points: ['Crop, Text and Reset stay in one place, and Reset is always there.']
+				title: 'Photo editor buttons',
+				points: ['Crop, Text and Reset stay in the same place.']
 			}
 		]
 	}

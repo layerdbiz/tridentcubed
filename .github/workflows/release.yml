@@ -93,8 +93,17 @@ jobs:
                 GITHUB_OUTPUT= node apps/app/scripts/release.ts --branch "$GITHUB_REF_NAME" --head "$OLD" --notes "$RUNNER_TEMP/old.md" > /dev/null
                 gh release edit "$OLD" --notes-file "$RUNNER_TEMP/old.md" --target "$GITHUB_REF_NAME" --prerelease=false --latest=false
               done
-          elif gh release view "$TAG" > /dev/null 2>&1; then
-            echo "$TAG is published already."
           else
-            gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+            if gh release view "$TAG" > /dev/null 2>&1; then
+              echo "$TAG is published already."
+            else
+              gh release create "$TAG" --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+            fi
+            # Every release before it is told again in its highlights as they are written now (Justin, 2026-11-28), so
+            # the GitHub pages of the older ones read in the same plain words as dev.app.
+            for OLD in $(git tag --list 'v*' | grep -v -- '-'); do
+              [ "$OLD" = "$TAG" ] && continue
+              GITHUB_OUTPUT= node apps/app/scripts/release.ts --branch "$GITHUB_REF_NAME" --head "$OLD" --notes "$RUNNER_TEMP/old.md" > /dev/null
+              gh release edit "$OLD" --notes-file "$RUNNER_TEMP/old.md"
+            done
           fi
