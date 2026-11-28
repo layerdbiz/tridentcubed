@@ -17,9 +17,10 @@
 	// on the right the i, the ⋮ and, once something changes, the ✓ (keep every change and close). With All pages on,
 	// the picture is the PDF's pages stacked as selected photos are (#402), the page on screen on top in blue and the
 	// next ones peeking out under it, a tap on one bringing it up (Justin, 2026-11-28: "make the display of it do the
-	// stacking"). Under the picture the stage's attachments on a strip. A PDF there, with All pages on, is one box of
-	// its pages side by side, the page on screen in blue; with All pages off it is the page on screen alone, and a
-	// swipe or an arrow key goes through its pages one by one before the next attachment. Then the frame's shapes in
+	// stacking"). Under the picture the stage's attachments on a strip, in the middle. A PDF there, with All pages
+	// on, is the page on screen alone with how many there are; with All pages off it is one box of its pages side by
+	// side, the page on screen in blue, and a swipe or an arrow key goes through its pages one by one before the next
+	// attachment (2026-11-28: the two the other way round from round 2). Then the frame's shapes in
 	// one row: the stage's when it sets one, Free, Original (the whole picture), 16:9, 9:16, 1:1, 4:3; the straighten
 	// dial, undo and redo either side of it once there is something to step to; and the tools, Crop, Text and Reset
 	// in the middle, Reset always there and dimmed until something changes. The ⋮ holds Open the PDF or Play the
@@ -1147,92 +1148,97 @@
 			{/if}
 		{/snippet}
 
-		<!-- Under the picture: the stage's attachments in a row, a PDF in line with them (Justin, 2026-11-27): its pages
-		     side by side in one box with All pages on (2026-11-28: "keep the pages side by side"), the page on screen
-		     alone with it off. -->
+		<!-- Under the picture: the stage's attachments in a row, in the middle on a phone too, a PDF in line with them
+		     (Justin, 2026-11-27): with All pages on, the page on screen alone with how many there are, as its pages stack
+		     in the picture; with it off, its pages side by side in one box, to pick the one to change (2026-11-28: "if I
+		     have the all pages turned off, then I want to show the second thumbnail view"). -->
 		{#if items.length > 1 || pageCount > 1}
 			<div
-				class="flex h-[66px] shrink-0 [scrollbar-width:none] items-center gap-1.5 overflow-x-auto px-3 md:justify-center"
+				class="flex h-[66px] shrink-0 [scrollbar-width:none] items-center overflow-x-auto px-3"
 				data-strip
 				{@attach keepInView}
 			>
-				{#each items as each, at (each.id)}
-					{@const isOpen = at === index}
-					{#if each.kind === 'pdf'}
-						{@const count = Math.max(1, each.pageCount ?? 1)}
-						{@const top = isOpen ? pageAt : 0}
-						{#if isAllPages && count > 1}
-							<!-- All pages on: one box round its pages, in white while it is open, the page on screen in blue. -->
-							<div
-								class="flex h-12 shrink-0 items-center gap-1 rounded-lg bg-white/[0.07] px-1 transition {isOpen
-									? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
-									: 'opacity-55 ring-1 ring-white/15 hover:opacity-90'}"
-								role="group"
-								aria-label="PDF, {count} pages"
-								data-strip-pdf={at}
-							>
-								{#each Array.from({ length: count }, (_, page) => page) as page (page)}
-									{@const isHere = isOpen && page === pageAt}
-									<button
-										type="button"
-										class="relative h-10 w-[29px] shrink-0 overflow-hidden rounded-[3px] bg-white transition {isHere
-											? 'ring-2 ring-sky-400'
-											: ''}"
-										aria-label="PDF page {page + 1}"
-										aria-current={isHere}
-										data-current={isHere || undefined}
-										data-strip-page={page + 1}
-										onclick={() => goTo(at, page)}>{@render pageThumb(each, page)}</button
-									>
-								{/each}
-							</div>
-						{:else}
-							<!-- All pages off: the page on screen alone, and a swipe goes through the rest (Justin, 2026-11-27). -->
-							<button
-								type="button"
-								class="relative h-12 w-[34px] shrink-0 overflow-hidden rounded-[4px] bg-white transition {isOpen
-									? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
-									: 'opacity-55 hover:opacity-90'}"
-								aria-label="PDF page {top + 1} of {count}"
-								aria-current={isOpen}
-								data-current={isOpen || undefined}
-								data-strip-pdf={at}
-								data-strip-page={top + 1}
-								onclick={() => goTo(at, top)}
-								>{@render pageThumb(each, top)}{#if count > 1}<span
-										class="absolute right-0.5 bottom-0.5 rounded-[3px] bg-black/70 px-0.5 text-[8px] leading-tight font-semibold text-white tabular-nums"
-										>{top + 1}/{count}</span
-									>{/if}</button
-							>
-						{/if}
-					{:else}
-						<button
-							type="button"
-							class="relative size-12 shrink-0 overflow-hidden rounded-lg bg-slate-700 transition {isOpen
-								? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
-								: 'opacity-55 hover:opacity-90'}"
-							aria-label="{ATTACHMENT_NOUNS[each.kind ?? 'photo']} {at + 1}"
-							aria-current={isOpen}
-							data-current={isOpen || undefined}
-							data-go={at}
-							onclick={() => goTo(at)}
-						>
-							{#if each.src}
-								<Picture
-									src={each.src}
-									edit={editIn(each)}
-									class="pointer-events-none size-full"
-								/>
-							{/if}
-							{#if each.kind === 'video'}
-								<span
-									class="absolute top-1/2 left-1/2 grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-900"
-									><span class="icon-[mdi--play] size-3.5"></span></span
+				<!-- Its own margins keep the row in the middle while it fits, and let it scroll from its start once it does not. -->
+				<div class="mx-auto flex shrink-0 items-center gap-1.5">
+					{#each items as each, at (each.id)}
+						{@const isOpen = at === index}
+						{#if each.kind === 'pdf'}
+							{@const count = Math.max(1, each.pageCount ?? 1)}
+							{@const top = isOpen ? pageAt : 0}
+							{#if !isAllPages && count > 1}
+								<!-- All pages off: one box round its pages, in white while it is open, the page on screen in blue; a
+							     swipe goes through them one by one too. -->
+								<div
+									class="flex h-12 shrink-0 items-center gap-1 rounded-lg bg-white/[0.07] px-1 transition {isOpen
+										? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
+										: 'opacity-55 ring-1 ring-white/15 hover:opacity-90'}"
+									role="group"
+									aria-label="PDF, {count} pages"
+									data-strip-pdf={at}
+								>
+									{#each Array.from({ length: count }, (_, page) => page) as page (page)}
+										{@const isHere = isOpen && page === pageAt}
+										<button
+											type="button"
+											class="relative h-10 w-[29px] shrink-0 overflow-hidden rounded-[3px] bg-white transition {isHere
+												? 'ring-2 ring-sky-400'
+												: ''}"
+											aria-label="PDF page {page + 1}"
+											aria-current={isHere}
+											data-current={isHere || undefined}
+											data-strip-page={page + 1}
+											onclick={() => goTo(at, page)}>{@render pageThumb(each, page)}</button
+										>
+									{/each}
+								</div>
+							{:else}
+								<!-- All pages on (or a page alone): the page on screen, with how many there are. -->
+								<button
+									type="button"
+									class="relative h-12 w-[34px] shrink-0 overflow-hidden rounded-[4px] bg-white transition {isOpen
+										? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
+										: 'opacity-55 hover:opacity-90'}"
+									aria-label="PDF page {top + 1} of {count}"
+									aria-current={isOpen}
+									data-current={isOpen || undefined}
+									data-strip-pdf={at}
+									data-strip-page={top + 1}
+									onclick={() => goTo(at, top)}
+									>{@render pageThumb(each, top)}{#if count > 1}<span
+											class="absolute right-0.5 bottom-0.5 rounded-[3px] bg-black/70 px-0.5 text-[8px] leading-tight font-semibold text-white tabular-nums"
+											>{top + 1}/{count}</span
+										>{/if}</button
 								>
 							{/if}
-						</button>
-					{/if}
-				{/each}
+						{:else}
+							<button
+								type="button"
+								class="relative size-12 shrink-0 overflow-hidden rounded-lg bg-slate-700 transition {isOpen
+									? 'ring-2 ring-white ring-offset-2 ring-offset-[#05070b]'
+									: 'opacity-55 hover:opacity-90'}"
+								aria-label="{ATTACHMENT_NOUNS[each.kind ?? 'photo']} {at + 1}"
+								aria-current={isOpen}
+								data-current={isOpen || undefined}
+								data-go={at}
+								onclick={() => goTo(at)}
+							>
+								{#if each.src}
+									<Picture
+										src={each.src}
+										edit={editIn(each)}
+										class="pointer-events-none size-full"
+									/>
+								{/if}
+								{#if each.kind === 'video'}
+									<span
+										class="absolute top-1/2 left-1/2 grid size-5 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-slate-900"
+										><span class="icon-[mdi--play] size-3.5"></span></span
+									>
+								{/if}
+							</button>
+						{/if}
+					{/each}
+				</div>
 			</div>
 		{/if}
 
