@@ -121,6 +121,7 @@
 	import type { LookState } from './look.state.svelte';
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
 	import PhotoAdd from './photo-add.svelte';
+	import PhotoGrid from './photo-grid.svelte';
 	import PhotoTile from './photo-tile.svelte';
 	import { LINK_LABEL, linkNameOf, toLink } from './link';
 	import { countsOfPhotos } from './counts';
@@ -1775,8 +1776,14 @@
 							help={look.helpOf('group.description')}
 						/>
 						{@render stageLayout(group)}
-						<div
-							class="grid grid-cols-3 gap-2"
+						<PhotoGrid
+							photos={group.photos}
+							sortKey="photos-{group.id}"
+							cell={(photo) => ({
+								class: uploadOf(photo)?.isFailed ? 'ring-2 ring-danger' : '',
+								'data-photo-panel': panel.id,
+								'data-photo-id': photo.id
+							})}
 							{@attach sortable(
 								`photos-${group.id}`,
 								(from, to) => move(group.photos, from, to),
@@ -1788,81 +1795,73 @@
 								pickOf(group)
 							)}
 						>
-							{#each group.photos as photo, photoIndex (photo.id)}
+							{#snippet tile(photo, photoIndex)}
 								{@const upload = uploadOf(photo)}
-								{@const isPicked = isSelecting && selection.has(photo.id)}
-								<div
-									class="relative aspect-square rounded-xl transition {upload?.isFailed
-										? 'ring-2 ring-danger'
-										: ''}"
-									data-sort="photos-{group.id}"
-									data-index={photoIndex}
-									data-photo-panel={panel.id}
-									data-photo-id={photo.id}
-									animate:flip={{ duration: 200 }}
-								>
-									<PhotoTile
-										{photo}
-										index={photoIndex}
-										sortKey="photos-{group.id}"
-										{upload}
-										{isSelecting}
-										{isPicked}
-										align={photoIndex % 3 === 0 ? 'left' : 'right'}
-										options={[
-											// #295: every attachment is edited the same way, a PDF's pages and a video's picture too.
-											{
-												id: 'crop',
-												label: 'Crop',
-												icon: 'icon-[mdi--crop]'
-											},
-											{
-												id: 'describe',
-												label: 'Edit description',
-												icon: 'icon-[mdi--pencil-outline]'
-											},
-											{
-												id: 'delete',
-												label: 'Delete',
-												icon: 'icon-[mdi--trash-can-outline]',
-												isDanger: true
-											}
-										]}
-										onopen={(event) => {
-											// #402: while selecting, or with Ctrl, Cmd or Shift, a click selects instead of opening.
-											if (selection.tap(panel, photo.id, event)) return;
-											// Nothing to show in the pop-up until the server has converted it (#294).
-											if (!upload || upload.hasPreview) openPhoto(group, photo);
-										}}
-										onpick={(id) =>
-											id === 'delete'
-												? remove(
-														group.photos,
-														photo,
-														`Delete ${ATTACHMENT_NOUNS[photo.kind ?? 'photo']}?`,
-														`It leaves the ${word} and the report.`
-													)
-												: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
-									/>
-								</div>
-							{/each}
-							<!-- Lit while its file input has the focus: where an entry of the empty-inputs list for Photos lands. -->
-							<PhotoAdd
-								icon="icon-[mdi--image-plus-outline]"
-								label="Upload"
-								accept={ATTACHMENT_ACCEPT}
-								multiple
-								data-input={MARKED_LABELS.photos}
-								onchange={(event) => pickPhotos(event, group)}
-							/>
-							<PhotoAdd
-								icon="icon-[mdi--camera-outline]"
-								label="Camera"
-								accept="image/*,video/*"
-								capture="environment"
-								onchange={(event) => pickPhotos(event, group)}
-							/>
-						</div>
+								<PhotoTile
+									{photo}
+									index={photoIndex}
+									sortKey="photos-{group.id}"
+									{upload}
+									{isSelecting}
+									isPicked={isSelecting && selection.has(photo.id)}
+									align={photoIndex % 3 === 0 ? 'left' : 'right'}
+									options={[
+										// #295: every attachment is edited the same way, a PDF's pages and a video's picture too.
+										{
+											id: 'crop',
+											label: 'Crop',
+											icon: 'icon-[mdi--crop]'
+										},
+										{
+											id: 'describe',
+											label: 'Edit description',
+											icon: 'icon-[mdi--pencil-outline]'
+										},
+										{
+											id: 'delete',
+											label: 'Delete',
+											icon: 'icon-[mdi--trash-can-outline]',
+											isDanger: true
+										}
+									]}
+									onopen={(event) => {
+										// #402: while selecting, or with Ctrl, Cmd or Shift, a click selects instead of opening.
+										if (selection.tap(panel, photo.id, event)) return;
+										// Nothing to show in the pop-up until the server has converted it (#294).
+										if (!upload || upload.hasPreview) openPhoto(group, photo);
+									}}
+									onpick={(id) =>
+										id === 'delete'
+											? remove(
+													group.photos,
+													photo,
+													`Delete ${ATTACHMENT_NOUNS[photo.kind ?? 'photo']}?`,
+													`It leaves the ${word} and the report.`
+												)
+											: openPhoto(group, photo, id === 'crop' ? 'crop' : 'text')}
+								/>
+							{/snippet}
+							{#snippet adds(shape)}
+								<!-- Lit while its file input has the focus: where an entry of the empty-inputs list for Photos lands. -->
+								<PhotoAdd
+									icon="icon-[mdi--image-plus-outline]"
+									label="Upload"
+									accept={ATTACHMENT_ACCEPT}
+									multiple
+									class={shape}
+									data-input={MARKED_LABELS.photos}
+									onchange={(event) => pickPhotos(event, group)}
+								/>
+								<PhotoAdd
+									icon="icon-[mdi--camera-outline]"
+									label="Camera"
+									accept="image/*,video/*"
+									capture="environment"
+									class={shape}
+									onchange={(event) => pickPhotos(event, group)}
+								/>
+							{/snippet}
+						</PhotoGrid>
 						{#snippet actions()}
 							<Button
 								primary

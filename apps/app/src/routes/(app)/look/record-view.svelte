@@ -4,7 +4,9 @@
 	// Page's picture (record-page.svelte) and this is the sheet under it: its numbers; for a team
 	// member their phone and email, for a transport its particulars (empty until typed in on Edit, or later filled by a
 	// tracking service); then its projects, as the same rows the Projects page lists.
-	import { Avatar, Stack } from '@layerd/ui';
+	// A team member's has their Email Signature, a page of theirs (#354; Justin, 2026-11-28: "a sub-page for a team
+	// member"), for them and for an Admin.
+	import { Avatar, ListRow, Stack } from '@layerd/ui';
 	import { DATASETS, PARTICULARS } from './look.data';
 	import type { LookState } from './look.state.svelte';
 	import { facesOf, logoOf } from './marks';
@@ -85,6 +87,12 @@
 				: []
 	);
 	const people = $derived(everyone.filter((person) => person.name || person.lines.length));
+	// Whose Email Signature this page opens: a Team member's own, or anyone's for an Admin (the server's one check).
+	const signatureOf = $derived(
+		record.member?.id && (look.isAdmin || record.member.id === look.me?.id)
+			? record.member.id
+			: undefined
+	);
 </script>
 
 {#snippet row(line: LineType)}
@@ -120,6 +128,28 @@
 			<h3 class={HEADING}>{record.member ? 'Contact' : 'Details'}</h3>
 			<div class="divide-y divide-slate-100 overflow-hidden {CARD}">
 				{#each details as line (line.icon)}{@render row(line)}{/each}
+			</div>
+		</section>
+	{/if}
+
+	{#if signatureOf}
+		<section>
+			<h3 class={HEADING}>Email</h3>
+			<div class="overflow-hidden {CARD}">
+				<ListRow
+					tag="button"
+					type="button"
+					class="gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-100"
+					label="Email Signature"
+					note="Its photo and banners, and Copy for Outlook"
+					onclick={() => look.openSignature(signatureOf)}
+				>
+					{#snippet start()}<span
+							class="icon-[mdi--card-account-mail-outline] size-5 shrink-0 text-primary"
+						></span>{/snippet}
+					{#snippet end()}<span class="icon-[mdi--chevron-right] size-5 shrink-0 text-slate-400"
+						></span>{/snippet}
+				</ListRow>
 			</div>
 		</section>
 	{/if}

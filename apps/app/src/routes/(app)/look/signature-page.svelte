@@ -14,7 +14,10 @@
 	// editor (photo-popup.svelte). The photo is the signature's own, never the profile picture, always a circle, and a
 	// tap on it in an email goes to its link. Banners show at their own shape, as the email draws them, are dragged to
 	// reorder, edited and deleted, and each opens its own link in a new window.
-	import { flip } from 'svelte/animate';
+	// Round 5 (Justin, 2026-11-28): a page of a Team member's, opened from their Team page, its bar reading Team ›
+	// Email (look.openSignature); every company banner shows under the signature's own for anyone to pick ("We need
+	// to have those available for everyone to choose from"); both are photo grids (photo-grid.svelte) at each banner's
+	// own shape ("the original"); and beside Edit on a desktop the signature is centred in the room, not at its left.
 	import { Avatar, Button, Email, Input, Menu, Select, type SelectOptionType } from '@layerd/ui';
 	import { toFittedSize } from '#lib/files/files.utils.js';
 	import {
@@ -37,6 +40,7 @@
 	import { faceOf } from './marks';
 	import PageHeader from './page-header.svelte';
 	import PhotoAdd, { ADD_TILE } from './photo-add.svelte';
+	import PhotoGrid from './photo-grid.svelte';
 	import PhotoPopup, { type PopupModeType } from './photo-popup.svelte';
 	import PhotoTile from './photo-tile.svelte';
 	import { pictureAspectOf } from './shapes';
@@ -50,9 +54,10 @@
 	const CARD = 'rounded-3xl bg-slate-50 ring-1 ring-slate-900/[0.04]';
 	const MAILBOX = 'mailbox:';
 	const BANNERS = 'signature-banners';
+	const COMPANY = 'signature-company-banners';
 
-	// Whose signature: the User's own first, then whoever an Admin picks.
-	let picked = $state('');
+	// Whose signature: the one opened (a Team member's page, or an Admin's pick), else the User's own.
+	const picked = $derived(look.signatureFor);
 	const ask = $derived<SignatureAskType>(
 		picked.startsWith(MAILBOX)
 			? { mailbox: picked.slice(MAILBOX.length) }
@@ -200,6 +205,21 @@
 			original: choice.preview
 		});
 		save('banners');
+	}
+
+	// A company banner tapped goes under the signature's banners, or comes off them when it is already there.
+	function toggleBanner(source: string) {
+		if (!draft) return;
+		const at = draft.banners.findIndex((each) => each.source === source);
+		if (at >= 0) {
+			draft.banners.splice(at, 1);
+			return save('banners');
+		}
+		if (draft.banners.length >= MAX_BANNERS) {
+			problem = `A signature takes ${MAX_BANNERS} banners at most. Delete one first.`;
+			return;
+		}
+		addBanner(source);
 	}
 
 	// A banner dragged gives way as it goes; the order is saved once it has been let go a moment.
@@ -535,7 +555,7 @@
 				{options}
 				value={shownId}
 				required
-				onpick={(id) => (picked = id)}
+				onpick={(id) => (look.signatureFor = id)}
 			/>
 			{#if signature}
 				<div class="flex items-center justify-between gap-3 px-1">
@@ -591,10 +611,13 @@
 					<p class="px-1 text-xs text-slate-500">
 						The signature’s own, not the profile picture, and always a circle.
 					</p>
-					<div class="grid grid-cols-3 gap-2">
-						<div class="relative aspect-square rounded-full">
+					<PhotoGrid
+						photos={[tileOf('photo', draft.photo)]}
+						sortKey="signature-photo"
+					>
+						{#snippet tile(photo)}
 							<PhotoTile
-								photo={tileOf('photo', draft.photo)}
+								{photo}
 								index={0}
 								sortKey="signature-photo"
 								isRound
@@ -603,7 +626,7 @@
 								align="left"
 								options={[
 									{ id: 'crop', label: 'Crop', icon: 'icon-[mdi--crop]' },
-									...(draft.photo.isPicked
+									...(draft?.photo.isPicked
 										? [
 												{
 													id: 'delete',
@@ -618,35 +641,38 @@
 								onopen={() => openPhoto()}
 								onpick={(id) => (id === 'delete' ? resetPhoto() : openPhoto())}
 							/>
-						</div>
-						<PhotoAdd
-							icon="icon-[mdi--image-plus-outline]"
-							label="Upload"
-							accept="image/*"
-							onchange={(event) => pickFiles('photo', event)}
-						/>
-						<Menu
-							class="block"
-							isWide
-							label="Pick a photo"
-							value={draft.photo.source}
-							options={parts.photos.map((choice) => ({
-								id: choice.source,
-								label: choice.label,
-								image: choice.preview || undefined,
-								icon: choice.preview ? undefined : 'icon-[mdi--image-outline]'
-							}))}
-							align="right"
-							onpick={pickPhoto}
-						>
-							{#snippet trigger()}
-								<span class="{ADD_TILE} aspect-square w-full">
-									<span class="icon-[mdi--image-multiple-outline] size-6"></span>
-									<span class="text-[11px] font-medium">Pick</span>
-								</span>
-							{/snippet}
-						</Menu>
-					</div>
+						{/snippet}
+						{#snippet adds(shape)}
+							<PhotoAdd
+								icon="icon-[mdi--image-plus-outline]"
+								label="Upload"
+								accept="image/*"
+								class={shape}
+								onchange={(event) => pickFiles('photo', event)}
+							/>
+							<Menu
+								class="block"
+								isWide
+								label="Pick a photo"
+								value={draft?.photo.source ?? ''}
+								options={parts.photos.map((choice) => ({
+									id: choice.source,
+									label: choice.label,
+									image: choice.preview || undefined,
+									icon: choice.preview ? undefined : 'icon-[mdi--image-outline]'
+								}))}
+								align="right"
+								onpick={pickPhoto}
+							>
+								{#snippet trigger()}
+									<span class="{ADD_TILE} {shape} w-full">
+										<span class="icon-[mdi--image-multiple-outline] size-6"></span>
+										<span class="text-[11px] font-medium">Pick</span>
+									</span>
+								{/snippet}
+							</Menu>
+						{/snippet}
+					</PhotoGrid>
 					<Input
 						label="Photo link"
 						type="url"
@@ -685,41 +711,44 @@
 						Under the signature in this order, each its own shape, as wide as the email at most.
 						Drag one to move it.
 					</p>
-					<div
-						class="space-y-3"
+					{#if !draft.banners.length}
+						<div
+							class="flex flex-col items-center gap-1 rounded-2xl bg-slate-900/[0.03] py-6 text-slate-400"
+						>
+							<span class="icon-[mdi--image-filter-hdr] size-8"></span>
+							<p class="text-sm">No banners.</p>
+						</div>
+					{/if}
+					<PhotoGrid
+						photos={draft.banners.map((banner) => tileOf(banner.id, banner))}
+						sortKey={BANNERS}
+						ratio="original"
+						columns={1}
 						{@attach sortable(BANNERS, moveBanner)}
 					>
-						{#each draft.banners as banner, index (banner.id)}
-							<div
-								class="space-y-2"
-								data-sort={BANNERS}
-								data-index={index}
-								animate:flip={{ duration: 200 }}
-							>
-								<div
-									class="relative w-full rounded-xl"
-									style="aspect-ratio: {shapeOf(banner)}"
-								>
-									<PhotoTile
-										photo={tileOf(banner.id, banner)}
-										{index}
-										sortKey={BANNERS}
-										hasBadge={false}
-										isBusy={busy === 'banners'}
-										options={[
-											{ id: 'crop', label: 'Crop', icon: 'icon-[mdi--crop]' },
-											{
-												id: 'delete',
-												label: 'Delete',
-												icon: 'icon-[mdi--trash-can-outline]',
-												isDanger: true
-											}
-										]}
-										onopen={() => openBanner(banner.id)}
-										onpick={(id) =>
-											id === 'delete' ? deleteBanner(banner.id) : openBanner(banner.id)}
-									/>
-								</div>
+						{#snippet tile(photo, index)}
+							<PhotoTile
+								{photo}
+								{index}
+								sortKey={BANNERS}
+								hasBadge={false}
+								isBusy={busy === 'banners'}
+								options={[
+									{ id: 'crop', label: 'Crop', icon: 'icon-[mdi--crop]' },
+									{
+										id: 'delete',
+										label: 'Delete',
+										icon: 'icon-[mdi--trash-can-outline]',
+										isDanger: true
+									}
+								]}
+								onopen={() => openBanner(photo.id)}
+								onpick={(id) => (id === 'delete' ? deleteBanner(photo.id) : openBanner(photo.id))}
+							/>
+						{/snippet}
+						{#snippet below(photo)}
+							{@const banner = draft?.banners.find((each) => each.id === photo.id)}
+							{#if banner}
 								<Input
 									label="Link"
 									type="url"
@@ -734,48 +763,65 @@
 											banner.link = link;
 										})}
 								/>
-							</div>
-						{:else}
-							<div
-								class="flex flex-col items-center gap-1 rounded-2xl bg-slate-900/[0.03] py-6 text-slate-400"
-							>
-								<span class="icon-[mdi--image-filter-hdr] size-8"></span>
-								<p class="text-sm">No banners.</p>
-							</div>
-						{/each}
+							{/if}
+						{/snippet}
+						{#snippet adds(shape)}
+							{#if draft && draft.banners.length < MAX_BANNERS}
+								<PhotoAdd
+									icon="icon-[mdi--image-plus-outline]"
+									label="Upload banners"
+									accept="image/*"
+									multiple
+									class={shape}
+									onchange={(event) => pickFiles('banner', event)}
+								/>
+							{/if}
+						{/snippet}
+					</PhotoGrid>
+					<!-- Every company banner, for anyone to pick (Justin, 2026-11-28): a tap puts one under the
+					     signature's banners, or takes it off them; those on the signature wear the selection's blue. -->
+					<div class="space-y-2 pt-2">
+						<h4 class="px-1 text-sm font-semibold text-slate-900">Company banners</h4>
+						<p class="px-1 text-xs text-slate-500">
+							Tap one to add it to the signature, or tap it again to take it off.
+						</p>
+						<PhotoGrid
+							photos={parts.companyBanners.map((choice) => ({
+								id: choice.source,
+								src: choice.preview,
+								description: ''
+							}))}
+							sortKey={COMPANY}
+							ratio="original"
+							columns={2}
+						>
+							{#snippet tile(photo, index)}
+								<PhotoTile
+									{photo}
+									{index}
+									sortKey={COMPANY}
+									hasBadge={false}
+									isSelecting
+									isPicked={draft?.banners.some((each) => each.source === photo.id)}
+									options={[]}
+									onopen={() => toggleBanner(photo.id)}
+									onpick={() => toggleBanner(photo.id)}
+								/>
+							{/snippet}
+							{#snippet below(photo)}
+								{@const isOn = draft?.banners.some((each) => each.source === photo.id)}
+								{@const choice = parts.companyBanners.find((each) => each.source === photo.id)}
+								<p
+									class="flex items-center gap-1 px-1 text-xs {isOn
+										? 'font-medium text-primary'
+										: 'text-slate-600'}"
+								>
+									{#if isOn}<span class="icon-[mdi--check-circle] size-3.5 shrink-0"></span>{/if}
+									<span class="truncate">{choice?.label}</span>
+								</p>
+							{/snippet}
+						</PhotoGrid>
 					</div>
-					{#if draft.banners.length < MAX_BANNERS}
-						<div class="grid grid-cols-2 gap-2">
-							<PhotoAdd
-								icon="icon-[mdi--image-plus-outline]"
-								label="Upload"
-								accept="image/*"
-								multiple
-								class="h-20"
-								onchange={(event) => pickFiles('banner', event)}
-							/>
-							<Menu
-								class="block"
-								isWide
-								label="Add a company banner"
-								value=""
-								options={parts.companyBanners.map((choice) => ({
-									id: choice.source,
-									label: choice.label,
-									image: choice.preview || undefined
-								}))}
-								align="right"
-								onpick={addBanner}
-							>
-								{#snippet trigger()}
-									<span class="{ADD_TILE} h-20 w-full">
-										<span class="icon-[mdi--image-multiple-outline] size-6"></span>
-										<span class="text-[11px] font-medium">Company banners</span>
-									</span>
-								{/snippet}
-							</Menu>
-						</div>
-					{/if}
 				</Group>
 			</div>
 		{/if}
@@ -877,7 +923,8 @@
 {:else if isWide && look.tab === 'preview'}
 	<div class="fixed inset-0">{@render preview({})}</div>
 {:else if isWide}
-	<div class="fixed inset-0">{@render preview({ left: 444, isLeft: true })}</div>
+	<!-- Centred in the room beside the Edit column (Justin, 2026-11-28: "it should be centered instead"). -->
+	<div class="fixed inset-0">{@render preview({ left: 444 })}</div>
 	<aside class="fixed top-3 bottom-3 left-3 z-40 flex w-[420px] flex-col overflow-hidden {FLOAT}">
 		<div class="relative h-[72px] shrink-0">
 			<PageHeader

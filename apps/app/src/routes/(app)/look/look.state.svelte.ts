@@ -254,6 +254,8 @@ export class LookState {
 	slide = $state(0);
 	// The record on show: which page it belongs to and its name.
 	record = $state<{ page: PageType; key: string }>();
+	/** Whose Email Signature is on show (#354): a Team member's id, or `mailbox:<slug>`; '' for the person's own. */
+	signatureFor = $state('');
 	// The first tab 0, the second 1, and in between while a finger swipes from one to the other.
 	tabProgress = $state(0);
 	isSaving = $state(false);
@@ -396,6 +398,8 @@ export class LookState {
 	get place(): DatasetType {
 		if (this.screen === 'workspace') return 'projects';
 		if (this.screen === 'record' && this.record) return this.record.page;
+		// A Team member's Email Signature is a page of theirs (#354).
+		if (this.screen === 'signature') return 'team';
 		return this.dataset;
 	}
 
@@ -500,9 +504,13 @@ export class LookState {
 		this.screen = 'activity';
 	}
 
-	// Email Signature (#354): anyone's own, opened from the menu on their profile picture; an Admin picks anyone's there.
-	openSignature() {
+	// Email Signature (#354): a page of a Team member's (Justin, 2026-11-28: "this email signatures page should not be
+	// its own standalone page ... a sub-page for a team member"), opened from their Team page or, for one's own, the
+	// menu on one's profile picture. Anyone has their own; an Admin anyone's, or a shared mailbox's. Back goes to
+	// the Team member's page.
+	openSignature(who = '') {
 		if (this.screen === 'workspace') this.#keepProject();
+		this.signatureFor = who;
 		this.tab = 'page';
 		this.tabProgress = 0;
 		this.screen = 'signature';
@@ -554,9 +562,19 @@ export class LookState {
 			this.panelId = back.panelId;
 			return;
 		}
+		if (this.screen === 'signature') return this.#leaveSignature();
 		if (this.screen === 'workspace') this.#keepProject();
 		this.screen = 'dashboard';
 		this.navSection = this.dataset;
+	}
+
+	// Back from an Email Signature: to its Team member's page, or a shared mailbox's to the Team page.
+	#leaveSignature() {
+		const id = this.signatureFor || this.me?.id;
+		const member = this.members.find((each) => each.id && each.id === id);
+		if (member) return this.openRecord('team', member.name);
+		this.screen = 'dashboard';
+		this.pick('team');
 	}
 
 	// Mark sent remembers the state before, and Unsend goes back to it.
