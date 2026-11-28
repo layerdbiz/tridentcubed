@@ -6,9 +6,11 @@
 	// the picture kept for the PDF, and any other a quiet placeholder.
 	//
 	// #295: a page edited in the photo pop-up (turned, mirrored, straightened, cropped) is drawn as its edit makes it,
-	// and prints as that picture: the download puts the PDF's own page only where the page is as it came.
+	// filling its spot, and prints as that picture: the download puts the PDF's own page only where the page is as it
+	// came. A shape picked that leaves the whole page in (Original) changes nothing, so the page prints as it came
+	// (Justin, 2026-11-28: the pages went blank after Original).
 	import Picture from '#lib/components/photo/picture.svelte';
-	import { hasEdit, type EditType, type FrameType } from '#lib/components/photo/edit.js';
+	import { isWholeFrame, type EditType, type FrameType } from '#lib/components/photo/edit.js';
 	import { pageShapeOf } from '#lib/pdf/pdf.state.svelte.js';
 	import { pageOf, toDrawnWidth } from '#lib/pdf/pdf.utils.js';
 
@@ -35,7 +37,11 @@
 		style?: string;
 	} = $props();
 
-	const isEdited = $derived(hasEdit(edit));
+	const isEdited = $derived(
+		Boolean(
+			edit && (edit.turns || edit.isFlipped || edit.tilt || !isWholeFrame(frame ?? edit.frame))
+		)
+	);
 	const pageShape = $derived(source ? pageShapeOf(source, page) : undefined);
 
 	let width = $state(0);
@@ -76,7 +82,7 @@
 			{frame}
 			fit="fit"
 			aspect={pageShape ? pageShape.width / pageShape.height : undefined}
-			class="absolute inset-0 bg-white"
+			class="size-full bg-white"
 		/>
 	{:else if shown}
 		<img

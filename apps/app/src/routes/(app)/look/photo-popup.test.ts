@@ -269,6 +269,11 @@ describe("the photo pop-up's editor", () => {
 		expect(saved.pageEdits).toEqual({ '2': { turns: 1 } });
 	});
 
+	it('says where it is among the stage’s attachments right under the picture', async () => {
+		show(undefined, 'b');
+		expect(document.querySelector('[data-shown-at]')?.textContent?.trim()).toBe('2 of 2');
+	});
+
 	it('keeps Reset among the tools all the time, dimmed until something changes', async () => {
 		show([{ id: 'a', src: '/a.webp', description: '' }], 'a');
 		const reset = screen.getByRole('button', { name: 'Reset' }) as HTMLButtonElement;
