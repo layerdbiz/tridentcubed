@@ -231,18 +231,32 @@ the why is in ADR 0002, 0003 and 0005.
   feature a short bold title in the dark text with one to three short
   highlights on light green bullets, then Fixes the same way on blue.
   dev.app's What's New and the release's GitHub notes show them in place of
-  the lines. They are written as the work lands, not at the end:
-  1. **Every change updates them in the same pull request (Justin,
+  the lines, and each release on dev writes the GitHub notes of the ones
+  before it again, so every page reads as `highlights.ts` has it now. They
+  are written as the work lands, not at the end:
+  1. **Every change rewrites them in the same pull request (Justin,
      2026-11-28: "in the same breath").** A change people on dev.app will
-     notice writes its `What's New:` lines, then folds itself into the
-     highlights of the version next leads to: the base of next's version
-     (`v1.2.0-next.19` leads to `1.2.0`; `node apps/app/scripts/release.ts
-     --branch dev --head origin/next --dry-run` names it). Fold it into the
-     feature it belongs to as that feature is now, or add a feature; what
-     was tried and replaced goes. A fix is only for a problem people on
-     dev.app had; one made and mended on next never reached them. A change
-     seen only on next.app leaves them alone. A released version's
-     highlights change only on Justin's word.
+     notice writes its `What's New:` lines, then rereads the whole of the
+     version next leads to (the base of next's version: `v1.2.0-next.19`
+     leads to `1.2.0`; `node apps/app/scripts/release.ts --branch dev
+     --head origin/next --dry-run` names it) and rewrites it so it tells
+     each feature in its **final form**: edit, merge or remove what is
+     there, and add a feature only for something new. A big feature (the
+     photo editor, notifications) always keeps its place; how it was built,
+     round by round, stays in Every change. A fix is only for a problem
+     people on dev.app had; one made and mended on next never reached
+     them. A change seen only on next.app leaves them alone. A released
+     version's highlights change only on Justin's word.
+
+     **Plain words (Justin, 2026-11-28).** Write for someone who is not
+     technical, in words an eighth grader reads easily. A title names the
+     feature in a few words, to the point: `Email signatures in the app`,
+     `Better photo editor`. Each point says what the feature does for
+     people, and what they should do about it when that matters (`Team
+     members: please set up your signature here soon. The old Google Sheet
+     is going away.`). `src/lib/releases/highlights.test.ts` holds the
+     shape: titles of five words at most, one to three points of 25 words at
+     most, and none of the words of the work behind the app.
   2. **next.app shows them as they stand.** Its What's New has two tabs:
      Release notes, with them on top as "Coming to dev", exactly as dev.app
      will show them, then each release on dev; and Every change, every
