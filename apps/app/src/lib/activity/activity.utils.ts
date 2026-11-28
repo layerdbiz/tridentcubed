@@ -1,6 +1,7 @@
 // The Activity's Grouped view (#306; Justin, 2026-11-26): one person's back-to-back entries fold into one run, which
 // shows as one snapshot line and opens like an accordion, so the page is not one huge list. The By Time view lists the
-// same entries one by one.
+// same entries one by one. Since 2026-11-28 a run lasts until someone else's entry comes in between, however long it
+// takes and across days, and with Group on every entry is in a run, even a run of one.
 import type { ActivityEventType } from './activity.types';
 
 /** One person's back-to-back entries: newest first, and when the run began and ended. */
@@ -16,43 +17,47 @@ export type ActivityRunType = {
 	to: string;
 };
 
-/** How long a person may do nothing before their run ends: 30 minutes. A run ends at midnight too. */
-export const RUN_GAP = 30 * 60_000;
-
-// Whether two times fall on the same day where the device is.
-function isSameDay(a: string, b: string) {
-	return new Date(a).toDateString() === new Date(b).toDateString();
+/**
+ * Back-to-back items with the same `keyOf`, each streak in the order given: anyone else's item in between starts a
+ * new one.
+ */
+export function toStreaks<T>(items: T[], keyOf: (item: T) => string): T[][] {
+	const streaks: T[][] = [];
+	let key = '';
+	for (const item of items) {
+		const own = keyOf(item);
+		const last = streaks.at(-1);
+		if (last && own === key) last.push(item);
+		else streaks.push([item]);
+		key = own;
+	}
+	return streaks;
 }
 
-/** The Activity's entries (newest first) as runs, one person's back-to-back entries each, newest run first. */
+/** Who did an entry: their User, or their name when they have none. */
+export function personOf(event: ActivityEventType): string {
+	return event.userId ?? event.who;
+}
+
+/**
+ * The Activity's entries (newest first) as runs, newest run first: one person's back-to-back entries each, however
+ * far apart and across days, until someone else's comes in between (Justin, 2026-11-28).
+ */
 export function toRuns(events: ActivityEventType[]): ActivityRunType[] {
-	const runs: ActivityRunType[] = [];
-	// Each person's run still taking entries: their oldest so far.
-	const open = new Map<string, ActivityRunType>();
-	for (const event of events) {
-		const person = event.userId ?? event.who;
-		const run = open.get(person);
-		if (
-			run &&
-			Date.parse(run.from) - Date.parse(event.at) <= RUN_GAP &&
-			isSameDay(run.from, event.at)
-		) {
-			run.events.push(event);
-			run.from = event.at;
-			continue;
-		}
-		const started: ActivityRunType = {
-			id: event.id,
-			who: event.who,
-			userId: event.userId,
-			events: [event],
-			from: event.at,
-			to: event.at
-		};
-		runs.push(started);
-		open.set(person, started);
-	}
-	return runs;
+	return toStreaks(events, personOf).map((streak) => toRun(streak));
+}
+
+/** A run of `events` (newest first, at least one), by the person who did the first. */
+export function toRun(events: ActivityEventType[]): ActivityRunType {
+	const [newest] = events;
+	return {
+		id: newest.id,
+		who: newest.who,
+		userId: newest.userId,
+		events,
+		from: events.at(-1)?.at ?? newest.at,
+		to: newest.at
+	};
 }
 
 /** What a run did: how many sign-ins and sign-outs, sign-in codes never used, projects opened, PDFs downloaded,

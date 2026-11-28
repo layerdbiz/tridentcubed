@@ -61,7 +61,7 @@ import {
 export type RecordDraftType = ClientType | TeamMemberType | TransportType | FacilityType;
 import type { TeamMemberType } from './team.data';
 
-export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings' | 'activity' | 'account';
+export type ScreenType = 'dashboard' | 'workspace' | 'record' | 'settings' | 'account';
 
 /** The parts of Settings (#403) shown inside it; the rest open their own pages. */
 export type AccountSectionType = 'activity' | 'notifications';
@@ -526,13 +526,11 @@ export class LookState {
 		this.screen = 'settings';
 	}
 
-	// The Activity Log (#306): its own screen, opened from the menu on the profile picture; an Admin's is everyone's,
-	// anyone else's only what they are privy to (#403).
+	// The Activity Log (#306), from the menu on the profile picture: Settings at its Activity Log, the one full page
+	// every Activity Log link opens (Justin, 2026-11-28); an Admin's is everyone's, anyone else's only what they are
+	// privy to (#403).
 	openActivity() {
-		if (this.screen === 'workspace') this.#keepProject();
-		this.tab = 'page';
-		this.tabProgress = 0;
-		this.screen = 'activity';
+		this.openAccount('activity');
 	}
 
 	// Email Signature (#354): one's own, on one's Team page, at its Preview (Justin, 2026-11-28: "I want to include

@@ -10,6 +10,7 @@ import {
 	toProjectGroups,
 	toRunSummary,
 	toRuns,
+	toStreaks,
 	toTally
 } from './activity.utils';
 
@@ -60,45 +61,52 @@ describe('toRuns', () => {
 		expect(runs[0].to).toBe(at(15, 40));
 	});
 
-	it('keeps a person’s run whole while someone else works at the same time, each person a run of their own', () => {
+	// Justin, 2026-11-28: "The minute that someone else enters the picture... it will group his things together, and
+	// then if I come in after that, we'll group the next things that I do together."
+	it('starts a new run each time someone else comes in between', () => {
 		const events = [
 			change('Duncan', at(15, 40)),
 			change('Oziel', at(15, 35)),
+			change('Oziel', at(15, 32)),
 			change('Duncan', at(15, 30)),
-			change('Oziel', at(15, 20)),
 			change('Duncan', at(15, 10))
 		];
-		const [d1, o1, d2, o2, d3] = events.map((event) => event.id);
+		const [d1, o1, o2, d2, d3] = events.map((event) => event.id);
 
 		const runs = toRuns(events);
 
-		expect(runs.map((run) => run.who)).toEqual(['Duncan', 'Oziel']);
-		expect(idsOf(runs)).toEqual([
-			[d1, d2, d3],
-			[o1, o2]
-		]);
+		expect(runs.map((run) => run.who)).toEqual(['Duncan', 'Oziel', 'Duncan']);
+		expect(idsOf(runs)).toEqual([[d1], [o1, o2], [d2, d3]]);
 	});
 
-	it('ends a run after more than 30 minutes with nothing from that person', () => {
+	// Justin, 2026-11-28: "Even if it spreads across multiple days."
+	it('keeps one person’s back-to-back entries in one run however far apart, across days too', () => {
+		const nextDay = new Date(2026, 10, 26, 9, 5).toISOString();
 		const events = [
-			change('Duncan', at(16, 30)),
-			change('Duncan', at(16, 0)),
-			change('Duncan', at(15, 29))
+			change('Duncan', nextDay),
+			change('Duncan', at(23, 55)),
+			change('Duncan', at(8, 0))
 		];
-		const [late, thirtyAfter, early] = events.map((event) => event.id);
 
 		const runs = toRuns(events);
 
-		expect(idsOf(runs)).toEqual([[late, thirtyAfter], [early]]);
-		expect(runs[1].from).toBe(at(15, 29));
-		expect(runs[1].to).toBe(at(15, 29));
+		expect(idsOf(runs)).toEqual([events.map((event) => event.id)]);
+		expect(runs[0].from).toBe(at(8, 0));
+		expect(runs[0].to).toBe(nextDay);
 	});
+});
 
-	it('ends a run at midnight, so each run sits under one day', () => {
-		const afterMidnight = new Date(2026, 10, 26, 0, 5).toISOString();
-		const events = [change('Duncan', afterMidnight), change('Duncan', at(23, 55))];
+describe('toStreaks', () => {
+	it('folds back-to-back items with the same key, in order', () => {
+		const items = ['a1', 'a2', 'b1', 'a3', 'c1', 'c2'];
 
-		expect(idsOf(toRuns(events))).toEqual([[events[0].id], [events[1].id]]);
+		expect(toStreaks(items, (item) => item[0])).toEqual([
+			['a1', 'a2'],
+			['b1'],
+			['a3'],
+			['c1', 'c2']
+		]);
+		expect(toStreaks([], (item: string) => item)).toEqual([]);
 	});
 });
 

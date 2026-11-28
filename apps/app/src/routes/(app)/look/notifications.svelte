@@ -10,7 +10,7 @@
 	// like every list, under the day headings that stick to its top on a desktop as on a phone.
 	import { Button, Scroller } from '@layerd/ui';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
-	import ActivityList, { HEADING, HEADING_HEIGHT } from './activity-list.svelte';
+	import ActivityList, { HEADING_HEIGHT, KEEP } from './activity-list.svelte';
 	import type { LookState } from './look.state.svelte';
 	import type { NotificationsState } from './bell.svelte';
 
@@ -83,7 +83,7 @@
 	<Scroller
 		fade="y"
 		inset={{ top: HEADING_HEIGHT }}
-		keep={HEADING}
+		keep={KEEP}
 		class="min-h-0 flex-1 overscroll-y-contain px-2 pb-3"
 	>
 		{#if !notifications.isRead}

@@ -115,8 +115,9 @@ export const HIGHLIGHTS: Record<string, HighlightsType> = {
 			{
 				title: 'Activity for everyone',
 				points: [
-					'Everyone has an Activity Log in Settings, showing what happened in the projects they are on.',
-					'View Activity in any ⋮ menu shows everything that happened to a project, customer, team member, transport mode or facility.'
+					'Everyone has an Activity Log in Settings, showing what happened in the projects they are on, with its sorts and filters always at the top.',
+					'View Activity in any ⋮ menu shows everything that happened to a project, customer, team member, transport mode or facility, on the whole screen of a phone.',
+					"Group gathers each person's back-to-back work into one panel, even across days; opening one closes the others and slides it to the top."
 				]
 			},
 			{

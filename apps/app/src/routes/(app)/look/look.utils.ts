@@ -12,14 +12,7 @@ import type { PageType } from './records.data';
 // An address's search, as the browser or Kit's read-only page.url hands it over.
 type AddressType = Pick<URLSearchParams, 'get' | 'has'>;
 
-const SCREENS: ScreenType[] = [
-	'dashboard',
-	'workspace',
-	'record',
-	'settings',
-	'activity',
-	'account'
-];
+const SCREENS: ScreenType[] = ['dashboard', 'workspace', 'record', 'settings', 'account'];
 
 // Puts the address's place on screen. Anything it names that is not there (an old link, a deleted project or
 // record) opens the dashboard instead.
@@ -31,6 +24,8 @@ export function openAddress(look: LookState, params: AddressType) {
 	if (asked && hasProject) look.open(asked, look.tab);
 	const screen = params.get('screen') as ScreenType;
 	look.screen = SCREENS.includes(screen) ? screen : 'dashboard';
+	// The Activity Log had a screen of its own until 2026-11-28: an old link to it opens Settings at it.
+	if (params.get('screen') === 'activity') look.openAccount('activity');
 	if (look.screen === 'workspace' && !hasProject) look.screen = 'dashboard';
 	// A report link (the QR code on a report page, #216) names the page of the Preview to open at.
 	look.pageAsked = look.screen === 'workspace' ? toPageNumber(params.get('page')) : 0;
