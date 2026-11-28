@@ -24,6 +24,17 @@ export type FitType = (typeof FITS)[number];
 
 export const DEFAULT_FIT: FitType = 'fill';
 
+/**
+ * #295 (Justin, 2026-11-28): which way a stage's spots run on its pages: horizontal, across then down, its per page
+ * laid wider than tall; vertical, down then across, laid taller than wide; auto, each page whichever way crops its
+ * pictures the least (under Fit, shows them biggest). A new stage's, and every stage's until one is picked, is auto.
+ */
+export const DIRECTIONS = ['horizontal', 'vertical', 'auto'] as const;
+
+export type DirectionType = (typeof DIRECTIONS)[number];
+
+export const DEFAULT_DIRECTION: DirectionType = 'auto';
+
 /** #295: the shapes the crop frame takes: a stage's ratios, and the picture's own (original). */
 export const CROP_RATIOS = ['free', 'original', '16:9', '9:16', '1:1', '4:3'] as const;
 

@@ -7,6 +7,7 @@ import { toAttachmentType } from '#lib/files/files.schema.js';
 import { IDLE_MINUTES, ONLINE_MINUTES } from '#lib/presence/presence.constants.js';
 import {
 	DEFAULT_LAYOUT,
+	type DirectionType,
 	type FitType,
 	type PageLayoutType,
 	type RatioType
@@ -143,11 +144,13 @@ export type GroupType = {
 	layout: PageLayoutType;
 	isEnabled: boolean;
 	photos: PhotoType[];
-	/** #295: a grid picked on its own in place of `layout`'s; Auto; the shape under Fit; Fill or Fit (attachments.ts). */
+	/** #295: a grid picked on its own in place of `layout`'s; All (`isAuto`); the shape under Fit; Fill or Fit; which
+	 * way the spots run (attachments.ts). */
 	grid?: PageGridType;
 	isAuto?: boolean;
 	ratio?: RatioType;
 	fit?: FitType;
+	direction?: DirectionType;
 };
 
 // One stop of the Transport panel, added like a photo group: a place on the trip and what moved the items there.

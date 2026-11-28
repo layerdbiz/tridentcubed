@@ -2,9 +2,13 @@
 // attachments out on report pages, and how each one is edited.
 //
 // A stage (or a photo group) holds photos, PDFs and videos. Its pages take a set number of them (Per page: 1, 2, 4,
-// 6 or 8, a grid of columns by rows picked on its own, or Auto, every one on one page, up to 100). Fill makes the
+// 6 or 8, a grid of columns by rows picked on its own, or All, every one on one page, up to 100). Fill makes the
 // spots fill the page from margin to margin and down to the footer, each picture covering its spot; Fit keeps every
 // spot in the stage's Ratio (Free: each attachment's own shape), as big as the page allows, the picture whole in it.
+// Its Direction (Justin, 2026-11-28) runs the spots across then down (Horizontal: 2 per page side by side, 6 three
+// across) or down then across (Vertical: 2 one over the other, 6 three down); a picked grid keeps its columns and rows
+// and only takes the order. Auto turns each page whichever way crops its pictures the least, so landscape photos stack
+// and portrait ones sit side by side (under Fit: whichever way shows them biggest).
 // A PDF's pages always print whole. An attachment popped out leaves the stage's pages for pages of its own, with its
 // own per page (1: alone on its page).
 //
@@ -12,10 +16,12 @@
 // frame, the part of the picture that prints, in parts of the picture once it is turned. The crop frame grows and
 // shrinks from its middle (Justin, 2026-11-27: "if I grab the bottom right edge, it will scale it from the middle").
 import {
+	DEFAULT_DIRECTION,
 	DEFAULT_FIT,
 	DEFAULT_RATIO,
 	LAYOUTS,
 	type CropRatioType,
+	type DirectionType,
 	type FitType,
 	type PageLayoutType,
 	type RatioType
@@ -28,7 +34,7 @@ import {
 	type FrameType
 } from '#lib/components/photo/edit.js';
 
-export type { CropRatioType, FitType, RatioType };
+export type { CropRatioType, DirectionType, FitType, RatioType };
 export * from '#lib/components/photo/edit.js';
 export type PageGridType = { columns: number; rows: number };
 /** A photo's crop from before #295 (#312): how far in, and the point of the photo at the middle of its spot. */
@@ -41,6 +47,7 @@ export type StageLayoutType = {
 	isAuto?: boolean;
 	ratio?: RatioType;
 	fit?: FitType;
+	direction?: DirectionType;
 };
 /** What an attachment's place and edit read. */
 export type EditedType = {
@@ -67,7 +74,7 @@ export const CROP_RATIOS: { id: CropRatioType; label: string }[] = [
 	{ id: 'original', label: 'Original' },
 	...RATIOS.slice(1)
 ];
-/** The most Auto puts on one page. */
+/** The most All (Per page) puts on one page. */
 export const AUTO_MOST = 100;
 /** The most columns or rows the grid picker offers. */
 export const GRID_MOST = 4;
@@ -130,6 +137,31 @@ export function fitOf(stage: StageLayoutType): FitType {
 	return stage.fit ?? DEFAULT_FIT;
 }
 
+export function directionOf(stage: StageLayoutType): DirectionType {
+	return stage.direction ?? DEFAULT_DIRECTION;
+}
+
+// A per-page button's grid laid wider than tall (Horizontal), or taller than wide (Vertical).
+function wideOf(grid: PageGridType): PageGridType {
+	return { columns: Math.max(grid.columns, grid.rows), rows: Math.min(grid.columns, grid.rows) };
+}
+
+function turnedOf(grid: PageGridType): PageGridType {
+	return { columns: grid.rows, rows: grid.columns };
+}
+
+/**
+ * The columns and rows a stage's pages are laid in, its Direction taken in: a per-page button's grid wider than tall
+ * across, taller than wide down; a picked grid as picked. None under Auto, where each page finds its own way.
+ */
+export function laidGridOf(stage: StageLayoutType): PageGridType | undefined {
+	const direction = directionOf(stage);
+	if (direction === 'auto') return undefined;
+	const grid = gridOf(stage);
+	if (stage.grid) return grid;
+	return direction === 'horizontal' ? wideOf(grid) : turnedOf(wideOf(grid));
+}
+
 /** Whether a grid is one of the per-page buttons' own, which the buttons show picked. */
 export function isPresetGrid(grid: PageGridType) {
 	return LAYOUTS.some(
@@ -164,22 +196,26 @@ export function toPageGrid(text: unknown): PageGridType | undefined {
 	return columns >= 1 && rows >= 1 ? { columns, rows } : undefined;
 }
 
-/** How a stage's per page reads: "4", "3 × 2" for a picked grid, or "Auto". */
+/** How a stage's per page reads: "4", "3 × 2" for a picked grid, or "All". */
 export function perPageLabelOf(stage: StageLayoutType) {
-	if (stage.isAuto) return 'Auto';
+	if (stage.isAuto) return 'All';
 	if (stage.grid) return `${stage.grid.columns} × ${stage.grid.rows}`;
 	return String(stage.layout);
 }
 
-/** One report page of a stage: its spots, and how they are laid out. */
+/**
+ * One report page of a stage: its spots, and how they are laid out (`auto` is Per page's All). `isPicked`: its grid
+ * was picked on the picker, so its Direction only orders it.
+ */
 export type AttachmentPageType<T> = {
 	spots: SpotType<T>[];
 	mode: 'grid' | 'auto' | 'alone';
 	grid: PageGridType;
+	isPicked?: boolean;
 };
 
 /**
- * A stage's spots dealt into report pages: a grid's worth to each (Auto up to 100), and an attachment popped out on
+ * A stage's spots dealt into report pages: a grid's worth to each (All up to 100), and an attachment popped out on
  * pages of its own between them, with its own per page. A stage with nothing yet still has its one page.
  */
 export function stagePagesOf<T>(
@@ -189,10 +225,11 @@ export function stagePagesOf<T>(
 	const grid = gridOf(stage);
 	const mode = stage.isAuto ? 'auto' : 'grid';
 	const size = stage.isAuto ? AUTO_MOST : grid.columns * grid.rows;
+	const isPicked = Boolean(stage.grid) || undefined;
 	let run: SpotType<T>[] = [];
 	function flush() {
 		for (let at = 0; at < run.length; at += size)
-			pages.push({ spots: run.slice(at, at + size), mode, grid });
+			pages.push({ spots: run.slice(at, at + size), mode, grid, isPicked });
 		run = [];
 	}
 	const spots = spotsOf(stage.photos);
@@ -215,7 +252,7 @@ export function stagePagesOf<T>(
 		else pages.push({ spots: [spot], mode: 'alone', grid: ownGrid });
 	}
 	flush();
-	if (!pages.length) pages.push({ spots: [], mode, grid });
+	if (!pages.length) pages.push({ spots: [], mode, grid, isPicked });
 	return pages;
 }
 
@@ -262,7 +299,8 @@ export function lockedAspectOf(
 	if (edit.ratio) return keptAspectOf(edit, pictureAspect);
 	if (photo.kind === 'pdf' || photo.ownLayout) return undefined;
 	if (fitOf(stage) === 'fit' && ratioOf(stage) !== 'free') return RATIO_VALUES[ratioOf(stage)];
-	if (fitOf(stage) === 'fill' && !stage.isAuto) return cellAspectOf(gridOf(stage));
+	const laid = laidGridOf(stage);
+	if (fitOf(stage) === 'fill' && !stage.isAuto && laid) return cellAspectOf(laid);
 	return undefined;
 }
 
@@ -294,7 +332,9 @@ export function gapOf(columns: number, rows: number) {
 /**
  * One report page's spots placed in a room `width` by `height`. `aspectOf` gives a spot's own shape once cropped
  * (width over height): Free and Fit use it, Fill fills each spot whatever it is. Under Fill the spots fill the room:
- * the page's rows share its height, and a row short of spots shares its width among the ones it has.
+ * the page's rows share its height, and a row short of spots shares its width among the ones it has. The stage's
+ * Direction runs them across or down; under Auto, where the stage sets no shape of its own and `aspectOf` is each
+ * picture's, each page takes whichever way crops the pictures the least, or under Fit shows them biggest.
  */
 export function placeOf<T>(
 	page: AttachmentPageType<T>,
@@ -305,45 +345,92 @@ export function placeOf<T>(
 ): PlacedType<T>[] {
 	const { spots } = page;
 	if (!spots.length || width <= 0 || height <= 0) return [];
-	if (page.mode === 'alone')
-		return fitGrid(
-			spots,
-			spots.map((spot) => aspectOf(spot)),
-			page.grid,
-			true,
-			width,
-			height
-		);
 	const ratio = ratioOf(stage);
-	const isFree = ratio === 'free';
+	const isFree = ratio === 'free' || page.mode === 'alone';
+	const own = spots.map((spot) => aspectOf(spot));
 	// Under Fit a set Ratio is every spot's shape, but a PDF's page keeps its own, as it prints whole, and so does an
 	// attachment given a shape of its own.
-	const aspects = spots.map((spot) =>
+	const shaped = spots.map((spot, at) =>
 		isFree || (spot.photo as EditedType | undefined)?.kind === 'pdf' || hasOwnShape(spot)
-			? aspectOf(spot)
+			? own[at]
 			: RATIO_VALUES[ratio]
 	);
-	if (fitOf(stage) === 'fill') {
-		const grid =
+	const laid = { page, isFill: fitOf(stage) === 'fill' && page.mode !== 'alone', isFree };
+	// A per-page button's grid lies wider than tall across; down is the same grid turned, run down its columns.
+	const grid = page.isPicked || page.mode === 'auto' ? page.grid : wideOf(page.grid);
+	const across = () => laidAcross(laid, grid, own, shaped, width, height);
+	const down = () =>
+		laidAcross(
+			laid,
+			page.isPicked ? turnedOf(grid) : grid,
+			own.map((each) => 1 / each),
+			shaped.map((each) => 1 / each),
+			height,
+			width
+		).map(({ spot, x, y, w, h }) => ({ spot, x: y, y: x, w: h, h: w }));
+	const direction = directionOf(stage);
+	if (direction === 'horizontal') return across();
+	if (direction === 'vertical') return down();
+	const first = across();
+	const second = down();
+	return scoreOf(second, laid.isFill, aspectOf) < scoreOf(first, laid.isFill, aspectOf) - 1e-6
+		? second
+		: first;
+}
+
+// How badly a page is laid out, lower being better: under Fill how much its pictures are cut to their spots, else how
+// little of the page they take.
+function scoreOf<T>(
+	placed: PlacedType<T>[],
+	isFill: boolean,
+	shapeOf: (spot: SpotType<T>) => number
+) {
+	return placed.reduce(
+		(sum, { spot, w, h }) => sum + (isFill ? Math.abs(Math.log(w / h / shapeOf(spot))) : -(w * h)),
+		0
+	);
+}
+
+// A page's spots laid across, then down: in its grid, or under All in the grid that suits them best.
+function laidAcross<T>(
+	laid: { page: AttachmentPageType<T>; isFill: boolean; isFree: boolean },
+	grid: PageGridType,
+	own: number[],
+	shaped: number[],
+	width: number,
+	height: number
+): PlacedType<T>[] {
+	const { page, isFill, isFree } = laid;
+	const { spots } = page;
+	if (page.mode === 'alone') return fitGrid(spots, own, grid, true, width, height);
+	if (isFill) {
+		const filled =
 			page.mode === 'auto'
 				? bestGrid(
 						spots.length,
-						Math.exp(spots.reduce((sum, spot) => sum + Math.log(aspectOf(spot)), 0) / spots.length),
+						Math.exp(own.reduce((sum, each) => sum + Math.log(each), 0) / own.length),
 						width,
 						height
 					)
-				: page.grid;
+				: grid;
 		// One given a shape of its own prints whole in that shape, in the middle of the spot it would fill.
-		return fillGrid(spots, grid, width, height).map((each) =>
-			hasOwnShape(each.spot) ? inside(each, aspectOf(each.spot)) : each
+		return fillGrid(spots, filled, width, height).map((each, at) =>
+			hasOwnShape(each.spot) ? inside(each, own[at]) : each
 		);
 	}
 	if (page.mode === 'auto') {
-		if (isFree) return justified(spots, aspects, width, height);
-		const grid = bestGrid(spots.length, RATIO_VALUES[ratio], width, height);
-		return fitGrid(spots, aspects, grid, false, width, height);
+		if (isFree) return justified(spots, shaped, width, height);
+		const target = Math.exp(shaped.reduce((sum, each) => sum + Math.log(each), 0) / shaped.length);
+		return fitGrid(
+			spots,
+			shaped,
+			bestGrid(spots.length, target, width, height),
+			false,
+			width,
+			height
+		);
 	}
-	return fitGrid(spots, aspects, page.grid, isFree, width, height);
+	return fitGrid(spots, shaped, grid, isFree, width, height);
 }
 
 // The biggest box of `shape` (width over height) a placed spot holds, in its middle.
@@ -428,7 +515,7 @@ function bestGrid(count: number, target: number, width: number, height: number):
 	return { columns: best.columns, rows: best.rows };
 }
 
-// Auto, Free and Fit: rows of spots in their own shapes, each row the room's width, the rows as few as keep the page
+// All, Free and Fit: rows of spots in their own shapes, each row the room's width, the rows as few as keep the page
 // nearest full; drawn smaller as a whole when they would run past the footer.
 function justified<T>(spots: SpotType<T>[], aspects: number[], width: number, height: number) {
 	let best: { rows: number[][]; score: number } | undefined;

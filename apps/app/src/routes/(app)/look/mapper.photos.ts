@@ -5,7 +5,15 @@
 // crop is kept on its row, and so moves with it to another group. #327: a PDF or a video is a `photo` row too, its
 // picture in `file` and the PDF or video itself in `source`.
 import type { CropType } from '#lib/components/photo/photo.types.js';
-import { DEFAULT_FIT, DEFAULT_RATIO, FITS, LAYOUTS, RATIOS } from '#lib/report/report.constants.js';
+import {
+	DEFAULT_DIRECTION,
+	DEFAULT_FIT,
+	DEFAULT_RATIO,
+	DIRECTIONS,
+	FITS,
+	LAYOUTS,
+	RATIOS
+} from '#lib/report/report.constants.js';
 import { toPageLayout } from '#lib/report/report.utils.js';
 import { toPageGrid, toPageGridText, type EditType } from './attachments';
 import type { RowType, SavedRowType } from '#lib/rows/rows.schema.js';
@@ -103,7 +111,8 @@ export function toPhotoRows(projectId: string, panel: PanelType): RowType[] {
 				grid: toPageGridText(group.grid),
 				isAuto: Boolean(group.isAuto),
 				ratio: group.ratio ?? DEFAULT_RATIO,
-				fit: group.fit ?? DEFAULT_FIT
+				fit: group.fit ?? DEFAULT_FIT,
+				direction: group.direction ?? DEFAULT_DIRECTION
 			}
 		});
 		for (const [index, photo] of group.photos.filter(isStored).entries())
@@ -145,6 +154,8 @@ export function takePhotos(panel: PanelType, rows: SavedRowType[]) {
 			isAuto: group.values.isAuto === true,
 			ratio: RATIOS.find((ratio) => ratio === group.values.ratio) ?? DEFAULT_RATIO,
 			fit: FITS.find((fit) => fit === group.values.fit) ?? DEFAULT_FIT,
+			direction:
+				DIRECTIONS.find((direction) => direction === group.values.direction) ?? DEFAULT_DIRECTION,
 			photos: photos
 				.filter((photo) => photo.values.groupId === group.id)
 				.map((photo) => ({

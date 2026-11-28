@@ -400,6 +400,22 @@ describe('the photo panels and the Time Log on the library’s inputs', () => {
 
 	// #382: the library's pick-one group, so a screen reader hears which is picked and the arrow keys move. #295: Per
 	// page ends on Auto, and the grid button beside it picks any grid up to 4 by 4.
+	it('runs the pages Horizontal, Vertical or Auto, starting on Auto, and saves a pick (Justin, 2026-11-28)', async () => {
+		const { panel, look } = showPanel('photos', (panel) => (panel.groups = [{ ...GROUP }]));
+		const direction = screen.getByRole('radiogroup', { name: 'Direction' });
+		const choices = within(direction).getAllByRole('radio');
+		expect(choices.map((choice) => choice.getAttribute('aria-label'))).toEqual([
+			'Horizontal',
+			'Vertical',
+			'Auto'
+		]);
+		expect(choices[2].getAttribute('aria-checked')).toBe('true');
+
+		await fireEvent.click(choices[1]);
+		expect(panel.groups[0].direction).toBe('vertical');
+		expect(look.saved).toHaveBeenCalled();
+	});
+
 	it('draws Per page as a pick-one group named by its label, and saves a pick', async () => {
 		const { panel, look } = showPanel('photos', (panel) => (panel.groups = [{ ...GROUP }]));
 		const group = screen.getByRole('radiogroup', { name: 'Per page' });
@@ -411,7 +427,7 @@ describe('the photo panels and the Time Log on the library’s inputs', () => {
 			'4',
 			'6',
 			'8',
-			'Auto'
+			'All'
 		]);
 		expect(choices.map((choice) => choice.getAttribute('aria-checked'))).toEqual([
 			'false',

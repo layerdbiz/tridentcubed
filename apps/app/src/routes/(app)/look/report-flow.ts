@@ -118,7 +118,7 @@ export function heightOf(heights: number[], page: number[]) {
 export type PhotoPageType = { group: number; part: number; parts: number; isContinued: boolean };
 
 // A stage's spots and how they are dealt into pages are attachments.ts's (#295): a set number to a page, a grid
-// picked on its own, Auto, and an attachment popped out onto pages of its own.
+// picked on its own, All, and an attachment popped out onto pages of its own.
 export { spotsOf, type SpotType } from './attachments';
 
 export function photoPagesOf(

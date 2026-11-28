@@ -53,7 +53,9 @@ export const photoGroup = pgTable(
 		/** #295: the shape of its spots under Fit: free (each its own), 16:9, 9:16, 1:1 or 4:3. */
 		ratio: text('ratio').default('4:3').notNull(),
 		/** #295: fill, the spots fill the page; fit, they keep the ratio and the picture shows whole. */
-		fit: text('fit').default('fill').notNull()
+		fit: text('fit').default('fill').notNull(),
+		/** #295: which way the spots run: horizontal (across, then down), vertical (down, then across), or auto. */
+		direction: text('direction').default('auto').notNull()
 	},
 	(table) => [
 		index('photo_group_project_idx').on(table.projectId),
