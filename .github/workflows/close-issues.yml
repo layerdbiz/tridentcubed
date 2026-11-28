@@ -6,7 +6,9 @@
 # On every push to dev this finds the pull requests into next that the push brings onto dev (their merge commit is in
 # dev now and was not before), and closes the tickets each one finishes, read the same two ways as before
 # (.github/scripts/closes.sh): its branch, <type>/<n>-<slug>, and the "Closes #<n>" lines of its body. Each ticket
-# it closes gets a comment naming the pull request. Work that reached next without a pull request closes nothing.
+# it closes gets a comment naming the pull request, and then moves to Done on the project board through
+# board-status.yml, which holds the board key (GITHUB_TOKEN cannot reach a user's project, but it can start that
+# workflow). Work that reached next without a pull request closes nothing.
 name: close-issues
 
 on:
@@ -14,6 +16,7 @@ on:
     branches: [dev]
 
 permissions:
+  actions: write
   contents: read
   issues: write
   pull-requests: read
@@ -62,5 +65,11 @@ jobs:
               gh api -X POST "repos/$REPO/issues/$n/comments" -f body="Reached dev with #$pr." </dev/null >/dev/null
               gh api -X PATCH "repos/$REPO/issues/$n" -f state=closed -f state_reason=completed </dev/null >/dev/null
               echo "#$n: closed (#$pr)"
+              echo "$n" >> closed.txt
             done
           done < merged.tsv
+          if [ -s closed.txt ]; then
+            gh api -X POST "repos/$REPO/actions/workflows/board-status.yml/dispatches" -f ref="$GITHUB_REF_NAME" \
+              -f "inputs[issues]=$(tr '\n' ' ' < closed.txt)" -f 'inputs[status]=Done'
+            echo "board-status started: $(tr '\n' ' ' < closed.txt)-> Done"
+          fi
