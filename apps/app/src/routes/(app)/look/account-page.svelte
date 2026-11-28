@@ -15,7 +15,7 @@
 	import { install } from '#lib/install/install.state.svelte.js';
 	import { VERSION_LABEL } from '#lib/releases/releases.constants.js';
 	import { whatsNew } from '#lib/releases/releases.state.svelte.js';
-	import { HEADING, HEADING_HEIGHT } from './activity-list.svelte';
+	import { HEADING_HEIGHT, KEEP } from './activity-list.svelte';
 	import ActivityLog from './activity-log.svelte';
 	import Back from './back.svelte';
 	import type { AccountSectionType, LookState } from './look.state.svelte';
@@ -80,6 +80,10 @@
 	const shown = $derived<AccountSectionType>(
 		look.accountSection === 'notifications' ? 'notifications' : 'activity'
 	);
+
+	// How tall the Activity Log's controls are, stuck to the top: its Scroller's top fade starts under them and a day
+	// heading.
+	let logTop = $state(0);
 
 	let isHowToOpen = $state(false);
 
@@ -167,7 +171,10 @@
 {/snippet}
 
 {#snippet section(id: AccountSectionType)}
-	{#if id === 'activity'}<ActivityLog {look} />{:else}{@render notifications()}{/if}
+	{#if id === 'activity'}<ActivityLog
+			{look}
+			bind:top={logTop}
+		/>{:else}{@render notifications()}{/if}
 {/snippet}
 
 <!-- A row of the menu: its icon on a soft square, its name, a note (the version), and a chevron on a phone. -->
@@ -215,11 +222,18 @@
 		{#if part === 'activity'}
 			<Scroller
 				fade="y"
-				inset={{ top: HEADING_HEIGHT }}
-				keep={HEADING}
-				class="min-h-0 flex-1 overscroll-y-contain bg-white px-3 pt-3 pb-10"
+				inset={{ top: HEADING_HEIGHT + logTop }}
+				keep={KEEP}
+				class="min-h-0 flex-1 overscroll-y-contain bg-white px-3 pb-10"
 			>
-				<ActivityLog {look} />
+				<!-- The space above the controls sits inside the scrolling part, not on it: a stuck piece stops below a
+				scroller's own padding, which left a strip of the list showing above the controls (Justin, 2026-11-28). -->
+				<div class="pt-3">
+					<ActivityLog
+						{look}
+						bind:top={logTop}
+					/>
+				</div>
 			</Scroller>
 		{:else}
 			<Scroller
@@ -334,13 +348,13 @@
 				onclick={logOut}
 			/>
 		</nav>
-		<!-- The part beside the menu scrolls in the library Scroller, the Activity Log's day headings sticking to its
-		     top above the fade. -->
+		<!-- The part beside the menu scrolls in the library Scroller, the Activity Log's controls and day headings
+		     sticking to its top above the fade. -->
 		<main class="flex min-w-0 flex-1 flex-col">
 			<Scroller
 				fade="y"
-				inset={shown === 'activity' ? { top: HEADING_HEIGHT } : {}}
-				keep={HEADING}
+				inset={shown === 'activity' ? { top: HEADING_HEIGHT + logTop } : {}}
+				keep={KEEP}
 				class="min-h-0 flex-1 overscroll-y-contain"
 			>
 				<div class="mx-auto w-full max-w-3xl px-10 pt-8 pb-16">

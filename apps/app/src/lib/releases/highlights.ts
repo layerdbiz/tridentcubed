@@ -114,8 +114,9 @@ export const HIGHLIGHTS: Record<string, HighlightsType> = {
 			{
 				title: 'Activity Log for everyone',
 				points: [
-					"Everyone can open the Activity Log in Settings, for the projects they're on.",
-					'Tap ⋮ and then View Activity on anything to see its history.'
+					"Everyone can open the Activity Log in Settings, for the projects they're on. Its buttons stay at the top as you scroll.",
+					'Tap ⋮ and then View Activity on anything to see its history. On a phone it fills the screen.',
+					"Turn on Group to put each person's changes in a row into one panel. Open one to see what they did."
 				]
 			},
 			{

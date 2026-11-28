@@ -160,18 +160,17 @@ describe('the address', () => {
 		expect(reload(look, toAddress(look, new URL(HOME))).screen).toBe('account');
 	});
 
-	// Everyone has an Activity Log since #403 (Justin, 2026-11-28), each of only what they are privy to.
-	it('lands anyone’s reload on the Activity Log (#306, #403)', () => {
+	// Everyone has an Activity Log since #403 (Justin, 2026-11-28), in Settings, which every link to it opens.
+	it('opens the Activity Log in Settings, for anyone, an old link to its own screen too (#306, #403)', () => {
 		for (const role of ['admin', 'team'] as const) {
 			const look = new LookState();
 			look.role = role;
 			look.openActivity();
-			expect(look.screen).toBe('activity');
-			const address = toAddress(look, new URL(HOME));
-			const next = new LookState();
-			next.role = role;
-			openAddress(next, address.searchParams);
-			expect(next.screen).toBe('activity');
+			expect([look.screen, look.accountSection]).toEqual(['account', 'activity']);
+			const old = new LookState();
+			old.role = role;
+			openAddress(old, new URLSearchParams('screen=activity'));
+			expect([old.screen, old.accountSection]).toEqual(['account', 'activity']);
 		}
 	});
 

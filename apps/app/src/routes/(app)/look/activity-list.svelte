@@ -13,8 +13,13 @@
 	 */
 	export const HEADING_HEIGHT = 32;
 
-	/** The headings, for the library Scroller's `keep`: its fade never touches them (Justin, 2026-11-27). */
-	export const HEADING = '[data-heading]';
+	/**
+	 * What the fade of the box that scrolls the list never touches, for the library Scroller's `keep` (Justin,
+	 * 2026-11-27): what sticks to its top, the day headings and the Log's sorts, Group and filters (2026-11-28:
+	 * "whenever there's controls on a page, you always want to show them"), and the open panel's header, which glides
+	 * up to just under them, where the fade would otherwise grey it out.
+	 */
+	export const KEEP = '[data-sticky], [data-activity] .accordion-head[aria-expanded="true"]';
 
 	/** A new version's line in the bell: What's New's day, its first things in words, and whether it is unseen. */
 	export type ReleaseLineType = {
@@ -44,8 +49,21 @@
 	// file counts (#350): on the right where the list is wide, after the time on a phone. Not grouped, Projects and
 	// Users are rows like any other, with no arrow: one per project, with its newest action, and one per person, with
 	// their online dot and how long they have been online or away, coloured like the Online list.
-	import { Avatar, Badge, Button, ListRow, Menu, Tabs, type MenuOptionType } from '@layerd/ui';
-	import { SvelteSet } from 'svelte/reactivity';
+	//
+	// Justin, 2026-11-28, for every Activity Log: with Group on, everything is in a group, even one line, and every
+	// group is the library Accordion, one open at a time, gliding to the top as it opens; a run lasts until someone
+	// else's line comes in between, across days too. The Log's sorts, Group and filters stick to the top of what
+	// scrolls the list, and the day headings stick under them (`top`).
+	import {
+		Accordion,
+		Avatar,
+		Badge,
+		Button,
+		ListRow,
+		Menu,
+		Tabs,
+		type MenuOptionType
+	} from '@layerd/ui';
 	import type { ActivityEventType, ChangeEventType } from '#lib/activity/activity.types.js';
 	import {
 		ACTIVITY_TIMES,
@@ -55,8 +73,10 @@
 		toAgo,
 		toPeopleGroups,
 		toProjectGroups,
+		personOf,
+		toRun,
 		toRunSummary,
-		toRuns,
+		toStreaks,
 		toTally,
 		type ActivityRunType,
 		type ActivityTimeType,
@@ -76,6 +96,7 @@
 		tabs = TABS,
 		tab = $bindable('all'),
 		isGrouped = $bindable(true),
+		top = $bindable(0),
 		unread = undefined,
 		releases = [],
 		ontap = undefined,
@@ -89,6 +110,9 @@
 		tabs?: ActivityTabType[];
 		tab?: ActivityTabType;
 		isGrouped?: boolean;
+		// How tall the Log's sorts, Group and filters are, stuck to the top of what scrolls the list, in pixels: the
+		// day headings stick under them, and its owner starts the Scroller's top fade under both.
+		top?: number;
 		// The ids of the rows not seen yet: light blue, with a dot.
 		unread?: ReadonlySet<string>;
 		// Told of every tap on a row, before it opens what the row is about.
@@ -201,9 +225,10 @@
 	let person = $state('');
 	let project = $state('');
 	let time = $state<ActivityTimeType>('any');
-	// The groups shut by a tap on their heading; every group opens open, but a day's new versions, which open on a tap.
-	const shut = new SvelteSet<string>();
-	const opened = new SvelteSet<string>();
+	// The groups open one at a time, as What's New's sections and a project's edit panels do (Justin, 2026-11-28): one
+	// name for this list's, so another list on the page keeps its own.
+	const uid = $props.id();
+	const panels = `activity-${uid}`;
 
 	// The time every "3 hours ago" is read at, kept to the minute while the list is open.
 	let now = $state(Date.now());
@@ -244,13 +269,30 @@
 			(a, b) => Date.parse(b.at) - Date.parse(a.at)
 		)
 	);
-	const runs = $derived(toRuns(shown));
-	// Grouped, with the bell's new versions among the groups, newest first.
-	type GroupedType = ReleaseItemType & { run?: ActivityRunType };
+	// Grouped (Justin, 2026-11-28): everything in a group, each one person's back-to-back work, however long it took
+	// and across days, until someone else's comes in between; the bell's new versions back to back are a group too.
+	type GroupedType = {
+		id: string;
+		at: string;
+		run?: ActivityRunType;
+		releases?: ReleaseLineType[];
+	};
 	const grouped = $derived<GroupedType[]>(
-		[...runs.map((run) => ({ id: run.id, at: run.to, run })), ...releaseItems].toSorted(
-			(a, b) => Date.parse(b.at) - Date.parse(a.at)
-		)
+		toStreaks(
+			[
+				...shown.map((event) => ({ at: event.at, event })),
+				...releases.map((release) => ({ at: release.at, release }))
+			].toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at)),
+			(item) => ('event' in item ? personOf(item.event) : '')
+		).map((streak) => {
+			const [newest] = streak;
+			if ('event' in newest) {
+				const run = toRun(streak.flatMap((item) => ('event' in item ? [item.event] : [])));
+				return { id: run.id, at: run.to, run };
+			}
+			const list = streak.flatMap((item) => ('release' in item ? [item.release] : []));
+			return { id: `releases-${list[0].id}`, at: list[0].at, releases: list };
+		})
 	);
 	const projects = $derived(toProjectGroups(shown));
 	const people = $derived(toPeopleGroups(shown));
@@ -277,11 +319,6 @@
 
 	function unreadIn(list: ActivityEventType[]) {
 		return unread ? list.filter(isUnread).length : 0;
-	}
-
-	function toggle(id: string) {
-		if (shut.has(id)) shut.delete(id);
-		else shut.add(id);
 	}
 
 	// "a customer", "an attachment".
@@ -517,56 +554,19 @@
 
 <!-- ---------- Rows ---------- -->
 
-<!-- The end of a row: a group's counts (where the list is wide), how many are new, its chevron, a new row's dot. -->
-{#snippet rowEnd(
-	counts: ActivityEventType[] | undefined,
-	fresh: number,
-	isOpen: boolean | undefined,
-	isNew: boolean
-)}
-	{#if counts}<span class="hidden shrink-0 @md:flex">{@render tally(counts)}</span>{/if}
-	{#if fresh}<Badge
-			count={fresh}
-			xs
-			aria-label="{fresh} new"
-		/>{/if}
-	{#if isOpen !== undefined}<span
-			class="icon-[mdi--chevron-down] size-5 shrink-0 text-slate-400 transition {isOpen
-				? 'rotate-180'
-				: ''}"
-			aria-hidden="true"
-		></span>{/if}
-	{#if isNew}<span
-			class="size-2 shrink-0 rounded-full bg-primary"
-			aria-label="New"
-		></span>{/if}
-{/snippet}
-
-<!-- One row: a picture, two lines, and its end. A button when a tap does something. -->
+<!-- One row: a picture, two lines, and a dot while it is new. A button when a tap does something. A group is a panel
+     instead (`panel`). -->
 {#snippet row(
 	picture: import('svelte').Snippet,
 	first: import('svelte').Snippet,
 	when: { words: string; tone: string } | undefined,
 	note: string,
-	{
-		counts = undefined,
-		fresh = 0,
-		isOpen = undefined,
-		isNew = false,
-		onclick = undefined
-	}: {
-		counts?: ActivityEventType[];
-		fresh?: number;
-		isOpen?: boolean;
-		isNew?: boolean;
-		onclick?: () => void;
-	} = {}
+	{ isNew = false, onclick = undefined }: { isNew?: boolean; onclick?: () => void } = {}
 )}
 	<ListRow
 		tag={onclick ? 'button' : 'div'}
 		type={onclick ? 'button' : undefined}
 		{onclick}
-		aria-expanded={isOpen}
 		class="gap-3 rounded-2xl px-2 py-2 transition {isNew
 			? 'bg-primary/[0.06]'
 			: onclick
@@ -576,8 +576,11 @@
 	>
 		{#snippet label()}<span class="block truncate text-sm leading-5 text-slate-600"
 				>{@render first()}</span
-			>{@render second(when, note, counts)}{/snippet}
-		{#snippet end()}{@render rowEnd(counts, fresh, isOpen, isNew)}{/snippet}
+			>{@render second(when, note)}{/snippet}
+		{#snippet end()}{#if isNew}<span
+					class="size-2 shrink-0 rounded-full bg-primary"
+					aria-label="New"
+				></span>{/if}{/snippet}
 	</ListRow>
 {/snippet}
 
@@ -615,84 +618,140 @@
 	</li>
 {/snippet}
 
-<!-- A day's new versions: one version's line, or one line for them all that opens on each, under the app's picture,
-     each a small rocket on the grey line that drops from it. -->
+<!-- New versions under a group's picture: each a small rocket on the grey line that drops from it, which a tap opens in
+     What's New. -->
+{#snippet releaseLines(list: ReleaseLineType[])}
+	<div class="relative -mt-2 mb-1 pt-2">
+		<span
+			class="absolute top-0 bottom-6 left-[27px] w-0.5 rounded-full bg-slate-300"
+			aria-hidden="true"
+		></span>
+		<ul>
+			{#each list as release (release.id)}
+				{@const ago = agoOf(release.at)}
+				<li class="py-[3px]">
+					<button
+						type="button"
+						class="relative flex w-full min-w-0 items-center text-left"
+						onclick={() => onrelease?.(release)}
+					>
+						<span class="relative ml-2 flex w-10 shrink-0 justify-center">
+							<span
+								class="flex size-7 items-center justify-center rounded-full bg-white ring-2 ring-white"
+								role="img"
+								aria-label={RELEASE_MARK.label}
+								><span class="flex size-7 items-center justify-center rounded-full bg-primary/15"
+									><span class="{RELEASE_MARK.icon} size-4 text-primary"></span></span
+								></span
+							>
+						</span>
+						<span
+							class="ml-1 flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 transition {release.isNew
+								? 'bg-primary/[0.06]'
+								: 'hover:bg-slate-900/[0.03]'}"
+						>
+							<span class="min-w-0 flex-1">
+								<span class="block truncate text-[13px] leading-5 text-slate-600"
+									>{@render bold(release.title)} release notes</span
+								>
+								<span class="block truncate text-xs leading-5 text-slate-400"
+									><span class="font-medium {ago.tone}">{ago.words}</span
+									>{#if release.words}{' · '}{release.words}{/if}</span
+								>
+							</span>
+							{#if release.isNew}<span
+									class="size-2 shrink-0 rounded-full bg-primary"
+									aria-label="New"
+								></span>{/if}
+						</span>
+					</button>
+				</li>
+			{/each}
+		</ul>
+	</div>
+{/snippet}
+
+<!-- New versions as a group under the app's picture: "v1.2.0 release notes" for one, "3 new versions" for more. -->
+{#snippet releasePanel(list: ReleaseLineType[])}
+	{@const titles = list.map((release) => release.title)}
+	{#snippet picture()}{@render releasePicture()}{/snippet}
+	{#snippet first()}{#if list.length === 1}{@render bold(list[0].title)} release notes{:else}{@render bold(
+				`${list.length} new versions`
+			)}{/if}{/snippet}
+	{#snippet body()}{@render releaseLines(list)}{/snippet}
+	{@render panel(
+		picture,
+		first,
+		agoOf(list[0].at),
+		list.length === 1
+			? list[0].words
+			: titles.length > 2
+				? `${titles.slice(0, 2).join(', ')} and ${titles.length - 2} more`
+				: titles.join(' and '),
+		body,
+		{ fresh: list.filter((release) => release.isNew).length }
+	)}
+{/snippet}
+
+<!-- One by one, a day's new versions: one version's line, or one group for them all. -->
 {#snippet releaseItem(item: ReleaseItemType)}
 	{#if item.release}
 		{@render releaseLine(item.release)}
 	{:else if item.releases}
-		{@const list = item.releases}
-		{@const isOpen = opened.has(item.id)}
-		{@const titles = list.map((release) => release.title)}
-		{#snippet picture()}{@render releasePicture()}{/snippet}
-		{#snippet first()}{@render bold(`${list.length} new versions`)}{/snippet}
-		<li class="py-[3px]">
-			{@render row(
-				picture,
-				first,
-				agoOf(item.at),
-				titles.length > 2
-					? `${titles.slice(0, 2).join(', ')} and ${titles.length - 2} more`
-					: titles.join(' and '),
-				{
-					fresh: list.filter((release) => release.isNew).length,
-					isOpen,
-					onclick: () => (isOpen ? opened.delete(item.id) : opened.add(item.id))
-				}
-			)}
-			{#if isOpen}
-				<div class="relative -mt-2 mb-1 pt-2">
-					<span
-						class="absolute top-0 bottom-6 left-[27px] w-0.5 rounded-full bg-slate-300"
-						aria-hidden="true"
-					></span>
-					<ul>
-						{#each list as release (release.id)}
-							{@const ago = agoOf(release.at)}
-							<li class="py-[3px]">
-								<button
-									type="button"
-									class="relative flex w-full min-w-0 items-center text-left"
-									onclick={() => onrelease?.(release)}
-								>
-									<span class="relative ml-2 flex w-10 shrink-0 justify-center">
-										<span
-											class="flex size-7 items-center justify-center rounded-full bg-white ring-2 ring-white"
-											role="img"
-											aria-label={RELEASE_MARK.label}
-											><span
-												class="flex size-7 items-center justify-center rounded-full bg-primary/15"
-												><span class="{RELEASE_MARK.icon} size-4 text-primary"></span></span
-											></span
-										>
-									</span>
-									<span
-										class="ml-1 flex min-w-0 flex-1 items-center gap-2 rounded-xl px-2 py-1.5 transition {release.isNew
-											? 'bg-primary/[0.06]'
-											: 'hover:bg-slate-900/[0.03]'}"
-									>
-										<span class="min-w-0 flex-1">
-											<span class="block truncate text-[13px] leading-5 text-slate-600"
-												>{@render bold(release.title)} release notes</span
-											>
-											<span class="block truncate text-xs leading-5 text-slate-400"
-												><span class="font-medium {ago.tone}">{ago.words}</span
-												>{#if release.words}{' · '}{release.words}{/if}</span
-											>
-										</span>
-										{#if release.isNew}<span
-												class="size-2 shrink-0 rounded-full bg-primary"
-												aria-label="New"
-											></span>{/if}
-									</span>
-								</button>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-		</li>
+		{@render releasePanel(item.releases)}
 	{/if}
+{/snippet}
+
+<!-- A group: the library Accordion, one open at a time in this list, gliding to the top of what scrolls the list as it
+     opens, under the stuck headings (Justin, 2026-11-28: the same as What's New's sections and a project's edit
+     panels). Its header is a row like any other: a picture, two lines, the counts, how many are new. -->
+{#snippet panel(
+	picture: import('svelte').Snippet,
+	first: import('svelte').Snippet,
+	when: { words: string; tone: string } | undefined,
+	note: string,
+	body: import('svelte').Snippet,
+	{ counts = undefined, fresh = 0 }: { counts?: ActivityEventType[]; fresh?: number } = {}
+)}
+	<li class="py-[3px]">
+		<Accordion
+			group={panels}
+			snap
+			icon="icon-[mdi--chevron-down] text-slate-400"
+			class="text-base [&_.accordion-body]:space-y-0 [&_.accordion-body]:p-0 [&_.accordion-foot]:hidden [&_.accordion-head]:gap-3 [&_.accordion-head]:rounded-2xl [&_.accordion-head]:p-2 [&_.accordion-head]:transition [&_.accordion-head:hover]:bg-slate-900/[0.03]"
+			style="scroll-margin-top: {top + HEADING_HEIGHT}px"
+		>
+			{#snippet head()}
+				<span class="flex shrink-0">{@render picture()}</span>
+				<span class="min-w-0 flex-1"
+					><span class="block truncate text-sm leading-5 text-slate-600">{@render first()}</span
+					>{@render second(when, note, counts)}</span
+				>
+				{#if counts}<span class="hidden shrink-0 @md:flex">{@render tally(counts)}</span>{/if}
+				{#if fresh}<Badge
+						count={fresh}
+						xs
+						aria-label="{fresh} new"
+					/>{/if}
+			{/snippet}
+			{@render body()}
+		</Accordion>
+	</li>
+{/snippet}
+
+<!-- One person's back-to-back work as a group under their face. -->
+{#snippet runPanel(run: ActivityRunType)}
+	{@const isSpread = toRunSummary(run).projects.length > 1}
+	{#snippet picture()}<Avatar
+			{...faceOf(run.who, { hasPresence: false })}
+			size={40}
+		/>{/snippet}
+	{#snippet first()}{@render bold(whoOf(run.who))} {runWords(run)}{/snippet}
+	{#snippet body()}{@render children(run.events, false, isSpread)}{/snippet}
+	{@render panel(picture, first, agoOf(run.to), runWhere(run), body, {
+		counts: run.events,
+		fresh: unreadIn(run.events)
+	})}
 {/snippet}
 
 <!-- A group's lines, under its big picture: each one's small icon on the grey line that drops from it. With `hasFace`
@@ -759,12 +818,13 @@
 	</div>
 {/snippet}
 
-<!-- A soft heading: Today, Yesterday, Last 7 days, Earlier. It sticks to the top of what scrolls the list, its
-     height HEADING_HEIGHT, and the fade of what scrolls the list leaves it whole (`HEADING`). -->
+<!-- A soft heading: Today, Yesterday, Last 7 days, Earlier. It sticks to the top of what scrolls the list, under the
+     Log's controls, its height HEADING_HEIGHT, and the fade of what scrolls the list leaves it whole (`KEEP`). -->
 {#snippet heading(label: string)}
 	<li
-		data-heading
-		class="sticky top-0 z-10 h-8 bg-white px-2 pt-3 pb-1 text-xs leading-4 font-semibold text-slate-400"
+		data-sticky
+		class="sticky z-10 h-8 bg-white px-2 pt-3 pb-1 text-xs leading-4 font-semibold text-slate-400"
+		style="top: {top}px"
 	>
 		{label}
 	</li>
@@ -798,9 +858,17 @@
 
 <!-- ---------- The list ---------- -->
 
-<div class="@container flex min-w-0 flex-col">
+<div
+	data-activity
+	class="@container flex min-w-0 flex-col"
+>
 	{#if isFull}
-		<div class="space-y-2.5 pb-2">
+		<!-- The sorts, Group and the filters stay at the top while the list scrolls under them (Justin, 2026-11-28). -->
+		<div
+			data-sticky
+			class="sticky top-0 z-20 space-y-2.5 bg-white pb-2"
+			bind:offsetHeight={top}
+		>
 			<div class="flex items-center gap-2">
 				<div class="min-w-0 flex-1">
 					<Tabs
@@ -868,34 +936,16 @@
 				{/each}
 			</ul>
 		{:else if view === 'all'}
-			<!-- All, grouped: one person's back-to-back work as one group under their face; the bell's new versions
-			     stay lines of their own. -->
+			<!-- All, grouped: everything in groups, each one person's back-to-back work, the bell's new versions back to
+			     back as one too, under the heading of its newest. -->
 			<ul>
 				{#each byBucket(grouped, (item) => item.at, now) as bucket (bucket.label)}
 					{@render heading(bucket.label)}
 					{#each bucket.items as item (item.id)}
-						{@const run = item.run}
-						{#if !run}
-							{@render releaseItem(item)}
-						{:else if run.events.length === 1}
-							{@render line(run.events[0])}
-						{:else if run}
-							{@const isOpen = !shut.has(run.id)}
-							{@const isSpread = toRunSummary(run).projects.length > 1}
-							{#snippet picture()}<Avatar
-									{...faceOf(run.who, { hasPresence: false })}
-									size={40}
-								/>{/snippet}
-							{#snippet first()}{@render bold(whoOf(run.who))} {runWords(run)}{/snippet}
-							<li class="py-[3px]">
-								{@render row(picture, first, agoOf(run.to), runWhere(run), {
-									counts: run.events,
-									fresh: unreadIn(run.events),
-									isOpen,
-									onclick: () => toggle(run.id)
-								})}
-								{#if isOpen}{@render children(run.events, false, isSpread)}{/if}
-							</li>
+						{#if item.run}
+							{@render runPanel(item.run)}
+						{:else if item.releases}
+							{@render releasePanel(item.releases)}
 						{/if}
 					{/each}
 				{/each}
@@ -904,7 +954,6 @@
 			<!-- Projects: each project's newest line; grouped, every line under the project's picture. -->
 			<ul>
 				{#each projects as group (group.id)}
-					{@const isOpen = isGrouped && !shut.has(`project-${group.id}`)}
 					{@const newest = group.events[0]}
 					{@const by = group.people.length ? ` by ${firstNames(group.people)}` : ''}
 					{#snippet picture()}{@render projectMark(
@@ -915,24 +964,36 @@
 					{#snippet first()}{@render bold(
 							group.id ? group.title || 'A project no longer there' : 'Not in a project'
 						)}{/snippet}
-					<li class="py-[3px]">
-						{@render row(picture, first, agoOf(group.at), `${updates(group.events.length)}${by}`, {
-							counts: isGrouped ? group.events : undefined,
-							fresh: isGrouped ? unreadIn(group.events) : 0,
-							isOpen: isGrouped ? isOpen : undefined,
-							isNew: !isGrouped && isUnread(newest),
-							onclick: () => (isGrouped ? toggle(`project-${group.id}`) : tap(newest))
-						})}
-						{#if isOpen}{@render children(group.events, true, false)}{/if}
-					</li>
+					{#if isGrouped}
+						{#snippet body()}{@render children(group.events, true, false)}{/snippet}
+						{@render panel(
+							picture,
+							first,
+							agoOf(group.at),
+							`${updates(group.events.length)}${by}`,
+							body,
+							{ counts: group.events, fresh: unreadIn(group.events) }
+						)}
+					{:else}
+						<li class="py-[3px]">
+							{@render row(
+								picture,
+								first,
+								agoOf(group.at),
+								`${updates(group.events.length)}${by}`,
+								{
+									isNew: isUnread(newest),
+									onclick: () => tap(newest)
+								}
+							)}
+						</li>
+					{/if}
 				{/each}
 			</ul>
 		{:else}
 			<!-- Users: one row each, their face with its online dot; grouped, their lines under it. -->
 			<ul>
 				{#each people as group (group.userId ?? group.who)}
-					{@const key = `user-${group.userId ?? group.who}`}
-					{@const isOpen = isGrouped && !shut.has(key)}
 					{@const newest = group.events[0]}
 					{@const when = presenceWords(group.who) ?? agoOf(group.at)}
 					{#snippet picture()}{#if isGrouped}<Avatar
@@ -942,22 +1003,20 @@
 					{#snippet first()}{#if isGrouped}{@render bold(
 								group.who === me ? `${group.who} (you)` : group.who
 							)}{@render devices(group.who)}{:else}{@render said(newest)}{/if}{/snippet}
-					<li class="py-[3px]">
-						{@render row(
-							picture,
-							first,
-							when,
-							isGrouped ? updates(group.events.length) : whereOf(newest),
-							{
-								counts: isGrouped ? group.events : undefined,
-								fresh: isGrouped ? unreadIn(group.events) : 0,
-								isOpen: isGrouped ? isOpen : undefined,
-								isNew: !isGrouped && isUnread(newest),
-								onclick: () => (isGrouped ? toggle(key) : tap(newest))
-							}
-						)}
-						{#if isOpen}{@render children(group.events, false, true)}{/if}
-					</li>
+					{#if isGrouped}
+						{#snippet body()}{@render children(group.events, false, true)}{/snippet}
+						{@render panel(picture, first, when, updates(group.events.length), body, {
+							counts: group.events,
+							fresh: unreadIn(group.events)
+						})}
+					{:else}
+						<li class="py-[3px]">
+							{@render row(picture, first, when, whereOf(newest), {
+								isNew: isUnread(newest),
+								onclick: () => tap(newest)
+							})}
+						</li>
+					{/if}
 				{/each}
 			</ul>
 		{/if}

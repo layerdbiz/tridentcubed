@@ -17,10 +17,13 @@
 	let {
 		look,
 		about,
+		top = $bindable(0),
 		ontap
 	}: {
 		look: LookState;
 		about?: ActivityAboutType;
+		// How tall the sorts, Group and filters are, stuck to the top of what scrolls the Log (activity-list.svelte).
+		top?: number;
 		// Told of a tap on a row, before it opens what the row is about: View Activity's window closes.
 		ontap?: () => void;
 	} = $props();
@@ -98,6 +101,7 @@
 			{ontap}
 			bind:tab
 			bind:isGrouped
+			bind:top
 		/>
 		{#if olderBefore}
 			<div class="mt-4 flex flex-col items-center gap-2">
